@@ -26344,6 +26344,105 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | data | [DifyBuilderProgressEventData](#difybuilderprogresseventdata) |  | Yes |
 | event | string |  | Yes |
 
+#### DifyBuilderProgressSnapshotEventData
+
+Complete observed activity state before subsequent live progress deltas.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| execution | [DifyBuilderExecutionProgressResponse](#difybuilderexecutionprogressresponse) |  | Yes |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+
+#### DifyBuilderProgressSnapshotEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderProgressSnapshotEventData](#difybuilderprogresssnapshoteventdata) |  | Yes |
+| event | string |  | Yes |
+
+#### DifyBuilderRealCallConsentResponse
+
+Current or saved receipt of one real-call consent.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| business_claimed | boolean |  | Yes |
+| can_retry | boolean | Whether a new consent may be prepared; always false once a launch is reserved or claimed | Yes |
+| command_id | string |  | Yes |
+| consent_id | string |  | Yes |
+| disclosure | [DifyBuilderRealCallDisclosureResponse](#difybuilderrealcalldisclosureresponse) |  | Yes |
+| execution_request_id | string |  | Yes |
+| native_node_execution_id | string |  | Yes |
+| native_run_id | string |  | Yes |
+| reason_code | string | Fixed server reason code; never provider text | Yes |
+| refresh_claimed | boolean |  | Yes |
+| result | string, <br>**Default:** receipt |  | Yes |
+| scope_digest | string |  | Yes |
+| state | string, <br>**Available values:** "claimed", "completed", "confirmed", "declined", "expired", "failed", "invalidated", "prepared", "unknown" | Consent lifecycle state. 'unknown' is final: a claimed call whose real effect could not be confirmed. It is bounded by the disclosed limits of one native attempt and at most one token refresh, is never replayed automatically, and any further real call needs a new human-approved consent<br>*Enum:* `"claimed"`, `"completed"`, `"confirmed"`, `"declined"`, `"expired"`, `"failed"`, `"invalidated"`, `"prepared"`, `"unknown"` | Yes |
+
+#### DifyBuilderRealCallDisclosureResponse
+
+The approved public disclosure of one real Tool call; no credential revision or secret.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| automatic_replay | boolean |  | Yes |
+| credential_alias | string |  | Yes |
+| credential_id | string |  | Yes |
+| credential_type | string |  | Yes |
+| data_description | string |  | Yes |
+| expires_at | dateTime |  | Yes |
+| identity_basis | string | The alias names a workspace credential, not a verified remote account identity | Yes |
+| include_attachments | boolean |  | Yes |
+| include_body | boolean |  | Yes |
+| message_id | string |  | Yes |
+| monetary_estimate | string |  | Yes |
+| native_attempt_limit | integer |  | Yes |
+| oauth_refresh | string | One OAuth token refresh request is made only if the stored access token must be refreshed before the call; otherwise no refresh request is sent | Yes |
+| oauth_refresh_method | string |  | Yes |
+| oauth_refresh_url | string |  | Yes |
+| output_retention | string |  | Yes |
+| prior_uncertain_consent_id | string |  | No |
+| quota_usage | string |  | Yes |
+| refresh_limit | integer |  | Yes |
+| remote_account_status | string |  | Yes |
+| request_method | string |  | Yes |
+| request_url | string |  | Yes |
+| response_format | string |  | Yes |
+
+#### DifyBuilderRealCallForbiddenResponse
+
+Every HTTP 403 body a real-call consent route can return.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DifyBuilderRealCallForbiddenResponse | [DifyBuilderRealCallPermissionRefusalResponse](#difybuilderrealcallpermissionrefusalresponse)<br>[DifyBuilderFeatureUnavailableResponse](#difybuilderfeatureunavailableresponse)<br>[DifyBuilderConsoleForbiddenResponse](#difybuilderconsoleforbiddenresponse) | Every HTTP 403 body a real-call consent route can return. |  |
+
+#### DifyBuilderRealCallPermissionRefusalResponse
+
+Execution permission refused after ownership was established; nothing foreign is disclosed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| reason_code | string |  | Yes |
+| result | string |  | Yes |
+
+#### DifyBuilderRealCallRefusalResponse
+
+Sanitized refusal of a real-call consent operation; carries fixed codes only.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "conflict", "needs_permission", "needs_setup", "unavailable_metadata", "unsupported_action" | *Enum:* `"conflict"`, `"needs_permission"`, `"needs_setup"`, `"unavailable_metadata"`, `"unsupported_action"` | Yes |
+| reason_code | string, <br>**Available values:** "command_lineage_changed", "consent_already_claimed", "consent_decision_conflict", "consent_expired", "consent_invalidated", "consent_not_confirmed", "consent_not_prepared", "consent_scope_changed", "consent_scope_mismatch", "credential_binding_mismatch", "credential_policy_refused", "credential_provider_mismatch", "credential_reference_unavailable", "credential_required", "execution_already_launched", "idempotency_conflict", "installed_tool_unavailable", "invalid_graph_metadata", "invalid_node_configuration", "needs_setup", "real_call_unavailable", "session_busy", "session_conflict", "session_state_unavailable", "stale_app_revision", "stale_consent_version", "stale_execution_revision", "stale_session_version", "test_input_binding_mismatch", "unsafe_message_id", "unsupported_action", "unsupported_default_output", "unsupported_external_tracing", "unsupported_features", "unsupported_graph", "unsupported_input_value", "unsupported_node_configuration", "unsupported_node_implementation", "unsupported_node_retry", "unsupported_selector", "unsupported_session_state", "unsupported_start_input", "unsupported_test_input", "unsupported_tool_configuration", "unsupported_tool_node", "unsupported_tool_parameters", "unsupported_variables", "unsupported_workflow" | *Enum:* `"command_lineage_changed"`, `"consent_already_claimed"`, `"consent_decision_conflict"`, `"consent_expired"`, `"consent_invalidated"`, `"consent_not_confirmed"`, `"consent_not_prepared"`, `"consent_scope_changed"`, `"consent_scope_mismatch"`, `"credential_binding_mismatch"`, `"credential_policy_refused"`, `"credential_provider_mismatch"`, `"credential_reference_unavailable"`, `"credential_required"`, `"execution_already_launched"`, `"idempotency_conflict"`, `"installed_tool_unavailable"`, `"invalid_graph_metadata"`, `"invalid_node_configuration"`, `"needs_setup"`, `"real_call_unavailable"`, `"session_busy"`, `"session_conflict"`, `"session_state_unavailable"`, `"stale_app_revision"`, `"stale_consent_version"`, `"stale_execution_revision"`, `"stale_session_version"`, `"test_input_binding_mismatch"`, `"unsafe_message_id"`, `"unsupported_action"`, `"unsupported_default_output"`, `"unsupported_external_tracing"`, `"unsupported_features"`, `"unsupported_graph"`, `"unsupported_input_value"`, `"unsupported_node_configuration"`, `"unsupported_node_implementation"`, `"unsupported_node_retry"`, `"unsupported_selector"`, `"unsupported_session_state"`, `"unsupported_start_input"`, `"unsupported_test_input"`, `"unsupported_tool_configuration"`, `"unsupported_tool_node"`, `"unsupported_tool_parameters"`, `"unsupported_variables"`, `"unsupported_workflow"` | Yes |
+| result | string, <br>**Default:** refusal |  | Yes |
+
 #### DifyBuilderReasoningEventData
 
 | Name | Type | Description | Required |
@@ -26405,7 +26504,7 @@ One JSON object carried by an SSE ``data:`` frame.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
+| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderProgressSnapshotEventResponse](#difybuilderprogresssnapshoteventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
 
 #### DifyBuilderSubmitActionPayload
 

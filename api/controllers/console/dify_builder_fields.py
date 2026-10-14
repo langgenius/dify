@@ -405,6 +405,21 @@ class DifyBuilderProgressEventResponse(ResponseModel):
     data: DifyBuilderProgressEventData
 
 
+class DifyBuilderProgressSnapshotEventData(ResponseModel):
+    """Complete observed activity state before subsequent live progress deltas."""
+
+    session_id: str
+    operation_id: str
+    at_version: int
+    revision: int
+    execution: DifyBuilderExecutionProgressResponse
+
+
+class DifyBuilderProgressSnapshotEventResponse(ResponseModel):
+    event: Literal["progress_snapshot"]
+    data: DifyBuilderProgressSnapshotEventData
+
+
 class DifyBuilderCommandFinishedEventResponse(ResponseModel):
     event: Literal["command_finished"]
     data: DifyBuilderCommandFinishedEventData
@@ -432,6 +447,7 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderConversationItemAppendedEventResponse
             | DifyBuilderReasoningEventResponse
             | DifyBuilderProgressEventResponse
+            | DifyBuilderProgressSnapshotEventResponse
             | DifyBuilderCommandFinishedEventResponse
             | DifyBuilderErrorEventResponse,
             Field(discriminator="event"),

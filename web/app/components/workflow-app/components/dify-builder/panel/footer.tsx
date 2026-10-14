@@ -16,10 +16,12 @@ import {
   difyBuilderErrorAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderInteractionRefAtom,
+  difyBuilderInterruptedAtom,
   difyBuilderLocalInteractionResponseAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRecoveryAtom,
   difyBuilderRetryCanvasRefreshAtom,
+  difyBuilderRunActiveAtom,
   difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
@@ -66,9 +68,11 @@ export const DifyBuilderPanelFooter = () => {
   const decision = useAtomValue(difyBuilderDecisionAtom)
   const error = useAtomValue(difyBuilderErrorAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
+  const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const localInteractionResponse = useAtomValue(difyBuilderLocalInteractionResponseAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const recovery = useAtomValue(difyBuilderRecoveryAtom)
+  const runActive = useAtomValue(difyBuilderRunActiveAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
@@ -78,7 +82,8 @@ export const DifyBuilderPanelFooter = () => {
     localInteractionResponse?.sessionId === sessionId &&
     localInteractionResponse.baseVersion === viewVersion,
   )
-  const interactionVisible = interactionPending && !interactionSubmitted
+  const interactionVisible =
+    interactionPending && !interactionSubmitted && (!runActive || interrupted)
   const interactionKey = interactionRef
     ? `${sessionId}:${interactionRef.action_id}:${interactionRef.card_seq}`
     : decision
