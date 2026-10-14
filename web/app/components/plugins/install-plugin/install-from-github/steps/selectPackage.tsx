@@ -69,7 +69,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         })
       })
     } catch (e: any) {
-      if (e.response?.message) onFailed(e.response?.message)
+      if (e instanceof Error && e.message) onFailed(e.message)
       else onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     } finally {
       setIsUploading(false)

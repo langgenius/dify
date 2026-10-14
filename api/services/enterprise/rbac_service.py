@@ -93,15 +93,54 @@ def try_sync_creator_access_policy_member_bindings(
     resource_type: RBACResourceType | str,
     resource_id: str,
 ) -> None:
+    """Best-effort creator bindings, including app and dataset whitelist visibility gates."""
     if not dify_config.RBAC_ENABLED:
         return
     try:
-        RBACService.AccessPolicies.sync_creator_access_policy_member_bindings(
+        bindings = RBACService.AccessPolicies.sync_creator_access_policy_member_bindings(
             tenant_id,
             account_id,
             resource_type=resource_type,
             resource_id=resource_id,
         )
+        if resource_type in (RBACResourceType.APP, RBACResourceType.DATASET):
+            policy_ids = sorted(
+                {
+                    binding.access_policy_id
+                    for binding in bindings
+                    if binding.tenant_id == tenant_id
+                    and binding.resource_type == resource_type
+                    and binding.resource_id == resource_id
+                    and binding.account_id == account_id
+                    and binding.access_policy_id
+                }
+            )
+            if not policy_ids:
+                raise ValueError("Creator sync returned no matching resource policy binding")
+            # Policy bindings alone do not satisfy the resource whitelist gate.
+            # Append the returned creator policies without replacing other members or policies.
+            if resource_type == RBACResourceType.APP:
+                RBACService.AppAccess.append_whitelist_members_batch(
+                    tenant_id,
+                    account_id,
+                    [
+                        AppendAppWhitelistMembersBatchItem(
+                            app_id=resource_id, account_ids=[account_id], policy_id=policy_id
+                        )
+                        for policy_id in policy_ids
+                    ],
+                )
+            else:
+                RBACService.DatasetAccess.append_whitelist_members_batch(
+                    tenant_id,
+                    account_id,
+                    [
+                        AppendDatasetWhitelistMembersBatchItem(
+                            dataset_id=resource_id, account_ids=[account_id], policy_id=policy_id
+                        )
+                        for policy_id in policy_ids
+                    ],
+                )
     except Exception:
         logger.warning(
             "Failed to sync creator access policy member binding for "

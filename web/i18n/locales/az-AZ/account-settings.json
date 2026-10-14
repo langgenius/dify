@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Doğrulama kodunu göndər",
   "account.setPassword": "Parol təyin et",
   "account.showAppLength": "{{length}} tətbiq göstər",
+  "account.timezoneNoResults": "Uyğun saat qurşağı tapılmadı",
+  "account.timezoneSearchPlaceholder": "Şəhər və ya saat qurşağı axtarın…",
   "account.verificationLabel": "Doğrulama kodu",
   "account.verificationPlaceholder": "6 rəqəmli kodu yapışdır",
   "account.workspaceName": "İş sahəsinin adı",

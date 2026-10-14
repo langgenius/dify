@@ -266,6 +266,17 @@ describe('InputsFormContent', () => {
     )
   })
 
+  it('renders numeric zero as zero', () => {
+    const context = createMockContext({
+      inputsForms: [{ variable: 'num', type: InputVarType.number, label: 'Num' }],
+      currentConversationInputs: { num: 0 },
+    })
+
+    renderWithContext(<InputsFormContent />, context)
+
+    expect(screen.getByRole('spinbutton', { name: 'Num' })).toHaveValue(0)
+  })
+
   it('renders and handles paragraph input updates', async () => {
     const user = userEvent.setup()
     const context = createMockContext({

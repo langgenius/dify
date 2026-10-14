@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { usePipelineInit } from '../use-pipeline-init'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -269,10 +270,9 @@ describe('usePipelineInit', () => {
 
   describe('draft not exist error handling', () => {
     it('should create initial workflow when draft does not exist', async () => {
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
-        bodyUsed: false,
-      }
+      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+        code: 'draft_workflow_not_exist',
+      })
       mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
       mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })
 
@@ -296,10 +296,9 @@ describe('usePipelineInit', () => {
     })
 
     it('should sync initial workflow with template nodes', async () => {
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
-        bodyUsed: false,
-      }
+      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+        code: 'draft_workflow_not_exist',
+      })
       mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
       mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })
 

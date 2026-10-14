@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Trimiteți codul de verificare",
   "account.setPassword": "Setează o parolă",
   "account.showAppLength": "Afișează {{length}} aplicații",
+  "account.timezoneNoResults": "Nu s-au găsit fusuri orare potrivite",
+  "account.timezoneSearchPlaceholder": "Caută orașe sau fusuri orare...",
   "account.verificationLabel": "Cod de verificare",
   "account.verificationPlaceholder": "Lipiți codul din 6 cifre",
   "account.workspaceName": "Numele spațiului de lucru",

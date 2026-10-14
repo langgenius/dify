@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "發送驗證碼",
   "account.setPassword": "設定密碼",
   "account.showAppLength": "顯示 {{length}} 個應用",
+  "account.timezoneNoResults": "找不到符合的時區",
+  "account.timezoneSearchPlaceholder": "搜尋城市或時區…",
   "account.verificationLabel": "驗證碼",
   "account.verificationPlaceholder": "粘貼 6 位代碼",
   "account.workspaceName": "工作區名稱",

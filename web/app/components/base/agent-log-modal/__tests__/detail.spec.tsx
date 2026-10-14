@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createHttpError } from '@/service/http-error'
 import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogDetail from '../detail'
 
@@ -225,12 +226,14 @@ describe('AgentLogDetail', () => {
 
   describe('Edge Cases', () => {
     it('should notify on API error', async () => {
-      vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('API Error'))
+      vi.mocked(fetchAgentLogDetail).mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { message: 'API Error' }),
+      )
 
       renderComponent()
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Error: API Error')
+        expect(mockToast.error).toHaveBeenCalledWith('API Error')
       })
     })
 

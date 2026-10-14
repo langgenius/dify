@@ -1033,14 +1033,14 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
     expect(
-      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
+      screen.getByRole('radiogroup', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
 
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
     expect(
-      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
+      screen.getByRole('radiogroup', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
     ).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()

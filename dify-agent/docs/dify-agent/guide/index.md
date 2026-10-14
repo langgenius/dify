@@ -283,6 +283,29 @@ provider `RuntimeError` observed first becomes a tool observation. In contrast,
 run-deadline cancellation propagates through the Shell boundary; only the Dify
 Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
+The E2B backend uses SDK 2.55.1 or later with three control-plane retries.
+The SDK retries `502` only for replayable operations, including when the response
+has `Retry-After`; a gateway can return `502` after a resource was already created.
+Sandbox and snapshot creation therefore surface `502` without replaying the
+request. The SDK still retries `503`, `429` with `Retry-After`, and safely
+replayable network failures. Backend adapters invoke each SDK operation once;
+exhausted retries and timeouts do not start a second SDK request budget.
+Resource creation and snapshot creation are also not replayed after an ambiguous
+post-write network failure. See the [SDK replay policy](https://github.com/e2b-dev/E2B/pull/1924).
+
+This policy covers E2B lifecycle API calls. Shell commands and normal file
+operations use the separate shellctl client, and usage collection uses its own
+HTTP client. Neither inherits the E2B SDK retry or connection-pool settings.
+
+The backend explicitly requests `mode="full"` for timeout pauses, explicit
+pauses, and Home Snapshots, preserving both filesystem and memory state. Binding
+acquisition uses `on_resume="restore"`; `connect` does not accept a snapshot
+mode. These settings preserve the existing full-memory restore intent while
+replacing the deprecated `keep_memory` option. They do not override platform
+fallbacks: E2B may save only the filesystem if a timeout pause is continuously
+refused because a previous snapshot is still being finalized. See the
+[E2B persistence contract](https://docs.e2b.dev/sandbox/persistence).
+
 ## OpenShell backend
 
 See the [OpenShell Runtime Backend guide](openshell.md) for its configuration

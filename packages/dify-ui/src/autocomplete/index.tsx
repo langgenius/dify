@@ -2,25 +2,30 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { insetFocusRingClassName } from '../internal/focus'
+import { textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type AutocompleteActions = BaseAutocomplete.Root.Actions
 
 type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
+type AutocompleteChangeEventReason = BaseAutocomplete.Root.ChangeEventReason
 type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
 type AutocompleteOpenChangeEventDetails = BaseAutocomplete.Root.OpenChangeEventDetails
+type AutocompleteHighlightEventReason = BaseAutocomplete.Root.HighlightEventReason
+type AutocompleteHighlightEventDetails = BaseAutocomplete.Root.HighlightEventDetails
 type AutocompleteGroupedProps<Items extends readonly { items: readonly unknown[] }[]> = Omit<
   AutocompleteProps<Items[number]['items'][number]>,
   'items'
@@ -69,17 +74,19 @@ function AutocompleteCollection<Value = unknown>(props: AutocompleteCollectionPr
 
 // The popup is limited to the available height and lays its parts out in a column, so a status or input
 // sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
+// Same layout as `ComboboxPopup`; keep the two local definitions aligned.
 const autocompletePopupClassName = [
   'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
+// Same layout as `ComboboxList`; keep the two local definitions aligned.
 const autocompleteListClassName = [
   'max-h-[min(20rem,var(--available-height))] overflow-y-auto overflow-x-hidden overscroll-contain p-1 outline-hidden scroll-py-1',
   'data-empty:max-h-none data-empty:p-0',
 ]
 
 const autocompleteItemClassName = [
-  'flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
+  'flex min-h-8 select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30',
 ]
@@ -164,13 +171,12 @@ function AutocompleteInput({
 
 const autocompleteControlVariants = cva(
   [
-    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
+    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
-    'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent group-data-disabled/autocomplete:focus-visible:ring-0',
+    insetFocusRingClassName,
+    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent',
+    'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent',
     'group-data-readonly/autocomplete:hidden',
-    'motion-reduce:transition-none',
   ],
   {
     variants: {
@@ -278,7 +284,7 @@ function AutocompletePositioner({
       side={side}
       align={align}
       sideOffset={sideOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -439,6 +445,7 @@ export {
 export type {
   AutocompleteActions,
   AutocompleteChangeEventDetails,
+  AutocompleteChangeEventReason,
   AutocompleteClearProps,
   AutocompleteCollectionProps,
   AutocompleteEmptyProps,
@@ -446,6 +453,8 @@ export type {
   AutocompleteGroupedProps,
   AutocompleteGroupLabelProps,
   AutocompleteGroupProps,
+  AutocompleteHighlightEventDetails,
+  AutocompleteHighlightEventReason,
   AutocompleteIconProps,
   AutocompleteInputGroupProps,
   AutocompleteInputProps,

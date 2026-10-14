@@ -1,6 +1,8 @@
 import json
+from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 
 from core.app.app_config.workflow_ui_based_app.variables.manager import (
@@ -18,13 +20,18 @@ def _rag_variable(variable: str, belong_to_node_id: str) -> dict[str, object]:
     }
 
 
+def _user_input_form(workflow: Workflow) -> MagicMock:
+    assert isinstance(workflow.user_input_form, MagicMock)
+    return workflow.user_input_form
+
+
 # =============================
 # Fixtures
 # =============================
 
 
 @pytest.fixture
-def mock_workflow(mocker: MockerFixture):
+def mock_workflow(mocker: MockerFixture) -> Workflow:
     workflow = Workflow.new(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -42,12 +49,12 @@ def mock_workflow(mocker: MockerFixture):
 
 
 @pytest.fixture
-def mock_variable_entity(mocker: MockerFixture):
+def mock_variable_entity(mocker: MockerFixture) -> MagicMock:
     return mocker.patch("core.app.app_config.workflow_ui_based_app.variables.manager.VariableEntity")
 
 
 @pytest.fixture
-def mock_rag_entity(mocker: MockerFixture):
+def mock_rag_entity(mocker: MockerFixture) -> MagicMock:
     return mocker.patch("core.app.app_config.workflow_ui_based_app.variables.manager.RagPipelineVariableEntity")
 
 
@@ -57,10 +64,10 @@ def mock_rag_entity(mocker: MockerFixture):
 
 
 class TestWorkflowVariablesConfigManagerConvert:
-    def test_convert_success_multiple_variables(self, mock_workflow, mock_variable_entity):
+    def test_convert_success_multiple_variables(self, mock_workflow: Workflow, mock_variable_entity: MagicMock) -> None:
         # Arrange
         input_variables = [{"name": "var1"}, {"name": "var2"}]
-        mock_workflow.user_input_form.return_value = input_variables
+        _user_input_form(mock_workflow).return_value = input_variables
         mock_variable_entity.model_validate.side_effect = lambda x: {"validated": x}
 
         # Act
@@ -70,9 +77,9 @@ class TestWorkflowVariablesConfigManagerConvert:
         assert result == [{"validated": v} for v in input_variables]
         assert mock_variable_entity.model_validate.call_count == 2
 
-    def test_convert_empty_list(self, mock_workflow, mock_variable_entity):
+    def test_convert_empty_list(self, mock_workflow: Workflow, mock_variable_entity: MagicMock) -> None:
         # Arrange
-        mock_workflow.user_input_form.return_value = []
+        _user_input_form(mock_workflow).return_value = list[object]()
 
         # Act
         result = WorkflowVariablesConfigManager.convert(mock_workflow)
@@ -81,24 +88,26 @@ class TestWorkflowVariablesConfigManagerConvert:
         assert result == []
         mock_variable_entity.model_validate.assert_not_called()
 
-    def test_convert_none_returned_raises(self, mock_workflow):
+    def test_convert_none_returned_raises(self, mock_workflow: Workflow) -> None:
         # Arrange
-        mock_workflow.user_input_form.return_value = None
+        _user_input_form(mock_workflow).return_value = None
 
         # Act & Assert
         with pytest.raises(TypeError):
             WorkflowVariablesConfigManager.convert(mock_workflow)
 
-    def test_convert_validation_error_propagates(self, mock_workflow, mock_variable_entity):
+    def test_convert_validation_error_propagates(
+        self, mock_workflow: Workflow, mock_variable_entity: MagicMock
+    ) -> None:
         # Arrange
-        mock_workflow.user_input_form.return_value = [{"invalid": "data"}]
+        _user_input_form(mock_workflow).return_value = [{"invalid": "data"}]
         mock_variable_entity.model_validate.side_effect = ValueError("validation error")
 
         # Act & Assert
         with pytest.raises(ValueError):
             WorkflowVariablesConfigManager.convert(mock_workflow)
 
-    def test_convert_normalizes_json_schema_string_to_dict(self, mock_workflow, mock_variable_entity):
+    def test_convert_normalizes_json_schema_string_to_dict(self, mock_workflow: Workflow) -> None:
         """Regression test for #36766: json_schema stored as a JSON string."""
         schema_dict = {"type": "object", "properties": {"name": {"type": "string"}}}
         input_variables = [
@@ -109,17 +118,15 @@ class TestWorkflowVariablesConfigManagerConvert:
                 "json_schema": json.dumps(schema_dict),
             }
         ]
-        mock_workflow.user_input_form.return_value = input_variables
-        mock_variable_entity.model_validate.side_effect = lambda x: x
+        _user_input_form(mock_workflow).return_value = input_variables
 
         # Act
         result = WorkflowVariablesConfigManager.convert(mock_workflow)
 
         # Assert — the string was deserialized before reaching model_validate
-        assert result[0]["json_schema"] == schema_dict
-        assert isinstance(result[0]["json_schema"], dict)
+        assert result[0].json_schema == schema_dict
 
-    def test_convert_normalizes_json_schema_dict_passthrough(self, mock_workflow, mock_variable_entity):
+    def test_convert_normalizes_json_schema_dict_passthrough(self, mock_workflow: Workflow) -> None:
         """json_schema already a dict should pass through unchanged."""
         schema_dict = {"type": "object", "properties": {"age": {"type": "number"}}}
         input_variables = [
@@ -130,16 +137,15 @@ class TestWorkflowVariablesConfigManagerConvert:
                 "json_schema": schema_dict,
             }
         ]
-        mock_workflow.user_input_form.return_value = input_variables
-        mock_variable_entity.model_validate.side_effect = lambda x: x
+        _user_input_form(mock_workflow).return_value = input_variables
 
         # Act
         result = WorkflowVariablesConfigManager.convert(mock_workflow)
 
         # Assert
-        assert result[0]["json_schema"] == schema_dict
+        assert result[0].json_schema == schema_dict
 
-    def test_convert_normalizes_json_schema_none_passthrough(self, mock_workflow, mock_variable_entity):
+    def test_convert_normalizes_json_schema_none_passthrough(self, mock_workflow: Workflow) -> None:
         """json_schema=None should pass through unchanged."""
         input_variables = [
             {
@@ -149,16 +155,15 @@ class TestWorkflowVariablesConfigManagerConvert:
                 "json_schema": None,
             }
         ]
-        mock_workflow.user_input_form.return_value = input_variables
-        mock_variable_entity.model_validate.side_effect = lambda x: x
+        _user_input_form(mock_workflow).return_value = input_variables
 
         # Act
         result = WorkflowVariablesConfigManager.convert(mock_workflow)
 
         # Assert
-        assert result[0]["json_schema"] is None
+        assert result[0].json_schema is None
 
-    def test_convert_normalizes_json_schema_invalid_string_passthrough(self, mock_workflow, mock_variable_entity):
+    def test_convert_normalizes_json_schema_invalid_string_passthrough(self, mock_workflow: Workflow) -> None:
         """Invalid JSON string should be left as-is for Pydantic to reject."""
         input_variables = [
             {
@@ -168,14 +173,12 @@ class TestWorkflowVariablesConfigManagerConvert:
                 "json_schema": "{invalid-json",
             }
         ]
-        mock_workflow.user_input_form.return_value = input_variables
-        mock_variable_entity.model_validate.side_effect = lambda x: x
+        _user_input_form(mock_workflow).return_value = input_variables
 
-        # Act
-        result = WorkflowVariablesConfigManager.convert(mock_workflow)
-
-        # Assert — string left as-is
-        assert result[0]["json_schema"] == "{invalid-json"
+        # Act & Assert — the string is left as-is and Pydantic rejects it
+        with pytest.raises(ValidationError):
+            WorkflowVariablesConfigManager.convert(mock_workflow)
+        assert input_variables[0]["json_schema"] == "{invalid-json"
 
 
 # =============================
@@ -184,7 +187,7 @@ class TestWorkflowVariablesConfigManagerConvert:
 
 
 class TestWorkflowVariablesConfigManagerConvertRag:
-    def test_no_rag_pipeline_variables(self, mock_workflow):
+    def test_no_rag_pipeline_variables(self, mock_workflow: Workflow) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = []
 
@@ -194,9 +197,9 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         # Assert
         assert result == []
 
-    def test_rag_pipeline_none(self, mock_workflow):
+    def test_rag_pipeline_none(self, mock_workflow: Workflow) -> None:
         # Arrange
-        mock_workflow._rag_pipeline_variables = None
+        mock_workflow._rag_pipeline_variables = None  # pyrefly: ignore[bad-argument-type]
 
         # Act
         result = WorkflowVariablesConfigManager.convert_rag_pipeline_variable(mock_workflow, "node1")
@@ -204,7 +207,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         # Assert
         assert result == []
 
-    def test_no_matching_node_keeps_all(self, mock_workflow, mock_rag_entity):
+    def test_no_matching_node_keeps_all(self, mock_workflow: Workflow, mock_rag_entity: MagicMock) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = [
             _rag_variable("var1", "node1"),
@@ -218,7 +221,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         # Assert
         assert result == [{"validated": mock_workflow.rag_pipeline_variables[0]}]
 
-    def test_string_pattern_removes_variable(self, mock_workflow, mock_rag_entity):
+    def test_string_pattern_removes_variable(self, mock_workflow: Workflow, mock_rag_entity: MagicMock) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = [
             _rag_variable("var1", "node1"),
@@ -242,10 +245,9 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         result = WorkflowVariablesConfigManager.convert_rag_pipeline_variable(mock_workflow, "node1")
 
         # Assert
-        assert len(result) == 1
-        assert result[0]["validated"]["variable"] == "var2"
+        assert result == [{"validated": mock_workflow.rag_pipeline_variables[1]}]
 
-    def test_list_value_removes_variable(self, mock_workflow, mock_rag_entity):
+    def test_list_value_removes_variable(self, mock_workflow: Workflow, mock_rag_entity: MagicMock) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = [
             _rag_variable("var1", "node1"),
@@ -269,8 +271,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         result = WorkflowVariablesConfigManager.convert_rag_pipeline_variable(mock_workflow, "node1")
 
         # Assert
-        assert len(result) == 1
-        assert result[0]["validated"]["variable"] == "var2"
+        assert result == [{"validated": mock_workflow.rag_pipeline_variables[1]}]
 
     @pytest.mark.parametrize(
         ("belong_to_node_id", "expected_count"),
@@ -280,7 +281,9 @@ class TestWorkflowVariablesConfigManagerConvertRag:
             ("other_node", 0),
         ],
     )
-    def test_belong_to_node_filtering(self, mock_workflow, mock_rag_entity, belong_to_node_id, expected_count):
+    def test_belong_to_node_filtering(
+        self, mock_workflow: Workflow, mock_rag_entity: MagicMock, belong_to_node_id: str, expected_count: int
+    ) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = [
             _rag_variable("var1", belong_to_node_id),
@@ -294,7 +297,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         # Assert
         assert len(result) == expected_count
 
-    def test_invalid_pattern_does_not_remove(self, mock_workflow, mock_rag_entity):
+    def test_invalid_pattern_does_not_remove(self, mock_workflow: Workflow, mock_rag_entity: MagicMock) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = [
             _rag_variable("var1", "node1"),
@@ -319,7 +322,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
         # Assert
         assert len(result) == 1
 
-    def test_validation_error_propagates(self, mock_workflow, mock_rag_entity):
+    def test_validation_error_propagates(self, mock_workflow: Workflow, mock_rag_entity: MagicMock) -> None:
         # Arrange
         mock_workflow.rag_pipeline_variables = [
             _rag_variable("var1", "node1"),
