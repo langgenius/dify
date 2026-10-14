@@ -1,7 +1,8 @@
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import {
   commandStartedEvent,
   conversationPage,
+  createControlledEventStream,
   createSessionView,
   renderSessionHook,
   stateEvent,
@@ -104,6 +105,31 @@ describe('useDifyBuilderSessionController trace capture', () => {
       result.current.reset()
     })
     expect(result.current.getTrace()).toEqual({ entries: [], truncated: false })
+  })
+
+  it('captures restore state before a reconnect stream emits its first event', async () => {
+    const processing = createSessionView({ version: 2, phase: 'clarify' })
+    const reconnect = createControlledEventStream()
+    clientMocks.get.mockResolvedValue(processing)
+    clientMocks.stream.mockResolvedValue(reconnect.iterable)
+    const { result } = renderSessionHook()
+    let restored!: Promise<boolean>
+
+    act(() => {
+      restored = result.current.restore(processing.session_id)
+    })
+    await waitFor(() => expect(clientMocks.stream).toHaveBeenCalledOnce())
+
+    expect(result.current.getTrace().entries).toMatchObject([
+      { dir: 'out', kind: 'session_restore', payload: { session_id: processing.session_id } },
+      { dir: 'in', kind: 'session_snapshot', version: 2, payload: processing },
+      { dir: 'out', kind: 'session_reconnect', payload: { session_id: processing.session_id } },
+    ])
+
+    await act(async () => {
+      reconnect.push(stateEvent({ ...processing, run_status: 'waiting_confirmation' }))
+      expect(await restored).toBe(true)
+    })
   })
 
   it('starts a fresh trace buffer for a new session even without an explicit reset', async () => {

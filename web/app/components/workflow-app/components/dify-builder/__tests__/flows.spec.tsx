@@ -647,6 +647,69 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     expect(mocks.stream).not.toHaveBeenCalled()
   })
 
+  it('reconnects a submitted form after refresh and enables the next step without resubmitting', async () => {
+    const form: ConversationItem = {
+      kind: 'form',
+      seq: 0,
+      at_version: 2,
+      payload: {
+        variant: 'edit_rules',
+        title: 'Review edit rules',
+        fields: [{ key: 'style', label: 'Translation style', type: 'text' }],
+        values: { style: 'Formal' },
+      },
+    }
+    const processing = createSessionView({
+      version: 2,
+      canvas_read_only: true,
+      run_status: 'processing',
+      conversation_last_seq: 0,
+      active_interaction: { action_id: 'submit_edit_rules', card_seq: 0, valid_at_version: 2 },
+      actions: [{ id: 'submit_edit_rules', kind: 'primary', label: 'Submit rules' }],
+    })
+    const waiting = createSessionView({
+      version: 3,
+      phase: 'plan',
+      conversation_last_seq: 0,
+      run_status: 'waiting_confirmation',
+      actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve changes' }],
+    })
+    const reconnect = createControlledEventStream()
+    mocks.get.mockResolvedValue(processing)
+    mocks.conversation.mockResolvedValue(conversationPage([form]))
+    mocks.stream.mockResolvedValue(reconnect.iterable)
+    mocks.action.mockResolvedValue(
+      streamOf(commandStartedEvent(waiting), stateEvent(createSessionView({ version: 4 }))),
+    )
+    window.sessionStorage.setItem(
+      'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+      processing.session_id,
+    )
+    const user = userEvent.setup()
+    renderFlow(1)
+
+    await waitFor(() => expect(mocks.stream).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('textbox', { name: 'Translation style' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Review edit rules' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.common.running')
+    expect(getComposer()).toBeDisabled()
+    expect(mocks.action).not.toHaveBeenCalled()
+
+    await act(async () => reconnect.push(stateEvent(waiting)))
+
+    const approve = await screen.findByRole('radio', { name: 'Approve changes' })
+    await waitFor(() => expect(approve).toBeEnabled())
+    await user.click(getSubmitButton())
+
+    expect(mocks.action).toHaveBeenCalledOnce()
+    expect(mocks.action.mock.calls[0]?.[0].body).toMatchObject({
+      action_id: 'confirm',
+      base_version: 3,
+      payload: { option_id: 'approve_plan' },
+    })
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
   it.each([false, true])(
     'refreshes the canvas after restored history loads with StrictMode=%s',
     async (reactStrictMode) => {
@@ -690,6 +753,96 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
     },
   )
+
+  it('restores completed and active progress on refresh, then continues without regressing queued updates', async () => {
+    const processing = createSessionView({ version: 2, run_status: 'processing' })
+    const reconnect = createControlledEventStream()
+    mocks.get.mockResolvedValue(processing)
+    mocks.stream.mockResolvedValue(reconnect.iterable)
+    window.sessionStorage.setItem(
+      'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+      processing.session_id,
+    )
+    const user = userEvent.setup()
+    renderFlow(1)
+    await waitFor(() => expect(mocks.stream).toHaveBeenCalledOnce())
+
+    const snapshot: DifyBuilderStreamEventResponse = {
+      event: 'progress_snapshot',
+      data: {
+        session_id: processing.session_id,
+        operation_id: 'edit-plan-operation',
+        at_version: 3,
+        revision: 7,
+        execution: {
+          status: 'running',
+          activities: [
+            { id: 'inspect', label: 'Inspect the workflow', state: 'done' },
+            { id: 'analyze', label: 'Analyze the change', state: 'done' },
+            { id: 'plan', label: 'Generate change plan', state: 'active' },
+          ],
+        },
+      },
+    }
+    await act(async () => reconnect.push(snapshot))
+    await user.click(await screen.findByText('Generate change plan'))
+    expect(screen.getByText('Inspect the workflow')).toBeVisible()
+    expect(screen.getByText('Analyze the change')).toBeVisible()
+
+    await act(async () => {
+      reconnect.push({
+        event: 'progress',
+        data: {
+          session_id: processing.session_id,
+          operation_id: 'edit-plan-operation',
+          at_version: 3,
+          revision: 4,
+          status: 'running',
+          activity: { id: 'analyze', label: 'Analyze the change', state: 'active' },
+        },
+      })
+      reconnect.push(snapshot)
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('Generate change plan')
+    expect(screen.getAllByText('Inspect the workflow')).toHaveLength(1)
+
+    await act(async () => {
+      reconnect.push({
+        event: 'progress',
+        data: {
+          session_id: processing.session_id,
+          operation_id: 'edit-plan-operation',
+          at_version: 3,
+          revision: 8,
+          status: 'running',
+          activity: { id: 'plan', label: 'Generate change plan', state: 'done' },
+        },
+      })
+      reconnect.push({
+        event: 'progress',
+        data: {
+          session_id: processing.session_id,
+          operation_id: 'edit-plan-operation',
+          at_version: 3,
+          revision: 9,
+          status: 'running',
+          activity: { id: 'checkpoint', label: 'Create a restore point', state: 'active' },
+        },
+      })
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('Create a restore point')
+    expect(screen.getByText('Inspect the workflow')).toBeVisible()
+    expect(screen.getByText('Analyze the change')).toBeVisible()
+
+    await act(async () =>
+      reconnect.push(
+        stateEvent(createSessionView({ version: 3, run_status: 'waiting_confirmation' })),
+      ),
+    )
+    await waitFor(() => expect(getComposer()).toBeEnabled())
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(mocks.action).not.toHaveBeenCalled()
+  })
 
   it.each([false, true])(
     'reconnects graph generation and unlocks its settled canvas with StrictMode=%s',

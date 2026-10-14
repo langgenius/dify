@@ -10,6 +10,7 @@ uses an explicit SET-NX-token + Lua compare-del, the same pattern used by
 
 from __future__ import annotations
 
+from typing import cast
 from uuid import uuid4
 
 from configs import dify_config
@@ -97,3 +98,9 @@ def release(session_id: str, token: str) -> None:
 def exists(session_id: str) -> bool:
     """Whether the advance lock for ``session_id`` is currently held."""
     return redis_client.get(_key(session_id)) is not None
+
+
+def current_owner(session_id: str) -> str | None:
+    """Current dispatch/worker lease value, or None once the command is released."""
+    value = cast(str | bytes | None, redis_client.get(_key(session_id)))
+    return value.decode() if isinstance(value, bytes) else value
