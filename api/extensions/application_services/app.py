@@ -4,9 +4,12 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
+from libs.datetime_utils import naive_utc_now
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.export_repository import AppExportRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
@@ -17,6 +20,7 @@ from services.app.console_gateway import AppLifecycleGateway, AppTransferGateway
 from services.app.console_service import ConsoleAppService
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
 from services.app.discovery_gateway import EnterpriseAppDiscoveryAccess
+from services.app.enterprise_app_service import EnterpriseAppService
 from services.app.export_service import AppExportService
 from services.app.import_service import AppImportService
 from services.app.query_service import AppDiscoveryService
@@ -34,6 +38,7 @@ class AppServices:
     exports: AppExportService
     discovery: AppDiscoveryService
     console: ConsoleAppService
+    enterprise: EnterpriseAppService
 
 
 def build_app_services(
@@ -69,6 +74,14 @@ def build_app_services(
             creators=CreatorsPlatformGateway(oauth=oauth),
             tracing=OpsTraceManagerGateway(),
             lifecycle=AppLifecycleGateway(session_factory=database_client),
+        ),
+        enterprise=EnterpriseAppService(
+            apps=EnterpriseAppRepository(
+                session_factory=database_client,
+                app_web_url=dify_config.APP_WEB_URL,
+                service_api_url=dify_config.SERVICE_API_URL,
+            ),
+            now=naive_utc_now,
         ),
     )
 
