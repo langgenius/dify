@@ -250,6 +250,11 @@ export type RecommendedAppNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type RosterAgentPackageExportFailedError = ErrorResponse & {
+  code: 'roster_agent_package_export_failed'
+  status: 500
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -1968,6 +1973,7 @@ export type GetTrialAppsByAppIdExportData = {
 
 export type GetTrialAppsByAppIdExportErrors = {
   404: RecommendedAppNotFoundError | ErrorResponse
+  500: RosterAgentPackageExportFailedError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -61,6 +61,54 @@ export const zRecommendedAppNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * AgentNameConflictError
+ *
+ * Agent name already exists.
+ */
+export const zAgentNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_name_conflict_error'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * RosterAgentPackageTooLargeError
+ *
+ * The Roster Agent package exceeds the size limit.
+ */
+export const zRosterAgentPackageTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('roster_agent_package_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * RosterAgentPackageImportFailedError
+ *
+ * The Roster Agent package could not be imported.
+ */
+export const zRosterAgentPackageImportFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('roster_agent_package_import_failed'),
+    status: z.literal(500),
+  }),
+)
+
+/**
+ * RosterAgentPackageResourceUnavailableError
+ *
+ * The Roster Agent package resources could not be stored.
+ */
+export const zRosterAgentPackageResourceUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('roster_agent_package_resource_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * AppNotFoundError
  *
  * App not found.
@@ -567,6 +615,18 @@ export const zAppExportResponse = z.object({
 })
 
 /**
+ * RosterAgentPackageExportFailedError
+ *
+ * The Roster Agent package could not be exported.
+ */
+export const zRosterAgentPackageExportFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('roster_agent_package_export_failed'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
@@ -838,18 +898,6 @@ export const zAgentBackendUnreachableError = zErrorResponse.and(
 )
 
 /**
- * BindingFileDownloadUnavailableError
- *
- * Sandbox file download is unavailable.
- */
-export const zBindingFileDownloadUnavailableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('binding_file_download_unavailable'),
-    status: z.literal(502),
-  }),
-)
-
-/**
  * InspectorUnavailableError
  *
  * Sandbox inspector is unavailable.
@@ -875,6 +923,18 @@ export const zWorkflowAgentSandboxDownloadPayload = z.object({
 export const zSandboxDownloadResponse = z.object({
   url: z.string(),
 })
+
+/**
+ * BindingFileDownloadUnavailableError
+ *
+ * Sandbox file download is unavailable.
+ */
+export const zBindingFileDownloadUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('binding_file_download_unavailable'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * SandboxReadResponse
@@ -1062,18 +1122,6 @@ export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
 )
 
 /**
- * AgentNameConflictError
- *
- * Agent name already exists.
- */
-export const zAgentNameConflictError = zErrorResponse.and(
-  z.object({
-    code: z.literal('agent_name_conflict_error'),
-    status: z.literal(409),
-  }),
-)
-
-/**
  * WorkflowComposerCopyFromRosterPayload
  */
 export const zWorkflowComposerCopyFromRosterPayload = z.object({
@@ -1124,6 +1172,23 @@ export const zDraftWorkflowRunPayload = z.object({
 })
 
 /**
+ * WorkflowRunNotFoundError
+ *
+ * Workflow run not found.
+ */
+export const zWorkflowRunNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_run_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * EventStreamResponse
+ */
+export const zEventStreamResponse = z.string()
+
+/**
  * NodeNotInWorkflowRunError
  *
  * The node is not part of this workflow run.
@@ -1146,23 +1211,6 @@ export const zNodeOutputNotDeclaredError = zErrorResponse.and(
     status: z.literal(404),
   }),
 )
-
-/**
- * WorkflowRunNotFoundError
- *
- * Workflow run not found.
- */
-export const zWorkflowRunNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('workflow_run_not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
- * EventStreamResponse
- */
-export const zEventStreamResponse = z.string()
 
 /**
  * DraftWorkflowTriggerRunPayload

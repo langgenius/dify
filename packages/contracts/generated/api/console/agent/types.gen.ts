@@ -523,11 +523,6 @@ export type AgentBackendUnreachableError = ErrorResponse & {
   status: 502
 }
 
-export type BindingFileDownloadUnavailableError = ErrorResponse & {
-  code: 'binding_file_download_unavailable'
-  status: 502
-}
-
 export type InspectorUnavailableError = ErrorResponse & {
   code: 'inspector_unavailable'
   status: 503
@@ -547,6 +542,11 @@ export type AgentSandboxDownloadPayload = {
 
 export type SandboxDownloadResponse = {
   url: string
+}
+
+export type BindingFileDownloadUnavailableError = ErrorResponse & {
+  code: 'binding_file_download_unavailable'
+  status: 502
 }
 
 export type SandboxReadResponse = {
@@ -3774,7 +3774,7 @@ export type GetAgentByAgentIdSandboxData = {
 
 export type GetAgentByAgentIdSandboxErrors = {
   404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -3804,7 +3804,7 @@ export type GetAgentByAgentIdSandboxFilesData = {
 
 export type GetAgentByAgentIdSandboxFilesErrors = {
   404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -3860,7 +3860,7 @@ export type GetAgentByAgentIdSandboxFilesReadData = {
 
 export type GetAgentByAgentIdSandboxFilesReadErrors = {
   404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }

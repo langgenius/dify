@@ -222,11 +222,6 @@ export type VerificationTokenResponse = {
   token: string
 }
 
-export type CannotTransferOwnerToSelfError = ErrorResponse & {
-  code: 'cannot_transfer_owner_to_self'
-  status: 400
-}
-
 export type EmailCodeError = ErrorResponse & {
   code: 'email_code_error'
   status: 400
@@ -242,28 +237,13 @@ export type InvalidOrExpiredTokenError = ErrorResponse & {
   status: 400
 }
 
-export type MemberNotInTenantError = ErrorResponse & {
-  code: 'member_not_in_tenant'
-  status: 400
-}
-
 export type NotOwnerError = ErrorResponse & {
   code: 'not_owner'
   status: 400
 }
 
-export type EmailSendIpLimitError = ErrorResponse & {
-  code: 'email_send_ip_limit'
-  status: 429
-}
-
 export type OwnerTransferLimitError = ErrorResponse & {
   code: 'owner_transfer_limit'
-  status: 429
-}
-
-export type OwnerTransferRateLimitExceededError = ErrorResponse & {
-  code: 'owner_transfer_rate_limit_exceeded'
   status: 429
 }
 
@@ -274,6 +254,16 @@ export type OwnerTransferEmailPayload = {
 export type SimpleResultDataResponse = {
   data: string
   result: string
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status: 429
+}
+
+export type OwnerTransferRateLimitExceededError = ErrorResponse & {
+  code: 'owner_transfer_rate_limit_exceeded'
+  status: 429
 }
 
 export type MemberActionResponse = {
@@ -298,6 +288,16 @@ export type MemberNotFoundError = ErrorResponse & {
 
 export type OwnerTransferPayload = {
   token: string
+}
+
+export type CannotTransferOwnerToSelfError = ErrorResponse & {
+  code: 'cannot_transfer_owner_to_self'
+  status: 400
+}
+
+export type MemberNotInTenantError = ErrorResponse & {
+  code: 'member_not_in_tenant'
+  status: 400
 }
 
 export type MemberRoleUpdatePayload = {
@@ -3743,18 +3743,12 @@ export type PostWorkspacesCurrentMembersOwnerTransferCheckData = {
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckErrors = {
   400:
-    | CannotTransferOwnerToSelfError
     | EmailCodeError
     | InvalidEmailError
     | InvalidOrExpiredTokenError
-    | MemberNotInTenantError
     | NotOwnerError
     | ErrorResponse
-  429:
-    | EmailSendIpLimitError
-    | OwnerTransferLimitError
-    | OwnerTransferRateLimitExceededError
-    | ErrorResponse
+  429: OwnerTransferLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3776,19 +3770,8 @@ export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailErrors = {
-  400:
-    | CannotTransferOwnerToSelfError
-    | EmailCodeError
-    | InvalidEmailError
-    | InvalidOrExpiredTokenError
-    | MemberNotInTenantError
-    | NotOwnerError
-    | ErrorResponse
-  429:
-    | EmailSendIpLimitError
-    | OwnerTransferLimitError
-    | OwnerTransferRateLimitExceededError
-    | ErrorResponse
+  400: NotOwnerError | ErrorResponse
+  429: EmailSendIpLimitError | OwnerTransferRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3840,16 +3823,10 @@ export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferData = {
 export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferErrors = {
   400:
     | CannotTransferOwnerToSelfError
-    | EmailCodeError
     | InvalidEmailError
     | InvalidOrExpiredTokenError
     | MemberNotInTenantError
     | NotOwnerError
-    | ErrorResponse
-  429:
-    | EmailSendIpLimitError
-    | OwnerTransferLimitError
-    | OwnerTransferRateLimitExceededError
     | ErrorResponse
   default: ErrorResponse
 }

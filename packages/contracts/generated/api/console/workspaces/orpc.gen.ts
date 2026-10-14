@@ -1147,15 +1147,11 @@ export const post13 = oc
   .input(z.object({ body: zPostWorkspacesCurrentMembersOwnerTransferCheckBody }))
   .output(zPostWorkspacesCurrentMembersOwnerTransferCheckResponse)
   .errors({
-    cannot_transfer_owner_to_self: { status: 400, data: zCannotTransferOwnerToSelfError },
     email_code_error: { status: 400, data: zEmailCodeError },
-    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
     not_owner: { status: 400, data: zNotOwnerError },
     owner_transfer_limit: { status: 429, data: zOwnerTransferLimitError },
-    owner_transfer_rate_limit_exceeded: { status: 429, data: zOwnerTransferRateLimitExceededError },
   })
 
 export const ownerTransferCheck = {
@@ -1173,14 +1169,8 @@ export const post14 = oc
   .input(z.object({ body: zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody }))
   .output(zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse)
   .errors({
-    cannot_transfer_owner_to_self: { status: 400, data: zCannotTransferOwnerToSelfError },
-    email_code_error: { status: 400, data: zEmailCodeError },
     email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
-    invalid_email: { status: 400, data: zInvalidEmailError },
-    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
     not_owner: { status: 400, data: zNotOwnerError },
-    owner_transfer_limit: { status: 429, data: zOwnerTransferLimitError },
     owner_transfer_rate_limit_exceeded: { status: 429, data: zOwnerTransferRateLimitExceededError },
   })
 
@@ -1205,14 +1195,10 @@ export const post15 = oc
   .output(zPostWorkspacesCurrentMembersByMemberIdOwnerTransferResponse)
   .errors({
     cannot_transfer_owner_to_self: { status: 400, data: zCannotTransferOwnerToSelfError },
-    email_code_error: { status: 400, data: zEmailCodeError },
-    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
     member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
     not_owner: { status: 400, data: zNotOwnerError },
-    owner_transfer_limit: { status: 429, data: zOwnerTransferLimitError },
-    owner_transfer_rate_limit_exceeded: { status: 429, data: zOwnerTransferRateLimitExceededError },
   })
 
 export const ownerTransfer = {

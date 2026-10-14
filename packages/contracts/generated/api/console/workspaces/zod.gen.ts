@@ -171,18 +171,6 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
- * CannotTransferOwnerToSelfError
- *
- * You cannot transfer ownership to yourself.
- */
-export const zCannotTransferOwnerToSelfError = zErrorResponse.and(
-  z.object({
-    code: z.literal('cannot_transfer_owner_to_self'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * EmailCodeError
  *
  * Email code is invalid or expired.
@@ -219,18 +207,6 @@ export const zInvalidOrExpiredTokenError = zErrorResponse.and(
 )
 
 /**
- * MemberNotInTenantError
- *
- * The member is not in the workspace.
- */
-export const zMemberNotInTenantError = zErrorResponse.and(
-  z.object({
-    code: z.literal('member_not_in_tenant'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * NotOwnerError
  *
  * You are not the owner of the workspace.
@@ -243,18 +219,6 @@ export const zNotOwnerError = zErrorResponse.and(
 )
 
 /**
- * EmailSendIpLimitError
- *
- * Too many emails have been sent from this IP address recently. Please try again later.
- */
-export const zEmailSendIpLimitError = zErrorResponse.and(
-  z.object({
-    code: z.literal('email_send_ip_limit'),
-    status: z.literal(429),
-  }),
-)
-
-/**
  * OwnerTransferLimitError
  *
  * Too many failed owner transfer attempts. Please try again in 24 hours.
@@ -262,18 +226,6 @@ export const zEmailSendIpLimitError = zErrorResponse.and(
 export const zOwnerTransferLimitError = zErrorResponse.and(
   z.object({
     code: z.literal('owner_transfer_limit'),
-    status: z.literal(429),
-  }),
-)
-
-/**
- * OwnerTransferRateLimitExceededError
- *
- * Too many owner transfer emails have been sent. Please try again in {minutes} minutes.
- */
-export const zOwnerTransferRateLimitExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('owner_transfer_rate_limit_exceeded'),
     status: z.literal(429),
   }),
 )
@@ -292,6 +244,30 @@ export const zSimpleResultDataResponse = z.object({
   data: z.string(),
   result: z.string(),
 })
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * OwnerTransferRateLimitExceededError
+ *
+ * Too many owner transfer emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zOwnerTransferRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('owner_transfer_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * MemberActionResponse
@@ -343,6 +319,30 @@ export const zMemberNotFoundError = zErrorResponse.and(
 export const zOwnerTransferPayload = z.object({
   token: z.string(),
 })
+
+/**
+ * CannotTransferOwnerToSelfError
+ *
+ * You cannot transfer ownership to yourself.
+ */
+export const zCannotTransferOwnerToSelfError = zErrorResponse.and(
+  z.object({
+    code: z.literal('cannot_transfer_owner_to_self'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * MemberNotInTenantError
+ *
+ * The member is not in the workspace.
+ */
+export const zMemberNotInTenantError = zErrorResponse.and(
+  z.object({
+    code: z.literal('member_not_in_tenant'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * MemberRoleUpdatePayload

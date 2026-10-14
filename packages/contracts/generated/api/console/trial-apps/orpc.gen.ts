@@ -32,6 +32,7 @@ import {
   zRemoteFileNotFoundError,
   zRemoteFileUnavailableError,
   zRemoteFileUrlBlockedError,
+  zRosterAgentPackageExportFailedError,
   zSpeechToTextDisabledError,
   zTooManyFilesError,
   zTrialAppFeatureDisabledError,
@@ -535,7 +536,10 @@ export const get12 = oc
     z.object({ params: zGetTrialAppsByAppIdExportPath, query: zGetTrialAppsByAppIdExportQuery }),
   )
   .output(zGetTrialAppsByAppIdExportResponse)
-  .errors({ recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError } })
+  .errors({
+    recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
+    roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
+  })
 
 export const export_ = {
   get: get12,

@@ -509,18 +509,6 @@ export const zAgentBackendUnreachableError = zErrorResponse.and(
 )
 
 /**
- * BindingFileDownloadUnavailableError
- *
- * Sandbox file download is unavailable.
- */
-export const zBindingFileDownloadUnavailableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('binding_file_download_unavailable'),
-    status: z.literal(502),
-  }),
-)
-
-/**
  * InspectorUnavailableError
  *
  * Sandbox inspector is unavailable.
@@ -547,6 +535,18 @@ export const zAgentSandboxDownloadPayload = z.object({
 export const zSandboxDownloadResponse = z.object({
   url: z.string(),
 })
+
+/**
+ * BindingFileDownloadUnavailableError
+ *
+ * Sandbox file download is unavailable.
+ */
+export const zBindingFileDownloadUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('binding_file_download_unavailable'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * SandboxReadResponse

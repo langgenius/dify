@@ -37,6 +37,10 @@ import {
   zProviderQuotaExceededError,
   zRateLimitError,
   zRecommendedAppNotFoundError,
+  zRosterAgentPackageExportFailedError,
+  zRosterAgentPackageImportFailedError,
+  zRosterAgentPackageResourceUnavailableError,
+  zRosterAgentPackageTooLargeError,
   zSpeechToTextDisabledError,
   zTooManyFilesError,
   zTraceConfigAlreadyExistsError,
@@ -553,8 +557,15 @@ export const post2 = oc
   .input(z.object({ body: zPostAppsImportsBody }))
   .output(zPostAppsImportsResponse)
   .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
     invalid_roster_agent_package: { status: 400, data: zInvalidRosterAgentPackageError },
     recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
+    roster_agent_package_import_failed: { status: 500, data: zRosterAgentPackageImportFailedError },
+    roster_agent_package_resource_unavailable: {
+      status: 503,
+      data: zRosterAgentPackageResourceUnavailableError,
+    },
+    roster_agent_package_too_large: { status: 413, data: zRosterAgentPackageTooLargeError },
   })
 
 export const imports = {
@@ -2013,6 +2024,9 @@ export const get31 = oc
     z.object({ params: zGetAppsByAppIdExportPath, query: zGetAppsByAppIdExportQuery.optional() }),
   )
   .output(zGetAppsByAppIdExportResponse)
+  .errors({
+    roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
+  })
 
 export const export2 = {
   get: get31,
@@ -2993,7 +3007,6 @@ export const get50 = oc
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })
@@ -3025,7 +3038,6 @@ export const get51 = oc
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })
@@ -4171,8 +4183,6 @@ export const get68 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse)
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
-    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
-    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4230,7 +4240,6 @@ export const get70 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
-    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4255,8 +4264,6 @@ export const get71 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse)
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
-    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
-    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4619,8 +4626,6 @@ export const get77 = oc
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse)
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
-    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
-    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4682,7 +4687,6 @@ export const get79 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
-    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4707,8 +4711,6 @@ export const get80 = oc
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse)
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
-    node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
-    node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 

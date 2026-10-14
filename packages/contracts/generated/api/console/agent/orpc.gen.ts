@@ -1244,7 +1244,6 @@ export const get24 = oc
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })
@@ -1276,7 +1275,6 @@ export const get25 = oc
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })
@@ -1305,7 +1303,6 @@ export const get26 = oc
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })

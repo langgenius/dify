@@ -65,7 +65,6 @@ export type GetWebsiteCrawlStatusByJobIdData = {
 
 export type GetWebsiteCrawlStatusByJobIdErrors = {
   400: ErrorResponse
-  404: ErrorResponse
   500: CrawlFailedError | ErrorResponse
   default: ErrorResponse
 }

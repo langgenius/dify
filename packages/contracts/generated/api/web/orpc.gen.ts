@@ -592,7 +592,11 @@ export const post13 = oc
   })
   .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
   .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
-  .errors({ web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError } })
+  .errors({
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
+  })
 
 export const uploadToken = {
   post: post13,

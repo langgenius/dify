@@ -1329,7 +1329,7 @@ Get basic information for an Agent App conversation sandbox
 | ---- | ----------- | ------ |
 | 200 | Sandbox information returned | **application/json**: [SandboxInfoResponse](#sandboxinforesponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1351,7 +1351,7 @@ List a directory in an Agent App conversation sandbox
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1398,7 +1398,7 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1734,8 +1734,10 @@ Create a new application
 | 400 | Import failed | **application/json**: [Import](#import)<br>[InvalidRosterAgentPackageError](#invalidrosteragentpackageerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient import permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Agent name conflict | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | Roster Agent package exceeds the size limit | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Agent name conflict | **application/json**: [AgentNameConflictError](#agentnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Roster Agent package exceeds the size limit | **application/json**: [RosterAgentPackageTooLargeError](#rosteragentpackagetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [RosterAgentPackageImportFailedError](#rosteragentpackageimportfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [RosterAgentPackageResourceUnavailableError](#rosteragentpackageresourceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/imports/{app_id}/check-dependencies
@@ -3006,6 +3008,7 @@ Export application configuration as DSL
 | ---- | ----------- | ------ |
 | 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [RosterAgentPackageExportFailedError](#rosteragentpackageexportfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/feedbacks
@@ -3841,7 +3844,7 @@ List a directory in a workflow Agent node sandbox
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3891,7 +3894,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4818,7 +4821,7 @@ Snapshot of every node's declared outputs for a draft workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
-| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
@@ -4836,7 +4839,7 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
@@ -4855,7 +4858,7 @@ One node's declared outputs for a draft workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
-| 404 | Workflow run / node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Workflow run / node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
@@ -5123,7 +5126,7 @@ Snapshot of every node's declared outputs for a published workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
-| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
@@ -5141,7 +5144,7 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
@@ -5160,7 +5163,7 @@ One node's declared outputs for a published workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
-| 404 | Workflow run / node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Workflow run / node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
@@ -10597,6 +10600,7 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Published Agent template export | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
 | 404 | Published template unavailable | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [RosterAgentPackageExportFailedError](#rosteragentpackageexportfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/files/upload
@@ -10841,7 +10845,6 @@ Get website crawl status
 | ---- | ----------- | ------ |
 | 200 | Crawl status retrieved successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
 | 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Crawl job not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [CrawlFailedError](#crawlfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -11511,8 +11514,8 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
-| 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[OwnerTransferLimitError](#ownertransferlimiterror)<br>[OwnerTransferRateLimitExceededError](#ownertransferratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [OwnerTransferLimitError](#ownertransferlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/send-owner-transfer-confirm-email
@@ -11527,8 +11530,8 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[OwnerTransferLimitError](#ownertransferlimiterror)<br>[OwnerTransferRateLimitExceededError](#ownertransferratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[OwnerTransferRateLimitExceededError](#ownertransferratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/members/{member_id}
@@ -11566,8 +11569,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[OwnerTransferLimitError](#ownertransferlimiterror)<br>[OwnerTransferRateLimitExceededError](#ownertransferratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/members/{member_id}/update-role
@@ -25451,6 +25453,38 @@ Role already assigned.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicyRoleBinding](#accesspolicyrolebinding) ] |  | No |
+
+#### RosterAgentPackageExportFailedError
+
+The Roster Agent package could not be exported.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RosterAgentPackageExportFailedError |  | The Roster Agent package could not be exported. |  |
+
+#### RosterAgentPackageImportFailedError
+
+The Roster Agent package could not be imported.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RosterAgentPackageImportFailedError |  | The Roster Agent package could not be imported. |  |
+
+#### RosterAgentPackageResourceUnavailableError
+
+The Roster Agent package resources could not be stored.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RosterAgentPackageResourceUnavailableError |  | The Roster Agent package resources could not be stored. |  |
+
+#### RosterAgentPackageTooLargeError
+
+The Roster Agent package exceeds the size limit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RosterAgentPackageTooLargeError |  | The Roster Agent package exceeds the size limit. |  |
 
 #### RosterListQuery
 

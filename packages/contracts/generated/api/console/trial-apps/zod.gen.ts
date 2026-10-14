@@ -344,6 +344,18 @@ export const zRecommendedAppNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * RosterAgentPackageExportFailedError
+ *
+ * The Roster Agent package could not be exported.
+ */
+export const zRosterAgentPackageExportFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('roster_agent_package_export_failed'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * FileResponse
  */
 export const zFileResponse = z.object({

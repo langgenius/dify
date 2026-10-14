@@ -99,6 +99,26 @@ export type RecommendedAppNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type AgentNameConflictError = ErrorResponse & {
+  code: 'agent_name_conflict_error'
+  status: 409
+}
+
+export type RosterAgentPackageTooLargeError = ErrorResponse & {
+  code: 'roster_agent_package_too_large'
+  status: 413
+}
+
+export type RosterAgentPackageImportFailedError = ErrorResponse & {
+  code: 'roster_agent_package_import_failed'
+  status: 500
+}
+
+export type RosterAgentPackageResourceUnavailableError = ErrorResponse & {
+  code: 'roster_agent_package_resource_unavailable'
+  status: 503
+}
+
 export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
@@ -607,6 +627,11 @@ export type AppExportResponse = {
   data: string
 }
 
+export type RosterAgentPackageExportFailedError = ErrorResponse & {
+  code: 'roster_agent_package_export_failed'
+  status: 500
+}
+
 export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
@@ -935,11 +960,6 @@ export type AgentBackendUnreachableError = ErrorResponse & {
   status: 502
 }
 
-export type BindingFileDownloadUnavailableError = ErrorResponse & {
-  code: 'binding_file_download_unavailable'
-  status: 502
-}
-
 export type InspectorUnavailableError = ErrorResponse & {
   code: 'inspector_unavailable'
   status: 503
@@ -952,6 +972,11 @@ export type WorkflowAgentSandboxDownloadPayload = {
 
 export type SandboxDownloadResponse = {
   url: string
+}
+
+export type BindingFileDownloadUnavailableError = ErrorResponse & {
+  code: 'binding_file_download_unavailable'
+  status: 502
 }
 
 export type SandboxReadResponse = {
@@ -1213,11 +1238,6 @@ export type PlaintextSecretNotAllowedError = ErrorResponse & {
   status: 400
 }
 
-export type AgentNameConflictError = ErrorResponse & {
-  code: 'agent_name_conflict_error'
-  status: 409
-}
-
 export type AgentComposerCandidatesResponse = {
   allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
   allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
@@ -1308,16 +1328,6 @@ export type WorkflowRunSnapshotView = {
   workflow_run_status: WorkflowExecutionStatus
 }
 
-export type NodeNotInWorkflowRunError = ErrorResponse & {
-  code: 'node_not_in_workflow_run'
-  status: 404
-}
-
-export type NodeOutputNotDeclaredError = ErrorResponse & {
-  code: 'node_output_not_declared'
-  status: 404
-}
-
 export type WorkflowRunNotFoundError = ErrorResponse & {
   code: 'workflow_run_not_found'
   status: 404
@@ -1335,12 +1345,22 @@ export type NodeOutputsView = {
   outputs?: Array<NodeOutputView>
 }
 
+export type NodeNotInWorkflowRunError = ErrorResponse & {
+  code: 'node_not_in_workflow_run'
+  status: 404
+}
+
 export type OutputPreviewView = {
   node_id: string
   output_name: string
   status: NodeOutputStatus
   type?: DeclaredOutputType | null
   value?: unknown
+}
+
+export type NodeOutputNotDeclaredError = ErrorResponse & {
+  code: 'node_output_not_declared'
+  status: 404
 }
 
 export type DraftWorkflowTriggerRunPayload = {
@@ -4482,8 +4502,10 @@ export type PostAppsImportsErrors = {
   400: Import | InvalidRosterAgentPackageError | ErrorResponse
   403: ErrorResponse
   404: RecommendedAppNotFoundError | ErrorResponse
-  409: ErrorResponse
-  413: ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
+  413: RosterAgentPackageTooLargeError | ErrorResponse
+  500: RosterAgentPackageImportFailedError | ErrorResponse
+  503: RosterAgentPackageResourceUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6143,6 +6165,7 @@ export type GetAppsByAppIdExportData = {
 
 export type GetAppsByAppIdExportErrors = {
   403: ErrorResponse
+  500: RosterAgentPackageExportFailedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7210,7 +7233,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors = {
   404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -7271,7 +7294,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors = {
   404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -8394,12 +8417,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors = {
-  404:
-    | AppNotFoundError
-    | NodeNotInWorkflowRunError
-    | NodeOutputNotDeclaredError
-    | WorkflowRunNotFoundError
-    | ErrorResponse
+  404: AppNotFoundError | WorkflowRunNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8424,12 +8442,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors = {
-  404:
-    | AppNotFoundError
-    | NodeNotInWorkflowRunError
-    | NodeOutputNotDeclaredError
-    | WorkflowRunNotFoundError
-    | ErrorResponse
+  404: AppNotFoundError | WorkflowRunNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8455,12 +8468,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors = {
-  404:
-    | AppNotFoundError
-    | NodeNotInWorkflowRunError
-    | NodeOutputNotDeclaredError
-    | WorkflowRunNotFoundError
-    | ErrorResponse
+  404: AppNotFoundError | NodeNotInWorkflowRunError | WorkflowRunNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8798,12 +8806,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors = {
-  404:
-    | AppNotFoundError
-    | NodeNotInWorkflowRunError
-    | NodeOutputNotDeclaredError
-    | WorkflowRunNotFoundError
-    | ErrorResponse
+  404: AppNotFoundError | WorkflowRunNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8828,12 +8831,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsData = {
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors = {
-  404:
-    | AppNotFoundError
-    | NodeNotInWorkflowRunError
-    | NodeOutputNotDeclaredError
-    | WorkflowRunNotFoundError
-    | ErrorResponse
+  404: AppNotFoundError | WorkflowRunNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8859,12 +8857,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdData =
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors = {
-  404:
-    | AppNotFoundError
-    | NodeNotInWorkflowRunError
-    | NodeOutputNotDeclaredError
-    | WorkflowRunNotFoundError
-    | ErrorResponse
+  404: AppNotFoundError | NodeNotInWorkflowRunError | WorkflowRunNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

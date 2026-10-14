@@ -433,7 +433,7 @@ POST /api/form/human_input/<form_token>/upload-token
 | ---- | ----------- | ------ |
 | 200 | Upload token issued successfully | **application/json**: [HumanInputUploadTokenResponse](#humaninputuploadtokenresponse)<br> |
 | 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
