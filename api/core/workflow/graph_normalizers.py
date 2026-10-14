@@ -19,6 +19,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, MutableMapping
 from typing import Any
 
+from services.dify_builder.native_http_output_contract import native_http_variable_types
+
 # ---------------------------------------------------------------------------
 # Condition values (if-else/loop's Condition vs list-operator's FilterCondition)
 # ---------------------------------------------------------------------------
@@ -223,16 +225,8 @@ _START_TYPE_TO_VAR_TYPE: Mapping[str, str] = {
 }
 
 
-_HTTP_REQUEST_OUTPUT_TYPES: Mapping[str, str] = {
-    "status_code": "number",
-    "body": "string",
-    "headers": "object",
-    "files": "array[file]",
-}
-
-
 def _known_variable_types(nodes: list[Any]) -> dict[tuple[str, str], str]:
-    """``(producer_node_id, variable_name) -> VarType`` for declared outputs."""
+    """``(producer_node_id, variable_name) -> VarType`` for declared Start outputs."""
     out: dict[tuple[str, str], str] = {}
     for node in nodes:
         if not isinstance(node, Mapping):
@@ -250,8 +244,6 @@ def _known_variable_types(nodes: list[Any]) -> dict[tuple[str, str], str]:
                 name = str(variable.get("variable") or "")
                 if var_type and name:
                     out[(node_id, name)] = var_type
-        elif node_type == "http-request":
-            out.update({(node_id, name): var_type for name, var_type in _HTTP_REQUEST_OUTPUT_TYPES.items()})
     return out
 
 
@@ -263,6 +255,7 @@ def derive_if_else_var_types(nodes: list[Any]) -> list[str]:
     are never overwritten. Returns the ids of the nodes that changed.
     """
     known = _known_variable_types(nodes)
+    http_known = dict(native_http_variable_types(nodes))
     changed: list[str] = []
     for node in nodes:
         if not isinstance(node, Mapping):
@@ -281,6 +274,8 @@ def derive_if_else_var_types(nodes: list[Any]) -> list[str]:
                 if not isinstance(selector, list) or len(selector) != 2:
                     continue
                 var_type = known.get((str(selector[0]), str(selector[1])))
+                if not var_type and all(isinstance(part, str) for part in selector):
+                    var_type = http_known.get((selector[0], selector[1]))
                 if var_type:
                     condition["varType"] = var_type
                     touched = True

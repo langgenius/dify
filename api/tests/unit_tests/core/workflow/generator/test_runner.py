@@ -6804,6 +6804,213 @@ class TestValidateStructureBranchHandlesAndHttpBodies:
         assert WorkflowGenerateErrorCode.INVALID_HTTP_BODY == "INVALID_HTTP_BODY"
 
 
+class TestNativeHttpResponseReferences:
+    """HTTP aliases repair the response body without guessing among its four outputs."""
+
+    @staticmethod
+    def _nodes(variable: str, reference_form: str) -> list[dict[str, Any]]:
+        consumer_data: dict[str, Any]
+        if reference_form == "placeholder":
+            consumer_data = {
+                "type": "llm",
+                "prompt_template": [{"role": "user", "text": "Read {{#http." + variable + "#}}."}],
+            }
+        else:
+            consumer_data = {"type": "end", "outputs": [{"variable": "result", "value_selector": ["http", variable]}]}
+        return [
+            {
+                "id": "http",
+                "data": {
+                    "type": "http-request",
+                    "version": "1",
+                    "title": "HTTP",
+                    "method": "get",
+                    "url": "https://example.com",
+                },
+            },
+            {"id": "consumer", "data": consumer_data},
+        ]
+
+    @pytest.mark.parametrize("alias", ["response", "http_response_body"])
+    @pytest.mark.parametrize("reference_form", ["placeholder", "selector"])
+    def test_response_body_alias_resolves_to_body(self, alias: str, reference_form: str):
+        nodes = self._nodes(alias, reference_form)
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        consumer = nodes[1]["data"]
+        if reference_form == "placeholder":
+            assert consumer["prompt_template"][0]["text"] == "Read {{#http.body#}}."
+        else:
+            assert consumer["outputs"][0]["value_selector"] == ["http", "body"]
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    @pytest.mark.parametrize("variable", ["body", "status_code"])
+    @pytest.mark.parametrize("reference_form", ["placeholder", "selector"])
+    def test_declared_http_output_survives_reconciliation(self, variable: str, reference_form: str):
+        nodes = self._nodes(variable, reference_form)
+        original = deepcopy(nodes)
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes == original
+        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
+
+    @pytest.mark.parametrize("variable", ["payload", "result", "http_response_body.item"])
+    @pytest.mark.parametrize("reference_form", ["placeholder", "selector"])
+    def test_unknown_or_nested_http_alias_remains_unresolved(self, variable: str, reference_form: str):
+        nodes = self._nodes(variable, reference_form)
+        original = deepcopy(nodes)
+
+        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
+
+        assert nodes == original
+        errors = WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow")
+        assert [(error["code"], error["node_id"]) for error in errors] == [("UNRESOLVED_REFERENCE", "http")]
+
+
+class TestNativeHttpStatusComparisonValidation:
+    """Graphon HTTP v1 emits numeric status_code; is/is not accepts string or boolean.
+
+    The generator must reject that known runtime failure even if the builder
+    labels the condition's varType as string. Numeric '=' accepts a text
+    literal such as '200', and unrelated or unknown producers retain their
+    existing comparison behavior.
+    """
+
+    @staticmethod
+    def _graph(
+        *,
+        producer_data: dict[str, Any] | None = None,
+        selector: list[str] | None = None,
+        comparison_operator: str = "is",
+        var_type: str = "string",
+        value: str = "200",
+    ) -> GraphDict:
+        if producer_data is None:
+            producer_data = {
+                "type": "http-request",
+                "version": "1",
+                "title": "HTTP",
+                "method": "get",
+                "url": "https://example.com",
+                "body": {"type": "none", "data": []},
+            }
+        return cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {"id": "start", "data": {"type": "start", "variables": []}},
+                    {"id": "http", "data": deepcopy(producer_data)},
+                    {
+                        "id": "check-status",
+                        "data": {
+                            "type": "if-else",
+                            "title": "Check status",
+                            "cases": [
+                                {
+                                    "case_id": "true",
+                                    "logical_operator": "and",
+                                    "conditions": [
+                                        {
+                                            "id": "status-condition",
+                                            "variable_selector": selector
+                                            if selector is not None
+                                            else ["http", "status_code"],
+                                            "varType": var_type,
+                                            "comparison_operator": comparison_operator,
+                                            "value": value,
+                                        }
+                                    ],
+                                }
+                            ],
+                        },
+                    },
+                    {"id": "end", "data": {"type": "end", "outputs": []}},
+                ],
+                "edges": [
+                    {"source": "start", "target": "http"},
+                    {"source": "http", "target": "check-status"},
+                    {"source": "check-status", "target": "end", "sourceHandle": "true"},
+                    {"source": "check-status", "target": "end", "sourceHandle": "false"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+    @pytest.mark.parametrize("comparison_operator", ["is", "is not"])
+    @pytest.mark.parametrize("var_type", ["number", "string"])
+    def test_string_operator_on_native_http_status_is_a_numeric_operator_schema_error(
+        self, comparison_operator: str, var_type: str
+    ):
+        graph = self._graph(comparison_operator=comparison_operator, var_type=var_type)
+
+        errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow")
+
+        assert [(error["code"], error.get("node_id")) for error in errors] == [("INVALID_SCHEMA", "check-status")]
+        assert "status_code" in errors[0]["detail"]
+        assert "number" in errors[0]["detail"]
+
+    def test_numeric_equality_accepts_a_text_status_literal(self):
+        graph = self._graph(comparison_operator="=", var_type="number", value="200")
+
+        assert WorkflowGenerator._validate_structure(graph=graph, mode="workflow") == []
+
+    @pytest.mark.parametrize(
+        ("producer_data", "selector", "var_type", "value"),
+        [
+            pytest.param(None, ["http", "body"], "string", "200", id="http-body-string"),
+            pytest.param(
+                {"type": "code", "outputs": {"status_code": {"type": "string"}}},
+                ["http", "status_code"],
+                "string",
+                "200",
+                id="code-string-status",
+            ),
+            pytest.param(
+                {"type": "code", "outputs": {"ready": {"type": "boolean"}}},
+                ["http", "ready"],
+                "boolean",
+                "true",
+                id="code-boolean",
+            ),
+            pytest.param(
+                {"type": "tool", "provider_type": "builtin", "provider_id": "custom", "tool_name": "fetch"},
+                ["http", "status_code"],
+                "string",
+                "200",
+                id="unknown-tool-status",
+            ),
+            pytest.param(
+                {"type": "http-request", "version": "future"},
+                ["http", "status_code"],
+                "string",
+                "200",
+                id="unknown-http-version",
+            ),
+            pytest.param(None, ["http", "status_code", "detail"], "string", "200", id="nested-http-selector"),
+        ],
+    )
+    @pytest.mark.parametrize("comparison_operator", ["is", "is not"])
+    def test_string_operator_outside_direct_native_http_status_keeps_existing_behavior(
+        self,
+        producer_data: dict[str, Any] | None,
+        selector: list[str],
+        var_type: str,
+        value: str,
+        comparison_operator: str,
+    ):
+        graph = self._graph(
+            producer_data=producer_data,
+            selector=selector,
+            comparison_operator=comparison_operator,
+            var_type=var_type,
+            value=value,
+        )
+
+        assert WorkflowGenerator._validate_structure(graph=graph, mode="workflow") == []
+
+
 class TestAJsonSchemaArrayIsNotAValueSelector:
     """Live-verification defect (docs/superpowers/triage/live-verify-2026-09-22/FINDINGS.md).
 

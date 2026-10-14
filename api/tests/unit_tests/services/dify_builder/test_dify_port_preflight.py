@@ -4,6 +4,7 @@ nodes from bare ``config={}`` stand-ins (not valid node data) and bypass the
 check; these tests use real node data and the real check."""
 
 import json
+from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +14,7 @@ from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import PreflightError
 from services.dify_builder.revision import execution_revision
 from tests.unit_tests.services.dify_builder.test_dify_port import _actor, _configure_session_get, _workflow
+from tests.unit_tests.services.dify_builder.test_native_http_output_contract import http_graph
 
 _START = {"id": "node1", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}}
 # ``comparison_operator`` must be one of graphon's SupportedComparisonOperator
@@ -65,6 +67,38 @@ def _apply(mock_session: MagicMock, graph_dict: dict, intents: list[MutationInte
             "app-1", _actor(), intents, expected_revision=execution_revision(workflow)
         )
     return result, mock_ws_cls.return_value.sync_draft_workflow
+
+
+def test_apply_repair_refuses_numeric_http_status_string_operator_before_sync(mock_session: MagicMock):
+    graph = http_graph("=", "200")
+    original = deepcopy(graph)
+    intent = MutationIntent(
+        op="set_node_config",
+        args={
+            "node_id": "branch",
+            "path": "cases.0.conditions.0.comparison_operator",
+            "value": "is",
+        },
+    )
+
+    with patch("services.dify_builder.dify_port._sync_graph_only", return_value=_workflow(graph_dict=graph)) as sync:
+        with pytest.raises(PreflightError, match="status_code.*number"):
+            _apply(mock_session, graph, [intent])
+
+    sync.assert_not_called()
+    assert graph == original
+
+
+def test_apply_repair_preserves_unrelated_existing_numeric_http_operator_exemption(mock_session: MagicMock):
+    graph = http_graph()
+    intent = MutationIntent(op="set_node_config", args={"node_id": "start", "path": "title", "value": "Begin"})
+
+    result, sync = _apply(mock_session, graph, [intent])
+
+    assert result.changed_nodes == ["start"]
+    assert (
+        sync.call_args.kwargs["graph"]["nodes"][2]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "is"
+    )
 
 
 def test_a_repair_that_would_not_start_is_rejected_before_it_is_written(mock_session: MagicMock):
