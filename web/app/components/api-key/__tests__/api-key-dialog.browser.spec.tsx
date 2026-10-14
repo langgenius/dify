@@ -79,10 +79,15 @@ it('preserves both secret and table during exit and returns focus after creating
   const manager = screen.getByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
   const create = manager.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' })
   await create.click()
-  const result = screen.getByRole('dialog', { name: 'appApi.apiKeyModal.createdTitle' })
+  const result = screen.getByRole('alertdialog', { name: 'appApi.apiKeyModal.createdTitle' })
   const secret = result.getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })
   await expect.element(secret).toHaveValue('app-secret-0009')
   await expect.element(result.getByRole('button', { name: 'common.operation.copy' })).toHaveFocus()
+  await expect
+    .element(result.getByRole('button', { name: 'common.operation.close' }))
+    .not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(result).toBeVisible()
   const resultPopup = result.element()
   const secretInput = secret.element() as HTMLInputElement
   await expect.poll(() => getComputedStyle(resultPopup).opacity).toBe('1')
@@ -94,7 +99,7 @@ it('preserves both secret and table during exit and returns focus after creating
       resolve({ value: secretInput.value, opacity: Number(getComputedStyle(resultPopup).opacity) })
     })
   })
-  await result.getByRole('button', { name: 'common.operation.close' }).last().click()
+  await result.getByRole('button', { name: 'appApi.apiKeyModal.saved' }).click()
   const closingSecret = await secretExit
   expect(closingSecret.value).toBe('app-secret-0009')
   expect(closingSecret.opacity).toBeGreaterThan(0)

@@ -223,7 +223,7 @@ describe('ApiKeyDialog', () => {
       await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
     ).toHaveValue('new-app-token-123')
     expect(
-      screen.getByRole('dialog', { name: 'appApi.apiKeyModal.createdTitle' }),
+      screen.getByRole('alertdialog', { name: 'appApi.apiKeyModal.createdTitle' }),
     ).toHaveAccessibleDescription('appApi.apiKeyModal.generateTips')
   })
 
