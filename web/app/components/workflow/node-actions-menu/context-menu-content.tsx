@@ -59,7 +59,13 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {hasRunGroup && (
         <ContextMenuGroup>
           {model.canRun && (
-            <ContextMenuItem onClick={model.handleRun}>{singleRunActionLabel}</ContextMenuItem>
+            <ContextMenuItem
+              disabled={!!model.singleRunDisabledReason}
+              aria-description={model.singleRunDisabledReason}
+              onClick={model.handleRun}
+            >
+              {singleRunActionLabel}
+            </ContextMenuItem>
           )}
           {model.canChangeBlock && (
             <Popover modal="trap-focus">

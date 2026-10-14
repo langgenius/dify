@@ -500,6 +500,8 @@
   "panel.checklistDescription": "게시 전에 다음 문제를 해결하세요",
   "panel.checklistResolved": "모든 문제가 해결되었습니다",
   "panel.checklistTip": "게시하기 전에 모든 문제가 해결되었는지 확인하세요",
+  "panel.configureTestRunConnection": "이 노드를 실행하기 전에 테스트 실행용 연결을 설정하세요.",
+  "panel.configureWorkspaceAuthorization": "이 노드를 실행하기 전에 워크스페이스 인증을 설정하세요.",
   "panel.createdBy": "작성자 ",
   "panel.goToFix": "수정하러 가기",
   "panel.helpLink": "도움말 센터",

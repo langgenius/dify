@@ -1,11 +1,13 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { useAllWorkflowTools } from '@/service/use-tools'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { useAllBuiltInTools, useAllWorkflowTools } from '@/service/use-tools'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
@@ -39,6 +41,7 @@ vi.mock('../../hooks/use-workflow', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: vi.fn(),
   useAllWorkflowTools: vi.fn(),
 }))
 
@@ -50,6 +53,7 @@ const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
+const mockUseAllBuiltInTools = vi.mocked(useAllBuiltInTools)
 
 const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
   ({
@@ -81,15 +85,50 @@ const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
     promise: Promise.resolve(data),
   }) as UseQueryResult<T, Error>
 
-const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) =>
+const toolProvider: ToolWithProvider = {
+  id: 'provider-id',
+  name: 'test-provider',
+  author: 'Dify',
+  description: { en_US: 'Test provider', zh_Hans: '测试提供商' },
+  label: { en_US: 'Test provider', zh_Hans: '测试提供商' },
+  icon: '',
+  type: CollectionType.builtIn,
+  team_credentials: {},
+  is_team_authorization: false,
+  allow_delete: true,
+  labels: [],
+  tools: [],
+}
+
+const makeToolData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
+  title: 'Tool node',
+  desc: '',
+  type: BlockEnum.Tool,
+  provider_id: toolProvider.id,
+  provider_name: toolProvider.name,
+  provider_type: CollectionType.builtIn,
+  tool_name: 'test-tool',
+  tool_label: 'Test tool',
+  tool_parameters: {},
+  tool_configurations: {},
+  ...overrides,
+})
+
+const renderComponent = (
+  showHelpLink: boolean = true,
+  onOpenChange?: (open: boolean) => void,
+  data?: Node['data'],
+) =>
   renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"
-      data={{
-        title: 'Code Node',
-        desc: '',
-        type: BlockEnum.Code,
-      }}
+      data={
+        data ?? {
+          title: 'Code Node',
+          desc: '',
+          type: BlockEnum.Code,
+        }
+      }
       triggerClassName="node-actions-trigger"
       onOpenChange={onOpenChange}
       showHelpLink={showHelpLink}
@@ -126,6 +165,7 @@ describe('NodeActionsDropdown', () => {
       nodesReadOnly: false,
     } as ReturnType<typeof useNodesReadOnly>)
     mockUseAllWorkflowTools.mockReturnValue(createQueryResult<ToolWithProvider[]>([]))
+    mockUseAllBuiltInTools.mockReturnValue(createQueryResult<ToolWithProvider[]>([]))
   })
 
   it('should open the dropdown and trigger single-run actions', async () => {
@@ -144,6 +184,83 @@ describe('NodeActionsDropdown', () => {
     expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
     expect(store.getState().initShowLastRunTab).toBe(true)
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
+  })
+
+  it('blocks a tool run in the menu when Workspace authorization is missing', async () => {
+    const user = userEvent.setup()
+    mockUseAllBuiltInTools.mockReturnValue(createQueryResult([toolProvider]))
+    const { store } = renderComponent(true, undefined, makeToolData())
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const run = screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })
+
+    expect(run).toHaveAttribute('aria-disabled', 'true')
+    expect(run).toHaveAttribute(
+      'aria-description',
+      'workflow.panel.configureWorkspaceAuthorization',
+    )
+    await user.click(run)
+
+    expect(store.getState().pendingSingleRun).toBeUndefined()
+    expect(store.getState().initShowLastRunTab).toBe(false)
+    expect(handleNodeSelect).not.toHaveBeenCalled()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('updates the open menu when the App user test connection is removed', async () => {
+    const user = userEvent.setup()
+    mockUseAllBuiltInTools.mockReturnValue(createQueryResult([toolProvider]))
+    const { store } = renderComponent(true, undefined, makeToolData())
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('node-1', toolProvider.name, toolProvider.id, {
+        oauthEnabled: false,
+        apiKeyEnabled: true,
+        description: 'Connect app users',
+      })
+      store
+        .getState()
+        .setNodeAuthorizationTab('node-1', toolProvider.name, toolProvider.id, 'app-user-auth')
+    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    expect(
+      screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+
+    act(() =>
+      store.getState().setNodeAppUserAuthDraft('node-1', toolProvider.name, toolProvider.id, {
+        oauthEnabled: false,
+        apiKeyEnabled: true,
+        description: 'Connect app users',
+        testConnection: { connections: [] },
+      }),
+    )
+    const run = screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })
+    expect(run).toHaveAttribute('aria-disabled', 'true')
+    expect(run).toHaveAttribute('aria-description', 'workflow.panel.configureTestRunConnection')
+    await user.click(run)
+
+    expect(store.getState().pendingSingleRun).toBeUndefined()
+    expect(handleNodeSelect).not.toHaveBeenCalled()
+  })
+
+  it('keeps the menu stop action available when Workspace authorization is missing', async () => {
+    const user = userEvent.setup()
+    mockUseAllBuiltInTools.mockReturnValue(createQueryResult([toolProvider]))
+    const { store } = renderComponent(
+      true,
+      undefined,
+      makeToolData({ _singleRunningStatus: NodeRunningStatus.Running }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const stop = screen.getByRole('menuitem', {
+      name: 'workflowDebug.debug.variableInspect.trigger.stop',
+    })
+
+    expect(stop).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(stop)
+
+    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'stop' })
+    expect(handleNodeSelect).toHaveBeenCalledExactlyOnceWith('node-1')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it.each([

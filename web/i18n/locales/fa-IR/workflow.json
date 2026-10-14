@@ -500,6 +500,8 @@
   "panel.checklistDescription": "مشکلات زیر را پیش از انتشار برطرف کنید",
   "panel.checklistResolved": "تمام مشکلات برطرف شده‌اند",
   "panel.checklistTip": "قبل از انتشار، مطمئن شوید که تمام مشکلات برطرف شده‌اند",
+  "panel.configureTestRunConnection": "پیش از اجرای این گره، یک اتصال برای اجرای آزمایشی پیکربندی کنید.",
+  "panel.configureWorkspaceAuthorization": "پیش از اجرای این گره، مجوزدهی فضای کاری را پیکربندی کنید.",
   "panel.createdBy": "ساخته شده توسط",
   "panel.goToFix": "برو به رفع",
   "panel.helpLink": "راهنما",

@@ -1,27 +1,27 @@
 import type { FC } from 'react'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
+import { useSingleRunAuthorization } from '../../../hooks/use-single-run-authorization'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
+import SingleRunButton from './single-run-button'
 
 type NodeControlProps = Pick<Node, 'id' | 'data'> & {
   pluginInstallLocked?: boolean
 }
 const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) => {
-  const { t } = useTranslation(['workflow', 'workflowDebug'])
   const { handleNodeSelect } = useNodesInteractions()
-  const nodesReadOnly = useNodesReadOnly()
+  const { nodesReadOnly } = useNodesReadOnly()
   const workflowStore = useWorkflowStore()
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+  const { disabledReason } = useSingleRunAuthorization(id, data)
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
   return (
@@ -41,14 +41,10 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
         onClick={(e) => e.stopPropagation()}
       >
         {canRun && !nodesReadOnly && canRunBySingle(data.type, isChildNode) && (
-          <button
-            type="button"
-            aria-label={
-              isSingleRunning
-                ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
-                : t(($) => $['panel.runThisStep'], { ns: 'workflow' })
-            }
-            className={`flex size-6 items-center justify-center rounded-md ${isSingleRunning && 'cursor-pointer hover:bg-state-base-hover'}`}
+          <SingleRunButton
+            running={isSingleRunning}
+            disabledReason={disabledReason}
+            compact
             onClick={() => {
               const action = isSingleRunning ? 'stop' : 'run'
 
@@ -60,18 +56,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
               })
               handleNodeSelect(id)
             }}
-          >
-            {isSingleRunning ? (
-              <span aria-hidden className="i-custom-vender-line-mediaanddevices-stop size-3" />
-            ) : (
-              <Tooltip>
-                <TooltipTrigger render={<span className="i-ri-play-large-line size-3" />} />
-                <TooltipContent>
-                  {t(($) => $['panel.runThisStep'], { ns: 'workflow' })}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </button>
+          />
         )}
         <NodeActionsDropdown id={id} data={data} />
       </div>

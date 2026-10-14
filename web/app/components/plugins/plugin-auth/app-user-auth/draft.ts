@@ -1,3 +1,5 @@
+import type { TestConnectionDraft } from './test-connection/model'
+
 export type AuthorizationTab = 'workspace-auth' | 'app-user-auth' | 'reuse-from-node'
 
 export type OAuthClientDraft =
@@ -9,6 +11,7 @@ export type AppUserAuthDraft = {
   apiKeyEnabled: boolean
   description: string
   client?: OAuthClientDraft
+  testConnection?: TestConnectionDraft
 }
 
 export type AppUserAuthErrors = {

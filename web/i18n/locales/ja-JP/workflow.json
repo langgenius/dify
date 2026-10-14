@@ -500,6 +500,8 @@
   "panel.checklistDescription": "公開前に以下の問題を解決してください",
   "panel.checklistResolved": "全てのチェックが完了しました",
   "panel.checklistTip": "公開前に全ての項目を確認してください",
+  "panel.configureTestRunConnection": "このノードを実行する前に、テスト実行用の接続を設定してください。",
+  "panel.configureWorkspaceAuthorization": "このノードを実行する前に、ワークスペースの認証を設定してください。",
   "panel.createdBy": "作成者",
   "panel.goToFix": "修正する",
   "panel.helpLink": "ドキュメントを見る",

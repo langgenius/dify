@@ -1,16 +1,22 @@
 import type React from 'react'
-import type { CommonNodeType } from '../../../../types'
-import { fireEvent, screen } from '@testing-library/react'
+import type { CommonNodeType, ToolWithProvider } from '../../../../types'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import { act, fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
+import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '../../../../hooks-store'
 import { BlockEnum, NodeRunningStatus } from '../../../../types'
 import NodeControl from '../node-control'
 
-const { mockHandleNodeSelect, mockCanRunBySingle, mockUseNodesReadOnly } = vi.hoisted(() => ({
-  mockHandleNodeSelect: vi.fn(),
-  mockCanRunBySingle: vi.fn(() => true),
-  mockUseNodesReadOnly: vi.fn(() => false),
-}))
+const { mockHandleNodeSelect, mockCanRunBySingle, mockUseNodesReadOnly, mockUseAllBuiltInTools } =
+  vi.hoisted(() => ({
+    mockHandleNodeSelect: vi.fn(),
+    mockCanRunBySingle: vi.fn(() => true),
+    mockUseNodesReadOnly: vi.fn(() => ({ nodesReadOnly: false })),
+    mockUseAllBuiltInTools: vi.fn(),
+  }))
 
 let mockPluginInstallLocked = false
 
@@ -37,6 +43,14 @@ vi.mock('../../../../utils', async () => {
   return {
     ...actual,
     canRunBySingle: mockCanRunBySingle,
+  }
+})
+
+vi.mock('@/service/use-tools', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/use-tools')>()
+  return {
+    ...actual,
+    useAllBuiltInTools: mockUseAllBuiltInTools,
   }
 })
 
@@ -83,12 +97,40 @@ const makeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
   ...overrides,
 })
 
+const toolProvider: ToolWithProvider = {
+  id: 'provider-id',
+  name: 'test-provider',
+  author: 'Dify',
+  description: { en_US: 'Test provider', zh_Hans: '测试提供商' },
+  label: { en_US: 'Test provider', zh_Hans: '测试提供商' },
+  icon: '',
+  type: CollectionType.builtIn,
+  team_credentials: {},
+  is_team_authorization: false,
+  allow_delete: true,
+  labels: [],
+  tools: [],
+}
+
+const makeToolData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
+  ...makeData({ type: BlockEnum.Tool }),
+  provider_id: toolProvider.id,
+  provider_name: toolProvider.name,
+  provider_type: CollectionType.builtIn,
+  tool_name: 'test-tool',
+  tool_label: 'Test tool',
+  tool_parameters: {},
+  tool_configurations: {},
+  ...overrides,
+})
+
 describe('NodeControl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPluginInstallLocked = false
     mockCanRunBySingle.mockReturnValue(true)
-    mockUseNodesReadOnly.mockReturnValue(false)
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
+    mockUseAllBuiltInTools.mockReturnValue({ data: [] })
   })
 
   // Run/stop behavior should be driven by the workflow store, not CSS classes.
@@ -120,6 +162,97 @@ describe('NodeControl', () => {
 
       expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-2', action: 'stop' })
       expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-2')
+    })
+
+    it('blocks an unconfigured App user test run and enables it after adding a connection', async () => {
+      const user = userEvent.setup()
+      mockUseAllBuiltInTools.mockReturnValue({ data: [toolProvider] })
+      const { store } = renderNodeControl(
+        <NodeControlHarness id="tool-node" data={makeToolData()} />,
+      )
+      const draft = {
+        oauthEnabled: false,
+        apiKeyEnabled: true,
+        description: 'Connect app users',
+        testConnection: { connections: [] },
+      }
+      act(() => {
+        store
+          .getState()
+          .setNodeAppUserAuthDraft('tool-node', toolProvider.name, toolProvider.id, draft)
+        store
+          .getState()
+          .setNodeAuthorizationTab('tool-node', toolProvider.name, toolProvider.id, 'app-user-auth')
+      })
+      const run = screen.getByRole('button', { name: 'workflow.panel.runThisStep' })
+
+      expect(run).toHaveAttribute('aria-disabled', 'true')
+      await user.click(run)
+
+      expect(store.getState().pendingSingleRun).toBeUndefined()
+      expect(store.getState().initShowLastRunTab).toBe(false)
+      expect(mockHandleNodeSelect).not.toHaveBeenCalled()
+
+      act(() =>
+        store.getState().setNodeAppUserAuthDraft('tool-node', toolProvider.name, toolProvider.id, {
+          ...draft,
+          testConnection: {
+            connections: [
+              {
+                id: 'test-api-key',
+                name: 'API key test connection',
+                method: CredentialTypeEnum.API_KEY,
+                subtitle: '•••• 1234',
+              },
+            ],
+            selectedId: 'test-api-key',
+          },
+        }),
+      )
+
+      const configuredRun = screen.getByRole('button', { name: 'workflow.panel.runThisStep' })
+      expect(configuredRun).not.toHaveAttribute('aria-disabled', 'true')
+      await user.click(configuredRun)
+      expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'tool-node', action: 'run' })
+      expect(mockHandleNodeSelect).toHaveBeenCalledExactlyOnceWith('tool-node')
+    })
+
+    it('keeps stop available when an App user test connection has been removed', async () => {
+      const user = userEvent.setup()
+      mockUseAllBuiltInTools.mockReturnValue({ data: [toolProvider] })
+      const { store } = renderNodeControl(
+        <NodeControlHarness
+          id="running-tool"
+          data={makeToolData({ _singleRunningStatus: NodeRunningStatus.Running })}
+        />,
+      )
+      act(() => {
+        store
+          .getState()
+          .setNodeAppUserAuthDraft('running-tool', toolProvider.name, toolProvider.id, {
+            oauthEnabled: false,
+            apiKeyEnabled: true,
+            description: 'Connect app users',
+            testConnection: { connections: [] },
+          })
+        store
+          .getState()
+          .setNodeAuthorizationTab(
+            'running-tool',
+            toolProvider.name,
+            toolProvider.id,
+            'app-user-auth',
+          )
+      })
+      const stop = screen.getByRole('button', {
+        name: 'workflowDebug.debug.variableInspect.trigger.stop',
+      })
+
+      expect(stop).not.toHaveAttribute('aria-disabled', 'true')
+      await user.click(stop)
+
+      expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'running-tool', action: 'stop' })
+      expect(mockHandleNodeSelect).toHaveBeenCalledExactlyOnceWith('running-tool')
     })
   })
 
@@ -166,7 +299,7 @@ describe('NodeControl', () => {
     })
 
     it('should hide the run control when nodes are read-only', () => {
-      mockUseNodesReadOnly.mockReturnValue(true)
+      mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
 
       renderNodeControl(<NodeControlHarness id="node-6" data={makeData()} />)
 

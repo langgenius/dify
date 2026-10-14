@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Устраните следующие проблемы перед публикацией",
   "panel.checklistResolved": "Все проблемы решены",
   "panel.checklistTip": "Убедитесь, что все проблемы решены перед публикацией",
+  "panel.configureTestRunConnection": "Настройте подключение для тестовых запусков перед запуском этого узла.",
+  "panel.configureWorkspaceAuthorization": "Настройте авторизацию рабочего пространства перед запуском этого узла.",
   "panel.createdBy": "Создано ",
   "panel.goToFix": "Перейти к исправлению",
   "panel.helpLink": "Помощь",

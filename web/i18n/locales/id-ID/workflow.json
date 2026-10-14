@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Selesaikan masalah berikut sebelum menerbitkan",
   "panel.checklistResolved": "Semua masalah terselesaikan",
   "panel.checklistTip": "Pastikan semua masalah diselesaikan sebelum dipublikasikan",
+  "panel.configureTestRunConnection": "Konfigurasikan koneksi untuk uji coba sebelum menjalankan node ini.",
+  "panel.configureWorkspaceAuthorization": "Konfigurasikan otorisasi ruang kerja sebelum menjalankan node ini.",
   "panel.createdBy": "Dibuat oleh",
   "panel.goToFix": "Pergi ke perbaikan",
   "panel.helpLink": "Docs",

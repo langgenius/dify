@@ -7,8 +7,11 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ConnectionSelector from '../workspace-auth/connection-selector'
 import { createAppUserAuthDraft, validateAppUserAuth } from './draft'
 import OAuthClientModal from './oauth-client-modal'
+import { createMockTestConnectionDraft } from './test-connection/model'
+import { useMockTestConnectionSource } from './test-connection/use-mock-test-connection-source'
 
 type AppUserAuthProps = {
   canOAuth?: boolean
@@ -34,6 +37,7 @@ const AppUserAuth = ({
   const apiKeyDescriptionId = useId()
   const methodsErrorId = useId()
   const oauthClientErrorId = useId()
+  const testConnectionLabelId = useId()
   // Standalone previews own their draft; workflow callers share it with the canvas.
   const [localDraft, setLocalDraft] = useState(() =>
     createAppUserAuthDraft({ canOAuth, canApiKey, defaultClientAvailable }),
@@ -41,12 +45,26 @@ const AppUserAuth = ({
   const draft = value ?? localDraft
   const errors = validateAppUserAuth(draft)
   const { oauthEnabled, apiKeyEnabled, description, client } = draft
+  const testConnection =
+    draft.testConnection ??
+    createMockTestConnectionDraft({
+      canOAuth,
+      canApiKey,
+    })
   const updateDraft = (updates: Partial<AppUserAuthDraft>) => {
     const nextDraft = { ...draft, ...updates }
     if (!value) setLocalDraft(nextDraft)
     onChange?.(nextDraft)
   }
   const [clientDialog, setClientDialog] = useState<{ open: boolean } | null>(null)
+  const testConnectionSource = useMockTestConnectionSource({
+    value: testConnection,
+    canOAuth,
+    canApiKey,
+    providerName,
+    onChange: (testConnection) => updateDraft({ testConnection }),
+    onOAuthClientSettings: () => setClientDialog({ open: true }),
+  })
 
   return (
     <div className="flex flex-col gap-4">
@@ -150,6 +168,20 @@ const AppUserAuth = ({
           </p>
         )}
       </Fieldset>
+      <section aria-labelledby={testConnectionLabelId} className="flex flex-col gap-2">
+        <div className="space-y-1">
+          <h4
+            id={testConnectionLabelId}
+            className="flex min-h-6 items-center system-xs-medium-uppercase text-text-secondary"
+          >
+            {t(($) => $['auth.appUser.testConnection'], { ns: 'plugin' })}
+          </h4>
+          <p className="body-xs-regular text-text-tertiary">
+            {t(($) => $['auth.appUser.testConnectionDescription'], { ns: 'plugin' })}
+          </p>
+        </div>
+        <ConnectionSelector dataSource={testConnectionSource} />
+      </section>
       <Field
         name="appUserConnectionDescription"
         invalid={errors.description}

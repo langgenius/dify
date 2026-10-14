@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Dərc etməzdən əvvəl aşağıdakı problemləri həll edin",
   "panel.checklistResolved": "Bütün problemlər həll edilib",
   "panel.checklistTip": "Dərc etməzdən əvvəl bütün problemlərin həll edildiyinə əmin olun",
+  "panel.configureTestRunConnection": "Bu düyünü işə salmazdan əvvəl sınaq icrası üçün bağlantı qurun.",
+  "panel.configureWorkspaceAuthorization": "Bu düyünü işə salmazdan əvvəl iş sahəsinin icazələrini konfiqurasiya edin.",
   "panel.createdBy": "Yaradan ",
   "panel.goToFix": "Düzəltmək üçün keç",
   "panel.helpLink": "Sənədlərə bax",

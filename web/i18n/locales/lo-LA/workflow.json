@@ -500,6 +500,8 @@
   "panel.checklistDescription": "ແກ້ໄຂບັນຫາຕໍ່ໄປນີ້ກ່ອນເຜີຍແຜ່",
   "panel.checklistResolved": "ແກ້ໄຂບັນຫາທັງໝົດແລ້ວ",
   "panel.checklistTip": "ກວດສອບໃຫ້ແນ່ໃຈວ່າໄດ້ແກ້ໄຂທຸກບັນຫາກ່ອນເຜີຍແຜ່",
+  "panel.configureTestRunConnection": "ກະລຸນາຕັ້ງຄ່າການເຊື່ອມຕໍ່ສຳລັບການທົດລອງແລ່ນກ່ອນແລ່ນໂນດນີ້.",
+  "panel.configureWorkspaceAuthorization": "ກະລຸນາຕັ້ງຄ່າການອະນຸຍາດຂອງພື້ນທີ່ເຮັດວຽກກ່ອນແລ່ນໂນດນີ້.",
   "panel.createdBy": "ສ້າງໂດຍ ",
   "panel.goToFix": "ໄປຫາບ່ອນແກ້ໄຂ",
   "panel.helpLink": "ເບິ່ງເອກະສານ",

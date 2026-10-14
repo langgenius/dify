@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Yayınlamadan önce aşağıdaki sorunları çözün",
   "panel.checklistResolved": "Tüm sorunlar çözüldü",
   "panel.checklistTip": "Yayınlamadan önce tüm sorunların çözüldüğünden emin olun",
+  "panel.configureTestRunConnection": "Bu düğümü çalıştırmadan önce test çalıştırması için bir bağlantı yapılandırın.",
+  "panel.configureWorkspaceAuthorization": "Bu düğümü çalıştırmadan önce çalışma alanı yetkilendirmesini yapılandırın.",
   "panel.createdBy": "Oluşturan: ",
   "panel.goToFix": "Düzeltmeye git",
   "panel.helpLink": "Yardım",

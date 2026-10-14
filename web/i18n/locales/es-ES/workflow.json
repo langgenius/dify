@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Resuelve los siguientes problemas antes de publicar",
   "panel.checklistResolved": "Se resolvieron todos los problemas",
   "panel.checklistTip": "Asegúrate de resolver todos los problemas antes de publicar",
+  "panel.configureTestRunConnection": "Configura una conexión para pruebas antes de ejecutar este nodo.",
+  "panel.configureWorkspaceAuthorization": "Configura la autorización del espacio de trabajo antes de ejecutar este nodo.",
   "panel.createdBy": "Creado por ",
   "panel.goToFix": "Ir a corregir",
   "panel.helpLink": "Ayuda",

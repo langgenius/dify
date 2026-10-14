@@ -1,16 +1,20 @@
 import type { PropsWithChildren } from 'react'
+import type { AppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import type { PluginAuthProps } from '@/app/components/plugins/plugin-auth/plugin-auth'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ReactFlowProvider } from 'reactflow'
+import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { CollectionType } from '@/app/components/tools/types'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
   renderWorkflowComponent,
   renderWorkflowFlowComponent,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useNodeKeyboardInteractions } from '@/app/components/workflow/hooks/use-node-keyboard-interactions'
+import { useSingleRunAuthorization } from '@/app/components/workflow/hooks/use-single-run-authorization'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import BasePanel from '../index'
 
@@ -249,9 +253,16 @@ vi.mock('../hooks/use-resize-panel', () => ({
 }))
 
 vi.mock('../last-run/use-last-run', () => ({
-  default: function useLastRun() {
+  default: function useLastRun({
+    id,
+    data,
+  }: {
+    id: string
+    data: Parameters<typeof useSingleRunAuthorization>[1]
+  }) {
     const [tabType, setTabType] = React.useState(mockLastRunState.tabType)
-    return { ...mockLastRunState, tabType, setTabType }
+    const { disabledReason } = useSingleRunAuthorization(id, data)
+    return { ...mockLastRunState, tabType, setTabType, singleRunDisabledReason: disabledReason }
   },
 }))
 
@@ -597,6 +608,121 @@ describe('workflow-panel index', () => {
         .getAllByRole('heading')
         .map((heading) => heading.textContent),
     ).toEqual(['Authorization', 'Tool configuration'])
+  })
+
+  it.each([
+    { mode: 'app-user-auth' as const, reason: 'workflow.panel.configureTestRunConnection' },
+    { mode: 'workspace-auth' as const, reason: 'workflow.panel.configureWorkspaceAuthorization' },
+  ])(
+    'explains why $mode cannot run and enables the header action after configuration',
+    async ({ mode, reason }) => {
+      const user = userEvent.setup()
+      mockBuiltInTools = mockBuiltInTools.map((tool) => ({ ...tool, is_team_authorization: false }))
+      const draft: AppUserAuthDraft = {
+        oauthEnabled: false,
+        apiKeyEnabled: true,
+        description: 'Connect app users',
+        testConnection: { connections: [] },
+      }
+      const panel = () => (
+        <BasePanel
+          id="node-1"
+          data={createData({ provider_type: CollectionType.builtIn }) as never}
+        >
+          <div>panel-child</div>
+        </BasePanel>
+      )
+      const { store, rerender } = renderPanelComponent(panel(), {
+        initialStoreState: {
+          nodeAuthDrafts: {
+            'node-1': {
+              provider: 'Tool',
+              providerId: 'provider/tool',
+              authorizationTab: mode,
+              draft,
+            },
+          },
+        },
+      })
+      const run = screen.getByRole('button', { name: 'workflow.panel.runThisStep' })
+      expect(run).toHaveAttribute('aria-disabled', 'true')
+      await user.hover(run)
+      expect(await screen.findByText(reason)).toBeVisible()
+      await user.click(run)
+      expect(mockHandleSingleRun).not.toHaveBeenCalled()
+      await user.unhover(run)
+
+      if (mode === 'app-user-auth') {
+        act(() =>
+          store.getState().setNodeAppUserAuthDraft('node-1', 'Tool', 'provider/tool', {
+            ...draft,
+            testConnection: {
+              connections: [
+                {
+                  id: 'test-key',
+                  name: 'Test key',
+                  method: CredentialTypeEnum.API_KEY,
+                  subtitle: '•••• 7A2F',
+                },
+              ],
+              selectedId: 'removed-selection',
+            },
+          }),
+        )
+      } else {
+        mockBuiltInTools = mockBuiltInTools.map((tool) => ({
+          ...tool,
+          is_team_authorization: true,
+        }))
+        rerender(panel())
+      }
+      await waitFor(() => expect(screen.queryByText(reason)).not.toBeInTheDocument())
+      const configuredRun = screen.getByRole('button', { name: 'workflow.panel.runThisStep' })
+      expect(configuredRun).not.toHaveAttribute('aria-disabled', 'true')
+      await user.click(configuredRun)
+      expect(mockHandleSingleRun).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('keeps Stop available when App user test connections are removed during a run', async () => {
+    const user = userEvent.setup()
+    renderPanelComponent(
+      <BasePanel
+        id="node-1"
+        data={
+          createData({
+            provider_type: CollectionType.builtIn,
+            _singleRunningStatus: NodeRunningStatus.Running,
+          }) as never
+        }
+      >
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodeAuthDrafts: {
+            'node-1': {
+              provider: 'Tool',
+              providerId: 'provider/tool',
+              authorizationTab: 'app-user-auth',
+              draft: {
+                oauthEnabled: false,
+                apiKeyEnabled: true,
+                description: 'Connect app users',
+                testConnection: { connections: [] },
+              },
+            },
+          },
+        },
+      },
+    )
+    const stop = screen.getByRole('button', {
+      name: 'workflowDebug.debug.variableInspect.trigger.stop',
+    })
+    expect(stop).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(stop)
+    expect(mockHandleStop).toHaveBeenCalledOnce()
+    expect(mockHandleSingleRun).not.toHaveBeenCalled()
   })
 
   it('keeps Settings and Last Run navigable without Workspace authorization', async () => {

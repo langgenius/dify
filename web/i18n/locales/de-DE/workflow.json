@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Beheben Sie die folgenden Probleme vor der Veröffentlichung",
   "panel.checklistResolved": "Alle Probleme wurden gelöst",
   "panel.checklistTip": "Stellen Sie sicher, dass alle Probleme vor der Veröffentlichung gelöst sind",
+  "panel.configureTestRunConnection": "Konfigurieren Sie eine Verbindung für Testläufe, bevor Sie diesen Knoten ausführen.",
+  "panel.configureWorkspaceAuthorization": "Konfigurieren Sie die Autorisierung des Arbeitsbereichs, bevor Sie diesen Knoten ausführen.",
   "panel.createdBy": "Erstellt von ",
   "panel.goToFix": "Zur Behebung",
   "panel.helpLink": "Hilfe",

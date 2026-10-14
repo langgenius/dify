@@ -1,5 +1,7 @@
 import type { DropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
+import type { ApiKeyModalDataSource } from '../authorize/api-key-modal'
 import type { Credential, PluginPayload } from '../types'
+import type { EditConnectionDataSource } from './edit-connection-modal'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -27,16 +29,27 @@ import ApiKeyModal from '../authorize/api-key-modal'
 import { CredentialTypeEnum } from '../types'
 import EditConnectionModal from './edit-connection-modal'
 
+export type ConnectionActionsDataSource = {
+  canManageConnection: (credential: Credential) => boolean
+  canEditConnection: (credential: Credential) => boolean
+  remove: (credential: Credential) => Promise<void>
+  edit: EditConnectionDataSource
+  apiKey: ApiKeyModalDataSource
+}
+
 type ConnectionActionsTriggerProps = {
   handle: DropdownMenuHandle<Credential>
   credential: Credential
+  dataSource?: Pick<ConnectionActionsDataSource, 'canManageConnection'>
 }
 
-export const ConnectionActionsTrigger = ({ handle, credential }: ConnectionActionsTriggerProps) => {
+const ConnectionActionsTriggerContent = ({
+  handle,
+  credential,
+  canManage,
+}: Omit<ConnectionActionsTriggerProps, 'dataSource'> & { canManage: boolean }) => {
   const { t } = useTranslation(['common'])
-  const { canManageCredential } = useCredentialPermissions()
-  if (!canManageCredential || credential.from_enterprise || credential.from_other_member)
-    return null
+  if (!canManage) return null
 
   return (
     <DropdownMenuTrigger
@@ -54,44 +67,89 @@ export const ConnectionActionsTrigger = ({ handle, credential }: ConnectionActio
   )
 }
 
-type ConnectionActionsProps = {
-  handle: DropdownMenuHandle<Credential>
-  pluginPayload: PluginPayload
-  providerName?: string
-  onAction: () => void
-  onUpdate: () => void
+const WorkspaceConnectionActionsTrigger = (
+  props: Omit<ConnectionActionsTriggerProps, 'dataSource'>,
+) => {
+  const { canManageCredential } = useCredentialPermissions()
+  return (
+    <ConnectionActionsTriggerContent
+      {...props}
+      canManage={
+        canManageCredential &&
+        !props.credential.from_enterprise &&
+        !props.credential.from_other_member
+      }
+    />
+  )
 }
 
-const ConnectionActions = ({
+export const ConnectionActionsTrigger = ({
+  dataSource,
+  ...props
+}: ConnectionActionsTriggerProps) =>
+  dataSource ? (
+    <ConnectionActionsTriggerContent
+      {...props}
+      canManage={dataSource.canManageConnection(props.credential)}
+    />
+  ) : (
+    <WorkspaceConnectionActionsTrigger {...props} />
+  )
+
+type ConnectionActionsCommonProps = {
+  handle: DropdownMenuHandle<Credential>
+  providerName?: string
+  onAction: () => void
+  onUpdate?: () => void
+}
+
+type ConnectionActionsProps = ConnectionActionsCommonProps &
+  (
+    | { pluginPayload: PluginPayload; onUpdate: () => void; dataSource?: undefined }
+    | { dataSource: ConnectionActionsDataSource; pluginPayload?: PluginPayload }
+  )
+
+type ConnectionActionsContentDataSource = Pick<
+  ConnectionActionsDataSource,
+  'canManageConnection' | 'canEditConnection' | 'remove'
+> &
+  Partial<Pick<ConnectionActionsDataSource, 'edit' | 'apiKey'>>
+
+const ConnectionActionsContent = ({
   handle,
   pluginPayload,
   providerName,
   onAction,
   onUpdate,
-}: ConnectionActionsProps) => {
+  dataSource,
+}: ConnectionActionsCommonProps & {
+  pluginPayload?: PluginPayload
+  dataSource: ConnectionActionsContentDataSource
+}) => {
   const { t } = useTranslation(['common', 'plugin', 'datasetDocuments'])
-  const { canManageCredential } = useCredentialPermissions()
-  const providerApi = consoleQuery.workspaces.current.toolProvider.builtin.byProvider
-  const params = { provider: pluginPayload.provider }
-  const canManageConnection = (credential: Credential) =>
-    canManageCredential && !credential.from_enterprise && !credential.from_other_member
-  const canEditConnection = (credential: Credential) =>
-    canManageConnection(credential) && !credential.not_allowed_to_use
+  const { canManageConnection, canEditConnection } = dataSource
   const [editingCredential, setEditingCredential] = useState<Credential | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteCredential, setDeleteCredential] = useState<Credential | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [replacementCredential, setReplacementCredential] = useState<Credential | null>(null)
   const [replacementOpen, setReplacementOpen] = useState(false)
-  const removeCredential = useMutation(
-    providerApi.delete.post.mutationOptions({
-      onSuccess: () => {
-        onUpdate()
-        setDeleteOpen(false)
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      },
-    }),
-  )
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [removalFailed, setRemovalFailed] = useState(false)
+  const confirmRemoval = async () => {
+    if (!deleteCredential || !canManageConnection(deleteCredential) || isRemoving) return
+    setIsRemoving(true)
+    setRemovalFailed(false)
+    try {
+      await dataSource.remove(deleteCredential)
+      onUpdate?.()
+      setDeleteOpen(false)
+    } catch {
+      setRemovalFailed(true)
+    } finally {
+      setIsRemoving(false)
+    }
+  }
   const editConnection = (credential: Credential) => {
     if (!canEditConnection(credential)) return
     onAction()
@@ -109,6 +167,7 @@ const ConnectionActions = ({
     if (!canManageConnection(credential)) return
     onAction()
     setDeleteCredential(credential)
+    setRemovalFailed(false)
     setDeleteOpen(true)
   }
 
@@ -172,19 +231,39 @@ const ConnectionActions = ({
           )
         }}
       </DropdownMenu>
-      {editingCredential && (
-        <EditConnectionModal
-          key={editingCredential.id}
-          credential={editingCredential}
-          pluginPayload={pluginPayload}
-          providerName={providerName}
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          onCloseComplete={() => setEditingCredential(null)}
-          onUpdate={onUpdate}
-        />
-      )}
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      {editingCredential &&
+        (dataSource.edit ? (
+          <EditConnectionModal
+            key={editingCredential.id}
+            credential={editingCredential}
+            dataSource={{
+              ...dataSource.edit,
+              canEdit: dataSource.edit.canEdit && canEditConnection(editingCredential),
+            }}
+            providerName={providerName}
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            onCloseComplete={() => setEditingCredential(null)}
+            onUpdate={onUpdate}
+          />
+        ) : pluginPayload && onUpdate ? (
+          <EditConnectionModal
+            key={editingCredential.id}
+            credential={editingCredential}
+            pluginPayload={pluginPayload}
+            providerName={providerName}
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            onCloseComplete={() => setEditingCredential(null)}
+            onUpdate={onUpdate}
+          />
+        ) : null)}
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!isRemoving) setDeleteOpen(open)
+        }}
+      >
         <AlertDialogContent>
           <div className="p-6 pb-0">
             <AlertDialogTitle className="title-lg-semi-bold text-text-primary">
@@ -194,21 +273,20 @@ const ConnectionActions = ({
               {deleteCredential?.name}
             </AlertDialogDescription>
           </div>
+          {removalFailed && (
+            <p role="alert" className="px-6 pt-4 system-sm-regular text-text-destructive">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancelButton disabled={removeCredential.isPending}>
+            <AlertDialogCancelButton disabled={isRemoving}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              loading={removeCredential.isPending}
+              loading={isRemoving}
               disabled={!deleteCredential || !canManageConnection(deleteCredential)}
               onClick={() => {
-                if (
-                  !deleteCredential ||
-                  !canManageConnection(deleteCredential) ||
-                  removeCredential.isPending
-                )
-                  return
-                removeCredential.mutate({ params, body: { credential_id: deleteCredential.id } })
+                void confirmRemoval()
               }}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
@@ -216,28 +294,81 @@ const ConnectionActions = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {replacementCredential && (
-        <ApiKeyModal
-          open={replacementOpen}
-          onOpenChange={setReplacementOpen}
-          pluginPayload={pluginPayload}
-          editValues={{
-            ...replacementCredential.credentials,
-            __name__: replacementCredential.name,
-            __credential_id__: replacementCredential.id,
-            __visibility__: replacementCredential.visibility,
-          }}
-          disabled={!canEditConnection(replacementCredential)}
-          onUpdate={onUpdate}
-          onRemove={() => {
-            if (!canManageConnection(replacementCredential)) return
-            setReplacementOpen(false)
-            requestRemoval(replacementCredential)
-          }}
-        />
-      )}
+      {replacementCredential &&
+        (dataSource.apiKey ? (
+          <ApiKeyModal
+            open={replacementOpen}
+            onOpenChange={setReplacementOpen}
+            dataSource={dataSource.apiKey}
+            editValues={{
+              ...replacementCredential.credentials,
+              __name__: replacementCredential.name,
+              __credential_id__: replacementCredential.id,
+              __visibility__: replacementCredential.visibility,
+            }}
+            disabled={!canEditConnection(replacementCredential)}
+            onUpdate={onUpdate}
+            onRemove={() => {
+              if (!canManageConnection(replacementCredential)) return
+              setReplacementOpen(false)
+              requestRemoval(replacementCredential)
+            }}
+          />
+        ) : pluginPayload ? (
+          <ApiKeyModal
+            open={replacementOpen}
+            onOpenChange={setReplacementOpen}
+            pluginPayload={pluginPayload}
+            editValues={{
+              ...replacementCredential.credentials,
+              __name__: replacementCredential.name,
+              __credential_id__: replacementCredential.id,
+              __visibility__: replacementCredential.visibility,
+            }}
+            disabled={!canEditConnection(replacementCredential)}
+            onUpdate={onUpdate}
+            onRemove={() => {
+              if (!canManageConnection(replacementCredential)) return
+              setReplacementOpen(false)
+              requestRemoval(replacementCredential)
+            }}
+          />
+        ) : null)}
     </>
   )
 }
+
+const WorkspaceConnectionActions = (
+  props: ConnectionActionsCommonProps & { pluginPayload: PluginPayload; onUpdate: () => void },
+) => {
+  const { t } = useTranslation(['common'])
+  const { canManageCredential } = useCredentialPermissions()
+  const providerApi = consoleQuery.workspaces.current.toolProvider.builtin.byProvider
+  const params = { provider: props.pluginPayload.provider }
+  const removeCredential = useMutation(providerApi.delete.post.mutationOptions())
+  const canManageConnection = (credential: Credential) =>
+    canManageCredential && !credential.from_enterprise && !credential.from_other_member
+  return (
+    <ConnectionActionsContent
+      {...props}
+      dataSource={{
+        canManageConnection,
+        canEditConnection: (credential) =>
+          canManageConnection(credential) && !credential.not_allowed_to_use,
+        remove: async (credential) => {
+          await removeCredential.mutateAsync({ params, body: { credential_id: credential.id } })
+          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+        },
+      }}
+    />
+  )
+}
+
+const ConnectionActions = (props: ConnectionActionsProps) =>
+  props.dataSource ? (
+    <ConnectionActionsContent {...props} dataSource={props.dataSource} />
+  ) : (
+    <WorkspaceConnectionActions {...props} />
+  )
 
 export default memo(ConnectionActions)

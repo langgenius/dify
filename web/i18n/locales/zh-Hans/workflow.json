@@ -500,6 +500,8 @@
   "panel.checklistDescription": "发布前请解决以下问题",
   "panel.checklistResolved": "所有问题均已解决",
   "panel.checklistTip": "发布前确保所有问题均已解决",
+  "panel.configureTestRunConnection": "请先配置 Test Run Connection，再运行此节点。",
+  "panel.configureWorkspaceAuthorization": "请先配置 Workspace 授权，再运行此节点。",
   "panel.createdBy": "作者",
   "panel.goToFix": "前往修复",
   "panel.helpLink": "查看帮助文档",

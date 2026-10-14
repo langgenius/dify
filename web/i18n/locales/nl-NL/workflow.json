@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Los de volgende problemen op vóór het publiceren",
   "panel.checklistResolved": "All issues are resolved",
   "panel.checklistTip": "Make sure all issues are resolved before publishing",
+  "panel.configureTestRunConnection": "Configureer een verbinding voor testuitvoeringen voordat je dit knooppunt uitvoert.",
+  "panel.configureWorkspaceAuthorization": "Configureer de autorisatie voor de werkruimte voordat je dit knooppunt uitvoert.",
   "panel.createdBy": "Created By ",
   "panel.goToFix": "Ga naar repareren",
   "panel.helpLink": "View Docs",

@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Giải quyết các vấn đề sau trước khi xuất bản",
   "panel.checklistResolved": "Tất cả các vấn đề đã được giải quyết",
   "panel.checklistTip": "Đảm bảo rằng tất cả các vấn đề đã được giải quyết trước khi xuất bản",
+  "panel.configureTestRunConnection": "Cấu hình kết nối cho lần chạy thử trước khi chạy nút này.",
+  "panel.configureWorkspaceAuthorization": "Cấu hình ủy quyền không gian làm việc trước khi chạy nút này.",
   "panel.createdBy": "Tạo bởi ",
   "panel.goToFix": "Đi đến sửa lỗi",
   "panel.helpLink": "Trung tâm trợ giúp",

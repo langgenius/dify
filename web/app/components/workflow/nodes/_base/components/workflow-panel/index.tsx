@@ -4,8 +4,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import { useQueryState } from 'nuqs'
@@ -64,6 +63,7 @@ import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
 import HelpLink from '../help-link'
 import NextStep from '../next-step'
 import RetryOnPanel from '../retry/retry-on-panel'
+import SingleRunButton from '../single-run-button'
 import { DescriptionInput, TitleInput } from '../title-description-input'
 import {
   clampNodePanelWidth,
@@ -315,6 +315,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     setRunInputData,
     handleStop,
     handleSingleRun,
+    singleRunDisabledReason,
     handleRunWithParams,
     getExistVarValuesInForms,
     getFilteredExistVarForms,
@@ -554,10 +555,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     )
   }
 
-  const runThisStepLabel = t(($) => $['panel.runThisStep'], { ns: 'workflow' })
-  const singleRunActionLabel = isSingleRunning
-    ? t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })
-    : runThisStepLabel
   const nodePanelRightOffset = !messageLogItem ? '4px' : `${otherPanelWidth + 8}px`
   const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
   const panelChildren = cloneElement(children as any, {
@@ -645,30 +642,15 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {isSupportSingleRun && canRun && !nodesReadOnly && (
-                <Tooltip disabled={isSingleRunning}>
-                  <TooltipTrigger
-                    render={
-                      <IconButton
-                        aria-label={singleRunActionLabel}
-                        className="mr-1"
-                        onClick={() => {
-                          if (isSingleRunning) handleStop()
-                          else handleSingleRun()
-                        }}
-                      >
-                        {isSingleRunning ? (
-                          <span
-                            aria-hidden
-                            className="i-custom-vender-line-mediaAndDevices-stop size-4"
-                          />
-                        ) : (
-                          <RiPlayLargeLine aria-hidden className="size-4" />
-                        )}
-                      </IconButton>
-                    }
-                  />
-                  <TooltipContent>{runThisStepLabel}</TooltipContent>
-                </Tooltip>
+                <SingleRunButton
+                  running={isSingleRunning}
+                  disabledReason={singleRunDisabledReason}
+                  className="mr-1"
+                  onClick={() => {
+                    if (isSingleRunning) handleStop()
+                    else handleSingleRun()
+                  }}
+                />
               )}
               <HelpLink nodeType={nodeMetaType} />
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
@@ -780,6 +762,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
               isRunAfterSingleRun={isRunAfterSingleRun}
               updateNodeRunningStatus={updateNodeRunningStatus}
               onSingleRunClicked={handleSingleRun}
+              singleRunDisabledReason={singleRunDisabledReason}
               nodeInfo={nodeInfo!}
               singleRunResult={runResult!}
               isPaused={isPaused}

@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Rezolvați următoarele probleme înainte de publicare",
   "panel.checklistResolved": "Toate problemele au fost rezolvate",
   "panel.checklistTip": "Asigurați-vă că toate problemele sunt rezolvate înainte de publicare",
+  "panel.configureTestRunConnection": "Configurează o conexiune pentru teste înainte de a executa acest nod.",
+  "panel.configureWorkspaceAuthorization": "Configurează autorizarea spațiului de lucru înainte de a executa acest nod.",
   "panel.createdBy": "Creat de ",
   "panel.goToFix": "Mergi la remediere",
   "panel.helpLink": "Ajutor",

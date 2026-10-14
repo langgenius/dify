@@ -1,4 +1,5 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
 import LastRun from '../index'
@@ -27,15 +28,6 @@ vi.mock('@/app/components/workflow/run/result-panel', () => ({
     mockResultPanel(props)
     return <div data-testid="result-panel">{String(props.status)}</div>
   },
-}))
-
-vi.mock('../no-data', () => ({
-  __esModule: true,
-  default: ({ onSingleRun }: { onSingleRun: () => void }) => (
-    <button type="button" onClick={onSingleRun}>
-      no-data
-    </button>
-  ),
 }))
 
 describe('LastRun', () => {
@@ -110,7 +102,8 @@ describe('LastRun', () => {
     )
   })
 
-  it('should render the no-data state for 404 last-run responses and forward single-run clicks', () => {
+  it('should render the no-data state for 404 last-run responses and forward single-run clicks', async () => {
+    const user = userEvent.setup()
     mockUseLastRun.mockReturnValue({
       data: undefined,
       isFetching: false,
@@ -128,11 +121,49 @@ describe('LastRun', () => {
       />,
     )
 
-    act(() => {
-      screen.getByText('no-data').click()
-    })
+    await user.click(screen.getByRole('button', { name: 'workflowDebug.debug.noData.runThisNode' }))
 
     expect(onSingleRunClicked).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a blocked no-data action keyboard accessible for its explanation and restores running after configuration', async () => {
+    const user = userEvent.setup()
+    mockUseLastRun.mockReturnValue({
+      data: undefined,
+      isFetching: false,
+      error: createHttpError(new Response(null, { status: 404 })),
+    })
+    const props = {
+      appId: 'app-1',
+      nodeId: 'node-1',
+      canSingleRun: true,
+      isRunAfterSingleRun: false,
+      updateNodeRunningStatus,
+      onSingleRunClicked,
+    }
+    const { rerender } = render(
+      <LastRun {...props} singleRunDisabledReason="workflow.panel.configureTestRunConnection" />,
+    )
+    const action = screen.getByRole('button', { name: 'workflowDebug.debug.noData.runThisNode' })
+    expect(action).toHaveAttribute('aria-disabled', 'true')
+    await user.tab()
+    expect(action).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(
+      await screen.findByRole('dialog', { name: 'workflowDebug.debug.noData.runThisNode' }),
+    ).toBeVisible()
+    expect(screen.getByText('workflow.panel.configureTestRunConnection')).toBeVisible()
+    expect(onSingleRunClicked).not.toHaveBeenCalled()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(<LastRun {...props} />)
+    const configuredAction = screen.getByRole('button', {
+      name: 'workflowDebug.debug.noData.runThisNode',
+    })
+    expect(configuredAction).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(configuredAction)
+    expect(onSingleRunClicked).toHaveBeenCalledOnce()
   })
 
   it('should render resolved result data and let paused state override the final status', () => {

@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Rešite naslednje težave pred objavo",
   "panel.checklistResolved": "Vse težave so rešene",
   "panel.checklistTip": "Prepričajte se, da so vse težave rešene, preden objavite.",
+  "panel.configureTestRunConnection": "Pred zagonom tega vozlišča nastavite povezavo za testne zagone.",
+  "panel.configureWorkspaceAuthorization": "Pred zagonom tega vozlišča nastavite avtorizacijo delovnega prostora.",
   "panel.createdBy": "Ustvarjeno z",
   "panel.goToFix": "Pojdi na popravi",
   "panel.helpLink": "Pomoč",

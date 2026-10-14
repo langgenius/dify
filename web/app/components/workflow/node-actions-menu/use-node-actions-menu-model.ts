@@ -10,6 +10,7 @@ import { useAllWorkflowTools } from '@/service/use-tools'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../hooks/use-nodes-meta-data'
+import { useSingleRunAuthorization } from '../hooks/use-single-run-authorization'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 
 type UseNodeActionsMenuModelParams = {
@@ -37,6 +38,8 @@ export function useNodeActionsMenuModel({
   const isChildNode = !!(data.isInIteration || data.isInLoop)
   const canRun = canRunWorkflow && !nodesReadOnly && canRunBySingle(data.type, isChildNode)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+  const { disabledReason } = useSingleRunAuthorization(id, data)
+  const singleRunDisabledReason = isSingleRunning ? undefined : disabledReason
   const canChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const sourceHandle = useMemo(() => {
     return edges.find((edge) => edge.target === id)?.sourceHandle || 'source'
@@ -56,6 +59,7 @@ export function useNodeActionsMenuModel({
   }, [data.provider_id, data.provider_type, data.type, workflowTools])
 
   const handleRun = useCallback(() => {
+    if (singleRunDisabledReason) return
     const store = workflowStore.getState()
     store.setInitShowLastRunTab(true)
     store.setPendingSingleRun({
@@ -64,7 +68,7 @@ export function useNodeActionsMenuModel({
     })
     handleNodeSelect(id)
     onClose()
-  }, [handleNodeSelect, id, isSingleRunning, onClose, workflowStore])
+  }, [handleNodeSelect, id, isSingleRunning, onClose, workflowStore, singleRunDisabledReason])
 
   const handleCopy = useCallback(() => {
     onClose()
@@ -97,6 +101,7 @@ export function useNodeActionsMenuModel({
     id,
     isSingleton: nodeMetaData.isSingleton,
     isSingleRunning,
+    singleRunDisabledReason,
     isUndeletable: nodeMetaData.isUndeletable,
     nodesReadOnly,
     sourceHandle,

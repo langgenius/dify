@@ -500,6 +500,8 @@
   "panel.checklistDescription": "กรุณาแก้ไขปัญหาต่อไปนี้ก่อนเผยแพร่",
   "panel.checklistResolved": "ปัญหาทั้งหมดได้รับการแก้ไขแล้ว",
   "panel.checklistTip": "ตรวจสอบให้แน่ใจว่าปัญหาทั้งหมดได้รับการแก้ไขแล้วก่อนที่จะเผยแพร่",
+  "panel.configureTestRunConnection": "กำหนดค่าการเชื่อมต่อสำหรับการทดสอบก่อนเรียกใช้โหนดนี้",
+  "panel.configureWorkspaceAuthorization": "กำหนดค่าการอนุญาตของพื้นที่ทำงานก่อนเรียกใช้โหนดนี้",
   "panel.createdBy": "สร้างโดย",
   "panel.goToFix": "ไปแก้ไข",
   "panel.helpLink": "วิธีใช้",

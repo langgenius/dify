@@ -22,34 +22,43 @@ import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 
-type EditConnectionModalProps = {
+export type EditConnectionDataSource = {
+  canEdit: boolean
+  canUse: boolean
+  save: (args: {
+    credential: Credential
+    name: string
+    visibility: string
+    setDefault: boolean
+  }) => Promise<void>
+}
+
+type EditConnectionModalCommonProps = {
   credential: Credential
-  pluginPayload: PluginPayload
   providerName?: string
   open: boolean
   onOpenChange: (open: boolean) => void
   onCloseComplete: () => void
-  onUpdate: () => void
+  onUpdate?: () => void
 }
 
-const EditConnectionModal = ({
+type EditConnectionModalProps = EditConnectionModalCommonProps &
+  (
+    | { pluginPayload: PluginPayload; onUpdate: () => void; dataSource?: undefined }
+    | { dataSource: EditConnectionDataSource; pluginPayload?: PluginPayload }
+  )
+
+const EditConnectionContent = ({
   credential,
-  pluginPayload,
   providerName,
   open,
   onOpenChange,
   onCloseComplete,
-  onUpdate,
-}: EditConnectionModalProps) => {
+  dataSource,
+}: EditConnectionModalCommonProps & { dataSource: EditConnectionDataSource }) => {
   const { t } = useTranslation(['common', 'plugin', 'datasetSettings'])
-  const { canUseCredential, canManageCredential } = useCredentialPermissions()
-  const canEditConnection =
-    canManageCredential &&
-    !credential.from_enterprise &&
-    !credential.from_other_member &&
-    !credential.not_allowed_to_use
-  const providerApi = consoleQuery.workspaces.current.toolProvider.builtin.byProvider
-  const params = { provider: pluginPayload.provider }
+  const canEditConnection = dataSource.canEdit
+  const canUseCredential = dataSource.canUse
   const [connectionName, setConnectionName] = useState(credential.name)
   // Scope stays in the form draft until the update endpoint accepts visibility.
   const [connectionScope, setConnectionScope] = useState(
@@ -59,10 +68,8 @@ const EditConnectionModal = ({
   const [setWorkspaceDefault, setSetWorkspaceDefault] = useState(false)
   const showWorkspaceDefault = connectionScope !== PermissionLevel.onlyMe
   const shouldSetWorkspaceDefault = showWorkspaceDefault && setWorkspaceDefault
-  const updateCredential = useMutation(providerApi.update.post.mutationOptions())
-  const setDefaultCredential = useMutation(providerApi.defaultCredential.post.mutationOptions())
-  const isSavingConnection = updateCredential.isPending || setDefaultCredential.isPending
-  const connectionSaveFailed = updateCredential.isError || setDefaultCredential.isError
+  const [isSavingConnection, setIsSavingConnection] = useState(false)
+  const [connectionSaveFailed, setConnectionSaveFailed] = useState(false)
   const connectionScopeLabel =
     connectionScope === PermissionLevel.onlyMe
       ? t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })
@@ -91,29 +98,20 @@ const EditConnectionModal = ({
   const saveConnection = async () => {
     if (!canEditConnection || !connectionName.trim() || isSavingConnection) return
     if (shouldSetWorkspaceDefault && !canUseCredential) return
-    setDefaultCredential.reset()
+    setIsSavingConnection(true)
+    setConnectionSaveFailed(false)
     try {
-      // A retry after setting the default fails only needs to finish the remaining step.
-      if (
-        !updateCredential.isSuccess ||
-        updateCredential.variables.body.credential_id !== credential.id ||
-        updateCredential.variables.body.name !== connectionName.trim()
-      ) {
-        await updateCredential.mutateAsync({
-          params,
-          body: { credential_id: credential.id, name: connectionName.trim() },
-        })
-      }
-      if (shouldSetWorkspaceDefault) {
-        await setDefaultCredential.mutateAsync({ params, body: { id: credential.id } })
-      }
+      await dataSource.save({
+        credential,
+        name: connectionName.trim(),
+        visibility: connectionScope,
+        setDefault: shouldSetWorkspaceDefault,
+      })
       onOpenChange(false)
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     } catch {
-      // Mutation state keeps an accessible error and the draft available for another attempt.
+      setConnectionSaveFailed(true)
     } finally {
-      // Renaming can succeed even when the separate default-setting request fails.
-      onUpdate()
+      setIsSavingConnection(false)
     }
   }
 
@@ -247,5 +245,56 @@ const EditConnectionModal = ({
     </Dialog>
   )
 }
+
+const WorkspaceEditConnectionModal = (
+  props: EditConnectionModalCommonProps & { pluginPayload: PluginPayload; onUpdate: () => void },
+) => {
+  const { credential, pluginPayload, onUpdate } = props
+  const { t } = useTranslation(['common'])
+  const { canUseCredential, canManageCredential } = useCredentialPermissions()
+  const providerApi = consoleQuery.workspaces.current.toolProvider.builtin.byProvider
+  const params = { provider: pluginPayload.provider }
+  const updateCredential = useMutation(providerApi.update.post.mutationOptions())
+  const setDefaultCredential = useMutation(providerApi.defaultCredential.post.mutationOptions())
+  const dataSource: EditConnectionDataSource = {
+    canEdit:
+      canManageCredential &&
+      !credential.from_enterprise &&
+      !credential.from_other_member &&
+      !credential.not_allowed_to_use,
+    canUse: canUseCredential,
+    save: async ({ credential, name, setDefault }) => {
+      setDefaultCredential.reset()
+      try {
+        // Retry only the remaining default step when the same rename already succeeded.
+        if (
+          !updateCredential.isSuccess ||
+          updateCredential.variables.body.credential_id !== credential.id ||
+          updateCredential.variables.body.name !== name
+        ) {
+          await updateCredential.mutateAsync({
+            params,
+            body: { credential_id: credential.id, name },
+          })
+        }
+        if (setDefault) {
+          await setDefaultCredential.mutateAsync({ params, body: { id: credential.id } })
+        }
+        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      } finally {
+        // Renaming can succeed even when the separate default-setting request fails.
+        onUpdate()
+      }
+    },
+  }
+  return <EditConnectionContent {...props} dataSource={dataSource} />
+}
+
+const EditConnectionModal = (props: EditConnectionModalProps) =>
+  props.dataSource ? (
+    <EditConnectionContent {...props} dataSource={props.dataSource} />
+  ) : (
+    <WorkspaceEditConnectionModal {...props} />
+  )
 
 export default EditConnectionModal

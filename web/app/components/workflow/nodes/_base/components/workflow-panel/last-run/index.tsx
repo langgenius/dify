@@ -23,6 +23,7 @@ type Props = Readonly<{
   nodeInfo?: NodeTracing
   runningStatus?: NodeRunningStatus
   onSingleRunClicked: () => void
+  singleRunDisabledReason?: string
   singleRunResult?: NodeTracing
   isPaused?: boolean
 }> &
@@ -37,6 +38,7 @@ const LastRun: FC<Props> = ({
   nodeInfo: _nodeInfo,
   runningStatus: oneStepRunRunningStatus,
   onSingleRunClicked,
+  singleRunDisabledReason,
   singleRunResult,
   isPaused,
   ...otherResultPanelProps
@@ -149,7 +151,13 @@ const LastRun: FC<Props> = ({
 
   if (isRunning) return <ResultPanel status="running" showSteps={false} />
   if (!isPaused && (noLastRun || !runResult)) {
-    return <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />
+    return (
+      <NoData
+        canSingleRun={canSingleRun}
+        onSingleRun={onSingleRunClicked}
+        disabledReason={singleRunDisabledReason}
+      />
+    )
   }
 
   return (

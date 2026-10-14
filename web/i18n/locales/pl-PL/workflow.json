@@ -500,6 +500,8 @@
   "panel.checklistDescription": "Rozwiąż poniższe problemy przed opublikowaniem",
   "panel.checklistResolved": "Wszystkie problemy zostały rozwiązane",
   "panel.checklistTip": "Upewnij się, że wszystkie problemy zostały rozwiązane przed opublikowaniem",
+  "panel.configureTestRunConnection": "Skonfiguruj połączenie do testów przed uruchomieniem tego węzła.",
+  "panel.configureWorkspaceAuthorization": "Skonfiguruj autoryzację przestrzeni roboczej przed uruchomieniem tego węzła.",
   "panel.createdBy": "Stworzone przez ",
   "panel.goToFix": "Przejdź do naprawy",
   "panel.helpLink": "Pomoc",

@@ -1,13 +1,13 @@
+import type { ApiKeyModalDataSource } from '../authorize/api-key-modal'
+import type { ConnectionPickerOption } from '../connection-picker'
 import type { usePluginAuth } from '../hooks/use-plugin-auth'
 import type { Credential, PluginPayload } from '../types'
+import type { ConnectionActionsDataSource } from './connection-actions'
 import type { FormSchema } from '@/app/components/base/form/types'
 import type { CredentialPermission } from '@/models/permission'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { createDropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +20,7 @@ import { consoleQuery } from '@/service/console'
 import ApiKeyModal from '../authorize/api-key-modal'
 import OAuthClientSettings from '../authorize/oauth-client-settings'
 import OAuthVisibilityDialog from '../authorize/oauth-visibility-dialog'
+import ConnectionPicker from '../connection-picker'
 import { CredentialTypeEnum } from '../types'
 import ConnectionActions, { ConnectionActionsTrigger } from './connection-actions'
 
@@ -32,7 +33,223 @@ export type ConnectionSelectorProps = {
   onDefaultCredentialChange?: (id?: string) => void
 }
 
-const ConnectionSelector = ({
+export type ConnectionSelectorDataSource = {
+  credentials: Credential[]
+  selectedCredential?: Credential
+  fallbackName: string
+  unavailable?: boolean
+  canUse: boolean
+  canCreate: boolean
+  canOAuth: boolean
+  canApiKey: boolean
+  allowCustom: boolean
+  oauthDisabled?: boolean
+  providerName?: string
+  subtitle: (credential?: Credential) => string
+  select: (credential: Credential) => void
+  addOAuth: () => void
+  openOAuthClientSettings: () => void
+} & (
+  | {
+      pluginPayload: PluginPayload
+      onUpdate: () => void
+      apiKey?: undefined
+      connectionActions?: undefined
+    }
+  | {
+      pluginPayload?: PluginPayload
+      apiKey: ApiKeyModalDataSource
+      connectionActions: ConnectionActionsDataSource
+    }
+)
+
+const ConnectionSelectorContent = ({
+  dataSource,
+}: {
+  dataSource: ConnectionSelectorDataSource
+}) => {
+  const { t } = useTranslation(['common', 'plugin', 'datasetSettings'])
+  const [open, setOpen] = useState(false)
+  const [connectionActionsHandle] = useState(() => createDropdownMenuHandle<Credential>())
+  const [apiKeySession, setApiKeySession] = useState(0)
+  const [apiKeyOpen, setApiKeyOpen] = useState(false)
+  const { credentials } = dataSource
+  const toOption = (credential: Credential): ConnectionPickerOption => ({
+    id: credential.id,
+    name: credential.name,
+    subtitle: dataSource.subtitle(credential),
+    method: credential.credential_type ?? CredentialTypeEnum.API_KEY,
+    disabled: !dataSource.canUse || credential.not_allowed_to_use,
+    info: credential.from_other_member
+      ? t(($) => $['auth.onlyAtCreationHintTooltip'], { ns: 'plugin' })
+      : undefined,
+  })
+  const groups = [
+    {
+      label: t(($) => $['userProfile.workspace'], { ns: 'common' }),
+      items: credentials.filter(
+        (credential) =>
+          credential.visibility !== PermissionLevel.onlyMe && !credential.from_other_member,
+      ),
+    },
+    {
+      label: t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' }),
+      items: credentials.filter(
+        (credential) =>
+          credential.visibility === PermissionLevel.onlyMe && !credential.from_other_member,
+      ),
+    },
+    {
+      label: t(($) => $['auth.connection.otherMembers'], { ns: 'plugin' }),
+      items: credentials.filter((credential) => credential.from_other_member),
+    },
+  ].map((group) => ({ ...group, items: group.items.map(toOption) }))
+  const addOAuth = () => {
+    if (!dataSource.allowCustom || dataSource.oauthDisabled) return
+    setOpen(false)
+    dataSource.addOAuth()
+  }
+  const addApiKey = () => {
+    if (!dataSource.allowCustom || !dataSource.canCreate) return
+    setOpen(false)
+    setApiKeySession((session) => session + 1)
+    setApiKeyOpen(true)
+  }
+  const openOAuthClientSettings = () => {
+    if (!dataSource.allowCustom || dataSource.oauthDisabled) return
+    setOpen(false)
+    dataSource.openOAuthClientSettings()
+  }
+
+  return (
+    <>
+      {credentials.length || !dataSource.connectionActions ? (
+        <ConnectionPicker
+          open={open}
+          onOpenChange={setOpen}
+          groups={groups}
+          selected={
+            dataSource.selectedCredential ? toOption(dataSource.selectedCredential) : undefined
+          }
+          fallbackName={dataSource.fallbackName}
+          unavailable={dataSource.unavailable}
+          onSelect={(id) => {
+            const credential = credentials.find((item) => item.id === id)
+            if (!credential || !dataSource.canUse || credential.not_allowed_to_use) return
+            dataSource.select(credential)
+            setOpen(false)
+          }}
+          renderActions={(id) => {
+            const credential = credentials.find((item) => item.id === id)
+            return credential ? (
+              <ConnectionActionsTrigger
+                handle={connectionActionsHandle}
+                credential={credential}
+                dataSource={dataSource.connectionActions}
+              />
+            ) : null
+          }}
+          actions={
+            dataSource.allowCustom
+              ? {
+                  addOAuth: dataSource.canOAuth
+                    ? { onClick: addOAuth, disabled: dataSource.oauthDisabled }
+                    : undefined,
+                  addApiKey: dataSource.canApiKey
+                    ? { onClick: addApiKey, disabled: !dataSource.canCreate }
+                    : undefined,
+                  oauthClientSettings: dataSource.canOAuth
+                    ? { onClick: openOAuthClientSettings, disabled: dataSource.oauthDisabled }
+                    : undefined,
+                }
+              : undefined
+          }
+        />
+      ) : (
+        <div className="flex items-center gap-2">
+          {dataSource.canOAuth && (
+            <div className="flex min-w-0 flex-1">
+              <Button
+                variant="primary"
+                className="h-8 min-w-0 flex-1 rounded-r-none"
+                disabled={!dataSource.allowCustom || dataSource.oauthDisabled}
+                onClick={addOAuth}
+              >
+                {t(($) => $['auth.addOAuth'], { ns: 'plugin' })}
+              </Button>
+              <div
+                aria-hidden
+                className="h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-15"
+              />
+              <IconButton
+                variant="primary"
+                size="lg"
+                className="shrink-0 rounded-l-none"
+                disabled={!dataSource.allowCustom || dataSource.oauthDisabled}
+                aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
+                onClick={openOAuthClientSettings}
+              >
+                <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+              </IconButton>
+            </div>
+          )}
+          {dataSource.canOAuth && dataSource.canApiKey && (
+            <span className="system-2xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['auth.appUser.connectionOr'], { ns: 'plugin' })}
+            </span>
+          )}
+          {dataSource.canApiKey && (
+            <Button
+              variant={dataSource.canOAuth ? 'secondary-accent' : 'primary'}
+              className="min-w-0 flex-1"
+              disabled={!dataSource.allowCustom || !dataSource.canCreate}
+              onClick={addApiKey}
+            >
+              {t(($) => $['auth.connection.addApiKey'], { ns: 'plugin' })}
+            </Button>
+          )}
+        </div>
+      )}
+      {dataSource.connectionActions ? (
+        <ConnectionActions
+          handle={connectionActionsHandle}
+          dataSource={dataSource.connectionActions}
+          providerName={dataSource.providerName}
+          onAction={() => setOpen(false)}
+        />
+      ) : (
+        <ConnectionActions
+          handle={connectionActionsHandle}
+          pluginPayload={dataSource.pluginPayload}
+          providerName={dataSource.providerName}
+          onAction={() => setOpen(false)}
+          onUpdate={dataSource.onUpdate}
+        />
+      )}
+      {apiKeySession > 0 &&
+        (dataSource.apiKey ? (
+          <ApiKeyModal
+            key={apiKeySession}
+            dataSource={dataSource.apiKey}
+            open={apiKeyOpen}
+            onOpenChange={setApiKeyOpen}
+            disabled={!dataSource.canCreate}
+          />
+        ) : (
+          <ApiKeyModal
+            key={apiKeySession}
+            pluginPayload={dataSource.pluginPayload}
+            open={apiKeyOpen}
+            onOpenChange={setApiKeyOpen}
+            disabled={!dataSource.canCreate}
+            onUpdate={dataSource.onUpdate}
+          />
+        ))}
+    </>
+  )
+}
+
+const WorkspaceConnectionSelector = ({
   pluginPayload,
   authorization,
   credentialId,
@@ -66,10 +283,6 @@ const ConnectionSelector = ({
       staleTime: 0,
     }),
   )
-  const [open, setOpen] = useState(false)
-  const [connectionActionsHandle] = useState(() => createDropdownMenuHandle<Credential>())
-  const [apiKeySession, setApiKeySession] = useState<{ key: number } | null>(null)
-  const [apiKeyOpen, setApiKeyOpen] = useState(false)
   const [oauthSettingsSession, setOauthSettingsSession] = useState(0)
   const [oauthSettingsOpen, setOauthSettingsOpen] = useState(false)
   const [visibilityOpen, setVisibilityOpen] = useState(false)
@@ -119,40 +332,13 @@ const ConnectionSelector = ({
     }
     return methodLabel(credential)
   }
-  const groups = [
-    {
-      label: t(($) => $['userProfile.workspace'], { ns: 'common' }),
-      items: credentials.filter(
-        (credential) =>
-          credential.visibility !== PermissionLevel.onlyMe && !credential.from_other_member,
-      ),
-    },
-    {
-      label: t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' }),
-      items: credentials.filter(
-        (credential) =>
-          credential.visibility === PermissionLevel.onlyMe && !credential.from_other_member,
-      ),
-    },
-    {
-      label: t(($) => $['auth.connection.otherMembers'], { ns: 'plugin' }),
-      items: credentials.filter((credential) => credential.from_other_member),
-    },
-  ]
-  const selectCredential = (id: string) => {
-    if (!canUseCredential) return
-    onAuthorizationItemClick(id || (onDefaultCredentialChange ? defaultCredential?.id || '' : ''))
-    setOpen(false)
-  }
   const openOAuthSettings = () => {
     if (!canManageCredential || notAllowCustomCredential) return
-    setOpen(false)
     setOauthSettingsSession((session) => session + 1)
     setOauthSettingsOpen(true)
   }
   const startOAuth = () => {
     if (!canManageCredential || notAllowCustomCredential || oauthSchema.isPending) return
-    setOpen(false)
     if (
       oauthSchema.data?.is_system_oauth_params_exists ||
       oauthSchema.data?.is_oauth_custom_client_enabled
@@ -194,174 +380,33 @@ const ConnectionSelector = ({
 
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt">
-          <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
-            <Avatar size="xs" className="border-[0.5px] border-divider-regular">
-              <AvatarFallback className="bg-components-icon-bg-blue-soft text-xs text-text-accent">
-                {selectedName[0]?.toLocaleUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </span>
-          <span className="flex min-w-0 grow flex-col gap-0.5 px-1 py-0.75">
-            {/* The connection picker discloses the complete name through its wrapping rows. */}
-            <span
-              className={cn(
-                'truncate system-sm-regular text-components-input-text-filled',
-                unavailable && 'text-text-destructive',
-              )}
-            >
-              {selectedName}
-            </span>
-            <span className="truncate system-xs-regular text-text-tertiary">
-              {subtitle(selectedCredential)}
-            </span>
-          </span>
-          <span
-            aria-hidden
-            className="mr-1 i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
-          />
-        </PopoverTrigger>
-        <PopoverContent
-          placement="bottom-start"
-          sideOffset={8}
-          className="max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) overflow-y-auto bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
-        >
-          <PopoverTitle className="sr-only">
-            {t(($) => $['auth.authorization'], { ns: 'plugin' })}
-          </PopoverTitle>
-          <div className="space-y-0.5">
-            {groups
-              .filter((group) => group.items.length > 0)
-              .map((group) => (
-                <div key={group.label} role="group" aria-label={group.label}>
-                  <div className="px-2 pt-2 pb-1 system-xs-regular text-text-tertiary">
-                    {group.label}
-                  </div>
-                  <div className="space-y-0.5">
-                    {group.items.map((credential) => {
-                      const isSelected = selectedCredential?.id === credential.id
-                      return (
-                        <div
-                          key={credential.id}
-                          className={cn(
-                            'flex min-h-12.5 items-center rounded-lg pr-2 hover:bg-state-base-hover',
-                            isSelected && 'bg-background-section-burn',
-                          )}
-                        >
-                          <Button
-                            variant="ghost"
-                            aria-pressed={isSelected}
-                            // Match the connection row's 8px spacing rather than a compact action label.
-                            className="h-auto min-w-0 grow justify-start gap-2 p-2 text-left hover:bg-transparent"
-                            disabled={!canUseCredential || credential.not_allowed_to_use}
-                            onClick={() =>
-                              selectCredential(credential.is_default ? '' : credential.id)
-                            }
-                          >
-                            <span
-                              aria-hidden
-                              className="flex size-3.5 shrink-0 items-center justify-center"
-                            >
-                              {isSelected && (
-                                <span className="i-ri-check-line size-3.5 text-text-accent" />
-                              )}
-                            </span>
-                            <span className="flex min-w-0 grow flex-col gap-0.5">
-                              <span className="system-sm-medium wrap-anywhere whitespace-normal text-components-input-text-filled">
-                                {credential.name}
-                              </span>
-                              <span className="truncate system-xs-regular text-text-tertiary">
-                                {subtitle(credential)}
-                              </span>
-                            </span>
-                            <span className="shrink-0 system-xs-regular text-text-tertiary">
-                              {methodLabel(credential)}
-                            </span>
-                          </Button>
-                          {credential.from_other_member && (
-                            <Tooltip>
-                              <TooltipTrigger
-                                render={
-                                  <span className="flex shrink-0 items-center text-text-tertiary">
-                                    <span aria-hidden className="i-ri-information-line size-4" />
-                                  </span>
-                                }
-                              />
-                              <TooltipContent>
-                                {t(($) => $['auth.onlyAtCreationHintTooltip'], { ns: 'plugin' })}
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                          <ConnectionActionsTrigger
-                            handle={connectionActionsHandle}
-                            credential={credential}
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-          </div>
-          {!notAllowCustomCredential && (
-            <div className="space-y-1 px-1 pt-2 pb-0.5">
-              <div className="flex gap-2">
-                {canOAuth && (
-                  <Button
-                    className="min-w-0 flex-1"
-                    disabled={!canManageCredential || oauthSchema.isPending || oauthSchema.isError}
-                    onClick={startOAuth}
-                  >
-                    {t(($) => $['auth.addOAuth'], { ns: 'plugin' })}
-                  </Button>
-                )}
-                {canApiKey && (
-                  <Button
-                    className="min-w-0 flex-1"
-                    disabled={!canCreateCredential}
-                    onClick={() => {
-                      setOpen(false)
-                      setApiKeySession((session) => ({ key: (session?.key || 0) + 1 }))
-                      setApiKeyOpen(true)
-                    }}
-                  >
-                    {t(($) => $['auth.connection.addApiKey'], { ns: 'plugin' })}
-                  </Button>
-                )}
-              </div>
-              {canOAuth && (
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  disabled={!canManageCredential || oauthSchema.isPending || oauthSchema.isError}
-                  onClick={openOAuthSettings}
-                >
-                  <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-                  {t(($) => $['auth.connection.oauthClientSettings'], { ns: 'plugin' })}
-                </Button>
-              )}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
-      <ConnectionActions
-        handle={connectionActionsHandle}
-        pluginPayload={pluginPayload}
-        providerName={providerName}
-        onAction={() => setOpen(false)}
-        onUpdate={invalidPluginCredentialInfo}
+      <ConnectionSelectorContent
+        dataSource={{
+          credentials,
+          selectedCredential,
+          fallbackName: selectedName,
+          unavailable,
+          canUse: canUseCredential,
+          canCreate: canCreateCredential,
+          canOAuth: !!canOAuth,
+          canApiKey: !!canApiKey,
+          allowCustom: !notAllowCustomCredential,
+          oauthDisabled: !canManageCredential || oauthSchema.isPending || oauthSchema.isError,
+          pluginPayload,
+          onUpdate: invalidPluginCredentialInfo,
+          providerName,
+          subtitle,
+          select: (credential) => {
+            if (!canUseCredential) return
+            const id = credential.is_default ? '' : credential.id
+            onAuthorizationItemClick(
+              id || (onDefaultCredentialChange ? defaultCredential?.id || '' : ''),
+            )
+          },
+          addOAuth: startOAuth,
+          openOAuthClientSettings: openOAuthSettings,
+        }}
       />
-      {apiKeySession && (
-        <ApiKeyModal
-          key={apiKeySession.key}
-          open={apiKeyOpen}
-          onOpenChange={setApiKeyOpen}
-          pluginPayload={pluginPayload}
-          disabled={!canCreateCredential}
-          onUpdate={invalidPluginCredentialInfo}
-        />
-      )}
       {oauthSettingsSession > 0 && (
         <OAuthClientSettings
           key={oauthSettingsSession}
@@ -403,6 +448,13 @@ const ConnectionSelector = ({
       />
     </>
   )
+}
+
+const ConnectionSelector = (
+  props: ConnectionSelectorProps | { dataSource: ConnectionSelectorDataSource },
+) => {
+  if ('dataSource' in props) return <ConnectionSelectorContent dataSource={props.dataSource} />
+  return <WorkspaceConnectionSelector {...props} />
 }
 
 export default memo(ConnectionSelector)

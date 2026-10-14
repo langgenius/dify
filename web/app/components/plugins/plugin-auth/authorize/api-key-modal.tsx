@@ -20,8 +20,19 @@ import {
 import { CredentialTypeEnum } from '../types'
 import PermissionSelector from './permission-selector'
 
-export type ApiKeyModalProps = {
-  pluginPayload: PluginPayload
+export type ApiKeyModalDataSource = {
+  schemas: FormSchema[]
+  isLoading?: boolean
+  defaultName?: string
+  save: (values: {
+    name: string
+    credentialId?: string
+    credentials: Record<string, unknown>
+    visibility: CredentialPermission
+  }) => Promise<unknown>
+}
+
+type ApiKeyModalCommonProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onClose?: () => void
@@ -31,8 +42,16 @@ export type ApiKeyModalProps = {
   onUpdate?: () => void
   formSchemas?: FormSchema[]
 }
-const ApiKeyModal = ({
+
+export type ApiKeyModalProps = ApiKeyModalCommonProps &
+  (
+    | { pluginPayload: PluginPayload; dataSource?: undefined }
+    | { pluginPayload?: PluginPayload; dataSource: ApiKeyModalDataSource }
+  )
+
+const ApiKeyModalContent = ({
   pluginPayload,
+  dataSource,
   open = true,
   onOpenChange,
   onClose,
@@ -40,8 +59,10 @@ const ApiKeyModal = ({
   onRemove,
   disabled,
   onUpdate,
-  formSchemas: formSchemasFromProps = [],
-}: ApiKeyModalProps) => {
+}: ApiKeyModalCommonProps & {
+  pluginPayload?: PluginPayload
+  dataSource: ApiKeyModalDataSource
+}) => {
   const { t } = useTranslation(['common', 'plugin'])
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
@@ -49,20 +70,12 @@ const ApiKeyModal = ({
     doingActionRef.current = value
     setDoingAction(value)
   }, [])
-  const { data = [], isLoading } = useGetPluginCredentialSchemaHook(
-    pluginPayload,
-    CredentialTypeEnum.API_KEY,
-  )
+  const { schemas: mergedData, isLoading } = dataSource
   const [permission, setPermission] = useState<CredentialPermission>(
     editValues?.__visibility__ === PermissionLevel.onlyMe
       ? PermissionLevel.onlyMe
       : PermissionLevel.allTeamMembers,
   )
-  const mergedData = useMemo(() => {
-    if (formSchemasFromProps?.length) return formSchemasFromProps
-
-    return data
-  }, [formSchemasFromProps, data])
   const formSchemas = useMemo(() => {
     return [
       {
@@ -70,10 +83,11 @@ const ApiKeyModal = ({
         name: '__name__',
         label: t(($) => $['auth.authorizationName'], { ns: 'plugin' }),
         required: false,
+        default: dataSource.defaultName,
       },
       ...mergedData,
     ]
-  }, [mergedData, t])
+  }, [mergedData, dataSource.defaultName, t])
   const defaultValues = formSchemas.reduce(
     (acc, schema) => {
       if (schema.default) acc[schema.name] = schema.default
@@ -81,8 +95,6 @@ const ApiKeyModal = ({
     },
     {} as Record<string, unknown>,
   )
-  const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
-  const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current) return
@@ -103,21 +115,12 @@ const ApiKeyModal = ({
       } = values
 
       handleSetDoingAction(true)
-      // Visibility is settable only at creation. On edit we don't send it.
-      if (editValues) {
-        await updatePluginCredential({
-          credentials: restValues,
-          credential_id: __credential_id__,
-          name: __name__ || '',
-        })
-      } else {
-        await addPluginCredential({
-          credentials: restValues,
-          type: CredentialTypeEnum.API_KEY,
-          name: __name__ || '',
-          visibility: permission,
-        })
-      }
+      await dataSource.save({
+        credentials: restValues,
+        credentialId: __credential_id__,
+        name: __name__ || '',
+        visibility: permission,
+      })
 
       onOpenChange?.(false)
       onClose?.()
@@ -125,16 +128,7 @@ const ApiKeyModal = ({
     } finally {
       handleSetDoingAction(false)
     }
-  }, [
-    addPluginCredential,
-    onClose,
-    onOpenChange,
-    onUpdate,
-    updatePluginCredential,
-    editValues,
-    handleSetDoingAction,
-    permission,
-  ])
+  }, [dataSource, onClose, onOpenChange, onUpdate, handleSetDoingAction, permission])
 
   const isDisabled = disabled || isLoading || doingAction
   const handleOpenChange = useCallback(
@@ -172,7 +166,7 @@ const ApiKeyModal = ({
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-            {pluginPayload.detail && (
+            {pluginPayload?.detail && (
               <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
             )}
             {isLoading && (
@@ -232,6 +226,47 @@ const ApiKeyModal = ({
       </DialogContent>
     </Dialog>
   )
+}
+
+const WorkspaceApiKeyModal = ({
+  pluginPayload,
+  ...props
+}: ApiKeyModalCommonProps & { pluginPayload: PluginPayload }) => {
+  const { data = [], isLoading } = useGetPluginCredentialSchemaHook(
+    pluginPayload,
+    CredentialTypeEnum.API_KEY,
+  )
+  const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
+  const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
+
+  return (
+    <ApiKeyModalContent
+      {...props}
+      pluginPayload={pluginPayload}
+      dataSource={{
+        schemas: props.formSchemas?.length ? props.formSchemas : data,
+        isLoading,
+        save: ({ name, credentialId, credentials, visibility }) => {
+          if (props.editValues) {
+            const id = credentialId ?? props.editValues.__credential_id__
+            if (typeof id !== 'string') return Promise.reject(new Error('Missing credential ID'))
+            return updatePluginCredential({ credentials, credential_id: id, name })
+          }
+          return addPluginCredential({
+            credentials,
+            type: CredentialTypeEnum.API_KEY,
+            name,
+            visibility,
+          })
+        },
+      }}
+    />
+  )
+}
+
+const ApiKeyModal = (props: ApiKeyModalProps) => {
+  if (props.dataSource) return <ApiKeyModalContent {...props} dataSource={props.dataSource} />
+  return <WorkspaceApiKeyModal {...props} pluginPayload={props.pluginPayload} />
 }
 
 export default memo(ApiKeyModal)

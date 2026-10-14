@@ -500,6 +500,8 @@
   "panel.checklistDescription": "प्रकाशित करने से पहले निम्नलिखित समस्याएँ हल करें",
   "panel.checklistResolved": "सभी समस्याएं हल हो गई हैं",
   "panel.checklistTip": "प्रकाशित करने से पहले सुनिश्चित करें कि सभी समस्याएं हल हो गई हैं",
+  "panel.configureTestRunConnection": "इस नोड को चलाने से पहले परीक्षण रन के लिए कनेक्शन कॉन्फ़िगर करें।",
+  "panel.configureWorkspaceAuthorization": "इस नोड को चलाने से पहले कार्यक्षेत्र का प्राधिकरण कॉन्फ़िगर करें।",
   "panel.createdBy": "द्वारा बनाया गया ",
   "panel.goToFix": "ठीक करने जाएँ",
   "panel.helpLink": "सहायता",

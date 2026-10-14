@@ -500,6 +500,8 @@
   "panel.checklistDescription": "حل المشكلات التالية قبل النشر",
   "panel.checklistResolved": "تم حل جميع المشكلات",
   "panel.checklistTip": "تأكد من حل جميع المشكلات قبل النشر",
+  "panel.configureTestRunConnection": "قم بإعداد اتصال للتشغيل التجريبي قبل تشغيل هذه العقدة.",
+  "panel.configureWorkspaceAuthorization": "قم بإعداد تفويض مساحة العمل قبل تشغيل هذه العقدة.",
   "panel.createdBy": "تم الإنشاء بواسطة ",
   "panel.goToFix": "الذهاب إلى الإصلاح",
   "panel.helpLink": "عرض المستندات",

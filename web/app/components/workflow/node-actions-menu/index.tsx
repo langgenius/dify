@@ -122,7 +122,13 @@ function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
         {hasRunGroup && (
           <DropdownMenuGroup>
             {model.canRun && (
-              <DropdownMenuItem onClick={model.handleRun}>{singleRunActionLabel}</DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!!model.singleRunDisabledReason}
+                aria-description={model.singleRunDisabledReason}
+                onClick={model.handleRun}
+              >
+                {singleRunActionLabel}
+              </DropdownMenuItem>
             )}
             {model.canChangeBlock && (
               <Popover modal="trap-focus">
