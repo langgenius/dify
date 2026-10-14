@@ -82,13 +82,13 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
     @model_validate(InnerRuntimeCredentialsResolvePayload)
     def post(self, args: InnerRuntimeCredentialsResolvePayload):
         if not args.credentials:
-            return {"credentials": []}, 200
+            return InnerRuntimeCredentialsResolveResponse(credentials=[]).model_dump(mode="json"), 200
 
         # Model resolution shares one provider configuration set; build it lazily
         # so a tool-only request never pays for the plugin daemon round trip.
         model_configurations = None
 
-        resolved: list[dict[str, Any]] = []
+        resolved: list[InnerRuntimeCredentialResponse] = []
         for item in args.credentials:
             if item.kind == _KIND_MODEL:
                 if model_configurations is None:
@@ -100,18 +100,18 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
             else:
                 return {"message": f"unsupported credential kind '{item.kind}'"}, 400
 
-            if error is not None:
+            if values is None:
                 return error
             resolved.append(
-                {
-                    "credential_id": item.credential_id,
-                    "kind": item.kind,
-                    "provider": item.provider,
-                    "values": values,
-                }
+                InnerRuntimeCredentialResponse(
+                    credential_id=item.credential_id,
+                    kind=item.kind,
+                    provider=item.provider,
+                    values=values,
+                )
             )
 
-        return {"credentials": resolved}, 200
+        return InnerRuntimeCredentialsResolveResponse(credentials=resolved).model_dump(mode="json"), 200
 
 
 def _resolve_model(

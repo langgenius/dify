@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from flask_restx import Resource
@@ -54,7 +56,7 @@ class WorkspaceResponse(ResponseModel):
 
 class WorkspaceOwnerlessTenantResponse(WorkspaceResponse):
     encrypt_public_key: str | None = None
-    custom_config: str | None = None
+    custom_config: dict[str, Any]
 
 
 class WorkspaceCreateResponse(ResponseModel):
@@ -76,6 +78,10 @@ class WorkspaceMemberInfoResponse(ResponseModel):
 class WorkspaceMemberResponse(ResponseModel):
     message: str
     member: WorkspaceMemberInfoResponse
+
+
+def _iso_utc(value: datetime | None) -> str | None:
+    return value.isoformat() + "Z" if value else None
 
 
 register_response_schema_models(
@@ -108,17 +114,17 @@ class EnterpriseWorkspace(Resource):
             return {"message": "owner account not found."}, 404
         except WorkspacesLimitExceededError as exc:
             raise InvalidArgumentError(str(exc)) from exc
-        return {
-            "message": "enterprise workspace created.",
-            "tenant": {
-                "id": tenant.id,
-                "name": tenant.name,
-                "plan": tenant.plan,
-                "status": tenant.status,
-                "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
-                "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
-            },
-        }
+        return WorkspaceCreateResponse(
+            message="enterprise workspace created.",
+            tenant=WorkspaceResponse(
+                id=tenant.id,
+                name=tenant.name,
+                plan=tenant.plan,
+                status=tenant.status,
+                created_at=_iso_utc(tenant.created_at),
+                updated_at=_iso_utc(tenant.updated_at),
+            ),
+        ).model_dump(mode="json")
 
 
 @inner_api_ns.route("/enterprise/workspace/ownerless")
@@ -136,19 +142,19 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     def post(self):
         args = validate_request(WorkspaceOwnerlessPayload)
         tenant = application_services().workspaces.provisioning.create(name=args.name)
-        return {
-            "message": "enterprise workspace created.",
-            "tenant": {
-                "id": tenant.id,
-                "name": tenant.name,
-                "encrypt_public_key": tenant.encrypt_public_key,
-                "plan": tenant.plan,
-                "status": tenant.status,
-                "custom_config": tenant.custom_config,
-                "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
-                "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
-            },
-        }
+        return WorkspaceOwnerlessCreateResponse(
+            message="enterprise workspace created.",
+            tenant=WorkspaceOwnerlessTenantResponse(
+                id=tenant.id,
+                name=tenant.name,
+                plan=tenant.plan,
+                status=tenant.status,
+                created_at=_iso_utc(tenant.created_at),
+                updated_at=_iso_utc(tenant.updated_at),
+                encrypt_public_key=tenant.encrypt_public_key,
+                custom_config=tenant.custom_config,
+            ),
+        ).model_dump(mode="json")
 
 
 @inner_api_ns.route("/enterprise/workspace/member")
@@ -180,14 +186,14 @@ class EnterpriseWorkspaceMember(Resource):
             return {"message": "workspace not found."}, 404
         except AccountNotFoundError:
             return {"message": "account not found."}, 404
-        return {
-            "message": "enterprise workspace member joined.",
-            "member": {
-                "workspace_id": member.workspace_id,
-                "account_id": member.account_id,
-                "role": member.role,
-            },
-        }
+        return WorkspaceMemberResponse(
+            message="enterprise workspace member joined.",
+            member=WorkspaceMemberInfoResponse(
+                workspace_id=member.workspace_id,
+                account_id=member.account_id,
+                role=member.role,
+            ),
+        ).model_dump(mode="json")
 
 
 @inner_api_ns.route("/enterprise/workspace/<uuid:workspace_id>/resources")
@@ -200,4 +206,4 @@ class EnterpriseWorkspaceResourceDeletion(Resource):
     @inner_api_ns.response(401, "Invalid API key", INNER_API_ERROR_RESPONSE)
     def delete(self, workspace_id: UUID):
         application_services().workspaces.resource_cleanup.cleanup(str(workspace_id))
-        return {"message": "workspace resource cleanup accepted."}, 202
+        return SimpleMessageResponse(message="workspace resource cleanup accepted.").model_dump(mode="json"), 202

@@ -40,7 +40,7 @@ class BaseMail(Resource):
                 substitutions=args.substitutions,
             )
         )
-        return {"message": "success"}, 200
+        return SimpleMessageResponse(message="success").model_dump(mode="json"), 200
 
 
 @inner_api_ns.route("/enterprise/mail")

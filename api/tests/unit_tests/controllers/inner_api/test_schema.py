@@ -163,11 +163,13 @@ def test_enterprise_mail_documents_simple_message_response(inner_spec: Json) -> 
     }
 
 
-def test_ownerless_workspace_custom_config_is_serialized_string_not_object(inner_spec: Json) -> None:
-    custom_config = _obj(_obj(_schema(inner_spec, "WorkspaceOwnerlessTenantResponse")["properties"])["custom_config"])
+def test_ownerless_workspace_custom_config_is_object(inner_spec: Json) -> None:
+    schema = _schema(inner_spec, "WorkspaceOwnerlessTenantResponse")
+    custom_config = _obj(_obj(schema["properties"])["custom_config"])
 
-    assert custom_config["anyOf"] == [{"type": "string"}, {"type": "null"}]
-    assert custom_config.get("type") != "object"
+    assert custom_config["type"] == "object"
+    assert custom_config["additionalProperties"] is True
+    assert "custom_config" in cast(list[str], schema["required"])
 
 
 def test_owner_workspace_variant_excludes_custom_config_and_public_key(inner_spec: Json) -> None:
@@ -191,22 +193,23 @@ def test_dsl_export_documents_yaml_data_string(inner_spec: Json) -> None:
     assert _obj(_obj(_schema(inner_spec, "AppExportResponse")["properties"])["data"])["type"] == "string"
 
 
-def test_ownerless_create_sample_validates_serialized_custom_config(inner_spec: Json) -> None:
+def test_ownerless_create_sample_validates_custom_config_object(inner_spec: Json) -> None:
     tenant = {
         "id": "t",
         "name": "n",
         "plan": "p",
         "status": "normal",
         "encrypt_public_key": None,
-        "custom_config": json.dumps({"a": 1}),
+        "custom_config": {"remove_webapp_brand": True},
         "created_at": None,
         "updated_at": None,
     }
     validator = _validator(inner_spec, "WorkspaceOwnerlessCreateResponse")
 
     validator.validate({"message": "ok", "tenant": tenant})
+    validator.validate({"message": "ok", "tenant": {**tenant, "custom_config": {}}})
     with pytest.raises(ValidationError):
-        validator.validate({"message": "ok", "tenant": {**tenant, "custom_config": {"a": 1}}})
+        validator.validate({"message": "ok", "tenant": {**tenant, "custom_config": json.dumps({"a": 1})}})
 
 
 def test_credentials_sample_accepts_arbitrary_values(inner_spec: Json) -> None:
