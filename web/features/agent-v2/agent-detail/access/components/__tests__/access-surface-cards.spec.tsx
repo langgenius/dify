@@ -1443,7 +1443,7 @@ describe('Agent access surface cards', () => {
     }
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.refreshUrl' }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     const toggle = screen.getByRole('switch')
     await user.click(toggle)
     expect(mocks.siteEnableMutation).not.toHaveBeenCalled()
