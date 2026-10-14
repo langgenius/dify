@@ -1516,6 +1516,8 @@ class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
     row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # A non-null value is a durable deletion request, including failed requests that may be retried.
+    deletion_status: Mapped[str | None] = mapped_column(String(16), nullable=True, default=None)
 
 
 class ConversationVariable(TypeBase):

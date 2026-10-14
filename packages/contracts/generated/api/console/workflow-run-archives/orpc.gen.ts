@@ -3,6 +3,8 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zDeleteWorkflowRunArchivesByYearByMonthPath,
+  zDeleteWorkflowRunArchivesByYearByMonthResponse,
   zGetWorkflowRunArchivesDownloadsByDownloadIdPath,
   zGetWorkflowRunArchivesDownloadsByDownloadIdResponse,
   zGetWorkflowRunArchivesResponse,
@@ -51,6 +53,30 @@ export const downloads = {
 }
 
 /**
+ * Permanently delete this workspace's monthly archive files and archive index
+ */
+export const delete_ = oc
+  .route({
+    description: "Permanently delete this workspace's monthly archive files and archive index",
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkflowRunArchivesByYearByMonth',
+    path: '/workflow-run-archives/{year}/{month}',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteWorkflowRunArchivesByYearByMonthPath }))
+  .output(zDeleteWorkflowRunArchivesByYearByMonthResponse)
+
+export const byMonth = {
+  delete: delete_,
+}
+
+export const byYear = {
+  byMonth,
+}
+
+/**
  * List monthly workflow-run archive metadata for the current workspace
  */
 export const get2 = oc
@@ -67,6 +93,7 @@ export const get2 = oc
 export const workflowRunArchives = {
   get: get2,
   downloads,
+  byYear,
 }
 
 export const contract = {
