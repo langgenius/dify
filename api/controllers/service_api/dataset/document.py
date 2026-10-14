@@ -75,6 +75,7 @@ from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
 from models.dataset import Dataset, Document
+from models.enums import DocumentCreatedFrom
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_creator,
     get_document_hit_count,

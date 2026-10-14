@@ -7,9 +7,9 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.datasets.datasets_document import DocumentDetailResponse, DocumentWithSegmentsListResponse
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, DocumentSegment
-from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.documents.application import DocumentListFilter, DocumentNotFoundError
 from services.knowledge.resource_scope import DatasetRef
@@ -33,27 +33,27 @@ def _dataset(**values: object) -> Dataset:
 
 
 def _document(**values: object) -> Document:
-    return Document(
-        **{
-            "id": "document-1",
-            "tenant_id": "tenant-1",
-            "dataset_id": "dataset-1",
-            "position": 1,
-            "data_source_type": "local_file",
-            "data_source_info": json.dumps({"file_path": "/path/to/file"}),
-            "batch": "batch-1",
-            "name": "Document",
-            "created_from": "web",
-            "created_by": "actor-1",
-            "indexing_status": IndexingStatus.COMPLETED,
-            "doc_form": "text_model",
-            "enabled": True,
-            "archived": False,
-            "word_count": 10,
-            "created_at": datetime(2024, 1, 1),
-            **values,
-        }
+    row = Document(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        position=1,
+        data_source_type=DataSourceType("local_file"),
+        batch="batch-1",
+        name="Document",
+        created_from=DocumentCreatedFrom("web"),
+        created_by="actor-1",
     )
+    row.id = "document-1"
+    row.data_source_info = json.dumps({"file_path": "/path/to/file"})
+    row.indexing_status = IndexingStatus.COMPLETED
+    row.doc_form = IndexStructureType.PARAGRAPH_INDEX
+    row.enabled = True
+    row.archived = False
+    row.word_count = 10
+    row.created_at = datetime(2024, 1, 1)
+    for key, value in values.items():
+        setattr(row, key, value)
+    return row
 
 
 def _segment(

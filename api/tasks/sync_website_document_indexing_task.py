@@ -12,7 +12,7 @@ from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
-from models.enums import IndexingStatus
+from models.enums import DataSourceType, IndexingStatus
 from repositories.knowledge.document_repository import _get_document
 from services.feature_service import FeatureService
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service

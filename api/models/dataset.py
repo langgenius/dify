@@ -1,7 +1,6 @@
 import json
 import pickle
 from collections.abc import Sequence
-from dataclasses import asdict
 from datetime import UTC, datetime
 from json import JSONDecodeError
 from typing import Any, ClassVar, TypedDict, cast, override
@@ -545,20 +544,6 @@ class Document(TypeBase):
             "segment_count": segment_count,
             "hit_count": hit_count,
         }
-        return result
-
-    def to_dict(self) -> dict[str, Any]:
-        result = asdict(self)
-        result.pop("need_summary")
-        result.update(
-            display_status=self.display_status,
-            data_source_info_dict=self.data_source_info_dict,
-            average_segment_length=self.average_segment_length,
-            dataset_process_rule=self.dataset_process_rule.to_dict() if self.dataset_process_rule else None,
-            dataset=None,
-            segment_count=self.segment_count,
-            hit_count=self.hit_count,
-        )
         return result
 
 
