@@ -28,7 +28,7 @@ def configure_default_models_task(self, tenant_id: str, plugin_install_task_id: 
                 "Failed to fetch default plugin installation task for tenant %s; retrying",
                 tenant_id,
             )
-            raise self.retry(exc=exc)
+            raise self.retry(exc=exc) from exc
 
         if install_task.status in (PluginInstallTaskStatus.Pending, PluginInstallTaskStatus.Running):
             raise self.retry()

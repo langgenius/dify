@@ -223,8 +223,8 @@ class SnippetDraftWorkflowApi(Resource):
                 account=current_user,
                 input_fields=req_data.input_fields,
             )
-        except WorkflowHashNotEqualError:
-            raise DraftWorkflowNotSync()
+        except WorkflowHashNotEqualError as caught_error:
+            raise DraftWorkflowNotSync() from caught_error
         except ValueError as e:
             raise InvalidArgumentError(str(e)) from e
 
@@ -502,11 +502,11 @@ class SnippetWorkflowByIdApi(Resource):
                     workflow_id=workflow_id,
                 )
             except WorkflowInUseError as e:
-                raise BadRequest(str(e))
+                raise BadRequest(str(e)) from e
             except DraftWorkflowDeletionError as e:
-                raise BadRequest(str(e))
+                raise BadRequest(str(e)) from e
             except ValueError as e:
-                raise NotFound(str(e))
+                raise NotFound(str(e)) from e
 
         return None, 204
 
@@ -745,9 +745,9 @@ class SnippetDraftRunIterationNodeApi(Resource):
             return helper.compact_generate_response(response)
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -796,9 +796,9 @@ class SnippetDraftRunLoopNodeApi(Resource):
             return helper.compact_generate_response(response)
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/run")
@@ -840,9 +840,9 @@ class SnippetDraftWorkflowRunApi(Resource):
             return helper.compact_generate_response(response)
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/tasks/<string:task_id>/stop")

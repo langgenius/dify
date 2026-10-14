@@ -194,8 +194,8 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
                 submission_user_id=submission_user_id,
                 submission_end_user_id=submission_end_user_id,
             )
-        except FormNotFoundError:
-            raise HumanInputFormNotFound()
+        except FormNotFoundError as caught_error:
+            raise HumanInputFormNotFound() from caught_error
 
         return FormSubmitResponse()
 

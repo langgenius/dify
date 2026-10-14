@@ -208,8 +208,8 @@ class SSETransport:
         """
         try:
             status = status_queue.get(timeout=1)
-        except queue.Empty:
-            raise ValueError("failed to get endpoint URL")
+        except queue.Empty as caught_error:
+            raise ValueError("failed to get endpoint URL") from caught_error
 
         match status:
             case _StatusReady():
@@ -295,8 +295,8 @@ def sse_client(
 
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 401:
-            raise MCPAuthError(response=exc.response)
-        raise MCPConnectionError()
+            raise MCPAuthError(response=exc.response) from exc
+        raise MCPConnectionError() from exc
     except httpx.RequestError as exc:
         # Transport-level failures (refused connection, DNS, protocol errors, timeouts)
         # must keep the MCP error contract: MCPClient only falls back to streamable

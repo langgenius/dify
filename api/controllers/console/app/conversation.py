@@ -218,8 +218,8 @@ class CompletionConversationDetailApi(Resource):
 
         try:
             ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
         return "", 204
 
@@ -387,8 +387,8 @@ class ChatConversationDetailApi(Resource):
 
         try:
             ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
         return "", 204
 

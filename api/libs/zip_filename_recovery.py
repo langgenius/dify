@@ -121,7 +121,7 @@ def open_zip_with_replacement_names(content: bytes) -> zipfile.ZipFile:
         if flags & _UTF8_FLAG:
             try:
                 raw_name.decode("utf-8")
-            except UnicodeDecodeError:
+            except UnicodeDecodeError as caught_error:
                 extra_start = name_start + name_size
                 local_offset = (
                     _local_header_offset(
@@ -133,7 +133,7 @@ def open_zip_with_replacement_names(content: bytes) -> zipfile.ZipFile:
                     + directory.prefix_size
                 )
                 if local_offset < 0 or local_offset + _LOCAL_HEADER.size > directory.start:
-                    raise zipfile.BadZipFile("Invalid ZIP local header offset")
+                    raise zipfile.BadZipFile("Invalid ZIP local header offset") from caught_error
                 local = _LOCAL_HEADER.unpack_from(content, local_offset)
                 local_name_start = local_offset + _LOCAL_HEADER.size
                 if (
@@ -142,7 +142,7 @@ def open_zip_with_replacement_names(content: bytes) -> zipfile.ZipFile:
                     or content[local_name_start : local_name_start + local[9]] != raw_name
                     or not local[2] & _UTF8_FLAG
                 ):
-                    raise zipfile.BadZipFile("ZIP local and directory names differ")
+                    raise zipfile.BadZipFile("ZIP local and directory names differ") from caught_error
                 struct.pack_into("<H", patched, cursor + 8, flags & ~_UTF8_FLAG)
                 struct.pack_into("<H", patched, local_offset + 6, local[2] & ~_UTF8_FLAG)
                 recovered[index] = raw_name.decode("utf-8", errors="replace")

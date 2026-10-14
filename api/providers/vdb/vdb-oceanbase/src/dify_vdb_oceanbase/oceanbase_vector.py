@@ -171,7 +171,7 @@ class OceanBaseVector(BaseVector):
                         "Failed to set ob_vector_memory_limit_percentage. "
                         + "Maybe the database user has insufficient privilege.",
                         e,
-                    )
+                    ) from e
 
             cols = [
                 Column("id", String(36), primary_key=True, autoincrement=False),

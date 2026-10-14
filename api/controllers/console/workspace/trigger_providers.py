@@ -512,7 +512,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error updating subscription", exc_info=e)
             raise
@@ -548,7 +548,7 @@ class TriggerSubscriptionDeleteApi(Resource):
                 )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error deleting provider credential", exc_info=e)
             raise
@@ -783,7 +783,7 @@ class TriggerOAuthClientManageApi(Resource):
             return dump_response(SimpleResultResponse, result)
 
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error configuring OAuth client", exc_info=e)
             raise
@@ -809,7 +809,7 @@ class TriggerOAuthClientManageApi(Resource):
             )
             return dump_response(SimpleResultResponse, result)
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error removing OAuth client", exc_info=e)
             raise

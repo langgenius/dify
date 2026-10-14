@@ -81,20 +81,20 @@ class InstalledAppWorkflowRunApi(Resource):
         except AccountNotFoundError:
             raise UnauthorizedError("Account no longer exists.") from None
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")

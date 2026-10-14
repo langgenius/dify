@@ -250,9 +250,9 @@ def uuid_value(value: str | UUID) -> str:
     try:
         uuid_obj = uuid.UUID(value)
         return str(uuid_obj)
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{value} is not a valid uuid."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 def normalize_uuid(value: str | UUID) -> str:
@@ -314,9 +314,9 @@ def timestamp_value(timestamp):
         if int_timestamp < 0:
             raise ValueError
         return int_timestamp
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{timestamp} is not a valid timestamp."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 class StrLen:
@@ -345,11 +345,11 @@ class DatetimeString:
     def __call__(self, value):
         try:
             datetime.strptime(value, self.format)
-        except ValueError:
+        except ValueError as caught_error:
             error = "Invalid {arg}: {val}. {arg} must be conform to the format {format}".format(
                 arg=self.argument, val=value, format=self.format
             )
-            raise ValueError(error)
+            raise ValueError(error) from caught_error
 
         return value
 

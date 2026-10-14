@@ -355,8 +355,8 @@ class Workflow(Base):  # bug
 
         try:
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
-        except StopIteration:
-            raise NodeNotFoundError(node_id)
+        except StopIteration as caught_error:
+            raise NodeNotFoundError(node_id) from caught_error
         return NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
 
     @staticmethod

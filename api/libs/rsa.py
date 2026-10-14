@@ -71,8 +71,8 @@ def get_decrypt_decoding(tenant_id: str) -> tuple[RSA.RsaKey, object]:
     if not private_key:
         try:
             private_key = storage.load(filepath)
-        except FileNotFoundError:
-            raise PrivkeyNotFoundError(f"Private key not found, tenant_id: {tenant_id}")
+        except FileNotFoundError as caught_error:
+            raise PrivkeyNotFoundError(f"Private key not found, tenant_id: {tenant_id}") from caught_error
 
         redis_client.setex(cache_key, 120, private_key)
 
