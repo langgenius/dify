@@ -77,6 +77,8 @@ from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCre
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 logger = logging.getLogger(__name__)
+_PUBLIC_V2_FORM_PAGE_PATH = "/form-v2"
+_LEGACY_FORM_PAGE_PATH = "/form"
 
 
 @dataclass(frozen=True, slots=True)
@@ -342,7 +344,9 @@ class HumanInputDeliveryService:
                         user_id, context.form.resolved_form, CorrelationToken(token.get_secret_value())
                     )
                 else:
-                    body = template.body.replace(EmailDeliveryConfig.URL_PLACEHOLDER, self._request_url(token))
+                    body = template.body.replace(
+                        EmailDeliveryConfig.URL_PLACEHOLDER, self._request_url(token, auth_type)
+                    )
                     result = adapter.messaging.send_text(user_id, f"{template.subject}\n\n{body}")
             except DynamicCardMessagingError:
                 result = MessageSendingError("The provider could not send the assessed card")
@@ -372,7 +376,7 @@ class HumanInputDeliveryService:
             return None
         token = SecretStr(secrets.token_urlsafe(32))
         delivery = self._prepare_delivery(context, snapshot, context.auth_type, token)
-        body = template.body.replace(EmailDeliveryConfig.URL_PLACEHOLDER, self._request_url(token))
+        body = template.body.replace(EmailDeliveryConfig.URL_PLACEHOLDER, self._request_url(token, context.auth_type))
         html = EmailDeliveryConfig.render_markdown_body(body)
         try:
             client.send(to=target.email, subject=template.subject, html=html)
@@ -385,11 +389,12 @@ class HumanInputDeliveryService:
         return self._record(delivery, outcome)
 
     @staticmethod
-    def _request_url(token: SecretStr) -> str:
+    def _request_url(token: SecretStr, auth_type: SubmissionAuthType) -> str:
         base_url = dify_config.APP_WEB_URL
         if not base_url:
             raise ValueError("APP_WEB_URL is required for Human Input approval links")
-        return f"{base_url.rstrip('/')}/form/{quote(token.get_secret_value(), safe='')}"
+        page_path = _PUBLIC_V2_FORM_PAGE_PATH if auth_type == SubmissionAuthType.EMAIL_OTP else _LEGACY_FORM_PAGE_PATH
+        return f"{base_url.rstrip('/')}{page_path}/{quote(token.get_secret_value(), safe='')}"
 
     @staticmethod
     def _warn(context: _RecipientContext, reason: str) -> None:

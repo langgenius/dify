@@ -2073,6 +2073,47 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
         assert providers[1].call_count == len(recipient_outcomes)
 
 
+@pytest.mark.parametrize("recipient_kind", ["external_contact", "dynamic_email", "onetime_email"])
+def test_public_email_links_use_the_v2_form_page(context: Context, providers, recipient_kind):
+    from repositories.human_input_v2.contact import ExternalContact
+    from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
+    from services.human_input_v2.composition import build_human_input_delivery_service
+
+    email = "approver@example.com"
+    pool = VariablePool()
+    if recipient_kind == "external_contact":
+        contact_id = ContactId(str(uuid4()))
+        with context.sessions.begin() as session:
+            SQLAlchemyContactRepository(session).save_external_contact(
+                _TENANT,
+                ExternalContact(
+                    id=contact_id,
+                    name="Approver",
+                    email=email,
+                    avatar_file_id=None,
+                    created_at=naive_utc_now(),
+                ),
+            )
+        recipient = Contact(contact_id=contact_id)
+    elif recipient_kind == "dynamic_email":
+        pool.add(["upstream", "email"], email)
+        recipient = DynamicEmail(selector=["upstream", "email"])
+    else:
+        recipient = OnetimeEmail(email=email)
+
+    created = context.prepare(_node(recipient), pool)
+    assert isinstance(created, CreatedForm)
+    build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
+        form=created.form,
+        recipient=created.recipients[0],
+        message_template=created.message_template,
+    )
+
+    email_send = providers[1]
+    assert email_send.call_args.kwargs["to"] == email
+    assert "https://app.example.com/form-v2/" in email_send.call_args.kwargs["html"]
+
+
 def test_delivery_uses_one_injected_email_client_for_multiple_recipients(context: Context, monkeypatch):
     from configs import dify_config
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
@@ -2117,7 +2158,7 @@ def test_enterprise_email_delivery_uses_configured_deployment_client(context: Co
         send.assert_called_once()
         assert send.call_args.kwargs["to"] == "recipient@example.com"
         assert send.call_args.kwargs["subject"] == "Review"
-        assert "https://app.example.com/form/" in send.call_args.kwargs["html"]
+        assert "https://app.example.com/form-v2/" in send.call_args.kwargs["html"]
     else:
         assert result.attempts == ()
         send.assert_not_called()
