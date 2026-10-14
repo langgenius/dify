@@ -191,7 +191,11 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         ttl = self._redis.pttl(key)
         if ttl <= 0:
             return False
-        return bool(self._redis.set(f"{key}:membership_used", "1", nx=True, px=ttl))
+        return bool(self._redis.set(self._membership_used_key(invitation.token), "1", nx=True, px=ttl))
+
+    @override
+    def is_membership_consumed(self, invitation: InvitationLookup) -> bool:
+        return self._redis.get(self._membership_used_key(invitation.token)) == b"1"
 
     @override
     def revoke(self, invitation: InvitationLookup) -> None:
@@ -203,6 +207,10 @@ class RedisInvitationTokenStore(InvitationTokenStore):
     @staticmethod
     def _invitation_token_key(token: str) -> str:
         return f"member_invite:token:{token}"
+
+    @classmethod
+    def _membership_used_key(cls, token: str) -> str:
+        return f"{cls._invitation_token_key(token)}:membership_used"
 
     @staticmethod
     def _workspace_invitation_key(invitation: InvitationLookup) -> str:

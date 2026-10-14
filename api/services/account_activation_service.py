@@ -27,6 +27,8 @@ _PENDING_ACCOUNT_STATUS = "pending"
 class InvitationTokenStore(Protocol):
     def consume_membership(self, invitation: InvitationLookup) -> bool: ...
 
+    def is_membership_consumed(self, invitation: InvitationLookup) -> bool: ...
+
     def find(self, invitation: InvitationLookup) -> InvitationToken | None: ...
 
     def revoke(self, invitation: InvitationLookup) -> None: ...
@@ -41,6 +43,7 @@ class AccountActivationRepository(Protocol):
         *,
         role: str,
         setup: AccountSetup | None,
+        create_membership: bool = True,
     ) -> ActivationPersistenceResult | None: ...
 
 
@@ -111,6 +114,8 @@ class AccountActivationService:
 
         setup = self._resolve_setup(invitation, command)
         role = self._membership_role(invitation.role)
+        # An invitation that already restored membership at sign-in must not grant it again after removal.
+        membership_consumed = self._tokens.is_membership_consumed(command.invitation)
 
         normalized_email = command.invitation.email.lower() if command.invitation.email else None
         self._tokens.revoke(
@@ -120,7 +125,7 @@ class AccountActivationService:
                 token=command.invitation.token,
             )
         )
-        result = self._accounts.activate(invitation, role=role, setup=setup)
+        result = self._accounts.activate(invitation, role=role, setup=setup, create_membership=not membership_consumed)
         if result is None:
             raise InvalidInvitationError
         if result.membership_created:
