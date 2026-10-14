@@ -9,6 +9,7 @@ from controllers.console.auth.error import InvitationAccountMismatchError as Inv
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, timezone
 from libs.login import current_account_with_tenant
 from libs.token import extract_access_token
@@ -100,6 +101,9 @@ class ActivateCheckApi(Resource):
 
 @console_ns.route("/activate")
 class ActivateApi(Resource):
+    @error_responses(
+        AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError, InvitationAccountMismatchHTTPError
+    )
     @console_ns.doc("activate_account")
     @console_ns.doc(description="Activate account with invitation token")
     @console_ns.expect(console_ns.models[ActivatePayload.__name__])

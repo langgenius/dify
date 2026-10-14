@@ -7,6 +7,7 @@ import { API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports -- The Console HTTP adapter must preserve existing auth refresh, CSRF, and error handling.
 import { request } from '../base'
 import { createConsoleContractLink } from './contract-loader'
+import { validateDefinedErrors } from './defined-errors'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClientContext> {
@@ -23,7 +24,7 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
         silent: options.context.silent,
       })
     },
-    interceptors: [onError((error) => console.error(error))],
+    interceptors: [validateDefinedErrors(contract), onError((error) => console.error(error))],
   })
 }
 

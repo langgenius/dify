@@ -3,6 +3,20 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountInFreezeError,
+  zEmailAlreadyInUseError,
+  zEmailCodeError,
+  zEmailDomainSuspendedError,
+  zEmailRegisterLimitError,
+  zEmailRegisterRateLimitExceededError,
+  zEmailSendIpLimitError,
+  zInvalidEmailError,
+  zInvalidOrExpiredTokenError,
+  zLimitExceededError,
+  zNormalizedEmailAlreadyInUseError,
+  zPasswordMismatchError,
+} from './zod.gen.ts'
+import {
   zPostEmailRegisterBody,
   zPostEmailRegisterResponse,
   zPostEmailRegisterSendEmailBody,
@@ -21,6 +35,12 @@ export const post = oc
   })
   .input(z.object({ body: zPostEmailRegisterSendEmailBody }))
   .output(zPostEmailRegisterSendEmailResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    email_register_rate_limit_exceeded: { status: 429, data: zEmailRegisterRateLimitExceededError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+  })
 
 export const sendEmail = {
   post,
@@ -36,6 +56,12 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostEmailRegisterValidityBody }))
   .output(zPostEmailRegisterValidityResponse)
+  .errors({
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_register_limit: { status: 429, data: zEmailRegisterLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+  })
 
 export const validity = {
   post: post2,
@@ -51,6 +77,15 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostEmailRegisterBody }))
   .output(zPostEmailRegisterResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    limit_exceeded: { status: 400, data: zLimitExceededError },
+    normalized_email_already_in_use: { status: 400, data: zNormalizedEmailAlreadyInUseError },
+    password_mismatch: { status: 400, data: zPasswordMismatchError },
+  })
 
 export const emailRegister = {
   post: post3,
