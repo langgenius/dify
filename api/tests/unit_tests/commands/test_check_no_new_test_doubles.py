@@ -276,13 +276,46 @@ def test_requires_an_explicit_diff_source(repo: Path) -> None:
     assert run_guard(repo, "--staged", "--base-rev", "HEAD").returncode == 2
 
 
+@pytest.mark.parametrize("kind", ["mock", "subclass"])
+@pytest.mark.parametrize("add_violation", [False, True])
+def test_pr_merge_uses_the_tested_target_revision(repo: Path, kind: str, add_violation: bool) -> None:
+    stale_base = git(repo, "rev-parse", "HEAD")
+    violation = (
+        "value = Mock()\n" if kind == "mock" else "class Recorder(ModelInstance):\n    def __init__(self): pass\n"
+    )
+    git(repo, "checkout", "-b", "feature")
+    pr_path = "api/tests/unit_tests/test_pr.py"
+    write_source(repo, violation if add_violation else "value = RealModel()\n", pr_path)
+    commit(repo)
+    git(repo, "checkout", "main")
+    write_source(repo, violation)
+    target_revision = commit(repo)
+    git(repo, "merge", "--no-ff", "feature", "-m", "PR merge")
+
+    # The stale event base incorrectly reports changes already in the target branch.
+    stale_result = run_guard(repo, "--base-rev", stale_base)
+    assert stale_result.returncode == 1, stale_result.stderr
+    assert TEST_PATH in stale_result.stderr
+    assert git(repo, "rev-parse", "HEAD^1") == target_revision
+
+    result = run_guard(repo, "--base-rev", "HEAD^1")
+    assert result.returncode == int(add_violation), result.stderr
+    assert TEST_PATH not in result.stderr
+    if add_violation:
+        assert pr_path in result.stderr
+
+
 def test_ci_runs_the_guard_and_classifies_its_implementation_changes() -> None:
     style = (REPO_ROOT / ".github/workflows/style.yml").read_text(encoding="utf-8")
     assert (
         "      - name: Run No New Test Doubles Guard\n"
         "        if: inputs.run-python-style || inputs.run-dify-agent-style\n"
+        "        # A PR event can retain an older base SHA after its target branch advances.\n"
+        "        # Checkout tests the merge commit. Its first parent is the tested target revision.\n"
+        "        env:\n"
+        "          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}\n"
         "        run: uv run --project api python scripts/check_no_new_test_doubles.py "
-        '--base-rev "${{ inputs.base-rev }}"' in style
+        '--base-rev "$GUARD_BASE_REV"' in style
     )
     workflow = (REPO_ROOT / ".github/workflows/main-ci.yml").read_text(encoding="utf-8")
     for name in ("api", "python-style"):

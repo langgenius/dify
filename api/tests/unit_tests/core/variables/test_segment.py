@@ -88,7 +88,7 @@ def _build_variable_pool(
     return variable_pool
 
 
-def test_segment_group_to_text():
+def test_segment_group_to_text() -> None:
     variable_pool = _build_variable_pool(
         system_variables=build_system_variables(user_id="fake-user-id"),
         environment_variables=[
@@ -108,7 +108,7 @@ def test_segment_group_to_text():
     )
 
 
-def test_convert_constant_to_segment_group():
+def test_convert_constant_to_segment_group() -> None:
     variable_pool = _build_variable_pool(
         system_variables=build_system_variables(user_id="1", app_id="1", workflow_id="1"),
     )
@@ -118,7 +118,7 @@ def test_convert_constant_to_segment_group():
     assert segments_group.log == "Hello, world!"
 
 
-def test_convert_variable_to_segment_group():
+def test_convert_variable_to_segment_group() -> None:
     variable_pool = _build_variable_pool(system_variables=build_system_variables(user_id="fake-user-id"))
     template = "{{#sys.user_id#}}"
     segments_group = convert_template(variable_pool, template)
@@ -161,28 +161,28 @@ def create_test_file(
 class TestSegmentDumpAndLoad:
     """Test suite for segment and variable serialization/deserialization"""
 
-    def test_segments(self):
+    def test_segments(self) -> None:
         """Test basic segment serialization compatibility"""
         model = _Segments(segments=[IntegerSegment(value=1), StringSegment(value="a")])
         json = model.model_dump_json()
         loaded = _Segments.model_validate_json(json)
         assert loaded == model
 
-    def test_segment_number(self):
+    def test_segment_number(self) -> None:
         """Test number segment serialization compatibility"""
         model = _Segments(segments=[IntegerSegment(value=1), FloatSegment(value=1.0)])
         json = model.model_dump_json()
         loaded = _Segments.model_validate_json(json)
         assert loaded == model
 
-    def test_variables(self):
+    def test_variables(self) -> None:
         """Test variable serialization compatibility"""
         model = _Variables(variables=[IntegerVariable(value=1, name="int"), StringVariable(value="a", name="str")])
         json = model.model_dump_json()
         restored = _Variables.model_validate_json(json)
         assert restored == model
 
-    def test_all_segments_serialization(self):
+    def test_all_segments_serialization(self) -> None:
         """Test file-aware segment serialization through Dify's model boundary."""
         # Create one instance of each segment type
         test_file = create_test_file()
@@ -224,7 +224,7 @@ class TestSegmentDumpAndLoad:
             else:
                 assert loaded_segment.value == original.value
 
-    def test_all_variables_serialization(self):
+    def test_all_variables_serialization(self) -> None:
         """Test file-aware variable serialization through Dify's model boundary."""
         # Create one instance of each variable type
         test_file = create_test_file()
@@ -267,7 +267,7 @@ class TestSegmentDumpAndLoad:
             else:
                 assert loaded_variable.value == original.value
 
-    def test_segment_discriminator_function_for_segment_types(self):
+    def test_segment_discriminator_function_for_segment_types(self) -> None:
         """Test the segment discriminator function"""
 
         @dataclasses.dataclass
@@ -335,7 +335,7 @@ class TestSegmentDumpAndLoad:
                 f"get_segment_discriminator failed for serialized form of type {type(segment)}"
             )
 
-    def test_variable_discriminator_function_for_variable_types(self):
+    def test_variable_discriminator_function_for_variable_types(self) -> None:
         """Test the variable discriminator function"""
 
         @dataclasses.dataclass
@@ -407,7 +407,7 @@ class TestSegmentDumpAndLoad:
                 f"get_segment_discriminator failed for serialized form of type {type(variable)}"
             )
 
-    def test_invalid_value_for_discriminator(self):
+    def test_invalid_value_for_discriminator(self) -> None:
         # Test invalid cases
         assert get_segment_discriminator({"value_type": "invalid"}) is None
         assert get_segment_discriminator({}) is None
@@ -417,7 +417,7 @@ class TestSegmentDumpAndLoad:
 
 
 class TestSegmentAdditionalProperties:
-    def test_base_segment_text_log_markdown_size_and_to_object(self):
+    def test_base_segment_text_log_markdown_size_and_to_object(self) -> None:
         """Ensure StringSegment exposes text, log, markdown, size and to_object."""
         segment = StringSegment(value="hello")
 
@@ -427,7 +427,7 @@ class TestSegmentAdditionalProperties:
         assert segment.size > 0
         assert segment.to_object() == "hello"
 
-    def test_none_segment_empty_outputs(self):
+    def test_none_segment_empty_outputs(self) -> None:
         """Ensure NoneSegment renders empty text, log and markdown."""
         segment = NoneSegment()
 
@@ -435,7 +435,7 @@ class TestSegmentAdditionalProperties:
         assert segment.log == ""
         assert segment.markdown == ""
 
-    def test_object_segment_json_outputs(self):
+    def test_object_segment_json_outputs(self) -> None:
         """Ensure ObjectSegment renders JSON output for text, log and markdown."""
         segment = ObjectSegment(value={"key": "值", "n": 1})
 
@@ -443,7 +443,7 @@ class TestSegmentAdditionalProperties:
         assert segment.log == '{\n  "key": "值",\n  "n": 1\n}'
         assert segment.markdown == '{\n  "key": "值",\n  "n": 1\n}'
 
-    def test_array_segment_text_and_markdown(self):
+    def test_array_segment_text_and_markdown(self) -> None:
         """Ensure ArrayAnySegment handles empty/non-empty text and markdown rendering."""
         empty_segment = ArrayAnySegment(value=[])
         non_empty_segment = ArrayAnySegment(value=[1, "two"])
@@ -452,7 +452,7 @@ class TestSegmentAdditionalProperties:
         assert non_empty_segment.text == "[1, 'two']"
         assert non_empty_segment.markdown == "- 1\n- two"
 
-    def test_file_segment_properties(self):
+    def test_file_segment_properties(self) -> None:
         """Ensure FileSegment markdown, text and log fields match expected behavior."""
         file = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="doc.txt")
         segment = FileSegment(value=file)
@@ -461,7 +461,7 @@ class TestSegmentAdditionalProperties:
         assert segment.log == ""
         assert segment.text == ""
 
-    def test_array_string_segment_text_branches(self):
+    def test_array_string_segment_text_branches(self) -> None:
         """Ensure ArrayStringSegment text handling for empty and non-empty values."""
         empty_segment = ArrayStringSegment(value=[])
         non_empty_segment = ArrayStringSegment(value=["hello", "世界"])
@@ -469,7 +469,7 @@ class TestSegmentAdditionalProperties:
         assert empty_segment.text == ""
         assert non_empty_segment.text == '["hello", "世界"]'
 
-    def test_array_file_segment_markdown_and_empty_text_log(self):
+    def test_array_file_segment_markdown_and_empty_text_log(self) -> None:
         """Ensure ArrayFileSegment markdown renders links and text/log stay empty."""
         file1 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="a.txt")
         file2 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="b.txt")
@@ -481,7 +481,7 @@ class TestSegmentAdditionalProperties:
 
 
 class TestSegmentGroupAdditional:
-    def test_segment_group_markdown_and_to_object(self):
+    def test_segment_group_markdown_and_to_object(self) -> None:
         group = SegmentGroup(value=[StringSegment(value="A"), NoneSegment(), StringSegment(value="B")])
 
         assert group.markdown == "AB"
@@ -489,41 +489,43 @@ class TestSegmentGroupAdditional:
 
 
 class TestSegmentUtils:
-    def test_to_selector_without_paths(self):
+    def test_to_selector_without_paths(self) -> None:
         assert to_selector("node-1", "output") == ["node-1", "output"]
 
-    def test_to_selector_with_paths(self):
+    def test_to_selector_with_paths(self) -> None:
         assert to_selector("node-1", "output", ("a", "b")) == ["node-1", "output", "a", "b"]
 
-    def test_array_file_segment_serialization(self):
+    def test_array_file_segment_serialization(self) -> None:
         file1 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="a.txt")
         file2 = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="b.txt")
 
         result = segment_orjson_default(ArrayFileSegment(value=[file1, file2]))
 
+        assert isinstance(result, list)
         assert len(result) == 2
         assert result[0]["filename"] == "a.txt"
         assert result[1]["filename"] == "b.txt"
 
-    def test_file_segment_serialization(self):
+    def test_file_segment_serialization(self) -> None:
         file = create_test_file(transfer_method=FileTransferMethod.REMOTE_URL, filename="single.txt")
 
         result = segment_orjson_default(FileSegment(value=file))
 
+        assert isinstance(result, dict)
         assert result["filename"] == "single.txt"
         assert result["remote_url"] == "https://example.com/file.txt"
 
-    def test_segment_group_and_segment_serialization(self):
+    def test_segment_group_and_segment_serialization(self) -> None:
         group = SegmentGroup(value=[StringSegment(value="a"), StringSegment(value="b")])
 
         assert segment_orjson_default(group) == ["a", "b"]
         assert segment_orjson_default(StringSegment(value="value")) == "value"
 
-    def test_segment_orjson_default_unsupported_type(self):
+    def test_segment_orjson_default_unsupported_type(self) -> None:
         with pytest.raises(TypeError, match="not JSON serializable"):
             segment_orjson_default(object())
 
-    def test_dumps_with_segments(self):
+    def test_dumps_with_segments(self) -> None:
         data = {
             "segment": StringSegment(value="hello"),
             "group": SegmentGroup(value=[StringSegment(value="x"), StringSegment(value="y")]),

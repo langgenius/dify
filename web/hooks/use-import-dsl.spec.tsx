@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { useImportDSL } from './use-import-dsl'
@@ -275,12 +276,12 @@ describe('useImportDSL', () => {
       () => Response.json({ message: 'Missing app section' }, { status: 400 }),
       'Missing app section',
     ],
-    ['empty', () => new Response(null, { status: 500 }), undefined],
-    ['HTML', () => new Response('<html>Bad gateway</html>', { status: 502 }), undefined],
+    ['empty', () => new Response(null, { status: 500 }), 'HTTP 500'],
+    ['HTML', () => new Response('<html>Bad gateway</html>', { status: 502 }), 'HTTP 502'],
   ] as const)(
     'shows one failure toast for a %s import response',
     async (_, response, description) => {
-      mockImportDSL.mockRejectedValue(response())
+      mockImportDSL.mockRejectedValue(await httpErrorFromResponse(response()))
       const onFailed = vi.fn()
       const { result } = renderHookWithConsoleQuery(() => useImportDSL())
 
@@ -360,7 +361,9 @@ describe('useImportDSL', () => {
   it('shows the backend error when confirmation rejects with an HTTP response', async () => {
     mockImportDSL.mockResolvedValue({ id: 'import-1', status: DSLImportStatus.PENDING })
     mockImportDSLConfirm.mockRejectedValue(
-      Response.json({ error: 'Import confirmation expired' }, { status: 400 }),
+      await httpErrorFromResponse(
+        Response.json({ error: 'Import confirmation expired' }, { status: 400 }),
+      ),
     )
     const onFailed = vi.fn()
     const { result } = renderHookWithConsoleQuery(() => useImportDSL())

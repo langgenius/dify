@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.app_entities import AppListBaseParams
-from services.rbac.contracts import MyPermissionsResponse
+from services.rbac.contracts import MyPermissionsResponse, ResourceWhitelistResources
 
 # Permission keys (dot-notation, from MyPermissionsResponse) that grant
 # list/preview access to an app. Keep this the single source of truth for both
@@ -78,7 +78,13 @@ def resolve_app_access_filter(
             account_id,
         )
     whitelist_scope = enterprise_rbac_service.RBACService.AppAccess.whitelist_resources(tenant_id, account_id)
+    return app_access_filter_from_permissions(permissions, whitelist_scope)
 
+
+def app_access_filter_from_permissions(
+    permissions: MyPermissionsResponse, whitelist_scope: ResourceWhitelistResources
+) -> AppAccessFilter:
+    """Compute visibility from permission and whitelist snapshots without I/O."""
     can_manage_own_apps = _MANAGE_OWN_APPS_PERMISSION_KEY in permissions.workspace.permission_keys
     has_default_preview = has_app_list_permission(permissions.app.default_permission_keys) or has_app_list_permission(
         permissions.workspace.permission_keys
@@ -94,7 +100,7 @@ def resolve_app_access_filter(
         }
 
     accessible_app_ids: set[str] | None
-    if getattr(whitelist_scope, "unrestricted", False):
+    if whitelist_scope.unrestricted:
         accessible_app_ids = permission_app_ids
     else:
         # A restricted app whitelist is the highest-priority visibility gate:

@@ -40,7 +40,7 @@ const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved 
       onSaved()
       onClose()
     } catch (error) {
-      if (error) toast.error(error.toString())
+      if (error) toast.error(error instanceof Error ? error.message : String(error))
     } finally {
       setSaveLoadingFalse()
     }

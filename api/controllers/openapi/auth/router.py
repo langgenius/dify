@@ -61,9 +61,8 @@ class AuthRouter:
         subject = subject_from_auth(auth)
         pipeline = pipeline_for_subject(subject)
 
-        # ORM-backed endpoints share the admission session with the handler.
-        # Account-context endpoints materialize identity and release it in the
-        # pipeline, before calling services that own their transactions.
+        # The pipeline closes the admission session before handlers that use only
+        # identity values or no context; ORM handlers keep sharing it.
         with session_factory.create_session() as session:
             ctx = Context(
                 subject,

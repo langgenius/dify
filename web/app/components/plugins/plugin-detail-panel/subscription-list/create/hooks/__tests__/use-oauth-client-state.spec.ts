@@ -5,10 +5,10 @@ import type {
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { createHttpError } from '@/service/http-error'
 import {
   AuthorizationStatusEnum,
   ClientTypeEnum,
-  getErrorMessage,
   useOAuthClientState,
 } from '../use-oauth-client-state'
 
@@ -112,43 +112,6 @@ vi.mock('@/app/notifications', () => ({
 // ============================================================================
 // Test Suites
 // ============================================================================
-
-describe('getErrorMessage', () => {
-  it('should extract message from Error instance', () => {
-    const error = new Error('Test error message')
-    expect(getErrorMessage(error, 'fallback')).toBe('Test error message')
-  })
-
-  it('should extract message from object with message property', () => {
-    const error = { message: 'Object error message' }
-    expect(getErrorMessage(error, 'fallback')).toBe('Object error message')
-  })
-
-  it('should return fallback when error is empty object', () => {
-    expect(getErrorMessage({}, 'fallback')).toBe('fallback')
-  })
-
-  it('should return fallback when error.message is not a string', () => {
-    expect(getErrorMessage({ message: 123 }, 'fallback')).toBe('fallback')
-  })
-
-  it('should return fallback when error.message is empty string', () => {
-    expect(getErrorMessage({ message: '' }, 'fallback')).toBe('fallback')
-  })
-
-  it('should return fallback when error is null', () => {
-    expect(getErrorMessage(null, 'fallback')).toBe('fallback')
-  })
-
-  it('should return fallback when error is undefined', () => {
-    expect(getErrorMessage(undefined, 'fallback')).toBe('fallback')
-  })
-
-  it('should return fallback when error is a primitive', () => {
-    expect(getErrorMessage('string error', 'fallback')).toBe('fallback')
-    expect(getErrorMessage(123, 'fallback')).toBe('fallback')
-  })
-})
 
 describe('useOAuthClientState', () => {
   const defaultParams = {
@@ -368,9 +331,12 @@ describe('useOAuthClientState', () => {
       })
     })
 
-    it('should show error toast with error message on failure', () => {
+    it('shows the HTTP error message when removal fails', () => {
+      const error = createHttpError(new Response(null, { status: 403 }), {
+        message: 'Delete failed',
+      })
       mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError(new Error('Delete failed'))
+        onError(error)
       })
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))

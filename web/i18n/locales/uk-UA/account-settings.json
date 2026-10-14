@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Надішліть код підтвердження",
   "account.setPassword": "Встановити пароль",
   "account.showAppLength": "Показати {{length}} програм",
+  "account.timezoneNoResults": "Відповідних часових поясів не знайдено",
+  "account.timezoneSearchPlaceholder": "Пошук міст або часових поясів…",
   "account.verificationLabel": "Код підтвердження",
   "account.verificationPlaceholder": "Вставте 6-значний код",
   "account.workspaceName": "Назва робочого простору",
