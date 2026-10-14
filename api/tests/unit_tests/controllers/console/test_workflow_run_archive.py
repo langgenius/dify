@@ -359,21 +359,21 @@ def archive_http_client() -> FlaskClient:
     api.error_handlers = console_api.error_handlers.copy()
 
     class ArchiveMonth(Resource):
-        def delete(self, year: int, month: int):
+        def delete(self, year: int, month: int) -> object:
             return _original(WorkflowRunArchiveMonthApi.delete)(self, _CONTEXT, year, month)
 
     class ArchiveDownloads(Resource):
-        def post(self):
+        def post(self) -> object:
             return _original(WorkflowRunArchiveDownloadsApi.post)(
                 self, WorkflowRunArchiveDownloadPayload(year=2025, month=3), _CONTEXT
             )
 
     class ArchiveDownload(Resource):
-        def get(self, download_id: str):
+        def get(self, download_id: str) -> object:
             return _original(WorkflowRunArchiveDownloadApi.get)(self, _CONTEXT, download_id)
 
     class ArchiveDownloadFile(Resource):
-        def get(self, download_id: str):
+        def get(self, download_id: str) -> object:
             return _original(WorkflowRunArchiveDownloadFileApi.get)(self, _CONTEXT, download_id)
 
     api.add_resource(ArchiveMonth, "/workflow-run-archives/<int:year>/<int:month>")
@@ -470,9 +470,11 @@ def test_invalid_archive_month_keeps_bad_request_response(
     response = archive_http_client.delete("/workflow-run-archives/2025/13")
 
     assert response.status_code == 400
-    assert response.json["code"] == "bad_request"
-    assert response.json["status"] == 400
-    assert "month" in response.json["message"]
+    payload = response.json
+    assert isinstance(payload, dict)
+    assert payload["code"] == "bad_request"
+    assert payload["status"] == 400
+    assert "month" in payload["message"]
     service.delete_archive.assert_not_called()
 
 

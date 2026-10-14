@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from botocore.exceptions import ClientError, ReadTimeoutError
-from sqlalchemy import event
+from sqlalchemy import delete, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from libs.archive_storage import ArchiveStorageError
@@ -193,13 +193,17 @@ def _sample_archive_records() -> dict[str, list[dict[str, Any]]]:
     )
 
 
+@pytest.mark.parametrize("cursor_deleted", [False, True])
 def test_catalog_discovery_is_ordered_and_limited_before_storage_io(
-    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session, cursor_deleted: bool
 ) -> None:
     cursor = _catalog_entry()
     entry = _catalog_entry(catalog_id="019f63b7-5ca4-7681-9ce0-800283608f40", bundle_id="bundle-b")
     sqlite_session.add_all([_bundle_model(cursor), _bundle_model(entry)])
     sqlite_session.commit()
+    if cursor_deleted:
+        sqlite_session.execute(delete(WorkflowRunArchiveBundle).where(WorkflowRunArchiveBundle.id == cursor.catalog_id))
+        sqlite_session.commit()
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=storage,
@@ -320,7 +324,6 @@ def test_catalog_shard_preflight_uses_requested_tenant_scope(
 @pytest.mark.parametrize(
     ("cursor_bundle", "tenant_ids", "error_message"),
     [
-        (None, None, "does not exist"),
         (
             _cursor_bundle(year=2024, tenant_id=TENANT_ID),
             None,

@@ -467,9 +467,10 @@ class WorkflowRunBundleArchiveMaintenance:
         target_month: int,
         shard: str | None,
     ) -> None:
-        """Reject a keyset cursor that cannot safely represent the requested catalog scope."""
+        """Validate the cursor scope when its catalog row still exists."""
         if cursor_bundle is None:
-            raise ValueError("after_catalog_id does not exist in the workflow run archive bundle catalog")
+            # Permanent archive deletion can remove a saved cursor; its immutable ID remains an exclusive boundary.
+            return
         if cursor_bundle.year != target_year or cursor_bundle.month != target_month:
             raise ValueError("after_catalog_id is outside the requested archive month")
         if tenant_ids is not None and cursor_bundle.tenant_id not in tenant_ids:

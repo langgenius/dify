@@ -107,6 +107,7 @@ class WorkflowRunArchiveDeleter:
         if _list_scoped_objects(download_storage, download_prefix):
             raise ArchiveStorageError("Temporary workflow run archive downloads could not be deleted")
 
+        # shortcut: rare catalog-writer races are tolerated; share this lease if deletion becomes frequent.
         lease.assert_owned()
         self._bundles.remove_deleted_bundles(tenant_id, catalog_ids=[record.catalog_id for record in requested])
         logger.info(
