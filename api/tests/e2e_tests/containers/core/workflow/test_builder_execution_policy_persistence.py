@@ -198,12 +198,17 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
+    current_head = "a61e9b2c7d40"
     branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
     predecessor = "733e4c46f90e"
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
-    assert scripts.get_heads() == [merge_revision]
+    assert scripts.get_heads() == [current_head]
+    current_merge = scripts.get_revision(current_head)
+    assert current_merge is not None
+    assert isinstance(current_merge.down_revision, tuple)
+    assert set(current_merge.down_revision) == {merge_revision, "f1d3c5b7a902"}
     merged = scripts.get_revision(merge_revision)
     assert merged is not None
     assert isinstance(merged.down_revision, tuple)
@@ -305,9 +310,12 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             "resource_access_tokens_relation",
         )
 
-        def witness() -> dict[str, object]:
+        def witness(*, include_archive: bool = False) -> dict[str, object]:
             inspector = inspect(connection)
-            assert set(inspector.get_table_names(schema=schema)) == {*tables, "alembic_version"}
+            expected_tables = {*tables, "alembic_version"}
+            if include_archive:
+                expected_tables.add("workflow_run_archive_bundles")
+            assert set(inspector.get_table_names(schema=schema)) == expected_tables
             return {
                 table: {
                     "columns": [
@@ -324,12 +332,66 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             }
 
         before = witness()
-        assert migrate("head") == (merge_revision,)
+        assert migrate(merge_revision) == (merge_revision,)
         assert witness() == before
         assert set(migrate(merge_revision, downgrade=True)) == branch_heads
         assert witness() == before
-        assert migrate("head") == (merge_revision,)
+        assert migrate(merge_revision) == (merge_revision,)
         assert witness() == before
+
+        # The new archive branch touches this preexisting table, not the original
+        # six witnesses. Clone its real structure only after the legacy merge/split controls.
+        archive_table = "workflow_run_archive_bundles"
+        connection.execute(text(f"CREATE TABLE {archive_table} (LIKE public.{archive_table} INCLUDING ALL)"))
+        connection.execute(text(f"ALTER TABLE {archive_table} DROP COLUMN deletion_status"))
+        archive_id = str(uuid4())
+        connection.execute(
+            text(
+                "INSERT INTO workflow_run_archive_bundles "
+                "(id,tenant_id,year,month,shard,bundle_id,workflow_run_count,row_count,archive_bytes,archived_at) "
+                "VALUES (:archive_id,:tenant_id,2026,10,'merge-shard','merge-archive-control',2,5,128,"
+                "TIMESTAMP '2026-10-01 12:00:00')"
+            ),
+            {"archive_id": archive_id, "tenant_id": identity},
+        )
+        archive_fields = [column["name"] for column in inspect(connection).get_columns(archive_table, schema=schema)]
+        assert "deletion_status" not in archive_fields
+        archive_projection = ",".join(f'"{field}"' for field in archive_fields)
+
+        def archive_witness() -> dict[str, object]:
+            inspector = inspect(connection)
+            return {
+                "columns": [
+                    (column["name"], str(column["type"]), column["nullable"], column["default"])
+                    for column in inspector.get_columns(archive_table, schema=schema)
+                    if column["name"] != "deletion_status"
+                ],
+                "primary_key": inspector.get_pk_constraint(archive_table, schema=schema),
+                "indexes": inspector.get_indexes(archive_table, schema=schema),
+                "unique": inspector.get_unique_constraints(archive_table, schema=schema),
+                "checks": inspector.get_check_constraints(archive_table, schema=schema),
+                "rows": list(
+                    connection.execute(text(f"SELECT {archive_projection} FROM {archive_table} ORDER BY id")).tuples()
+                ),
+            }
+
+        archive_before = archive_witness()
+        assert witness(include_archive=True) == before
+        assert migrate("head") == (current_head,)
+        assert witness(include_archive=True) == before
+        assert archive_witness() == archive_before
+        archive_after_columns = inspect(connection).get_columns(archive_table, schema=schema)
+        assert {column["name"] for column in archive_after_columns} == {*archive_fields, "deletion_status"}
+        deletion_column = next(column for column in archive_after_columns if column["name"] == "deletion_status")
+        assert str(deletion_column["type"]) == "VARCHAR(16)"
+        assert deletion_column["nullable"] is True
+        assert deletion_column["default"] is None
+        assert (
+            connection.execute(
+                text("SELECT deletion_status FROM workflow_run_archive_bundles WHERE id=:id"), {"id": archive_id}
+            ).scalar_one()
+            is None
+        )
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
