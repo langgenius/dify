@@ -1,8 +1,8 @@
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
+  PopoverChangeEventDetails,
   PopoverPopupProps,
   PopoverPositionerProps,
-  PopoverProps,
   PopoverTriggerProps,
 } from '@langgenius/dify-ui/popover'
 import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
@@ -37,10 +37,7 @@ export type BlockSelectorProps = Pick<
   finalFocus?: PopoverPopupProps['finalFocus']
   triggerRef?: Ref<HTMLButtonElement>
   open?: boolean
-  onOpenChange?: (
-    open: boolean,
-    details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
-  ) => void
+  onOpenChange?: (open: boolean, details?: PopoverChangeEventDetails) => void
   onSelect: OnSelectBlock
   trigger?: NonNullable<PopoverTriggerProps['render']>
   triggerTooltip?: string
@@ -98,7 +95,7 @@ function BlockSelector({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback(
-    (newOpen: boolean, details?: Parameters<NonNullable<PopoverProps['onOpenChange']>>[1]) => {
+    (newOpen: boolean, details?: PopoverChangeEventDetails) => {
       if (newOpen && disabled) return
 
       setLocalOpen(newOpen)

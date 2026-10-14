@@ -18,16 +18,8 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { newKnowledgeDetailPath, newKnowledgeDocumentsPath, newKnowledgeListPath } from './routes'
-
-function responseStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error) return error.status
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data) return data.status
-  }
-}
 
 const knowledgeSpacePageTitle = (
   pathname: string,
@@ -64,7 +56,7 @@ export function KnowledgeSpaceShell({
       input: { params: { id: knowledgeSpaceId } },
     }),
     retry: (failureCount, error) => {
-      const status = responseStatus(error)
+      const status = getHttpErrorStatus(error)
       if (status === 403 || status === 404) return false
 
       return failureCount < 3
@@ -92,7 +84,7 @@ export function KnowledgeSpaceShell({
     )
 
   if (knowledgeSpaceQuery.error || !knowledgeSpaceQuery.data) {
-    const status = responseStatus(knowledgeSpaceQuery.error)
+    const status = getHttpErrorStatus(knowledgeSpaceQuery.error)
     const notFound = status === 403 || status === 404
     return (
       <>
