@@ -256,11 +256,6 @@ export type DatasetAndDocumentResponse = {
   documents: Array<DocumentResponse>
 }
 
-export type DocumentIndexingError = ErrorResponse & {
-  code: 'document_indexing'
-  status: 400
-}
-
 export type ModelCurrentlyNotSupportError = ErrorResponse & {
   code: 'model_currently_not_support'
   status: 400
@@ -445,6 +440,11 @@ export type DocumentPipelineExecutionLogResponse = {
   datasource_node_id?: string | null
   datasource_type?: string | null
   input_data?: JsonValue | null
+}
+
+export type DocumentIndexingError = ErrorResponse & {
+  code: 'document_indexing'
+  status: 400
 }
 
 export type ArchivedDocumentImmutableError = ErrorResponse & {
@@ -1552,7 +1552,6 @@ export type PostDatasetsInitData = {
 
 export type PostDatasetsInitErrors = {
   400:
-    | DocumentIndexingError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
@@ -1861,12 +1860,6 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1921,7 +1914,6 @@ export type PostDatasetsByDatasetIdDocumentsData = {
 
 export type PostDatasetsByDatasetIdDocumentsErrors = {
   400:
-    | DocumentIndexingError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
@@ -2025,13 +2017,7 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
+  400: InvalidActionError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2056,12 +2042,6 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2266,12 +2246,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
+  400: DocumentIndexingError | ErrorResponse
   403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
@@ -2297,12 +2272,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = 
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
+  400: DocumentIndexingError | ErrorResponse
   403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
@@ -2732,12 +2702,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
   403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
@@ -3078,12 +3042,6 @@ export type PostDatasetsByDatasetIdRetryData = {
 }
 
 export type PostDatasetsByDatasetIdRetryErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
   default: ErrorResponse
 }
 

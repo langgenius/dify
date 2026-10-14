@@ -166,18 +166,6 @@ export const zIndexingEstimateError = zErrorResponse.and(
 )
 
 /**
- * DocumentIndexingError
- *
- * The document is being processed and cannot be edited.
- */
-export const zDocumentIndexingError = zErrorResponse.and(
-  z.object({
-    code: z.literal('document_indexing'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ModelCurrentlyNotSupportError
  *
  * Dify Hosted OpenAI trial currently not support the GPT-4 model.
@@ -322,6 +310,18 @@ export const zSimpleResultMessageResponse = z.object({
   message: z.string(),
   result: z.string(),
 })
+
+/**
+ * DocumentIndexingError
+ *
+ * The document is being processed and cannot be edited.
+ */
+export const zDocumentIndexingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_indexing'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ArchivedDocumentImmutableError

@@ -464,7 +464,6 @@ export const post5 = oc
   .input(z.object({ body: zPostDatasetsInitBody }))
   .output(zPostDatasetsInitResponse)
   .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -740,13 +739,7 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath }))
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse)
-  .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const batch2 = {
   patch: patch2,
@@ -900,9 +893,6 @@ export const patch3 = oc
   .errors({
     archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const pause = {
@@ -927,9 +917,6 @@ export const patch4 = oc
   .errors({
     archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const resume = {
@@ -1279,13 +1266,7 @@ export const get22 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
+  .errors({ archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError } })
 
 export const websiteSync = {
   get: get22,
@@ -1302,12 +1283,6 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
-  .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 /**
  * Get document details
@@ -1358,12 +1333,6 @@ export const delete7 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
-  .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 /**
  * Get documents in a dataset
@@ -1401,7 +1370,6 @@ export const post15 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsResponse)
   .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1696,12 +1664,6 @@ export const post20 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdRetryResponse)
-  .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const retry = {
   post: post20,
