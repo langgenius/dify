@@ -67,9 +67,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         trace_manager = app_generate_entity.trace_manager
 
         # check model mode
-        if "Observation" not in app_generate_entity.model_conf.stop:
-            if app_generate_entity.model_conf.provider not in self._ignore_observation_providers:
-                app_generate_entity.model_conf.stop.append("Observation")
+        if ("Observation" not in app_generate_entity.model_conf.stop) and (
+            app_generate_entity.model_conf.provider not in self._ignore_observation_providers
+        ):
+            app_generate_entity.model_conf.stop.append("Observation")
 
         app_config = self.app_config
         assert app_config.agent
@@ -195,9 +196,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             self._agent_scratchpad.append(scratchpad)
 
             # Check if max iteration is reached and model still wants to call tools
-            if iteration_step == max_iteration_steps and scratchpad.action:
-                if scratchpad.action.action_name.lower() != "final answer":
-                    raise AgentMaxIterationError(app_config.agent.max_iteration)
+            if (iteration_step == max_iteration_steps and scratchpad.action) and (
+                scratchpad.action.action_name.lower() != "final answer"
+            ):
+                raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # get llm usage
             if "usage" in usage_dict:

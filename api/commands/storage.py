@@ -732,9 +732,10 @@ def migrate_oss(
                 fg="yellow",
             )
         )
-        if update_db and not force:
-            if not click.confirm("Proceed to update DB storage_type despite errors?", default=False):
-                update_db = False
+        if (update_db and not force) and (
+            not click.confirm("Proceed to update DB storage_type despite errors?", default=False)
+        ):
+            update_db = False
 
     # Optionally update DB records for upload_files.storage_type (only for successfully copied upload_files)
     if update_db:

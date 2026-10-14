@@ -128,9 +128,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             child_nodes = self.split_child_nodes(
                 document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
             )
-            if kwargs.get("preview"):
-                if len(child_nodes) > dify_config.CHILD_CHUNKS_PREVIEW_NUMBER:
-                    child_nodes = child_nodes[: dify_config.CHILD_CHUNKS_PREVIEW_NUMBER]
+            if kwargs.get("preview") and len(child_nodes) > dify_config.CHILD_CHUNKS_PREVIEW_NUMBER:
+                child_nodes = child_nodes[: dify_config.CHILD_CHUNKS_PREVIEW_NUMBER]
 
             document.children = child_nodes
             doc_id = str(uuid.uuid4())

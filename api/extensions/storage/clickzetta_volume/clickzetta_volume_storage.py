@@ -272,11 +272,12 @@ class ClickZettaVolumeStorage(BaseStorage):
             self._ensure_table_volume_exists(dataset_id)
 
         # Check permissions (if enabled)
-        if self._config.permission_check:
-            # Skip permission check for special directories that use USER VOLUME
-            if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"]:
-                if self._permission_manager is not None:
-                    check_volume_permission(self._permission_manager, "save", dataset_id)
+        # Skip permission check for special directories that use USER VOLUME
+        if (self._config.permission_check) and (
+            (dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"])
+            and (self._permission_manager is not None)
+        ):
+            check_volume_permission(self._permission_manager, "save", dataset_id)
 
         # Write data to temporary file
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -324,11 +325,12 @@ class ClickZettaVolumeStorage(BaseStorage):
                 filename = parts[1]
 
         # Check permissions (if enabled)
-        if self._config.permission_check:
-            # Skip permission check for special directories that use USER VOLUME
-            if dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"]:
-                if self._permission_manager is not None:
-                    check_volume_permission(self._permission_manager, "load_once", dataset_id)
+        # Skip permission check for special directories that use USER VOLUME
+        if (self._config.permission_check) and (
+            (dataset_id not in ["upload_files", "temp", "cache", "tools", "website_files", "privkeys"])
+            and (self._permission_manager is not None)
+        ):
+            check_volume_permission(self._permission_manager, "load_once", dataset_id)
 
         # Download to temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
