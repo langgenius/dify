@@ -2421,7 +2421,7 @@ class DocumentService:
                     if knowledge_config.duplicate and document:
                         document.dataset_process_rule_id = dataset_process_rule.id
                         document.updated_at = naive_utc_now()
-                        document.created_from = created_from
+                        document.created_from = DocumentCreatedFrom(created_from)
                         document.doc_form = IndexStructureType(knowledge_config.doc_form)
                         document.doc_language = knowledge_config.doc_language
                         document.data_source_info = json.dumps(data_source_info)
@@ -2468,6 +2468,8 @@ class DocumentService:
                 )
                 if documents:
                     for document in documents:
+                        if document.data_source_info is None:
+                            raise ValueError("Notion document data source information is missing.")
                         data_source_info = json.loads(document.data_source_info)
                         exist_page_ids.append(data_source_info["notion_page_id"])
                         exist_document[data_source_info["notion_page_id"]] = document.id

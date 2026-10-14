@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.knowledge.summaries.adapters as summary_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
-from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SummaryStatus
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 TENANT_ID = "tenant-1"

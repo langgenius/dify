@@ -10,6 +10,7 @@ from typing import Literal, NotRequired, TypedDict
 from unittest.mock import MagicMock
 
 from models.dataset import Document
+from models.enums import DataSourceType, DocumentCreatedFrom
 from services.knowledge.dataset_read_service import get_document_source_detail
 
 
