@@ -696,11 +696,10 @@ class DatasetApi(DatasetApiResource):
         # check embedding model setting
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
-        if payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY or embedding_model_provider:
-            if embedding_model_provider and embedding_model:
-                DatasetService.check_embedding_model_setting(
-                    dataset.tenant_id, embedding_model_provider, embedding_model
-                )
+        if (payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY or embedding_model_provider) and (
+            embedding_model_provider and embedding_model
+        ):
+            DatasetService.check_embedding_model_setting(dataset.tenant_id, embedding_model_provider, embedding_model)
 
         retrieval_model = payload.retrieval_model
         if (

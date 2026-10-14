@@ -127,22 +127,21 @@ class ProviderConfiguration(BaseModel):
             for configurate_method in self.provider.configurate_methods:
                 original_provider_configurate_methods[self.provider.provider].append(configurate_method)
 
-        if list(self._original_provider_configurate_methods) == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
-            if (
-                any(
-                    len(quota_configuration.restrict_models) > 0
-                    for quota_configuration in self.system_configuration.quota_configurations
-                )
-                and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods
-            ):
-                self.provider = self.provider.model_copy(
-                    update={
-                        "configurate_methods": [
-                            *self.provider.configurate_methods,
-                            ConfigurateMethod.PREDEFINED_MODEL,
-                        ]
-                    },
-                )
+        if list(self._original_provider_configurate_methods) == [ConfigurateMethod.CUSTOMIZABLE_MODEL] and (
+            any(
+                len(quota_configuration.restrict_models) > 0
+                for quota_configuration in self.system_configuration.quota_configurations
+            )
+            and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods
+        ):
+            self.provider = self.provider.model_copy(
+                update={
+                    "configurate_methods": [
+                        *self.provider.configurate_methods,
+                        ConfigurateMethod.PREDEFINED_MODEL,
+                    ]
+                },
+            )
         return self
 
     def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:
@@ -196,9 +195,10 @@ class ProviderConfiguration(BaseModel):
         if self.model_settings:
             # check if model is disabled by admin
             for model_setting in self.model_settings:
-                if model_setting.model_type == model_type and model_setting.model == model:
-                    if not model_setting.enabled:
-                        raise ValueError(f"Model {model} is disabled.")
+                if (model_setting.model_type == model_type and model_setting.model == model) and (
+                    not model_setting.enabled
+                ):
+                    raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
             restrict_models = []
@@ -418,11 +418,12 @@ class ProviderConfiguration(BaseModel):
                     original_credentials = {}
 
             for key, value in credentials.items():
-                if key in provider_credential_secret_variables:
-                    if value == HIDDEN_VALUE and key in original_credentials:
-                        credentials[key] = encrypter.decrypt_token(
-                            tenant_id=self.tenant_id, token=original_credentials[key]
-                        )
+                if (key in provider_credential_secret_variables) and (
+                    value == HIDDEN_VALUE and key in original_credentials
+                ):
+                    credentials[key] = encrypter.decrypt_token(
+                        tenant_id=self.tenant_id, token=original_credentials[key]
+                    )
 
         model_provider_factory = self.get_model_provider_factory()
         validated_credentials = model_provider_factory.provider_credentials_validate(
@@ -1034,11 +1035,12 @@ class ProviderConfiguration(BaseModel):
                     original_credentials = {}
 
             for key, value in credentials.items():
-                if key in provider_credential_secret_variables:
-                    if value == HIDDEN_VALUE and key in original_credentials:
-                        credentials[key] = encrypter.decrypt_token(
-                            tenant_id=self.tenant_id, token=original_credentials[key]
-                        )
+                if (key in provider_credential_secret_variables) and (
+                    value == HIDDEN_VALUE and key in original_credentials
+                ):
+                    credentials[key] = encrypter.decrypt_token(
+                        tenant_id=self.tenant_id, token=original_credentials[key]
+                    )
 
         model_provider_factory = self.get_model_provider_factory()
         validated_credentials = model_provider_factory.model_credentials_validate(
@@ -1810,59 +1812,56 @@ class ProviderConfiguration(BaseModel):
             if len(restrict_models) == 0:
                 break
 
-            if should_use_custom_model:
-                if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
-                    # only customizable model
-                    for restrict_model in restrict_models:
-                        if model and restrict_model.model != model:
-                            continue
+            if (should_use_custom_model) and (original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]):
+                # only customizable model
+                for restrict_model in restrict_models:
+                    if model and restrict_model.model != model:
+                        continue
 
-                        copy_credentials = (
-                            self.system_configuration.credentials.copy()
-                            if self.system_configuration.credentials
-                            else {}
+                    copy_credentials = (
+                        self.system_configuration.credentials.copy() if self.system_configuration.credentials else {}
+                    )
+                    if restrict_model.base_model_name:
+                        copy_credentials["base_model_name"] = restrict_model.base_model_name
+
+                    try:
+                        custom_model_schema = self.get_model_schema(
+                            model_type=restrict_model.model_type,
+                            model=restrict_model.model,
+                            credentials=copy_credentials,
                         )
-                        if restrict_model.base_model_name:
-                            copy_credentials["base_model_name"] = restrict_model.base_model_name
+                    except Exception as ex:
+                        logger.warning("get custom model schema failed, %s", ex)
+                        continue
 
-                        try:
-                            custom_model_schema = self.get_model_schema(
-                                model_type=restrict_model.model_type,
-                                model=restrict_model.model,
-                                credentials=copy_credentials,
-                            )
-                        except Exception as ex:
-                            logger.warning("get custom model schema failed, %s", ex)
-                            continue
+                    if not custom_model_schema:
+                        continue
 
-                        if not custom_model_schema:
-                            continue
+                    if custom_model_schema.model_type not in model_types:
+                        continue
 
-                        if custom_model_schema.model_type not in model_types:
-                            continue
+                    status = ModelStatus.ACTIVE
+                    if (
+                        custom_model_schema.model_type in model_setting_map
+                        and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
+                    ):
+                        model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
+                        if model_setting.enabled is False:
+                            status = ModelStatus.DISABLED
 
-                        status = ModelStatus.ACTIVE
-                        if (
-                            custom_model_schema.model_type in model_setting_map
-                            and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
-                        ):
-                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
-                            if model_setting.enabled is False:
-                                status = ModelStatus.DISABLED
-
-                        provider_models.append(
-                            ModelWithProviderEntity(
-                                model=custom_model_schema.model,
-                                label=custom_model_schema.label,
-                                model_type=custom_model_schema.model_type,
-                                features=custom_model_schema.features,
-                                fetch_from=FetchFrom.PREDEFINED_MODEL,
-                                model_properties=custom_model_schema.model_properties,
-                                deprecated=custom_model_schema.deprecated,
-                                provider=SimpleModelProviderEntity(self.provider),
-                                status=status,
-                            )
+                    provider_models.append(
+                        ModelWithProviderEntity(
+                            model=custom_model_schema.model,
+                            label=custom_model_schema.label,
+                            model_type=custom_model_schema.model_type,
+                            features=custom_model_schema.features,
+                            fetch_from=FetchFrom.PREDEFINED_MODEL,
+                            model_properties=custom_model_schema.model_properties,
+                            deprecated=custom_model_schema.deprecated,
+                            provider=SimpleModelProviderEntity(self.provider),
+                            status=status,
                         )
+                    )
 
             # Hosted allowlists currently use exact model names across model types.
             restrict_model_names = [rm.model for rm in restrict_models]

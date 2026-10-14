@@ -56,9 +56,10 @@ class ComposerSavePayload(BaseModel):
     def validate_variant_sections(self) -> "ComposerSavePayload":
         if self.variant == ComposerVariant.AGENT_APP and self.node_job is not None:
             raise ValueError("Agent App Variant must not include workflow node job config")
-        if self.variant == ComposerVariant.AGENT_APP and self.agent_soul is not None:
-            if self.agent_soul.app_variables and self.save_strategy == ComposerSaveStrategy.NODE_JOB_ONLY:
-                raise ValueError("Agent App Variant cannot use node_job_only save strategy")
+        if (self.variant == ComposerVariant.AGENT_APP and self.agent_soul is not None) and (
+            self.agent_soul.app_variables and self.save_strategy == ComposerSaveStrategy.NODE_JOB_ONLY
+        ):
+            raise ValueError("Agent App Variant cannot use node_job_only save strategy")
         if self.variant == ComposerVariant.WORKFLOW and self.agent_soul is not None:
             if self.agent_soul.app_variables:
                 raise ValueError("Workflow Variant must not include app variables")

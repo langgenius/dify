@@ -146,10 +146,9 @@ class HuaweiCloudVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         docs = []
         for doc, score in docs_and_scores:
-            if score >= score_threshold:
-                if doc.metadata is not None:
-                    doc.metadata["score"] = score
-                    docs.append(doc)
+            if score >= score_threshold and doc.metadata is not None:
+                doc.metadata["score"] = score
+                docs.append(doc)
 
         return docs
 
