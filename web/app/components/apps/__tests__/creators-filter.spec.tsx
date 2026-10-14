@@ -25,6 +25,8 @@ vi.mock('@/service/use-common', () => ({
         { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
         { id: 'member-3', name: 'Bob', avatar_url: null, status: 'active' },
         { id: 'member-4', name: 'Pending User', avatar_url: null, status: 'pending' },
+        { id: 'member-5', name: 'Charlie', avatar_url: null, status: 'active' },
+        { id: 'member-6', name: 'Robin', avatar_url: null, status: 'active' },
       ],
     },
   }),
@@ -46,13 +48,15 @@ describe('CreatorsFilter', () => {
     expect(options.map((option) => option.textContent)).toEqual([
       expect.stringContaining('Alice'),
       expect.stringContaining('Bob'),
+      expect.stringContaining('Charlie'),
+      expect.stringContaining('Robin'),
       expect.stringContaining('Zoe'),
     ])
     expect(screen.getByText('app.studio.filters.you')).toBeInTheDocument()
     expect(screen.queryByText('Pending User')).not.toBeInTheDocument()
   })
 
-  it('should search creators, clear keywords, and select a creator', async () => {
+  it('should search creators, clear the query, and select a creator', async () => {
     const user = userEvent.setup()
     render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
 
@@ -69,7 +73,7 @@ describe('CreatorsFilter', () => {
       expect(searchInput).toHaveAttribute('aria-activedescendant', zoeOption.id)
     })
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    await user.clear(searchInput)
 
     expect(searchInput).toHaveValue('')
     expect(searchInput).toHaveFocus()
@@ -77,23 +81,6 @@ describe('CreatorsFilter', () => {
     await user.click(screen.getByRole('option', { name: /Bob/ }))
 
     expect(mockOnChange).toHaveBeenCalledWith(['member-3'])
-  })
-
-  it('should clear only the search query from the input action', async () => {
-    const user = userEvent.setup()
-    render(<CreatorsFilter value={['member-2']} onChange={mockOnChange} />)
-
-    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
-    const searchInput = screen.getByRole('combobox', {
-      name: 'app.studio.filters.searchCreators',
-    })
-    await user.type(searchInput, 'zo')
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-
-    expect(searchInput).toHaveValue('')
-    expect(searchInput).toHaveFocus()
-    expect(screen.getByRole('option', { name: /Alice/ })).toHaveAttribute('aria-selected', 'true')
-    expect(mockOnChange).not.toHaveBeenCalled()
   })
 
   it('should return focus to the trigger after clearing creators from the filter chip', async () => {
@@ -134,8 +121,44 @@ describe('CreatorsFilter', () => {
     const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
     const selectedCount = within(trigger).getByText('common.dynamicSelect.selected:{"count":2}')
     expect(selectedCount).toHaveClass('sr-only')
-    expect(within(trigger).getByText('+2').parentElement).toHaveAttribute('aria-hidden', 'true')
+    expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
   })
+
+  it.each([
+    { value: ['member-2'], visibleInitials: ['A'], remainingCount: 0 },
+    {
+      value: ['member-2', 'member-3', 'member-1'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 0,
+    },
+    {
+      value: ['member-2', 'member-3', 'member-1', 'member-5'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 1,
+    },
+    {
+      value: ['member-2', 'member-3', 'member-1', 'member-5', 'member-6'],
+      visibleInitials: ['A', 'B', 'Z'],
+      remainingCount: 2,
+    },
+  ])(
+    'shows only the $remainingCount undisplayed creators in the overflow count',
+    ({ value, visibleInitials, remainingCount }) => {
+      render(<CreatorsFilter value={value} onChange={mockOnChange} />)
+
+      const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
+      for (const initial of visibleInitials) {
+        expect(within(trigger).getByText(initial, { exact: true })).toBeInTheDocument()
+      }
+      expect(within(trigger).queryByText('C', { exact: true })).not.toBeInTheDocument()
+      expect(within(trigger).queryByText('R', { exact: true })).not.toBeInTheDocument()
+      if (remainingCount > 0) {
+        expect(within(trigger).getByText(`+${remainingCount}`)).toBeInTheDocument()
+      } else {
+        expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
+      }
+    },
+  )
 
   it('should expose the creator picker as a named combobox with keyboard-owned options', async () => {
     const user = userEvent.setup()

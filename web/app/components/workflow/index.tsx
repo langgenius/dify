@@ -11,11 +11,11 @@ import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -640,7 +640,12 @@ export const Workflow: FC<WorkflowProps> = memo(
         <HelpLine />
         <AlertDialog
           open={!!showConfirm}
-          onOpenChange={(open) => !open && setShowConfirm(undefined)}
+          onOpenChange={(open) => {
+            if (!open) {
+              showConfirm?.onCancel?.()
+              setShowConfirm(undefined)
+            }
+          }}
         >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
@@ -653,14 +658,14 @@ export const Workflow: FC<WorkflowProps> = memo(
                 </AlertDialogDescription>
               )}
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}

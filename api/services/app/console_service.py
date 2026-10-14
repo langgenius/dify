@@ -269,7 +269,7 @@ class ConsoleAppService:
     ) -> Import:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
-        self._set_import_permissions(context, result, created=params.app_id is None)
+        self._set_import_permissions(context, result, created=result.app_created)
         if result.app_id:
             self._access.initialize_import_access(result.app_id)
         return result
@@ -296,16 +296,15 @@ class ConsoleAppService:
         return self._transfers.check_dependencies(context, app_id)
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
-        permissions = None
+        permissions = self._access.permissions(context)
         if isinstance(params, AppListParams):
-            permissions = self._access.permissions(context)
             params = permissions.filter_list(params)
         page = self._apps.list_apps(context, params)
         if not page.data:
             return page
         app_ids = [app.id for app in page.data]
         modes = self._access.access_modes(app_ids)
-        keys = permissions.keys_for(app_ids) if permissions is not None else {}
+        keys = permissions.keys_for(app_ids)
         return replace(
             page,
             data=[
@@ -370,7 +369,9 @@ class ConsoleAppService:
         self._apps.set_starred(context, app_id, starred)
 
     def copy(self, context: RequestContext, app_id: str, params: CopyAppParams) -> tuple[Import, AppRecord | None]:
-        dsl = self._transfers.export_dsl(context, app_id, AppExportOptions(include_secret=True))
+        dsl = self._transfers.export_dsl(
+            context, app_id, AppExportOptions(include_secret=True, preserve_agent_bindings=True)
+        )
         result = self._transfers.import_dsl(
             context,
             AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),

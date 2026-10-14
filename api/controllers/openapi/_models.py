@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import StrEnum
-from typing import Any, Final, Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -14,34 +13,11 @@ from controllers.openapi._upload import UploadPart, UploadParts
 from enums import DeploymentEdition
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
-from services.app_dsl_service import Import
+from services.entities.app_entities import SupportedAppType
+from services.entities.dsl_entities import Import
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 100
-
-
-class SupportedAppType(StrEnum):
-    """App types the ``app`` usage face (``get app``) lists and filters.
-
-    A curated subset of :class:`AppMode`: the real, user-facing app categories.
-    Excludes runtime-only mode tags that are not standalone apps
-    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
-    roster-owned ``agent`` type (surfaced through the roster, not this list).
-
-    Members reference ``AppMode.*.value`` so the subset relationship is
-    type-checked: dropping a member from ``AppMode`` breaks this at import.
-    This is the single source for the listable set — params, filters, and the
-    generated CLI whitelist all derive from it.
-    """
-
-    COMPLETION = AppMode.COMPLETION.value
-    CHAT = AppMode.CHAT.value
-    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
-    WORKFLOW = AppMode.WORKFLOW.value
-    AGENT_CHAT = AppMode.AGENT_CHAT.value
-
-
-SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 
 class UsageInfo(BaseModel):

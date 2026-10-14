@@ -60,12 +60,8 @@ from libs.token import (
     set_refresh_token_to_cookie,
 )
 from services import account_errors
-from services.entities.account_login_entities import (
-    AuthTokenPair,
-    EmailCodeLoginCommand,
-    EmailCodeSendCommand,
-    PasswordLoginCommand,
-)
+from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_login_entities import EmailCodeLoginCommand, EmailCodeSendCommand, PasswordLoginCommand
 from services.entities.auth_entities import LoginPayloadBase
 
 
@@ -141,7 +137,7 @@ class LoginApi(Resource):
         except account_errors.AccountApplicationError as error:
             _raise_request_error(error)
 
-        if not result.workspace_found or result.token_pair is None:
+        if not result.workspace_found or result.tokens is None:
             return dump_response(
                 SimpleResultOptionalDataResponse,
                 {
@@ -149,7 +145,7 @@ class LoginApi(Resource):
                     "data": "workspace not found, please contact system admin to invite you to join in a workspace",
                 },
             )
-        return _token_response(result.token_pair, SimpleResultOptionalDataResponse, {"result": "success"})
+        return _token_response(result.tokens, SimpleResultOptionalDataResponse, {"result": "success"})
 
 
 @console_ns.route("/logout")
@@ -218,7 +214,7 @@ class EmailCodeLoginApi(Resource):
     @model_validate(EmailCodeLoginPayload)
     def post(self, req_data: EmailCodeLoginPayload):
         try:
-            token_pair = application_services().accounts.authentication.login_with_email_code(
+            tokens = application_services().accounts.authentication.login_with_email_code(
                 EmailCodeLoginCommand(
                     email=req_data.email,
                     code=req_data.code,
@@ -231,7 +227,7 @@ class EmailCodeLoginApi(Resource):
             )
         except account_errors.AccountApplicationError as error:
             _raise_request_error(error)
-        return _token_response(token_pair, SimpleResultResponse, {"result": "success"})
+        return _token_response(tokens, SimpleResultResponse, {"result": "success"})
 
 
 @console_ns.route("/refresh-token")
@@ -247,21 +243,21 @@ class RefreshTokenApi(Resource):
             ), HTTPStatus.UNAUTHORIZED
 
         try:
-            token_pair = application_services().accounts.authentication.refresh(refresh_token)
+            tokens = application_services().accounts.authentication.refresh(refresh_token)
         except account_errors.InvalidRefreshTokenError as error:
             return dump_response(
                 SimpleResultMessageResponse,
                 {"result": "fail", "message": str(error)},
             ), HTTPStatus.UNAUTHORIZED
-        return _token_response(token_pair, SimpleResultResponse, {"result": "success"})
+        return _token_response(tokens, SimpleResultResponse, {"result": "success"})
 
 
-def _token_response(token_pair: AuthTokenPair, response_model: type[BaseModel], data: object):
+def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel], data: object):
     # response-contract:ignore cookie-bearing Flask response
     response = make_response(dump_response(response_model, data))
-    set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
-    set_access_token_to_cookie(request, response, token_pair.access_token)
-    set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+    set_csrf_token_to_cookie(request, response, tokens.csrf_token)
+    set_access_token_to_cookie(request, response, tokens.access_token)
+    set_refresh_token_to_cookie(request, response, tokens.refresh_token)
     return response
 
 

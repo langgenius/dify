@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -47,14 +47,14 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
             {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton tone="default" onClick={onRestore.bind(null, versionInfo)}>
             {t(($) => $['common.restore'], { ns: 'workflow' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

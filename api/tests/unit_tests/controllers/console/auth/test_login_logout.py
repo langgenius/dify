@@ -38,8 +38,8 @@ from controllers.console.error import (
 )
 from enums import DeploymentEdition
 from services import account_errors
+from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
-    AuthTokenPair,
     EmailCodeLoginCommand,
     EmailCodeSendCommand,
     PasswordLoginCommand,
@@ -47,7 +47,7 @@ from services.entities.account_login_entities import (
 )
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
-TOKEN_PAIR = AuthTokenPair(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
+TOKENS = AccountSessionTokens(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
 
 
 @dataclass
@@ -69,7 +69,7 @@ class FakeAuthenticationService:
         self.password_commands.append(command)
         self._raise_if_needed()
         return PasswordLoginResult(
-            token_pair=TOKEN_PAIR if self.workspace_found else None,
+            tokens=TOKENS if self.workspace_found else None,
             workspace_found=self.workspace_found,
         )
 
@@ -86,15 +86,15 @@ class FakeAuthenticationService:
         self._raise_if_needed()
         return "email-code-token"
 
-    def login_with_email_code(self, command: EmailCodeLoginCommand) -> AuthTokenPair:
+    def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
         self.email_code_login_commands.append(command)
         self._raise_if_needed()
-        return TOKEN_PAIR
+        return TOKENS
 
-    def refresh(self, refresh_token: str) -> AuthTokenPair:
+    def refresh(self, refresh_token: str) -> AccountSessionTokens:
         self.refresh_tokens.append(refresh_token)
         self._raise_if_needed()
-        return TOKEN_PAIR
+        return TOKENS
 
 
 @pytest.fixture(autouse=True)

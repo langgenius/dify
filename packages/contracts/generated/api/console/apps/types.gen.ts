@@ -503,8 +503,6 @@ export type MessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
-export type TextFileResponse = string
-
 export type AppIconPayload = {
   icon?: string | null
   icon_background?: string | null
@@ -723,6 +721,18 @@ export type ParserEnable = {
   trigger_id: string
 }
 
+export type WorkflowTriggerResponse = {
+  created_at?: string | null
+  icon: string
+  id: string
+  node_id: string
+  provider_name: string
+  status: string
+  title: string
+  trigger_type: string
+  updated_at?: string | null
+}
+
 export type WorkflowTriggerListResponse = {
   data: Array<WorkflowTriggerResponse>
 }
@@ -921,6 +931,7 @@ export type SyncDraftWorkflowPayload = {
   features: {
     [key: string]: unknown
   }
+  force?: boolean
   graph: {
     [key: string]: unknown
   }
@@ -1855,18 +1866,6 @@ export type UserSatisfactionRateStatisticItem = {
 export type TextToSpeechVoiceResponse = {
   name: string
   value: string
-}
-
-export type WorkflowTriggerResponse = {
-  created_at?: string | null
-  icon: string
-  id: string
-  node_id: string
-  provider_name: string
-  status: string
-  title: string
-  trigger_type: string
-  updated_at?: string | null
 }
 
 export type WorkflowAppLogPartialResponse = {
@@ -4186,6 +4185,7 @@ export type GetAppsData = {
       | 'completion'
       | 'workflow'
     name?: string
+    openapi_visible?: boolean
     page?: number
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
@@ -4321,6 +4321,7 @@ export type GetAppsStarredData = {
       | 'completion'
       | 'workflow'
     name?: string
+    openapi_visible?: boolean
     page?: number
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
@@ -4950,9 +4951,7 @@ export type DeleteAppsByAppIdAnnotationsData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteAppsByAppIdAnnotationsResponse =
@@ -5093,9 +5092,7 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponse =
@@ -5544,34 +5541,6 @@ export type PostAppsByAppIdFeedbacksResponses = {
 
 export type PostAppsByAppIdFeedbacksResponse =
   PostAppsByAppIdFeedbacksResponses[keyof PostAppsByAppIdFeedbacksResponses]
-
-export type GetAppsByAppIdFeedbacksExportData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: {
-    end_date?: string
-    format?: 'csv' | 'json'
-    from_source?: 'admin' | 'user'
-    has_comment?: boolean
-    rating?: 'dislike' | 'like'
-    start_date?: string
-  }
-  url: '/apps/{app_id}/feedbacks/export'
-}
-
-export type GetAppsByAppIdFeedbacksExportErrors = {
-  400: unknown
-  500: unknown
-}
-
-export type GetAppsByAppIdFeedbacksExportResponses = {
-  200: TextFileResponse
-}
-
-export type GetAppsByAppIdFeedbacksExportResponse =
-  GetAppsByAppIdFeedbacksExportResponses[keyof GetAppsByAppIdFeedbacksExportResponses]
 
 export type PostAppsByAppIdIconData = {
   body: AppIconPayload
@@ -6186,9 +6155,7 @@ export type PostAppsByAppIdTriggerEnableData = {
 }
 
 export type PostAppsByAppIdTriggerEnableResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowTriggerResponse
 }
 
 export type PostAppsByAppIdTriggerEnableResponse =
@@ -7596,9 +7563,7 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  204: void
 }
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponse =

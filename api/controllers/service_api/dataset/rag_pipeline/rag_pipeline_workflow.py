@@ -15,6 +15,7 @@ from controllers.common.errors import (
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
+    UnsupportedFileTypeError,
 )
 from controllers.common.fields import WorkflowBlockingResponse
 from controllers.common.schema import (
@@ -40,7 +41,6 @@ from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
-from services.errors.file import UnsupportedFileTypeError
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -315,7 +315,7 @@ class PipelineRunApi(DatasetApiResource):
         rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
-            response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+            response: dict[Any, Any] | Generator[str, Any] = PipelineGenerateService.generate(
                 generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,

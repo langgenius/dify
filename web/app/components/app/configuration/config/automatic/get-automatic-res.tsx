@@ -4,15 +4,6 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 // type
 import type { GenRes } from '@/service/debug'
 import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -265,11 +256,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     }
   }
 
-  const [
-    isShowConfirmOverwrite,
-    { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
-  ] = useBoolean(false)
-
   const isShowAutoPromptResPlaceholder = () => {
     return !isLoading && !current
   }
@@ -396,41 +382,13 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 currentVersionIndex={currentVersionIndex || 0}
                 setCurrentVersionIndex={setCurrentVersionIndex}
                 versions={versions || []}
-                onApply={showConfirmOverwrite}
+                onApply={() => onFinished(current!)}
                 generatorType={GeneratorType.prompt}
               />
             </div>
           )}
           {isLoading && renderLoading}
           {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
-          <AlertDialog
-            open={isShowConfirmOverwrite}
-            onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
-          >
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['generate.overwriteTitle'], { ns: 'appGeneration' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t(($) => $['generate.overwriteMessage'], { ns: 'appGeneration' })}
-                </AlertDialogDescription>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>
-                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  onClick={() => {
-                    hideShowConfirmOverwrite()
-                    onFinished(current!)
-                  }}
-                >
-                  {t(($) => $['operation.confirm'], { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </DialogContent>
     </Dialog>

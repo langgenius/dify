@@ -1,6 +1,5 @@
 """Abstract interface for document loader implementations."""
 
-import cgi
 import logging
 import mimetypes
 import os
@@ -13,6 +12,7 @@ from urllib.parse import unquote, urlparse
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.http import parse_options_header
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
@@ -278,10 +278,10 @@ class BaseIndexProcessor(ABC):
 
             content_disposition = response.headers.get("content-disposition")
             if content_disposition:
-                _, params = cgi.parse_header(content_disposition)
+                _, params = parse_options_header(content_disposition)
                 if "filename" in params:
+                    # Werkzeug decodes filename*; preserve literal percent escapes in the result.
                     filename = params["filename"]
-                    filename = unquote(filename)
 
             if not filename:
                 parsed_url = urlparse(image_url)

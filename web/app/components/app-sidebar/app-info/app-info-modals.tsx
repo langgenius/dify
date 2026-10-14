@@ -7,11 +7,11 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -99,7 +99,7 @@ const AppInfoModals = ({
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal inAppDetail show appDetail={appDetail} onClose={closeModal} />
+        <SwitchAppModal show sourceApp={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -185,19 +185,24 @@ const AppInfoModals = ({
                 </InputGroup>
               </Field>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton type="button">
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </form>
         </AlertDialogContent>
       </AlertDialog>
       {activeModal === 'importDSL' && (
-        <UpdateDSLModal onCancel={closeModal} onBackup={exportCheck} />
+        <UpdateDSLModal
+          appId={appDetail.id}
+          appMode={appDetail.mode}
+          onCancel={closeModal}
+          onBackup={exportCheck}
+        />
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
         {exportDialogMode === 'secret' ? (
@@ -218,7 +223,7 @@ const AppInfoModals = ({
                   {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
                 </AlertDialogDescription>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
@@ -234,7 +239,7 @@ const AppInfoModals = ({
                       : t(($) => $['operation.confirm'], { ns: 'common' })}
                   </span>
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           )
         )}

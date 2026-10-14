@@ -9,8 +9,12 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
 import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
 
@@ -33,15 +37,10 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
         },
   )
   const [description, setDescription] = useState(pipeline.description)
-  const [showIconPicker, setShowIconPicker] = useState(false)
 
   const handleAppNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
     setName(value)
-  }, [])
-
-  const handleOpenAppIconPicker = useCallback(() => {
-    setShowIconPicker(true)
   }, [])
 
   const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
@@ -122,22 +121,15 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
               placeholder={t(($) => $.knowledgeNameAndIconPlaceholder, { ns: 'datasetPipeline' })}
             />
           </Field>
-          <button
-            type="button"
-            aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}`}
-            onClick={handleOpenAppIconPicker}
-            className="group/edit-icon shrink-0 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <AppIcon
-              decorative
-              size="xxl"
-              iconType={appIcon.type}
-              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-              background={appIcon.type === 'image' ? undefined : appIcon.background}
-              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              showEditIcon
-            />
-          </button>
+          <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+            <IconPickerTrigger
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}`}
+              className="group/edit-icon shrink-0 cursor-pointer rounded-2xl"
+            >
+              <IconPickerIcon size="xxl" showEditIcon />
+            </IconPickerTrigger>
+            <IconPickerContent />
+          </IconPicker>
         </div>
         <Field name="description">
           <FieldLabel>{t(($) => $.knowledgeDescription, { ns: 'datasetPipeline' })}</FieldLabel>
@@ -158,12 +150,6 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>
-      <IconPickerDialog
-        open={showIconPicker}
-        defaultValue={appIcon}
-        onOpenChange={setShowIconPicker}
-        onConfirm={handleSelectAppIcon}
-      />
     </form>
   )
 }

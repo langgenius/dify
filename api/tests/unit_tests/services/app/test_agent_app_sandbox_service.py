@@ -269,7 +269,7 @@ def sandbox(
     files = RecordingFileRequests()
 
     @contextmanager
-    def client_factory() -> Generator[Client, None, None]:
+    def client_factory() -> Generator[Client]:
         assert sessions
         assert all(session in closed_sessions and not session.in_transaction() for session in sessions)
         yield cast(Client, client)

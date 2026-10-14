@@ -67,13 +67,20 @@ describe('SortDropdown', () => {
     expect(within(content).getByText('First Released')).toBeInTheDocument()
   })
 
-  it('shows a check icon for the currently selected option', async () => {
+  it('exposes the currently selected sort option', async () => {
     const user = userEvent.setup()
     render(<SortDropdown />)
 
     await user.click(screen.getByRole('button', { name: 'Sort by Most Popular' }))
 
-    expect(document.querySelector('.i-ri-check-line')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemradio', { name: 'Most Popular' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(screen.getByRole('menuitemradio', { name: 'Recently Updated' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
   })
 
   it('updates the sort and closes the menu when an option is selected', async () => {
@@ -81,7 +88,7 @@ describe('SortDropdown', () => {
     render(<SortDropdown />)
 
     await user.click(screen.getByRole('button', { name: 'Sort by Most Popular' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Recently Updated' }))
+    await user.click(await screen.findByRole('menuitemradio', { name: 'Recently Updated' }))
 
     expect(mockHandleSortChange).toHaveBeenCalledWith({
       sortBy: 'version_updated_at',

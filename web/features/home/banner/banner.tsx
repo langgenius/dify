@@ -5,6 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,6 @@ import { useLocale } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { BannerItem } from './banner-item'
 import { IndicatorButton } from './indicator-button'
 

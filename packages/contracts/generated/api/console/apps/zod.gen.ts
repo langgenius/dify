@@ -320,11 +320,6 @@ export const zMessageFeedbackPayload = z.object({
 })
 
 /**
- * TextFileResponse
- */
-export const zTextFileResponse = z.string()
-
-/**
  * AppNamePayload
  */
 export const zAppNamePayload = z.object({
@@ -454,6 +449,28 @@ export const zTraceConfigPayload = z.object({
 export const zParserEnable = z.object({
   enable_trigger: z.boolean(),
   trigger_id: z.string(),
+})
+
+/**
+ * WorkflowTriggerResponse
+ */
+export const zWorkflowTriggerResponse = z.object({
+  created_at: z.iso.datetime().nullish(),
+  icon: z.string(),
+  id: z.string(),
+  node_id: z.string(),
+  provider_name: z.string(),
+  status: z.string(),
+  title: z.string(),
+  trigger_type: z.string(),
+  updated_at: z.iso.datetime().nullish(),
+})
+
+/**
+ * WorkflowTriggerListResponse
+ */
+export const zWorkflowTriggerListResponse = z.object({
+  data: z.array(zWorkflowTriggerResponse),
 })
 
 /**
@@ -1318,28 +1335,6 @@ export const zTextToSpeechVoiceResponse = z.object({
 export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
 
 /**
- * WorkflowTriggerResponse
- */
-export const zWorkflowTriggerResponse = z.object({
-  created_at: z.iso.datetime().nullish(),
-  icon: z.string(),
-  id: z.string(),
-  node_id: z.string(),
-  provider_name: z.string(),
-  status: z.string(),
-  title: z.string(),
-  trigger_type: z.string(),
-  updated_at: z.iso.datetime().nullish(),
-})
-
-/**
- * WorkflowTriggerListResponse
- */
-export const zWorkflowTriggerListResponse = z.object({
-  data: z.array(zWorkflowTriggerResponse),
-})
-
-/**
  * SimpleAccountResponse
  */
 export const zSimpleAccountResponse = z.object({
@@ -1741,6 +1736,7 @@ export const zSyncDraftWorkflowPayload = z.object({
   conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
   features: z.record(z.string(), z.unknown()),
+  force: z.boolean().optional().default(false),
   graph: z.record(z.string(), z.unknown()),
   hash: z.string().nullish(),
 })
@@ -5381,6 +5377,7 @@ export const zGetAppsQuery = z.object({
     .optional()
     .default('all'),
   name: z.string().optional(),
+  openapi_visible: z.boolean().optional().default(false),
   page: z.int().gte(1).lte(99999).optional().default(1),
   sort_by: z
     .enum(['earliest_created', 'last_modified', 'recently_created'])
@@ -5464,6 +5461,7 @@ export const zGetAppsStarredQuery = z.object({
     .optional()
     .default('all'),
   name: z.string().optional(),
+  openapi_visible: z.boolean().optional().default(false),
   page: z.int().gte(1).lte(99999).optional().default(1),
   sort_by: z
     .enum(['earliest_created', 'last_modified', 'recently_created'])
@@ -5907,9 +5905,9 @@ export const zDeleteAppsByAppIdAnnotationsPath = z.object({
 })
 
 /**
- * Success
+ * Annotations deleted successfully
  */
-export const zDeleteAppsByAppIdAnnotationsResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdAnnotationsResponse = z.void()
 
 export const zGetAppsByAppIdAnnotationsPath = z.object({
   app_id: z.uuid(),
@@ -5981,9 +5979,9 @@ export const zDeleteAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
 })
 
 /**
- * Success
+ * Annotation deleted successfully
  */
-export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.void()
 
 export const zPostAppsByAppIdAnnotationsByAnnotationIdBody = zUpdateAnnotationPayload
 
@@ -6233,24 +6231,6 @@ export const zPostAppsByAppIdFeedbacksPath = z.object({
  * Feedback updated successfully
  */
 export const zPostAppsByAppIdFeedbacksResponse = zSimpleResultResponse
-
-export const zGetAppsByAppIdFeedbacksExportPath = z.object({
-  app_id: z.uuid(),
-})
-
-export const zGetAppsByAppIdFeedbacksExportQuery = z.object({
-  end_date: z.string().optional(),
-  format: z.enum(['csv', 'json']).optional().default('csv'),
-  from_source: z.enum(['admin', 'user']).optional(),
-  has_comment: z.boolean().optional(),
-  rating: z.enum(['dislike', 'like']).optional(),
-  start_date: z.string().optional(),
-})
-
-/**
- * Feedback data exported successfully
- */
-export const zGetAppsByAppIdFeedbacksExportResponse = zTextFileResponse
 
 export const zPostAppsByAppIdIconBody = zAppIconPayload
 
@@ -6610,7 +6590,7 @@ export const zPostAppsByAppIdTriggerEnablePath = z.object({
 /**
  * Success
  */
-export const zPostAppsByAppIdTriggerEnableResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdTriggerEnableResponse = zWorkflowTriggerResponse
 
 export const zGetAppsByAppIdTriggersPath = z.object({
   app_id: z.uuid(),
@@ -7508,9 +7488,9 @@ export const zDeleteAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
 })
 
 /**
- * Success
+ * Workflow deleted successfully
  */
-export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.record(z.string(), z.unknown())
+export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.void()
 
 export const zPatchAppsByAppIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 

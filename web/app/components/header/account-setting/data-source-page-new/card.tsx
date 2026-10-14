@@ -2,10 +2,10 @@ import type { DataSourceAuth, DataSourceCredential } from './types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { memo, useCallback, useRef } from 'react'
@@ -177,7 +177,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -187,7 +187,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {!!editValues && (

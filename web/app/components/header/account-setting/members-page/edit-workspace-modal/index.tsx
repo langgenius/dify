@@ -44,7 +44,6 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           name: normalizedName,
         },
       })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       location.assign(`${location.origin}`)
     } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))

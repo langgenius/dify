@@ -2,6 +2,7 @@ import pytest
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
+    DatasourceProviderEntityWithPlugin,
     DatasourceProviderType,
 )
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
@@ -11,13 +12,13 @@ from tests.unit_tests.core.datasource.factories import datasource_entity, provid
 
 class TestWebsiteCrawlDatasourcePluginProviderController:
     @pytest.fixture
-    def entity(self):
+    def entity(self) -> DatasourceProviderEntityWithPlugin:
         entity = provider_entity(DatasourceProviderType.WEBSITE_CRAWL)
         entity.datasources = []
         entity.identity.icon = "test-icon"
         return entity
 
-    def test_init(self, entity):
+    def test_init(self, entity: DatasourceProviderEntityWithPlugin) -> None:
         # Arrange
         plugin_id = "test-plugin-id"
         plugin_unique_identifier = "test-unique-id"
@@ -37,7 +38,7 @@ class TestWebsiteCrawlDatasourcePluginProviderController:
         assert controller.plugin_unique_identifier == plugin_unique_identifier
         assert controller.tenant_id == tenant_id
 
-    def test_provider_type(self, entity):
+    def test_provider_type(self, entity: DatasourceProviderEntityWithPlugin) -> None:
         # Arrange
         controller = WebsiteCrawlDatasourcePluginProviderController(
             entity=entity, plugin_id="test", plugin_unique_identifier="test", tenant_id="test"
@@ -46,7 +47,7 @@ class TestWebsiteCrawlDatasourcePluginProviderController:
         # Act & Assert
         assert controller.provider_type == DatasourceProviderType.WEBSITE_CRAWL
 
-    def test_get_datasource_success(self, entity):
+    def test_get_datasource_success(self, entity: DatasourceProviderEntityWithPlugin) -> None:
         # Arrange
         datasource_name = "test-datasource"
         tenant_id = "test-tenant-id"
@@ -71,7 +72,7 @@ class TestWebsiteCrawlDatasourcePluginProviderController:
         assert result.icon == "test-icon"
         assert result.plugin_unique_identifier == plugin_unique_identifier
 
-    def test_get_datasource_not_found(self, entity):
+    def test_get_datasource_not_found(self, entity: DatasourceProviderEntityWithPlugin) -> None:
         # Arrange
         datasource_name = "non-existent"
         entity.datasources = []

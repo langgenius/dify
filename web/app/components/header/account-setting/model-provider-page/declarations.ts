@@ -1,4 +1,4 @@
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { Field } from '@/app/components/workflow/nodes/llm/types'
 
 export type FormValue = Record<string, any>
 
@@ -127,7 +127,7 @@ export type CredentialFormSchemaBase = {
   show_on: FormShowOnObject[]
   url?: string
   scope?: string
-  input_schema?: SchemaRoot
+  input_schema?: Field | null
   /**
    * Tool dynamic-select / dynamic-tree-select only. Defaults to `false`.
    * - `false` or omitted: prefetch when tool/provider/field context changes (not on every sibling value edit).

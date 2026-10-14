@@ -16,7 +16,7 @@ from pydantic import (
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
+import services.errors.base
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
@@ -56,6 +56,7 @@ from services.knowledge.entities.knowledge_entities import (
     RetrievalModel,
     SummaryIndexSetting,
 )
+from services.rbac import contracts as rbac_contracts
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -560,7 +561,7 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
 
         return _dump_service_dataset_detail(load_dataset_detail(dataset, session=session)), 200
@@ -607,7 +608,7 @@ class DatasetApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
         data = _dump_service_dataset_detail(load_dataset_detail(dataset, session=session))
         # check embedding setting
@@ -720,7 +721,6 @@ class DatasetApi(DatasetApiResource):
                 payload.partial_member_list,
                 session=session,
             )
-
         dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user, session=session)
 
         if dataset is None:
@@ -865,7 +865,7 @@ class DocumentStatusApi(DatasetApiResource):
         # Check user's permission
         try:
             DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
+        except services.errors.base.NoPermissionError as e:
             raise Forbidden(str(e))
 
         # Check dataset model setting

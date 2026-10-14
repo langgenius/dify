@@ -79,29 +79,30 @@ from constants.oauth_bearer import Scope, TokenType
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi.auth import subjects
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
+    CheckWorkspaceInvitationQuota,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
     Requirement,
 )
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from controllers.openapi.human_input_form import CheckFormSurface
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import BearerAuthenticator, ResolvedRow, sha256_hex
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
 from models.model import App, EndUser
 from models.oauth import OAuthAccessToken
-from services.account_service import AccountService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
-from services.rbac_resource_service import RBACResourceService
 from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -734,29 +735,34 @@ _REQ_EXTERNAL_DESCRIBE = (
     CheckAppAccess(),
 )
 
+_RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
+
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "describe.account": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_self": _REQ_ACCOUNT_FULL,
     "get.account.session": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
-    "apps.describe": _REQ_APP_DESCRIBE,
-    "apps.list": _REQ_ACCOUNT_APPS_READ_MEMBER,
-    "workspaces.list": _REQ_ACCOUNT_WORKSPACE_READ,
+    "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
+    "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
+    "workspaces.list": (
+        CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
+        *_REQ_ACCOUNT_WORKSPACE_READ[1:],
+    ),
     "workspaces.describe": _REQ_ACCOUNT_WORKSPACE_READ,
     "workspaces.switch": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "workspaces.members.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
-    "workspaces.members.invite": _REQ_MEMBER_MANAGE,
+    "workspaces.members.invite": (*_REQ_MEMBER_MANAGE, CheckWorkspaceInvitationQuota()),
     "workspaces.members.remove": _REQ_MEMBER_MANAGE,
     "workspaces.members.update_role": _REQ_ROLE_MANAGE,
     "app_dsl.import": _REQ_DSL_WORKSPACE,
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
     "app_dsl.export": _REQ_DSL_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
-    "app_run.workflow": _REQ_RUN,
-    "app_run.chat": _REQ_RUN,
-    "app_run.advanced_chat": _REQ_RUN,
-    "app_run.completion": _REQ_RUN,
-    "app_run.stop": _REQ_RUN,
+    "app_run.workflow": _RESOURCE_RUN,
+    "app_run.chat": _RESOURCE_RUN,
+    "app_run.advanced_chat": _RESOURCE_RUN,
+    "app_run.completion": _RESOURCE_RUN,
+    "app_run.stop": _RESOURCE_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
     "human_input_form.submit": _REQ_RUN_FORM,
@@ -847,9 +853,12 @@ def _matrix_app() -> Flask:
 
 
 @pytest.fixture
-def matrix_app(_matrix_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
+def matrix_app(
+    _matrix_app: Flask, monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
+) -> Iterator[Flask]:
     """Keep rate-limit overrides and the admission probe scoped to each case."""
 
+    monkeypatch.setitem(_matrix_app.extensions, "application_services", account_application_services)
     monkeypatch.setattr(
         rate_limit_module,
         "LIMIT_BEARER_PER_TOKEN",
@@ -1104,17 +1113,27 @@ def _run_case(
                 return_value={"data": [], "total": 0, "hasMore": False},
             )
         )
-        services = stack.enter_context(patch("controllers.openapi.auth.subjects.application_services"))
-        services.return_value.app_scoped_end_users.commands.get_or_create_end_user_by_type.side_effect = _end_user
-        stack.enter_context(patch.object(RBACResourceService, "get_app_agent_binding", return_value=None))
-        stack.enter_context(patch.object(RBACResourceService, "get_app_maintainer", return_value=None))
+        services = subjects.application_services()
+        stack.enter_context(
+            patch.object(
+                services.app_scoped_end_users.commands,
+                "get_or_create_end_user_by_type",
+                side_effect=_end_user,
+            )
+        )
         stack.enter_context(
             patch(
                 "services.enterprise.rbac_service.RBACService.CheckAccess.check",
                 return_value=scenario.rbac_allows,
             )
         )
-        stack.enter_context(patch.object(AccountService, "get_account_by_email", return_value=_webapp_account()))
+        stack.enter_context(
+            patch.object(
+                services.accounts.identity,
+                "get_account_by_email",
+                return_value=_webapp_account(),
+            )
+        )
         client = app.test_client()
         return contextvars.copy_context().run(
             lambda: client.open(_url(route, world, scenario, bearer), method=route.method, headers=headers)
