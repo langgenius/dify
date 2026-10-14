@@ -33,6 +33,9 @@ export type DifyBuilderStreamEventResponse =
       event: 'progress'
     } & DifyBuilderProgressEventResponse)
   | ({
+      event: 'progress_snapshot'
+    } & DifyBuilderProgressSnapshotEventResponse)
+  | ({
       event: 'command_finished'
     } & DifyBuilderCommandFinishedEventResponse)
   | ({
@@ -300,6 +303,11 @@ export type DifyBuilderReasoningEventResponse = {
 export type DifyBuilderProgressEventResponse = {
   data: DifyBuilderProgressEventData
   event: 'progress'
+}
+
+export type DifyBuilderProgressSnapshotEventResponse = {
+  data: DifyBuilderProgressSnapshotEventData
+  event: 'progress_snapshot'
 }
 
 export type DifyBuilderCommandFinishedEventResponse = {
@@ -666,6 +674,14 @@ export type DifyBuilderProgressEventData = {
   revision: number
   session_id: string
   status: 'completed' | 'error' | 'running' | 'stopped'
+}
+
+export type DifyBuilderProgressSnapshotEventData = {
+  at_version: number
+  execution: DifyBuilderExecutionProgressResponse
+  operation_id: string
+  revision: number
+  session_id: string
 }
 
 export type DifyBuilderCommandFinishedEventData = {

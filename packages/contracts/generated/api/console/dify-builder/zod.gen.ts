@@ -760,6 +760,27 @@ export const zDifyBuilderAgentMessageEventResponse = z.object({
 })
 
 /**
+ * DifyBuilderProgressSnapshotEventData
+ *
+ * Complete observed activity state before subsequent live progress deltas.
+ */
+export const zDifyBuilderProgressSnapshotEventData = z.object({
+  at_version: z.int(),
+  execution: zDifyBuilderExecutionProgressResponse,
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderProgressSnapshotEventResponse
+ */
+export const zDifyBuilderProgressSnapshotEventResponse = z.object({
+  data: zDifyBuilderProgressSnapshotEventData,
+  event: z.literal('progress_snapshot'),
+})
+
+/**
  * OptionInput
  */
 export const zOptionInput = z.object({
@@ -1911,6 +1932,7 @@ export const zDifyBuilderStreamEventResponse = z.discriminatedUnion('event', [
   }),
   zDifyBuilderReasoningEventResponse.extend({ event: z.literal('reasoning') }),
   zDifyBuilderProgressEventResponse.extend({ event: z.literal('progress') }),
+  zDifyBuilderProgressSnapshotEventResponse.extend({ event: z.literal('progress_snapshot') }),
   zDifyBuilderCommandFinishedEventResponse.extend({ event: z.literal('command_finished') }),
   zDifyBuilderErrorEventResponse.extend({ event: z.literal('error') }),
 ])

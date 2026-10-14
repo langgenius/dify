@@ -24,6 +24,7 @@ SUPPORTED_WORKFLOW_PAYLOADS = [
 def _view(**overrides) -> dict:
     return {
         "session_id": "s1",
+        "reply_language": "",
         "version": 1,
         "canvas_read_only": False,
         "run_status": "processing",
