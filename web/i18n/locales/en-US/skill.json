@@ -22,7 +22,6 @@
   "skillManagement.detail.builder.attachmentOnlyMessage": "Use the attached file to help improve this skill.",
   "skillManagement.detail.builder.close": "Close Skill Builder",
   "skillManagement.detail.builder.copyResponse": "Copy response",
-  "skillManagement.detail.builder.copySuccess": "Response copied to clipboard.",
   "skillManagement.detail.builder.editIntro": "I've reviewed this skill. What would you like to adjust?",
   "skillManagement.detail.builder.exampleIssueTriage": "Customer issue triage",
   "skillManagement.detail.builder.exampleOnboarding": "New hire onboarding guide",

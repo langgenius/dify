@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} が利用可能です。",
   "about.updateNow": "今すぐ更新",
   "about.version": "バージョン {{version}}",
-  "actionMsg.copySuccessfully": "コピーが正常に行われました",
   "actionMsg.downloadUnsuccessfully": "ダウンロードに失敗しました。後でもう一度お試しください。",
   "actionMsg.generatedSuccessfully": "生成が成功しました",
   "actionMsg.generatedUnsuccessfully": "生成が失敗しました",

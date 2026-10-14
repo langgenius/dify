@@ -8,15 +8,14 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { Separator } from '@langgenius/dify-ui/separator'
 import {
   RiAddLine,
-  RiClipboardLine,
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
   RiEyeLine,
 } from '@remixicon/react'
-import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -151,17 +150,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
               </Button>
               <div className="mx-2 h-3 w-px bg-divider-regular"></div>
               <div className="flex items-center space-x-1">
-                <button
-                  type="button"
-                  aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
-                  className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover"
-                  onClick={() => {
-                    copy(inputs.form_content)
-                    toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+                <CopyFeedback
+                  content={inputs.form_content}
+                  onCopyError={() => {
+                    toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
                   }}
-                >
-                  <RiClipboardLine className="size-4 text-text-secondary" aria-hidden />
-                </button>
+                />
                 <button
                   type="button"
                   aria-label={t(($) => $[isExpandFormContent ? 'chat.collapse' : 'chat.expand'], {

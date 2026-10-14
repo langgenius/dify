@@ -1,4 +1,5 @@
 'use client'
+import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -11,7 +12,10 @@ type CopyFeedbackProps = Readonly<{
   className?: string
   copiedLabel?: string
   copyLabel?: string
+  disabled?: boolean
   onCopyError?: () => void
+  size?: IconButtonProps['size']
+  variant?: IconButtonProps['variant']
 }>
 
 export function CopyFeedback({
@@ -19,7 +23,10 @@ export function CopyFeedback({
   className,
   copiedLabel,
   copyLabel,
+  disabled,
   onCopyError,
+  size,
+  variant,
 }: CopyFeedbackProps) {
   const { t } = useTranslation(['common'])
   // Rely on useClipboard's own timer to flip `copied` back to false so the
@@ -34,7 +41,7 @@ export function CopyFeedback({
   const safeText = tooltipText || ''
 
   const handleCopy = useCallback(() => {
-    copy(content)
+    void copy(content)
   }, [copy, content])
 
   return (
@@ -42,7 +49,14 @@ export function CopyFeedback({
       <TooltipTrigger
         closeOnClick={false}
         render={
-          <IconButton aria-label={safeText} className={className} onClick={handleCopy}>
+          <IconButton
+            aria-label={safeText}
+            className={className}
+            disabled={disabled}
+            size={size}
+            variant={variant}
+            onClick={handleCopy}
+          >
             <span
               aria-hidden="true"
               className={cn('size-4', copied ? 'i-ri-clipboard-fill' : 'i-ri-clipboard-line')}

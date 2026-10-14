@@ -7,7 +7,6 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../document-detail-page'
@@ -178,7 +177,6 @@ vi.mock('@/context/permission-state', () => ({
 }))
 
 vi.mock('@/app/notifications', () => ({ toast: toastState }))
-vi.mock('copy-to-clipboard', () => ({ default: vi.fn(() => true) }))
 
 vi.mock('@tanstack/react-virtual', () => ({
   defaultRangeExtractor: ({ endIndex, startIndex }: { endIndex: number; startIndex: number }) =>
@@ -484,11 +482,19 @@ describe('DocumentDetailPage', () => {
     expect(selectedChunkHeading).toBeInTheDocument()
     const selectedChunkSection = selectedChunkHeading.closest('section')
     expect(selectedChunkSection).not.toBeNull()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
     await user.click(
       within(selectedChunkSection!).getByRole('button', { name: 'common.operation.copy' }),
     )
-    expect(copy).toHaveBeenCalledWith('Workspace contract details')
-    expect(toastState.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+    expect(writeText).toHaveBeenCalledWith('Workspace contract details')
+    expect(
+      await within(selectedChunkSection!).findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
+    expect(toastState.success).not.toHaveBeenCalled()
     const characterCount = screen.getByText('dataset.newKnowledge.characterCount').closest('div')
     expect(characterCount).not.toBeNull()
     expect(within(characterCount!).getByText('26')).toBeInTheDocument()

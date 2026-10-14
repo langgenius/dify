@@ -3,17 +3,14 @@ import { toast } from '@/app/components/app/configuration/toast'
 import Result from '../result'
 import { GeneratorType } from '../types'
 
-const mockCopy = vi.fn()
+const mockWriteText = vi.fn()
 const mockPromptRes = vi.fn()
 const mockPromptResInWorkflow = vi.fn()
 const mockSetCurrentVersionIndex = vi.fn()
 const mockOnApply = vi.fn()
-vi.mock('copy-to-clipboard', () => ({
-  default: (...args: unknown[]) => mockCopy(...args),
-}))
-
 vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
+    error: vi.fn(),
     success: vi.fn(),
   },
 }))
@@ -74,9 +71,14 @@ const baseProps = {
 describe('Result', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWriteText.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mockWriteText },
+    })
   })
 
-  it('should render the basic prompt result and support copying or applying it', () => {
+  it('should render the basic prompt result and support copying or applying it', async () => {
     render(<Result {...baseProps} isBasicMode generatorType={GeneratorType.prompt} />)
 
     expect(screen.getByTestId('prompt-toast'))!.toHaveTextContent('optimization note')
@@ -92,10 +94,11 @@ describe('Result', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockSetCurrentVersionIndex).toHaveBeenCalledWith(1)
-    expect(mockCopy).toHaveBeenCalledWith('generated output')
-    expect(toast.success).toHaveBeenCalledWith(
-      expect.stringMatching(/(?:^|\.)actionMsg\.copySuccessfully(?=$|:)/),
-    )
+    expect(mockWriteText).toHaveBeenCalledWith('generated output')
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.copied' }),
+    ).toBeInTheDocument()
+    expect(toast.success).not.toHaveBeenCalled()
     expect(mockOnApply).toHaveBeenCalled()
     expect(mockPromptRes).toHaveBeenCalledWith(
       expect.objectContaining({

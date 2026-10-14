@@ -3,19 +3,17 @@ import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
 import GenerationActionGroups from '../action-groups'
 
-const mockCopy = vi.fn()
+const mockWriteText = vi.fn()
 const mockSuccess = vi.fn()
 const mockOnFeedback = vi.fn()
 const mockOnMoreLikeThis = vi.fn()
 const mockOnOpenLog = vi.fn()
 const mockOnRetry = vi.fn()
 const mockOnSave = vi.fn()
-vi.mock('copy-to-clipboard', () => ({
-  default: (...args: unknown[]) => mockCopy(...args),
-}))
 
 vi.mock('@/app/notifications', () => ({
   toast: {
+    error: vi.fn(),
     success: (...args: unknown[]) => mockSuccess(...args),
   },
 }))
@@ -23,9 +21,14 @@ vi.mock('@/app/notifications', () => ({
 describe('GenerationActionGroups', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWriteText.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mockWriteText },
+    })
   })
 
-  it('should copy content and show a success toast', () => {
+  it('should copy content and show copied feedback on the button', async () => {
     render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
@@ -46,10 +49,11 @@ describe('GenerationActionGroups', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
-    expect(mockCopy).toHaveBeenCalledWith('hello world')
-    expect(mockSuccess).toHaveBeenCalledWith(
-      expect.stringMatching(/(?:^|\.)actionMsg\.copySuccessfully(?=$|:)/),
-    )
+    expect(mockWriteText).toHaveBeenCalledWith('hello world')
+    expect(
+      await screen.findByRole('button', { name: /(?:^|\.)operation\.copied(?=$|:)/ }),
+    ).toBeInTheDocument()
+    expect(mockSuccess).not.toHaveBeenCalled()
   })
 
   it('should handle more-like-this and feedback actions', () => {
@@ -144,7 +148,7 @@ describe('GenerationActionGroups', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.copy(?=$|:)/ }))
 
-    expect(mockCopy).toHaveBeenCalledWith(JSON.stringify({ result: 'hello world' }))
+    expect(mockWriteText).toHaveBeenCalledWith(JSON.stringify({ result: 'hello world' }))
   })
 
   it('should expose retry and disagree actions in the appropriate states', () => {

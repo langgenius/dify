@@ -6,12 +6,12 @@ import {
   RiArrowRightSLine,
   RiCheckboxCircleFill,
   RiErrorWarningFill,
-  RiFileCopyLine,
 } from '@remixicon/react'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { toast } from '@/app/notifications'
@@ -83,16 +83,12 @@ const LogViewer = ({ logs, className }: Props) => {
       <div className="rounded-md bg-components-input-bg-normal">
         <div className="flex items-center justify-between px-2 py-1">
           <div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              navigator.clipboard.writeText(String(parsedData))
-              toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+          <CopyFeedback
+            content={String(parsedData)}
+            onCopyError={() => {
+              toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
             }}
-            className="rounded-md p-0.5 hover:bg-components-panel-border"
-          >
-            <RiFileCopyLine className="size-4 text-text-tertiary" />
-          </button>
+          />
         </div>
         <div className="px-2 pt-1 pb-2">
           <pre className="code-xs-regular break-all whitespace-pre-wrap text-text-secondary">

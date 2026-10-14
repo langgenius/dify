@@ -4,7 +4,6 @@
   "about.nowAvailable": "Dify {{version}} متاح الآن.",
   "about.updateNow": "تحديث الآن",
   "about.version": "الإصدار {{version}}",
-  "actionMsg.copySuccessfully": "تم النسخ بنجاح",
   "actionMsg.downloadUnsuccessfully": "فشل التنزيل. يرجى المحاولة مرة أخرى لاحقًا.",
   "actionMsg.generatedSuccessfully": "تم الإنشاء بنجاح",
   "actionMsg.generatedUnsuccessfully": "فشل الإنشاء",
