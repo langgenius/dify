@@ -11,8 +11,8 @@ const DifyBuilderEntry = ({ disabled = false, onClick }: DifyBuilderEntryProps) 
     <Button type="button" variant="secondary" size="medium" disabled={disabled} onClick={onClick}>
       <span className="inline-flex items-center gap-1">
         <Trans
-          i18nKey={($) => $['difyBuilder.fixRun']}
-          ns="workflow"
+          i18nKey={($) => $.fixRun}
+          ns="difyBuilder"
           components={{
             builder: <span className="inline-flex items-center gap-1 font-semibold" />,
             icon: (

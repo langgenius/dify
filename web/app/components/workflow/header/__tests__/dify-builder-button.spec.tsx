@@ -11,30 +11,30 @@ describe('DifyBuilderButton', () => {
     const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<DifyBuilderButton disabled={false} />)
     const button = screen.getByRole('button', {
-      name: 'workflow.difyBuilder.buttonTooltip',
+      name: 'difyBuilder.buttonTooltip',
     })
 
-    expect(button).toHaveTextContent('workflow.difyBuilder.buttonTooltip')
+    expect(button).toHaveTextContent('difyBuilder.buttonTooltip')
     expect(button).toHaveAttribute('aria-expanded', 'false')
     await user.click(button)
 
     expect(store.getState().showDifyBuilderPanel).toBe(true)
-    expect(button).toHaveAccessibleName('workflow.difyBuilder.buttonTooltip')
+    expect(button).toHaveAccessibleName('difyBuilder.buttonTooltip')
     expect(button).toHaveAttribute('aria-expanded', 'true')
-    expect(button).not.toHaveTextContent('workflow.difyBuilder.buttonTooltip')
+    expect(button).not.toHaveTextContent('difyBuilder.buttonTooltip')
 
     await user.click(button)
 
     expect(store.getState().showDifyBuilderPanel).toBe(false)
     expect(button).toHaveAttribute('aria-expanded', 'false')
-    expect(button).toHaveTextContent('workflow.difyBuilder.buttonTooltip')
+    expect(button).toHaveTextContent('difyBuilder.buttonTooltip')
   })
 
   it('should preserve native keyboard activation and focus with canvas shortcuts enabled', async () => {
     const user = userEvent.setup()
     renderWorkflowFlowComponent(<DifyBuilderButton disabled={false} />)
     const button = screen.getByRole('button', {
-      name: 'workflow.difyBuilder.buttonTooltip',
+      name: 'difyBuilder.buttonTooltip',
     })
 
     await user.click(button)
@@ -46,7 +46,7 @@ describe('DifyBuilderButton', () => {
 
     expect(button).toHaveFocus()
     expect(button).toHaveAttribute('aria-expanded', 'false')
-    expect(button).toHaveTextContent('workflow.difyBuilder.buttonTooltip')
+    expect(button).toHaveTextContent('difyBuilder.buttonTooltip')
 
     await user.keyboard('{Enter}')
 
@@ -58,7 +58,7 @@ describe('DifyBuilderButton', () => {
     const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<DifyBuilderButton disabled />)
     const button = screen.getByRole('button', {
-      name: 'workflow.difyBuilder.buttonTooltip',
+      name: 'difyBuilder.buttonTooltip',
     })
 
     expect(button).toBeDisabled()

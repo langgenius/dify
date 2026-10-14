@@ -23,6 +23,7 @@ from tests.unit_tests.core.dify_builder.fakes import (
     StubAgent,
     successful_verification,
 )
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 def _actor() -> Actor:
@@ -117,7 +118,7 @@ def test_edit_capability_check_renders_agent_fields():
     assert result.context.edit_target_node_ids == ["llm"]
     assert not any(item.kind == "change_set" for item in result.items)
     assistant = next(item for item in result.items if item.kind == "assistant_turn")
-    assert "Affected nodes: llm" in assistant.payload["reply_text"]
+    assert "Affected nodes: llm" in english_text(assistant.payload["reply_text"])
 
 
 def test_capability_check_ignores_non_goal_action():
@@ -210,7 +211,7 @@ def test_plan_approval_approve_edits_graph_and_emits_canvas():
     assert "apply_error_fix" not in names
     assert not any(i.kind in {"change_set", "checkpoint", "plan"} for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert "Applied" in assistant.payload["reply_text"]
+    assert "Applied" in english_text(assistant.payload["reply_text"])
     assert {i.kind for i in res.items} == {"decision", "assistant_turn"}
 
 
@@ -291,12 +292,12 @@ def test_edit_test_fail_routes_to_await_repair():
     # Card content stays minimal; diagnosis and proposed changes are text.
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert test_result.payload["failure_reason"] == "boom"
+    assert english_text(test_result.payload["failure_reason"]) == "boom"
     assert not any(i.kind in {"error", "change_set"} for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    assert "Output node requires 'metrics'" in assistant.payload["reply_text"]
-    assert "Proposed fix" in assistant.payload["reply_text"]
+    assert "Output node requires 'metrics'" in english_text(assistant.payload["reply_text"])
+    assert "Proposed fix" in english_text(assistant.payload["reply_text"])
     assert test_result.payload["dify_run_id"] == result.run.dify_run_id
     assert events == []
 
@@ -326,7 +327,7 @@ def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate():
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    assert "No safe automatic fix was found" in assistant.payload["reply_text"]
+    assert "No safe automatic fix was found" in english_text(assistant.payload["reply_text"])
 
 
 def test_edit_test_reuses_persisted_inputs_on_retest():
@@ -420,7 +421,7 @@ def test_edit_test_input_failure_routes_to_testdata_gate():
     assert "change_set" not in kinds  # gate, not repair
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "File variable not found" in test_result.payload["failure_reason"]
+    assert "File variable not found" in english_text(test_result.payload["failure_reason"])
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["stage_id"] == "edit.test_affected_paths"
 
@@ -466,7 +467,7 @@ def test_edit_test_model_config_failure_surfaces_without_repair():
     assert "change_set" not in kinds
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "model" in assistant.payload["reply_text"].lower()
+    assert "model" in english_text(assistant.payload["reply_text"]).lower()
 
 
 def test_review_publish_enters_working_publish_before_side_effect():
@@ -492,7 +493,7 @@ def test_review_publish_enters_working_publish_before_side_effect():
     assert dify.published is True
     assert not any(item.kind in {"publish", "summary"} for item in publish.items)
     assistant = next(item for item in publish.items if item.kind == "assistant_turn")
-    assert assistant.payload["reply_text"] == "Published workflow version # 1 (live). Edit complete."
+    assert english_text(assistant.payload["reply_text"]) == "Published workflow version # 1 (live). Edit complete."
     assert {"event": "publish_workflow"} in events
 
 
@@ -510,7 +511,9 @@ def test_review_keep_draft_reaches_terminal_without_publish_card():
     assert dify.published is False  # but no real publish
     assert not any(i.kind == "publish" for i in res.items)  # and no publish card
     assert not any(i.kind == "summary" for i in res.items)
-    assert any(i.kind == "assistant_turn" and "kept as a draft" in i.payload["reply_text"] for i in res.items)
+    assert any(
+        i.kind == "assistant_turn" and "kept as a draft" in english_text(i.payload["reply_text"]) for i in res.items
+    )
     assert events == []
 
 
@@ -641,7 +644,9 @@ def test_edit_await_repair_refuses_to_apply_an_empty_staged_repair():
     result = handle_await_repair(env, Turn(actor=_actor(), action=Action(kind="approve_repair")), s, fc)
 
     assert result.next == PcState.EDIT_AWAIT_REPAIR
-    assert "notice" in [item.kind for item in result.items]
+    assert [item.kind for item in result.items] == ["assistant_turn"]
+    assert result.items[0].payload["reply_mode"] == "complete"
+    assert "No fix is staged" in english_text(result.items[0].payload["reply_text"])
 
 
 def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
@@ -665,7 +670,7 @@ def test_edit_await_repair_surfaces_a_stale_intent_instead_of_failing_the_sessio
     assert result.next == PcState.EDIT_AWAIT_REPAIR
     assert not any(i.kind == "error" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "Couldn't apply the fix" in assistant.payload["reply_text"]
+    assert "Couldn't apply the fix" in english_text(assistant.payload["reply_text"])
     assert result.context.staged_repair == []
 
 
@@ -691,8 +696,10 @@ def test_edit_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix():
 
     assert result.next == PcState.EDIT_AWAIT_REPAIR
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "The workflow can't start" in assistant.payload["reply_text"]
-    assert "the draft would not start: node 'llm' (llm): 1 validation error" in assistant.payload["reply_text"]
+    assert "The workflow can't start" in english_text(assistant.payload["reply_text"])
+    assert "the draft would not start: node 'llm' (llm): 1 validation error" in english_text(
+        assistant.payload["reply_text"]
+    )
     assert assistant.payload["execution"]["status"] == "error"
     assert result.context.staged_repair == []
 
@@ -812,7 +819,10 @@ def test_full_edit_flow_goal_to_publish():
     assert not ({"summary", "challenge", "change_set", "checkpoint", "publish"} & set(kinds))
     seqs = [i.seq for i in items]
     assert seqs == sorted(seqs)
-    assert any(i.kind == "assistant_turn" and "Published workflow version" in i.payload["reply_text"] for i in items)
+    assert any(
+        i.kind == "assistant_turn" and "Published workflow version" in english_text(i.payload["reply_text"])
+        for i in items
+    )
 
 
 def test_full_edit_flow_keep_draft_completes_without_publish():
@@ -1062,9 +1072,9 @@ def test_plan_approval_surfaces_an_edit_that_would_not_start_instead_of_crashing
 
     assert res.next == PcState.EDIT_PLAN_APPROVAL
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert "The workflow can't start" in assistant.payload["reply_text"]
-    assert "node 'llm' (llm)" in assistant.payload["reply_text"]
-    assert "Continue adjusting" in assistant.payload["reply_text"]
+    assert "The workflow can't start" in english_text(assistant.payload["reply_text"])
+    assert "node 'llm' (llm)" in english_text(assistant.payload["reply_text"])
+    assert "Continue adjusting" in english_text(assistant.payload["reply_text"])
 
 
 def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot_start():
@@ -1095,9 +1105,9 @@ def test_plan_approval_does_not_call_an_unapplicable_edit_a_workflow_that_cannot
     assert res.context.staged_repair == []
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert assistant.payload["execution"]["status"] == "error"
-    assert "Couldn't apply the workflow" in assistant.payload["reply_text"]
-    assert "node not found: x" in assistant.payload["reply_text"]
-    assert "Continue adjusting" in assistant.payload["reply_text"]
+    assert "Couldn't apply the workflow" in english_text(assistant.payload["reply_text"])
+    assert "node not found: x" in english_text(assistant.payload["reply_text"])
+    assert "Continue adjusting" in english_text(assistant.payload["reply_text"])
 
 
 def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
@@ -1137,7 +1147,7 @@ def test_a_succeeded_affected_path_run_that_reached_no_end_is_not_a_pass():
     assert res.context.staged_repair == []
     test_result = next(i for i in res.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "produced no terminal output" in test_result.payload["failure_reason"]
+    assert "produced no terminal output" in english_text(test_result.payload["failure_reason"])
     assert res.run.culprit_node_id == "node2"
 
 
@@ -1168,9 +1178,8 @@ def test_each_unknown_outcome_stops_at_the_edit_gate():
     assert second.context.unknown_outcome_count == 0
     assert second.context.staged_repair == []
     assert second.context.diagnosis is None
-    assert (
-        "Execution safety requires review"
-        in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "Execution safety requires review" in english_text(
+        next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
 
@@ -1197,7 +1206,9 @@ def test_the_same_failing_affected_path_test_trips_the_breaker_on_the_third_repe
 
     assert snapshots == [(0, 1), (1, 1), (2, 0)]
     assert result.next == PcState.EDIT_AWAIT_REPAIR
-    assert "stopped retrying" in next(i for i in result.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "stopped retrying" in english_text(
+        next(i for i in result.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
 
 
 def test_sending_a_new_edit_goal_resets_the_breaker():
@@ -1697,8 +1708,8 @@ def test_a_proposal_the_agent_judged_wrong_ends_at_the_gate_and_writes_nothing()
     assert res.context.staged_repair == []
     assert res.context.last_edit_rejection == _WOULD_RUN_EMPTY  # carried into the next attempt
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert _WOULD_RUN_EMPTY in assistant.payload["reply_text"]
-    assert "The change wouldn't do what you asked" in assistant.payload["reply_text"]
+    assert _WOULD_RUN_EMPTY in english_text(assistant.payload["reply_text"])
+    assert "The change wouldn't do what you asked" in english_text(assistant.payload["reply_text"])
 
     # The failure is marked on the step that was actually running. Marked on the
     # write instead, the timeline showed a LATER step failed while an earlier one
@@ -1765,9 +1776,9 @@ def test_plan_approval_empty_proposal_refuses_before_apply_and_preserves_gate_ex
     assert result.context.staged_repair == []
     assert result.context.last_edit_rejection
     reply = next(i for i in result.items if i.kind == "assistant_turn").payload
-    assert "No changes were proposed" in reply["reply_text"]
-    assert "Nothing was applied" in reply["reply_text"]
-    assert "Applied" not in reply["reply_text"]
+    assert "No changes were proposed" in english_text(reply["reply_text"])
+    assert "Nothing was applied" in english_text(reply["reply_text"])
+    assert "Applied" not in english_text(reply["reply_text"])
     assert reply["execution"]["status"] == "error"
     assert turn_activities(result) == {"edit-prepare": "failed"}
     assert events == []
@@ -1808,8 +1819,8 @@ def test_plan_approval_no_op_uses_same_revision_despite_touched_nodes(values):
     assert next(n for n in dify.graph["nodes"] if n["id"] == "llm")["data"]["risk_threshold"] == "high"
     assert "apply_edit_plan" not in [e["event"] for e in events]
     assistant = next(i for i in result.items if i.kind == "assistant_turn").payload
-    assert "No effective changes" in assistant["reply_text"]
-    assert "Applied" not in assistant["reply_text"]
+    assert "No effective changes" in english_text(assistant["reply_text"])
+    assert "Applied" not in english_text(assistant["reply_text"])
     assert assistant["execution"]["status"] == "completed"
     assert turn_activities(result) == {"edit-prepare": "done", "edit-highlight": "done", "edit-apply": "done"}
 
@@ -1830,8 +1841,8 @@ def test_plan_approval_different_revision_retains_applied_behavior(omit_summary)
     assert next(n for n in dify.graph["nodes"] if n["id"] == "llm")["data"]["risk_threshold"] == "low"
     assert "apply_edit_plan" in [e["event"] for e in events]
     assistant = next(i for i in result.items if i.kind == "assistant_turn").payload
-    assert "Applied" in assistant["reply_text"]
-    assert "configuration" in assistant["reply_text"]
+    assert "Applied" in english_text(assistant["reply_text"])
+    assert "configuration" in english_text(assistant["reply_text"])
     assert assistant["execution"]["status"] == "completed"
     if not omit_summary:
         assert result.context.change_set.changed_nodes == ["llm"]

@@ -173,7 +173,7 @@ describe('Header layout components', () => {
       )
 
       const appBuilderButton = screen.getByRole('button', {
-        name: 'workflow.difyBuilder.buttonTooltip',
+        name: 'difyBuilder.buttonTooltip',
       })
 
       expect(screen.getAllByRole('button').at(-1)).toBe(appBuilderButton)
@@ -186,16 +186,16 @@ describe('Header layout components', () => {
         { initialStoreState: { showDifyBuilderPanel: true } },
       )
       const appBuilderButton = screen.getByRole('button', {
-        name: 'workflow.difyBuilder.buttonTooltip',
+        name: 'difyBuilder.buttonTooltip',
       })
 
       expect(appBuilderButton).toHaveAttribute('aria-expanded', 'true')
-      expect(appBuilderButton).not.toHaveTextContent('workflow.difyBuilder.buttonTooltip')
+      expect(appBuilderButton).not.toHaveTextContent('difyBuilder.buttonTooltip')
 
       await user.click(appBuilderButton)
 
       expect(store.getState().showDifyBuilderPanel).toBe(false)
-      expect(appBuilderButton).toHaveTextContent('workflow.difyBuilder.buttonTooltip')
+      expect(appBuilderButton).toHaveTextContent('difyBuilder.buttonTooltip')
     })
 
     it('should toggle an existing App Builder session while its canvas lock is active', async () => {
@@ -211,14 +211,14 @@ describe('Header layout components', () => {
         />,
       )
       const appBuilderButton = screen.getByRole('button', {
-        name: 'workflow.difyBuilder.buttonTooltip',
+        name: 'difyBuilder.buttonTooltip',
       })
 
       expect(appBuilderButton).toBeEnabled()
       await user.click(appBuilderButton)
       expect(store.getState().showDifyBuilderPanel).toBe(true)
 
-      await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }))
+      await user.click(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' }))
       expect(store.getState().showDifyBuilderPanel).toBe(false)
     })
 
@@ -234,9 +234,7 @@ describe('Header layout components', () => {
         />,
       )
 
-      expect(
-        screen.getByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }),
-      ).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeDisabled()
     })
 
     it('should keep App Builder disabled without edit permission even for an existing session', () => {
@@ -261,9 +259,7 @@ describe('Header layout components', () => {
         },
       )
 
-      expect(
-        screen.getByRole('button', { name: 'workflow.difyBuilder.buttonTooltip' }),
-      ).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeDisabled()
     })
   })
 

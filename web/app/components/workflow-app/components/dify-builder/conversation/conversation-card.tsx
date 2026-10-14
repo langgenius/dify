@@ -1,11 +1,13 @@
 import type { ConversationItem, FormField } from '../types'
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { DifyBuilderCard } from '../cards/card-shell'
+import { useBuilderText } from '../copy/use-builder-text'
 import { ExecutionProgress } from './execution-progress'
 import { PreflightContextCard } from './preflight-context-card'
 import { ReadOnlyFormResponse } from './read-only-form-response'
+import arrivalStyles from './reply-arrival.module.css'
 import { TestResultCard } from './test-result-card'
 import { Thinking } from './thinking'
 
@@ -14,7 +16,7 @@ export const AssistantReply = ({ text }: { text: string }) => (
 )
 
 export const UserMessage = memo(({ text }: { text: string }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'difyBuilder'])
 
   return (
     <article className="flex justify-end">
@@ -36,10 +38,17 @@ export const ConversationCard = memo(
     invalidated: boolean
     sourceFormFields?: FormField[]
   }) => {
-    const { t } = useTranslation(['workflow'])
+    const [animateArrival] = useState(
+      () =>
+        item.kind === 'assistant_turn' &&
+        Boolean(item.receivedAt && Date.now() - item.receivedAt < 160),
+    )
+    const replyLanguage = 'reply_language' in item.payload ? item.payload.reply_language : undefined
+    const { locale, renderText } = useBuilderText(replyLanguage)
+    const { t } = useTranslation(['difyBuilder'], { lng: locale })
 
     if (item.kind === 'user' || item.kind === 'decision')
-      return <UserMessage text={item.payload.text} />
+      return <UserMessage text={renderText(item.payload.text)} />
 
     if (item.kind === 'assistant_turn') {
       const hasExecution = (item.payload.execution.activities?.length ?? 0) > 0
@@ -47,22 +56,24 @@ export const ConversationCard = memo(
       const hasReply = Boolean(item.payload.reply_text)
       if (!hasExecution && !hasReasoning && !hasReply) return null
       return (
-        <article className="flex flex-col gap-2">
-          <h3 className="sr-only">{t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}</h3>
-          {hasExecution ? <ExecutionProgress execution={item.payload.execution} /> : null}
+        <article
+          lang={locale}
+          className={`flex flex-col gap-2 ${animateArrival ? arrivalStyles.enter : ''}`}
+        >
+          <h3 className="sr-only">{t(($) => $.panelTitle, { ns: 'difyBuilder' })}</h3>
+          {hasExecution ? (
+            <ExecutionProgress replyLanguage={replyLanguage} execution={item.payload.execution} />
+          ) : null}
           <Thinking text={item.payload.reasoning_text} />
-          {item.payload.reply_text ? <AssistantReply text={item.payload.reply_text} /> : null}
+          {item.payload.reply_text ? (
+            <AssistantReply text={renderText(item.payload.reply_text)} />
+          ) : null}
         </article>
       )
     }
 
-    if (item.kind === 'notice') {
-      return (
-        <div className="rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
-          {item.payload.text}
-        </div>
-      )
-    }
+    // Retain legacy rows in history for sequence reconciliation without displaying them.
+    if (item.kind === 'notice') return null
 
     if (item.kind === 'interaction_response') {
       const fields = item.payload.fields ?? []
@@ -77,15 +88,21 @@ export const ConversationCard = memo(
                   : 'system-sm-regular wrap-break-word text-text-tertiary'
               }
             >
-              {item.payload.question}
+              {renderText(item.payload.question)}
             </h3>
             {item.payload.answer && (
               <p className="mt-0.5 system-md-regular wrap-break-word whitespace-pre-wrap text-text-primary">
-                {item.payload.answer}
+                {renderText(item.payload.answer)}
               </p>
             )}
           </div>
-          {hasFields && <ReadOnlyFormResponse fields={fields} sourceFields={sourceFormFields} />}
+          {hasFields && (
+            <ReadOnlyFormResponse
+              replyLanguage={replyLanguage}
+              fields={fields}
+              sourceFields={sourceFormFields}
+            />
+          )}
         </article>
       )
     }
@@ -95,8 +112,8 @@ export const ConversationCard = memo(
     if (item.kind === 'run_context') {
       return (
         <DifyBuilderCard
-          category={t(($) => $['difyBuilder.cardCategory.run'], { ns: 'workflow' })}
-          headline={item.payload.title || t(($) => $['difyBuilder.failedRun'], { ns: 'workflow' })}
+          category={t(($) => $['cardCategory.run'], { ns: 'difyBuilder' })}
+          headline={item.payload.title || t(($) => $.failedRun, { ns: 'difyBuilder' })}
           invalidated={invalidated}
           meta={item.payload.error_code}
           status={{ state: 'failed' }}
@@ -121,8 +138,8 @@ export const ConversationCard = memo(
       const items = item.payload.items ?? []
       return (
         <DifyBuilderCard
-          category={t(($) => $['difyBuilder.cardCategory.plan'], { ns: 'workflow' })}
-          headline={item.payload.title}
+          category={t(($) => $['cardCategory.plan'], { ns: 'difyBuilder' })}
+          headline={renderText(item.payload.title)}
           invalidated={invalidated}
         >
           {items.length > 0 ? (

@@ -5,6 +5,7 @@ import pytest
 
 from core.dify_builder import models
 from core.dify_builder.execution_policy import ExecutionEvidenceSummary
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 def verified(**changes):
@@ -96,7 +97,7 @@ def test_verification_present_null_and_unknown_are_reviewable(state, allowed):
     assert card.terminal_outputs == {"result": None}
     assert card.executed_node_ids == ["end"]
     assert card.outcome == ("execution_succeeded_needs_review" if allowed else "required_output_unresolved")
-    assert "not verified" in card.review_note
+    assert "not verified" in english_text(card.review_note)
 
 
 ConfirmedOutcome = Literal["confirmed_tool_completed", "execution_evidence_unknown", "native_failed"]
@@ -255,7 +256,7 @@ def test_json_noncompletion_blocks_publication(outcome, status, expected) -> Non
     card = result_card(run)
     assert card.policy_version == "builder-json-parse-v1"
     assert card.outcome == ("execution_failed" if status == "failed" else "execution_unknown")
-    assert card.failure_reason is not None
-    assert "SECRET-PROVIDER-ERROR" not in card.failure_reason
+    assert english_text(card.failure_reason) is not None
+    assert "SECRET-PROVIDER-ERROR" not in english_text(card.failure_reason)
     if status == "failed":
         assert card.terminal_outputs is None

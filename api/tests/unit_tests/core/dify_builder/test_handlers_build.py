@@ -26,6 +26,7 @@ from tests.unit_tests.core.dify_builder.fakes import (
     failed_verification,
     successful_verification,
 )
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 def _actor() -> Actor:
@@ -376,7 +377,7 @@ def test_resource_recommendation_confirm_creates_internal_checkpoint_and_plan():
     assert cp.session_id == s.id
     assert not any(i.kind == "checkpoint" for i in res.items)
     plan = next(i for i in res.items if i.kind == "plan")
-    assert plan.payload["title"] == "Build plan"
+    assert english_text(plan.payload["title"]) == "Build plan"
     assert plan.payload["items"] == res.context.plan_items
     assert "version_tag" not in plan.payload
     assert {i.kind for i in res.items} == {"decision", "plan", "assistant_turn"}
@@ -411,7 +412,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
     ]
     assert not any(i.kind in {"change_set", "plan"} for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert "Workflow built on the canvas" in assistant.payload["reply_text"]
+    assert "Workflow built on the canvas" in english_text(assistant.payload["reply_text"])
     assert len(assistant.payload["execution"]["activities"]) == 3
 
 
@@ -494,8 +495,8 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas():
     assert {n["id"] for n in env.dify.graph["nodes"]} == {"start"}  # placeholder kept; nothing deleted/added
     assert not any(i.kind == "error" for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert "UNRESOLVED_REFERENCE" in assistant.payload["reply_text"]
-    assert assistant.payload["reply_text"] != "Workflow built on the canvas."  # no false success claim
+    assert "UNRESOLVED_REFERENCE" in english_text(assistant.payload["reply_text"])
+    assert english_text(assistant.payload["reply_text"]) != "Workflow built on the canvas."  # no false success claim
 
 
 def test_plan_approval_records_diagnostics_in_backend_logs(caplog):
@@ -726,12 +727,12 @@ def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     # changes are streamed as assistant text.
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert test_result.payload["failure_reason"] == "boom"
+    assert english_text(test_result.payload["failure_reason"]) == "boom"
     assert not any(i.kind in {"error", "change_set"} for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    assert "Output node requires 'metrics'" in assistant.payload["reply_text"]
-    assert "Proposed fix" in assistant.payload["reply_text"]
+    assert "Output node requires 'metrics'" in english_text(assistant.payload["reply_text"])
+    assert "Proposed fix" in english_text(assistant.payload["reply_text"])
     assert test_result.payload["dify_run_id"] == result.run.dify_run_id
     assert events == []
 
@@ -762,7 +763,7 @@ def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate():
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    assert "No safe automatic fix was found" in assistant.payload["reply_text"]
+    assert "No safe automatic fix was found" in english_text(assistant.payload["reply_text"])
 
 
 def test_test_and_repair_reuses_persisted_inputs_on_retest():
@@ -827,7 +828,7 @@ def test_test_and_repair_input_failure_routes_to_testdata_gate():
     assert "change_set" not in kinds  # gate, not repair
     test_result = next(i for i in result.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "File variable not found" in test_result.payload["failure_reason"]
+    assert "File variable not found" in english_text(test_result.payload["failure_reason"])
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["stage_id"] == "build.test_and_repair"
 
@@ -878,7 +879,7 @@ def test_test_and_repair_model_config_failure_surfaces_without_repair():
     assert "change_set" not in kinds  # no repair change-set offered
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "model" in assistant.payload["reply_text"].lower()
+    assert "model" in english_text(assistant.payload["reply_text"]).lower()
 
 
 def test_missing_proof_running_result_stops_at_review():
@@ -915,7 +916,7 @@ def test_missing_proof_running_result_stops_at_review():
     assert "error" not in kinds
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    assert "Execution safety requires review" in assistant.payload["reply_text"]
+    assert "Execution safety requires review" in english_text(assistant.payload["reply_text"])
 
 
 def test_test_and_repair_run_draft_raises_routes_to_await_repair_failed():
@@ -1066,7 +1067,7 @@ def test_review_keep_draft_completes_without_publish():
     assert res.next == PcState.BUILD_COMPLETE
     assert events == []
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert "Kept as a draft" in assistant.payload["reply_text"]
+    assert "Kept as a draft" in english_text(assistant.payload["reply_text"])
 
 
 def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
@@ -1114,7 +1115,7 @@ def test_publish_calls_dify_and_completes_with_text_receipt():
     assert dify.published is True
     assert not any(i.kind == "publish" for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert assistant.payload["reply_text"] == "Published workflow version # 1 (live). Build complete."
+    assert english_text(assistant.payload["reply_text"]) == "Published workflow version # 1 (live). Build complete."
     assert {"event": "publish_workflow"} in events
 
 
@@ -1274,7 +1275,10 @@ def test_full_build_flow_goal_to_complete():
     assert not ({"challenge", "checkpoint", "change_set", "summary", "publish", "build_learning"} & set(kinds))
     seqs = [i.seq for i in items]
     assert seqs == sorted(seqs)
-    assert any(i.kind == "assistant_turn" and "Published workflow version" in i.payload["reply_text"] for i in items)
+    assert any(
+        i.kind == "assistant_turn" and "Published workflow version" in english_text(i.payload["reply_text"])
+        for i in items
+    )
 
 
 def test_full_build_flow_file_schema_routes_through_testdata_gate_via_fsm():
@@ -2033,8 +2037,8 @@ def test_an_empty_recommendation_is_explained_rather_than_shown_blank():
 
     card = next(i for i in res.items if i.kind == "resource_select")
     assert card.payload["recommended"] == []
-    notice = next(i for i in res.items if i.kind == "notice")
-    assert "No workspace resources matched" in notice.payload["text"]
+    assert "No workspace resources matched" in english_text(card.payload["description"])
+    assert not any(i.kind == "notice" for i in res.items)
 
 
 def test_the_card_is_still_emitted_when_nothing_matched():
@@ -2056,13 +2060,12 @@ def test_a_real_recommendation_carries_no_such_notice():
     assert all("No workspace resources matched" not in str(i.payload) for i in res.items)
 
 
-def test_the_empty_recommendation_notice_is_localizable():
-    from core.dify_builder import strings
+def test_the_empty_recommendation_description_is_localizable():
 
     res = _find_resources([])
-    notice = next(i for i in res.items if i.kind == "notice")
+    card = next(i for i in res.items if i.kind == "resource_select")
 
-    assert notice.payload["text"] in strings.PLAIN
+    assert card.payload["description"]["type"] == "copy"
 
 
 class _GapAgent(PlaceholderAgent):
@@ -2086,24 +2089,30 @@ def _find_resources_with_agent(agent):
     return handle_initial_plan(env, turn, *repo.get_session(s.id))
 
 
-def test_a_named_capability_gap_is_surfaced_as_a_notice():
+def test_a_named_capability_gap_is_surfaced_in_the_reply():
     from core.dify_builder.contract import ResourceOption
 
     options = [ResourceOption(id="kb-1", label="KB", meta="", kind="knowledge", readiness="ready")]
     res = _find_resources_with_agent(_GapAgent(options, "Nothing installed can send email."))
 
-    notice = next(i for i in res.items if i.kind == "notice")
-    assert notice.payload["text"] == "Nothing installed can send email."
+    reply = next(i for i in res.items if i.kind == "assistant_turn")
+    assert english_text(reply.payload["reply_text"]).endswith("Nothing installed can send email.")
+    assert reply.payload["reply_mode"] == "complete"
+    assert not any(i.kind == "notice" for i in res.items)
 
 
-def test_a_capability_gap_and_the_empty_recommendation_notice_both_appear():
-    # The two notices are independent -- an empty recommendation AND an
-    # unnamed capability gap can both be true of the same plan.
+def test_an_empty_recommendation_and_a_capability_gap_use_the_card_and_reply():
+    # An empty recommendation and a capability gap can both be true of the same plan.
     res = _find_resources_with_agent(_GapAgent([], "Nothing installed can send email."))
 
-    notices = [i.payload["text"] for i in res.items if i.kind == "notice"]
-    assert "No workspace resources matched this plan — continuing without any." in notices
-    assert "Nothing installed can send email." in notices
+    card = next(i for i in res.items if i.kind == "resource_select")
+    reply = next(i for i in res.items if i.kind == "assistant_turn")
+    assert (
+        english_text(card.payload["description"])
+        == "No workspace resources matched this plan — continuing without any."
+    )
+    assert "Nothing installed can send email." in english_text(reply.payload["reply_text"])
+    assert not any(i.kind == "notice" for i in res.items)
 
 
 def test_no_gap_notice_when_the_agent_reports_no_gap():
@@ -2123,8 +2132,10 @@ def test_a_missing_config_tool_still_lets_the_gap_agent_report_a_gap():
     options = [ResourceOption(id="tool-1", label="Slack", meta="", kind="plugin", readiness="missing_config")]
     res = _find_resources_with_agent(_GapAgent(options, "Nothing installed can send a Slack message."))
 
-    notice = next(i for i in res.items if i.kind == "notice")
-    assert notice.payload["text"] == "Nothing installed can send a Slack message."
+    reply = next(i for i in res.items if i.kind == "assistant_turn")
+    assert english_text(reply.payload["reply_text"]).endswith("Nothing installed can send a Slack message.")
+    card = next(i for i in res.items if i.kind == "resource_select")
+    assert card.payload["recommended"][0]["readiness"] == "missing_config"
 
 
 def test_the_test_result_card_names_the_dify_run_so_the_canvas_is_reachable_later():
@@ -2157,7 +2168,10 @@ def test_await_repair_refuses_to_apply_an_empty_staged_repair():
 
     assert out.next == PcState.BUILD_AWAIT_REPAIR
     assert out.context.repair_attempts == 0
-    assert "notice" in [item.kind for item in out.items]
+    assert [item.kind for item in out.items] == ["assistant_turn"]
+    assert out.items[0].payload["reply_mode"] == "complete"
+    assert "No fix is staged" in english_text(out.items[0].payload["reply_text"])
+    assert not env.dify.applied
 
 
 def test_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
@@ -2184,8 +2198,8 @@ def test_await_repair_surfaces_a_stale_intent_instead_of_failing_the_session():
     assert out.next == PcState.BUILD_AWAIT_REPAIR  # not a dead session
     assert not any(i.kind == "error" for i in out.items)
     assistant = next(i for i in out.items if i.kind == "assistant_turn")
-    assert "Couldn't apply the fix" in assistant.payload["reply_text"]
-    assert "no key 'memory'" in assistant.payload["reply_text"]
+    assert "Couldn't apply the fix" in english_text(assistant.payload["reply_text"])
+    assert "no key 'memory'" in english_text(assistant.payload["reply_text"])
     assert out.context.staged_repair == []  # engages the empty-repair guard
 
 
@@ -2214,8 +2228,10 @@ def test_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix():
 
     assert out.next == PcState.BUILD_AWAIT_REPAIR
     assistant = next(i for i in out.items if i.kind == "assistant_turn")
-    assert "The workflow can't start" in assistant.payload["reply_text"]
-    assert "the draft would not start: node 'llm' (llm): 1 validation error" in assistant.payload["reply_text"]
+    assert "The workflow can't start" in english_text(assistant.payload["reply_text"])
+    assert "the draft would not start: node 'llm' (llm): 1 validation error" in english_text(
+        assistant.payload["reply_text"]
+    )
     assert assistant.payload["execution"]["status"] == "error"
     assert out.context.staged_repair == []
 
@@ -2295,7 +2311,7 @@ def test_test_and_repair_stops_offering_a_repair_through_the_handler():
     assert result.context.staged_repair == []  # cleared -- no repair offered on the 3rd identical failure
     assert not any(i.kind == "error" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "stopped retrying" in assistant.payload["reply_text"]
+    assert "stopped retrying" in english_text(assistant.payload["reply_text"])
     # the run still has to be persisted: every sibling exit returns it, and
     # fc.verify_run_id already points at it (a dangling pointer otherwise).
     assert result.run is not None
@@ -2422,7 +2438,7 @@ def test_breaker_fires_through_the_handler_although_diagnoses_are_reworded():
     assert fc.staged_repair == []  # no fourth repair offered
     assert not any(i.kind == "error" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "stopped retrying" in assistant.payload["reply_text"]
+    assert "stopped retrying" in english_text(assistant.payload["reply_text"])
 
 
 def test_breaker_restarts_when_the_engine_failure_actually_changes():
@@ -2493,7 +2509,7 @@ def test_first_build_that_applies_nothing_reports_honestly():
     assert result.next == PcState.BUILD_PLAN_APPROVAL  # not advanced to execution
     assert not any(i.kind == "error" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "already" in assistant.payload["reply_text"].lower()
+    assert "already" in english_text(assistant.payload["reply_text"]).lower()
     assert not any(i.kind == "change_set" for i in result.items)  # no "graph built" claim
 
 
@@ -2564,9 +2580,8 @@ def test_launch_error_without_native_proof_never_stages_repair():
     assert [attempts for attempts, _, _ in snapshots] == [0, 0, 0]
     final = results[-1]
     assert final.context.staged_repair == []
-    assert (
-        "Execution safety requires review"
-        in next(i for i in final.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "Execution safety requires review" in english_text(
+        next(i for i in final.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
 
@@ -2610,8 +2625,8 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     assert res.context.built_node_ids == []
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert assistant.payload["execution"]["status"] == "error"
-    assert "The workflow can't start" in assistant.payload["reply_text"]
-    assert "node 'llm' (llm)" in assistant.payload["reply_text"]
+    assert "The workflow can't start" in english_text(assistant.payload["reply_text"])
+    assert "node 'llm' (llm)" in english_text(assistant.payload["reply_text"])
     # The already-streamed add_node marker precedes the revert: the handler
     # tells the client to fall back to the checkpoint AFTER apply_repair's
     # own per-intent markers, same as production ordering.
@@ -2649,8 +2664,8 @@ def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_canno
     assert res.context.built_node_ids == []
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert assistant.payload["execution"]["status"] == "error"
-    assert "Couldn't apply the workflow" in assistant.payload["reply_text"]
-    assert "node not found: x" in assistant.payload["reply_text"]
+    assert "Couldn't apply the workflow" in english_text(assistant.payload["reply_text"])
+    assert "node not found: x" in english_text(assistant.payload["reply_text"])
     assert [e["event"] for e in events] == ["add_node", "revert_checkpoint"]
 
 
@@ -2713,9 +2728,11 @@ def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass():
     assert res.context.staged_repair == []  # nothing to diagnose: the engine reported no error
     test_result = next(i for i in res.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "produced no terminal output" in test_result.payload["failure_reason"]
+    assert "produced no terminal output" in english_text(test_result.payload["failure_reason"])
     assert res.run.culprit_node_id == "node2"  # the branch node that routed nowhere
-    assert "All checks passed" not in next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "All checks passed" not in english_text(
+        next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
+    )
     assert test_result.payload["dify_run_id"] == "run-303"
     assert events == []
 
@@ -2847,18 +2864,16 @@ def test_unknown_outcome_requires_review_on_every_attempt():
     first = handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
     assert first.next == PcState.BUILD_AWAIT_REPAIR  # Missing proof stops immediately.
     assert first.context.unknown_outcome_count == 0
-    assert (
-        "Execution safety requires review"
-        in next(i for i in first.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "Execution safety requires review" in english_text(
+        next(i for i in first.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
     second = handle_test_and_repair(env, Turn(actor=_actor()), s, first.context)
     assert second.next == PcState.BUILD_AWAIT_REPAIR
     assert second.context.unknown_outcome_count == 0
     assert second.context.staged_repair == []
-    assert (
-        "Execution safety requires review"
-        in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "Execution safety requires review" in english_text(
+        next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
 

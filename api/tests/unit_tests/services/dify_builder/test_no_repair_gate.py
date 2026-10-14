@@ -27,6 +27,7 @@ from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
 from services.dify_builder.service import DifyBuilderService, resolve_submitted_action
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
 
 ACTOR = Actor(account_id="owner", tenant_id="tenant")
@@ -113,7 +114,7 @@ def test_empty_repair_offers_retry_and_finish_without_input(source: str) -> None
 
     assert [action.id for action in view.actions] == ["retry_repair", "finish_repair"]
     assert view.decision is not None
-    assert view.decision.title == "No repair available"
+    assert english_text(view.decision.title) == "No repair available"
     assert view.decision.default_option_id == "retry_repair"
     assert [option.id for option in view.decision.options] == ["retry_repair", "finish_repair"]
     assert all(option.input is None for option in view.decision.options)
@@ -158,7 +159,7 @@ def test_no_repair_choice_is_admitted_and_durably_performs_its_action(source: st
     assert dify.run_draft_inputs == {}
     responses = [item for item in repo.list_conversation(session.id) if item.kind == "interaction_response"]
     assert len(responses) == 1
-    assert responses[0].payload["question"] == "No repair available"
+    assert english_text(responses[0].payload["question"]) == "No repair available"
     assert responses[0].payload["submitted_data"] == {"option_id": option_id}
 
 
@@ -202,7 +203,7 @@ def test_staged_repair_rejection_submits_only_the_selected_option() -> None:
     assert (agent.run_diagnoses, agent.checklist_diagnoses, agent.proposals) == (0, 0, 0)
     responses = [item for item in repo.list_conversation(session.id) if item.kind == "interaction_response"]
     assert len(responses) == 1
-    assert responses[0].payload["answer"] == "Reject"
+    assert english_text(responses[0].payload["answer"]) == "Reject"
     assert responses[0].payload["submitted_data"] == {"option_id": "reject_repair"}
 
 
@@ -232,6 +233,6 @@ def test_empty_proposal_always_waits_for_retry_or_finish(risk_level: str) -> Non
     result = handle_propose(env, Turn(actor=ACTOR), session, context)
 
     assert result.next == PcState.FIX_AWAIT_APPROVAL
-    reply = result.items[-1].payload["reply_text"]
+    reply = english_text(result.items[-1].payload["reply_text"])
     assert "try again or finish" in reply
     assert "reject" not in reply

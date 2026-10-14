@@ -48,33 +48,14 @@ from core.dify_builder.models import (
 from core.dify_builder.ports import DifyBuilderAgent, DifyPort, ReasoningStreamingAgent, Repository
 from core.dify_builder.state import PcState, is_terminal, is_waiting, is_working
 from services.dify_builder import recovery
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import BuilderText, copy_text
 
 __all__ = ["Env", "Handler", "Runner", "StepResult"]
 
 _MESSAGE_HISTORY_LIMIT = 24
 _MAX_REASONING_CHARS = 64_000
-_ASSISTANT_TEXT_CHUNK_CHARS = 16
-_ASSISTANT_TEXT_BREAKS = frozenset(" \t\r\n.,!?;:，。！？；：")
-
 logger = logging.getLogger(__name__)
-
-
-def _assistant_text_chunks(text: str) -> list[str]:
-    """Split deterministic copy into exact, natural-looking SSE deltas."""
-    chunks: list[str] = []
-    start = 0
-    while len(text) - start > _ASSISTANT_TEXT_CHUNK_CHARS:
-        ceiling = start + _ASSISTANT_TEXT_CHUNK_CHARS
-        floor = start + (_ASSISTANT_TEXT_CHUNK_CHARS // 2)
-        split = next(
-            (index + 1 for index in range(ceiling - 1, floor - 1, -1) if text[index] in _ASSISTANT_TEXT_BREAKS),
-            ceiling,
-        )
-        chunks.append(text[start:split])
-        start = split
-    if start < len(text):
-        chunks.append(text[start:])
-    return chunks
 
 
 @dataclass
@@ -112,8 +93,8 @@ class Env:
     # is allocated before streaming; the final marker is emitted after the
     # assistant turn commits, before any attached conversation items.
     emit_message: Callable[[AgentMessageEventData], None] | None = None
-    # Called after a CAS commit for every durable, frontend-visible item except
-    # assistant_turn. Assistant content already travels through emit_message.
+    # Complete Builder replies and cards are emitted after CAS. Native model
+    # replies already travel through emit_message and are not emitted twice.
     emit_item: Callable[[ConversationItemAppendedEventData], None] | None = None
     # Called for low-frequency, curated execution-activity deltas while a
     # handler is doing structured cognition or external work. These events are
@@ -127,14 +108,6 @@ class Env:
     # MUST NOT raise: the engine does not guard this call, so the service-layer
     # implementation is responsible for swallowing its own errors and returning a safe fallback.
     detect_language: Callable[[str], str] | None = None
-    # Localizes an about-to-be-committed item list into the given language. None -> no-op.
-    # MUST NOT raise: the engine does not guard this call, so the service-layer
-    # implementation is responsible for swallowing its own errors and returning a safe fallback.
-    localize_items: Callable[[list["ConversationItem"], str], list["ConversationItem"]] | None = None
-    # Prepares bounded, persisted UI copy in the context before a normal CAS.
-    # The service-layer callback must swallow model failures and leave source
-    # English for missing translations. Confirmed outcomes never call it.
-    prepare_ui_copy: Callable[[DifyBuilderContext], None] | None = None
     # Renames the session's app to a model-proposed title (spec N1) and returns
     # the name actually stored, or "" if nothing changed -- the engine records
     # that on the context, so it never claims a name the database does not have.
@@ -154,7 +127,6 @@ class Env:
     event_revision: int = 0
     reasoning_text: str = ""
     command_id: str = ""
-    prelocalized_seqs: set[int] = field(default_factory=set)
     assistant_streams: dict[int, _AssistantStream] = field(default_factory=dict)
 
     def begin_operation(self, session: Session) -> None:
@@ -164,7 +136,6 @@ class Env:
         self.at_version = session.version + 1
         self.event_revision = 0
         self.reasoning_text = ""
-        self.prelocalized_seqs.clear()
         self.assistant_streams.clear()
         if isinstance(self.agent, ReasoningStreamingAgent):
             self.agent.set_reasoning_callback(self.record_reasoning)
@@ -287,35 +258,21 @@ class Env:
         session: Session,
         context: DifyBuilderContext,
         *,
-        reply_text: str,
+        reply_text: BuilderText,
         execution: ExecutionProgress,
         cards: list[str] | None = None,
         turn_id: str | None = None,
     ) -> list[ConversationItem]:
-        """Stream deterministic copy and persist the exact accumulated text."""
+        """Prepare complete presentation; the winning commit emits it once."""
         item = AssistantTurnItem(
             turn_id=turn_id or self.operation_id or str(uuid.uuid4()),
             stage_id=str(session.current_state),
             execution=execution,
             reply_text=reply_text,
+            reply_mode="complete",
+            reply_language=context.reply_language,
             cards=list(cards or []),
         ).to_item(seq=context.next_seq, at_version=session.version + 1)
-        if self.localize_items is not None and context.reply_language and not self.suppress_model_calls:
-            item = self.localize_items([item], context.reply_language)[0]
-            self.prelocalized_seqs.add(item.seq)
-        localized_text = item.payload.get("reply_text")
-        text = localized_text if isinstance(localized_text, str) else ""
-        self.begin_assistant_stream(
-            session,
-            turn_id=str(item.payload["turn_id"]),
-            seq=item.seq,
-            at_version=session.version + 1,
-            execution=execution,
-            cards=cards,
-        )
-        for chunk in _assistant_text_chunks(text):
-            self.emit_assistant_delta(item.seq, chunk)
-        self.seal_assistant_stream(item.seq, text)
         context.next_seq += 1
         return [item]
 
@@ -348,19 +305,6 @@ class Runner:
         settled: bool,
     ) -> None:
         at_version = session.version + 1
-        if self._env.prepare_ui_copy is not None and context.reply_language and not self._env.suppress_model_calls:
-            self._env.prepare_ui_copy(context)
-        if self._env.localize_items is not None and context.reply_language and not self._env.suppress_model_calls:
-            pending_localization = [
-                item
-                for item in items
-                if item.seq not in self._env.prelocalized_seqs and item.kind != "interaction_response"
-            ]
-            localized = (
-                self._env.localize_items(pending_localization, context.reply_language) if pending_localization else []
-            )
-            localized_by_seq = {item.seq: item for item in localized}
-            items = [localized_by_seq.get(item.seq, item) for item in items]
         for item in items:
             # Handler helpers own conversation sequence numbers; the runner is
             # the only layer that knows which CAS version will make them
@@ -369,7 +313,7 @@ class Runner:
             item.at_version = at_version
             if item.kind == "assistant_turn" and self._env.reasoning_text:
                 item.payload["reasoning_text"] = self._env.reasoning_text
-            if item.kind == "assistant_turn":
+            if item.kind == "assistant_turn" and item.payload.get("reply_mode") != "complete":
                 self._env.validate_assistant_stream(item)
         context.last_command_id = self._env.command_id
         new_version = self._env.repo.compare_and_advance(
@@ -382,11 +326,11 @@ class Runner:
         session.version = new_version
         session.current_state = next_state
         for item in items:
-            if item.kind == "assistant_turn":
+            if item.kind == "assistant_turn" and item.payload.get("reply_mode") != "complete":
                 self._env.finish_assistant_stream(item.seq)
         if self._env.emit_item is not None:
             for item in items:
-                if item.kind == "assistant_turn":
+                if item.kind == "assistant_turn" and item.payload.get("reply_mode") != "complete":
                     continue
                 self._env.emit_item(
                     ConversationItemAppendedEventData(
@@ -436,7 +380,7 @@ class Runner:
         items = self._env.append_assistant_turn(
             session,
             context,
-            reply_text="The operation could not be completed. Restart from the current draft to continue.",
+            reply_text=copy_text(BuilderCopyId.OPERATION_FAILED),
             execution=ExecutionProgress(status="error"),
         )
         self._commit(session, PcState.FAILED, context, items, settled=True)
@@ -596,10 +540,8 @@ class Runner:
                 stage_id=str(s.current_state),
                 execution=execution,
                 reply_text=streamed_reply,
+                reply_language=fc.reply_language,
             ).to_item(seq=assistant_seq, at_version=assistant_version)
-            # The live stream is the text authority. Do not let the generic
-            # item-localization pass rewrite this reply before persistence.
-            self._env.prelocalized_seqs.add(assistant_seq)
             fc.next_seq += 1
             # The program counter stays at the current gate. Only explicit
             # actions may approve, publish, revert, run, or mutate a workflow.

@@ -470,7 +470,7 @@ it('keeps the Builder prompt focused during native wheel zoom in an ordinary Tes
   const screen = await render(<Fixture ordinaryRun />)
   const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
   const node = screen.getByText('Start', { exact: true })
-  const prompt = screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' })
+  const prompt = screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })
   await expect.element(node).toBeVisible()
   await expect.element(prompt).toBeEnabled()
   const initialWidth = node.element().getBoundingClientRect().width

@@ -16,7 +16,6 @@ from dataclasses import fields, replace
 from core.dify_builder.contract import (
     DecisionItem,
     FormCard,
-    NoticeItem,
     PlanCard,
     ResourceSelectCard,
     TestResultCard,
@@ -25,10 +24,8 @@ from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError
 from core.dify_builder.handlers_fix import (
     MAX_REPEATED_REPAIRS,
     NO_OUTPUT_BODY,
-    NO_OUTPUT_REPLY,
     UNKNOWN_OUTCOME_STUCK_BODY,
-    UNKNOWN_OUTCOME_STUCK_REPLY,
-    UNKNOWN_TEST_OUTCOME_NOTICE,
+    UNKNOWN_TEST_OUTCOME_REPLY,
     action_kind,
     action_string,
     append_assistant,
@@ -79,6 +76,8 @@ from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 from core.dify_builder.testdata import stamp_testdata_http_fixtures
 from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, is_execution_policy_blocker, result_card
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import BuilderText, copy_text, text_parts
 
 logger = logging.getLogger(__name__)
 
@@ -134,10 +133,11 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("build-understand-goal", "Understand the requested workflow"),
-            ("build-prepare-requirements", "Prepare requirement fields"),
+            ("build-understand-goal", copy_text(BuilderCopyId.PROGRESS_UNDERSTAND_THE_REQUESTED_WORKFLOW)),
+            ("build-prepare-requirements", copy_text(BuilderCopyId.PROGRESS_PREPARE_REQUIREMENT_FIELDS)),
         ],
     )
     progress.activate("build-understand-goal")
@@ -152,8 +152,8 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         fc,
         FormCard(
             variant="build_requirements",
-            title="Review the requirements",
-            description="Adjust any values before Builder continues.",
+            title=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
+            description=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_DESCRIPTION),
             fields=build_form_fields(fc.form_fields),
             values=dict(fc.requirements),
             frozen=False,
@@ -164,7 +164,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         env,
         s,
         fc,
-        "I filled in sensible defaults. Review the requirements and adjust them if needed.",
+        copy_text(BuilderCopyId.BUILD_REQUIREMENTS_DEFAULTS_FILLED),
         execution=execution,
         cards=["form"],
         turn_id=progress.operation_id,
@@ -192,10 +192,11 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("build-review-requirements", "Review confirmed requirements"),
-            ("build-draft-plan", "Draft the workflow plan"),
+            ("build-review-requirements", copy_text(BuilderCopyId.PROGRESS_REVIEW_CONFIRMED_REQUIREMENTS)),
+            ("build-draft-plan", copy_text(BuilderCopyId.PROGRESS_DRAFT_THE_WORKFLOW_PLAN)),
         ],
     )
     progress.activate("build-review-requirements")
@@ -209,7 +210,7 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         return _planning_failed(env, s, fc, progress, "build-draft-plan", PcState.BUILD_GOAL_ANALYSIS)
     fc.plan_items = plan
 
-    decision_items = append_card(fc, DecisionItem(text="Submitted requirements"))
+    decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_SUBMITTED_REQUIREMENTS)))
     # Pass the live reporter through: this is still the SAME operation as the
     # requirements review above, and every other handler in this file uses
     # exactly one ProgressReporter per step. A second reporter under the same
@@ -229,10 +230,6 @@ def _planning_failed(
     """Keep the accepted context and waiting gate when no replacement exists."""
     progress.fail_step(step_id)
     execution = progress.finish(status="error")
-    notice_items = append_card(
-        fc,
-        NoticeItem(text="Builder couldn't produce a usable workflow plan. Retry planning to continue."),
-    )
     form_items = []
     if waiting_state == PcState.BUILD_GOAL_ANALYSIS:
         # Reload projects the latest durable form, so reoffer accepted values
@@ -257,8 +254,8 @@ def _planning_failed(
             fc,
             FormCard(
                 variant="build_requirements",
-                title="Review the requirements",
-                description="Adjust any values before Builder continues.",
+                title=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
+                description=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_DESCRIPTION),
                 fields=form_fields,
                 values=dict(fc.requirements),
                 frozen=False,
@@ -268,12 +265,12 @@ def _planning_failed(
         env,
         s,
         fc,
-        "I couldn't produce a usable workflow plan — see the notice. Retry planning to continue.",
+        copy_text(BuilderCopyId.REPLIES_I_COULDN_T_PRODUCE_A_USABLE),
         execution=execution,
         cards=["form"] if form_items else None,
         turn_id=progress.operation_id,
     )
-    return StepResult(next=waiting_state, context=fc, items=[*notice_items, *form_items, *turn_items])
+    return StepResult(next=waiting_state, context=fc, items=[*form_items, *turn_items])
 
 
 def _discover_and_offer_resources(
@@ -289,14 +286,15 @@ def _discover_and_offer_resources(
     implementation so the two entries cannot drift apart.
     """
     steps = [
-        ("build-discover-resources", "Find compatible resources"),
-        ("build-prepare-resource-options", "Prepare resource recommendations"),
+        ("build-discover-resources", copy_text(BuilderCopyId.PROGRESS_FIND_COMPATIBLE_RESOURCES)),
+        ("build-prepare-resource-options", copy_text(BuilderCopyId.PROGRESS_PREPARE_RESOURCE_RECOMMENDATIONS)),
     ]
     if progress is None:
         progress = ProgressReporter.for_session(
             emit=env.emit_progress,
             operation_id=env.operation_id,
             session=s,
+            reply_language=fc.reply_language,
             stage_id=str(s.current_state),
             steps=steps,
         )
@@ -308,36 +306,26 @@ def _discover_and_offer_resources(
     rs_items = append_card(
         fc,
         ResourceSelectCard(
-            title="Which resources should Builder use?",
-            description="Recommended resources are selected by default.",
+            title=copy_text(BuilderCopyId.RESOURCES_TITLE),
+            description=copy_text(BuilderCopyId.RESOURCES_DESCRIPTION)
+            if options
+            else copy_text(BuilderCopyId.REPLIES_NO_WORKSPACE_RESOURCES_MATCHED_THIS_PLAN_CONTINUING_WITHOUT_ANY),
             recommended=options,
         ),
     )
-    if not options:
-        # An empty card on its own reads as a failure. Say why: nothing here
-        # matched, the build continues, and resources can still be added on the
-        # canvas. The card is still emitted so the confirm gate keeps its active
-        # interaction and a later pass cannot inherit a stale one.
-        rs_items += append_card(
-            fc,
-            NoticeItem(text="No workspace resources matched this plan — continuing without any."),
-        )
+    # Keep the empty selection card as the active confirm gate. Its description
+    # explains the empty result without adding a standalone conversation item.
     gap = env.agent.assess_capability_gap(
         list(fc.plan_items), options, goal_text=fc.goal_text, requirements=fc.requirements
     )
-    if gap:
-        # Distinct from the empty-resources notice above: this fires even when
-        # SOME resources matched but one plan step still has nothing that can
-        # perform it (including a tool that's installed but unauthorized --
-        # readiness "missing_config" doesn't cover a step either). The two
-        # notices are independent and can both appear.
-        rs_items += append_card(fc, NoticeItem(text=gap))
     execution = progress.finish()
     turn_items = append_assistant(
         env,
         s,
         fc,
-        "Recommended resources.",
+        text_parts(copy_text(BuilderCopyId.LABELS_RECOMMENDED_RESOURCES), "\n\n", gap)
+        if gap
+        else copy_text(BuilderCopyId.LABELS_RECOMMENDED_RESOURCES),
         execution=execution,
         cards=["resource_select"],
         turn_id=progress.operation_id,
@@ -370,10 +358,11 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("build-bind-resources", "Bind selected resources to the plan"),
-            ("build-create-checkpoint", "Create a pre-build checkpoint"),
+            ("build-bind-resources", copy_text(BuilderCopyId.PROGRESS_BIND_SELECTED_RESOURCES_TO_THE_PLAN)),
+            ("build-create-checkpoint", copy_text(BuilderCopyId.PROGRESS_CREATE_A_PRE_BUILD_CHECKPOINT)),
         ],
     )
     progress.activate("build-bind-resources")
@@ -391,14 +380,14 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     mint_checkpoint(env, s, fc, graph, graph_hash, PcState.BUILD_PLAN_APPROVAL)
 
-    decision_items = append_card(fc, DecisionItem(text="Confirmed resources"))
-    plan_items = append_card(fc, PlanCard(title="Build plan", items=list(fc.plan_items)))
+    decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_CONFIRMED_RESOURCES)))
+    plan_items = append_card(fc, PlanCard(title=copy_text(BuilderCopyId.LABELS_BUILD_PLAN), items=list(fc.plan_items)))
     execution = progress.finish()
     turn_items = append_assistant(
         env,
         s,
         fc,
-        "The final plan is ready for approval.",
+        copy_text(BuilderCopyId.BUILD_PLAN_READY),
         execution=execution,
         cards=["plan"],
         turn_id=progress.operation_id,
@@ -416,9 +405,9 @@ def _graph_not_applied(
     fc: DifyBuilderContext,
     progress: ProgressReporter,
     *,
-    title: str,
-    body: str,
-    reply_text: str,
+    title: BuilderText,
+    body: BuilderText,
+    reply_text: BuilderText,
 ) -> StepResult:
     """apply_repair refused the generated graph and wrote nothing: say why and
     keep the plan approvable (re-approving regenerates the graph).
@@ -429,7 +418,7 @@ def _graph_not_applied(
     progress.fail_step("build-apply-graph")
     execution = progress.finish(status="error")
     turn_items = append_assistant(
-        env, s, fc, f"{title}: {body}\n{reply_text}", execution=execution, turn_id=progress.operation_id
+        env, s, fc, text_parts(title, ": ", body, "\n", reply_text), execution=execution, turn_id=progress.operation_id
     )
     return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc, items=turn_items)
 
@@ -467,11 +456,12 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("build-generate-graph", "Generate the workflow graph"),
-            ("build-validate-graph", "Validate changes against the current canvas"),
-            ("build-apply-graph", "Apply the workflow to the canvas"),
+            ("build-generate-graph", copy_text(BuilderCopyId.PROGRESS_GENERATE_THE_WORKFLOW_GRAPH)),
+            ("build-validate-graph", copy_text(BuilderCopyId.PROGRESS_VALIDATE_CHANGES_AGAINST_THE_CURRENT_CANVAS)),
+            ("build-apply-graph", copy_text(BuilderCopyId.PROGRESS_APPLY_THE_WORKFLOW_TO_THE_CANVAS)),
         ],
     )
     progress.activate("build-generate-graph")
@@ -500,13 +490,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         # re-approve still returns the fixed create intents -- only filtered as
         # already-present below -- so zero create intents means genuine failure.)
         body = (
-            f"I couldn't generate a valid workflow graph: {build_result.error} "
-            "Adjust the goal or the plan and approve again to retry."
+            copy_text(BuilderCopyId.BUILD_GENERATION_FAILED, error=build_result.error)
             if build_result.error
-            else (
-                "I couldn't generate a valid workflow graph from this plan. "
-                "Adjust the goal or the plan and approve again to retry."
-            )
+            else (copy_text(BuilderCopyId.REPLIES_I_COULDN_T_GENERATE_A_VALID))
         )
         logger.warning(
             "dify_builder graph generation failed",
@@ -584,8 +570,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             env,
             s,
             fc,
-            "I didn't apply anything: the canvas already has nodes with these ids. "
-            "Clear it or start from a new app, then approve again.",
+            copy_text(BuilderCopyId.REPLIES_I_DIDN_T_APPLY_ANYTHING_THE),
             execution=execution,
             turn_id=progress.operation_id,
         )
@@ -611,11 +596,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             s,
             fc,
             progress,
-            title="The workflow can't start",
-            body=f"The generated workflow would fail before its first node: {exc}",
-            reply_text=(
-                "I didn't apply the workflow: it would fail before its first node. Adjust the plan and approve again."
-            ),
+            title=copy_text(BuilderCopyId.LABELS_THE_WORKFLOW_CAN_T_START),
+            body=copy_text(BuilderCopyId.BUILD_INVALID_GRAPH, value=str(exc)),
+            reply_text=(copy_text(BuilderCopyId.REPLIES_I_DIDN_T_APPLY_THE_WORKFLOW)),
         )
     except ValueError as exc:
         # graph_ops refused an intent (e.g. "node not found") before the
@@ -628,9 +611,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             s,
             fc,
             progress,
-            title="Couldn't apply the workflow",
-            body=f"The generated workflow couldn't be applied to the draft: {exc}",
-            reply_text="I couldn't apply the workflow -- see the error above. Adjust the plan and approve again.",
+            title=copy_text(BuilderCopyId.LABELS_COULDN_T_APPLY_THE_WORKFLOW),
+            body=copy_text(BuilderCopyId.BUILD_APPLY_FAILED, value=str(exc)),
+            reply_text=copy_text(BuilderCopyId.REPLIES_I_COULDN_T_APPLY_THE_WORKFLOW),
         )
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
@@ -641,14 +624,16 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     ]
     changes, scope, fc.change_set = build_change_set(result, default_scope="structure", fallback_diff="graph built")
 
-    decision_items = append_card(fc, DecisionItem(text="Approved the plan"))
+    decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_APPROVED_THE_PLAN)))
     execution = progress.finish()
-    change_lines = "\n".join(f"- {change}" for change in changes) or "- Workflow graph created"
+    change_lines = "\n".join(f"- {change}" for change in changes) or text_parts(
+        "- ", copy_text(BuilderCopyId.BUILD_GRAPH_CREATED)
+    )
     turn_items = append_assistant(
         env,
         s,
         fc,
-        f"Workflow built on the canvas with {len(changes)} change(s) ({scope}).\n{change_lines}",
+        text_parts(copy_text(BuilderCopyId.BUILD_GRAPH_APPLIED, count=len(changes), scope=scope), "\n", change_lines),
         execution=execution,
         turn_id=progress.operation_id,
     )
@@ -671,7 +656,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
     kind = action_kind(turn)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
-        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     if kind == "run_test":
         fc.verify_run_id = ""
@@ -692,8 +677,8 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                 fc,
                 FormCard(
                     variant="testdata",
-                    title="Provide test data",
-                    description="Review the inputs Builder will use for this run.",
+                    title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
+                    description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
                     fields=testdata_form_fields(schema),
                     values=prefill,
                     frozen=False,
@@ -703,11 +688,11 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                 env,
                 s,
                 fc,
-                "I filled in test inputs -- edit them if you like, then run the test.",
+                copy_text(BuilderCopyId.REPLIES_I_FILLED_IN_TEST_INPUTS_EDIT_THEM_IF_YOU_LIKE_THEN_RUN_THE_TEST),
                 cards=["form"],
             )
             return StepResult(next=PcState.BUILD_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
-        items = append_card(fc, DecisionItem(text="Run tests"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_RUN_TESTS)))
         return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=items)
     return StepResult(next=PcState.BUILD_EXECUTION, context=fc)
 
@@ -725,8 +710,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             emit=env.emit_progress,
             operation_id=env.operation_id,
             session=s,
+            reply_language=fc.reply_language,
             stage_id=str(s.current_state),
-            steps=[("build-generate-test-inputs", "Generate test inputs")],
+            steps=[("build-generate-test-inputs", copy_text(BuilderCopyId.PROGRESS_GENERATE_TEST_INPUTS))],
         )
         progress.activate("build-generate-test-inputs")
         # An endpoint is left out, never mocked: its missing required key fails
@@ -763,11 +749,12 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("build-prepare-test", "Prepare the workflow test"),
-            ("build-run-test", "Run the workflow"),
-            ("build-evaluate-test", "Evaluate the test result"),
+            ("build-prepare-test", copy_text(BuilderCopyId.PROGRESS_PREPARE_THE_WORKFLOW_TEST)),
+            ("build-run-test", copy_text(BuilderCopyId.PROGRESS_RUN_THE_WORKFLOW)),
+            ("build-evaluate-test", copy_text(BuilderCopyId.PROGRESS_EVALUATE_THE_TEST_RESULT)),
         ],
     )
     progress.activate("build-prepare-test")
@@ -839,7 +826,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             env,
             s,
             fc,
-            card.failure_reason or "Review execution policy and test inputs.",
+            card.failure_reason or copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -873,7 +860,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             env,
             s,
             fc,
-            (result_card(run).failure_reason or NO_OUTPUT_REPLY),
+            (result_card(run).failure_reason or NO_OUTPUT_BODY),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -896,7 +883,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             env,
             s,
             fc,
-            SUCCESS_REPLY + " " + (result_card(run).review_note or ""),
+            text_parts(SUCCESS_REPLY, " ", result_card(run).review_note or ""),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -913,7 +900,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         # Stream truncated: the run's outcome is genuinely unknown, NOT a
         # failure (Run.status documents "running" for exactly this case).
         # Diagnosing/staging a repair here would edit the draft under a run
-        # that may still be executing -- surface a neutral notice instead and
+        # that may still be executing -- explain the unknown result and
         # return to build.execution (re-runnable), without ever calling
         # diagnose or propose_repair. The second consecutive unknown outcome
         # stops the re-run loop at the gate (no staged repair) instead.
@@ -926,7 +913,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
                 env,
                 s,
                 fc,
-                f"{UNKNOWN_OUTCOME_STUCK_REPLY}\n{UNKNOWN_OUTCOME_STUCK_BODY}",
+                UNKNOWN_OUTCOME_STUCK_BODY,
                 execution=execution,
                 turn_id=progress.operation_id,
             )
@@ -942,7 +929,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             env,
             s,
             fc,
-            UNKNOWN_TEST_OUTCOME_NOTICE,
+            UNKNOWN_TEST_OUTCOME_REPLY,
             execution=execution,
             turn_id=progress.operation_id,
         )
@@ -970,8 +957,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             fc,
             FormCard(
                 variant="testdata",
-                title="Provide test data",
-                description="Review the inputs Builder will use for this run.",
+                title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
+                description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
                 fields=testdata_form_fields(schema),
                 values=inputs,
                 frozen=False,
@@ -982,7 +969,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             env,
             s,
             fc,
-            "The run failed on its inputs — provide test data and retry.",
+            copy_text(BuilderCopyId.REPLIES_THE_RUN_FAILED_ON_ITS_INPUTS_PROVIDE_TEST_DATA_AND_RETRY),
             execution=execution,
             cards=["test_result", "form"],
             turn_id=progress.operation_id,
@@ -1003,9 +990,9 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         # with a clear diagnosis and NO staged repair; the user configures the
         # model (update_model / provider settings) and re-runs (approve at the gate).
         root_cause = (
-            "The workflow uses a model that isn't configured or available for this workspace, so "
-            "it can't run. This is a model-configuration issue, not a workflow-logic problem -- "
-            "configure the model (or choose a different one) and re-run the test. "
+            "The workflow uses a model that isn't configured or available for this workspace, so it can't run. "
+            "This is a model-configuration issue, not a workflow-logic problem -- configure the model "
+            "(or choose a different one) and re-run the test. "
             f"Details: {model_error}"
         )
         fc.diagnosis = Diagnosis(culprit_node_id=first_failed_node(per_node), root_cause=root_cause, severity="high")
@@ -1020,7 +1007,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             env,
             s,
             fc,
-            root_cause,
+            copy_text(BuilderCopyId.MODEL_CONFIGURATION_UNAVAILABLE, error=model_error),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -1036,8 +1023,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     # config failure: existing diagnose + propose_repair -> BUILD_AWAIT_REPAIR
     progress.add_steps(
         [
-            ("build-diagnose-failure", "Diagnose the failed workflow"),
-            ("build-prepare-repair", "Prepare a safe repair"),
+            ("build-diagnose-failure", copy_text(BuilderCopyId.PROGRESS_DIAGNOSE_THE_FAILED_WORKFLOW)),
+            ("build-prepare-repair", copy_text(BuilderCopyId.PROGRESS_PREPARE_A_SAFE_REPAIR)),
         ]
     )
     progress.activate("build-diagnose-failure")
@@ -1060,7 +1047,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             env,
             s,
             fc,
-            f"{diagnosis.root_cause or 'The run failed.'}\n\n"
+            f"{diagnosis.root_cause or copy_text(BuilderCopyId.TEST_FAILED_FALLBACK)}\n\n"
             "The same error survived the last repairs, so I've stopped retrying. "
             "Edit the node directly and test again, or revert.",
             execution=execution,
@@ -1086,11 +1073,14 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     proposed = [f"{i.op} {i.args.get('node_id', '')}".strip() for i in intents]
     execution = progress.finish()
     proposal_text = "\n".join(f"- {change}" for change in proposed)
-    reply_text = diagnosis.root_cause or "The run failed."
-    reply_text += (
-        f"\n\nProposed fix:\n{proposal_text}"
-        if intents
-        else "\n\nNo safe automatic fix was found; edit the workflow or keep the draft."
+    reply_text = diagnosis.root_cause or copy_text(BuilderCopyId.TEST_FAILED_FALLBACK)
+    reply_text = text_parts(
+        reply_text,
+        (
+            text_parts("\n\n", copy_text(BuilderCopyId.REPAIR_PROPOSED_FIX), "\n", proposal_text)
+            if intents
+            else text_parts("\n\n", copy_text(BuilderCopyId.REPAIR_NO_SAFE_FOUND))
+        ),
     )
     turn_items = append_assistant(
         env,
@@ -1129,19 +1119,22 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         if not fc.staged_repair:
             # Nothing staged: applying would change nothing and the retest
             # would fail identically. Don't spend a run on it (ESQ1-291).
-            items = append_card(
+            items = append_assistant(
+                env,
+                s,
                 fc,
-                NoticeItem(text="No fix is staged for this failure -- keep the draft or revert."),
+                copy_text(BuilderCopyId.REPLIES_NO_FIX_IS_STAGED_FOR_THIS_FAILURE_KEEP_THE_DRAFT_OR_REVERT),
             )
             return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         progress = ProgressReporter.for_session(
             emit=env.emit_progress,
             operation_id=env.operation_id,
             session=s,
+            reply_language=fc.reply_language,
             stage_id=str(s.current_state),
             steps=[
-                ("build-apply-repair", "Apply the approved repair"),
-                ("build-prepare-retest", "Prepare to retest the workflow"),
+                ("build-apply-repair", copy_text(BuilderCopyId.PROGRESS_APPLY_THE_APPROVED_REPAIR)),
+                ("build-prepare-retest", copy_text(BuilderCopyId.PROGRESS_PREPARE_TO_RETEST_THE_WORKFLOW)),
             ],
         )
         progress.activate("build-apply-repair")
@@ -1165,8 +1158,8 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 s,
                 fc,
                 progress,
-                title="The workflow can't start",
-                body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+                title=copy_text(BuilderCopyId.LABELS_THE_WORKFLOW_CAN_T_START),
+                body=copy_text(BuilderCopyId.REPAIR_INVALID_GRAPH, value=str(exc)),
             )
             return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         except ValueError as exc:
@@ -1181,8 +1174,8 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 s,
                 fc,
                 progress,
-                title="Couldn't apply the fix",
-                body=f"The proposed fix no longer applies to the current draft: {exc}",
+                title=copy_text(BuilderCopyId.LABELS_COULDN_T_APPLY_THE_FIX),
+                body=copy_text(BuilderCopyId.REPAIR_STALE_PROPOSAL, value=str(exc)),
             )
             return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc, items=items)
         fc.last_snapshot_hash = result.new_hash
@@ -1190,24 +1183,28 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         fc.staged_repair = []
         changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="repair")
         progress.activate("build-prepare-retest")
-        decision_items = append_card(fc, DecisionItem(text="Applied the fix; ready to retest"))
+        decision_items = append_card(
+            fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_APPLIED_THE_FIX_READY_TO_RETEST))
+        )
         execution = progress.finish()
-        change_lines = "\n".join(f"- {change}" for change in changes) or "- Repair applied"
+        change_lines = "\n".join(f"- {change}" for change in changes) or text_parts(
+            "- ", copy_text(BuilderCopyId.REPAIR_APPLIED_FALLBACK)
+        )
         turn_items = append_assistant(
             env,
             s,
             fc,
-            f"Applied {len(changes)} repair change(s) ({scope}).\n{change_lines}",
+            text_parts(copy_text(BuilderCopyId.REPAIR_APPLIED, count=len(changes), scope=scope), "\n", change_lines),
             execution=execution,
             turn_id=progress.operation_id,
         )
         return StepResult(next=PcState.BUILD_EXECUTION, context=fc, items=[*decision_items, *turn_items])
     if kind == "keep_draft":
-        items = append_card(fc, DecisionItem(text="Kept the draft despite the failure"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT_DESPITE_THE_FAILURE)))
         return StepResult(next=PcState.BUILD_REVIEW, context=fc, items=items)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
-        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc)
 
@@ -1226,16 +1223,16 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     if kind == "publish_workflow":
         decision = publication_for_context(env, turn, s, fc)
         if not decision.allowed:
-            return publication_denied(fc, PcState.BUILD_REVIEW, decision.reason)
-        items = append_card(fc, DecisionItem(text="Chose to publish"))
+            return publication_denied(env, s, fc, PcState.BUILD_REVIEW, decision.reason)
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_CHOSE_TO_PUBLISH)))
         return StepResult(next=PcState.BUILD_PUBLISH, context=fc, items=items)
     if kind == "keep_draft":
-        decision_items = append_card(fc, DecisionItem(text="Kept the draft"))
+        decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT)))
         turn_items = append_assistant(
             env,
             s,
             fc,
-            f"Build complete. Kept as a draft with {len(fc.built_node_ids)} built node(s).",
+            copy_text(BuilderCopyId.BUILD_COMPLETED_DRAFT, count=len(fc.built_node_ids)),
         )
         return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=[*decision_items, *turn_items])
     if kind == "re_fix":  # continue_adjusting
@@ -1243,8 +1240,9 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             emit=env.emit_progress,
             operation_id=env.operation_id,
             session=s,
+            reply_language=fc.reply_language,
             stage_id=str(s.current_state),
-            steps=[("build-revise-plan", "Revise the workflow plan")],
+            steps=[("build-revise-plan", copy_text(BuilderCopyId.PROGRESS_REVISE_THE_WORKFLOW_PLAN))],
         )
         progress.activate("build-revise-plan")
         # Draft the plan, but do NOT show it yet: build.initial_plan (next)
@@ -1262,13 +1260,13 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         fc.repair_attempts = 0
         fc.last_repair_error = ""
         fc.unknown_outcome_count = 0
-        decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
+        decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING)))
         execution = progress.finish()
         turn_items = append_assistant(
             env,
             s,
             fc,
-            "Revised plan.",
+            copy_text(BuilderCopyId.LABELS_REVISED_PLAN),
             execution=execution,
             turn_id=progress.operation_id,
         )
@@ -1279,7 +1277,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
-        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     return StepResult(next=PcState.BUILD_REVIEW, context=fc)
 
@@ -1288,7 +1286,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     """(working, auto) Publish the built workflow and complete the flow."""
     decision = publication_for_context(env, turn, s, fc)
     if not decision.allowed:
-        return publication_denied(fc, PcState.BUILD_REVIEW, decision.reason)
+        return publication_denied(env, s, fc, PcState.BUILD_REVIEW, decision.reason)
     verified_run = env.repo.get_run(fc.verify_run_id)
     evidence = verified_run.verification
     assert evidence is not None
@@ -1296,8 +1294,9 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
-        steps=[("build-publish-workflow", "Publish the new workflow")],
+        steps=[("build-publish-workflow", copy_text(BuilderCopyId.PROGRESS_PUBLISH_THE_NEW_WORKFLOW))],
     )
     progress.activate("build-publish-workflow")
     try:
@@ -1310,14 +1309,14 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     except HashMismatchError:
         progress.fail_step("build-publish-workflow")
         progress.finish()
-        return publication_denied(fc, PcState.BUILD_REVIEW, "stale_revision")
+        return publication_denied(env, s, fc, PcState.BUILD_REVIEW, "stale_revision")
     emit_canvas(env, "publish_workflow")
     execution = progress.finish()
     items = append_assistant(
         env,
         s,
         fc,
-        f"Published workflow version {published.version_name} ({published.status}). Build complete.",
+        copy_text(BuilderCopyId.PUBLISH_BUILD_COMPLETE, version=published.version_name, status=published.status),
         execution=execution,
         turn_id=progress.operation_id,
     )
@@ -1335,8 +1334,9 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
-        steps=[("build-restart-plan", "Rebuild the workflow plan")],
+        steps=[("build-restart-plan", copy_text(BuilderCopyId.PROGRESS_REBUILD_THE_WORKFLOW_PLAN))],
     )
     progress.activate("build-restart-plan")
     # Draft the plan, but do NOT show it yet -- same duplicate-card removal
@@ -1357,7 +1357,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         env,
         s,
         fc,
-        "Restarting the plan.",
+        copy_text(BuilderCopyId.LABELS_RESTARTING_THE_PLAN),
         execution=execution,
         turn_id=progress.operation_id,
     )
