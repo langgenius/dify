@@ -1,4 +1,3 @@
-import contextlib
 import logging
 from collections.abc import Callable, Sequence
 from typing import Any
@@ -7,15 +6,13 @@ from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
-from core.llm_generator.llm_generator import LLMGenerator
-from core.model_context import use_credit_usage_metadata
+from core.app.entities.app_invoke_entities import InvokeFrom
 from factories import variable_factory
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
-from models.model import App, Conversation, EndUser, Message
+from models.model import App, Conversation, EndUser
 from repositories.conversation_lifecycle import retire_conversation
 from services.errors.conversation import (
     ConversationNotExistsError,
@@ -23,7 +20,6 @@ from services.errors.conversation import (
     ConversationVariableTypeMismatchError,
     LastConversationNotExistsError,
 )
-from services.errors.message import MessageNotExistsError
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data
 
@@ -113,63 +109,6 @@ class ConversationService:
             return getattr(Conversation, sort_field) < field_value
 
         return getattr(Conversation, sort_field) > field_value
-
-    @classmethod
-    def rename(
-        cls,
-        app_model: App,
-        conversation_id: str,
-        user: Account | EndUser | None,
-        name: str | None,
-        auto_generate: bool,
-        *,
-        session: Session,
-    ):
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
-
-        if auto_generate:
-            return cls.auto_generate_name(app_model, conversation, session=session)
-        else:
-            if name is None:
-                raise ValueError("name is required when auto_generate is false")
-            conversation.name = name
-            conversation.updated_at = naive_utc_now()
-            session.commit()
-
-        return conversation
-
-    @classmethod
-    def auto_generate_name(cls, app_model: App, conversation: Conversation, *, session: Session) -> Conversation:
-        # get conversation first message
-        message = session.scalar(
-            select(Message)
-            .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
-            .order_by(Message.created_at.asc())
-            .limit(1)
-        )
-
-        if not message:
-            raise MessageNotExistsError()
-
-        # generate conversation name
-        with contextlib.suppress(Exception):
-            conversation.name = cls.generate_name(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                conversation_id=conversation.id,
-                query=message.query,
-                app_mode=app_model.mode,
-            )
-
-        session.commit()
-
-        return conversation
-
-    @staticmethod
-    def generate_name(*, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
-        """Generate a conversation title with the appropriate credit usage metadata."""
-        with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_mode)}):
-            return LLMGenerator.generate_conversation_name(tenant_id, query, conversation_id, app_id)
 
     @classmethod
     def get_conversation(

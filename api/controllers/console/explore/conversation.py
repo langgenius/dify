@@ -26,10 +26,11 @@ from extensions.ext_application_services import application_services
 from fields.conversation_fields import ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation
 from libs.helper import UUIDStrOrEmpty, dump_response
 from machinery.context import RequestContext
+from services.conversation_name_service import ConversationNameRequiredError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_conversation_service import ConversationNameRequiredError, ConversationNotChatAppError
+from services.installed_app_conversation_service import ConversationNotChatAppError
 
 
 class ConversationListQuery(BaseModel):

@@ -3287,7 +3287,7 @@ export const zPostConversationsByConversationIdNamePath = z.object({
 })
 
 /**
- * Conversation renamed successfully.
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 

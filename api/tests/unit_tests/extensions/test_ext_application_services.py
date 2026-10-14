@@ -14,18 +14,20 @@ import httpx
 import pytest
 from flask import Flask
 from redis import Redis
-from sqlalchemy import event, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Connection, event, select
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
-from core.credit_usage import CreditUsageAppType
-from core.llm_generator.llm_generator import LLMGenerator
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
+from core.plugin.impl import base as plugin_http
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.application_services.app import AppServices
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
+from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CustomizeTokenStrategy
@@ -41,7 +43,7 @@ from models.model import (
     Site,
     TrialApp,
 )
-from models.provider import ProviderCredential
+from models.provider import Provider, ProviderCredential, TenantDefaultModel
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
@@ -159,7 +161,10 @@ from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.delete_conversation_task import delete_conversation_related_data
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
 from tests.unit_tests.services.test_app_task_service import _StopRedis
+
+pytest_plugins = ("tests.unit_tests.services.conversation_name_fixtures",)
 
 
 @pytest.fixture(autouse=True)
@@ -1620,15 +1625,27 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
 def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     sqlite_session_factory: sessionmaker[Session],
     installed_app_ref: InstalledAppRef,
+    naming_app: Flask,
+    naming_plugin: NamingPlugin,
     monkeypatch: pytest.MonkeyPatch,
     naming_fails: bool,
 ) -> None:
+    naming_plugin.answer = '{"Your Output": "Generated name"}'
+    naming_plugin.fail_invoke = naming_fails
     account_id = str(uuid4())
     with sqlite_session_factory.begin() as session:
         app = session.get(App, installed_app_ref.app_id)
         assert app is not None
         app.mode = AppMode.CHAT
         owner_tenant_id = app.tenant_id
+        session.add_all(
+            [
+                Provider(tenant_id=owner_tenant_id, provider_name=_PROVIDER, is_valid=True),
+                TenantDefaultModel(
+                    tenant_id=owner_tenant_id, provider_name=_PROVIDER, model_name=_MODEL, model_type=ModelType.LLM
+                ),
+            ]
+        )
         conversation = Conversation(
             app_id=app.id,
             mode=AppMode.CHAT,
@@ -1672,23 +1689,23 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
 
     naming_sessions: list[Session] = []
 
-    def generate_name(tenant_id: str, query: str, c_id: str, app_id: str) -> str:
-        assert active_connections == 0
-        assert get_credit_usage_metadata() == {"app_type": CreditUsageAppType.CHATBOT, "request_id": "naming-request"}
-        assert (tenant_id, query, c_id, app_id) == (
-            owner_tenant_id,
-            "First question",
-            conversation_id,
-            installed_app_ref.app_id,
-        )
-        # Provider/tracing code still uses the Flask-scoped session. Exercise
-        # that lifecycle rather than letting a pure callback hide a leaked read.
-        naming_session = db.session()
-        naming_session.scalar(select(1))
-        naming_sessions.append(naming_session)
-        if naming_fails:
-            raise RuntimeError("Provider unavailable")
-        return "Generated name"
+    def observe_naming_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        naming_sessions.append(session)
+
+    def observe_naming_request(request: httpx.Request) -> None:
+        if request.url.path.endswith("/llm/invoke"):
+            assert active_connections == 0
+            assert naming_sessions
+            assert all(not session.in_transaction() for session in naming_sessions)
+            assert get_credit_usage_metadata() == {
+                "app_type": CreditUsageAppType.CHATBOT,
+                "created_by": CreditUsageCreatedBy.CONVERSATION_NAME,
+                "request_id": "naming-request",
+            }
+            assert f"/{owner_tenant_id}/" in request.url.path
+            assert json.loads(request.content)["data"]["prompt_messages"] == [
+                {"role": "user", "content": CONVERSATION_TITLE_PROMPT + "First question\n", "name": None}
+            ]
 
     queued: list[str] = []
 
@@ -1701,7 +1718,6 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             assert stored.is_deleted
         queued.append(c_id)
 
-    monkeypatch.setattr(LLMGenerator, "generate_conversation_name", generate_name)
     monkeypatch.setattr(delete_conversation_related_data, "delay", enqueue_cleanup)
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
@@ -1709,35 +1725,38 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
         initialization_password="",
         redis=_redis(),
     )
-    naming_app = Flask(__name__)
     admitted_app = services.installed_apps.access.get_access(
         installed_app_id=installed_app_ref.id,
         tenant_id=installed_app_ref.tenant_id,
         account_id=account_id,
     )
     assert admitted_app.app_mode == "chat"
-    naming_app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
-    db.init_app(naming_app)
     previous_metadata = get_credit_usage_metadata()
-    with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
-        outer_session = db.session()
-        renamed = services.installed_apps.conversations.rename(
-            installed_app=admitted_app,
-            account_id=account_id,
-            conversation_id=conversation_id,
-            name=None,
-            auto_generate=True,
-        )
-        assert get_credit_usage_metadata() == {"request_id": "naming-request"}
-        assert renamed.name == ("Original" if naming_fails else "Generated name")
-        assert renamed.inputs == {"enabled": False}
-        assert len(naming_sessions) == 1
-        assert naming_sessions[0] is not outer_session
-        assert not naming_sessions[0].in_transaction()
-        assert db.session() is outer_session
-        services.installed_apps.conversations.delete(
-            installed_app=admitted_app, account_id=account_id, conversation_id=conversation_id
-        )
+    event.listen(db.session.session_factory, "after_begin", observe_naming_session)
+    plugin_http._httpx_client.event_hooks["request"].append(observe_naming_request)
+    try:
+        with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
+            outer_session = db.session()
+            renamed = services.installed_apps.conversations.rename(
+                installed_app=admitted_app,
+                account_id=account_id,
+                conversation_id=conversation_id,
+                name=None,
+                auto_generate=True,
+            )
+            assert get_credit_usage_metadata() == {"request_id": "naming-request"}
+            assert renamed.name == ("Original" if naming_fails else "Generated name")
+            assert renamed.inputs == {"enabled": False}
+            assert naming_sessions
+            assert all(session is not outer_session and not session.in_transaction() for session in naming_sessions)
+            assert db.session() is outer_session
+            services.installed_apps.conversations.delete(
+                installed_app=admitted_app, account_id=account_id, conversation_id=conversation_id
+            )
+    finally:
+        plugin_http._httpx_client.event_hooks["request"].remove(observe_naming_request)
+        event.remove(db.session.session_factory, "after_begin", observe_naming_session)
+    assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]
     assert active_connections == 0

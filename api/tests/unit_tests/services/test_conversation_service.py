@@ -10,7 +10,6 @@ in-memory SQLite sessions with persisted ORM rows.
 import json
 from dataclasses import replace
 from datetime import timedelta
-from decimal import Decimal
 from unittest.mock import MagicMock
 from uuid import UUID
 
@@ -19,8 +18,6 @@ from sqlalchemy import asc, desc, event
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.credit_usage import CreditUsageAppType
-from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from models import Account, ConversationVariable
@@ -32,12 +29,11 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, Conversation, Message
+from models.model import App, AppMode, Conversation
 from repositories.conversation_lifecycle import retire_conversation
 from services import conversation_service
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, WorkspaceOwnerScope
 from services.conversation_service import ConversationService
-from services.errors.message import MessageNotExistsError
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -395,70 +391,6 @@ def test_cleanup_propagates_agent_enqueue_failure_before_conversation_enqueue(mo
         )
 
     delete_related.assert_not_called()
-
-
-@pytest.mark.parametrize("naming_fails", [False, True])
-def test_legacy_auto_generate_name_preserves_metadata_and_persists_success_or_original_title(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, naming_fails: bool
-) -> None:
-    app = ConversationServiceTestDataFactory.create_app(mode=AppMode.ADVANCED_CHAT)
-    conversation = ConversationServiceTestDataFactory.create_conversation(mode=AppMode.ADVANCED_CHAT)
-    message = Message(
-        app_id=APP_ID,
-        conversation_id=CONVERSATION_ID,
-        _inputs={},
-        query="First query",
-        message={},
-        answer="Answer",
-        message_unit_price=Decimal(0),
-        answer_unit_price=Decimal(0),
-        currency="USD",
-        from_source=ConversationFromSource.CONSOLE,
-        from_account_id=ACCOUNT_ID,
-    )
-    sqlite_session.add_all([app, conversation, message])
-    sqlite_session.commit()
-    calls: list[tuple[str, str, str, str, dict[str, object]]] = []
-
-    def generate(tenant_id: str, query: str, conversation_id: str, app_id: str) -> str:
-        calls.append((tenant_id, query, conversation_id, app_id, dict(get_credit_usage_metadata() or {})))
-        if naming_fails:
-            raise RuntimeError("Provider unavailable")
-        return "Generated title"
-
-    monkeypatch.setattr(conversation_service.LLMGenerator, "generate_conversation_name", generate)
-    previous_metadata = get_credit_usage_metadata()
-    with use_credit_usage_metadata({"request_id": "legacy-name-request"}):
-        inherited_metadata = dict(get_credit_usage_metadata() or {})
-        result = ConversationService.auto_generate_name(app, conversation, session=sqlite_session)
-        assert get_credit_usage_metadata() == inherited_metadata
-    assert get_credit_usage_metadata() == previous_metadata
-    # Assert outside the best-effort naming call so its exception suppression
-    # cannot hide failed assertions inside the external provider callback.
-    assert calls == [
-        (
-            TENANT_ID,
-            "First query",
-            CONVERSATION_ID,
-            APP_ID,
-            {"app_type": CreditUsageAppType.CHATFLOW, **inherited_metadata},
-        )
-    ]
-    assert result is conversation
-    sqlite_session.refresh(result)
-    assert result.name == ("Test Conversation" if naming_fails else "Generated title")
-
-
-def test_legacy_auto_generate_name_reports_missing_first_message(sqlite_session: Session) -> None:
-    app = ConversationServiceTestDataFactory.create_app()
-    conversation = ConversationServiceTestDataFactory.create_conversation()
-    sqlite_session.add(conversation)
-    sqlite_session.commit()
-
-    with pytest.raises(MessageNotExistsError):
-        ConversationService.auto_generate_name(app, conversation, session=sqlite_session)
-
-    assert conversation.name == "Test Conversation"
 
 
 class TestConversationServicePagination:

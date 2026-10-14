@@ -1406,7 +1406,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 })
 
 /**
- * Conversation renamed successfully
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 

@@ -1,4 +1,5 @@
 from datetime import datetime
+from http import HTTPStatus
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -9,13 +10,16 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.common.controller_schemas import ConversationRenamePayload
+from controllers.common.errors import ConversationFirstMessageNotFoundHTTPError, ConversationNotFoundHTTPError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.schema import expect_user_json, expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
@@ -26,8 +30,11 @@ from fields.conversation_fields import (
 )
 from graphon.variables.types import SegmentType
 from libs.helper import UUIDStrOrEmpty, dump_response, to_timestamp
+from machinery.context import ServiceApiEndUserContext
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
+from services.entities.conversation_entities import EndUserConversationRef
+from services.errors.message import MessageNotExistsError
 
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
 Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
@@ -271,45 +278,55 @@ class ConversationRenameApi(Resource):
         ),
         tags=["Conversations"],
         responses={
-            200: "Conversation renamed successfully.",
-            400: "`not_chat_app` : App mode does not match the API route.",
-            404: "`not_found` : Conversation does not exist.",
+            HTTPStatus.OK: "Conversation renamed successfully; model failure preserves the existing name.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist. "
+                "`conversation_first_message_not_found`: No first message is available for automatic naming."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation rename payload.",
         },
     )
     @expect_with_user(service_api_ns, ConversationRenamePayload)
     @service_api_ns.doc("rename_conversation")
     @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
     @service_api_ns.doc(params={"conversation_id": "Conversation ID."})
-    @service_api_ns.doc(
-        responses={
-            200: "Conversation renamed successfully",
-            401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
-        }
-    )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Conversation renamed successfully",
         service_api_ns.models[SimpleConversation.__name__],
     )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @model_validate(ConversationRenamePayload)
-    def post(self, payload: ConversationRenamePayload, app_model: App, end_user: EndUser, conversation_id: UUID):
+    def post(
+        self, payload: ConversationRenamePayload, context: ServiceApiEndUserContext, conversation_id: UUID
+    ) -> dict[str, object]:
         """Rename a conversation or auto-generate a name."""
-        app_mode = AppMode.value_of(app_model.mode)
+        app_mode = AppMode.value_of(context.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id_str = str(conversation_id)
 
         try:
-            session = db.session()
-            conversation = ConversationService.rename(
-                app_model, conversation_id_str, end_user, payload.name, payload.auto_generate, session=session
+            conversation = application_services().conversation_names.rename(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=conversation_id_str,
+                ),
+                app_mode=context.app_mode,
+                name=payload.name,
+                auto_generate=payload.auto_generate,
             )
-            return dump_response(SimpleConversation, ConversationResponseSource(conversation, session=session))
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            return dump_response(SimpleConversation, conversation)
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except MessageNotExistsError as error:
+            raise ConversationFirstMessageNotFoundHTTPError() from error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables")
