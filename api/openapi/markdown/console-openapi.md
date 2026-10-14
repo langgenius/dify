@@ -17338,6 +17338,12 @@ Auth Token is invalid or account already activated, please check again.
 | token | string |  | Yes |
 | type | string |  | Yes |
 
+#### ApiKeyLimitDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| max_keys | integer |  | Yes |
+
 #### ApiKeyList
 
 | Name | Type | Description | Required |
@@ -22629,11 +22635,11 @@ Unable to create account because the licensed seats limit was exceeded
 
 #### MaxKeysExceededError
 
-The API key limit has been reached.
+Cannot create more than {max_keys} API keys for this resource type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| MaxKeysExceededError |  | The API key limit has been reached. |  |
+| MaxKeysExceededError |  | Cannot create more than {max_keys} API keys for this resource type. |  |
 
 #### MemberActionResponse
 
