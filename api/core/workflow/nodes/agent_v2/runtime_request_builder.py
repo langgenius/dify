@@ -361,8 +361,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             lines.append(f"- User query: {query}")
 
         if uploaded_files is not None:
-            lines.append("- Uploaded workflow files:")
-            lines.append(f"  - sys.files: {uploaded_files}")
+            lines.extend(("- Uploaded workflow files:", f"  - sys.files: {uploaded_files}"))
 
         if resolved_outputs:
             lines.append("- Previous node outputs:")
