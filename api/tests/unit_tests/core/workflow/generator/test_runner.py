@@ -7735,3 +7735,65 @@ class TestNativeConstantAndMutableProducerMessages:
         )
 
         assert self._contract(str(messages[1].content)) is None
+
+
+class TestNativeHttpTimeoutMessages:
+    """The actual HTTP builder must learn durations without promoting user data."""
+
+    @staticmethod
+    def _messages():
+        plan_nodes = [{"id": "request_timeout_10", "node_type": "http-request", "label": "HTTP"}]
+        model = _ParallelBuilderModel(
+            {},
+            {"request_timeout_10": {"method": "get", "url": "https://timeout.invalid/check"}},
+            barrier_parties=0,
+        )
+        WorkflowGenerator._run_parallel_node_builders(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="CONFIRMED_HTTP_DURATION_10: 请求超时时间（秒）10. Preserve AUTHORED_TIMEOUT_CHOICE_10.",
+            ideal_output="",
+            plan_nodes=plan_nodes,
+            plan_edges=[],
+            tool_catalogue_text="",
+            tool_catalogue_entries=[],
+            start_inputs=[],
+            node_outputs={},
+            current_graph=None,
+        )
+        return model.messages_by_node["request_timeout_10"][0]
+
+    def test_http_builder_system_grounds_requested_duration_in_native_timeout_axes(self):
+        # Losing these rules recreates a max-only10 configuration that runs600s.
+        system = str(self._messages()[0].content)
+        for field in ("timeout.connect", "timeout.read", "timeout.write"):
+            assert field in system
+        for field in ("max_connect_timeout", "max_read_timeout", "max_write_timeout"):
+            assert field in system
+        words = set(re.findall(r"[a-z]+", system.lower()))
+        assert words & {"seconds", "second"}
+        assert words & {"durations", "duration"}
+        assert "editor" in words
+        assert words & {"ceilings", "limits", "maxima", "maximum"}
+        assert words & {"single", "one"}
+        assert words & {"all", "three"}
+        assert words & {"unless", "distinguished", "different", "separately"}
+        assert words & {"preserve", "retain", "retained", "unchanged"}
+        assert words & {"authored", "existing", "retained"}
+        assert words & {"canonical", "explicit"}
+        assert words & {"inherit", "inherits", "inheritance", "inherited"}
+        assert {"retry", "error"} <= words
+        assert words & {"invent", "invented", "guess"}
+
+    def test_confirmed_duration_and_authored_choice_remain_only_in_http_builder_user_message(self):
+        system, user = (str(message.content) for message in self._messages())
+
+        for literal in ("CONFIRMED_HTTP_DURATION_10", "AUTHORED_TIMEOUT_CHOICE_10", "请求超时时间（秒）10"):
+            assert literal in user
+            assert literal not in system
+        assert re.search(r"(?<!\d)10(?!\d)", user)
+        assert re.search(r"(?<!\d)10(?!\d)", system) is None

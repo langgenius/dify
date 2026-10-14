@@ -494,3 +494,96 @@ def test_owner_returns_immutable_qualified_direct_output_types():
         (("http", "headers"), "object"),
         (("http", "files"), "array[file]"),
     )
+
+
+@pytest.mark.parametrize(
+    ("raw_timeout", "parsed_axes", "effective_axes"),
+    [
+        pytest.param(
+            {"max_connect_timeout": 10, "max_read_timeout": 10, "max_write_timeout": 10},
+            {"connect": None, "read": None, "write": None},
+            {"connect": 10, "read": 600, "write": 600},
+            id="legacy-editor-maxima-are-not-durations",
+        ),
+        pytest.param(
+            {
+                "connect": 10,
+                "read": 10,
+                "write": 10,
+                "max_connect_timeout": 10,
+                "max_read_timeout": 10,
+                "max_write_timeout": 10,
+            },
+            {"connect": 10, "read": 10, "write": 10},
+            {"connect": 10, "read": 10, "write": 10},
+            id="canonical-confirmed-duration",
+        ),
+        pytest.param(
+            {
+                "connect": 4,
+                "read": 5,
+                "write": 6,
+                "max_connect_timeout": 10,
+                "max_read_timeout": 10,
+                "max_write_timeout": 10,
+            },
+            {"connect": 4, "read": 5, "write": 6},
+            {"connect": 4, "read": 5, "write": 6},
+            id="canonical-axes-authoritative-over-maxima",
+        ),
+        pytest.param(
+            {"connect": None, "read": 12, "write": None},
+            {"connect": None, "read": 12, "write": None},
+            {"connect": 10, "read": 12, "write": 600},
+            id="null-axes-inherit-runtime-defaults",
+        ),
+        pytest.param(
+            {"connect": 0, "read": 0, "write": 0},
+            {"connect": 0, "read": 0, "write": 0},
+            {"connect": 10, "read": 600, "write": 600},
+            id="zero-axes-inherit-runtime-defaults",
+        ),
+        pytest.param(
+            {"read": 12},
+            {"connect": None, "read": 12, "write": None},
+            {"connect": 10, "read": 12, "write": 600},
+            id="missing-axes-inherit-runtime-defaults",
+        ),
+        pytest.param(
+            "MISSING",
+            None,
+            {"connect": 10, "read": 600, "write": 600},
+            id="absent-timeout-inherits-runtime-defaults",
+        ),
+    ],
+)
+def test_native_http_timeout_parser_and_selector_preserve_canonical_duration_semantics(
+    raw_timeout, parsed_axes, effective_axes
+):
+    """Characterize the native boundary that discarded the confirmed10s maximum fields."""
+    from graphon.nodes.http_request.entities import HttpRequestNodeConfig, HttpRequestNodeData
+    from graphon.nodes.http_request.node import HttpRequestNode
+
+    raw_data = deepcopy(http_graph("=", "200")["nodes"][1]["data"])
+    if raw_timeout != "MISSING":
+        raw_data["timeout"] = deepcopy(raw_timeout)
+    before = deepcopy(raw_data)
+    parsed = HttpRequestNodeData.model_validate(raw_data)
+    # These are the actual qualified Local public defaults, not a10/10/10 stub.
+    owner = SimpleNamespace(
+        _http_request_config=HttpRequestNodeConfig(
+            max_connect_timeout=10,
+            max_read_timeout=600,
+            max_write_timeout=600,
+            max_binary_size=0,
+            max_text_size=0,
+            ssl_verify=True,
+            ssrf_default_max_retries=0,
+        )
+    )
+
+    effective = HttpRequestNode._get_request_timeout(owner, parsed)
+
+    assert (parsed.timeout.model_dump() if parsed.timeout is not None else None) == parsed_axes
+    assert effective.model_dump() == effective_axes
+    assert raw_data == before
