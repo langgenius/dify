@@ -9,7 +9,6 @@ import FormStatusCard from '@/features/human-input-form/form-status-card'
 import LoadedFormContent from '@/features/human-input-form/loaded-form-content'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
-import { submitHumanInputForm } from '@/service/workflow'
 import { normalizeConsoleFormDefinition } from './definition'
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -19,9 +18,9 @@ const getErrorKind = (error: unknown) => {
   const record = asRecord(error)
   const data = asRecord(record.data)
   const code = asRecord(data.body).code ?? data.code ?? record.code
-  if (code === 'human_input_form_expired') return 'expired'
-  if (code === 'human_input_form_submitted') return 'submitted'
-  if (record.status === 404 || code === 'human_input_form_not_found') return 'not-found'
+  if (code === 'expired' || record.status === 410) return 'expired'
+  if (code === 'already_submitted') return 'submitted'
+  if (record.status === 404 || code === 'not_found') return 'not-found'
   if (record.status === 429) return 'rate-limited'
   return 'unknown'
 }
@@ -32,7 +31,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   const [submitError, setSubmitError] = useState<unknown>()
   const [now, setNow] = useState(Date.now)
   const form = useQuery(
-    consoleQuery.form.humanInput.byFormToken.get.queryOptions({
+    consoleQuery.form.humanInput.v2.byFormToken.get.queryOptions({
       input: { params: { form_token: formToken } },
       context: { silent: true },
       select: normalizeConsoleFormDefinition,
@@ -52,16 +51,19 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
     )
     return () => window.clearTimeout(timer)
   }, [expiresAt, now])
-  // Reuse the working Console submit path. Its generated contract still requires
-  // the obsolete form_inputs field; the actual API uses inputs and action.
-  const submission = useMutation({
-    mutationFn: (payload: Parameters<typeof submitHumanInputForm>[1]) =>
-      submitHumanInputForm(formToken, payload),
-  })
+  const submission = useMutation(
+    consoleQuery.form.humanInput.v2.byFormToken.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const errorKind =
     expiresAt !== undefined && expiresAt <= now
       ? 'expired'
-      : getErrorKind(submitError ?? form.error)
+      : submitError !== undefined
+        ? getErrorKind(submitError)
+        : form.error instanceof Response && form.error.status === 409
+          ? 'submitted'
+          : getErrorKind(form.error)
   const terminal = ['expired', 'submitted', 'not-found'].includes(errorKind)
   const errorText =
     errorKind === 'expired'
@@ -122,7 +124,10 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
           }
           setSubmitError(undefined)
           try {
-            await submission.mutateAsync({ inputs, action })
+            await submission.mutateAsync({
+              params: { form_token: formToken },
+              body: { inputs, action },
+            })
           } catch (error) {
             const detail: unknown =
               error instanceof Response

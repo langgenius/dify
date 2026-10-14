@@ -1,21 +1,25 @@
-import type { ConsoleHumanInputFormDefinitionResponse } from '@dify/contracts/api/console/form/types.gen'
+import type { ConsoleHumanInputV2FormDefinitionResponse } from '@dify/contracts/api/console/form/types.gen'
 import type { UseQueryOptions } from '@tanstack/react-query'
 import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
+import type { consoleClient } from '@/service/console'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ConsoleHumanInputForm from '../form'
 
-const { fetchForm, submitForm } = vi.hoisted(() => ({
-  fetchForm: vi.fn<(token: string) => Promise<ConsoleHumanInputFormDefinitionResponse>>(),
-  submitForm:
-    vi.fn<
-      (token: string, payload: { inputs: Record<string, unknown>; action: string }) => Promise<void>
-    >(),
+type ConsoleFormSubmitInput = Parameters<
+  typeof consoleClient.form.humanInput.v2.byFormToken.post
+>[0]
+
+const { fetchForm, fetchLegacyForm, submitForm, submitLegacyForm } = vi.hoisted(() => ({
+  fetchForm: vi.fn<(token: string) => Promise<ConsoleHumanInputV2FormDefinitionResponse>>(),
+  fetchLegacyForm: vi.fn(),
+  submitForm: vi.fn<(input: ConsoleFormSubmitInput) => Promise<Record<string, unknown>>>(),
+  submitLegacyForm: vi.fn(),
 }))
 
 type FormQueryOptions = Omit<
-  UseQueryOptions<ConsoleHumanInputFormDefinitionResponse, Error, HumanInputFormDefinition>,
+  UseQueryOptions<ConsoleHumanInputV2FormDefinitionResponse, Error, HumanInputFormDefinition>,
   'queryKey' | 'queryFn'
 > & {
   input: { params: { form_token: string } }
@@ -30,9 +34,25 @@ vi.mock('@/service/console', () => ({
           get: {
             queryOptions: ({ input, context: _context, ...options }: FormQueryOptions) => ({
               ...options,
-              queryKey: ['console-human-input-form', input.params.form_token],
-              queryFn: () => fetchForm(input.params.form_token),
+              queryKey: ['legacy-console-human-input-form', input.params.form_token],
+              queryFn: () => fetchLegacyForm(input.params.form_token),
             }),
+          },
+        },
+        v2: {
+          byFormToken: {
+            get: {
+              queryOptions: ({ input, context: _context, ...options }: FormQueryOptions) => ({
+                ...options,
+                queryKey: ['console-human-input-v2-form', input.params.form_token],
+                queryFn: () => fetchForm(input.params.form_token),
+              }),
+            },
+            post: {
+              mutationOptions: () => ({
+                mutationFn: (input: ConsoleFormSubmitInput) => submitForm(input),
+              }),
+            },
           },
         },
       },
@@ -41,31 +61,30 @@ vi.mock('@/service/console', () => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (
-    token: string,
-    payload: { inputs: Record<string, unknown>; action: string },
-  ) => submitForm(token, payload),
+  submitHumanInputForm: submitLegacyForm,
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
 
 const createDefinition = (
-  overrides: ConsoleHumanInputFormDefinitionResponse = {},
-): ConsoleHumanInputFormDefinitionResponse => ({
-  form_content: '# {{#start.title#}}\n\n{{#$output.response#}}',
-  rendered_content: '# Review the request\n\n{{#$output.response#}}',
-  inputs: [
-    {
-      type: 'paragraph',
-      output_variable_name: 'response',
-      default: { type: 'variable', selector: ['start', 'response'] },
-    },
-  ],
-  default_values: { response: 'Resolved approval notes' },
-  user_actions: [
-    { id: 'approve', title: 'Approve', button_style: 'primary' },
-    { id: 'reject', title: 'Reject', button_style: 'default' },
-  ],
+  overrides: Partial<ConsoleHumanInputV2FormDefinitionResponse> = {},
+): ConsoleHumanInputV2FormDefinitionResponse => ({
+  resolved_form: {
+    title: 'Console approval',
+    legacy_form_content: '# {{#start.title#}}\n\n{{#$output.response#}}',
+    parts: [
+      { type: 'markdown_fragment', text: '# Review the request\n\n' },
+      {
+        type: 'paragraph_input',
+        output_variable_name: 'response',
+        default_value: 'Resolved approval notes',
+      },
+    ],
+    actions: [
+      { id: 'approve', title: 'Approve', button_style: 'primary' },
+      { id: 'reject', title: 'Reject', button_style: 'default' },
+    ],
+  },
   expiration_time: Math.floor(Date.now() / 1000) + 3600,
   ...overrides,
 })
@@ -82,10 +101,12 @@ const renderForm = () => {
 describe('ConsoleHumanInputForm', () => {
   beforeEach(() => {
     fetchForm.mockReset().mockResolvedValue(createDefinition())
-    submitForm.mockReset().mockResolvedValue(undefined)
+    fetchLegacyForm.mockReset().mockRejectedValue({ status: 404 })
+    submitForm.mockReset().mockResolvedValue({})
+    submitLegacyForm.mockReset()
   })
 
-  it('renders resolved content and defaults, then submits edited values through Console', async () => {
+  it('reads and submits the resolved Console form using only the new Console API', async () => {
     const user = userEvent.setup()
     renderForm()
 
@@ -93,16 +114,18 @@ describe('ConsoleHumanInputForm', () => {
     const response = screen.getByRole('textbox', { name: 'response' })
     expect(response).toHaveValue('Resolved approval notes')
     expect(fetchForm).toHaveBeenCalledWith('console-token')
+    expect(fetchLegacyForm).not.toHaveBeenCalled()
     expect(screen.queryByText('{{#start.title#}}')).not.toBeInTheDocument()
 
     await user.clear(response)
     await user.type(response, 'Approved after review')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
-    expect(submitForm).toHaveBeenCalledWith('console-token', {
-      inputs: { response: 'Approved after review' },
-      action: 'approve',
+    expect(submitForm).toHaveBeenCalledWith({
+      params: { form_token: 'console-token' },
+      body: { inputs: { response: 'Approved after review' }, action: 'approve' },
     })
+    expect(submitLegacyForm).not.toHaveBeenCalled()
     expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
     expect(screen.getByText('share.humanInput.recorded')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'response' })).not.toBeInTheDocument()
@@ -127,17 +150,17 @@ describe('ConsoleHumanInputForm', () => {
     await user.click(approve)
 
     expect(submitForm).toHaveBeenCalledTimes(2)
-    expect(submitForm).toHaveBeenLastCalledWith('console-token', {
-      inputs: { response: 'Keep these approval notes' },
-      action: 'approve',
+    expect(submitForm).toHaveBeenLastCalledWith({
+      params: { form_token: 'console-token' },
+      body: { inputs: { response: 'Keep these approval notes' }, action: 'approve' },
     })
     expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
   })
 
   it('disables every action while submitting to prevent duplicate approvals', async () => {
     const user = userEvent.setup()
-    let resolveSubmission: (() => void) | undefined
-    const pendingSubmission = new Promise<void>((resolve) => {
+    let resolveSubmission: ((value: Record<string, unknown>) => void) | undefined
+    const pendingSubmission = new Promise<Record<string, unknown>>((resolve) => {
       resolveSubmission = resolve
     })
     submitForm.mockReturnValue(pendingSubmission)
@@ -153,7 +176,7 @@ describe('ConsoleHumanInputForm', () => {
     expect(submitForm).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      resolveSubmission?.()
+      resolveSubmission?.({})
       await pendingSubmission
     })
     expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
@@ -161,11 +184,9 @@ describe('ConsoleHumanInputForm', () => {
 
   it.each([
     [{ status: 404 }, 'share.humanInput.formNotFound'],
-    [
-      { status: 412, data: { body: { code: 'human_input_form_expired' } } },
-      'share.humanInput.expired',
-    ],
-    [{ code: 'human_input_form_submitted' }, 'share.humanInput.completed'],
+    [{ status: 410, data: { body: { code: 'expired' } } }, 'share.humanInput.expired'],
+    [{ status: 409, code: 'already_submitted' }, 'share.humanInput.completed'],
+    [new Response(null, { status: 409 }), 'share.humanInput.completed'],
   ])('shows a terminal state for a rejected definition: %j', async (error, expected) => {
     fetchForm.mockRejectedValue(error)
     renderForm()
@@ -174,14 +195,18 @@ describe('ConsoleHumanInputForm', () => {
     expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
     expect(submitForm).not.toHaveBeenCalled()
+    expect(fetchLegacyForm).not.toHaveBeenCalled()
+    expect(submitLegacyForm).not.toHaveBeenCalled()
   })
 
   it.each([
-    ['human_input_form_expired', 'share.humanInput.expired'],
-    ['human_input_form_submitted', 'share.humanInput.completed'],
+    ['expired', 'share.humanInput.expired'],
+    ['already_submitted', 'share.humanInput.completed'],
   ])('handles a form resolved elsewhere before submission: %s', async (code, expected) => {
     const user = userEvent.setup()
-    submitForm.mockRejectedValue(new Response(JSON.stringify({ code }), { status: 412 }))
+    submitForm.mockRejectedValue(
+      new Response(JSON.stringify({ code }), { status: code === 'expired' ? 410 : 409 }),
+    )
     renderForm()
 
     await user.click(await screen.findByRole('button', { name: 'Approve' }))
