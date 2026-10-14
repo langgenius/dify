@@ -158,6 +158,7 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 400 | Invalid action. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 

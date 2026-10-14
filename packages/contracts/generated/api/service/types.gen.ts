@@ -2476,6 +2476,7 @@ export type PostAppsAnnotationReplyByActionData = {
 }
 
 export type PostAppsAnnotationReplyByActionErrors = {
+  400: unknown
   401: unknown
   403: unknown
 }
