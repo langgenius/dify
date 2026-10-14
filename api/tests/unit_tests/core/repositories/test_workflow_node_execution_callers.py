@@ -1,7 +1,6 @@
 """Caller identity survives storage updates independently of node payloads."""
 
 from datetime import datetime
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -12,6 +11,7 @@ from core.repositories.celery_workflow_node_execution_repository import CeleryWo
 from core.repositories.factory import WorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_execution import WorkflowNodeExecution
+from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
@@ -29,11 +29,7 @@ def test_caller_locators_survive_storage_round_trip_and_updates(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, backend: str
 ) -> None:
     apply_config_overrides(monkeypatch, LOGSTORE_DUAL_WRITE_ENABLED=False)
-    client = Mock()
-    monkeypatch.setattr(
-        "extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore",
-        Mock(return_value=client, workflow_node_execution_logstore="workflow_node_execution"),
-    )
+    logstore_records: list[dict[str, str]] = []
     sql = SQLAlchemyWorkflowNodeExecutionRepository(
         sqlite_session_factory, "tenant", make_account(), "source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
     )
@@ -66,6 +62,15 @@ def test_caller_locators_survive_storage_round_trip_and_updates(
             WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
         )
     elif backend == "logstore":
+        monkeypatch.setattr(AliyunLogStore, "_instance", None)
+        monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+        monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "localhost")
+        monkeypatch.setattr(AliyunLogStore, "_check_endpoint_connectivity", staticmethod(lambda *_: None))
+        monkeypatch.setattr(
+            AliyunLogStore,
+            "put_log",
+            lambda _self, _name, record: logstore_records.append(dict(record)),
+        )
         repository = LogstoreWorkflowNodeExecutionRepository(
             sqlite_session_factory,
             "tenant",
@@ -84,13 +89,9 @@ def test_caller_locators_survive_storage_round_trip_and_updates(
     repository.save_execution_data(execution)
 
     if backend == "logstore":
-        row = dict(client.put_log.call_args.args[1])
-        client.execute_sql.return_value = [row]
+        row = logstore_records[-1]
+        monkeypatch.setattr(AliyunLogStore, "execute_sql", lambda *_args, **_kwargs: [row])
         restored = repository.get_by_workflow_execution("root-run")[0]
-        monkeypatch.setattr(
-            "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore",
-            Mock(return_value=client, workflow_node_execution_logstore="workflow_node_execution"),
-        )
         apply_config_overrides(
             monkeypatch,
             API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(

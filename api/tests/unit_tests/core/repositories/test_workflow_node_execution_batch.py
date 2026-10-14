@@ -1,7 +1,6 @@
 """Batch cleanup persists exact records without losing ownership or stored data."""
 
 from datetime import datetime
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -13,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_execution import WorkflowNodeExecution
+from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
@@ -78,7 +78,7 @@ def test_batch_creates_missing_rows_and_updates_only_supplied_records(
         execution.process_data = {"partial": "result"}
 
     queued: list[dict[str, object]] = []
-    client = Mock()
+    logstore_records: list[dict[str, str]] = []
     if backend == "celery":
         task = workflow_node_execution_tasks.save_workflow_node_executions_task
         monkeypatch.setattr(task, "delay", lambda **kwargs: queued.append(kwargs))
@@ -91,9 +91,14 @@ def test_batch_creates_missing_rows_and_updates_only_supplied_records(
         )
     elif backend == "logstore":
         apply_config_overrides(monkeypatch, LOGSTORE_DUAL_WRITE_ENABLED=True)
+        monkeypatch.setattr(AliyunLogStore, "_instance", None)
+        monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+        monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "localhost")
+        monkeypatch.setattr(AliyunLogStore, "_check_endpoint_connectivity", staticmethod(lambda *_: None))
         monkeypatch.setattr(
-            "extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore",
-            Mock(return_value=client, workflow_node_execution_logstore="workflow_node_execution"),
+            AliyunLogStore,
+            "put_log",
+            lambda _self, _name, record: logstore_records.append(dict(record)),
         )
         repository = LogstoreWorkflowNodeExecutionRepository(
             expiring_session_factory,
@@ -146,10 +151,9 @@ def test_batch_creates_missing_rows_and_updates_only_supplied_records(
         assert rows[existing.id].inputs_dict == {"large": "stored preview"}
         assert rows[existing.id].offload_data[0].file_id == "offloaded-inputs"
     if backend == "logstore":
-        records = [dict(call.args[1]) for call in client.put_log.call_args_list]
-        assert {row["id"] for row in records} == {existing.id, missing.id}
-        assert all(row["status"] == "failed" and row["log_version"] for row in records)
-        assert all(row["triggered_from_node_execution_id"] == "caller-execution" for row in records)
+        assert {row["id"] for row in logstore_records} == {existing.id, missing.id}
+        assert all(row["status"] == "failed" and row["log_version"] for row in logstore_records)
+        assert all(row["triggered_from_node_execution_id"] == "caller-execution" for row in logstore_records)
 
 
 @pytest.mark.parametrize("backend", ["sql", "celery"])

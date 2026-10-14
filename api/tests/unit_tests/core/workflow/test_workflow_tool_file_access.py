@@ -154,7 +154,7 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
         value = mapping if input_kind == "file" else [mapping]
         payload = payload.model_copy(update={"inputs": {"attachment": value}})
         output_selector = ["source-start", "attachment"]
-    runtime.build_workflow_tool_container_payload.return_value = payload
+    monkeypatch.setattr(runtime, "build_workflow_tool_container_payload", lambda **_kwargs: payload)
     source = WorkflowToolSource(
         app_id="source-app",
         workflow_id="source-workflow",

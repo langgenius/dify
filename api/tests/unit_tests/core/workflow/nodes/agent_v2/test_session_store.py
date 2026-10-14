@@ -539,16 +539,17 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(
     sqlite_session_factory: sessionmaker[Session],
     executed_statements: list[str],
 ) -> None:
-    sleep = MagicMock()
+    sleep_count = 0
 
     def make_caller_visible(_seconds: float) -> None:
-        if sleep.call_count == 2:
+        nonlocal sleep_count
+        sleep_count += 1
+        if sleep_count == 2:
             with sqlite_session_factory() as observer:
                 observer.add(_execution_row())
                 observer.commit()
 
-    sleep.side_effect = make_caller_visible
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", sleep)
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.session_store.time.sleep", make_caller_visible)
 
     scope = WorkflowAgentWorkspaceStore().load_existing_node_execution_scope(
         tenant_id="tenant-1",
@@ -561,7 +562,7 @@ def test_load_existing_scope_waits_for_caller_row_to_become_visible(
 
     assert scope is None
     assert len(_execution_selects(executed_statements)) == 3
-    assert sleep.call_count == 2
+    assert sleep_count == 2
 
 
 def test_save_snapshot_targets_binding(sqlite_session: Session) -> None:

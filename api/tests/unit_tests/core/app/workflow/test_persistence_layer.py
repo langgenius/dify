@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import event as sqlalchemy_event
@@ -22,9 +21,11 @@ from core.workflow.node_execution_process_data import (
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from enums import WorkflowKind
+from graphon.engine.event.node_failure import NodeFailureHandler
 from graphon.engine.event.processor import NodeEventProcessor
 from graphon.engine.event.stream import EventStream
 from graphon.engine.frame import ExecutionFrame, FrameRegistry
+from graphon.engine.scheduler import Scheduler
 from graphon.engine.worker import NodeEventTask
 from graphon.engine_events import (
     EngineEvent,
@@ -46,20 +47,23 @@ from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
-    NodeExecutionType,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
+from graphon.graph import Graph
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class _RepoRecorder:
@@ -399,15 +403,20 @@ def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_hist
     layer.on_event(GraphRunStartedEvent())
     state = RuntimeState(workflow_id="source-workflow", variable_pool=VariablePool(), start_at=0)
     frames = FrameRegistry()
-    scheduler = MagicMock()
-    scheduler.process_node_success.return_value = ([], [])
+    node = StartNode(
+        node_id="child",
+        data=StartNodeData(title="Child", variables=[]),
+        init_params=build_test_graph_init_params(workflow_id="source-workflow"),
+        runtime_state=state,
+    )
+    graph = Graph.new().add_root(node).build()
     frames.register(
         ExecutionFrame(
             frame_id=ROOT_FRAME_ID,
-            graph=MagicMock(nodes={"child": MagicMock(execution_type=NodeExecutionType.EXECUTABLE)}),
+            graph=graph,
             state=state,
-            scheduler=scheduler,
-            failure_handler=MagicMock(),
+            scheduler=Scheduler(graph, state, ROOT_FRAME_ID),
+            failure_handler=NodeFailureHandler(graph, state.graph_execution),
         )
     )
 

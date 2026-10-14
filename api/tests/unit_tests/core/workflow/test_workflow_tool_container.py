@@ -5,21 +5,23 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
 from functools import partial
-from types import SimpleNamespace
-from typing import cast
-from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.code_executor.code_executor import CodeExecutionError
 from core.repositories.human_input_repository import (
     HumanInputFormRepositoryImpl,
     HumanInputFormSubmissionRepository,
 )
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyToolFileManager
+from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
@@ -33,10 +35,13 @@ from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from enums import WorkflowKind
 from graphon.engine import Engine
 from graphon.engine.command import AbortCommand, InMemoryChannel
+from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
+from graphon.engine.event.node_failure import NodeFailureHandler
 from graphon.engine.event.processor import NodeEventProcessor
 from graphon.engine.event.stream import EventStream
 from graphon.engine.frame import ExecutionFrame, FrameRegistry
 from graphon.engine.ready_queue import ResumeTask, StartTask
+from graphon.engine.scheduler import Scheduler
 from graphon.engine.worker import NodeEventTask
 from graphon.engine_events import NodeRunExceptionEvent, NodeRunFailedEvent, NodeRunRetryEvent, NodeRunSucceededEvent
 from graphon.engine_events.base import EngineEvent, NodeEvent
@@ -85,7 +90,7 @@ def _workflow_tool_node(
     app_id: str = "outer-app",
     version: str = "1",
     tool_node_version: str | None = None,
-) -> tuple[DifyWorkflowToolNode, MagicMock, WorkflowToolContainerPayload]:
+) -> tuple[DifyWorkflowToolNode, DifyToolNodeRuntime, WorkflowToolContainerPayload]:
     graph_config = {
         "nodes": [
             {
@@ -124,13 +129,31 @@ def _workflow_tool_node(
         source_workflow_id="source-workflow",
         source_workflow_version="1",
         inputs={"question": "hello"},
-        inputs_for_log={"question": "hello"},
+        inputs_for_log={},
         call_depth=3,
     )
-    runtime = MagicMock()
-    runtime.get_runtime.return_value = ToolRuntimeHandle(raw=object())
-    runtime.get_runtime_parameters.return_value = list[object]()
-    runtime.build_workflow_tool_container_payload.return_value = payload
+    tool = WorkflowTool(
+        workflow_app_id=payload.source_app_id,
+        workflow_id=payload.source_workflow_id,
+        workflow_as_tool_id="workflow-provider",
+        version=payload.source_workflow_version,
+        workflow_call_depth=2,
+        entity=ToolEntity(
+            identity=ToolIdentity(
+                author="test",
+                name="nested-workflow",
+                label=I18nObject(en_US="Nested Workflow"),
+                provider="workflow-provider",
+            ),
+            parameters=[],
+            description=None,
+            has_runtime_parameters=False,
+        ),
+        runtime=ToolRuntime(tenant_id="tenant", invoke_from=InvokeFrom.DEBUGGER),
+    )
+    tool.prepare_container_inputs = lambda *_args, **_kwargs: (payload.inputs, [])
+    runtime = DifyToolNodeRuntime(init_params.run_context)
+    runtime.get_runtime = lambda **_kwargs: ToolRuntimeHandle(raw=tool)
     node = DifyWorkflowToolNode(
         node_id="tool",
         data=ToolNodeData.model_validate(graph_config["nodes"][0]["data"]),
@@ -153,20 +176,22 @@ def _outer_graph(node: DifyWorkflowToolNode) -> Graph:
     return Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
 
 
-def test_workflow_tool_node_requests_child_container_and_resumes_successfully() -> None:
+def test_workflow_tool_node_requests_child_container_and_resumes_successfully(mocker: MockerFixture) -> None:
     node, runtime, payload = _workflow_tool_node()
+    get_runtime = mocker.spy(runtime, "get_runtime")
+    build_payload = mocker.spy(runtime, "build_workflow_tool_container_payload")
 
     initial_events = list(node._run())
 
     assert initial_events == [CustomContainerRequest(payload=payload.model_dump_json())]
-    runtime.get_runtime.assert_called_once_with(
+    get_runtime.assert_called_once_with(
         node_id="tool",
         node_data=node.node_data,
         variable_pool=None,
         node_execution_id="tool-execution",
     )
-    runtime.build_workflow_tool_container_payload.assert_called_once_with(
-        tool_runtime=runtime.get_runtime.return_value,
+    build_payload.assert_called_once_with(
+        tool_runtime=get_runtime.spy_return,
         tool_parameters={},
         inputs_for_log={},
         workflow_call_depth=2,
@@ -203,9 +228,9 @@ def test_workflow_tool_node_requests_child_container_and_resumes_successfully() 
     }
 
 
-def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded() -> None:
+def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded(mocker: MockerFixture) -> None:
     node, runtime, _ = _workflow_tool_node(version="2")
-    runtime.get_runtime.side_effect = ToolNodeError("runtime unavailable")
+    get_runtime = mocker.patch.object(runtime, "get_runtime", side_effect=ToolNodeError("runtime unavailable"))
 
     events = list(node._run())
 
@@ -214,7 +239,7 @@ def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded() -> N
     assert isinstance(completed, StreamCompletedEvent)
     assert completed.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
     assert completed.node_run_result.error == "Failed to get tool runtime: runtime unavailable"
-    runtime.get_runtime.assert_called_once_with(
+    get_runtime.assert_called_once_with(
         node_id="tool",
         node_data=node.node_data,
         variable_pool=node.runtime_state.variable_pool,
@@ -222,9 +247,11 @@ def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded() -> N
     )
 
 
-def test_workflow_tool_node_returns_failure_when_payload_cannot_be_built() -> None:
+def test_workflow_tool_node_returns_failure_when_payload_cannot_be_built(mocker: MockerFixture) -> None:
     node, runtime, _ = _workflow_tool_node(tool_node_version="1")
-    runtime.build_workflow_tool_container_payload.side_effect = ToolNodeError("invalid source workflow")
+    mocker.patch.object(
+        runtime, "build_workflow_tool_container_payload", side_effect=ToolNodeError("invalid source workflow")
+    )
 
     events = list(node._run())
 
@@ -288,8 +315,7 @@ def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only() -> None:
 
 def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> None:
     node, _, _ = _workflow_tool_node()
-    factory = object.__new__(DifyNodeFactory)
-    factory._use_workflow_tool_containers = True
+    factory = DifyNodeFactory(node.init_params, node.runtime_state, use_workflow_tool_containers=True)
     assert (
         factory._resolve_node_class_for_factory(
             node_type=BuiltinNodeTypes.TOOL,
@@ -429,23 +455,16 @@ def _container_handler(
         variable_pool=parent_pool,
         start_at=1,
     )
-    parent_node = SimpleNamespace(
-        node_type=BuiltinNodeTypes.TOOL,
-        workflow_id="outer-workflow",
-        run_context=build_test_run_context(
-            tenant_id="tenant",
-            app_id="outer-app",
-        ),
-    )
-    parent_graph = SimpleNamespace(nodes={"tool": parent_node}, node_factory=None)
+    parent_node, _, _ = _workflow_tool_node(parent_state)
+    parent_graph = _outer_graph(parent_node)
     frame_registry = FrameRegistry()
     frame_registry.register(
         ExecutionFrame(
             frame_id=ROOT_FRAME_ID,
-            graph=cast(Graph, parent_graph),
+            graph=parent_graph,
             state=parent_state,
-            scheduler=MagicMock(),
-            failure_handler=MagicMock(),
+            scheduler=Scheduler(parent_graph, parent_state, ROOT_FRAME_ID),
+            failure_handler=NodeFailureHandler(parent_graph, parent_state.graph_execution),
         )
     )
     source_repository = {}
@@ -641,14 +660,12 @@ def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events() -
         event_listeners=event_listeners,
     )
     workflow_tool_handler.handle_request(invocation_id="invocation", request=request)
-    built_in_handler = MagicMock()
-    built_in_handler.node_type = BuiltinNodeTypes.LOOP
-    built_in_handler.should_emit.return_value = True
-    hidden_event_listener = MagicMock()
+    built_in_handler = LoopContainerHandler(frame_registry)
+    hidden_events: list[NodeEvent] = []
     nested_handler = WorkflowToolNestedContainerHandler(
         frame_registry,
         handler_factory=lambda _: built_in_handler,
-        hidden_event_listener=hidden_event_listener,
+        hidden_event_listener=hidden_events.append,
         event_listeners=event_listeners,
     )
     event = NodeRunSucceededEvent(
@@ -665,7 +682,7 @@ def test_workflow_tool_nested_handler_hides_and_persists_marked_child_events() -
     )
 
     assert nested_handler.should_emit(event=event) is False
-    hidden_event_listener.assert_called_once_with(event)
+    assert hidden_events == [event]
     assert len(persisted) == 1
     assert persisted[0].container_id == "nested-container"
     assert persisted[0].node_run_result.process_data["workflow_tool_invocation_id"] == "invocation"
@@ -769,7 +786,15 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
     expected_output: str | None,
     retry_once: bool,
 ) -> None:
-    execute = MagicMock(side_effect=[CodeExecutionError("source code failed"), {"output": "retried output"}])
+    attempts = 0
+
+    def execute(**_kwargs: object) -> dict[str, str]:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise CodeExecutionError("source code failed")
+        return {"output": "retried output"}
+
     monkeypatch.setattr("core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute)
     source = _workflow_tool_source()
     source_graph = dict(source.graph_config)
@@ -853,7 +878,7 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
     else:
         events.extend(engine.run())
 
-    assert execute.call_count == (2 if retry_once else 1)
+    assert attempts == (2 if retry_once else 1)
     assert isinstance(events[-1], terminal_type)
     assert node.runtime_state.graph_execution.exceptions_count == expected_count
     if isinstance(events[-1], GraphRunFailedEvent):
@@ -923,11 +948,8 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     )
     initial_node, _, _ = _workflow_tool_node(initial_state, app_id="intermediate-app")
     initial_graph = _outer_graph(initial_node)
-    initial_owner_factory = object.__new__(DifyNodeFactory)
-    initial_owner_factory._execution_driver = None
-    initial_owner_factory.workflow_tools = {}
-    initial_owner_factory._human_input_run_context = DifyNodeFactory._resolve_dify_context(
-        build_test_run_context(app_id="outer-app")
+    initial_owner_factory = DifyNodeFactory(
+        initial_node.init_params, initial_state, human_input_run_context=build_test_run_context(app_id="outer-app")
     )
     initial_graph.node_factory = initial_owner_factory
     initial_events = list(
@@ -978,10 +1000,9 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     )
     restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app")
     restored_graph = _outer_graph(restored_node)
-    restored_owner_factory = object.__new__(DifyNodeFactory)
-    restored_owner_factory._execution_driver = None
-    restored_owner_factory.workflow_tools = {}
-    restored_owner_factory._human_input_run_context = initial_owner_factory.human_input_run_context
+    restored_owner_factory = DifyNodeFactory(
+        restored_node.init_params, restored_state, human_input_run_context=initial_owner_factory.human_input_run_context
+    )
     restored_graph.node_factory = restored_owner_factory
     if outcome == "resumed":
         HumanInputFormSubmissionRepository().mark_submitted(

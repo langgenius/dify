@@ -1,15 +1,15 @@
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
 from functools import partial
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import FakeAgentBackendRunClient
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
@@ -17,6 +17,7 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
 )
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.workflow_tool_container_handler import (
     WorkflowToolContainerHandler,
     WorkflowToolNestedContainerHandler,
@@ -40,6 +41,7 @@ from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
+from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
@@ -247,7 +249,13 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
         if listener_fails:
             raise RuntimeError("Trace store unavailable")
 
-    listener_factory = MagicMock(return_value=persist_event)
+    listener_requests: list[tuple[WorkflowToolSource, str, str]] = []
+
+    def listener_factory(
+        tool_source: WorkflowToolSource, workflow_id: str, execution_id: str
+    ) -> Callable[[NodeEvent], None]:
+        listener_requests.append((tool_source, workflow_id, execution_id))
+        return persist_event
 
     events = list(
         Engine(
@@ -267,7 +275,7 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
 
     assert isinstance(events[-1], GraphRunSucceededEvent)
     caller_event = next(event for event in events if isinstance(event, NodeRunStartedEvent) and event.node_id == "tool")
-    listener_factory.assert_called_once_with(source, node.workflow_id, caller_event.id)
+    assert listener_requests == [(source, node.workflow_id, caller_event.id)]
     assert [event.node_id for event in persisted if isinstance(event, NodeRunStartedEvent)] == [
         "source-start",
         "source-end",
@@ -293,8 +301,15 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
     sqlite_session_factory: sessionmaker[Session],
     caller_save_fails: bool,
 ) -> None:
-    binding_resolver = MagicMock()
+    binding_resolver = WorkflowAgentBindingResolver()
+    resolution_calls: list[dict[str, object]] = []
     if caller_save_fails:
+
+        def reject_resolution(**kwargs: object) -> None:
+            resolution_calls.append(kwargs)
+            pytest.fail("Binding resolution must wait for a persisted caller")
+
+        monkeypatch.setattr(binding_resolver, "resolve", reject_resolution)
         monkeypatch.setattr("core.workflow.node_factory.WorkflowAgentBindingResolver", lambda: binding_resolver)
         save = SQLAlchemyWorkflowNodeExecutionRepository.save
 
@@ -339,12 +354,19 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
     user = Account(name="Test", email="test@example.com")
     user.id = "user"
     layer = WorkflowPersistenceLayer(
-        application_generate_entity=WorkflowAppGenerateEntity.model_construct(
+        application_generate_entity=WorkflowAppGenerateEntity(
             task_id="task",
-            app_config=SimpleNamespace(app_id="outer-app", tenant_id="tenant"),
+            app_config=WorkflowAppConfig(
+                app_id="outer-app",
+                tenant_id="tenant",
+                workflow_id="outer-workflow",
+                app_mode=AppMode.WORKFLOW,
+            ),
             inputs={},
             files=[],
             user_id=user.id,
+            stream=True,
+            invoke_from=InvokeFrom.SERVICE_API,
             extras={},
             workflow_execution_id="outer-run",
         ),
@@ -411,7 +433,7 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
         )
         assert execution.status == "exception"
         if caller_save_fails:
-            binding_resolver.resolve.assert_not_called()
+            assert resolution_calls == []
             assert execution.error == "Workflow node execution caller is unavailable"
             assert execution.outputs_dict["error_type"] == "agent_workflow_node_runtime_error"
         else:
