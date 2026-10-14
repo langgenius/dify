@@ -1,6 +1,6 @@
 'use client'
 
-import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
+import type { FileTreeIconType } from '@/app/components/base/file-tree'
 import type { ReactNode } from 'react'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import type { I18nKeysWithPrefix } from '@/types/i18n'

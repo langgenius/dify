@@ -11,7 +11,7 @@ import {
   FileTreeGuide,
   FileTreeIcon,
   FileTreeLabel,
-} from '@langgenius/dify-ui/file-tree'
+} from '@/app/components/base/file-tree'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'

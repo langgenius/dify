@@ -725,7 +725,6 @@ const mobileComponentLinks = [
   { href: '/storybook/mobile/components/dialog', label: 'Dialog' },
   { href: '/storybook/mobile/components/drawer', label: 'Drawer' },
   { href: '/storybook/mobile/components/dropdown-menu', label: 'Dropdown Menu' },
-  { href: '/storybook/mobile/components/file-tree', label: 'File Tree' },
   { href: '/storybook/mobile/components/pagination', label: 'Pagination' },
   { href: '/storybook/mobile/components/popover', label: 'Popover' },
   { href: '/storybook/mobile/components/scroll-area', label: 'Scroll Area' },

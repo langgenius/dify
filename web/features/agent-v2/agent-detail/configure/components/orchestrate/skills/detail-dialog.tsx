@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
+import { FileTreeFile } from '@/app/components/base/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,

@@ -1,12 +1,20 @@
 'use client'
 
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
+import { cn } from '@langgenius/dify-ui/cn'
+import { mergeProps } from '@langgenius/dify-ui/merge-props'
+import { useRender } from '@langgenius/dify-ui/use-render'
 import * as React from 'react'
-import { cn } from '../cn'
-import { insetFocusRingClassName } from '../internal/focus'
-import { resolveClassName } from '../internal/resolve-class-name'
-import { mergeProps } from '../merge-props'
-import { useRender } from '../use-render'
+
+const insetFocusRingClassName =
+  'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden'
+
+function resolveClassName<State>(
+  className: string | ((state: State) => string | undefined) | undefined,
+  state: State,
+) {
+  return typeof className === 'function' ? className(state) : className
+}
 
 const FileTreeLevelContext = React.createContext(1)
 

@@ -6,7 +6,7 @@ import type {
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { FileTreeIcon } from '@/app/components/base/file-tree'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'

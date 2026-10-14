@@ -1,4 +1,4 @@
-import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
+import type { FileTreeIconType } from '@/app/components/base/file-tree'
 
 const codeFileExtensions = new Set([
   'css',

@@ -14,7 +14,7 @@ import type {
 } from '@/features/agent-v2/agent-composer/form-state'
 import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { FileTreeIcon } from '@/app/components/base/file-tree'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'

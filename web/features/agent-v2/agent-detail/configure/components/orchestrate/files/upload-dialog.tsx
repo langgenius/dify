@@ -17,7 +17,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { FileTreeIcon } from '@/app/components/base/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'

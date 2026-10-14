@@ -1,5 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { FileTreeIcon } from '@/app/components/base/file-tree'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { use } from 'react'
 import { RosterReferenceBlockContext } from './context'

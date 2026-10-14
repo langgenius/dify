@@ -4,7 +4,7 @@ import type {
   AgentSoulModelConfig,
   ToolProviderType,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
+import type { FileTreeIconType } from '@/app/components/base/file-tree'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {

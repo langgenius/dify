@@ -1,4 +1,5 @@
-import { render } from 'vitest-browser-react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   FileTree,
   FileTreeFile,
@@ -52,35 +53,34 @@ function TestFileTree({ onPreview = vi.fn() }: { onPreview?: (itemId: string) =>
 }
 
 describe('FileTree', () => {
-  it('renders a labelled disclosure list instead of an ARIA treeview', async () => {
-    const screen = await render(<TestFileTree />)
+  it('renders a labelled disclosure list instead of an ARIA treeview', () => {
+    render(<TestFileTree />)
     const root = screen.getByLabelText('Project files')
     const src = screen.getByRole('button', { name: 'src' })
     const selectedFile = screen.getByRole('button', { name: 'button.tsx' })
 
-    await expect.element(root).not.toHaveAttribute('role', 'tree')
-    await expect.element(src).toHaveAttribute('aria-expanded', 'true')
-    await expect.element(src).toHaveAttribute('aria-controls')
-    await expect.element(src).not.toHaveAttribute('aria-current')
-    await expect.element(src).not.toHaveAttribute('data-selected')
-    await expect.element(selectedFile).toHaveAttribute('aria-current', 'true')
-    await expect.element(selectedFile).toHaveAttribute('data-selected')
+    expect(root).not.toHaveAttribute('role', 'tree')
+    expect(src).toHaveAttribute('aria-expanded', 'true')
+    expect(src).toHaveAttribute('aria-controls')
+    expect(src).not.toHaveAttribute('aria-current')
+    expect(src).not.toHaveAttribute('data-selected')
+    expect(selectedFile).toHaveAttribute('aria-current', 'true')
+    expect(selectedFile).toHaveAttribute('data-selected')
   })
 
   it('activates file preview buttons without navigation semantics', async () => {
+    const user = userEvent.setup()
     const onPreview = vi.fn()
-    const screen = await render(<TestFileTree onPreview={onPreview} />)
+    render(<TestFileTree onPreview={onPreview} />)
 
-    await screen.getByRole('button', { name: 'README.md' }).click()
+    await user.click(screen.getByRole('button', { name: 'README.md' }))
 
     expect(onPreview).toHaveBeenCalledWith('readme')
-    await expect
-      .element(screen.getByRole('button', { name: 'README.md' }))
-      .not.toHaveAttribute('href')
+    expect(screen.getByRole('button', { name: 'README.md' })).not.toHaveAttribute('href')
   })
 
-  it('does not activate disabled file buttons', async () => {
-    const screen = await render(
+  it('does not activate disabled file buttons', () => {
+    render(
       <FileTree aria-label="Disabled files">
         <FileTreeList>
           <FileTreeFile disabled>
@@ -91,14 +91,12 @@ describe('FileTree', () => {
       </FileTree>,
     )
 
-    await expect.element(screen.getByRole('button', { name: 'disabled.txt' })).toBeDisabled()
-    await expect
-      .element(screen.getByRole('button', { name: 'disabled.txt' }))
-      .toHaveAttribute('data-disabled')
+    expect(screen.getByRole('button', { name: 'disabled.txt' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'disabled.txt' })).toHaveAttribute('data-disabled')
   })
 
-  it('resolves disabled folder triggers through the collapsible state', async () => {
-    const screen = await render(
+  it('resolves disabled folder triggers through the collapsible state', () => {
+    render(
       <FileTree aria-label="Disabled folders">
         <FileTreeList>
           <FileTreeFolder disabled defaultOpen>
@@ -118,7 +116,7 @@ describe('FileTree', () => {
     )
     const trigger = screen.getByRole('button', { name: 'locked' })
 
-    await expect.element(trigger).toBeDisabled()
-    await expect.element(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(trigger).toBeDisabled()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
   })
 })

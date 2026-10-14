@@ -12,7 +12,7 @@ import {
   FileTreeIcon,
   FileTreeLabel,
   FileTreeList,
-} from '@langgenius/dify-ui/file-tree'
+} from '@/app/components/base/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ScrollArea, ScrollAreaContent, ScrollAreaViewport } from '@langgenius/dify-ui/scroll-area'
 import { Fragment } from 'react'
