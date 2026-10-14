@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 
 import httpx
 
+from core.helper import ssrf_proxy
 from services.auth.errors import (
     DataSourceApiKeyAuthCredentialValidationError,
     DataSourceApiKeyAuthProviderUnavailableError,
@@ -42,7 +43,7 @@ class WatercrawlAuth:
         return {"Content-Type": "application/json", "X-API-KEY": self.api_key}
 
     def _get_request(self, url, headers):
-        return httpx.get(url, headers=headers, timeout=_CREDENTIAL_TIMEOUT)
+        return ssrf_proxy.get(url, headers=headers, timeout=_CREDENTIAL_TIMEOUT, max_retries=0)
 
     def _handle_error(self, response) -> Never:
         if (

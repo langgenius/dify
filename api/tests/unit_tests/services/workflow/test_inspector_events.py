@@ -14,7 +14,7 @@ The publisher and subscriber both touch redis, so we mock it out at the
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -26,42 +26,42 @@ from services.workflow.inspector_events import InspectorMessage
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_channel_for_returns_namespaced_key():
+def test_channel_for_returns_namespaced_key() -> None:
     assert inspector_events.channel_for("run-42") == "dify:inspector:workflow_run:run-42"
 
 
-def test_inspector_message_to_json_round_trip():
+def test_inspector_message_to_json_round_trip() -> None:
     msg = InspectorMessage(kind="node_changed", workflow_run_id="r1", node_id="agent-1", status="succeeded")
     parsed = json.loads(msg.to_json())
     assert parsed == {"kind": "node_changed", "workflow_run_id": "r1", "node_id": "agent-1", "status": "succeeded"}
 
 
-def test_inspector_message_from_json_rejects_bad_kind():
+def test_inspector_message_from_json_rejects_bad_kind() -> None:
     blob = json.dumps({"kind": "something_else", "workflow_run_id": "r1"})
     assert InspectorMessage.from_json(blob) is None
 
 
-def test_inspector_message_from_json_rejects_bad_workflow_run_id():
+def test_inspector_message_from_json_rejects_bad_workflow_run_id() -> None:
     blob = json.dumps({"kind": "node_changed", "workflow_run_id": ""})
     assert InspectorMessage.from_json(blob) is None
 
 
-def test_inspector_message_from_json_rejects_non_string_node_id():
+def test_inspector_message_from_json_rejects_non_string_node_id() -> None:
     blob = json.dumps({"kind": "node_changed", "workflow_run_id": "r1", "node_id": 42})
     assert InspectorMessage.from_json(blob) is None
 
 
-def test_inspector_message_from_json_returns_none_for_invalid_json():
+def test_inspector_message_from_json_returns_none_for_invalid_json() -> None:
     assert InspectorMessage.from_json("{not json") is None
 
 
-def test_inspector_message_from_json_rejects_non_dict_payload():
+def test_inspector_message_from_json_rejects_non_dict_payload() -> None:
     """Defensive: a JSON array or scalar is not an InspectorMessage."""
     assert InspectorMessage.from_json("[1, 2, 3]") is None
     assert InspectorMessage.from_json('"plain string"') is None
 
 
-def test_inspector_message_from_json_rejects_non_string_status():
+def test_inspector_message_from_json_rejects_non_string_status() -> None:
     """Status field, if present, must be a string."""
     blob = json.dumps({"kind": "workflow_completed", "workflow_run_id": "r1", "status": 42})
     assert InspectorMessage.from_json(blob) is None
@@ -72,7 +72,7 @@ def test_inspector_message_from_json_rejects_non_string_status():
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def test_publish_node_changed_writes_to_run_channel():
+def test_publish_node_changed_writes_to_run_channel() -> None:
     fake_redis = MagicMock()
     with patch.object(inspector_events, "redis_client", fake_redis):
         inspector_events.publish_node_changed(workflow_run_id="run-1", node_id="agent-1", status="running")
@@ -87,7 +87,7 @@ def test_publish_node_changed_writes_to_run_channel():
     assert msg.status == "running"
 
 
-def test_publish_workflow_completed_emits_terminal_message():
+def test_publish_workflow_completed_emits_terminal_message() -> None:
     fake_redis = MagicMock()
     with patch.object(inspector_events, "redis_client", fake_redis):
         inspector_events.publish_workflow_completed(workflow_run_id="run-1", status="succeeded")
@@ -100,7 +100,7 @@ def test_publish_workflow_completed_emits_terminal_message():
     assert msg.status == "succeeded"
 
 
-def test_publish_swallows_redis_errors():
+def test_publish_swallows_redis_errors() -> None:
     """Persistence must not crash if redis blows up — we publish best-effort."""
 
     class _BrokenRedis:
@@ -125,7 +125,7 @@ def _make_fake_pubsub(messages: list[dict[str, Any] | None]) -> MagicMock:
     return pubsub
 
 
-def test_subscribe_yields_heartbeat_then_real_message():
+def test_subscribe_yields_heartbeat_then_real_message() -> None:
     """Idle ticks (``get_message`` returns None) surface as a sentinel; real
     payloads decode to ``InspectorMessage`` instances."""
     payload = json.dumps(
@@ -156,7 +156,7 @@ def test_subscribe_yields_heartbeat_then_real_message():
     assert third.node_id is None
 
 
-def test_subscribe_skips_malformed_payloads():
+def test_subscribe_skips_malformed_payloads() -> None:
     fake_redis = MagicMock()
     fake_redis.pubsub.return_value = _make_fake_pubsub(
         [
@@ -171,19 +171,20 @@ def test_subscribe_skips_malformed_payloads():
     assert msg.node_id is None
 
 
-def test_subscribe_unsubscribes_on_teardown():
+def test_subscribe_unsubscribes_on_teardown() -> None:
     fake_pubsub = _make_fake_pubsub([None])
     fake_redis = MagicMock()
     fake_redis.pubsub.return_value = fake_pubsub
     with patch.object(inspector_events, "redis_client", fake_redis):
         gen = inspector_events.subscribe("run-1", timeout_seconds=0.0)
         next(gen)
+        assert isinstance(gen, Generator)
         gen.close()
     fake_pubsub.unsubscribe.assert_called_once_with("dify:inspector:workflow_run:run-1")
     fake_pubsub.close.assert_called_once()
 
 
-def test_subscribe_swallows_teardown_errors():
+def test_subscribe_swallows_teardown_errors() -> None:
     """``unsubscribe`` / ``close`` failures must not propagate out of the
     generator — they're best-effort cleanup."""
     fake_pubsub = MagicMock()
@@ -195,12 +196,13 @@ def test_subscribe_swallows_teardown_errors():
     with patch.object(inspector_events, "redis_client", fake_redis):
         gen = inspector_events.subscribe("run-1", timeout_seconds=0.0)
         next(gen)
+        assert isinstance(gen, Generator)
         # The teardown path runs in ``finally``; closing the generator
         # exercises it. No exception should escape.
         gen.close()
 
 
-def test_subscribe_skips_non_string_data_payloads():
+def test_subscribe_skips_non_string_data_payloads() -> None:
     """``raw["data"]`` can be ``None`` / int / bytes — only str is decodable
     and the rest are silently skipped."""
     fake_pubsub = MagicMock()

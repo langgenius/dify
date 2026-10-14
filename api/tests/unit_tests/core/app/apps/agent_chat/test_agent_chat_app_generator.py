@@ -1,21 +1,130 @@
 import contextlib
+import contextvars
 import inspect
 import logging
+import threading
+from collections.abc import Iterator
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 import pytest
+from flask import Flask
 from pydantic import ValidationError
-from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import PromptTemplateEntity
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
+from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import (
+    AgentChatAppGenerateEntity,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+)
+from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+@dataclass(frozen=True)
+class RecordedCall:
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+@dataclass
+class CallRecorder[T]:
+    """Callable test implementation that retains arguments and returns a configured value."""
+
+    result: T
+    calls: list[RecordedCall] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> T:
+        self.calls.append(RecordedCall(args=args, kwargs=kwargs))
+        return self.result
+
+
+class RecordingTraceQueueManager(TraceQueueManager):
+    """Trace manager with the real public shape and no background timer."""
+
+    def __init__(self, app_id: str | None = None, user_id: str | None = None) -> None:
+        self.app_id = app_id
+        self.user_id = user_id
+
+
+class RecordingQueueManager(MessageBasedAppQueueManager):
+    def __init__(self, **kwargs: object) -> None:
+        self.init_kwargs = kwargs
+        self.published_errors: list[tuple[Exception, object]] = []
+
+    def publish_error(self, error: Exception, publish_from: object) -> None:
+        self.published_errors.append((error, publish_from))
+
+
+class RecordingThread(threading.Thread):
+    def __init__(self, *, target: object, kwargs: dict[str, object]) -> None:
+        self.target = target
+        self.kwargs = kwargs
+        self.started = False
+
+    def start(self) -> None:
+        self.started = True
+
+
+@dataclass
+class RecordingThreadFactory:
+    threads: list[RecordingThread] = field(default_factory=list)
+
+    def __call__(self, *, target: object, kwargs: dict[str, object]) -> RecordingThread:
+        thread = RecordingThread(target=target, kwargs=kwargs)
+        self.threads.append(thread)
+        return thread
+
+
+def _app_config() -> AgentChatAppConfig:
+    return AgentChatAppConfig.model_construct(
+        tenant_id="tenant",
+        app_id="app1",
+        app_mode=AppMode.AGENT_CHAT,
+        variables=[],
+        prompt_template=PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="You are helpful.",
+        ),
+        external_data_variables=[],
+    )
+
+
+def _model_config() -> ModelConfigWithCredentialsEntity:
+    return ModelConfigWithCredentialsEntity.model_construct(provider="provider", model="model", mode="chat")
+
+
+def _generate_entity() -> AgentChatAppGenerateEntity:
+    return AgentChatAppGenerateEntity.model_construct(
+        task_id="task",
+        app_config=_app_config(),
+        model_conf=_model_config(),
+        inputs={},
+        query="hello",
+        files=[],
+        user_id="user",
+        stream=True,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+
+def _runner_raising(error: Exception) -> type:
+    class FailingRunner(AgentChatAppRunner):
+        def run(self, **kwargs: object) -> None:
+            _ = kwargs
+            raise error
+
+    return FailingRunner
 
 
 def _app() -> App:
@@ -81,18 +190,14 @@ def _message() -> Message:
 
 
 @pytest.fixture
-def generator(mocker: MockerFixture):
-    gen = AgentChatAppGenerator()
-    mocker.patch(
-        "core.app.apps.agent_chat.app_generator.current_app",
-        new=mocker.MagicMock(_get_current_object=mocker.MagicMock()),
-    )
-    mocker.patch("core.app.apps.agent_chat.app_generator.contextvars.copy_context", return_value="ctx")
-    return gen
+def generator() -> Iterator[AgentChatAppGenerator]:
+    app = Flask(__name__)
+    with app.app_context():
+        yield AgentChatAppGenerator()
 
 
 class TestAgentChatAppGeneratorGenerate:
-    def test_generate_rejects_blocking_mode(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_rejects_blocking_mode(self, generator: AgentChatAppGenerator, sqlite_session: Session):
         app_model = _app()
         user = _account()
         with pytest.raises(ValueError):
@@ -101,11 +206,11 @@ class TestAgentChatAppGeneratorGenerate:
                 app_model=app_model,
                 user=user,
                 args={},
-                invoke_from=mocker.MagicMock(),
+                invoke_from=InvokeFrom.WEB_APP,
                 streaming=False,
             )
 
-    def test_generate_requires_query(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_requires_query(self, generator: AgentChatAppGenerator, sqlite_session: Session):
         app_model = _app()
         user = _account()
         with pytest.raises(ValueError):
@@ -114,10 +219,10 @@ class TestAgentChatAppGeneratorGenerate:
                 app_model=app_model,
                 user=user,
                 args={"inputs": {}},
-                invoke_from=mocker.MagicMock(),
+                invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_rejects_non_string_query(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_rejects_non_string_query(self, generator: AgentChatAppGenerator, sqlite_session: Session):
         app_model = _app()
         user = _account()
         with pytest.raises(ValueError):
@@ -126,13 +231,15 @@ class TestAgentChatAppGeneratorGenerate:
                 app_model=app_model,
                 user=user,
                 args={"query": 123, "inputs": {}},
-                invoke_from=mocker.MagicMock(),
+                invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_override_requires_debugger(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_override_requires_debugger(
+        self, generator: AgentChatAppGenerator, sqlite_session: Session
+    ) -> None:
         app_model = _app()
         user = _account()
-        generator._get_app_model_config = mocker.MagicMock(return_value=AppModelConfig(app_id="app1"))
+        generator._get_app_model_config = CallRecorder(AppModelConfig(app_id="app1"))  # type: ignore[method-assign]
 
         with pytest.raises(ValueError):
             generator.generate(
@@ -143,67 +250,50 @@ class TestAgentChatAppGeneratorGenerate:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_success_with_debugger_override(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_success_with_debugger_override(
+        self, generator: AgentChatAppGenerator, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
 
         user = _account()
         invoke_from = InvokeFrom.DEBUGGER
 
-        generator._get_app_model_config = mocker.MagicMock(return_value=app_model_config)
-        generator._prepare_user_inputs = mocker.MagicMock(return_value={"x": 1})
-        generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
-        generator._handle_response = mocker.MagicMock(return_value="response")
+        get_model_config = CallRecorder(app_model_config)
+        prepare_inputs = CallRecorder({"x": 1})
+        init_records = CallRecorder((_conversation(), _message()))
+        handle_response = CallRecorder("response")
+        generator._get_app_model_config = get_model_config  # type: ignore[method-assign]
+        generator._prepare_user_inputs = prepare_inputs  # type: ignore[method-assign]
+        generator._init_generate_records = init_records  # type: ignore[method-assign]
+        generator._handle_response = handle_response  # type: ignore[method-assign]
 
-        mocker.patch(
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.config_validate",
-            return_value={"validated": True},
+            CallRecorder({"validated": True}),
         )
-        app_config = mocker.MagicMock(variables={}, prompt_template=mocker.MagicMock(), external_data_variables=[])
-        mocker.patch(
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.get_app_config",
-            return_value=app_config,
+            CallRecorder(_app_config()),
         )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert",
-            return_value=mocker.MagicMock(),
+        monkeypatch.setattr(
+            "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert", CallRecorder(_model_config())
         )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert",
-            return_value=mocker.MagicMock(),
+        monkeypatch.setattr(
+            "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert", CallRecorder(None)
         )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.file_factory.build_from_mappings",
-            return_value=["file-obj"],
-        )
-        mocker.patch(
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.ConversationService.get_conversation",
-            return_value=_conversation(),
+            CallRecorder(_conversation()),
         )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.TraceQueueManager",
-            return_value=mocker.MagicMock(),
-        )
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.TraceQueueManager", RecordingTraceQueueManager)
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.MessageBasedAppQueueManager", RecordingQueueManager)
 
-        queue_manager = mocker.MagicMock()
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.MessageBasedAppQueueManager",
-            return_value=queue_manager,
-        )
-
-        thread_obj = mocker.MagicMock()
-        thread_constructor = mocker.patch(
-            "core.app.apps.agent_chat.app_generator.threading.Thread",
-            return_value=thread_obj,
-        )
-        mocker.patch(
+        thread_factory = RecordingThreadFactory()
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.threading.Thread", thread_factory)
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
-            return_value={"result": "ok"},
-        )
-        app_entity = mocker.MagicMock(task_id="task", user_id="user", invoke_from=invoke_from)
-        generate_entity = mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateEntity",
-            return_value=app_entity,
+            CallRecorder({"result": "ok"}),
         )
 
         args = {
@@ -226,71 +316,59 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         assert result == {"result": "ok"}
-        assert generator._get_app_model_config.call_args.kwargs["session"] is session
-        assert generator._init_generate_records.call_args.kwargs["session"] is session
-        assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
-        worker_call = thread_constructor.call_args
-        inspect.signature(worker_call.kwargs["target"]).bind(**worker_call.kwargs["kwargs"])
-        thread_obj.start.assert_called_once()
+        assert get_model_config.calls[-1].kwargs["session"] is session
+        assert init_records.calls[-1].kwargs["session"] is session
+        thread = thread_factory.threads[0]
+        entity = thread.kwargs["application_generate_entity"]
+        assert isinstance(entity, AgentChatAppGenerateEntity)
+        assert entity.extras["trace_session_id"] == "session-1"
+        inspect.signature(thread.target).bind(**thread.kwargs)
+        assert thread.started is True
 
-    def test_generate_without_file_config(self, generator, mocker: MockerFixture, sqlite_session: Session):
+    def test_generate_without_file_config(
+        self, generator: AgentChatAppGenerator, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
         annotation_reply = {"enabled": False}
 
         user = _account()
 
-        generator._get_app_model_config = mocker.MagicMock(return_value=app_model_config)
-        generator._prepare_user_inputs = mocker.MagicMock(return_value={"x": 1})
-        generator._init_generate_records = mocker.MagicMock(return_value=(_conversation(), _message()))
-        generator._handle_response = mocker.MagicMock(return_value="response")
+        generator._get_app_model_config = CallRecorder(app_model_config)  # type: ignore[method-assign]
+        generator._prepare_user_inputs = CallRecorder({"x": 1})  # type: ignore[method-assign]
+        generator._init_generate_records = CallRecorder((_conversation(), _message()))  # type: ignore[method-assign]
+        generator._handle_response = CallRecorder("response")  # type: ignore[method-assign]
 
-        to_dict = mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "p"}})
+        to_dict = CallRecorder({"model": {"provider": "p"}})
+        monkeypatch.setattr(AppModelConfig, "to_dict", to_dict)
 
-        load_annotation_reply_config = mocker.patch(
+        load_annotation_reply_config = CallRecorder(annotation_reply)
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.load_annotation_reply_config",
-            return_value=annotation_reply,
+            load_annotation_reply_config,
         )
-        get_app_config = mocker.patch(
+        get_app_config = CallRecorder(_app_config())
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.AgentChatAppConfigManager.get_app_config",
-            return_value=mocker.MagicMock(variables={}, prompt_template=mocker.MagicMock(), external_data_variables=[]),
+            get_app_config,
         )
-        mocker.patch(
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.ModelConfigConverter.convert",
-            return_value=mocker.MagicMock(),
+            CallRecorder(_model_config()),
         )
-        mocker.patch(
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.FileUploadConfigManager.convert",
-            return_value=None,
+            CallRecorder(None),
         )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.file_factory.build_from_mappings",
-            return_value=["file-obj"],
-        )
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.TraceQueueManager",
-            return_value=mocker.MagicMock(),
-        )
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.TraceQueueManager", RecordingTraceQueueManager)
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.MessageBasedAppQueueManager", RecordingQueueManager)
 
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.MessageBasedAppQueueManager",
-            return_value=mocker.MagicMock(),
-        )
+        thread_factory = RecordingThreadFactory()
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.threading.Thread", thread_factory)
 
-        thread_obj = mocker.MagicMock()
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.threading.Thread",
-            return_value=thread_obj,
-        )
-
-        mocker.patch(
+        monkeypatch.setattr(
             "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateResponseConverter.convert",
-            return_value={"result": "ok"},
-        )
-        app_entity = mocker.MagicMock(task_id="task", user_id="user", invoke_from=InvokeFrom.WEB_APP)
-        mocker.patch(
-            "core.app.apps.agent_chat.app_generator.AgentChatAppGenerateEntity",
-            return_value=app_entity,
+            CallRecorder({"result": "ok"}),
         )
 
         args = {"query": "hello", "inputs": {"name": "world"}}
@@ -306,39 +384,43 @@ class TestAgentChatAppGeneratorGenerate:
         )
 
         assert result == {"result": "ok"}
-        load_annotation_reply_config.assert_called_once_with(session, "app1")
-        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-        assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
+        assert load_annotation_reply_config.calls == [RecordedCall(args=(session, "app1"), kwargs={})]
+        assert to_dict.calls == [RecordedCall(args=(), kwargs={"annotation_reply": annotation_reply})]
+        assert get_app_config.calls[-1].kwargs["annotation_reply"] is annotation_reply
+        assert thread_factory.threads[0].started is True
 
 
 class TestAgentChatAppGeneratorWorker:
     @pytest.fixture(autouse=True)
-    def patch_context(self, mocker: MockerFixture):
+    def patch_context(self, monkeypatch: pytest.MonkeyPatch) -> None:
         @contextlib.contextmanager
         def ctx_manager[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
-        mocker.patch("core.app.apps.agent_chat.app_generator.preserve_flask_contexts", ctx_manager)
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.preserve_flask_contexts", ctx_manager)
 
-    def test_generate_worker_handles_generate_task_stopped(self, generator, mocker: MockerFixture):
-        queue_manager = mocker.MagicMock()
-        generator._get_conversation = mocker.MagicMock(return_value=_conversation())
-        generator._get_message = mocker.MagicMock(return_value=_message())
+    def test_generate_worker_handles_generate_task_stopped(
+        self, generator: AgentChatAppGenerator, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        queue_manager = RecordingQueueManager()
+        generator._get_conversation = CallRecorder(_conversation())  # type: ignore[method-assign]
+        generator._get_message = CallRecorder(_message())  # type: ignore[method-assign]
 
-        runner = mocker.MagicMock()
-        runner.run.side_effect = GenerateTaskStoppedError()
-        mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", return_value=runner)
+        monkeypatch.setattr(
+            "core.app.apps.agent_chat.app_generator.AgentChatAppRunner",
+            _runner_raising(GenerateTaskStoppedError()),
+        )
 
         generator._generate_worker(
-            flask_app=mocker.MagicMock(),
-            context=mocker.MagicMock(),
-            application_generate_entity=mocker.MagicMock(),
+            flask_app=Flask("worker"),
+            context=contextvars.copy_context(),
+            application_generate_entity=_generate_entity(),
             queue_manager=queue_manager,
             conversation_id="conv",
             message_id="msg",
         )
 
-        queue_manager.publish_error.assert_not_called()
+        assert queue_manager.published_errors == []
 
     @pytest.mark.parametrize(
         "error",
@@ -349,48 +431,51 @@ class TestAgentChatAppGeneratorWorker:
             Exception("bad"),
         ],
     )
-    def test_generate_worker_publishes_errors(self, generator, mocker: MockerFixture, error):
-        queue_manager = mocker.MagicMock()
-        generator._get_conversation = mocker.MagicMock(return_value=_conversation())
-        generator._get_message = mocker.MagicMock(return_value=_message())
+    def test_generate_worker_publishes_errors(
+        self,
+        generator: AgentChatAppGenerator,
+        monkeypatch: pytest.MonkeyPatch,
+        error: Exception,
+    ) -> None:
+        queue_manager = RecordingQueueManager()
+        generator._get_conversation = CallRecorder(_conversation())  # type: ignore[method-assign]
+        generator._get_message = CallRecorder(_message())  # type: ignore[method-assign]
 
-        runner = mocker.MagicMock()
-        runner.run.side_effect = error
-        mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", return_value=runner)
+        monkeypatch.setattr("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", _runner_raising(error))
 
         generator._generate_worker(
-            flask_app=mocker.MagicMock(),
-            context=mocker.MagicMock(),
-            application_generate_entity=mocker.MagicMock(),
+            flask_app=Flask("worker"),
+            context=contextvars.copy_context(),
+            application_generate_entity=_generate_entity(),
             queue_manager=queue_manager,
             conversation_id="conv",
             message_id="msg",
         )
 
-        assert queue_manager.publish_error.called
+        assert len(queue_manager.published_errors) == 1
+        assert isinstance(queue_manager.published_errors[0][0], type(error))
 
     def test_generate_worker_logs_value_error_when_debug(
         self,
-        generator,
-        mocker: MockerFixture,
+        generator: AgentChatAppGenerator,
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
-    ):
-        queue_manager = mocker.MagicMock()
-        generator._get_conversation = mocker.MagicMock(return_value=_conversation())
-        generator._get_message = mocker.MagicMock(return_value=_message())
+    ) -> None:
+        queue_manager = RecordingQueueManager()
+        generator._get_conversation = CallRecorder(_conversation())  # type: ignore[method-assign]
+        generator._get_message = CallRecorder(_message())  # type: ignore[method-assign]
 
-        runner = mocker.MagicMock()
-        runner.run.side_effect = ValueError("bad")
-        mocker.patch("core.app.apps.agent_chat.app_generator.AgentChatAppRunner", return_value=runner)
+        monkeypatch.setattr(
+            "core.app.apps.agent_chat.app_generator.AgentChatAppRunner", _runner_raising(ValueError("bad"))
+        )
 
         apply_config_overrides(monkeypatch, DEBUG=True)
 
         with caplog.at_level(logging.ERROR, logger="core.app.apps.agent_chat.app_generator"):
             generator._generate_worker(
-                flask_app=mocker.MagicMock(),
-                context=mocker.MagicMock(),
-                application_generate_entity=mocker.MagicMock(),
+                flask_app=Flask("worker"),
+                context=contextvars.copy_context(),
+                application_generate_entity=_generate_entity(),
                 queue_manager=queue_manager,
                 conversation_id="conv",
                 message_id="msg",

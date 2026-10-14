@@ -1,6 +1,5 @@
 'use client'
 
-import type { ResourceAccessTokenRowResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { DialogState } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
@@ -10,7 +9,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
-import DeleteTokenDialog from './delete-token-dialog'
 import ResourceAccessTokenDialog from './token-dialog'
 import ResourceAccessTokenTable from './token-table'
 
@@ -22,7 +20,6 @@ export default function ResourceAccessTokenPage() {
   const [searchText, setSearchText] = useState('')
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
   const [dialogState, setDialogState] = useState<DialogState | null>(null)
-  const [deletingRow, setDeletingRow] = useState<ResourceAccessTokenRowResponse | null>(null)
   const tokensQuery = useQuery(
     consoleQuery.resourceAccessTokens.get.queryOptions({
       placeholderData: keepPreviousData,
@@ -93,7 +90,6 @@ export default function ResourceAccessTokenPage() {
           rows={rows}
           isPending={tokensQuery.isPending}
           onEdit={(row) => setDialogState({ mode: 'edit', row })}
-          onDelete={setDeletingRow}
         />
       )}
 
@@ -128,8 +124,6 @@ export default function ResourceAccessTokenPage() {
           }}
         />
       )}
-
-      <DeleteTokenDialog row={deletingRow} onOpenChange={(open) => !open && setDeletingRow(null)} />
     </div>
   )
 }

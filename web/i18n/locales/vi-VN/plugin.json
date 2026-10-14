@@ -3,7 +3,6 @@
   "action.delete": "Xóa plugin",
   "action.deleteContentLeft": "Bạn có muốn xóa",
   "action.deleteContentRight": "plugin?",
-  "action.deleteSuccess": "Đã xóa plugin thành công",
   "action.pluginInfo": "Thông tin plugin",
   "allCategories": "Tất cả các danh mục",
   "auth.addApi": "Thêm khóa API",

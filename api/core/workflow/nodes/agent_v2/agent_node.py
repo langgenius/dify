@@ -4,12 +4,11 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, override
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import CancelRunRequest
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendHTTPError,
     AgentBackendInternalEventType,
@@ -24,11 +23,7 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -40,12 +35,10 @@ from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig, WorkflowOutputRoutes
+from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
-from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
-from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
 from .output_adapter import WorkflowAgentOutputAdapter
@@ -74,10 +67,7 @@ logger = logging.getLogger(__name__)
 # Stream + started events are filtered out before we yield; transport errors
 # are surfaced as a separate StreamCompletedEvent in the second tuple slot.
 type _TerminalAgentBackendEvent = (
-    AgentBackendRunSucceededInternalEvent
-    | AgentBackendRunFailedInternalEvent
-    | AgentBackendRunCancelledInternalEvent
-    | AgentBackendDeferredToolCallInternalEvent
+    AgentBackendRunSucceededInternalEvent | AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent
 )
 
 
@@ -137,16 +127,6 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
-    @staticmethod
-    def _to_graph_pause_reason(reason: HumanInputRequired | SchedulingPause) -> HitlRequired | SchedulingPause:
-        if isinstance(reason, HumanInputRequired):
-            return HitlRequired(
-                session_id=default_session_binding.issue_session_id_for_form(form_id=reason.form_id),
-                node_id=reason.node_id,
-                node_title=reason.node_title,
-            )
-        return reason
-
     @override
     def _run(self) -> Generator[NodeEventBase | NodeRunPauseRequestedEvent]:
         inputs: dict[str, Any] = {}
@@ -182,8 +162,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             self.graph_runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
-        # Set on chatflow (advanced-chat) runs; None for a pure workflow run. Lets an
-        # ask_human form be tagged with its conversation in addition to workflow_run_id.
+        # Chatflow sessions also carry their owning conversation.
         conversation_id = get_system_text(
             self.graph_runtime_state.variable_pool,
             SystemVariableKey.CONVERSATION_ID,
@@ -253,40 +232,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         custom_outputs = list(node_job.declared_outputs)
         outputs_by_name = {output.name: output for output in custom_outputs}
 
-        # ──── ENG-638: resume after a submitted/timed-out ask_human form ────
-        # graphon re-executes this _run when the outer workflow resumes. If a
-        # pending ask_human form is now terminal, thread the human's answer into
-        # the second Agent run as deferred_tool_results; if it is somehow still
-        # waiting, re-emit the same pause defensively.
-        deferred_tool_results = None
         stored_session = self._session_store.load_or_create_node_execution_session(
             session_scope,
             home_snapshot_id=bundle.snapshot.home_snapshot_id,
         )
-        if stored_session.pending_form_id is not None:
-            resume_outcome = resolve_ask_human_form(
-                form_id=stored_session.pending_form_id,
-                tenant_id=dify_ctx.tenant_id,
-                node_id=self._node_id,
-            )
-            if resume_outcome is not None and resume_outcome.repause is not None:
-                yield self._pause_event(
-                    reason=resume_outcome.repause,
-                    inputs=inputs,
-                    process_data=process_data,
-                    metadata=metadata,
-                )
-                return
-            if (
-                resume_outcome is not None
-                and resume_outcome.deferred_result is not None
-                and stored_session.pending_tool_call_id is not None
-            ):
-                deferred_tool_results = build_deferred_tool_results(
-                    tool_call_id=stored_session.pending_tool_call_id,
-                    result=resume_outcome.deferred_result,
-                )
-
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
@@ -306,7 +255,6 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         backend_binding_ref=stored_session.backend_binding_ref,
                         attempt=attempt,
                         session_snapshot=stored_session.session_snapshot,
-                        deferred_tool_results=deferred_tool_results,
                     )
                 )
             except WorkflowAgentRuntimeRequestBuildError as error:
@@ -383,65 +331,6 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         process_data=process_data,
                         metadata=metadata,
                     )
-                )
-                return
-
-            if isinstance(terminal_event, AgentBackendDeferredToolCallInternalEvent):
-                # ENG-636: a dify.ask_human deferred call pauses the *outer*
-                # workflow through the existing HITL form path. Any other deferred
-                # tool (none today) falls back to a generic scheduling pause. The
-                # form is built *before* the snapshot is saved so its id can be
-                # persisted as the pause correlation (ENG-637).
-                try:
-                    pause_request = build_ask_human_pause_reason(
-                        deferred_tool_call=terminal_event.deferred_tool_call,
-                        node_id=self._node_id,
-                        default_node_title=bundle.agent.name or self._node_id,
-                        workflow_run_id=workflow_run_id,
-                        conversation_id=conversation_id,
-                        contacts=AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict).human.contacts,
-                        repository=self._build_human_input_form_repository(
-                            dify_ctx=dify_ctx, workflow_run_id=workflow_run_id
-                        ),
-                    )
-                except AskHumanFormBuildError as error:
-                    yield self._failure_event(
-                        inputs=inputs,
-                        process_data=process_data,
-                        metadata=metadata,
-                        error=str(error),
-                        error_type="agent_ask_human_form_build_error",
-                    )
-                    return
-
-                # ENG-637: persist the awaiting-form id + deferred tool_call id
-                # next to the snapshot so the resumed node can rebuild
-                # deferred_tool_results from the submitted form.
-                pending_form_id: str | None = None
-                pending_tool_call_id: str | None = None
-                pause_reason: HumanInputRequired | SchedulingPause
-                if pause_request is not None:
-                    pending_form_id = pause_request.form_id
-                    pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
-                    pause_reason = pause_request
-                else:
-                    pause_reason = SchedulingPause(
-                        message=terminal_event.message
-                        or "Agent backend run requested workflow pause for external input."
-                    )
-                self._save_session_snapshot(
-                    session_scope=session_scope,
-                    binding_id=stored_session.binding_id,
-                    snapshot=terminal_event.session_snapshot,
-                    metadata=metadata,
-                    pending_form_id=pending_form_id,
-                    pending_tool_call_id=pending_tool_call_id,
-                )
-                yield self._pause_event(
-                    reason=pause_reason,
-                    inputs=inputs,
-                    process_data=process_data,
-                    metadata=metadata,
                 )
                 return
 
@@ -586,15 +475,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         **dict(metadata.get("agent_backend") or {}),
                         "stream_event_count": stream_event_count,
                     }
-                    # Narrow to the known terminal event types before returning
-                    # to the caller. Deferred-tool events are terminal on the
-                    # Dify Agent wire, then converted into workflow pause locally.
+                    # Narrow to known terminal event types before returning to the caller.
                     if isinstance(
                         internal_event,
                         AgentBackendRunSucceededInternalEvent
                         | AgentBackendRunFailedInternalEvent
-                        | AgentBackendRunCancelledInternalEvent
-                        | AgentBackendDeferredToolCallInternalEvent,
+                        | AgentBackendRunCancelledInternalEvent,
                     ):
                         return internal_event, None
                     cancellation = self._cancel_backend_run(
@@ -690,44 +576,19 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             ],
         }
 
-    def _build_human_input_form_repository(
-        self,
-        *,
-        dify_ctx: DifyRunContext,
-        workflow_run_id: str | None,
-    ) -> HumanInputFormRepository:
-        """Construct the existing HITL form repository for ask_human form creation.
-
-        Mirrors the Human Input node's repository wiring (``node_runtime``) so the
-        ask_human form shares the same delivery/debug/console behavior: a
-        submission actor is only attributed for debugger/explore surfaces.
-        """
-        invoke_source = dify_ctx.invoke_from.value
-        return HumanInputFormRepositoryImpl(
-            tenant_id=dify_ctx.tenant_id,
-            app_id=dify_ctx.app_id,
-            workflow_execution_id=workflow_run_id,
-            invoke_source=invoke_source,
-            submission_actor_id=dify_ctx.user_id if invoke_source in {"debugger", "explore"} else None,
-        )
-
     def _save_session_snapshot(
         self,
         *,
         session_scope: WorkflowAgentSessionScope,
         binding_id: str,
-        snapshot: CompositorSessionSnapshot | None,
+        snapshot: SessionSnapshot | None,
         metadata: dict[str, Any],
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
     ) -> None:
         try:
             self._session_store.save_active_snapshot(
                 scope=session_scope,
                 binding_id=binding_id,
                 snapshot=snapshot,
-                pending_form_id=pending_form_id,
-                pending_tool_call_id=pending_tool_call_id,
             )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = snapshot is not None
@@ -785,27 +646,6 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error=error,
                 error_type=error_type,
             )
-        )
-
-    def _pause_event(
-        self,
-        *,
-        reason: HumanInputRequired | SchedulingPause,
-        inputs: dict[str, Any],
-        process_data: dict[str, Any],
-        metadata: dict[str, Any],
-    ) -> NodeRunPauseRequestedEvent:
-        return NodeRunPauseRequestedEvent(
-            id=self.execution_id,
-            node_id=self._node_id,
-            node_type=self.node_type,
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.PAUSED,
-                inputs=inputs,
-                process_data=process_data,
-                metadata={WorkflowNodeExecutionMetadataKey.AGENT_LOG: metadata},
-            ),
-            reason=self._to_graph_pause_reason(reason),
         )
 
     @staticmethod

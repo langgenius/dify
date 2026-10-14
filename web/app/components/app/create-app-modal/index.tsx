@@ -133,7 +133,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         // Analytics should not turn a successful app creation into a failed flow.
       }
 
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       onClose()
       getRedirection(app, push, {
         currentUserId,

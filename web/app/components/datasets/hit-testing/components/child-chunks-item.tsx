@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { HitTestingChildChunk } from '@/models/datasets'
 import * as React from 'react'
 import { SliceContent } from '../../formatted-text/flavours/shared'
-import Score from './score'
+import { Score } from './score'
 
 type Props = {
   readonly payload: HitTestingChildChunk

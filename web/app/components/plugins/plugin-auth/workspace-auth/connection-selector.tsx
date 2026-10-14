@@ -2,7 +2,7 @@ import type { usePluginAuth } from '../hooks/use-plugin-auth'
 import type { Credential, PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import type { CredentialPermission } from '@/models/permission'
-import { AvatarFallback, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createDropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
@@ -197,14 +197,11 @@ const ConnectionSelector = ({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt">
           <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
-            <AvatarRoot
-              size="xs"
-              className="border-[0.5px] border-divider-regular bg-components-icon-bg-blue-soft"
-            >
-              <AvatarFallback size="xs" className="text-xs text-text-accent">
+            <Avatar size="xs" className="border-[0.5px] border-divider-regular">
+              <AvatarFallback className="bg-components-icon-bg-blue-soft text-xs text-text-accent">
                 {selectedName[0]?.toLocaleUpperCase()}
               </AvatarFallback>
-            </AvatarRoot>
+            </Avatar>
           </span>
           <span className="flex min-w-0 grow flex-col gap-0.5 px-1 py-0.75">
             {/* The connection picker discloses the complete name through its wrapping rows. */}

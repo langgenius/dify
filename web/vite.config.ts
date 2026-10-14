@@ -93,6 +93,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
 
     // Vitest config
     test: {
+      // Vitest 5 stores Browser Mode failure screenshots as attachments; keep them beside the traces.
+      attachmentsDir: './.vitest-browser/attachments',
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
@@ -135,14 +137,10 @@ export default defineConfig(({ command, mode, isPreview }) => {
             setupFiles: ['./vitest.browser.setup.ts'],
             include: [browserTestPattern],
             browser: {
-              expect: {
-                toMatchScreenshot: { screenshotDirectory: './.vitest-browser/screenshots' },
-              },
               enabled: true,
               provider: playwright(),
               instances: [{ browser: 'chromium' }],
               headless: true,
-              screenshotDirectory: './.vitest-browser/screenshots',
               screenshotFailures: true,
               trace: {
                 mode: 'retain-on-failure',

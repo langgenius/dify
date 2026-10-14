@@ -3,7 +3,6 @@
   "action.delete": "플러그인 제거",
   "action.deleteContentLeft": "제거하시겠습니까?",
   "action.deleteContentRight": "플러그인?",
-  "action.deleteSuccess": "플러그인이 성공적으로 제거되었습니다",
   "action.pluginInfo": "플러그인 정보",
   "allCategories": "모든 카테고리",
   "auth.addApi": "API 키 추가하기",

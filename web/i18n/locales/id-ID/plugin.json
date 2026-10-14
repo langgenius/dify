@@ -3,7 +3,6 @@
   "action.delete": "Hapus plugin",
   "action.deleteContentLeft": "Apakah Anda ingin menghapus",
   "action.deleteContentRight": "Plugin?",
-  "action.deleteSuccess": "Plugin berhasil dihapus",
   "action.pluginInfo": "Info plugin",
   "allCategories": "Semua Kategori",
   "auth.addApi": "Menambahkan Kunci API",

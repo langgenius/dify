@@ -650,7 +650,6 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
             id=item.id,
             scope=item.scope,
             name=item.name,
-            audit_ref="source",
         )
         for item in manifest.skills
     ]
@@ -738,7 +737,6 @@ def test_export_rejects_unusable_or_oversized_skill_payload(
         id="s_000001",
         scope="agent_config",
         name="research",
-        audit_ref="source",
     )
     app = _package_app()
     app.package.soul.config_files = []
@@ -981,13 +979,15 @@ def test_export_accepts_legacy_agent_and_preserves_caller_transaction(
             assert exported_app.package.soul.config_skills[1].file_id == ""
             assert exported_app.package.soul.config_files[1].is_missing is True
             assert exported_app.package.soul.config_files[1].file_id == ""
-            assert set(manifest_data) == {"format", "format_version", "audit", "apps", "skills", "files"}
+            assert set(manifest_data) == {"format", "format_version", "apps", "skills", "files"}
+            for source_id in (agent.id, skill_file.id, config_file.id):
+                assert source_id.encode() not in archive.read("manifest.yaml")
+                assert source_id.encode() not in archive.read("app.yaml")
             assert set(manifest_data["files"][0]) == {
                 "id",
                 "path",
                 "size",
                 "sha256",
-                "audit",
             }
             assert manifest_data["apps"] == [
                 {
@@ -1163,7 +1163,6 @@ def test_export_uses_current_workspace_skill_bindings(
                 "path",
                 "size",
                 "sha256",
-                "audit",
                 "scope",
                 "name",
             }
@@ -1294,14 +1293,17 @@ def test_export_rejects_unavailable_agent_versions(sqlite_session: Session, sour
             AppDslService.export_dsl(app_model, session=sqlite_session, version_id=version_id)
 
 
-def test_manifest_yaml_is_strict() -> None:
+def test_manifest_yaml_ignores_unknown_fields() -> None:
     skill_payload = _skill_archive()
     file_payload = b"pdf-content"
-    manifest = _manifest(skill_payload=skill_payload, file_payload=file_payload).model_dump(mode="json")
+    expected = _manifest(skill_payload=skill_payload, file_payload=file_payload)
+    manifest = expected.model_dump(mode="json")
     manifest["unexpected"] = True
+    for group in ("apps", "skills", "files"):
+        for resource in manifest[group]:
+            resource["unexpected"] = True
 
-    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        RosterAgentPackageManifest.model_validate(yaml.safe_load(yaml.safe_dump(manifest)))
+    assert RosterAgentPackageManifest.model_validate(yaml.safe_load(yaml.safe_dump(manifest))) == expected
 
 
 @pytest.mark.parametrize(

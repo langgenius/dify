@@ -522,7 +522,6 @@ function WorkflowGeneratorModal() {
         appMode: currentAppMode ?? undefined,
         graph: current.graph as GeneratedGraph,
       })
-      toast.success(t(($) => $['workflowGenerator.applied'], { ns: 'workflowGenerator' }))
       closeGenerator()
       // Hard reload the workflow page so the canvas picks up the new draft —
       // ``router.refresh()`` only revalidates server-rendered route data, and

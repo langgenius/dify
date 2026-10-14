@@ -102,6 +102,13 @@ it('opens the file input directly and preserves the existing image on cancellati
     </QueryClientProvider>,
   )
   await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+  expect(screen.getByRole('tab', { name: 'app.iconPicker.image' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'common.operation.change' })).toHaveFocus(),
+  )
   const input = screen.getByTestId('image-input')
   const openFilePicker = vi.spyOn(input, 'click')
   await user.click(screen.getByRole('button', { name: 'common.operation.change' }))

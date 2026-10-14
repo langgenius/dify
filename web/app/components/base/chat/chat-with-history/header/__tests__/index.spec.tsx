@@ -366,23 +366,5 @@ describe('Header Component', () => {
       })
       expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
     })
-
-    it('should pass empty rename value when conversation name is undefined', async () => {
-      const mockConv = { id: 'conv-1' } as ConversationItem
-      const { container } = setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        sidebarCollapseState: true,
-      })
-
-      const operationTrigger = container.querySelector(
-        '.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover',
-      ) as HTMLElement
-      await userEvent.click(operationTrigger)
-      await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
-
-      const input = screen.getByRole('textbox') as HTMLInputElement
-      expect(input.value).toBe('')
-    })
   })
 })

@@ -3,7 +3,6 @@
   "action.delete": "Remove integration",
   "action.deleteContentLeft": "Would you like to remove ",
   "action.deleteContentRight": " integration?",
-  "action.deleteSuccess": "Integration removed successfully",
   "action.pluginInfo": "Integration info",
   "allCategories": "All Categories",
   "auth.addApi": "Add API Key",

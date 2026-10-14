@@ -3,7 +3,6 @@
   "action.delete": "移除集成",
   "action.deleteContentLeft": "是否要移除 ",
   "action.deleteContentRight": " 集成？",
-  "action.deleteSuccess": "集成已成功移除",
   "action.pluginInfo": "集成信息",
   "allCategories": "所有类别",
   "auth.addApi": "添加 API Key",

@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -15,17 +15,17 @@ from tasks.duplicate_document_indexing_task import (
 
 
 @pytest.fixture
-def tenant_id():
+def tenant_id() -> str:
     return str(uuid.uuid4())
 
 
 @pytest.fixture
-def dataset_id():
+def dataset_id() -> str:
     return str(uuid.uuid4())
 
 
 @pytest.fixture
-def document_ids():
+def document_ids() -> list[str]:
     return [str(uuid.uuid4()) for _ in range(3)]
 
 
@@ -33,7 +33,9 @@ class TestDuplicateDocumentIndexingTask:
     """Tests for the deprecated duplicate_document_indexing_task function."""
 
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
-    def test_duplicate_document_indexing_task_calls_core_function(self, mock_core_func, dataset_id, document_ids):
+    def test_duplicate_document_indexing_task_calls_core_function(
+        self, mock_core_func: MagicMock, dataset_id: str, document_ids: list[str]
+    ) -> None:
         """Test that duplicate_document_indexing_task calls the core _duplicate_document_indexing_task function."""
         # Act
         duplicate_document_indexing_task(dataset_id, document_ids)
@@ -42,7 +44,9 @@ class TestDuplicateDocumentIndexingTask:
         mock_core_func.assert_called_once_with(dataset_id, document_ids)
 
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
-    def test_duplicate_document_indexing_task_with_empty_document_ids(self, mock_core_func, dataset_id):
+    def test_duplicate_document_indexing_task_with_empty_document_ids(
+        self, mock_core_func: MagicMock, dataset_id: str
+    ) -> None:
         """Test duplicate_document_indexing_task with empty document_ids list."""
         # Arrange
         document_ids = []
@@ -60,12 +64,12 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_calls_core_function(
         self,
-        mock_core_func,
-        tenant_queue_commands,
-        tenant_id,
-        dataset_id,
-        document_ids,
-    ):
+        mock_core_func: MagicMock,
+        tenant_queue_commands: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+    ) -> None:
         """Test that tenant queue wrapper calls the core function."""
         # Arrange
         mock_task_func = Mock()
@@ -79,12 +83,12 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_deletes_key_when_no_tasks(
         self,
-        mock_core_func,
-        tenant_queue_commands,
-        tenant_id,
-        dataset_id,
-        document_ids,
-    ):
+        mock_core_func: MagicMock,
+        tenant_queue_commands: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+    ) -> None:
         """Test that tenant queue wrapper deletes task key when no more tasks."""
         # Arrange
         mock_task_func = Mock()
@@ -99,12 +103,12 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_processes_next_tasks(
         self,
-        mock_core_func,
-        tenant_queue_commands,
-        tenant_id,
-        dataset_id,
-        document_ids,
-    ):
+        mock_core_func: MagicMock,
+        tenant_queue_commands: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+    ) -> None:
         """Test that tenant queue wrapper processes next tasks from queue."""
         # Arrange
         mock_task_func = Mock()
@@ -129,12 +133,12 @@ class TestDuplicateDocumentIndexingTaskWithTenantQueue:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", autospec=True)
     def test_tenant_queue_wrapper_handles_core_function_error(
         self,
-        mock_core_func,
-        tenant_queue_commands,
-        tenant_id,
-        dataset_id,
-        document_ids,
-    ):
+        mock_core_func: MagicMock,
+        tenant_queue_commands: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+    ) -> None:
         """Test that tenant queue wrapper handles errors from core function."""
         # Arrange
         mock_task_func = Mock()
@@ -154,11 +158,11 @@ class TestNormalDuplicateDocumentIndexingTask:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_normal_task_calls_tenant_queue_wrapper(
         self,
-        mock_wrapper_func,
-        tenant_id,
-        dataset_id,
-        document_ids,
-    ):
+        mock_wrapper_func: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+    ) -> None:
         """Test that normal task calls tenant queue wrapper."""
         # Act
         normal_duplicate_document_indexing_task(tenant_id, dataset_id, document_ids)
@@ -171,10 +175,10 @@ class TestNormalDuplicateDocumentIndexingTask:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_normal_task_with_empty_document_ids(
         self,
-        mock_wrapper_func,
-        tenant_id,
-        dataset_id,
-    ):
+        mock_wrapper_func: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+    ) -> None:
         """Test normal task with empty document_ids list."""
         # Arrange
         document_ids = []
@@ -194,11 +198,11 @@ class TestPriorityDuplicateDocumentIndexingTask:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_priority_task_calls_tenant_queue_wrapper(
         self,
-        mock_wrapper_func,
-        tenant_id,
-        dataset_id,
-        document_ids,
-    ):
+        mock_wrapper_func: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+    ) -> None:
         """Test that priority task calls tenant queue wrapper."""
         # Act
         priority_duplicate_document_indexing_task(tenant_id, dataset_id, document_ids)
@@ -211,10 +215,10 @@ class TestPriorityDuplicateDocumentIndexingTask:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_priority_task_with_single_document(
         self,
-        mock_wrapper_func,
-        tenant_id,
-        dataset_id,
-    ):
+        mock_wrapper_func: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+    ) -> None:
         """Test priority task with single document."""
         # Arrange
         document_ids = ["doc-1"]
@@ -230,10 +234,10 @@ class TestPriorityDuplicateDocumentIndexingTask:
     @patch("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue", autospec=True)
     def test_priority_task_with_large_batch(
         self,
-        mock_wrapper_func,
-        tenant_id,
-        dataset_id,
-    ):
+        mock_wrapper_func: MagicMock,
+        tenant_id: str,
+        dataset_id: str,
+    ) -> None:
         """Test priority task with large batch of documents."""
         # Arrange
         document_ids = [f"doc-{i}" for i in range(100)]
