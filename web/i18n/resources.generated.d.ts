@@ -529,6 +529,9 @@ export default interface Resources {
     'agentDetail.versionHistory.versionName': 'Version {{version}}'
     'agentDetail.versionHistory.viewOnly': 'View Only'
   }
+  apiError: {
+    max_keys_exceeded: 'You can create at most {{max_keys}} API keys here.'
+  }
   app: {
     'accessControlDialog.accessItems.anyone': 'Anyone with the link'
     'accessControlDialog.accessItems.external': 'Authenticated external users'

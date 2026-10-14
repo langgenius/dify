@@ -101,6 +101,7 @@ export type ApiKeyItem = {
 
 export type MaxKeysExceededError = ErrorResponse & {
   code: 'max_keys_exceeded'
+  details: ApiKeyLimitDetails
   status: 400
 }
 
@@ -745,6 +746,10 @@ export type DatasetTagResponse = {
   id: string
   name: string
   type: string
+}
+
+export type ApiKeyLimitDetails = {
+  max_keys: number
 }
 
 export type ExternalKnowledgeApiBindingResponse = {

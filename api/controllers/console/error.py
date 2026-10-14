@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+
 from libs.exception import BaseHTTPException
 
 
@@ -121,7 +123,15 @@ class EducationActivateLimitError(BaseHTTPException):
     code = 429
 
 
+class ApiKeyLimitDetails(BaseModel):
+    max_keys: int
+
+
 class ApiKeyLimitExceededHTTPError(BaseHTTPException):
     error_code = "max_keys_exceeded"
-    description = "The API key limit has been reached."
+    description = "Cannot create more than {max_keys} API keys for this resource type."
     code = 400
+    details_model = ApiKeyLimitDetails
+
+    def __init__(self, max_keys: int):
+        super().__init__(details=ApiKeyLimitDetails(max_keys=max_keys))

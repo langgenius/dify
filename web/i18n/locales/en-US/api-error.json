@@ -1,0 +1,3 @@
+{
+  "max_keys_exceeded": "You can create at most {{max_keys}} API keys here."
+}

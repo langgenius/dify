@@ -16,6 +16,9 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
+const translation = vi.hoisted(() => ({ current: undefined as string | undefined }))
+vi.mock('./api-error-message', () => ({ translateApiError: async () => translation.current }))
+
 const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
@@ -163,6 +166,32 @@ describe('base', () => {
       await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
+    })
+
+    it('should display the viewer translation of an error code', async () => {
+      translation.current = '此处最多只能创建 10 个 API 密钥。'
+      const body = {
+        code: 'max_keys_exceeded',
+        message: 'Cannot create more than 10 API keys for this resource type.',
+        status: 400,
+        details: { max_keys: 10 },
+      }
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(body), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+
+      try {
+        await expect(base('/apps/1/api-keys', { method: 'POST' })).rejects.toMatchObject({
+          message: translation.current,
+          data: body,
+        })
+        expect(toast.error).toHaveBeenCalledWith(translation.current)
+      } finally {
+        translation.current = undefined
+      }
     })
 
     it('should not display an empty error toast when message and error are absent', async () => {

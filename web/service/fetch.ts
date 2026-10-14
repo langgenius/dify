@@ -57,10 +57,11 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
         !otherOptions.silent &&
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
-      const errorMessage = [errorData?.message, errorData?.error].find(
-        (value): value is string => typeof value === 'string' && !!value.trim(),
+      const hasErrorMessage = [errorData?.message, errorData?.error].some(
+        (value) => typeof value === 'string' && !!value.trim(),
       )
-      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
+      // `error.message` is the viewer's translation when the code has one.
+      if (shouldNotifyError && hasErrorMessage) notifyRequestError(request, error.message)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`

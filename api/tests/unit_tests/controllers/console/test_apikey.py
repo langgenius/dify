@@ -206,6 +206,7 @@ def test_errors_keep_http_contract(keys_app: KeysApp, error: Exception, status: 
     assert response.json["message"].startswith(message)
     if isinstance(error, ApiKeyLimitExceededError):
         assert response.json["code"] == "max_keys_exceeded"
+        assert response.json["details"] == {"max_keys": error.max_keys}
 
 
 @pytest.mark.parametrize(

@@ -31,3 +31,4 @@ class ApiKeyNotFoundError(Exception):
 class ApiKeyLimitExceededError(Exception):
     def __init__(self, max_keys: int) -> None:
         super().__init__(f"Cannot create more than {max_keys} API keys for this resource type.")
+        self.max_keys = max_keys

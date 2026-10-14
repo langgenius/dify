@@ -64,18 +64,6 @@ export const zApiKeyList = z.object({
 })
 
 /**
- * MaxKeysExceededError
- *
- * The API key limit has been reached.
- */
-export const zMaxKeysExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('max_keys_exceeded'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * SegmentBatchImportStatusResponse
  */
 export const zSegmentBatchImportStatusResponse = z.object({
@@ -588,6 +576,26 @@ export const zDatasetTagResponse = z.object({
   name: z.string(),
   type: z.string(),
 })
+
+/**
+ * ApiKeyLimitDetails
+ */
+export const zApiKeyLimitDetails = z.object({
+  max_keys: z.int(),
+})
+
+/**
+ * MaxKeysExceededError
+ *
+ * Cannot create more than {max_keys} API keys for this resource type.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    details: zApiKeyLimitDetails,
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ExternalKnowledgeApiBindingResponse
