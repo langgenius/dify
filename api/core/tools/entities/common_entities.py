@@ -15,10 +15,10 @@ class I18nObject(BaseModel):
     Model class for i18n object.
     """
 
-    en_US: str
-    zh_Hans: str | None = Field(default=None)
-    pt_BR: str | None = Field(default=None)
-    ja_JP: str | None = Field(default=None)
+    en_US: str  # noqa: N815  # Public field name.
+    zh_Hans: str | None = Field(default=None)  # noqa: N815  # Public field name.
+    pt_BR: str | None = Field(default=None)  # noqa: N815  # Public field name.
+    ja_JP: str | None = Field(default=None)  # noqa: N815  # Public field name.
 
     @model_validator(mode="after")
     def _populate_missing_locales(self):
