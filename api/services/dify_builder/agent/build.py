@@ -27,6 +27,7 @@ from services.dify_builder.agent import form_schema, graph_translate, llm, resou
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
 from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.generated_graph_completeness import generated_build_completeness_problems
 from services.dify_builder.native_constant_output_contract import (
     native_build_capability_system_rules,
     native_constant_output_system_rules,
@@ -1011,7 +1012,16 @@ def _prepare_build_candidate(
         logger.info(
             "Dify Builder: http-request %s had a placeholder credential; now read from a start variable", node_id
         )
-    return preflight.vet_intents({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+    candidate = preflight.vet_intents({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
+    # build_nodes requests a full workflow with current_graph=None. Generic
+    # preflight deliberately permits authored partial drafts; complete generated
+    # builds must also have execution paths through their planned nodes to End.
+    completeness = generated_build_completeness_problems(candidate.applicable, mode="workflow", current_graph=None)
+    return preflight.VettedIntents(
+        candidate.applicable,
+        [*candidate.rejections, *completeness],
+        [*candidate.would_run_wrong, *completeness],
+    )
 
 
 # Tool-node provider types whose installed schema the Builder inventory verifies.

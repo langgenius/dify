@@ -7797,3 +7797,106 @@ class TestNativeHttpTimeoutMessages:
             assert literal not in system
         assert re.search(r"(?<!\d)10(?!\d)", user)
         assert re.search(r"(?<!\d)10(?!\d)", system) is None
+
+
+class TestNativeEndPublicOutputMessages:
+    """The End model boundary separates requested public names from selector roots."""
+
+    @staticmethod
+    def _messages_and_graph(public_name: str):
+        plan_nodes = [
+            {"id": "entry_public_91", "node_type": "start", "action": "keep"},
+            {"id": "literal_public_91", "node_type": "template-transform", "action": "keep"},
+            {"id": "aggregate_public_91", "node_type": "variable-aggregator", "action": "keep"},
+            {
+                "id": "end_public_91",
+                "node_type": "end",
+                "label": "AUTHORED_END_LABEL_91",
+                "purpose": f"Return the final public field {public_name}; preserve END_PURPOSE_91.",
+            },
+        ]
+        plan_edges = [
+            {"source": "entry_public_91", "target": "literal_public_91"},
+            {"source": "literal_public_91", "target": "aggregate_public_91"},
+            {"source": "aggregate_public_91", "target": "end_public_91"},
+        ]
+        current_graph = {
+            "nodes": [
+                {"id": "entry_public_91", "data": {"type": "start", "variables": []}},
+                {
+                    "id": "literal_public_91",
+                    "data": {"type": "template-transform", "template": "healthy", "variables": []},
+                },
+                {
+                    "id": "aggregate_public_91",
+                    "data": {
+                        "type": "variable-aggregator",
+                        "variables": [["literal_public_91", "output"]],
+                        "output_type": "string",
+                    },
+                },
+            ],
+            "edges": [],
+        }
+        model = _ParallelBuilderModel(
+            {},
+            {
+                "end_public_91": {
+                    "outputs": [{"variable": public_name, "value_selector": ["aggregate_public_91", "output"]}]
+                }
+            },
+            barrier_parties=0,
+        )
+        original = deepcopy((plan_nodes, plan_edges, current_graph))
+        graph = WorkflowGenerator._run_parallel_node_builders(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction=(
+                "ORIGINAL_PUBLIC_GOAL_91: GET api_url, compare status_code to 200, "
+                f"and return healthy or unhealthy under public output field {public_name}."
+            ),
+            ideal_output="",
+            plan_nodes=plan_nodes,
+            plan_edges=plan_edges,
+            tool_catalogue_text="",
+            tool_catalogue_entries=[],
+            start_inputs=[],
+            node_outputs={},
+            current_graph=current_graph,
+        )
+        assert (plan_nodes, plan_edges, current_graph) == original
+        return model.messages_by_node["end_public_91"][0], graph
+
+    def test_end_builder_system_grounds_public_name_separately_from_selected_producer_root(self):
+        messages, _ = self._messages_and_graph("status")
+        system = str(messages[0].content)
+
+        assert "outputs[].variable" in system
+        assert "public workflow output" in system
+        assert "original user request" in system
+        assert "node purpose" in system
+        assert "value_selector" in system
+        assert "example" in system
+        assert "unless requested" in system
+        assert "existing authored End" in system
+
+    @pytest.mark.parametrize("public_name", ["status", "quality_signal_91"])
+    def test_requested_end_name_and_original_purpose_stay_in_user_message_without_renaming_selector(self, public_name):
+        messages, graph = self._messages_and_graph(public_name)
+        system, user = (str(message.content) for message in messages)
+
+        for dynamic in (
+            public_name,
+            "ORIGINAL_PUBLIC_GOAL_91",
+            "END_PURPOSE_91",
+            "AUTHORED_END_LABEL_91",
+            "aggregate_public_91",
+        ):
+            assert dynamic in user
+            assert dynamic not in system
+        end = next(node["data"] for node in graph["nodes"] if node["id"] == "end_public_91")
+        assert end["outputs"] == [{"variable": public_name, "value_selector": ["aggregate_public_91", "output"]}]

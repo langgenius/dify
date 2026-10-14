@@ -1490,3 +1490,407 @@ def test_build_nodes_valid_list_candidate_succeeds_without_correction():
     assert len(result.intents) == 7
     assert len(instructions) == 1
     assert result.diagnostics == []
+
+
+# ENG1107: a full generated candidate must connect its executable nodes to End.
+def _healthcheck_candidate(*, missing_edges=()):
+    nodes = [
+        {
+            "id": "node1",
+            "data": {
+                "type": "start",
+                "variables": [{"variable": "api_url", "label": "API URL", "type": "text-input", "required": True}],
+            },
+        },
+        {
+            "id": "node2",
+            "data": {
+                "type": "http-request",
+                "method": "get",
+                "url": "{{#node1.api_url#}}",
+                "authorization": {"type": "no-auth", "config": None},
+                "headers": "",
+                "params": "",
+                "body": {"type": "none", "data": []},
+                "timeout": {"connect": 10, "read": 10, "write": 10},
+                "retry_config": {"retry_enabled": False, "max_retries": 0, "retry_interval": 100},
+            },
+        },
+        {
+            "id": "node3",
+            "data": {
+                "type": "if-else",
+                "cases": [
+                    {
+                        "case_id": "true",
+                        "logical_operator": "and",
+                        "conditions": [
+                            {
+                                "id": "status_is_200",
+                                "variable_selector": ["node2", "status_code"],
+                                "comparison_operator": "=",
+                                "value": "200",
+                            }
+                        ],
+                    }
+                ],
+            },
+        },
+        {"id": "node4", "data": {"type": "template-transform", "template": "healthy", "variables": []}},
+        {"id": "node5", "data": {"type": "template-transform", "template": "unhealthy", "variables": []}},
+        {
+            "id": "node6",
+            "data": {
+                "type": "variable-aggregator",
+                "output_type": "string",
+                "variables": [["node4", "output"], ["node5", "output"]],
+            },
+        },
+        {
+            "id": "node7",
+            "data": {"type": "end", "outputs": [{"variable": "status", "value_selector": ["node6", "output"]}]},
+        },
+    ]
+    edges = [
+        {"source": "node1", "target": "node2"},
+        {"source": "node2", "target": "node3"},
+        {"source": "node3", "target": "node4", "sourceHandle": "true"},
+        {"source": "node3", "target": "node5", "sourceHandle": "false"},
+        {"source": "node4", "target": "node6"},
+        {"source": "node5", "target": "node6"},
+        {"source": "node6", "target": "node7"},
+    ]
+    return {
+        "graph": {"nodes": nodes, "edges": [e for e in edges if (e["source"], e["target"]) not in missing_edges]},
+        "error": "",
+        "errors": [],
+    }
+
+
+def _build_healthcheck_candidates(generate):
+    with (
+        patch.object(build, "_generator_model_config", return_value=_fake_mc("anthropic", "x")),
+        patch.object(build.WorkflowGeneratorService, "generate_workflow_graph", side_effect=generate),
+    ):
+        return build.build_nodes(
+            "t1",
+            {},
+            ["Start api_url; HTTP GET; branch status_code=200; healthy/unhealthy templates; aggregate; End status"],
+            trusted_text="Check api_url and return status healthy for HTTP 200, otherwise unhealthy.",
+        )
+
+
+@pytest.mark.parametrize(
+    "missing_edges",
+    [
+        (("node4", "node6"),),
+        (("node5", "node6"),),
+        (("node6", "node7"),),
+        (("node4", "node6"), ("node5", "node6"), ("node6", "node7")),
+    ],
+)
+def test_full_build_rejects_disconnected_convergence_before_returning_intents(missing_edges):
+    # Removing the candidate topology guard would return an incomplete build on attempt one.
+    instructions = []
+
+    def generate(**kwargs):
+        instructions.append(kwargs["instruction"])
+        return _healthcheck_candidate(missing_edges=missing_edges)
+
+    result = _build_healthcheck_candidates(generate)
+
+    assert result.intents == []
+    assert len(instructions) == 3
+    assert result.error
+    assert len(result.diagnostics) == 3
+    assert all("node" in diagnostic["message"] for diagnostic in result.diagnostics)
+    assert all(result.diagnostics[0]["errors"][0]["detail"] in instruction for instruction in instructions[1:])
+
+
+def test_full_build_corrects_disconnected_healthcheck_within_existing_retry_budget():
+    # A partial first candidate must not prevent the corrected complete graph from being returned.
+    instructions = []
+
+    def generate(**kwargs):
+        instructions.append(kwargs["instruction"])
+        return _healthcheck_candidate(
+            missing_edges=(("node4", "node6"), ("node5", "node6"), ("node6", "node7")) if len(instructions) == 1 else ()
+        )
+
+    result = _build_healthcheck_candidates(generate)
+
+    assert result.error == ""
+    assert len(instructions) == 2
+    assert len(result.diagnostics) == 1
+    assert len(result.intents) == 14
+    assert {
+        (intent.args["from_node"], intent.args["to_node"], intent.args.get("source_handle", "source"))
+        for intent in result.intents
+        if intent.op == "connect"
+    } == {
+        ("node1", "node2", "source"),
+        ("node2", "node3", "source"),
+        ("node3", "node4", "true"),
+        ("node3", "node5", "false"),
+        ("node4", "node6", "source"),
+        ("node5", "node6", "source"),
+        ("node6", "node7", "source"),
+    }
+
+
+def test_full_build_accepts_complete_healthcheck_without_retry_or_rewiring():
+    instructions = []
+
+    def generate(**kwargs):
+        instructions.append(kwargs["instruction"])
+        return _healthcheck_candidate()
+
+    result = _build_healthcheck_candidates(generate)
+
+    assert result.error == ""
+    assert result.diagnostics == []
+    assert len(instructions) == 1
+    assert len(result.intents) == 14
+
+
+def test_full_build_completeness_preserves_legacy_aggregator_identity():
+    from copy import deepcopy
+
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    graph = _healthcheck_candidate()["graph"]
+    graph["nodes"][5]["data"]["type"] = "variable-assigner"
+    before = deepcopy(graph)
+
+    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None) == []
+    assert graph == before
+
+
+def test_full_build_allows_a_separate_terminal_on_each_branch():
+    candidate = _healthcheck_candidate()
+    candidate["graph"]["nodes"][5]["data"] = {
+        "type": "end",
+        "outputs": [{"variable": "status", "value_selector": ["node4", "output"]}],
+    }
+    candidate["graph"]["nodes"][6]["data"]["outputs"][0]["value_selector"] = ["node5", "output"]
+    candidate["graph"]["edges"] = candidate["graph"]["edges"][:4] + [
+        {"source": "node4", "target": "node6"},
+        {"source": "node5", "target": "node7"},
+    ]
+
+    result = _build_healthcheck_candidates(lambda **_kwargs: candidate)
+
+    assert result.error == ""
+    assert result.diagnostics == []
+    assert len(result.intents) == 13
+
+
+def test_full_build_completeness_does_not_change_authored_partial_edit_preflight():
+    from core.dify_builder.models import MutationIntent
+    from services.dify_builder.preflight import vet_intents
+
+    partial = _healthcheck_candidate(missing_edges=(("node4", "node6"), ("node5", "node6"), ("node6", "node7")))[
+        "graph"
+    ]
+    rename = MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Input URL"})
+
+    vetted = vet_intents(partial, [rename], build._ALLOWED_NODE_TYPES)
+
+    assert vetted.rejections == []
+    assert vetted.applicable == [rename]
+
+
+@pytest.mark.parametrize(("mode", "terminal"), [("workflow", "end"), ("advanced-chat", "answer")])
+def test_full_build_completeness_uses_the_actual_mode_terminal(mode, terminal):
+    from copy import deepcopy
+
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    graph = {
+        "nodes": [{"id": "entry", "data": {"type": "start"}}, {"id": "exit", "data": {"type": terminal}}],
+        "edges": [{"source": "entry", "target": "exit"}],
+    }
+    before = deepcopy(graph)
+
+    assert generated_graph_completeness_problems(graph, mode=mode, current_graph=None) == []
+    assert graph == before
+    graph["nodes"][1]["data"]["type"] = "answer" if terminal == "end" else "end"
+    assert generated_graph_completeness_problems(graph, mode=mode, current_graph=None)
+
+
+def test_full_build_completeness_leaves_refinement_context_unrestricted():
+    from copy import deepcopy
+
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    partial = _healthcheck_candidate(missing_edges=(("node4", "node6"), ("node5", "node6"), ("node6", "node7")))[
+        "graph"
+    ]
+    before = deepcopy(partial)
+
+    assert generated_graph_completeness_problems(partial, mode="workflow", current_graph=before) == []
+    assert generated_graph_completeness_problems(partial, mode="workflow", current_graph={}) == []
+    assert partial == before
+
+
+def test_full_build_completeness_treats_nested_container_children_as_internal_execution():
+    from copy import deepcopy
+
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    graph = {
+        "nodes": [
+            {"id": "entry", "data": {"type": "start"}},
+            {"id": "outer", "data": {"type": "iteration"}},
+            {"id": "outerstart", "parentId": "outer", "data": {"type": "iteration-start"}},
+            {"id": "inner", "parentId": "outer", "data": {"type": "loop"}},
+            {"id": "innerstart", "parentId": "inner", "data": {"type": "loop-start"}},
+            {"id": "leaf", "parentId": "inner", "data": {"type": "template-transform"}},
+            {"id": "done", "parentId": "outer", "data": {"type": "template-transform"}},
+            {"id": "exit", "data": {"type": "end"}},
+            {"id": "note", "type": "custom-note", "data": {}},
+        ],
+        "edges": [
+            {"source": "entry", "target": "outer"},
+            {"source": "outer", "target": "exit"},
+            {"source": "outerstart", "target": "inner"},
+            {"source": "inner", "target": "done"},
+            {"source": "innerstart", "target": "leaf"},
+        ],
+    }
+    before = deepcopy(graph)
+
+    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None) == []
+    assert graph == before
+    graph["edges"].pop(1)
+    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+
+
+@pytest.mark.parametrize("parent", ["missing", "entry", "leaf"])
+def test_full_build_completeness_does_not_hide_unowned_children(parent):
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    graph = {
+        "nodes": [
+            {"id": "entry", "data": {"type": "start"}},
+            {"id": "exit", "data": {"type": "end"}},
+            {"id": "leaf", "parentId": parent, "data": {"type": "template-transform"}},
+        ],
+        "edges": [{"source": "entry", "target": "exit"}],
+    }
+
+    problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+
+    assert problems
+    assert "leaf" in problems[0]
+
+
+@pytest.mark.parametrize("extra_start", [False, True])
+def test_full_build_completeness_requires_one_actual_start(extra_start):
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    graph = {
+        "nodes": [{"id": "exit", "data": {"type": "end"}}],
+        "edges": [],
+    }
+    if extra_start:
+        graph["nodes"] += [{"id": "a", "data": {"type": "start"}}, {"id": "b", "data": {"type": "start"}}]
+        graph["edges"] += [{"source": "a", "target": "exit"}, {"source": "b", "target": "exit"}]
+
+    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+
+
+def test_full_build_accepts_native_assembled_nested_containers():
+    from core.workflow.generator.runner import WorkflowGenerator
+
+    plan_nodes = [
+        {"id": "entry", "label": "Start", "node_type": "start", "purpose": "Begin"},
+        {"id": "items", "label": "Items", "node_type": "code", "purpose": "Publish items"},
+        {"id": "outer", "label": "Each Item", "node_type": "iteration", "purpose": "Iterate items"},
+        {"id": "inner", "label": "Repeat", "node_type": "loop", "purpose": "Repeat once", "parent": "outer"},
+        {"id": "leaf", "label": "Literal", "node_type": "template-transform", "purpose": "Render", "parent": "inner"},
+        {"id": "done", "label": "Done", "node_type": "template-transform", "purpose": "Render", "parent": "outer"},
+        {"id": "exit", "label": "End", "node_type": "end", "purpose": "Return items"},
+    ]
+    graph = WorkflowGenerator._assemble_parallel_graph(
+        plan_nodes=plan_nodes,
+        plan_edges=[
+            {"source": "entry", "target": "items"},
+            {"source": "items", "target": "outer"},
+            {"source": "outer", "target": "exit"},
+            {"source": "inner", "target": "done"},
+        ],
+        configs_by_id={
+            "entry": {"variables": []},
+            "items": {
+                "code_language": "python3",
+                "code": "def main():\n    return {'items': ['one']}",
+                "variables": [],
+                "outputs": {"items": {"type": "array[string]", "children": None}},
+            },
+            "outer": {"iterator_selector": ["items", "items"], "output_selector": ["done", "output"]},
+            "inner": {"loop_count": 1, "break_conditions": [], "logical_operator": "and"},
+            "leaf": {"template": "one", "variables": []},
+            "done": {"template": "done", "variables": []},
+            "exit": {"outputs": [{"variable": "items", "value_selector": ["outer", "output"]}]},
+        },
+        existing_by_id={},
+    )
+    result = _build_healthcheck_candidates(lambda **_kwargs: {"graph": graph, "error": "", "errors": []})
+
+    assert result.error == ""
+    assert result.diagnostics == []
+    assert len(result.intents) == 15  # Nine native nodes (including two start markers), six edges.
+    creates = {intent.args["node_id"]: intent.args for intent in result.intents if intent.op == "create_node"}
+    assert creates["inner"]["parent_id"] == "outer"
+    assert creates["inner"]["config"]["iteration_id"] == "outer"
+    assert creates["leaf"]["parent_id"] == "inner"
+    assert creates["leaf"]["config"]["loop_id"] == "inner"
+    assert creates["innerstart"]["flow_type"] == "custom-loop-start"
+    assert creates["outerstart"]["flow_type"] == "custom-iteration-start"
+
+
+@pytest.mark.parametrize(
+    "metadata", [{"isInIteration": True, "iteration_id": "entry"}, {"isInLoop": True, "loop_id": "entry"}]
+)
+def test_full_build_completeness_does_not_trust_data_only_container_markers(metadata):
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    graph = {
+        "nodes": [
+            {"id": "entry", "data": {"type": "start"}},
+            {"id": "exit", "data": {"type": "end"}},
+            {"id": "leaf", "data": {"type": "template-transform", **metadata}},
+        ],
+        "edges": [{"source": "entry", "target": "exit"}],
+    }
+
+    problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+
+    assert problems
+    assert "leaf" in problems[0]
+
+
+def test_full_build_completeness_accepts_complete_parallel_fanout_only():
+    from services.dify_builder.generated_graph_completeness import generated_graph_completeness_problems
+
+    graph = {
+        "nodes": [
+            {"id": "entry", "data": {"type": "start"}},
+            {"id": "a", "data": {"type": "template-transform"}},
+            {"id": "b", "data": {"type": "template-transform"}},
+            {"id": "exit", "data": {"type": "end"}},
+        ],
+        "edges": [
+            {"source": "entry", "target": "a"},
+            {"source": "entry", "target": "b"},
+            {"source": "a", "target": "exit"},
+            {"source": "b", "target": "exit"},
+        ],
+    }
+
+    assert generated_graph_completeness_problems(graph, mode="workflow", current_graph=None) == []
+    graph["edges"].pop()
+    problems = generated_graph_completeness_problems(graph, mode="workflow", current_graph=None)
+    assert len(problems) == 1
+    assert "'b'" in problems[0]

@@ -233,3 +233,29 @@ def test_context_bounds_never_return_partial_producer_guesses(bound):
 
     assert _payload(user) == {"state": "unavailable", "producers": []}
     assert len((system + user).encode()) < 16_000
+
+
+def test_end_contract_distinguishes_requested_public_field_from_native_producer_root():
+    nodes = [
+        {"id": "entry_91", "node_type": "start"},
+        {"id": "literal_91", "node_type": "template-transform", "purpose": "PRIVATE_LITERAL_91"},
+        {"id": "consumer", "node_type": "end", "purpose": "Return PRIVATE_PUBLIC_NAME_91"},
+    ]
+    system, user = _render(
+        nodes,
+        [{"source": "entry_91", "target": "literal_91"}, {"source": "literal_91", "target": "consumer"}],
+    )
+
+    # Removing the public-name distinction leaves End free to copy the sample
+    # result label even though the actual producer must still publish output.
+    assert "outputs[].variable" in system
+    assert "public workflow output" in system
+    assert "original user request" in system
+    assert "node purpose" in system
+    assert "value_selector" in system
+    assert "example" in system
+    assert "unless requested" in system
+    assert "existing authored End" in system
+    assert _payload(user)["producers"][1]["output_roots"] == {"output": "string"}
+    for dynamic in ("entry_91", "literal_91", "PRIVATE_LITERAL_91", "PRIVATE_PUBLIC_NAME_91"):
+        assert dynamic not in system
