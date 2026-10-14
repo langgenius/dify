@@ -65,18 +65,20 @@ def list_api_tool_metadata(tenant_id: str) -> list["ToolCatalogueEntry"]:
             try:
                 bundle = ApiToolBundle.model_validate(raw_bundle)
                 action = bundle.operation_id or "default_tool"
-                summary = bundle.summary or ""
+                summary = (bundle.summary or "").strip()
                 declared_description = bundle.openapi.get("description")
                 description = summary
                 if isinstance(declared_description, str) and declared_description.strip():
-                    description = " — ".join(part for part in (summary, declared_description.strip()) if part)
+                    declared_description = declared_description.strip()
+                    if declared_description != summary:
+                        description = " — ".join(part for part in (summary, declared_description) if part)
                 entries.append(
                     {
                         "provider_name": provider_id,
                         "provider_type": "api",
                         "plugin_id": "",
                         "tool_name": action,
-                        "tool_label": summary or action,
+                        "tool_label": action,
                         "description": description,
                         "provider_label": row["name"],
                         "provider_description": row["description"],
