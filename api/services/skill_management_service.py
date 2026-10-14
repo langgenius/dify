@@ -1238,7 +1238,7 @@ class SkillManagementService:
                     )
                 }
             )
-        return SkillAssistActionResult(plan=plan)
+        return SkillAssistActionResult(plan=plan)  # noqa: B901  # StopIteration.value is the generator completion result.
 
     @staticmethod
     def _latest_assistant_suggested_identity(
@@ -1298,7 +1298,7 @@ class SkillManagementService:
             text = message.get_text_content()
             if text:
                 raw_parts.append(text)
-        return "".join(raw_parts)
+        return "".join(raw_parts)  # noqa: B901  # StopIteration.value is the generator completion result.
 
     @staticmethod
     def _extract_reasoning_content(value: Any) -> str:

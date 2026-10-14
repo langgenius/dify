@@ -198,7 +198,7 @@ class DatasourceManager:
         # Bridge through to caller while preserving generator return contract
         yield from inner_gen
         # No structured final data here; node/adapter will assemble outputs
-        return {}
+        return {}  # noqa: B901  # StopIteration.value is the generator completion result.
 
     @classmethod
     def stream_node_events(
