@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import cast
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,7 +23,7 @@ def _source_mapping(value: object) -> Mapping[str, object]:
         if isinstance(value, str):
             return _CREDENTIALS_ADAPTER.validate_json(value)
         return _CREDENTIALS_ADAPTER.validate_python(value)
-    except (TypeError, ValueError, ValidationError):
+    except (TypeError, ValueError):
         return {}
 
 

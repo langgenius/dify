@@ -59,7 +59,7 @@ class ToolTransformService:
                         parsed = emoji_icon_adapter.validate_json(icon)
                         return {"background": parsed["background"], "content": parsed["content"]}
                     return {"background": icon["background"], "content": icon["content"]}
-                except (ValueError, ValidationError, KeyError):
+                except (ValueError, KeyError):
                     return {"background": "#252525", "content": "\ud83d\ude01"}
             case ToolProviderType.MCP:
                 if isinstance(icon, Mapping):
