@@ -66,7 +66,7 @@ class AppApiKeyListResource(Resource):
     def get(self, request_context: RequestContext, resource_id: UUID) -> dict[str, object]:
         with api_key_errors():
             keys = application_services().app_api_keys.list_keys(request_context, str(resource_id))
-        return dump_response(ApiKeyList, {"data": keys})
+        return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
     @console_ns.doc("create_app_api_key")
     @console_ns.doc(description="Create a new API key for an app")
