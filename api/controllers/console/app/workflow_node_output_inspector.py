@@ -268,11 +268,25 @@ def _sse_envelope(event: str, data: dict | str, event_id: int) -> str:
     return f"event: {event}\nid: {event_id}\ndata: {payload}\n\n"
 
 
-def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
+def _initial_snapshot(app_model: App, run_id: UUID) -> WorkflowRunSnapshotView:
+    """The snapshot an event stream opens with, or the run's 404.
+
+    Called before the streaming ``Response`` is built: once a generator is handed to
+    ``Response`` the 200 status has already gone out, so an error raised inside it cannot
+    become an HTTP error. Resolving the run here keeps a missing run a plain 404.
+    """
+    try:
+        return _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id), session=db.session())
+    except NodeOutputInspectorError as error:
+        raise _run_not_found(error) from error
+
+
+def _stream_inspector_events(app_model: App, run_id: UUID, snapshot: WorkflowRunSnapshotView) -> Iterator[str]:
     """Yield SSE-framed strings for one workflow run.
 
-    The stream begins with a full ``snapshot`` event so the client has a
-    starting state without needing a separate REST GET. Then for every
+    The stream begins with the full ``snapshot`` event (resolved by ``_initial_snapshot``
+    before the response started) so the client has a starting state without needing a
+    separate REST GET. Then for every
     ``node_changed`` message from the pub/sub channel we re-read that node
     from DB and push a fresh ``node_changed`` event. When the workflow run
     reaches a terminal state we push one final ``workflow_run_completed``
@@ -284,14 +298,6 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
     """
     service = _service()
     run_id_str = str(run_id)
-
-    # Initial snapshot — also flushes a 404 back at the client right away
-    # if the run is gone (raised before yielding any bytes, so Flask turns it
-    # into the normal HTTP 404 path).
-    try:
-        snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str, session=db.session())
-    except NodeOutputInspectorError as error:
-        raise _run_not_found(error) from error
 
     event_id = 0
     yield _sse_envelope("snapshot", snapshot.model_dump(mode="json"), event_id)
@@ -396,8 +402,9 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
+        snapshot = _initial_snapshot(app_model, run_id)
         return Response(
-            _stream_inspector_events(app_model, run_id),
+            _stream_inspector_events(app_model, run_id, snapshot),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
@@ -505,8 +512,9 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
+        snapshot = _initial_snapshot(app_model, run_id)
         return Response(
-            _stream_inspector_events(app_model, run_id),
+            _stream_inspector_events(app_model, run_id, snapshot),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

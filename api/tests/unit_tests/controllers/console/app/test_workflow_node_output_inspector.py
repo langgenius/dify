@@ -134,6 +134,11 @@ def _drain(stream: Iterator[str]) -> list[str]:
     return list(stream)
 
 
+def _stream(app_model, run_id) -> Iterator[str]:
+    """Open the stream the way the handlers do: resolve the run first, then generate."""
+    return ctrl._stream_inspector_events(app_model, run_id, ctrl._initial_snapshot(app_model, run_id))
+
+
 def _parse(record: str) -> tuple[str, dict | None]:
     """Pull ``event`` + ``data`` (json-decoded) out of one SSE record."""
     event = None
@@ -186,7 +191,7 @@ def test_stream_fast_path_when_run_already_terminal(patch_service, app_model, ru
     """A run that's already ``succeeded`` should produce ``snapshot`` →
     ``workflow_run_completed`` and close without subscribing to pub/sub."""
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="succeeded")
-    records = _drain(ctrl._stream_inspector_events(app_model, run_id))
+    records = _drain(_stream(app_model, run_id))
     assert len(records) == 2
     e0, d0 = _parse(records[0])
     e1, d1 = _parse(records[1])
@@ -203,22 +208,21 @@ def test_stream_fast_path_each_terminal_status(patch_service, app_model, run_id)
     partial success is the hyphenated ``partial-succeeded``."""
     for terminal in ("succeeded", "failed", "stopped", "partial-succeeded"):
         patch_service.snapshot_workflow_run.return_value = _snapshot_view(status=terminal)
-        records = _drain(ctrl._stream_inspector_events(app_model, run_id))
+        records = _drain(_stream(app_model, run_id))
         events = [_parse(r)[0] for r in records]
         assert events == ["snapshot", "workflow_run_completed"], terminal
 
 
-def test_stream_initial_404_propagates_before_any_bytes(patch_service, app_model, run_id):
-    """``NodeOutputInspectorError`` on the initial snapshot must surface as the
-    controller's ``_InspectorNotFound`` exception so Flask returns HTTP 404
-    — not a half-streamed SSE body."""
+def test_initial_snapshot_raises_the_404_before_the_response_exists(patch_service, app_model, run_id):
+    """A missing run must be an HTTP 404. The handlers resolve the snapshot before building the
+    streaming ``Response``; raising inside the generator would arrive after the 200 went out."""
     patch_service.snapshot_workflow_run.side_effect = NodeOutputInspectorError(
         "workflow_run_not_found", "Workflow run not found."
     )
-    gen = ctrl._stream_inspector_events(app_model, run_id)
     with pytest.raises(ctrl._InspectorNotFound) as exc:
-        next(gen)
+        ctrl._initial_snapshot(app_model, run_id)
     assert exc.value.error_code == "workflow_run_not_found"
+    assert not patch_service.node_detail.called
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -240,7 +244,7 @@ def test_stream_live_emits_snapshot_then_node_changed_then_completion(
     ]
     patch_subscribe(msgs)
 
-    events = [_parse(r)[0] for r in _drain(ctrl._stream_inspector_events(app_model, run_id))]
+    events = [_parse(r)[0] for r in _drain(_stream(app_model, run_id))]
     assert events == ["snapshot", "node_changed", "node_changed", "workflow_run_completed"]
     # node_detail should be called once per delta (not once per heartbeat)
     assert patch_service.node_detail.call_count == 2
@@ -263,7 +267,7 @@ def test_stream_emits_heartbeat_after_n_idle_ticks(
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="failed"),
         ]
     )
-    records = _drain(ctrl._stream_inspector_events(app_model, run_id))
+    records = _drain(_stream(app_model, run_id))
     raw = "".join(records)
     assert ":keepalive\n\n" in raw
     assert "workflow_run_completed" in raw
@@ -280,7 +284,7 @@ def test_stream_hard_timeout_force_closes_without_terminal(
 
     # 5 heartbeats, no terminal → generator should bail after 3 ticks.
     patch_subscribe([None] * 10)
-    records = _drain(ctrl._stream_inspector_events(app_model, run_id))
+    records = _drain(_stream(app_model, run_id))
     events = [_parse(r)[0] for r in records]
     assert events == ["snapshot"]  # only snapshot, then forced close
 
@@ -294,7 +298,7 @@ def test_stream_skips_messages_with_missing_node_id(patch_service, patch_subscri
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
         ]
     )
-    events = [_parse(r)[0] for r in _drain(ctrl._stream_inspector_events(app_model, run_id))]
+    events = [_parse(r)[0] for r in _drain(_stream(app_model, run_id))]
     assert events == ["snapshot", "workflow_run_completed"]
     assert patch_service.node_detail.call_count == 0
 
@@ -310,7 +314,7 @@ def test_stream_skips_node_detail_404_without_breaking_stream(patch_service, pat
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
         ]
     )
-    events = [_parse(r)[0] for r in _drain(ctrl._stream_inspector_events(app_model, run_id))]
+    events = [_parse(r)[0] for r in _drain(_stream(app_model, run_id))]
     assert events == ["snapshot", "workflow_run_completed"]
 
 
@@ -327,7 +331,7 @@ def test_stream_emits_error_event_on_node_detail_unexpected_exception(
             InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
         ]
     )
-    records = _drain(ctrl._stream_inspector_events(app_model, run_id))
+    records = _drain(_stream(app_model, run_id))
     events = [_parse(r) for r in records]
     kinds = [e for e, _ in events]
     assert kinds == ["snapshot", "error", "workflow_run_completed"]
@@ -345,7 +349,7 @@ def test_stream_workflow_completed_status_falls_back_to_unknown(patch_service, p
     patch_subscribe(
         [InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status=None)]
     )
-    records = _drain(ctrl._stream_inspector_events(app_model, run_id))
+    records = _drain(_stream(app_model, run_id))
     e, d = _parse(records[-1])
     assert e == "workflow_run_completed"
     assert d is not None

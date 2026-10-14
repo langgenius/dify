@@ -5830,7 +5830,7 @@ Initialize dataset with documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: [ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/metadata/built-in
@@ -6032,7 +6032,6 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents deleted successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
@@ -6075,7 +6074,7 @@ Get documents in a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Documents created successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
@@ -6166,7 +6165,7 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
@@ -6182,7 +6181,6 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document deleted successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
@@ -6332,7 +6330,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document paused successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6351,7 +6349,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document resumed successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6686,7 +6684,6 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6942,7 +6939,6 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents retry started successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/use-check

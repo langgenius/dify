@@ -93,10 +93,8 @@ def _raise_document_error(error: Exception) -> Never:
     raise error
 
 
-def _raise_document_indexing_error(error: Exception) -> Never:
-    """Operations that (re)index documents also depend on the indexing state and the model provider."""
-    if isinstance(error, DocumentIndexingStateError):
-        raise DocumentIndexingError(str(error)) from error
+def _raise_document_provider_error(error: Exception) -> Never:
+    """Creating documents resolves the dataset's embedding model synchronously."""
     if isinstance(error, DocumentProviderError):
         if error.kind == "quota":
             raise ProviderQuotaExceededError() from error
@@ -107,22 +105,24 @@ def _raise_document_indexing_error(error: Exception) -> Never:
 
 
 def _raise_document_action_error(error: Exception) -> Never:
+    """Processing and status changes validate the requested action against the document state."""
     if isinstance(error, DocumentInvalidActionError):
         raise InvalidActionError(str(error)) from error
     _raise_document_error(error)
 
 
-def _raise_document_status_error(error: Exception) -> Never:
-    if isinstance(error, DocumentInvalidActionError):
-        raise InvalidActionError(str(error)) from error
-    _raise_document_indexing_error(error)
-
-
 def _raise_document_archive_error(error: Exception) -> Never:
-    """Pausing, resuming and syncing refuse archived documents before touching the index."""
+    """Syncing refuses archived documents."""
     if isinstance(error, DocumentArchivedError):
         raise ArchivedDocumentImmutableError() from error
-    _raise_document_indexing_error(error)
+    _raise_document_error(error)
+
+
+def _raise_document_state_error(error: Exception) -> Never:
+    """Pausing and resuming also need a pausable, respectively paused, indexing state."""
+    if isinstance(error, DocumentIndexingStateError):
+        raise DocumentIndexingError(str(error)) from error
+    _raise_document_archive_error(error)
 
 
 class DatasetResponse(ResponseModel):
@@ -388,12 +388,7 @@ class DatasetDocumentListApi(Resource):
             _raise_document_error(error)
         return dump_response(DocumentWithSegmentsListResponse, result)
 
-    @error_responses(
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
+    @error_responses(ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError, ProviderQuotaExceededError)
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
     @console_account_admission(
@@ -408,15 +403,9 @@ class DatasetDocumentListApi(Resource):
                 request_context, dataset_id=str(dataset_id), settings=config.model_dump()
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_provider_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
-    @error_responses(
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
     @console_ns.response(204, "Documents deleted successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -429,18 +418,13 @@ class DatasetDocumentListApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_ids=request.args.getlist("document_id")
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_error(error)
         return "", 204
 
 
 @console_ns.route("/datasets/init")
 class DatasetInitApi(Resource):
-    @error_responses(
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
+    @error_responses(ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError, ProviderQuotaExceededError)
     @console_ns.doc("init_dataset")
     @console_ns.doc(description="Initialize dataset with documents")
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
@@ -458,7 +442,7 @@ class DatasetInitApi(Resource):
                 request_context, settings=config.model_dump()
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_provider_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
 
@@ -623,12 +607,6 @@ class DocumentApi(Resource):
             exclude_unset=True,
         ), 200
 
-    @error_responses(
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
     @console_ns.response(204, "Document deleted successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -641,7 +619,7 @@ class DocumentApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_error(error)
         return "", 204
 
 
@@ -772,13 +750,7 @@ class DocumentMetadataApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(Resource):
-    @error_responses(
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
+    @error_responses(InvalidActionError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -799,19 +771,13 @@ class DocumentStatusApi(Resource):
                 action=action,
             )
         except Exception as error:
-            _raise_document_status_error(error)
+            _raise_document_action_error(error)
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
 class DocumentPauseApi(Resource):
-    @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
+    @error_responses(ArchivedDocumentImmutableError, DocumentIndexingError)
     @console_ns.response(204, "Document paused successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -824,19 +790,13 @@ class DocumentPauseApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_archive_error(error)
+            _raise_document_state_error(error)
         return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
 class DocumentRecoverApi(Resource):
-    @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
+    @error_responses(ArchivedDocumentImmutableError, DocumentIndexingError)
     @console_ns.response(204, "Document resumed successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -849,18 +809,12 @@ class DocumentRecoverApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_archive_error(error)
+            _raise_document_state_error(error)
         return "", 204
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/retry")
 class DocumentRetryApi(Resource):
-    @error_responses(
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     @console_ns.response(204, "Documents retry started successfully")
     @console_account_admission(
@@ -875,7 +829,7 @@ class DocumentRetryApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_ids=req_data.document_ids
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_error(error)
         return "", 204
 
 
@@ -901,13 +855,7 @@ class DocumentRenameApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
 class WebsiteDocumentSyncApi(Resource):
-    @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
+    @error_responses(ArchivedDocumentImmutableError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
