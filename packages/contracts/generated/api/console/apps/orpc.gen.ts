@@ -2950,7 +2950,6 @@ export const post39 = oc
   .output(zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse)
   .errors({
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
@@ -2982,7 +2981,6 @@ export const get50 = oc
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse)
   .errors({
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
@@ -3013,7 +3011,6 @@ export const get51 = oc
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse)
   .errors({
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },

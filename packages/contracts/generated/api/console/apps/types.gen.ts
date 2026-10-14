@@ -7230,7 +7230,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 }
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  404: AppNotFoundError | NoActiveBindingError | ErrorResponse
   502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
@@ -7259,7 +7259,7 @@ export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxF
 
 export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadErrors =
   {
-    404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+    404: AppNotFoundError | NoActiveBindingError | ErrorResponse
     502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
     503: InspectorUnavailableError | ErrorResponse
     default: ErrorResponse
@@ -7291,7 +7291,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 }
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  404: AppNotFoundError | NoActiveBindingError | ErrorResponse
   502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse

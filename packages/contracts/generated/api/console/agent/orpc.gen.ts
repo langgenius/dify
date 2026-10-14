@@ -13,7 +13,6 @@ import {
   zAgentNotPublishedError,
   zAgentSoulLockedError,
   zAgentVersionNotFoundError,
-  zAppNotFoundError,
   zAppSuggestedQuestionsAfterAnswerDisabledError,
   zAppUnavailableError,
   zAudioTooLargeError,
@@ -216,6 +215,7 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdApiAccessPath }))
   .output(zGetAgentByAgentIdApiAccessResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const apiAccess = {
   get: get2,
@@ -233,7 +233,10 @@ export const post = oc
     z.object({ body: zPostAgentByAgentIdApiEnableBody, params: zPostAgentByAgentIdApiEnablePath }),
   )
   .output(zPostAgentByAgentIdApiEnableResponse)
-  .errors({ agent_not_published: { status: 409, data: zAgentNotPublishedError } })
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+  })
 
 export const apiEnable = {
   post,
@@ -955,7 +958,11 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostAgentByAgentIdCopyBody, params: zPostAgentByAgentIdCopyPath }))
   .output(zPostAgentByAgentIdCopyResponse)
-  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
 export const copy = {
   post: post11,
@@ -971,6 +978,10 @@ export const post12 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdDebugConversationRefreshPath }))
   .output(zPostAgentByAgentIdDebugConversationRefreshResponse)
+  .errors({
+    agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  })
 
 export const refresh = {
   post: post12,
@@ -1034,6 +1045,7 @@ export const get19 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdLogSourcesPath }))
   .output(zGetAgentByAgentIdLogSourcesResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const logSources = {
   get: get19,
@@ -1054,6 +1066,7 @@ export const get20 = oc
     }),
   )
   .output(zGetAgentByAgentIdLogsByConversationIdMessagesResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const messages = {
   get: get20,
@@ -1075,6 +1088,7 @@ export const get21 = oc
     z.object({ params: zGetAgentByAgentIdLogsPath, query: zGetAgentByAgentIdLogsQuery.optional() }),
   )
   .output(zGetAgentByAgentIdLogsResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const logs = {
   get: get21,
@@ -1170,7 +1184,6 @@ export const post16 = oc
   .errors({
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
@@ -1202,7 +1215,6 @@ export const get24 = oc
   .errors({
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })
@@ -1233,7 +1245,6 @@ export const get25 = oc
   .errors({
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })
@@ -1259,10 +1270,7 @@ export const get26 = oc
   .input(z.object({ params: zGetAgentByAgentIdSandboxPath, query: zGetAgentByAgentIdSandboxQuery }))
   .output(zGetAgentByAgentIdSandboxResponse)
   .errors({
-    agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
   })
 
@@ -1286,6 +1294,7 @@ export const get27 = oc
     }),
   )
   .output(zGetAgentByAgentIdStatisticsSummaryResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const summary = {
   get: get27,
@@ -1373,6 +1382,10 @@ export const post18 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdVersionsByVersionIdRestorePath }))
   .output(zPostAgentByAgentIdVersionsByVersionIdRestoreResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
 export const restore = {
   post: post18,
@@ -1388,6 +1401,10 @@ export const get29 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdVersionsByVersionIdPath }))
   .output(zGetAgentByAgentIdVersionsByVersionIdResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  })
 
 export const byVersionId = {
   get: get29,
@@ -1404,6 +1421,7 @@ export const get30 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdVersionsPath }))
   .output(zGetAgentByAgentIdVersionsResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const versions = {
   get: get30,
@@ -1421,6 +1439,7 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const get31 = oc
   .route({
@@ -1487,6 +1506,7 @@ export const get32 = oc
   })
   .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const post19 = oc
   .route({

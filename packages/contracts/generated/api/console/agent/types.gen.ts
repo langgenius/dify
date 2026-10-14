@@ -13,6 +13,11 @@ export type AgentAppPagination = {
   total: number
 }
 
+export type AgentNotFoundError = ErrorResponse & {
+  code: 'agent_not_found_error'
+  status: 404
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -68,11 +73,6 @@ export type AgentAppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
-}
-
-export type AgentNotFoundError = ErrorResponse & {
-  code: 'agent_not_found_error'
-  status: 404
 }
 
 export type AgentNameConflictError = ErrorResponse & {
@@ -508,14 +508,15 @@ export type SandboxInfoResponse = {
   workspace_cwd: string
 }
 
-export type AppNotFoundError = ErrorResponse & {
-  code: 'app_not_found'
-  status: 404
-}
-
 export type NoActiveBindingError = ErrorResponse & {
   code: 'no_active_binding'
   status: 404
+}
+
+export type SandboxListResponse = {
+  entries?: Array<SandboxFileEntryResponse>
+  path: string
+  truncated?: boolean
 }
 
 export type AgentBackendUnreachableError = ErrorResponse & {
@@ -526,12 +527,6 @@ export type AgentBackendUnreachableError = ErrorResponse & {
 export type InspectorUnavailableError = ErrorResponse & {
   code: 'inspector_unavailable'
   status: 503
-}
-
-export type SandboxListResponse = {
-  entries?: Array<SandboxFileEntryResponse>
-  path: string
-  truncated?: boolean
 }
 
 export type AgentSandboxDownloadPayload = {
@@ -2451,6 +2446,7 @@ export type GetAgentData = {
 }
 
 export type GetAgentErrors = {
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2522,6 +2518,7 @@ export type DeleteAgentByAgentIdData = {
 
 export type DeleteAgentByAgentIdErrors = {
   403: ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2591,6 +2588,7 @@ export type GetAgentByAgentIdApiAccessData = {
 }
 
 export type GetAgentByAgentIdApiAccessErrors = {
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2615,6 +2613,7 @@ export type PostAgentByAgentIdApiEnableData = {
 
 export type PostAgentByAgentIdApiEnableErrors = {
   403: ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
@@ -3504,7 +3503,8 @@ export type PostAgentByAgentIdCopyData = {
 export type PostAgentByAgentIdCopyErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: AgentNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3529,6 +3529,7 @@ export type PostAgentByAgentIdDebugConversationRefreshData = {
 
 export type PostAgentByAgentIdDebugConversationRefreshErrors = {
   403: ErrorResponse
+  404: AgentBuildSandboxNotFoundError | AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3601,6 +3602,7 @@ export type GetAgentByAgentIdLogSourcesData = {
 }
 
 export type GetAgentByAgentIdLogSourcesErrors = {
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3636,6 +3638,7 @@ export type GetAgentByAgentIdLogsData = {
 }
 
 export type GetAgentByAgentIdLogsErrors = {
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3672,6 +3675,7 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
 }
 
 export type GetAgentByAgentIdLogsByConversationIdMessagesErrors = {
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3778,9 +3782,7 @@ export type GetAgentByAgentIdSandboxData = {
 }
 
 export type GetAgentByAgentIdSandboxErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
-  502: AgentBackendUnreachableError | ErrorResponse
-  503: InspectorUnavailableError | ErrorResponse
+  404: AgentNotFoundError | NoActiveBindingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3808,7 +3810,7 @@ export type GetAgentByAgentIdSandboxFilesData = {
 }
 
 export type GetAgentByAgentIdSandboxFilesErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  404: AgentNotFoundError | NoActiveBindingError | ErrorResponse
   502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
@@ -3834,7 +3836,7 @@ export type PostAgentByAgentIdSandboxFilesDownloadData = {
 }
 
 export type PostAgentByAgentIdSandboxFilesDownloadErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  404: AgentNotFoundError | NoActiveBindingError | ErrorResponse
   502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
@@ -3864,7 +3866,7 @@ export type GetAgentByAgentIdSandboxFilesReadData = {
 }
 
 export type GetAgentByAgentIdSandboxFilesReadErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  404: AgentNotFoundError | NoActiveBindingError | ErrorResponse
   502: AgentBackendUnreachableError | ErrorResponse
   503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
@@ -3894,6 +3896,7 @@ export type GetAgentByAgentIdStatisticsSummaryData = {
 }
 
 export type GetAgentByAgentIdStatisticsSummaryErrors = {
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3982,6 +3985,7 @@ export type GetAgentByAgentIdVersionsData = {
 }
 
 export type GetAgentByAgentIdVersionsErrors = {
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4006,6 +4010,7 @@ export type GetAgentByAgentIdVersionsByVersionIdData = {
 }
 
 export type GetAgentByAgentIdVersionsByVersionIdErrors = {
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4030,6 +4035,7 @@ export type PostAgentByAgentIdVersionsByVersionIdRestoreData = {
 }
 
 export type PostAgentByAgentIdVersionsByVersionIdRestoreErrors = {
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

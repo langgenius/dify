@@ -473,18 +473,6 @@ export const zSandboxInfoResponse = z.object({
 })
 
 /**
- * AppNotFoundError
- *
- * App not found.
- */
-export const zAppNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('app_not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * NoActiveBindingError
  *
  * No active sandbox binding.
