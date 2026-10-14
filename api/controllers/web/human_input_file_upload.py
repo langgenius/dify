@@ -41,6 +41,7 @@ from services.human_input_file_upload_service import (
     HumanInputUploadContext,
     InvalidUploadTokenError,
 )
+from services.human_input_service import FormExpiredError, FormSubmittedError
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -188,6 +189,8 @@ class HumanInputFileUploadApi(Resource):
         BlockedFileExtensionError,
         FilenameNotExistsError,
         FileTooLargeError,
+        FormExpiredError,
+        FormSubmittedError,
         InvalidUploadTokenBadRequestError,
         InvalidUploadTokenForbiddenError,
         InvalidUploadTokenUnauthorizedError,

@@ -61,7 +61,7 @@ register_response_schema_models(console_ns, ConversationInfiniteScrollPagination
 
 
 def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Translate the shared conversation use-case errors at the Console boundary."""
+    """Translate the errors every conversation operation shares: the app must exist and be a chat app."""
 
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -71,23 +71,50 @@ def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise InstalledAppNotFoundHTTPError() from error
         except ConversationNotChatAppError as error:
             raise NotChatAppError() from error
-        except ConversationNotExistsError as error:
-            raise ConversationNotFoundHTTPError() from error
+
+    return document_errors(decorated, InstalledAppNotFoundHTTPError, NotChatAppError)
+
+
+def _conversation_page_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Paging by cursor fails when the cursor conversation is gone."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
         except LastConversationNotExistsError as error:
             raise ConversationCursorNotFoundHTTPError() from error
+
+    return _conversation_errors(document_errors(decorated, ConversationCursorNotFoundHTTPError))
+
+
+def _conversation_lookup_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Operations on one conversation fail when it does not exist."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+
+    return _conversation_errors(document_errors(decorated, ConversationNotFoundHTTPError))
+
+
+def _conversation_rename_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Renaming also needs a name, or a first message to generate one from."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
         except MessageNotExistsError as error:
             raise ConversationFirstMessageNotFoundHTTPError() from error
         except ConversationNameRequiredError as error:
             raise ConversationNameRequiredHTTPError() from error
 
-    return document_errors(
-        decorated,
-        InstalledAppNotFoundHTTPError,
-        NotChatAppError,
-        ConversationNotFoundHTTPError,
-        ConversationCursorNotFoundHTTPError,
-        ConversationFirstMessageNotFoundHTTPError,
-        ConversationNameRequiredHTTPError,
+    return _conversation_lookup_errors(
+        document_errors(decorated, ConversationFirstMessageNotFoundHTTPError, ConversationNameRequiredHTTPError)
     )
 
 
@@ -98,7 +125,7 @@ class ConversationListApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(ConversationListQuery)
-    @_conversation_errors
+    @_conversation_page_errors
     def get(
         self, query: ConversationListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
@@ -119,7 +146,7 @@ class ConversationApi(Resource):
     @console_ns.response(HTTPStatus.NO_CONTENT, "Conversation deleted successfully")
     @console_account_admission()
     @get_installed_app
-    @_conversation_errors
+    @_conversation_lookup_errors
     def delete(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> tuple[str, int]:
         application_services().installed_apps.conversations.delete(
             installed_app=installed_app, account_id=request_context.account_id, conversation_id=str(c_id)
@@ -139,7 +166,7 @@ class ConversationRenameApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(ConversationRenamePayload)
-    @_conversation_errors
+    @_conversation_rename_errors
     def post(
         self,
         payload: ConversationRenamePayload,
@@ -164,7 +191,7 @@ class ConversationPinApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
-    @_conversation_errors
+    @_conversation_lookup_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
         application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,
@@ -183,7 +210,7 @@ class ConversationUnPinApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
-    @_conversation_errors
+    @_conversation_lookup_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
         application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,

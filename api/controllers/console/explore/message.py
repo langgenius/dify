@@ -77,32 +77,70 @@ register_response_schema_models(
 
 
 def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Translate the errors every message operation shares, and keep unexpected failures as 500s."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return view(*args, **kwargs)
         except InstalledAppNotFoundError as error:
             raise InstalledAppNotFoundHTTPError() from error
-        except AppDefinitionUnavailableError as error:
-            raise AppUnavailableError() from error
         except (AccountNotFoundError, SuggestedQuestionsActorNotFoundError) as error:
             raise UnauthorizedError("Account no longer exists.") from error
+        except (BaseHTTPException, ValueError):
+            raise
+        except Exception as error:
+            logger.exception("Installed-app message operation failed")
+            raise InternalServerError() from error
+
+    return document_errors(decorated, InstalledAppNotFoundHTTPError)
+
+
+def _message_page_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Listing needs a chat app, an existing conversation and an existing cursor message."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
-        except InstalledAppNotCompletionError as error:
-            raise NotCompletionAppError() from error
-        except MessageNotExistsError as error:
-            raise MessageNotFoundHTTPError() from error
-        except FirstMessageNotExistsError as error:
-            raise MessageCursorNotFoundHTTPError() from error
         except ConversationNotExistsError as error:
             raise ConversationNotFoundHTTPError() from error
+        except FirstMessageNotExistsError as error:
+            raise MessageCursorNotFoundHTTPError() from error
+
+    return _message_errors(
+        document_errors(decorated, NotChatAppError, ConversationNotFoundHTTPError, MessageCursorNotFoundHTTPError)
+    )
+
+
+def _message_feedback_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Feedback needs an existing message and a rating when one is required."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except MessageNotExistsError as error:
+            raise MessageNotFoundHTTPError() from error
         except FeedbackRatingRequiredError as error:
             raise MessageFeedbackRatingRequiredHTTPError() from error
-        except MoreLikeThisDisabledError as error:
-            raise AppMoreLikeThisDisabledError() from error
-        except SuggestedQuestionsAfterAnswerDisabledError as error:
-            raise AppSuggestedQuestionsAfterAnswerDisabledError() from error
+
+    return _message_errors(document_errors(decorated, MessageNotFoundHTTPError, MessageFeedbackRatingRequiredHTTPError))
+
+
+def _message_generation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Generating from a message also depends on the app definition and the model provider."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except MessageNotExistsError as error:
+            raise MessageNotFoundHTTPError() from error
         except ProviderTokenNotInitError as error:
             raise ProviderNotInitializeError(error.description) from error
         except QuotaExceededError as error:
@@ -111,29 +149,49 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (BaseHTTPException, ValueError):
-            raise
-        except Exception as error:
-            logger.exception("Installed-app message operation failed")
-            raise InternalServerError() from error
 
-    return document_errors(
-        decorated,
-        InstalledAppNotFoundHTTPError,
-        AppUnavailableError,
-        NotChatAppError,
-        NotCompletionAppError,
-        MessageNotFoundHTTPError,
-        MessageCursorNotFoundHTTPError,
-        ConversationNotFoundHTTPError,
-        MessageFeedbackRatingRequiredHTTPError,
-        AppMoreLikeThisDisabledError,
-        AppSuggestedQuestionsAfterAnswerDisabledError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-        ProviderModelCurrentlyNotSupportError,
-        CompletionRequestError,
-        InternalServerError,
+    return _message_errors(
+        document_errors(
+            decorated,
+            AppUnavailableError,
+            MessageNotFoundHTTPError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+            ProviderModelCurrentlyNotSupportError,
+            CompletionRequestError,
+        )
+    )
+
+
+def _more_like_this_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """More-like-this needs a completion app with the feature enabled."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except InstalledAppNotCompletionError as error:
+            raise NotCompletionAppError() from error
+        except MoreLikeThisDisabledError as error:
+            raise AppMoreLikeThisDisabledError() from error
+
+    return _message_generation_errors(document_errors(decorated, NotCompletionAppError, AppMoreLikeThisDisabledError))
+
+
+def _suggested_questions_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Suggested questions need the feature enabled and the message's conversation to belong to the caller."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except SuggestedQuestionsAfterAnswerDisabledError as error:
+            raise AppSuggestedQuestionsAfterAnswerDisabledError() from error
+
+    return _message_generation_errors(
+        document_errors(decorated, ConversationNotFoundHTTPError, AppSuggestedQuestionsAfterAnswerDisabledError)
     )
 
 
@@ -147,7 +205,7 @@ class MessageListApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageListQuery)
-    @_message_errors
+    @_message_page_errors
     def get(
         self, query: MessageListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
@@ -171,7 +229,7 @@ class MessageFeedbackApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(MessageFeedbackPayload)
-    @_message_errors
+    @_message_feedback_errors
     def post(
         self,
         payload: MessageFeedbackPayload,
@@ -199,7 +257,7 @@ class MessageMoreLikeThisApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(MoreLikeThisQuery)
-    @_message_errors
+    @_more_like_this_errors
     def get(
         self,
         query: MoreLikeThisQuery,
@@ -226,7 +284,7 @@ class MessageSuggestedQuestionApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_installed_app
-    @_message_errors
+    @_suggested_questions_errors
     def get(
         self, request_context: RequestContext, installed_app: InstalledAppRef, message_id: UUID
     ) -> dict[str, object]:

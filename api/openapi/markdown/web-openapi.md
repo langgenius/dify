@@ -449,6 +449,7 @@ POST /api/form/human_input/<form_token>/upload-token
 | 401 | Unauthorized | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Precondition Failed | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |

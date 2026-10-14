@@ -56,6 +56,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
+    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
@@ -121,6 +122,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -762,22 +764,14 @@ class TrialMessageSuggestedQuestionApi(Resource):
 
 
 def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Translate the errors both trial audio directions share: app definition, model provider, agent version."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return view(*args, **kwargs)
         except (AppDefinitionUnavailableError, services.errors.app_model_config.AppModelConfigBrokenError) as error:
             raise AppUnavailableError() from error
-        except NoAudioUploadedServiceError as error:
-            raise NoAudioUploadedError() from error
-        except AudioTooLargeServiceError as error:
-            raise AudioTooLargeError(str(error)) from error
-        except UnsupportedAudioTypeServiceError as error:
-            raise UnsupportedAudioTypeError() from error
-        except ProviderNotSupportSpeechToTextServiceError as error:
-            raise ProviderNotSupportSpeechToTextError() from error
-        except SpeechToTextDisabledServiceError as error:
-            raise SpeechToTextDisabledError() from error
         except ProviderTokenNotInitError as error:
             raise ProviderNotInitializeError(error.description) from error
         except QuotaExceededError as error:
@@ -797,17 +791,55 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return document_errors(
         decorated,
         AppUnavailableError,
-        NoAudioUploadedError,
-        AudioTooLargeError,
-        UnsupportedAudioTypeError,
-        ProviderNotSupportSpeechToTextError,
-        SpeechToTextDisabledError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
         ProviderModelCurrentlyNotSupportError,
         CompletionRequestError,
         AgentVersionNotFoundHTTPError,
     )
+
+
+def _trial_speech_to_text_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Transcription also validates the upload and needs a speech-to-text model."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except NoAudioUploadedServiceError as error:
+            raise NoAudioUploadedError() from error
+        except AudioTooLargeServiceError as error:
+            raise AudioTooLargeError(str(error)) from error
+        except UnsupportedAudioTypeServiceError as error:
+            raise UnsupportedAudioTypeError() from error
+        except ProviderNotSupportSpeechToTextServiceError as error:
+            raise ProviderNotSupportSpeechToTextError() from error
+        except SpeechToTextDisabledServiceError as error:
+            raise SpeechToTextDisabledError() from error
+
+    return _trial_audio_errors(
+        document_errors(
+            decorated,
+            NoAudioUploadedError,
+            AudioTooLargeError,
+            UnsupportedAudioTypeError,
+            ProviderNotSupportSpeechToTextError,
+            SpeechToTextDisabledError,
+        )
+    )
+
+
+def _trial_text_to_speech_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Synthesis needs a text-to-speech model."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except ProviderNotSupportTextToSpeechServiceError as error:
+            raise ProviderNotSupportTextToSpeechError() from error
+
+    return _trial_audio_errors(document_errors(decorated, ProviderNotSupportTextToSpeechError))
 
 
 @console_ns.route(
@@ -837,7 +869,7 @@ class TrialChatAudioApi(Resource):
         audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
         return self._transcript_asr(request_context=request_context, trial_app=trial_app, audio=audio)
 
-    @_trial_audio_errors
+    @_trial_speech_to_text_errors
     def _transcript_asr(
         self, *, request_context: RequestContext, trial_app: TrialAppRef, audio: AudioUpload | None
     ) -> dict[str, object]:
@@ -860,7 +892,7 @@ class TrialChatTextApi(Resource):
     @console_account_admission()
     @get_trial_app
     @model_validate(TextToSpeechRequest)
-    @_trial_audio_errors
+    @_trial_text_to_speech_errors
     def post(
         self, req_data: TextToSpeechRequest, request_context: RequestContext, trial_app: TrialAppRef
     ) -> Response | None:

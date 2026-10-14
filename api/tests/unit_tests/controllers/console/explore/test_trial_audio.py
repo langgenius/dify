@@ -316,11 +316,6 @@ def test_oversized_multipart_request_keeps_transport_error(harness: _Harness) ->
     [
         (AppDefinitionUnavailableError("app removed"), 400, "app_unavailable"),
         (AppModelConfigBrokenError(), 400, "app_unavailable"),
-        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded"),
-        (AudioTooLargeServiceError("Audio size larger than 30 mb"), 413, "audio_too_large"),
-        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type"),
-        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text"),
-        (SpeechToTextDisabledServiceError(), 400, "speech_to_text_disabled"),
         (ProviderTokenNotInitError("provider key missing"), 400, "provider_not_initialize"),
         (QuotaExceededError(), 400, "provider_quota_exceeded"),
         (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support"),
@@ -353,6 +348,27 @@ def test_runtime_errors_keep_specific_codes_without_recording_usage(
             "The server encountered an internal error and was unable to complete your request. "
             "Either the server is overloaded or there is an error in the application."
         )
+    assert harness.usage() is None
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code"),
+    [
+        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded"),
+        (AudioTooLargeServiceError("Audio size larger than 30 mb"), 413, "audio_too_large"),
+        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type"),
+        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text"),
+        (SpeechToTextDisabledServiceError(), 400, "speech_to_text_disabled"),
+    ],
+)
+def test_transcription_errors_keep_specific_codes_without_recording_usage(
+    harness: _Harness, error: Exception, status: int, code: str
+) -> None:
+    # Only transcription validates the upload and needs a speech-to-text model; synthesis documents none of these.
+    harness.runtime.error = error
+    body = _assert_error(harness.post(_ASR), status, code)
+    if code == "audio_too_large":
+        assert str(error) in str(body["message"])
     assert harness.usage() is None
 
 

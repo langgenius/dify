@@ -59,6 +59,8 @@ register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscript
 
 
 def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Translate the errors both audio directions share: app definition, model provider, agent version."""
+
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
@@ -68,18 +70,6 @@ def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except AppModelConfigBrokenError as error:
             logger.exception("App model config broken")
             raise AppUnavailableError() from error
-        except NoAudioUploadedServiceError as error:
-            raise NoAudioUploadedError() from error
-        except AudioTooLargeServiceError as error:
-            raise AudioTooLargeError(str(error)) from error
-        except UnsupportedAudioTypeServiceError as error:
-            raise UnsupportedAudioTypeError() from error
-        except ProviderNotSupportSpeechToTextServiceError as error:
-            raise ProviderNotSupportSpeechToTextError() from error
-        except ProviderNotSupportTextToSpeechServiceError as error:
-            raise ProviderNotSupportTextToSpeechError() from error
-        except SpeechToTextDisabledServiceError as error:
-            raise SpeechToTextDisabledError() from error
         except ProviderTokenNotInitError as error:
             raise ProviderNotInitializeError(error.description) from error
         except QuotaExceededError as error:
@@ -99,18 +89,55 @@ def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return document_errors(
         decorated,
         AppUnavailableError,
-        NoAudioUploadedError,
-        AudioTooLargeError,
-        UnsupportedAudioTypeError,
-        ProviderNotSupportSpeechToTextError,
-        ProviderNotSupportTextToSpeechError,
-        SpeechToTextDisabledError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
         ProviderModelCurrentlyNotSupportError,
         CompletionRequestError,
         AgentVersionNotFoundHTTPError,
     )
+
+
+def _speech_to_text_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Transcription also validates the upload and needs a speech-to-text model."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except NoAudioUploadedServiceError as error:
+            raise NoAudioUploadedError() from error
+        except AudioTooLargeServiceError as error:
+            raise AudioTooLargeError(str(error)) from error
+        except UnsupportedAudioTypeServiceError as error:
+            raise UnsupportedAudioTypeError() from error
+        except ProviderNotSupportSpeechToTextServiceError as error:
+            raise ProviderNotSupportSpeechToTextError() from error
+        except SpeechToTextDisabledServiceError as error:
+            raise SpeechToTextDisabledError() from error
+
+    return _audio_errors(
+        document_errors(
+            decorated,
+            NoAudioUploadedError,
+            AudioTooLargeError,
+            UnsupportedAudioTypeError,
+            ProviderNotSupportSpeechToTextError,
+            SpeechToTextDisabledError,
+        )
+    )
+
+
+def _text_to_speech_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Synthesis needs a text-to-speech model."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except ProviderNotSupportTextToSpeechServiceError as error:
+            raise ProviderNotSupportTextToSpeechError() from error
+
+    return _audio_errors(document_errors(decorated, ProviderNotSupportTextToSpeechError))
 
 
 @console_ns.route(
@@ -127,7 +154,6 @@ class ChatAudioApi(Resource):
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderNotSupportSpeechToTextError,
-        ProviderNotSupportTextToSpeechError,
         ProviderQuotaExceededError,
         SpeechToTextDisabledError,
         UnsupportedAudioTypeError,
@@ -141,7 +167,7 @@ class ChatAudioApi(Resource):
         audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
         return self._transcribe(installed_app, audio)
 
-    @_audio_errors
+    @_speech_to_text_errors
     def _transcribe(self, installed_app: InstalledAppRef, audio: AudioUpload | None) -> dict[str, object]:
         """Transcribe an upload; None lets the audio service report a missing file."""
         transcript = application_services().app_audio.transcript_asr(
@@ -165,7 +191,7 @@ class ChatTextApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(TextToAudioPayload)
-    @_audio_errors
+    @_text_to_speech_errors
     def post(
         self, payload: TextToAudioPayload, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> Response | None:
