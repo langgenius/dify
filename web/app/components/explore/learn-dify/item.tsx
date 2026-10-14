@@ -1,7 +1,6 @@
 'use client'
 
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -11,9 +10,9 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type LearnDifyItemProps = {
   canCreate: boolean
-  item: App
-  onCreate?: (app: App) => void
-  onTry?: (params: TryAppSelection) => void
+  item: RecommendedAppResponse
+  onCreate?: (app: RecommendedAppResponse) => void
+  onTry?: (app: RecommendedAppResponse) => void
 }
 
 const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps) => {
@@ -24,6 +23,14 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
   const appNameId = React.useId()
   const appDescriptionId = React.useId()
   const appBasicInfo = item.app
+  const appName = appBasicInfo?.name ?? ''
+  const appMode = appBasicInfo?.mode ?? ''
+  const appIconType =
+    appBasicInfo?.icon_type === 'image' ||
+    appBasicInfo?.icon_type === 'emoji' ||
+    appBasicInfo?.icon_type === 'link'
+      ? appBasicInfo.icon_type
+      : null
   const canViewApp = deploymentEdition === 'CLOUD'
   const canShowCreate = canCreate && !!onCreate
   const isClickable = canViewApp || canShowCreate
@@ -31,12 +38,12 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
   const handleTryApp = () => {
     trackEvent('preview_template', {
       template_id: item.app_id,
-      template_name: appBasicInfo.name,
-      template_mode: appBasicInfo.mode,
-      template_categories: item.categories,
+      template_name: appName,
+      template_mode: appMode,
+      template_categories: item.categories ?? [],
       page: 'explore',
     })
-    onTry?.({ appId: item.app_id, app: item })
+    onTry?.(item)
   }
   const handleCardClick = () => {
     if (canViewApp) {
@@ -67,13 +74,13 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
         <AppIcon
           decorative
           size="large"
-          iconType={appBasicInfo.icon_type}
-          icon={appBasicInfo.icon}
-          background={appBasicInfo.icon_background}
-          imageUrl={appBasicInfo.icon_url}
+          iconType={appIconType}
+          icon={appBasicInfo?.icon ?? ''}
+          background={appBasicInfo?.icon_background ?? ''}
+          imageUrl={appBasicInfo?.icon_url ?? ''}
         />
         <h3 id={appNameId} className="w-full truncate system-md-semibold text-text-secondary">
-          {appBasicInfo.name}
+          {appName}
         </h3>
       </div>
       <p

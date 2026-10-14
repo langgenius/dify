@@ -30,7 +30,7 @@ type InstitutionFieldProps = {
 }
 
 const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
   const inputId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const [isPopupOpen, setIsPopupOpen] = useState(false)

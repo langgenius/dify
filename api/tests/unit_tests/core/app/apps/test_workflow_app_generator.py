@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session, sessionmaker
 import core.app.apps.workflow.app_generator as app_generator_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -23,6 +23,14 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from tests.unit_tests.model_factories import make_workflow
+
+
+@pytest.fixture(autouse=True)
+def disable_trace_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Construct real trace managers without provider lookup or background delivery."""
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda app_id: None)
+    monkeypatch.setattr(TraceQueueManager, "start_timer", lambda self: None)
+    monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
 
 
 def _workflow(
@@ -39,6 +47,7 @@ def _workflow(
         kind=kind,
         version="1",
         created_by="creator",
+        graph={"nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}], "edges": []},
     )
 
 
@@ -93,7 +102,7 @@ def _generate_entity(
         user_id=end_user.id,
         stream=stream,
         invoke_from=invoke_from,
-        trace_manager=MagicMock(spec=TraceQueueManager),
+        trace_manager=TraceQueueManager(app_id=app.id, user_id=end_user.id),
         workflow_execution_id="run",
     )
 
@@ -121,24 +130,6 @@ def _repositories(
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         ),
     )
-
-
-def test_should_prepare_user_inputs_defaults_to_true():
-    args = {"inputs": {}}
-
-    assert WorkflowAppGenerator()._should_prepare_user_inputs(args)
-
-
-def test_should_prepare_user_inputs_skips_when_flag_truthy():
-    args = {"inputs": {}, SKIP_PREPARE_USER_INPUTS_KEY: True}
-
-    assert not WorkflowAppGenerator()._should_prepare_user_inputs(args)
-
-
-def test_should_prepare_user_inputs_keeps_validation_when_flag_false():
-    args = {"inputs": {}, SKIP_PREPARE_USER_INPUTS_KEY: False}
-
-    assert WorkflowAppGenerator()._should_prepare_user_inputs(args)
 
 
 def test_ensure_snippet_start_node_in_worker_returns_standard_workflow_without_lookup(
@@ -213,10 +204,6 @@ def test_generate_includes_parent_trace_context_in_extras(
     )
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
-    )
-    monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.TraceQueueManager",
-        MagicMock(return_value=MagicMock(spec=TraceQueueManager)),
     )
     repository_tenant_ids: dict[str, str] = {}
     workflow_execution_factory = app_generator_module.DifyCoreRepositoryFactory.create_workflow_execution_repository

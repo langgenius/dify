@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
@@ -8,7 +9,7 @@ type TitleInputProps = {
 }
 
 export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const inputId = useId()
   const [localValue, setLocalValue] = useState(value)
 
@@ -42,7 +43,7 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
 
   return (
     <div className="mr-2 min-w-0 grow">
-      <label htmlFor={inputId} className="block px-1 system-xs-medium text-text-secondary">
+      <label htmlFor={inputId} className="sr-only">
         {t(($) => $['common.nodeTitle'], { ns: 'workflow' })}
       </label>
       <input
@@ -62,9 +63,10 @@ TitleInput.displayName = 'TitleInput'
 type DescriptionInputProps = {
   value: string
   onChange: (value: string) => void
+  inputRef?: Ref<HTMLTextAreaElement>
 }
-export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps) => {
-  const { t } = useTranslation()
+export const DescriptionInput = memo(({ value, onChange, inputRef }: DescriptionInputProps) => {
+  const { t } = useTranslation(['workflow'])
   const inputId = useId()
   const [focus, setFocus] = useState(false)
   const handleFocus = useCallback(() => {
@@ -83,6 +85,7 @@ export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps
         className={`group flex max-h-15 overflow-y-auto rounded-lg bg-components-panel-bg px-2 py-1.25 leading-0 ${focus && 'shadow-xs!'} `}
       >
         <Textarea
+          ref={inputRef}
           id={inputId}
           value={value}
           onChange={(e) => onChange(e.target.value)}

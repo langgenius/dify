@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,13 +8,12 @@ import ConfigModalFormFields from '../form-fields'
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
-  const React = await import('react')
   return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const ns = options?.ns as string | undefined
         return ns ? `${ns}.${key}` : key
-      }),
+      }) as TFunction<['appDebug']>,
       i18n: { language: 'en', changeLanguage: vi.fn() },
     }),
     Trans: withSelectorKeyProps(
@@ -100,7 +100,7 @@ vi.mock('../../config-string', () => ({
   ),
 }))
 
-const t = withSelectorKey((key: string) => key)
+const t = withSelectorKey((key: string) => key) as TFunction<['appDebug']>
 
 const createPayloadChangeHandler = () => vi.fn<(value: unknown) => void>()
 
@@ -142,7 +142,7 @@ const createBaseProps = () => {
       required: false,
       hide: false,
     } as any,
-    t: withSelectorKey(t),
+    t,
     payloadChangeHandlers,
   }
 }
@@ -234,7 +234,7 @@ describe('ConfigModalFormFields', () => {
     const textInputProps = createBaseProps()
     const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
     expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hiddenDescription' }))
+    fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hidden' }))
     expect(await screen.findByText('variableConfig.hiddenDescription')).toBeInTheDocument()
     const docLink = await screen.findByRole('link')
     expect(docLink).toHaveAttribute(

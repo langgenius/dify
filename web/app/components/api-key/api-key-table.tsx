@@ -1,8 +1,8 @@
 import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
-import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type ApiKeyTableProps = {
@@ -10,16 +10,10 @@ type ApiKeyTableProps = {
   canManage: boolean
   // Dataset keys carry a knowledge-base scope; enable the SCOPE column to surface it.
   showScope?: boolean
-  onDeleteRequest: (apiKeyId: string) => void
 }
 
-export function ApiKeyTable({
-  apiKeys,
-  canManage,
-  showScope = false,
-  onDeleteRequest,
-}: ApiKeyTableProps) {
-  const { t } = useTranslation()
+export function ApiKeyTable({ apiKeys, canManage, showScope = false }: ApiKeyTableProps) {
+  const { t } = useTranslation(['appApi', 'common', 'time'])
   const { formatTime } = useTimestamp()
   const maskToken = (token: string) => `${token.slice(0, 3)}...${token.slice(-20)}`
 
@@ -63,27 +57,31 @@ export function ApiKeyTable({
               <td className="truncate px-3 py-2">
                 {formatTime(
                   Number(apiKey.created_at),
-                  t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                  t(($) => $['dateFormats.withSeconds'], { ns: 'time' }) as string,
                 )}
               </td>
               <td className="truncate px-3 py-2">
                 {apiKey.last_used_at
                   ? formatTime(
                       Number(apiKey.last_used_at),
-                      t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      t(($) => $['dateFormats.withSeconds'], { ns: 'time' }) as string,
                     )
                   : t(($) => $.never, { ns: 'appApi' })}
               </td>
               <td className="px-6 py-1">
                 <div className="flex justify-end gap-1">
-                  <CopyFeedback content={apiKey.token} />
                   {canManage && (
-                    <IconButton
-                      aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${maskToken(apiKey.token)}`}
-                      onClick={() => onDeleteRequest(apiKey.id)}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                    </IconButton>
+                    <AlertDialogTrigger
+                      id={apiKey.id}
+                      payload={apiKey.id}
+                      render={
+                        <IconButton
+                          aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${maskToken(apiKey.token)}`}
+                        >
+                          <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                        </IconButton>
+                      }
+                    />
                   )}
                 </div>
               </td>

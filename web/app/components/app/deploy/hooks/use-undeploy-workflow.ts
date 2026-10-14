@@ -8,7 +8,7 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 export function useUndeployWorkflow(appId: string) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
   const { mutateAsync } = useMutation(
     consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions(),
   )

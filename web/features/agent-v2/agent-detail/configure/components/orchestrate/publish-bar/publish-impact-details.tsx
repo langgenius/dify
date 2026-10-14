@@ -24,7 +24,7 @@ export function AgentPublishImpactDetails({
   agentName,
   references,
 }: AgentPublishImpactDetailsProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const titleId = useId()
 
   return (

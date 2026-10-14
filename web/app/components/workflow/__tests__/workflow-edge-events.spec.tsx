@@ -1,5 +1,6 @@
 import type { Edge, Node } from '../types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
 import { FlowType } from '@/types/common'
@@ -157,7 +158,7 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
 
@@ -772,13 +773,16 @@ describe('Workflow edge event wiring', () => {
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
+    const onCancel = vi.fn()
     const { store } = renderSubject({
       initialStoreState: {
         showConfirm: {
           title: 'Confirm title',
           desc: 'Confirm description',
           onConfirm,
+          onCancel,
         },
       },
     })
@@ -787,13 +791,14 @@ describe('Workflow edge event wiring', () => {
     expect(screen.getByText('Confirm title')).toBeInTheDocument()
     expect(screen.getByText('Confirm description')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
     expect(store.getState().showConfirm).toBeUndefined()
     expect(onConfirm).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call showConfirm.onConfirm when confirm is clicked', () => {
@@ -848,7 +853,7 @@ describe('Workflow edge event wiring', () => {
 
     await waitFor(() => {
       expect(toastInfoMock).toHaveBeenCalledWith(
-        'workflow.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
+        'workflowHistory.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
       )
     })
   })

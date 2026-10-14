@@ -192,10 +192,10 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    expect(screen.getByText('common.members.adminTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.editorTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.normalTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.datasetOperatorTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.adminTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.editorTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.normalTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.datasetOperatorTip')).toBeInTheDocument()
     expect(screen.queryByText('permission.role.noDescription')).not.toBeInTheDocument()
   })
 })

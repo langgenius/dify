@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { AgentConfigureComposerScope } from '../components/composer-session'
 import { useAgentConfigureData } from '../hooks'
@@ -535,10 +536,26 @@ vi.mock('../components/preview/header', () => ({
 }))
 
 vi.mock('../components/preview/versions-panel', () => ({
-  AgentPreviewVersionsPanel: (props: { onSelectVersion: (versionId: string) => void }) => (
-    <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>
-      select version
-    </button>
+  AgentPreviewVersionsPanel: (props: {
+    onBeforeRestore?: () => Promise<void>
+    onSelectVersion: (versionId: string | null) => void
+    onVersionRestored?: () => Promise<void>
+  }) => (
+    <>
+      <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>
+        select version
+      </button>
+      <button
+        type="button"
+        onClick={async () => {
+          await props.onBeforeRestore?.()
+          await props.onVersionRestored?.()
+          props.onSelectVersion(null)
+        }}
+      >
+        restore from version menu
+      </button>
+    </>
   ),
 }))
 
@@ -1897,7 +1914,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: undefined as unknown,
         dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
+        error: createHttpError(new Response(null, { status: 404 })),
         isFetching: false,
         isError: true,
         isPending: false,
@@ -2271,7 +2288,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: undefined as unknown,
         dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
+        error: createHttpError(new Response(null, { status: 404 })),
         isFetching: false,
         isError: true,
         isPending: false,
@@ -2343,7 +2360,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: undefined as unknown,
         dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
+        error: createHttpError(new Response(null, { status: 404 })),
         isFetching: false,
         isError: true,
         isPending: false,
@@ -2360,7 +2377,7 @@ describe('AgentConfigurePage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
-        expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+        expect(toastMock.error).toHaveBeenCalledWith('modelProvider.modelProvider.selectModel')
       })
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
@@ -2857,6 +2874,64 @@ describe('AgentConfigurePage', () => {
         'publish:yes',
       )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+    })
+
+    it('should save pending draft edits before restoring from the version menu and rebase the composer', async () => {
+      const user = userEvent.setup()
+      const queryClient = createQueryClient()
+      const draftSave = createDeferredPromise<{ agent_soul: object }>()
+      mocks.saveComposerDraft.mockReturnValue(draftSave.promise)
+      const refetchComposer = vi.fn(async () => {
+        mocks.queryState.composer = {
+          ...mocks.queryState.composer,
+          data: {
+            agent_soul: {
+              prompt: { system_prompt: 'restored prompt' },
+            },
+          },
+        }
+        return {}
+      })
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: { system_prompt: 'draft prompt' },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchComposer,
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
+      await user.click(screen.getByRole('button', { name: 'open versions' }))
+      await user.click(screen.getByRole('button', { name: 'restore from version menu' }))
+
+      expect(mocks.saveComposerDraft).toHaveBeenCalledTimes(1)
+      expect(refetchComposer).not.toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:edited draft prompt',
+      )
+
+      draftSave.resolve({ agent_soul: {} })
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:restored prompt',
+        )
+      })
+      expect(refetchComposer).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
     })
 
     it('should rebase the composer from the restored version', async () => {

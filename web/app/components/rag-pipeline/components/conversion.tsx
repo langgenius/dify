@@ -1,10 +1,10 @@
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -25,7 +25,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
 const Conversion = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { datasetId } = useParams()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const { data: currentUserId } = useSuspenseQuery({
@@ -129,7 +129,7 @@ const Conversion = () => {
               {confirmContent}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -140,7 +140,7 @@ const Conversion = () => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

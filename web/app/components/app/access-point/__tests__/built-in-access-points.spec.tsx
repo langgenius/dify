@@ -1,5 +1,12 @@
+import type { ReactElement } from 'react'
+import type { AppModeEnum } from '@/types/app'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { render as renderWithConsole } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { BuiltInAccessPoints } from '../built-in-access-points'
 
 const mocks = vi.hoisted(() => ({
@@ -27,22 +34,19 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock()
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        webapp_auth: { enabled: true },
-      },
-    }),
-  }
-})
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({ appDetail: mocks.appInfo }),
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({ queryKey: ['system-features'] }),
 }))
+
+function render(ui: ReactElement) {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(['system-features'], { webapp_auth: { enabled: true } })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppModeEnum }),
+  )
+  return renderWithConsole(ui, { wrapper: createQueryClientWrapper(queryClient) })
+}
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
@@ -57,9 +61,8 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('../shared/use-access-point-actions', () => ({
   useAccessPointActions: () => ({
-    handleResult: vi.fn(),
     refreshAppDetail: vi.fn(),
-    saveSiteConfig: vi.fn(),
+    saveSiteConfig: vi.fn().mockResolvedValue(true),
   }),
 }))
 
@@ -180,7 +183,7 @@ describe('BuiltInAccessPoints', () => {
     )
 
     expect(mocks.webCard).toHaveBeenCalledWith(
-      expect.objectContaining({ canManageAccess: false, canManageAccessPoint: true }),
+      expect.objectContaining({ canManageAccessPoint: true }),
     )
     expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ canManage: true }))
     expect(mocks.mcpCard).toHaveBeenCalledWith(
@@ -283,8 +286,8 @@ describe('BuiltInAccessPoints', () => {
       retry: (failureCount: number, error: unknown) => boolean
     }
 
-    expect(options.retry(0, new Response(null, { status: 403 }))).toBe(false)
-    expect(options.retry(0, new Response(null, { status: 500 }))).toBe(true)
-    expect(options.retry(3, new Response(null, { status: 500 }))).toBe(false)
+    expect(options.retry(0, createHttpError(new Response(null, { status: 403 })))).toBe(false)
+    expect(options.retry(0, createHttpError(new Response(null, { status: 500 })))).toBe(true)
+    expect(options.retry(3, createHttpError(new Response(null, { status: 500 })))).toBe(false)
   })
 })

@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, ClassVar, override
+from functools import partial
+from typing import Any, ClassVar, assert_never, override
 
-from flask import current_app
+from flask import current_app, request
 from flask_login import user_logged_in
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.openapi._catalog import CATALOG_HEADER, current_catalog
+from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
@@ -17,10 +20,12 @@ from controllers.openapi.auth.requirements import (
     Requirement,
     ResolveCaller,
 )
+from controllers.openapi.auth.resource_access import CheckResourceAccess
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
+from machinery.context import AppRequestContext
 from models.account import Account
 from models.model import EndUser
 
@@ -52,15 +57,54 @@ class Pipeline:
         for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
         with mounted(subject, auth, ctx):
-            return call(ctx=ctx)
+            # Bind handler arguments while the admission Session is still open.
+            handler_call: Callable[[], Any]
+            match spec.context:
+                case None:
+                    handler_call = call
+                case "orm":
+                    handler_call = partial(call, ctx=ctx)
+                case "workspace":
+                    handler_call = partial(call, ctx=ctx.request_context)
+                case "app":
+                    app_context = AppRequestContext(tenant_id=ctx.app.tenant_id, app_id=ctx.app.id)
+                    handler_call = partial(call, ctx=app_context)
+                case unexpected:
+                    assert_never(unexpected)
+
+            if spec.context != "orm":
+                session.commit()
+                session.close()
+            return handler_call()
 
 
 def pipeline_for_subject(subject: Subject) -> Pipeline:
     return _PIPELINES[type(subject)]
 
 
+class _RequiresCurrentCatalog(Requirement):
+    """The client names the catalog it built the request from, and a request
+    built from any other catalog - or from none - is refused before a handler
+    runs, so a tampered or stale local copy can never pick the route. Fixed on
+    every pipeline rather than declared per route, so no endpoint can leave it
+    out; `_catalog` and `_version` are unguarded and stay reachable to recover.
+    """
+
+    rank = Rank.FIRST
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        _, fingerprint = current_catalog()
+        if request.headers.get(CATALOG_HEADER) != fingerprint:
+            raise CatalogStale()
+
+
 class AccountPipeline(Pipeline, serves=AccountSubject):
-    fixed = (ResolveCaller(),)
+    fixed = (_RequiresCurrentCatalog(), ResolveCaller())
+
+
+class ResourceAccessPipeline(Pipeline, serves=ResourceAccessSubject):
+    fixed = (_RequiresCurrentCatalog(), CheckResourceAccess(), ResolveCaller())
 
 
 class _RequiresEnterprise(Requirement):
@@ -80,6 +124,7 @@ class _RequiresEnterprise(Requirement):
 
 class ExternalSsoPipeline(Pipeline, serves=ExternalSsoSubject):
     fixed = (
+        _RequiresCurrentCatalog(),
         _RequiresEnterprise(),
         ResolveCaller(),
     )

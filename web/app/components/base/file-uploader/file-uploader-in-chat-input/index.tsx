@@ -10,16 +10,16 @@ type FileUploaderInChatInputProps = {
   readonly?: boolean
 }
 const FileUploaderInChatInput = ({ fileConfig, readonly }: FileUploaderInChatInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const renderTrigger = useCallback(() => {
     return (
       <button
         type="button"
         aria-label={t(($) => $['fileUploader.uploadFromComputer'], { ns: 'common' })}
         className={cn(
-          'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg p-1.5 text-text-tertiary outline-hidden',
+          'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg p-1.5 text-text-tertiary',
           'hover:bg-state-base-hover hover:text-text-secondary',
-          'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+          'focus-visible:ring-inset',
           'data-popup-open:bg-state-base-hover',
           'disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
         )}

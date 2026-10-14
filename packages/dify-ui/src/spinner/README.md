@@ -11,9 +11,8 @@ accessible name. It is always hidden from assistive technology. Do not place a s
 indicator inside a loading button.
 
 Both exports occupy only their own size (12, 16, or 20 pixels; default 16). `className` styles that
-size and color, not an enclosing page or panel. The four-square artwork, opacity sequence, two-second
-cycle, and reduced-motion still frame preserve the former Web Loading visual. The component
-retains its existing blue in both themes; a palette change is a separate design decision.
+size and color, not an enclosing page or panel. The four-square artwork uses a two-second opacity
+cycle and a still frame for reduced motion. Its default color is blue in both themes.
 
-Web owns loading placeholders, page geometry, translations, and data readiness. Do not add
+Consumers own loading placeholders, page geometry, translations, and data readiness. Do not add
 `app`, `area`, fullscreen, centering, request, delay, or content-replacement props here.

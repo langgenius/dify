@@ -8,7 +8,7 @@ type SendOptions = {
 }
 
 export const useTextGeneration = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [isResponding, setIsResponding] = useState(false)
   const [completion, setCompletion] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)

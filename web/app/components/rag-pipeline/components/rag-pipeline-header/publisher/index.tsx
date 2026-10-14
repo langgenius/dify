@@ -20,7 +20,7 @@ import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline
 import { Popup } from './popup'
 
 const Publisher = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline', 'workflow'])
   const [open, setOpen] = useState(false)
   const [confirmVisible, { setFalse: hideConfirm, setTrue: showConfirm }] = useBoolean(false)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()

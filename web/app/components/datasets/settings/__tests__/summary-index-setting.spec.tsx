@@ -74,7 +74,7 @@ describe('SummaryIndexSetting', () => {
         />,
       )
       // Find and click the switch
-      const switchEl = screen.getByRole('switch')
+      const switchEl = screen.getByRole('switch', { name: `${ns}.form.summaryAutoGen` })
       fireEvent.click(switchEl)
       expect(onChange).toHaveBeenCalledWith({ enable: true })
     })

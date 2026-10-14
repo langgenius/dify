@@ -7,7 +7,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -24,10 +23,7 @@ type Props = Readonly<{
   isShort?: boolean
   onClick?: () => void
   loc?: string
-  labelKey?: Exclude<
-    I18nKeysWithPrefix<'billing'>,
-    'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'
-  >
+  labelKey?: I18nKeysWithPrefix<'billing', 'upgradeBtn.'> | 'triggerLimitModal.upgrade'
 }>
 
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
@@ -42,7 +38,7 @@ const UpgradeBtn: FC<Props> = ({
   loc,
   labelKey,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -87,9 +83,9 @@ const UpgradeBtn: FC<Props> = ({
       className={className}
       style={style}
     >
-      <SparklesSoft
+      <span
         aria-hidden="true"
-        className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+        className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
       />
       <div className="system-xs-medium">
         <span className="p-1">{label}</span>

@@ -6,7 +6,7 @@ import { toast } from '@/app/notifications'
 import { TransferMethod } from '@/types/app'
 
 export const useCheckInputsForms = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const checkInputsForm = useCallback(
     (inputs: Record<string, any>, inputsForm: InputForm[]) => {
       let hasEmptyInput = ''

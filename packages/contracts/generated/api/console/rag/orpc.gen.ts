@@ -73,8 +73,10 @@ import {
   zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
   zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
   zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse,
+  zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
+  zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
   zPostRagPipelineCustomizedTemplatesByTemplateIdPath,
@@ -89,6 +91,7 @@ import {
   zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse,
   zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath,
   zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath,
   zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse,
@@ -128,7 +131,7 @@ import {
   zPostRagPipelinesTransformDatasetsByDatasetIdResponse,
   zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath,
   zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const delete_ = oc
   .route({
@@ -924,7 +927,10 @@ export const patch2 = oc
     tags: ['console'],
   })
   .input(
-    z.object({ params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
+    z.object({
+      body: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
+      params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
+    }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
@@ -1000,7 +1006,12 @@ export const post15 = oc
     summary: 'Sync draft workflow',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath }))
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath,
+    }),
+  )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
 
 export const draft = {
@@ -1244,7 +1255,12 @@ export const patch3 = oc
     summary: 'Update workflow attributes',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
+  .input(
+    z.object({
+      body: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody,
+      params: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
+    }),
+  )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
 
 export const byWorkflowId = {

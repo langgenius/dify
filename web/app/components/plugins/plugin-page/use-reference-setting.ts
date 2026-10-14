@@ -43,7 +43,7 @@ const useCanSetPluginSettings = () => {
 }
 
 export const usePluginSettingsAccess = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -110,7 +110,7 @@ export const usePluginSettingsAccess = () => {
 }
 
 const useReferenceSetting = (category: PluginCategoryEnum) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const permissionAccess = usePluginSettingsAccess()
   const autoUpgradeQuery = usePluginAutoUpgradeSettings(category)
   const data =

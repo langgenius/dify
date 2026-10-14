@@ -1,9 +1,10 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { QueryParam } from './filter'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
@@ -16,7 +17,6 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
@@ -46,12 +46,12 @@ import { AnnotationEnableStatus, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 
 type Props = Readonly<{
-  appDetail: App
+  appDetail: AppDetailWithSite
 }>
 
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
@@ -146,6 +146,7 @@ const Annotation: FC<Props> = (props) => {
       setSelectedIds([])
     } catch (e: any) {
       toast.error(e.message || t(($) => $['api.actionFailed'], { ns: 'common' }))
+      throw e
     }
   }
 
@@ -185,7 +186,10 @@ const Annotation: FC<Props> = (props) => {
                     'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2',
                   )}
                 >
-                  <MessageFast className="size-4 text-util-colors-indigo-indigo-600" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-solid-communication-message-fast size-4 text-util-colors-indigo-indigo-600"
+                  />
                   <div className="system-sm-medium text-text-primary">
                     {t(($) => $.name, { ns: 'appAnnotation' })}
                   </div>
@@ -212,7 +216,6 @@ const Annotation: FC<Props> = (props) => {
                         )
                         await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
                         await fetchAnnotationConfig()
-                        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       }
                     }}
                   ></Switch>
@@ -251,8 +254,12 @@ const Annotation: FC<Props> = (props) => {
           <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
+            appId={appDetail.id}
             list={list}
-            onRemove={handleRemove}
+            onRemoved={() => {
+              fetchList()
+              setControlUpdateList(Date.now())
+            }}
             onView={handleView}
             selectedIds={selectedIds}
             onSelectedIdsChange={setSelectedIds}

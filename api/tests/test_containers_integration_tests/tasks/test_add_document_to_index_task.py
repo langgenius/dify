@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dataset import Dataset, DatasetAutoDisableLog, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.dataset import ChildChunk, Dataset, DatasetAutoDisableLog, DatasetProcessRule, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
 from tasks.add_document_to_index_task import add_document_to_index_task
 
 
@@ -377,56 +377,75 @@ class TestAddDocumentToIndexTask:
         # Refresh dataset to ensure doc_form property reflects the updated document
         db_session_with_containers.refresh(dataset)
 
-        # Create segments with mock child chunks
+        # Persist each segment and its own child chunks
         segments = self._create_test_segments(db_session_with_containers, document, dataset)
 
         # Set up Redis cache key
         indexing_cache_key = f"document_{document.id}_indexing"
         redis_client.set(indexing_cache_key, "processing", ex=300)
 
-        # Mock the get_child_chunks method for each segment
-        with patch.object(DocumentSegment, "get_child_chunks", autospec=True) as mock_get_child_chunks:
-            # Setup mock to return child chunks for each segment
-            mock_child_chunks = []
-            for i in range(2):  # Each segment has 2 child chunks
-                mock_child = MagicMock()
-                mock_child.content = f"child_content_{i}"
-                mock_child.index_node_id = f"child_node_{i}"
-                mock_child.index_node_hash = f"child_hash_{i}"
-                mock_child_chunks.append(mock_child)
-
-            mock_get_child_chunks.return_value = mock_child_chunks
-
-            # Act: Execute the task
-            add_document_to_index_task(document.id)
-
-            # Assert: Verify parent-child index processing
-            mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
-                IndexStructureType.PARENT_CHILD_INDEX
+        rule = DatasetProcessRule(
+            dataset_id=dataset.id,
+            mode=ProcessRuleMode.HIERARCHICAL,
+            rules='{"parent_mode": "paragraph"}',
+            created_by=document.created_by,
+        )
+        db_session_with_containers.add(rule)
+        db_session_with_containers.flush()
+        document.dataset_process_rule_id = rule.id
+        for segment in segments:
+            db_session_with_containers.add_all(
+                [
+                    ChildChunk(
+                        tenant_id=dataset.tenant_id,
+                        dataset_id=dataset.id,
+                        document_id=document.id,
+                        segment_id=segment.id,
+                        position=i,
+                        content=f"child_content_{i}",
+                        word_count=1,
+                        created_by=document.created_by,
+                        index_node_id=f"{segment.index_node_id}-child-{i}",
+                        index_node_hash=f"{segment.index_node_id}-hash-{i}",
+                    )
+                    for i in range(2)
+                ]
             )
-            mock_external_service_dependencies["index_processor"].load.assert_called_once()
+        db_session_with_containers.commit()
 
-            # Verify the load method was called with correct parameters
-            call_args = mock_external_service_dependencies["index_processor"].load.call_args
-            assert call_args is not None
-            documents = call_args[0][1]  # Second argument should be documents list
-            assert len(documents) == 3  # 3 segments
+        # Act: Execute the task
+        add_document_to_index_task(document.id)
 
-            # Verify each document has children
-            for doc in documents:
-                assert hasattr(doc, "children")
-                assert len(doc.children) == 2  # Each document has 2 children
+        # Assert: Verify parent-child index processing
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.PARENT_CHILD_INDEX
+        )
+        mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
-            # Verify database state changes
-            db_session_with_containers.refresh(document)
-            for segment in segments:
-                db_session_with_containers.refresh(segment)
-                assert segment.enabled is True
-                assert segment.disabled_at is None
-                assert segment.disabled_by is None
+        # Verify the load method was called with correct parameters
+        call_args = mock_external_service_dependencies["index_processor"].load.call_args
+        assert call_args is not None
+        documents = call_args[0][1]  # Second argument should be documents list
+        assert len(documents) == 3  # 3 segments
 
-            # Verify redis cache was cleared
-            assert redis_client.exists(indexing_cache_key) == 0
+        # Each parent receives only its own persisted children, in position order.
+        for doc in documents:
+            assert doc.children is not None
+            assert [child.page_content for child in doc.children] == ["child_content_0", "child_content_1"]
+            assert [child.metadata["doc_id"] for child in doc.children] == [
+                f"{doc.metadata['doc_id']}-child-{i}" for i in range(2)
+            ]
+
+        # Verify database state changes
+        db_session_with_containers.refresh(document)
+        for segment in segments:
+            db_session_with_containers.refresh(segment)
+            assert segment.enabled is True
+            assert segment.disabled_at is None
+            assert segment.disabled_by is None
+
+        # Verify redis cache was cleared
+        assert redis_client.exists(indexing_cache_key) == 0
 
     def test_add_document_to_index_with_already_enabled_segments(
         self, db_session_with_containers: Session, mock_external_service_dependencies

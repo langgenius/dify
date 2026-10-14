@@ -26,13 +26,13 @@
     "happy-dom": "catalog:",
     "jotai": "catalog:",
     "jotai-scope": "catalog:",
+    "next": "catalog:",
     "nuqs": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "jotai": "catalog:",

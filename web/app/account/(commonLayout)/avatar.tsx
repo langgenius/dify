@@ -1,5 +1,5 @@
 'use client'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -9,16 +9,14 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 
 export default function AppSelector() {
-  const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
@@ -34,29 +32,23 @@ export default function AppSelector() {
     }),
   )
 
-  const { mutateAsync: logout } = useLogout()
+  const { mutate: logout } = useLogout()
 
   if (!userProfile) return null
-
-  const handleLogout = async () => {
-    await logout()
-
-    resetUser()
-    // Tokens are now stored in cookies and cleared by backend
-
-    router.push('/signin')
-  }
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label={userProfile.name}
         className={cn(
-          'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary outline-hidden',
-          'hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-hover active:opacity-70 data-popup-open:opacity-80',
+          'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary',
+          'hover:opacity-80 active:opacity-70 data-popup-open:opacity-80',
         )}
       >
-        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
+        <Avatar aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -79,11 +71,14 @@ export default function AppSelector() {
                 {userProfile.email}
               </div>
             </div>
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
+            <Avatar aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            </Avatar>
           </div>
         </div>
         <div className="p-1">
-          <DropdownMenuItem className="h-9 justify-start px-3" onClick={handleLogout}>
+          <DropdownMenuItem className="h-9 justify-start px-3" onClick={() => logout()}>
             <span
               aria-hidden="true"
               className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"

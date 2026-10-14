@@ -82,13 +82,10 @@ function Popup({
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const { theme } = useTheme()
   const language = useLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<ModelSelectorPreviewPayload>(),
-    [],
-  )
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<ModelSelectorPreviewPayload>())
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
   const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
   const { data: providerSummary } = useQuery(
@@ -251,7 +248,7 @@ function Popup({
   const searchStatus =
     !filteredModelList.length && installedModelList.length > 0
       ? t(($) => $['modelProvider.selector.noModelFoundForSearch'], {
-          ns: 'common',
+          ns: 'modelProvider',
           query: inputValue,
         })
       : null
@@ -263,7 +260,9 @@ function Popup({
     <>
       <ModelSelectorSearchHeader inputValue={inputValue} onInputValueChange={onInputValueChange} />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
+        <ModelSelectorScrollBody
+          label={t(($) => $['modelProvider.models'], { ns: 'modelProvider' })}
+        >
           {showCreditsExhaustedAlert && (
             <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
           )}
@@ -328,7 +327,7 @@ function Popup({
           <ModelSelectorPreviewCard
             capabilitiesLabel={t(($) => $['model.capabilities'], { ns: 'common' })}
             language={language}
-            payload={payload as ModelSelectorPreviewPayload | undefined}
+            payload={payload}
           />
         )}
       </PreviewCard>
@@ -350,6 +349,11 @@ function ModelSelectorPreviewCard({
   if (!payload) return null
 
   const { provider, modelItem } = payload
+  const modelTypesWithCapabilities: ModelTypeEnum[] = [
+    ModelTypeEnum.textGeneration,
+    ModelTypeEnum.textEmbedding,
+    ModelTypeEnum.rerank,
+  ]
 
   return (
     <PreviewCardContent
@@ -376,9 +380,7 @@ function ModelSelectorPreviewCard({
             <ModelBadge>{sizeFormat(modelItem.model_properties.context_size as number)}</ModelBadge>
           )}
         </div>
-        {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(
-          modelItem.model_type as ModelTypeEnum,
-        ) &&
+        {modelTypesWithCapabilities.includes(modelItem.model_type as ModelTypeEnum) &&
           modelItem.features?.some((feature) =>
             [
               ModelFeatureEnum.vision,

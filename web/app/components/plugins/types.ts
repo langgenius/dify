@@ -1,3 +1,8 @@
+import type {
+  AgentStrategyProviderEntity,
+  DatasourceProviderEntity,
+  EndpointProviderDeclarationResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
@@ -6,21 +11,25 @@ import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n/locale'
 import type { PluginLanguage } from '@/i18n/metadata'
 
-export enum PluginCategoryEnum {
-  tool = 'tool',
-  model = 'model',
-  extension = 'extension',
-  agent = 'agent-strategy',
-  datasource = 'datasource',
-  trigger = 'trigger',
-}
+export const PluginCategoryEnum = {
+  tool: 'tool',
+  model: 'model',
+  extension: 'extension',
+  agent: 'agent-strategy',
+  datasource: 'datasource',
+  trigger: 'trigger',
+} as const
 
-export enum PluginSource {
-  marketplace = 'marketplace',
-  github = 'github',
-  local = 'package',
-  debugging = 'remote',
-}
+export type PluginCategoryEnum = (typeof PluginCategoryEnum)[keyof typeof PluginCategoryEnum]
+
+export const PluginSource = {
+  marketplace: 'marketplace',
+  github: 'github',
+  local: 'package',
+  debugging: 'remote',
+} as const
+
+export type PluginSource = (typeof PluginSource)[keyof typeof PluginSource]
 
 type PluginToolDeclaration = {
   identity: {
@@ -32,32 +41,6 @@ type PluginToolDeclaration = {
     tags: string[]
   }
   credentials_schema: ToolCredential[] // TODO
-}
-
-type PluginEndpointDeclaration = {
-  settings: ToolCredential[]
-  endpoints?: EndpointItem[] | null
-}
-
-type EndpointItem = {
-  path: string
-  method: string
-  hidden?: boolean
-}
-
-export type EndpointListItem = {
-  id: string
-  created_at: string
-  updated_at: string
-  settings: Record<string, any>
-  tenant_id: string
-  plugin_id: string
-  expired_at: string
-  declaration: PluginEndpointDeclaration
-  name: string
-  enabled: boolean
-  url: string
-  hook_id: string
 }
 
 type PluginDeclarationMeta = {
@@ -80,12 +63,12 @@ export type PluginDeclaration = {
   resource: any // useless in frontend
   plugins: any // useless in frontend
   verified: boolean
-  endpoint?: PluginEndpointDeclaration | null
+  endpoint?: EndpointProviderDeclarationResponse | null
   tool?: PluginToolDeclaration
-  datasource?: PluginToolDeclaration
+  datasource?: DatasourceProviderEntity | null
   model: any
   tags: string[]
-  agent_strategy: any
+  agent_strategy?: AgentStrategyProviderEntity | null
   meta: PluginDeclarationMeta
   trigger: PluginTriggerDefinition
 }
@@ -197,11 +180,14 @@ export type PluginManifestInMarket = {
   from: Dependency['type']
 }
 
-export enum SupportedCreationMethods {
-  OAUTH = 'OAUTH',
-  APIKEY = 'APIKEY',
-  MANUAL = 'MANUAL',
-}
+export const SupportedCreationMethods = {
+  OAUTH: 'OAUTH',
+  APIKEY: 'APIKEY',
+  MANUAL: 'MANUAL',
+} as const
+
+export type SupportedCreationMethods =
+  (typeof SupportedCreationMethods)[keyof typeof SupportedCreationMethods]
 
 export type PluginDetail = {
   id: string
@@ -264,11 +250,13 @@ export type Plugin = {
   from: Dependency['type']
 }
 
-export enum PermissionType {
-  everyone = 'everyone',
-  admin = 'admins',
-  noOne = 'noone',
-}
+export const PermissionType = {
+  everyone: 'everyone',
+  admin: 'admins',
+  noOne: 'noone',
+} as const
+
+export type PermissionType = (typeof PermissionType)[keyof typeof PermissionType]
 
 export type Permissions = {
   install_permission: PermissionType
@@ -314,14 +302,17 @@ export type UpdatePluginModalType = UpdatePluginPayload & {
   onSave: () => void | Promise<void>
 }
 
-export enum InstallStepFromGitHub {
-  setUrl = 'url',
-  selectPackage = 'selecting',
-  readyToInstall = 'readyToInstall',
-  uploadFailed = 'uploadFailed',
-  installed = 'installed',
-  installFailed = 'failed',
-}
+export const InstallStepFromGitHub = {
+  setUrl: 'url',
+  selectPackage: 'selecting',
+  readyToInstall: 'readyToInstall',
+  uploadFailed: 'uploadFailed',
+  installed: 'installed',
+  installFailed: 'failed',
+} as const
+
+export type InstallStepFromGitHub =
+  (typeof InstallStepFromGitHub)[keyof typeof InstallStepFromGitHub]
 
 export type InstallState = {
   step: InstallStepFromGitHub
@@ -337,22 +328,16 @@ export type GitHubUrlInfo = {
   repo?: string
 }
 
-// endpoint
-export type EndpointsResponse = {
-  endpoints: EndpointListItem[]
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
-export enum InstallStep {
-  uploading = 'uploading',
-  uploadFailed = 'uploadFailed',
-  readyToInstall = 'readyToInstall',
-  installing = 'installing',
-  installed = 'installed',
-  installFailed = 'failed',
-}
+export const InstallStep = {
+  uploading: 'uploading',
+  uploadFailed: 'uploadFailed',
+  readyToInstall: 'readyToInstall',
+  installing: 'installing',
+  installed: 'installed',
+  installFailed: 'failed',
+} as const
+
+export type InstallStep = (typeof InstallStep)[keyof typeof InstallStep]
 
 type GitHubAsset = {
   id: number
@@ -400,12 +385,14 @@ export type DebugInfo = {
   port: number
 }
 
-export enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  success = 'success',
-  failed = 'failed',
-}
+export const TaskStatus = {
+  pending: 'pending',
+  running: 'running',
+  success: 'success',
+  failed: 'failed',
+} as const
+
+export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus]
 
 export type PluginStatus = {
   plugin_unique_identifier: string
@@ -494,44 +481,6 @@ export type VersionProps = {
   toInstallVersion: string
 }
 
-export type StrategyParamItem = {
-  name: string
-  label: Record<Locale | PluginLanguage, string>
-  help: Record<Locale | PluginLanguage, string>
-  placeholder: Record<Locale | PluginLanguage, string>
-  type: string
-  scope: string
-  required: boolean
-  default: any
-  options: any[]
-  template: {
-    enabled: boolean
-  }
-  auto_generate: {
-    type: string
-  }
-}
-
-export type StrategyDetail = {
-  identity: {
-    author: string
-    name: string
-    icon: string
-    label: Record<Locale | PluginLanguage, string>
-    provider: string
-  }
-  parameters: StrategyParamItem[]
-  description: Record<Locale | PluginLanguage, string>
-  output_schema: Record<string, any>
-  features: AgentFeature[]
-}
-
-const AgentFeature = {
-  HISTORY_MESSAGES: 'history-messages',
-} as const
-
-type AgentFeature = (typeof AgentFeature)[keyof typeof AgentFeature]
-
 type Identity = {
   author: string
   name: string
@@ -542,20 +491,6 @@ type Identity = {
   tags: string[]
 }
 
-type StrategyDeclaration = {
-  identity: Identity
-  plugin_id: string
-  strategies: StrategyDetail[]
-}
-
 export type PluginMeta = {
   version: string // the version of dify sdk
-}
-
-export type StrategyPluginDetail = {
-  provider: string
-  plugin_unique_identifier: string
-  plugin_id: string
-  declaration: StrategyDeclaration
-  meta: PluginMeta
 }

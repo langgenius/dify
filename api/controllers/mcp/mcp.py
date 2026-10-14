@@ -4,7 +4,7 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.mcp import mcp_ns
@@ -13,8 +13,9 @@ from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protoc
 from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
-from models.enums import AppMCPServerStatus, EndUserType
+from models.enums import EndUserType
 from models.model import App, AppMCPServer, AppMode, EndUser
+from services.app.mcp_server_service import AppMCPServerStatus
 
 
 class MCPRequestError(Exception):
@@ -82,7 +83,7 @@ class MCPAppApi(Resource):
             else:
                 return self._protocol_version_error_response(request_id, header_value)
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             # Get MCP server and app
             mcp_server, app = self._get_mcp_server_and_app(server_code, session)
             self._validate_server_status(mcp_server)
@@ -91,9 +92,11 @@ class MCPAppApi(Resource):
             user_input_form = self._get_user_input_form(app, session)
 
             # Handle notification vs request differently
-            return self._process_mcp_message(
+            response = self._process_mcp_message(
                 mcp_request, request_id, app, mcp_server, user_input_form, session, protocol_version
             )
+            session.commit()
+            return response
 
     def _protocol_version_error_response(
         self, request_id: Union[int, str] | None, header_value: str | None
@@ -128,7 +131,7 @@ class MCPAppApi(Resource):
 
     def _validate_server_status(self, mcp_server: AppMCPServer):
         """Validate MCP server status"""
-        if mcp_server.status != AppMCPServerStatus.ACTIVE:
+        if mcp_server.status != AppMCPServerStatus.ACTIVE.value:
             raise MCPRequestError(mcp_types.INVALID_REQUEST, "Server is not active")
 
     def _process_mcp_message(
@@ -192,8 +195,7 @@ class MCPAppApi(Resource):
             app_model_config = app.app_model_config_with_session(session=session)
             if not app_model_config:
                 raise MCPRequestError(mcp_types.INVALID_REQUEST, "App is unavailable")
-            features_dict = app_model_config.to_dict()
-            raw_user_input_form = features_dict.get("user_input_form", [])
+            raw_user_input_form = app_model_config.user_input_form_list
 
         # Convert to VariableEntity objects
         try:
@@ -237,16 +239,15 @@ class MCPAppApi(Resource):
             except ValidationError as e:
                 raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
 
-    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str) -> EndUser | None:
-        """Get end user - manages its own database session"""
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            return session.scalar(
-                select(EndUser)
-                .where(
-                    EndUser.tenant_id == tenant_id, EndUser.session_id == mcp_server_id, EndUser.type == EndUserType.MCP
-                )
-                .limit(1)
-            )
+    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str, session: Session) -> EndUser | None:
+        """Get end user in the caller session"""
+        return session.scalar(
+            select(EndUser)
+            .where(EndUser.tenant_id == tenant_id)
+            .where(EndUser.session_id == mcp_server_id)
+            .where(EndUser.type == EndUserType.MCP)
+            .limit(1)
+        )
 
     def _create_end_user(
         self, client_name: str, tenant_id: str, app_id: str, mcp_server_id: str, session: Session
@@ -275,7 +276,7 @@ class MCPAppApi(Resource):
         protocol_version: str,
     ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
         """Handle MCP request and return response"""
-        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id)
+        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id, session)
 
         if not end_user and isinstance(mcp_request.root, mcp_types.InitializeRequest):
             client_info = mcp_request.root.params.clientInfo

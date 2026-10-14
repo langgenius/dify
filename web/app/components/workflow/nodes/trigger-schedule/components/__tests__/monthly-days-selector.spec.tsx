@@ -7,7 +7,20 @@ describe('trigger-schedule/monthly-days-selector', () => {
     render(<MonthlyDaysSelector selectedDays={[1]} onChange={vi.fn()} />)
 
     expect(
-      screen.getByRole('group', { name: 'workflow.nodes.triggerSchedule.days' }),
+      screen.getByRole('group', { name: 'workflowIntegrations.nodes.triggerSchedule.days' }),
+    ).toBeInTheDocument()
+  })
+
+  it('exposes the selected days as pressed', () => {
+    render(<MonthlyDaysSelector selectedDays={[1, 'last']} onChange={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: '1', pressed: true })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '2', pressed: false })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'workflowIntegrations.nodes.triggerSchedule.lastDay',
+        pressed: true,
+      }),
     ).toBeInTheDocument()
   })
 
@@ -17,9 +30,11 @@ describe('trigger-schedule/monthly-days-selector', () => {
 
     render(<MonthlyDaysSelector selectedDays={[31]} onChange={onChange} />)
 
-    expect(screen.getByText('workflow.nodes.triggerSchedule.lastDayTooltip')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowIntegrations.nodes.triggerSchedule.lastDayTooltip'),
+    ).toBeInTheDocument()
 
-    await user.click(screen.getByText('workflow.nodes.triggerSchedule.lastDay'))
+    await user.click(screen.getByText('workflowIntegrations.nodes.triggerSchedule.lastDay'))
 
     expect(onChange).toHaveBeenCalled()
   })

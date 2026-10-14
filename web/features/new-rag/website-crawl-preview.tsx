@@ -9,19 +9,24 @@ import type { FormEvent } from 'react'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Fieldset } from '@langgenius/dify-ui/fieldset'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { registerPageLeaveGuard } from '@/utils/page-leave-guard'
 import { CrawlSelectionForm } from './crawl-selection-form'
 import { createRequestId } from './request-id'
 import {
@@ -102,17 +107,8 @@ function workflowAttemptKey(run: SourceWorkflowRun) {
   return `${run.id}:${run.executionAttempts}`
 }
 
-function responseStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  if ('status' in error && typeof error.status === 'number') return error.status
-  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data) {
-    return typeof error.data.status === 'number' ? error.data.status : undefined
-  }
-}
-
 function isDefinitiveRequestFailure(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
 }
 
@@ -226,12 +222,7 @@ const CrawlPageList = memo(
             key={page.pageId}
             className="flex items-start gap-2.5 px-4 py-2.5 [contain-intrinsic-size:auto_40px] [content-visibility:auto]"
           >
-            <input
-              type="checkbox"
-              disabled
-              aria-label={page.title || page.sourceUrl}
-              className="mt-0.5 size-4"
-            />
+            <Checkbox disabled aria-label={page.title || page.sourceUrl} className="mt-0.5" />
             <span className="min-w-0">
               <span className="block truncate system-xs-medium text-text-primary">
                 {page.title || page.sourceUrl}
@@ -263,7 +254,7 @@ const CrawlPageList = memo(
 )
 
 function EmptyPreview() {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   return (
     <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular px-6 text-center">
       <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
@@ -292,7 +283,7 @@ export function WebsiteCrawlPreview({
   onDraftFinished?: () => void
   providerName?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const rootUrlErrorId = useId()
   const primaryActionLabelId = useId()
@@ -328,7 +319,7 @@ export function WebsiteCrawlPreview({
   const cancelFingerprintRef = useRef<string | undefined>(undefined)
   const rootUrlInputRef = useRef<HTMLInputElement>(null)
   const sourceNameInputRef = useRef<HTMLInputElement>(null)
-  const pageMapRef = useRef(new Map<string, PreviewPage>())
+  const pageMapRef = useRefWithInit(() => new Map<string, PreviewPage>())
   const pageCursorRef = useRef<string | undefined>(undefined)
   const submittedRef = useRef(false)
   const discardRequestedRef = useRef(false)
@@ -350,7 +341,7 @@ export function WebsiteCrawlPreview({
     pageCursorRef.current = undefined
     setPages([])
     setPagesLoaded(false)
-  }, [])
+  }, [pageMapRef])
 
   const updateRun = useCallback((nextRun: SourceWorkflowRun | undefined) => {
     if (nextRun && pendingCancelRunRef.current?.id === nextRun.id)
@@ -419,14 +410,11 @@ export function WebsiteCrawlPreview({
 
   useEffect(() => {
     if (!dirty) return
-    const preventUnsavedUnload = (event: BeforeUnloadEvent) => {
-      if (submittedRef.current) return
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', preventUnsavedUnload)
-    return () => window.removeEventListener('beforeunload', preventUnsavedUnload)
-  }, [dirty])
+    return registerPageLeaveGuard({
+      message: t(($) => $['newKnowledge.discardSourceChangesDescription']),
+      shouldBlock: () => !submittedRef.current,
+    })
+  }, [dirty, t])
 
   useEffect(() => {
     if ((!dirty && !historyGuardRef.current) || submittedRef.current) return
@@ -842,7 +830,7 @@ export function WebsiteCrawlPreview({
       disposed = true
       if (timer) clearTimeout(timer)
     }
-  }, [knowledgeSpaceId, runId, shouldPoll, updateRun])
+  }, [knowledgeSpaceId, runId, shouldPoll, updateRun, pageMapRef])
 
   const stop = async (targetRun = run) => {
     if (!targetRun || isTerminal(targetRun.state)) return true
@@ -1046,7 +1034,7 @@ export function WebsiteCrawlPreview({
         {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
       <form onSubmit={handleSubmit}>
-        <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
+        <Fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="system-xs-medium text-text-secondary">
@@ -1120,11 +1108,11 @@ export function WebsiteCrawlPreview({
             </button>
             {optionsExpanded && (
               <div className="grid grid-cols-1 gap-3 border-t border-divider-subtle p-3 sm:grid-cols-2">
-                <label className="flex h-9 items-center gap-2 system-xs-regular text-text-secondary">
-                  <input
-                    type="checkbox"
+                <label className="flex h-9 cursor-pointer items-center gap-2 system-xs-regular text-text-secondary has-data-disabled:cursor-not-allowed">
+                  <Checkbox
                     checked={includeSubpages}
-                    onChange={(event) => setIncludeSubpages(event.target.checked)}
+                    disabled={locked}
+                    onCheckedChange={setIncludeSubpages}
                   />
                   {t(($) => $['newKnowledge.includeSubpages'])}
                 </label>
@@ -1156,7 +1144,7 @@ export function WebsiteCrawlPreview({
               </div>
             )}
           </div>
-        </fieldset>
+        </Fieldset>
 
         {!showSuccess && (
           <Button
@@ -1338,14 +1326,14 @@ export function WebsiteCrawlPreview({
               </p>
             )}
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={discarding}>
               {t(($) => $['newKnowledge.keepEditing'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={discarding} onClick={() => void discardAndCancel()}>
               {t(($) => $['newKnowledge.discardSourceChangesConfirm'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </section>

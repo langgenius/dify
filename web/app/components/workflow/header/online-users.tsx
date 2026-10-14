@@ -2,7 +2,7 @@
 
 import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
+import { getAvatarInitial } from '@/utils/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
@@ -48,7 +49,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
   const appId = useStore((s) => s.appId)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
@@ -64,8 +65,8 @@ const OnlineUsers = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflow' })
-  const currentUserSuffix = t(($) => $['members.you'], { ns: 'common' })
+  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
+  const currentUserSuffix = t(($) => $['members.you'], { ns: 'workspaceMembers' })
 
   const renderDisplayName = (user: OnlineUser, baseClassName: string, suffixClassName: string) => {
     const baseName = user.username || fallbackUsername
@@ -122,15 +123,12 @@ const OnlineUsers = () => {
             const avatarUrl = getAvatarUrl(user)
             const displayName = user.username || fallbackUsername
             const avatar = (
-              <AvatarRoot size="sm" className="ring-1 ring-components-panel-bg">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                <AvatarFallback
-                  size="sm"
-                  style={userColor ? { backgroundColor: userColor } : undefined}
-                >
-                  {displayName?.[0]?.toLocaleUpperCase()}
+              <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
+                <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
+                  {getAvatarInitial(displayName)}
                 </AvatarFallback>
-              </AvatarRoot>
+                <AvatarImage src={avatarUrl || undefined} alt="" />
+              </Avatar>
             )
             const triggerClassName = cn(
               'relative flex size-6 items-center justify-center',
@@ -143,12 +141,18 @@ const OnlineUsers = () => {
                 <TooltipTrigger
                   render={
                     isCurrentUser ? (
-                      <div className={triggerClassName} style={triggerStyle}>
+                      <div
+                        role="img"
+                        aria-label={displayName}
+                        className={triggerClassName}
+                        style={triggerStyle}
+                      >
                         {avatar}
                       </div>
                     ) : (
                       <button
                         type="button"
+                        aria-label={displayName}
                         className={triggerClassName}
                         style={triggerStyle}
                         onClick={() => jumpToUserCursor(user.user_id)}
@@ -158,15 +162,10 @@ const OnlineUsers = () => {
                     )
                   }
                 />
-                <TooltipContent
-                  placement="bottom"
-                  sideOffset={4}
-                  className="flex h-7 max-w-55 min-w-0 items-center justify-center rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
-                >
-                  {renderDisplayName(
-                    user,
-                    'max-w-full system-xs-medium text-text-secondary',
-                    'text-text-quaternary',
+                <TooltipContent placement="bottom" sideOffset={4} className="max-w-55">
+                  {displayName}
+                  {isCurrentUser && (
+                    <span className="ml-1 text-text-quaternary">{currentUserSuffix}</span>
                   )}
                 </TooltipContent>
               </Tooltip>
@@ -220,15 +219,14 @@ const OnlineUsers = () => {
                       }}
                     >
                       <div className="relative">
-                        <AvatarRoot size="sm">
-                          {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                        <Avatar size="sm" aria-hidden="true">
                           <AvatarFallback
-                            size="sm"
                             style={userColor ? { backgroundColor: userColor } : undefined}
                           >
-                            {displayName?.[0]?.toLocaleUpperCase()}
+                            {getAvatarInitial(displayName)}
                           </AvatarFallback>
-                        </AvatarRoot>
+                          <AvatarImage src={avatarUrl || undefined} alt="" />
+                        </Avatar>
                       </div>
                       {renderDisplayName(
                         user,

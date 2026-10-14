@@ -76,7 +76,7 @@ const PluginsPanelResults = ({
   showCategoryEmptyState,
   tagFilterValue,
 }: PluginsPanelResultsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'workflow'])
   const loadMoreAnchorRef = useRef<HTMLDivElement>(null)
   const loadNextPageRequestedRef = useRef(false)
 
@@ -157,7 +157,7 @@ const PluginsPanelResults = ({
                 <button
                   key={collection.id}
                   type="button"
-                  aria-pressed={currentBuiltinToolID === collection.id}
+                  aria-current={currentBuiltinToolID === collection.id ? 'true' : undefined}
                   className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-left"
                   data-step-by-step-tour-target={
                     filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined

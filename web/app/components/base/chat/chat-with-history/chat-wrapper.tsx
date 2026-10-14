@@ -1,7 +1,7 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -23,6 +23,7 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
+import { getAvatarInitial } from '@/utils/avatar'
 import { formatBooleanInputs } from '@/utils/model-config'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
@@ -30,7 +31,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 
 const ChatWrapper = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['share'])
   const {
     appParams,
     appPrevChatTree,
@@ -119,7 +120,9 @@ const ChatWrapper = () => {
 
         if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
+        const inputValue = inputsFormValue?.[variable]
+        if (inputValue === undefined || inputValue === null || inputValue === '')
+          hasEmptyInput = label as string
 
         if (
           (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -466,11 +469,10 @@ const ChatWrapper = () => {
         renderAgentContent={renderAgentContent}
         questionIcon={
           initUserVariables?.avatar_url ? (
-            <Avatar
-              avatar={initUserVariables.avatar_url}
-              name={initUserVariables.name || 'user'}
-              size="xl"
-            />
+            <Avatar size="xl" role="img" aria-label={initUserVariables.name || 'user'}>
+              <AvatarFallback>{getAvatarInitial(initUserVariables.name || 'user')}</AvatarFallback>
+              <AvatarImage src={initUserVariables.avatar_url} alt="" />
+            </Avatar>
           ) : undefined
         }
       />

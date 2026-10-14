@@ -22,7 +22,7 @@ type Props = Readonly<{
 }>
 
 const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange, onRemove }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
 
   const list = outputKeyOrders.map((key) => {
     return {

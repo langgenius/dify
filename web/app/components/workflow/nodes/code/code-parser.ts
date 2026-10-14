@@ -5,7 +5,7 @@ import { CodeLanguage } from './types'
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {
   if (language === CodeLanguage.json) return []
 
-  const patterns: Record<Exclude<CodeLanguage, CodeLanguage.json>, RegExp> = {
+  const patterns: Record<Exclude<CodeLanguage, typeof CodeLanguage.json>, RegExp> = {
     [CodeLanguage.python3]: /def\s+main\s*\((.*?)\)/,
     [CodeLanguage.javascript]: /function\s+main\s*\((.*?)\)/,
   }

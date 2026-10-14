@@ -1,5 +1,4 @@
 import type { InputVar } from '@/app/components/workflow/types'
-import type { App, AppSSO } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -7,6 +6,7 @@ import { useStore } from '@/app/components/app/store'
 import { InputVarType } from '@/app/components/workflow/types'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import ConfigModal from '../index'
 
@@ -126,9 +126,7 @@ describe('ConfigModal logic', () => {
     vi.clearAllMocks()
     latestFormProps = null
     useStore.setState({
-      appDetail: {
-        mode: AppModeEnum.CHAT,
-      } as App & Partial<AppSSO>,
+      appDetail: createAppDetailFixture({ mode: AppModeEnum.CHAT }),
     })
   })
 
@@ -163,7 +161,7 @@ describe('ConfigModal logic', () => {
 
     fireEvent.click(screen.getByTestId('valid-json-change'))
     await waitFor(() => {
-      expect(screen.getByTestId('payload-schema')).toHaveTextContent(/"foo": "bar"/)
+      expect(screen.getByTestId('payload-schema').textContent).toMatch(/"foo": "bar"/)
     })
 
     fireEvent.click(screen.getByTestId('invalid-json-change'))

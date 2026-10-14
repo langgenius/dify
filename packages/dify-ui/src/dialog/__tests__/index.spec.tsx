@@ -39,8 +39,9 @@ describe('Dialog wrapper', () => {
         </Dialog>,
       )
 
-      await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Title')
-      await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Description')
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Dialog Title' }))
+        .toHaveAccessibleDescription('Dialog Description')
     })
 
     it('should apply backdrop props to a nested dialog backdrop', async () => {
@@ -74,14 +75,14 @@ describe('Dialog wrapper', () => {
     it('should connect a detached trigger to the dialog', async () => {
       const handle = createDialogHandle()
       const screen = await render(
-        <>
+        <React.Fragment>
           <DialogTrigger handle={handle}>Open dialog</DialogTrigger>
           <Dialog handle={handle}>
             <DialogContent>
               <DialogTitle>Detached dialog</DialogTitle>
             </DialogContent>
           </Dialog>
-        </>,
+        </React.Fragment>,
       )
 
       await screen.getByRole('button', { name: 'Open dialog' }).click()

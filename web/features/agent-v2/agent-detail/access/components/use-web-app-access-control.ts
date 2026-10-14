@@ -8,6 +8,7 @@ import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { useWebAppAccessPermission } from '../../web-app-access'
 
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -27,15 +28,16 @@ export function useWebAppAccessControl(
   agent: AgentAppDetailWithSite | undefined,
   isLoading: boolean,
 ) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
   const appId = agent?.backing_app_id ?? undefined
   const accessMode = isAccessMode(agent?.access_mode) ? agent.access_mode : undefined
   const { data: webAppAuthEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.webapp_auth.enabled,
   })
-  const { canReleaseAndVersion: canManage } = getAgentACLCapabilities(agent?.permission_keys)
+  const { canManageAccessPoint: canManage } = getAgentACLCapabilities(agent?.permission_keys)
   const hasAccessControl = Boolean(webAppAuthEnabled && appId && accessMode)
+  const accessPermission = useWebAppAccessPermission(agent)
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appId,
     hasAccessControl && canManage && accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
@@ -45,11 +47,12 @@ export function useWebAppAccessControl(
     accessMode !== AccessMode.SPECIFIC_GROUPS_MEMBERS ||
     Boolean(accessSubjects.groups.length || accessSubjects.members.length)
 
-  if (!webAppAuthEnabled) return { state: 'hidden' as const }
-  if (isLoading) return { state: 'loading' as const }
-  if (!appId || !accessMode) return { state: 'hidden' as const }
+  if (!webAppAuthEnabled) return { ...accessPermission, state: 'hidden' as const }
+  if (isLoading) return { ...accessPermission, state: 'loading' as const }
+  if (!appId || !accessMode) return { ...accessPermission, state: 'hidden' as const }
 
   return {
+    ...accessPermission,
     state: 'ready' as const,
     app: { id: appId, access_mode: accessMode },
     entryProps: {

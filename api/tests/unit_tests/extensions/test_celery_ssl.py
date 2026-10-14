@@ -162,6 +162,7 @@ class TestCelerySSLConfiguration:
 
         # Mock all the scheduler configs
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+        mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -213,6 +214,7 @@ class TestCelerySSLConfiguration:
 
         mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
         mock_config.ENABLE_EVALUATION_RUN_RECONCILER = True
+        mock_config.AGENT_SANDBOX_METERING_ENABLED = False
         mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
         mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
         mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False

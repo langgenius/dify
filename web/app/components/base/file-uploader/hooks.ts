@@ -55,7 +55,7 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
 }
 
 export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()

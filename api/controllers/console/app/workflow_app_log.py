@@ -24,9 +24,7 @@ from models.model import AppMode
 
 class WorkflowAppLogQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword for filtering logs")
-    status: WorkflowExecutionStatus | None = Field(
-        default=None, description="Execution status filter (succeeded, failed, stopped, partial-succeeded)"
-    )
+    status: WorkflowExecutionStatus | None = Field(default=None, description="Execution status filter")
     created_at__before: datetime | None = Field(default=None, description="Filter logs created before this timestamp")
     created_at__after: datetime | None = Field(default=None, description="Filter logs created after this timestamp")
     created_by_end_user_session_id: str | None = Field(default=None, description="Filter by end user session ID")

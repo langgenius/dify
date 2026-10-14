@@ -11,7 +11,7 @@ type HeadersSectionProps = {
 }
 
 const HeadersSection: FC<HeadersSectionProps> = ({ headers, onHeadersChange, isCreate }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
 
   return (
     <div>

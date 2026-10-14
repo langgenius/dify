@@ -2,7 +2,6 @@ import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/w
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
@@ -23,7 +22,7 @@ const ConditionVariableSelector = ({
   onChange,
 }: ConditionVariableSelectorProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   const [open, setOpen] = useState(false)
 
   const handleChange = useCallback(
@@ -51,9 +50,12 @@ const ConditionVariableSelector = ({
             {!valueSelector.length && (
               <>
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
-                  <Variable02 className="mr-1 size-4" />
+                  <span
+                    aria-hidden
+                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4"
+                  />
                   {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.select'], {
-                    ns: 'workflow',
+                    ns: 'workflowModels',
                   })}
                 </div>
                 <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium text-text-tertiary">

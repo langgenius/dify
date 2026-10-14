@@ -17,7 +17,7 @@ type LeftHeaderProps = {
 
 const LeftHeader = ({ steps, title, currentStep }: LeftHeaderProps) => {
   const { datasetId } = useParams()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div className="relative flex flex-col gap-y-0.5 pt-4 pb-2">

@@ -27,7 +27,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   installContextCategory,
   onClose,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   // uploading -> !uploadFailed -> readyToInstall -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.uploading)
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)

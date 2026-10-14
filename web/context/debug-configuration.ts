@@ -36,6 +36,7 @@ import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod }
 type IDebugConfiguration = {
   readonly?: boolean
   canTestAndRun?: boolean
+  onOpenFeatures: () => void
   appId: string
   isTrailFinished: boolean
   mode: AppModeEnum
@@ -119,6 +120,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   readonly: false,
   canTestAndRun: false,
   appId: '',
+  onOpenFeatures: noop,
   isTrailFinished: false,
   mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
@@ -232,13 +234,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     retriever_resource: null,
     annotation_reply: null,
     external_data_tools: [],
-    system_parameters: {
-      audio_file_size_limit: 0,
-      file_size_limit: 0,
-      image_file_size_limit: 0,
-      video_file_size_limit: 0,
-      workflow_file_upload_limit: 0,
-    },
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },

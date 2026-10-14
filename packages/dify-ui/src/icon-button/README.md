@@ -53,9 +53,11 @@ the icon button.
 
 - Read [`Button`] for visible-label actions, submit semantics, and loading state.
 - Read [Accessible names and descriptions] for the cross-component naming and description contract.
+- Read [Styling] for state styles, callbacks, and their composition boundary.
 - Read [Base UI Button] for the upstream interaction and composition contract.
 
 [Accessible names and descriptions]: ../../docs/accessible-names-and-descriptions.md
 [Base UI Button]: https://base-ui.com/react/components/button
+[Styling]: ../../docs/styling.md
 [`Button`]: ../button/README.md
 [name, role, and value]: https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html

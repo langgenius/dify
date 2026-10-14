@@ -1,9 +1,8 @@
-import type { ComponentType } from 'react'
 import type { HybridSearchModeEnum, RetrievalSearchMethodEnum } from '../../types'
 
 export type Option = {
   id: RetrievalSearchMethodEnum
-  icon: ComponentType<any>
+  iconClassName: string
   title: any
   description: string
   effectColor?: string

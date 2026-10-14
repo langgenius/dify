@@ -4,7 +4,7 @@ import type {
   AgentConfigSkillRefConfig,
   AgentConfigSkillUploadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { ConsoleClient } from '../../../support/api/console-client'
+import type { ConsoleClient } from '../../../support/api/console-client.ts'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'

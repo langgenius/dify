@@ -36,7 +36,7 @@ describe('AgentLogNav', () => {
 
     await user.click(screen.getByRole('button', { name: /^AGENT$/i }))
     await user.click(
-      screen.getByRole('button', { name: /^workflow\.nodes\.agent\.strategy\.label$/ }),
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.strategy\.label$/ }),
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.click(screen.getByRole('menuitem', { name: 'Tool A' }))

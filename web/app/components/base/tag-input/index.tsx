@@ -33,7 +33,7 @@ const TagInput = ({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
 }: TagInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
   const isSpecialMode = customizedConfirmKey === 'Tab'

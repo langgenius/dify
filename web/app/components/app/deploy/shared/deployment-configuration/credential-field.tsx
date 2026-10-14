@@ -28,8 +28,8 @@ export function CredentialField({
   value?: string
   onChange: (value: string) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tPlugin } = useTranslation('plugin')
+  const { t } = useTranslation(['deployments'])
+  const { t: tPlugin } = useTranslation(['plugin'])
   const { getIconUrl } = useGetIcon()
   const { theme } = useTheme()
   const selectedOption = slot.candidates.find((candidate) => candidate.credential_id === value)
@@ -71,7 +71,7 @@ export function CredentialField({
           if (nextValue) onChange(nextValue)
         }}
       >
-        <SelectTrigger aria-label={name} className="px-2">
+        <SelectTrigger aria-label={name} className="pl-2">
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />
             <span className="truncate">
@@ -109,7 +109,7 @@ export function CredentialField({
                   <span className="flex size-2 shrink-0 items-center justify-center">
                     <StatusDot size="small" />
                   </span>
-                  <SelectItemText className="me-0 px-0 system-md-regular">
+                  <SelectItemText className="me-0 system-md-regular">
                     {candidate.display_name || candidate.credential_id}
                   </SelectItemText>
                 </SelectItem>

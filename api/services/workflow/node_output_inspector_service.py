@@ -780,7 +780,7 @@ class NodeOutputInspectorService:
                 "NodeOutputInspector: malformed node_job_config for binding %s", bundle.binding.id, exc_info=True
             )
             return None
-        return list(effective_declared_outputs(node_job.declared_outputs))
+        return list(effective_declared_outputs(node_job.declared_outputs, node_job.output_routes))
 
     @staticmethod
     def _infer_outputs_from_payload(*, execution: WorkflowNodeExecutionModel | None) -> list[_ResolvedDeclaration]:

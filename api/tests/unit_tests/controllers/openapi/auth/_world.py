@@ -12,10 +12,11 @@ from typing import NoReturn
 
 from sqlalchemy.orm import Session
 
+from constants.oauth_bearer import SubjectType, TokenType
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, SubjectType, TokenType
+from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus

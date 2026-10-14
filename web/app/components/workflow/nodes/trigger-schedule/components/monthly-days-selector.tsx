@@ -1,7 +1,12 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+
+const dayToggleClassName =
+  'rounded-lg border border-divider-subtle bg-components-option-card-option-bg py-1 text-xs text-text-tertiary outline-state-accent-solid transition-colors hover:border-divider-regular hover:text-text-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid data-pressed:border-util-colors-blue-brand-blue-brand-600 data-pressed:text-text-secondary data-pressed:hover:border-util-colors-blue-brand-blue-brand-600'
 
 type MonthlyDaysSelectorProps = {
   selectedDays: (number | 'last')[]
@@ -9,7 +14,9 @@ type MonthlyDaysSelectorProps = {
 }
 
 const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
-  const { t } = useTranslation()
+  const lastDayLabelId = React.useId()
+
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const handleDayClick = (day: number | 'last') => {
     const current = selectedDays || []
@@ -32,7 +39,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
   return (
     <Fieldset className="space-y-2">
       <FieldsetLegend className="mb-2 py-0 text-xs font-medium text-text-tertiary">
-        {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflow' })}
+        {t(($) => $['nodes.triggerSchedule.days'], { ns: 'workflowIntegrations' })}
       </FieldsetLegend>
 
       <div className="space-y-1.5">
@@ -40,44 +47,37 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
           <div key={rowIndex} className="grid grid-cols-7 gap-1.5">
             {row.map((day) =>
               day === 'last' ? (
-                <div
-                  key={day}
-                  className={`col-span-2 flex min-w-0 items-center rounded-lg border bg-components-option-card-option-bg text-xs transition-colors ${
-                    isDaySelected(day)
-                      ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                      : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleDayClick(day)}
-                    className="min-w-0 flex-1 py-1"
+                <div key={day} className="relative col-span-2 min-w-0">
+                  <Toggle
+                    id={lastDayLabelId}
+                    pressed={isDaySelected(day)}
+                    onPressedChange={() => handleDayClick(day)}
+                    className={cn(dayToggleClassName, 'w-full pe-4')}
                   >
-                    {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflow' })}
-                  </button>
-                  <Infotip
-                    aria-label={t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
-                      ns: 'workflow',
-                    })}
-                    className="mr-1 size-3"
-                    iconSize="small"
-                  >
-                    {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+                    {t(($) => $['nodes.triggerSchedule.lastDay'], { ns: 'workflowIntegrations' })}
+                  </Toggle>
+                  <Infotip>
+                    <InfotipTrigger
+                      aria-labelledby={lastDayLabelId}
+                      className="absolute inset-e-1 top-1/2 size-3 -translate-y-1/2"
+                      iconSize="small"
+                    />
+                    <InfotipContent aria-labelledby={lastDayLabelId}>
+                      {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], {
+                        ns: 'workflowIntegrations',
+                      })}
+                    </InfotipContent>
                   </Infotip>
                 </div>
               ) : (
-                <button
+                <Toggle
                   key={day}
-                  type="button"
-                  onClick={() => handleDayClick(day)}
-                  className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
-                    isDaySelected(day)
-                      ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                      : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-                  }`}
+                  pressed={isDaySelected(day)}
+                  onPressedChange={() => handleDayClick(day)}
+                  className={dayToggleClassName}
                 >
                   {day}
-                </button>
+                </Toggle>
               ),
             )}
             {/* Fill empty cells in the last row (Last day takes 2 cols, so need 1 less) */}
@@ -92,8 +92,8 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       {/* Warning message for day 31 - aligned with grid */}
       {selectedDays?.includes(31) && (
         <div className="mt-1.5 grid grid-cols-7 gap-1.5">
-          <div className="col-span-7 text-xs text-gray-500">
-            {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflow' })}
+          <div className="col-span-7 text-xs text-text-tertiary">
+            {t(($) => $['nodes.triggerSchedule.lastDayTooltip'], { ns: 'workflowIntegrations' })}
           </div>
         </div>
       )}

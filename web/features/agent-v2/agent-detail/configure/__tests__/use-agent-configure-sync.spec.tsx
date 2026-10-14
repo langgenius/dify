@@ -1,4 +1,5 @@
 import type { PropsWithChildren } from 'react'
+import type { AgentConfigurePublishResult } from '../use-agent-configure-sync'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -17,6 +18,7 @@ import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
@@ -92,6 +94,7 @@ type PublishAgentVariables = {
 }
 
 type PublishAgentResponse = {
+  publication_kind: 'first' | 'update'
   active_config_snapshot: Record<string, unknown> | null
   active_config_snapshot_id: string
   result: string
@@ -104,6 +107,7 @@ const publishAgentMutationFn = vi.hoisted(() =>
     },
     active_config_snapshot_id: 'snapshot-1',
     result: 'success',
+    publication_kind: 'update',
   })),
 )
 
@@ -1075,10 +1079,10 @@ describe('useAgentConfigureSync', () => {
       }),
     )
     await act(async () => {
-      await result.current.publishDraft()
+      await expect(result.current.publishDraft()).resolves.toBe(false)
     })
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+    expect(toastMock.error).toHaveBeenCalledWith('modelProvider.modelProvider.selectModel')
   })
 
   it('should save the effective model before run when the form draft is unchanged', async () => {
@@ -1149,7 +1153,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     await act(async () => {
-      await result.current.publishDraft()
+      await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledWith(
@@ -1180,7 +1184,7 @@ describe('useAgentConfigureSync', () => {
       app_name: 'Agent',
       app_mode: 'agent-v2',
     })
-    expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('should toast and skip publish when no model is configured', async () => {
@@ -1200,7 +1204,7 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
     expect(trackEventMock).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+    expect(toastMock.error).toHaveBeenCalledWith('modelProvider.modelProvider.selectModel')
   })
 
   it('should toast and skip publish when a configured tool is not installed', async () => {
@@ -1394,12 +1398,13 @@ describe('useAgentConfigureSync', () => {
         statusText: 'Bad Request',
       },
     )
-    publishAgentMutationFn.mockRejectedValueOnce(responseError)
+    const apiError = await httpErrorFromResponse(responseError)
+    publishAgentMutationFn.mockRejectedValueOnce(apiError)
     const { result } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
     })
 
-    await expect(result.current.publishDraft()).rejects.toBe(responseError)
+    await expect(result.current.publishDraft()).rejects.toBe(apiError)
 
     expect(toastMock.error).toHaveBeenCalledWith('Model credential validation failed')
   })
@@ -1494,7 +1499,7 @@ describe('useAgentConfigureSync', () => {
     const { result } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
     })
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1511,6 +1516,7 @@ describe('useAgentConfigureSync', () => {
         active_config_snapshot: {},
         active_config_snapshot_id: 'snapshot-1',
         result: 'success',
+        publication_kind: 'update',
       })
       await publishPromise
       await vi.advanceTimersByTimeAsync(0)
@@ -1532,7 +1538,7 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1559,6 +1565,7 @@ describe('useAgentConfigureSync', () => {
         active_config_snapshot: {},
         active_config_snapshot_id: 'snapshot-1',
         result: 'success',
+        publication_kind: 'update',
       })
       await publishPromise
       await vi.advanceTimersByTimeAsync(5000)
@@ -1591,7 +1598,7 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1634,6 +1641,7 @@ describe('useAgentConfigureSync', () => {
         active_config_snapshot: {},
         active_config_snapshot_id: 'snapshot-1',
         result: 'success',
+        publication_kind: 'update',
       })
       await publishPromise
       await Promise.resolve()
@@ -1653,7 +1661,7 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    let publishPromise!: Promise<void>
+    let publishPromise!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishPromise = result.current.publishDraft()
     })
@@ -1726,11 +1734,11 @@ describe('useAgentConfigureSync', () => {
       permission_keys: [AgentPermission.ReleaseAndVersion],
     })
     await act(async () => {
-      await result.current.publishDraft()
+      await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
     })
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).toHaveBeenCalledOnce()
-    expect(toastMock.success).toHaveBeenCalledOnce()
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('does not flush dirty configuration after edit permission is revoked before unmount', async () => {
@@ -1750,7 +1758,7 @@ describe('useAgentConfigureSync', () => {
     const saving = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
     composerPutMutationFn.mockReturnValueOnce(saving.promise)
     const { queryClient, result } = renderUseAgentConfigureSync({ currentModel: configuredModel })
-    let publishing!: Promise<void>
+    let publishing!: Promise<AgentConfigurePublishResult | false>
     act(() => {
       publishing = result.current.publishDraft()
     })

@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
-import type { FileEntity } from './types'
+import type { FileEntity, FilePreviewKind } from './types'
 import type { FileResponse } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -16,13 +17,13 @@ import { FileAppearanceTypeEnum } from './types'
  * @returns Localized error message
  */
 export const getFileUploadErrorMessage = (
-  error: any,
+  error: unknown,
   defaultMessage: string,
-  t: TFunction,
+  t: TFunction<['common']>,
 ): string => {
-  const errorCode = error?.response?.code
+  const errorCode = error instanceof ORPCError ? error.code : undefined
 
-  if (errorCode === 'forbidden') return error?.response?.message
+  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
 
   if (errorCode === 'file_extension_blocked')
     return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
@@ -248,4 +249,11 @@ export const fileIsUploaded = (file: FileEntity) => {
   if (file.uploadedId) return true
 
   if (file.transferMethod === TransferMethod.remote_url && file.progress === 100) return true
+}
+
+export const getFilePreviewKind = (file: FileEntity): FilePreviewKind | undefined => {
+  if (!(file.url || file.base64Url || file.originalFile)) return undefined
+  const [category, subtype] = file.type?.split('/') ?? []
+  if (category === 'audio' || category === 'video') return category
+  return subtype === 'pdf' ? 'pdf' : undefined
 }

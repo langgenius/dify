@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Trageți și plasați fișiere sau foldere sau",
   "stepOne.uploader.buttonSingleFile": "Trageți și plasați un fișier sau",
   "stepOne.uploader.change": "Schimbă",
+  "stepOne.uploader.completed": "Încărcare finalizată",
   "stepOne.uploader.failed": "Încărcarea a eșuat",
   "stepOne.uploader.tip": "Acceptă {{supportTypes}}. Maxim {{batchCount}} fișiere pe lot și {{size}} MB fiecare.",
   "stepOne.uploader.tipWithTotalLimit": "Acceptă {{supportTypes}}. Maxim {{batchCount}} fișiere pe lot și {{size}} MB fiecare. Total maxim {{totalCount}} fișiere.",

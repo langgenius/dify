@@ -528,11 +528,11 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
         }),
       )
       await user.click(
-        screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.options.manual.title'),
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.options.manual.title'),
       )
 
       expect(onSelect.mock.calls[0]?.[0]).toBe(MetadataFilteringModeEnum.manual)
@@ -568,14 +568,14 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
         }),
       )
 
       expect(screen.getByText('metadata-panel')).toBeInTheDocument()
     })
 
-    it('should call handleAddCondition with the correct metadata item when clicking any part of the row', async () => {
+    it('should call handleAddCondition with the chosen metadata item', async () => {
       const user = userEvent.setup()
       const handleAddCondition = vi.fn()
       const permissionMetadata = createMetadata({
@@ -598,10 +598,10 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.panel.add/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.add/i,
         }),
       )
-      await user.click(screen.getAllByText('string', { selector: 'div.shrink-0' })[0]!)
+      await user.click(await screen.findByRole('menuitem', { name: /^permission/ }))
 
       expect(handleAddCondition).toHaveBeenCalledTimes(1)
       expect(handleAddCondition).toHaveBeenCalledWith(
@@ -637,7 +637,7 @@ describe('knowledge-retrieval path', () => {
 
       expect(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.options.automatic.title/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.automatic.title/i,
         }),
       ).toBeInTheDocument()
 
@@ -651,7 +651,7 @@ describe('knowledge-retrieval path', () => {
 
       await user.click(
         screen.getByRole('button', {
-          name: /workflow.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
+          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
         }),
       )
 
@@ -686,7 +686,9 @@ describe('knowledge-retrieval path', () => {
         <ConditionVariableSelector onChange={onVariableChange} varType={VarType.string} />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.panel.select'))
+      await user.click(
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.panel.select'),
+      )
       await user.click(screen.getByText('pick-var'))
 
       expect(onVariableChange).toHaveBeenCalledWith(['node-1', 'field'], { type: VarType.string })
@@ -699,7 +701,9 @@ describe('knowledge-retrieval path', () => {
         />,
       )
 
-      await user.click(screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.panel.select'))
+      await user.click(
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.panel.select'),
+      )
       await user.click(screen.getByText('sys.user_name'))
 
       expect(onCommonVariableChange).toHaveBeenCalledWith('sys.user_name')
@@ -733,13 +737,13 @@ describe('knowledge-retrieval path', () => {
       )
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)
-      await user.click(screen.getByText('workflow.nodes.ifElse.comparisonOperator.is'))
+      await user.click(screen.getByText('workflowLogic.nodes.ifElse.comparisonOperator.is'))
       await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
       fireEvent.change(screen.getByDisplayValue('agent'), { target: { value: 'updated-agent' } })
       fireEvent.click(container.querySelector('.ml-1.mt-1') as Element)
 
       expect(onSelect).toHaveBeenCalledWith(MetadataComparisonOperator.is as ComparisonOperator)
-      expect(onDateChange).toHaveBeenCalledWith()
+      expect(onDateChange).toHaveBeenCalledWith(undefined)
       expect(onUpdateCondition).toHaveBeenCalledWith(
         'condition-1',
         expect.objectContaining({ value: 'updated-agent' }),

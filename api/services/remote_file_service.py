@@ -13,7 +13,7 @@ from graphon.file import helpers as file_helpers
 from models import Account
 from models.model import EndUser
 from services.errors.file import FileTooLargeError
-from services.file_service import FileService
+from services.file_service import FileService, FileUploadActor
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,9 +87,19 @@ class RemoteFileService:
         self,
         *,
         url: str,
-        user: Account | EndUser,
+        user: Account | EndUser | FileUploadActor,
         tenant_id: str | None = None,
     ) -> RemoteFileUploadResult:
+        """Fetch and persist a remote file under the requested tenant.
+
+        For Account or EndUser, tenant_id=None (including when omitted) uses
+        the account's current workspace or the end user's tenant. An explicit
+        tenant_id takes precedence. FileUploadActor requires an explicit
+        tenant_id; it is checked before fetching the remote file.
+        """
+        if isinstance(user, FileUploadActor) and tenant_id is None:
+            raise TypeError("tenant_id is required when uploading with FileUploadActor")
+
         response = self._fetch_for_upload(url=url)
         try:
             file_info = guess_file_info_from_response(response)

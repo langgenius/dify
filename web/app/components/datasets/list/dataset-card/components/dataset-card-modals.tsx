@@ -1,11 +1,11 @@
 import type { DataSet } from '@/models/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -37,7 +37,7 @@ const DatasetCardModals = ({
   onConfirmDelete,
   onSuccess,
 }: DatasetCardModalsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
 
   return (
     <>
@@ -62,14 +62,14 @@ const DatasetCardModals = ({
               {modalState.confirmMessage}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

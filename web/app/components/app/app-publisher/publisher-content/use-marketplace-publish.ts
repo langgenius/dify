@@ -4,7 +4,7 @@ import { toast } from '@/app/notifications'
 import { publishToCreatorsPlatform } from '@/service/apps'
 
 export function useMarketplacePublish(appId?: string) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [isPublishing, setIsPublishing] = useState(false)
 
   async function publish() {

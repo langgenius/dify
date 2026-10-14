@@ -71,7 +71,7 @@ describe('DatasetsLayout', () => {
       </DatasetsLayout>,
     )
 
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('datasets')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
@@ -88,7 +88,7 @@ describe('DatasetsLayout', () => {
       </DatasetsLayout>,
     )
 
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('datasets')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })

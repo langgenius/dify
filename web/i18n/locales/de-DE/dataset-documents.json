@@ -257,6 +257,7 @@
   "segment.searchResults_one": "ERGEBNIS",
   "segment.searchResults_other": "BEFUND",
   "segment.searchResults_zero": "ERGEBNIS",
+  "segment.statusFilterLabel": "Segmente nach Status filtern",
   "segment.summary": "ZUSAMMENFASSUNG",
   "segment.summaryPlaceholder": "Schreiben Sie eine kurze Zusammenfassung für bessere Abrufbarkeit…"
 }

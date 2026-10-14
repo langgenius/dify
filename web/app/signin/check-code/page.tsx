@@ -29,7 +29,7 @@ type CheckCodeFormValues = {
 }
 
 export default function CheckCode() {
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

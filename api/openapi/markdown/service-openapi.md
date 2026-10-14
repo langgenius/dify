@@ -3277,11 +3277,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 #### EndUserDetail
 
-Full EndUser record for API responses.
-
-Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login semantics
-(always False). The database column is exposed as `_is_anonymous`, so this DTO maps
-`is_anonymous` from `_is_anonymous` to return the stored value.
+Full end-user detail returned by the Service API.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -3840,7 +3836,13 @@ JSON result for published runs and draft runs using `response_mode: blocking`.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
-| id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
+| id | [PreProcessingRuleKey](#preprocessingrulekey) | Rule identifier. | Yes |
+
+#### PreProcessingRuleKey
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PreProcessingRuleKey | string |  |  |
 
 #### ProcessRule
 
@@ -3944,17 +3946,22 @@ Model class for provider with models response.
 | data_source_type | string |  | No |
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
+| doc_metadata | object |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| files | [ object ] |  | No |
 | hit_count | integer |  | No |
 | id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
 | message_id | string (uuid) |  | No |
+| page | integer |  | No |
 | position | integer |  | Yes |
+| retriever_from | string |  | No |
 | score | number |  | No |
 | segment_id | string |  | No |
 | segment_position | integer |  | No |
 | summary | string |  | No |
+| title | string |  | No |
 | word_count | integer |  | No |
 
 #### Rule

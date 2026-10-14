@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { vi } from 'vite-plus/test'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import InviteButton from '../invite-button'
+import { InviteButton } from '../invite-button'
 
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 

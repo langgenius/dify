@@ -15,7 +15,7 @@ type Props = Readonly<{
   className?: string
 }>
 const Uploader: FC<Props> = ({ file, updateFile, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'datasetCreation'])
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)

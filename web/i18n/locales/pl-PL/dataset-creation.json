@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Przeciągnij i upuść pliki lub foldery lub",
   "stepOne.uploader.buttonSingleFile": "Przeciągnij i upuść plik lub",
   "stepOne.uploader.change": "Zmień",
+  "stepOne.uploader.completed": "Przesyłanie zakończone",
   "stepOne.uploader.failed": "Przesyłanie nie powiodło się",
   "stepOne.uploader.tip": "Obsługuje {{supportTypes}}. Maksymalnie {{batchCount}} plików w partii, każdy do {{size}} MB.",
   "stepOne.uploader.tipWithTotalLimit": "Obsługuje {{supportTypes}}. Maksymalnie {{batchCount}} plików w partii, każdy do {{size}} MB. Łącznie maksymalnie {{totalCount}} plików.",

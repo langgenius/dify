@@ -1,8 +1,10 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { Window } from 'happy-dom'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { render } from '@/test/console/render'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import HomeTrending from '../home-trending'
 
@@ -18,6 +20,7 @@ vi.mock('@/utils/marketplace-site-track', () => ({
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: (namespace: string) => ({
       t: withSelectorKey((key: string) => `${namespace}.${key}`),
     }),
@@ -80,6 +83,15 @@ vi.mock('../../templates/template-detail-dialog', () => ({
       </div>
     ) : null,
 }))
+
+const deploymentState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
+
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => deploymentState)
+})
 
 const banners: PluginBanner[] = [
   {
@@ -162,11 +174,17 @@ const banners: PluginBanner[] = [
 const mockTrackEvent = vi.mocked(trackEvent)
 const mockTrackMarketplaceSiteEvent = vi.mocked(trackMarketplaceSiteEvent)
 
+const navigationSettings = (window as unknown as Window).happyDOM.settings.navigation
+const originalNavigation = navigationSettings.disableMainFrameNavigation
+
 beforeEach(() => {
+  navigationSettings.disableMainFrameNavigation = true
+  deploymentState.deploymentEdition = 'CLOUD'
   vi.clearAllMocks()
 })
 
 afterEach(() => {
+  navigationSettings.disableMainFrameNavigation = originalNavigation
   vi.unstubAllGlobals()
 })
 
@@ -979,6 +997,107 @@ describe('HomeTrending', () => {
     expect(screen.queryByRole('button', { name: 'Duck Duck Go' })).not.toBeInTheDocument()
   })
 
+  describe('mobile swipe', () => {
+    const stubViewport = (isMobile: boolean) =>
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query) =>
+          ({
+            matches: isMobile && query === '(max-width: 879px)',
+            media: query,
+            onchange: null,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+          }) as MediaQueryList,
+      )
+
+    const swipe = (slide: HTMLElement, points: Array<[x: number, y: number]>) => {
+      const touch = { pointerId: 1, pointerType: 'touch', isPrimary: true }
+      const [start, ...moves] = points
+      fireEvent.pointerDown(slide, { ...touch, clientX: start![0], clientY: start![1] })
+      for (const [clientX, clientY] of moves)
+        fireEvent.pointerMove(slide, { ...touch, clientX, clientY })
+      const [clientX, clientY] = points.at(-1)!
+      fireEvent.pointerUp(slide, { ...touch, clientX, clientY })
+    }
+
+    const renderCarousel = () =>
+      render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('switches in both directions without activating a dragged link or clearing Pause', async () => {
+      const user = userEvent.setup()
+      stubViewport(true)
+      renderCarousel()
+
+      swipe(screen.getByRole('group', { name: 'Trending' }), [
+        [480, 160],
+        [300, 166],
+      ])
+
+      expect(fireEvent.click(screen.getByRole('link', { name: 'Dropbox', hidden: true }))).toBe(
+        false,
+      )
+      expect(screen.getByRole('button', { name: 'Dify Updates' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }),
+      )
+      swipe(screen.getByRole('group', { name: 'Dify Updates' }), [
+        [260, 160],
+        [440, 166],
+      ])
+
+      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(
+        screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }),
+      ).toBeInTheDocument()
+    })
+
+    it('suppresses the trailing click when a horizontal drag is pulled back before release', () => {
+      stubViewport(true)
+      renderCarousel()
+
+      swipe(screen.getByRole('group', { name: 'Trending' }), [
+        [400, 160],
+        [280, 164],
+        [396, 162],
+      ])
+
+      expect(fireEvent.click(screen.getByRole('link', { name: 'Dropbox' }))).toBe(false)
+      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+
+    it.each([
+      { name: 'a vertical gesture on mobile', isMobile: true, end: [270, 300] as [number, number] },
+      { name: 'touch input on desktop', isMobile: false, end: [80, 160] as [number, number] },
+    ])('stays on the current slide for $name', ({ isMobile, end }) => {
+      stubViewport(isMobile)
+      renderCarousel()
+
+      swipe(screen.getByRole('group', { name: 'Trending' }), [[300, 120], end])
+
+      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+  })
+
   it('renders no carousel when the API returns no banners', () => {
     render(<HomeTrending banners={[]} isMarketplacePlatform page="plugins" />)
 
@@ -1130,4 +1249,55 @@ describe('HomeTrending', () => {
       vi.useRealTimers()
     }
   })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'links %s recommendations directly to the official site',
+    (edition) => {
+      deploymentState.deploymentEdition = edition
+      const mixedBanner: PluginBanner = {
+        id: 'mixed',
+        style_type: 'recommend',
+        title: 'Trending',
+        sort: 0,
+        language: 'en',
+        content: {
+          theme_type: 'hottest',
+          cards: [
+            {
+              item_type: 'plugin',
+              item_id: 'langgenius/dropbox',
+              display_name: 'Dropbox',
+              link: '',
+              card_position: 0,
+            },
+            {
+              item_type: 'template',
+              item_id: 'tpl-1',
+              display_name: 'Support Bot',
+              creator: 'aisa-team',
+              link: '',
+              card_position: 1,
+            },
+          ],
+        },
+      }
+      render(<HomeTrending banners={[mixedBanner]} isMarketplacePlatform={false} page="plugins" />)
+      const links = screen
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('href')?.startsWith('https://marketplace.dify.ai/'))
+      expect(links.length).toBeGreaterThan(0)
+      expect(
+        links.some((link) => new URL(link.getAttribute('href')!).pathname.startsWith('/plugin/')),
+      ).toBe(true)
+      expect(
+        links.some((link) => new URL(link.getAttribute('href')!).pathname.startsWith('/template/')),
+      ).toBe(true)
+      for (const link of links) {
+        expect(link).toHaveAttribute('target', '_blank')
+        expect(new URL(link.getAttribute('href')!).searchParams.get('source')).toBe(
+          window.location.origin,
+        )
+      }
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    },
+  )
 })

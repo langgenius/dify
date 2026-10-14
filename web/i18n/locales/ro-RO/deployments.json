@@ -73,6 +73,8 @@
   "studio.noCredentialsYetDescription": "Adăugați acreditări în Integrări sau în setările nodului",
   "studio.precheck.description": "Conține tipuri de noduri care nu sunt încă acceptate:",
   "studio.precheck.from": "Din",
+  "studio.precheck.nodeCount_few": "{{count}} noduri",
+  "studio.precheck.nodeCount_one": "{{count}} nod",
   "studio.precheck.nodeCount_other": "{{count}} noduri",
   "studio.precheck.supportMessage": "Suportul pentru aceste tipuri de noduri va fi disponibil într-o versiune viitoare.",
   "studio.precheck.title": "Această versiune nu poate fi implementată în acest mediu",
@@ -84,6 +86,7 @@
   "studio.undeployConfirmTitle": "Anulează implementarea {{versionName}} din {{envName}}",
   "studio.updatedAtBy": "Actualizat la {{time}} de {{name}}",
   "studio.versionValue": "Valoarea versiunii",
+  "studio.versionsBehind_few": "{{count}} versiuni în urmă",
   "studio.versionsBehind_one": "{{count}} versiune în urmă",
   "studio.versionsBehind_other": "{{count}} versiuni în urmă",
   "versions.deployTo": "Implementează în {{name}}"

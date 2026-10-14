@@ -2,11 +2,11 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -22,8 +22,8 @@ export function CreateKnowledgeExitDialog({
   onConfirm: () => void
   reason: CreateKnowledgeExitReason | null
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const isPartial = reason === 'partial'
 
   return (
@@ -53,7 +53,7 @@ export function CreateKnowledgeExitDialog({
             )}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions className="gap-2 p-6">
+        <AlertDialogFooter className="gap-2 p-6">
           <AlertDialogCancelButton variant="secondary">
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -64,7 +64,7 @@ export function CreateKnowledgeExitDialog({
                 : $['newKnowledge.discardDraftConfirm'],
             )}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

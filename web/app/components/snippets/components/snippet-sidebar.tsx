@@ -38,14 +38,6 @@ const toSnippetInputField = (field: InputVar): SnippetInputField => ({
   type: field.type as unknown as SnippetInputField['type'],
 })
 
-const NodeTreeIcon = ({ className }: { className?: string }) => (
-  <span className={cn('i-ri-node-tree', className)} />
-)
-
-const EvaluationIcon = ({ className }: { className?: string }) => (
-  <span className={cn('i-ri-flask-line', className)} />
-)
-
 export const SnippetSidebarContent = ({
   snippet,
   section = 'orchestrate',
@@ -54,7 +46,7 @@ export const SnippetSidebarContent = ({
   onFieldsChange,
   className,
 }: SnippetSidebarContentProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'evaluation', 'snippet'])
   const [isShowAddVarModal, setIsShowAddVarModal] = useState(false)
   const workflowInputVars = useMemo(() => fields.map(toWorkflowInputVar), [fields])
 
@@ -147,7 +139,7 @@ export const SnippetSidebarContent = ({
           name={t(($) => $.sectionOrchestrate, { ns: 'snippet' })}
           href={`/snippets/${snippet.id}/orchestrate`}
           active={section === 'orchestrate'}
-          iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+          iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
         />
         <NavLink
           mode="expand"
@@ -155,7 +147,7 @@ export const SnippetSidebarContent = ({
           href={`/snippets/${snippet.id}/evaluation`}
           active={section === 'evaluation'}
           disabled={!snippet.is_published}
-          iconMap={{ selected: EvaluationIcon, normal: EvaluationIcon }}
+          iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
         />
       </nav>
 

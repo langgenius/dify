@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
@@ -20,11 +21,11 @@ export type HandleRunOptions = {
   allNodeIds?: string[]
 }
 
-type DebuggableTriggerType = Exclude<TriggerType, TriggerType.UserInput>
+type DebuggableTriggerType = Exclude<TriggerType, typeof TriggerType.UserInput>
 
 type AppDetailLike = {
   id?: string
-  mode?: AppModeEnum
+  mode?: AppMode
 }
 
 type TTSParamsLike = {
@@ -452,9 +453,8 @@ export const runTriggerDebug = async ({
     } catch (error) {
       if (controller.signal.aborted) return
 
-      if (error instanceof Response) {
-        const data = (await error.clone().json()) as Record<string, unknown>
-        const errorMessage = typeof data?.error === 'string' ? data.error : ''
+      if (error instanceof Error) {
+        const errorMessage = error.message
         toast.error(errorMessage)
         clearAbortController()
         setWorkflowRunningData(createFailedWorkflowState(errorMessage))

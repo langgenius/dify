@@ -35,8 +35,8 @@ vi.mock('@/app/components/workflow/panel/inputs-panel', () => ({ default: () => 
 vi.mock('@/app/components/workflow/panel/env-panel', () => ({ default: () => null }))
 // Node details do not own the preview width limit. Node-panel compression is
 // covered separately at the real BasePanel boundary.
-vi.mock('@/app/components/workflow/nodes', () => ({
-  Panel: () => <div>Selected node details</div>,
+vi.mock('@/app/components/workflow/nodes/panel', () => ({
+  default: () => <div>Selected node details</div>,
 }))
 
 function SelectedNodePanel({ children }: { children: ReactNode }) {

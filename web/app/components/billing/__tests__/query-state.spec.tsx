@@ -30,7 +30,7 @@ it('reveals the plan and all usage together when both billing queries have data'
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
   render(<Billing />, { wrapper })
-  expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   expect(screen.queryByText('billing.plans.sandbox.name')).not.toBeInTheDocument()
   expect(
     screen.queryByRole('group', { name: 'billing.usagePage.buildApps' }),
@@ -41,7 +41,7 @@ it('reveals the plan and all usage together when both billing queries have data'
       apps: { size: 17, limit: 50 },
     })
   })
-  expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+  expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   expect(
     screen.queryByRole('group', { name: 'billing.usagePage.buildApps' }),
   ).not.toBeInTheDocument()
@@ -59,7 +59,7 @@ it('reveals the plan and all usage together when both billing queries have data'
   const storage = screen.getByRole('group', { name: 'billing.usagePage.vectorSpace' })
   expect(within(storage).getByText('256')).toBeInTheDocument()
   expect(within(storage).getByText('900MB')).toBeInTheDocument()
-  expect(screen.queryByRole('progressbar', { name: 'appApi.loading' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('progressbar', { name: 'common.loading' })).not.toBeInTheDocument()
 })
 
 it('renders annotation usage only from returned data and preserves zero as an unlimited quota', async () => {

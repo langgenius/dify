@@ -1,4 +1,5 @@
 'use client'
+import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,11 +9,12 @@ import {
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
+  DrawerTrigger,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -46,17 +48,17 @@ const DatasetItem: FC<Props> = ({
   settingsModalHeight,
 }) => {
   const media = useBreakpoints()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const isMobile = media === MediaType.mobile
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)
 
-  const [isShowSettingsModal, setIsShowSettingsModal] = useState(false)
+  const settingsDrawerActionsRef = useRef<DrawerActions>(null)
 
   const handleSave = useCallback(
     (newDataset: DataSet) => {
       onChange(newDataset)
-      setIsShowSettingsModal(false)
+      settingsDrawerActionsRef.current?.close()
     },
     [onChange],
   )
@@ -97,15 +99,48 @@ const DatasetItem: FC<Props> = ({
       {!readonly && (
         <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover/dataset-item:flex">
           {editable && (
-            <IconButton
-              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsShowSettingsModal(true)
-              }}
-            >
-              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            </IconButton>
+            <Drawer actionsRef={settingsDrawerActionsRef} modal swipeDirection="right">
+              <DrawerTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span
+                      aria-hidden
+                      className="i-ri-edit-line size-4 shrink-0 text-text-tertiary"
+                    />
+                  </IconButton>
+                }
+              />
+              <DrawerPortal>
+                <DrawerBackdrop
+                  forceRender={settingsDrawerBackdropForceRender}
+                  className={cn(
+                    !settingsDrawerBackdropClassName && !isMobile && 'bg-transparent',
+                    settingsDrawerBackdropClassName,
+                  )}
+                />
+                <DrawerViewport>
+                  <DrawerPopup
+                    className={cn(
+                      'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl',
+                      settingsDrawerPopupClassName ??
+                        'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
+                    )}
+                  >
+                    <DrawerContent className="flex h-full min-h-0 flex-1 flex-col p-0 pb-0">
+                      <SettingsModal
+                        currentDataset={payload}
+                        height={settingsModalHeight}
+                        onCancel={() => settingsDrawerActionsRef.current?.close()}
+                        onSave={handleSave}
+                      />
+                    </DrawerContent>
+                  </DrawerPopup>
+                </DrawerViewport>
+              </DrawerPortal>
+            </Drawer>
           )}
           <IconButton
             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
@@ -137,45 +172,6 @@ const DatasetItem: FC<Props> = ({
           className="shrink-0 group-hover/dataset-item:hidden"
           text={t(($) => $.externalTag, { ns: 'dataset' })}
         />
-      )}
-
-      {isShowSettingsModal && (
-        <Drawer
-          open={isShowSettingsModal}
-          modal
-          swipeDirection="right"
-          onOpenChange={(open) => {
-            if (!open) setIsShowSettingsModal(false)
-          }}
-        >
-          <DrawerPortal>
-            <DrawerBackdrop
-              forceRender={settingsDrawerBackdropForceRender}
-              className={cn(
-                !settingsDrawerBackdropClassName && !isMobile && 'bg-transparent',
-                settingsDrawerBackdropClassName,
-              )}
-            />
-            <DrawerViewport>
-              <DrawerPopup
-                className={cn(
-                  'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl',
-                  settingsDrawerPopupClassName ??
-                    'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
-                )}
-              >
-                <DrawerContent className="flex h-full min-h-0 flex-1 flex-col p-0 pb-0">
-                  <SettingsModal
-                    currentDataset={payload}
-                    height={settingsModalHeight}
-                    onCancel={() => setIsShowSettingsModal(false)}
-                    onSave={handleSave}
-                  />
-                </DrawerContent>
-              </DrawerPopup>
-            </DrawerViewport>
-          </DrawerPortal>
-        </Drawer>
       )}
     </div>
   )

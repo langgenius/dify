@@ -57,18 +57,6 @@ vi.mock('@/app/components/workflow/collaboration/utils/user-color', () => ({
   getUserColor: () => '#22c55e',
 }))
 
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
-vi.mock('@/app/components/base/inline-delete-confirm', () => ({
-  default: ({ onConfirm }: { onConfirm: () => void }) => (
-    <button type="button" data-testid="confirm-delete-reply" onClick={onConfirm}>
-      confirm delete
-    </button>
-  ),
-}))
-
 vi.mock('./mention-input', () => ({
   MentionInput: ({
     placeholder,
@@ -158,13 +146,15 @@ describe('CommentThread', () => {
       />,
     )
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.deleteComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.resolveComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.previousComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.nextComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.closeComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.deleteComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.resolveComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.previousComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.nextComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.closeComment'))
 
     fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
     expect(onDelete).toHaveBeenCalledTimes(1)
     expect(onResolve).toHaveBeenCalledTimes(1)
@@ -197,9 +187,9 @@ describe('CommentThread', () => {
       <CommentThread comment={createComment()} onClose={vi.fn()} onCommentEdit={onCommentEdit} />,
     )
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.commentActions'))
-    fireEvent.click(screen.getByText('workflow.comments.actions.editComment'))
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.editComment'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
+    fireEvent.click(screen.getByText('workflowComments.comments.actions.editComment'))
+    fireEvent.click(screen.getByText('submit-workflowComments.comments.placeholder.editComment'))
 
     await waitFor(() => {
       expect(onCommentEdit).toHaveBeenCalledWith('@Alice original comment', ['user-2'])
@@ -218,10 +208,10 @@ describe('CommentThread', () => {
     expect(mockSetCommentPreviewHovering).toHaveBeenNthCalledWith(1, true)
     expect(mockSetCommentPreviewHovering).toHaveBeenNthCalledWith(2, false)
 
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.reply'))
+    fireEvent.click(screen.getByText('submit-workflowComments.comments.placeholder.reply'))
 
     await waitFor(() => {
-      expect(onReply).toHaveBeenCalledWith('content:workflow.comments.placeholder.reply', [
+      expect(onReply).toHaveBeenCalledWith('content:workflowComments.comments.placeholder.reply', [
         'user-2',
       ])
     })
@@ -241,20 +231,22 @@ describe('CommentThread', () => {
       />,
     )
 
-    await user.click(screen.getByLabelText('workflow.comments.aria.replyActions'))
-    await user.click(await screen.findByText('workflow.comments.actions.editReply'))
-    await user.click(screen.getByText('submit-workflow.comments.placeholder.editReply'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflowComments.comments.actions.editReply'))
+    await user.click(screen.getByText('submit-workflowComments.comments.placeholder.editReply'))
 
     await waitFor(() => {
       expect(onReplyEdit).toHaveBeenCalledWith('reply-1', 'first reply', ['user-2'])
     })
 
     await waitFor(() => {
-      expect(screen.getByLabelText('workflow.comments.aria.replyActions')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('workflowComments.comments.aria.replyActions'),
+      ).toBeInTheDocument()
     })
-    await user.click(screen.getByLabelText('workflow.comments.aria.replyActions'))
-    await user.click(await screen.findByText('workflow.comments.actions.deleteReply'))
-    await user.click(screen.getByTestId('confirm-delete-reply'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 
     expect(onReplyDeleteDirect).toHaveBeenCalledWith('reply-1')
   })

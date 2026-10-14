@@ -91,15 +91,17 @@ at call sites:
 ```
 
 Regular (`medium`) and `large` sizes use 4px and 6px gaps. `small` uses 3px for `primary` and 4px
-for the other variants. Use a `className` override only for a documented layout exception.
+for the other variants. Override these gaps through `className` only for a documented layout exception.
 
 ## Related guides
 
 - Read [`IconButton`] for icon-only actions.
 - Read [Accessible names and descriptions] when choosing or changing a naming source.
+- Read [Styling] for state styles, callbacks, and their composition boundary.
 - Read [Base UI Button] for the upstream interaction and composition contract.
 
 [Accessible names and descriptions]: ../../docs/accessible-names-and-descriptions.md
 [Base UI Button]: https://base-ui.com/react/components/button
+[Styling]: ../../docs/styling.md
 [WAI-ARIA `aria-busy`]: https://www.w3.org/TR/wai-aria#aria-busy
 [`IconButton`]: ../icon-button/README.md

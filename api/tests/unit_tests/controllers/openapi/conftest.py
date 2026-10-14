@@ -11,9 +11,12 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_flask_app_with_configs
+from constants.oauth_bearer import TokenType
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from enums import DeploymentEdition
-from libs.oauth_bearer import AuthContext, TokenType
+from extensions.ext_application_services import ApplicationServices
+from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
@@ -21,7 +24,7 @@ from models.model import AppMode, IconType
 
 
 @pytest.fixture
-def openapi_app():
+def openapi_app() -> Flask:
     # the real factory: flask-restx wire behaviour (404 route suggestions) is app config
     app = create_flask_app_with_configs()
     app.config["TESTING"] = True
@@ -30,7 +33,7 @@ def openapi_app():
 
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     a = Flask(__name__)
     a.config["TESTING"] = True
     return a
@@ -118,5 +121,19 @@ def admitted_bearer(
         workspace_id=workspace_id,
         app_id=app_id,
         member_id=str(uuid.uuid4()),
-        headers={"Authorization": "Bearer dfoa_admitted"},
+        headers={"Authorization": "Bearer dfoa_admitted", CATALOG_HEADER: catalog_for(openapi_app)[1]},
     )
+
+
+@pytest.fixture(autouse=True)
+def _account_services(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> None:
+    from controllers.openapi import workspaces
+    from controllers.openapi.auth import loaders, requirements, subjects
+
+    for module in (
+        workspaces,
+        loaders,
+        requirements,
+        subjects,
+    ):
+        monkeypatch.setattr(module, "application_services", lambda: account_application_services)

@@ -6,6 +6,33 @@ import path from 'node:path'
 const rootDir = import.meta.dirname
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
+
+export const hintContentRules = {
+  'shadcn/no-restyle': [
+    'error',
+    {
+      componentImports: ['^@langgenius/dify-ui/(tooltip|infotip)$'],
+      allow: ['*'],
+      contracts: [
+        {
+          pattern: '^TooltipContent$',
+          allow: ['flex', 'items-center', 'gap-1', 'w-*', 'max-w-*'],
+          // `flex` also names a shadcn class group; allow display flex without flex sizing.
+          deny: ['flex-*'],
+          message:
+            '"{{className}}" is outside the TooltipContent styling contract. Use the default surface, spacing, and typography from packages/dify-ui/src/tooltip/index.tsx; callers may compose a label/shortcut row or constrain width.',
+        },
+        {
+          pattern: '^InfotipContent$',
+          allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
+          message:
+            '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+      ],
+    },
+  ],
+} satisfies NonNullable<OxlintConfig['rules']>
+
 const tailwindCanonicalClassesOverride = {
   files: [
     'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -174,18 +201,13 @@ export const lintConfig = {
   // Keep JavaScript plugins ordered by rule namespace. The `-js` aliases distinguish
   // plugins that supplement an active native Oxlint plugin with the same namespace.
   jsPlugins: [
+    '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
-    'eslint-plugin-command',
     {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
-    },
-    'eslint-plugin-erasable-syntax-only',
-    {
-      name: 'eslint-comments',
-      specifier: '@eslint-community/eslint-plugin-eslint-comments',
     },
     {
       name: 'eslint-react',
@@ -459,13 +481,11 @@ export const lintConfig = {
     'vars-on-top': 'error',
     yoda: ['error', 'never'],
     'unicorn/no-abusive-eslint-disable': 'error',
+    'dify/no-app-store-imports': 'error',
     'dify/no-file-wide-disable': 'error',
     'dify/require-disable-directive-description': 'error',
-    'eslint-comments/no-aggregating-enable': 'error',
-    'eslint-comments/no-duplicate-disable': 'error',
-    'eslint-comments/no-unlimited-disable': 'error',
-    'eslint-comments/no-unused-enable': 'error',
-    'command/command': 'error',
+    'dify/require-i18n-namespace': 'error',
+    'dify/require-t-function-namespace': 'error',
     'perfectionist/sort-exports': [
       'error',
       {
@@ -495,10 +515,6 @@ export const lintConfig = {
     'import/no-duplicates': 'error',
     'import/no-mutable-exports': 'error',
     'import/no-named-default': 'error',
-    'erasable-syntax-only/enums': 'error',
-    'erasable-syntax-only/import-aliases': 'error',
-    'erasable-syntax-only/namespaces': 'error',
-    'erasable-syntax-only/parameter-properties': 'error',
     'regexp/confusing-quantifier': 'warn',
     'regexp/control-character-escape': 'error',
     'regexp/match-any': 'error',
@@ -756,7 +772,6 @@ export const lintConfig = {
     {
       files: ['**/*.d.{ts,cts,mts}'],
       rules: {
-        'eslint-comments/no-unlimited-disable': 'off',
         'no-unused-vars': 'off',
       },
     },
@@ -809,6 +824,10 @@ export const lintConfig = {
       rules: jsxA11yRules,
     },
     {
+      files: ['web/**/*.{jsx,tsx}'],
+      rules: hintContentRules,
+    },
+    {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
       rules: {
         'storybook/await-interactions': 'error',
@@ -844,11 +863,6 @@ export const lintConfig = {
               height: 'h',
             },
             libraries: [
-              {
-                prefix: 'i-custom-',
-                source: '^@/app/components/base/icons/src/(?<set>(?:public|vender)(?:/.*)?)$',
-                name: '^(?<name>.*)$',
-              },
               {
                 source: '^@remixicon/react$',
                 name: '^(?<set>Ri)(?<name>.+)$',
@@ -898,7 +912,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -965,7 +987,15 @@ export const lintConfig = {
                 message: 'Do not import next/font. Use the project font styles instead.',
               },
               {
-                group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
+                // next/dynamic must be imported directly for compiler-generated preload metadata.
+                group: [
+                  'next/*',
+                  '!next/dynamic',
+                  '!next/font',
+                  '!next/font/*',
+                  '!next/image',
+                  '!next/image/*',
+                ],
                 message:
                   'Import Next APIs from the corresponding @/next/* module instead of next/*.',
               },
@@ -1153,15 +1183,29 @@ export const lintConfig = {
     {
       files: ['packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {
+        'func-names': ['error', 'as-needed'],
+        'id-denylist': ['error', 'e'],
         'unicorn/import-style': [
           'error',
           {
             extendDefaultStyles: false,
             styles: {
               react: { namespace: true },
+              'react-dom': { namespace: true },
+              'react-dom/client': { namespace: true },
+              'react-dom/server': { namespace: true },
             },
           },
         ],
+        'react/function-component-definition': [
+          'error',
+          {
+            namedComponents: ['function-declaration', 'function-expression'],
+            unnamedComponents: ['arrow-function', 'function-expression'],
+          },
+        ],
+        'react/jsx-fragments': ['error', 'element'],
+        'react/jsx-no-useless-fragment': ['error', { allowExpressions: true }],
         'react/exhaustive-deps': [
           'error',
           {
@@ -1329,11 +1373,6 @@ export const lintConfig = {
         'valid-typeof': 'error',
         'vars-on-top': 'off',
         yoda: 'off',
-        'eslint-comments/no-aggregating-enable': 'off',
-        'eslint-comments/no-duplicate-disable': 'off',
-        'eslint-comments/no-unlimited-disable': 'off',
-        'eslint-comments/no-unused-enable': 'off',
-        'command/command': 'off',
         'perfectionist/sort-exports': 'off',
         'perfectionist/sort-named-exports': 'off',
         'perfectionist/sort-named-imports': 'off',
@@ -1345,10 +1384,6 @@ export const lintConfig = {
         'import/no-duplicates': 'off',
         'import/no-mutable-exports': 'off',
         'import/no-named-default': 'off',
-        'erasable-syntax-only/enums': 'off',
-        'erasable-syntax-only/import-aliases': 'off',
-        'erasable-syntax-only/namespaces': 'off',
-        'erasable-syntax-only/parameter-properties': 'off',
         'regexp/confusing-quantifier': 'off',
         'regexp/control-character-escape': 'off',
         'regexp/match-any': 'off',

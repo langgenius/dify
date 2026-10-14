@@ -15,7 +15,7 @@ type ItemProps = {
   data: CommonNodeType
 }
 const Item = ({ nodeId, sourceHandle, data }: ItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeSelect } = useNodesInteractions()

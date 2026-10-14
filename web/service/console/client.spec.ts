@@ -6,6 +6,8 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createAgentFixture } from '@/test/fixtures/agent'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const loadConsoleQuery = async () => {
@@ -84,22 +86,8 @@ const getRetryFn = (queryOptions: object): RetryFn => {
   return retry as RetryFn
 }
 
-const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
-  ...overrides,
-  access_ready: overrides.access_ready ?? true,
-  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
-  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
-  enable_api: overrides.enable_api ?? true,
-  enable_site: overrides.enable_site ?? true,
-  description: overrides.description ?? 'Agent description',
-  hidden_app_backed: overrides.hidden_app_backed ?? false,
-  id: overrides.id ?? 'agent-1',
-  icon_url: overrides.icon_url ?? null,
-  mode: overrides.mode ?? 'agent',
-  name: overrides.name ?? 'Agent',
-  permission_keys: overrides.permission_keys ?? [],
-  role: overrides.role ?? 'Assistant',
-})
+const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse =>
+  createAgentFixture({ role: 'Assistant', ...overrides })
 
 const createComposerState = (
   overrides: Partial<AgentComposerMutationResponse> = {},
@@ -137,6 +125,7 @@ const createComposerState = (
 const createAgentPublishResponse = (
   overrides: Partial<AgentPublishMutationResponse> = {},
 ): AgentPublishMutationResponse => ({
+  publication_kind: 'update',
   active_config_snapshot: {
     id: 'snapshot-1',
     version: 1,
@@ -195,37 +184,68 @@ const createWorkflowComposerState = (
 
 // Scenario: base URL selection and warnings.
 describe('consoleQuery transport context', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it('uploads ifpkg imports as multipart files without decoding their bytes as YAML', async () => {
-    const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
-    const file = new File([bytes], 'agent.ifpkg', { type: 'application/zip' })
+  it('uploads icon files as multipart data through the Console transport', async () => {
+    const file = new File(['GIF89a'], 'icon.gif', { type: 'image/gif' })
+    const response = { id: 'uploaded-icon', name: file.name, size: file.size }
     const request = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: 'import-1', status: 'completed' }), {
-        status: 200,
+      new Response(JSON.stringify(response), {
+        status: 201,
         headers: { 'content-type': 'application/json' },
       }),
     )
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const mutation = new MutationObserver(
       new QueryClient(),
-      consoleQuery.apps.imports.post.mutationOptions(),
+      consoleQuery.files.upload.post.mutationOptions(),
     )
-    await mutation.mutate({ body: { file } })
-
+    await expect(mutation.mutate({ body: { file } })).resolves.toEqual(response)
     const outgoing = request.mock.calls[0]?.[2]?.request as Request
-    expect(outgoing.url).toContain('/apps/imports')
+    expect(outgoing.url).toContain('/files/upload')
     expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
     const form = await outgoing.formData()
     expect(Array.from(form.keys())).toEqual(['file'])
     const uploaded = form.get('file')
-    expect(uploaded).toBeInstanceOf(File)
-    if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded archive')
-    expect(uploaded.name).toBe('agent.ifpkg')
-    expect(new Uint8Array(await uploaded.arrayBuffer())).toEqual(bytes)
+    if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded icon')
+    expect(uploaded.name).toBe(file.name)
+    expect(uploaded.type).toBe(file.type)
+    expect(await uploaded.text()).toBe('GIF89a')
   })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it.each([undefined, 'existing-workflow'])(
+    'uploads ifpkg bytes with overwrite target %s',
+    async (appId) => {
+      const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
+      const file = new File([bytes], 'agent.ifpkg', { type: 'application/zip' })
+      const request = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ id: 'import-1', status: 'completed' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      const consoleQuery = await loadConsoleQueryWithRequest(request)
+      const mutation = new MutationObserver(
+        new QueryClient(),
+        consoleQuery.apps.imports.post.mutationOptions(),
+      )
+      await mutation.mutate({ body: { file, ...(appId ? { app_id: appId } : {}) } })
+
+      const outgoing = request.mock.calls[0]?.[2]?.request as Request
+      expect(outgoing.url).toContain('/apps/imports')
+      expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
+      const form = await outgoing.formData()
+      expect(Array.from(form.keys()).sort()).toEqual(appId ? ['app_id', 'file'] : ['file'])
+      expect(form.get('app_id')).toBe(appId ?? null)
+      const uploaded = form.get('file')
+      expect(uploaded).toBeInstanceOf(File)
+      if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded archive')
+      expect(uploaded.name).toBe('agent.ifpkg')
+      expect(new Uint8Array(await uploaded.arrayBuffer())).toEqual(bytes)
+    },
+  )
 
   it('preserves archive bytes and the download filename for App exports', async () => {
     const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff])
@@ -252,6 +272,30 @@ describe('consoleQuery transport context', () => {
     expect(result.name).toBe('agent.ifpkg')
     expect(result.type).toBe('application/zip')
     expect(new Uint8Array(await result.arrayBuffer())).toEqual(bytes)
+  })
+
+  it('preserves agent audition audio bytes and the provider content type', async () => {
+    const bytes = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x00, 0xff])
+    const request = vi
+      .fn()
+      .mockResolvedValue(new Response(bytes, { headers: { 'content-type': 'audio/wav' } }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const mutation = new MutationObserver(
+      new QueryClient(),
+      consoleQuery.agent.byAgentId.textToAudio.post.mutationOptions(),
+    )
+    const audio = await mutation.mutate({
+      params: { agent_id: 'agent-1' },
+      body: { text: 'Preview this voice', voice: 'echo' },
+    })
+
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(outgoing.url).toContain('/agent/agent-1/text-to-audio')
+    expect(outgoing.method).toBe('POST')
+    expect(await outgoing.json()).toEqual({ text: 'Preview this voice', voice: 'echo' })
+    expect(audio).toBeInstanceOf(Blob)
+    expect(audio.type).toBe('audio/wav')
+    expect(new Uint8Array(await audio.arrayBuffer())).toEqual(bytes)
   })
 
   it('should forward silent context to the base request transport', async () => {
@@ -501,7 +545,8 @@ describe('consoleQuery agent query defaults', () => {
     })
     const retry = getRetryFn(queryOptions)
 
-    expect(retry(0, new Response(null, { status: 404 }))).toBe(false)
+    const { createHttpError } = await import('@/service/http-error')
+    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
   })
 
   it('should retry other agent detail errors fewer than three times', async () => {
@@ -609,6 +654,41 @@ describe('consoleQuery account profile mutation defaults', () => {
 })
 
 describe('consoleQuery app mutation defaults', () => {
+  it('should merge the reset token into the exact app site without replacing other detail fields', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const input = { params: { app_id: 'app-1' } }
+    const detailKey = consoleQuery.apps.byAppId.get.queryKey({ input })
+    const otherKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-2' } },
+    })
+    const original = createAppDetailFixture({ site: createAppSiteFixture() })
+    const other = createAppDetailFixture({ id: 'app-2' })
+    queryClient.setQueryData(detailKey, original)
+    queryClient.setQueryData(otherKey, other)
+    const response: AppSiteResponse = {
+      app_id: 'app-1',
+      code: 'new-site-code',
+      customize_token_strategy: 'fixed',
+      default_language: 'en-US',
+      prompt_public: false,
+      show_workflow_steps: false,
+      title: 'Unrelated response field',
+      use_icon_as_answer_icon: false,
+    }
+
+    await consoleQuery.apps.byAppId.site.accessTokenReset.post
+      .mutationOptions()
+      .onSettled?.(response, null, input, undefined, createMutationContext(queryClient))
+
+    expect(queryClient.getQueryData(detailKey)).toEqual({
+      ...original,
+      site: { ...original.site, code: response.code, access_token: response.code },
+    })
+    expect(queryClient.getQueryData(otherKey)).toEqual(other)
+    expect(original.site?.access_token).toBe('site-token')
+  })
+
   it('should invalidate the exact app detail after access mutations', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -616,13 +696,7 @@ describe('consoleQuery app mutation defaults', () => {
       .spyOn(queryClient, 'invalidateQueries')
       .mockImplementation(() => new Promise(() => {}))
     const context = createMutationContext(queryClient)
-    const appDetail: AppDetail = {
-      enable_api: true,
-      enable_site: true,
-      id: 'app-1',
-      mode: 'chat',
-      name: 'App',
-    }
+    const appDetail: AppDetail = createAppDetailFixture()
     const appSite: AppSiteResponse = {
       app_id: 'app-1',
       customize_token_strategy: 'fixed',
@@ -685,6 +759,52 @@ describe('consoleQuery app mutation defaults', () => {
     })
   })
 
+  it.each(['api', 'site'] as const)(
+    'keeps complete detail and other apps when updating %s access',
+    async (kind) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const input = { params: { app_id: 'app-1' } }
+      const detailKey = consoleQuery.apps.byAppId.get.queryKey({ input })
+      const otherKey = consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-2' } },
+      })
+      const original = createAppDetailFixture({ enable_api: true, enable_site: true })
+      const other = createAppDetailFixture({ id: 'app-2' })
+      queryClient.setQueryData(detailKey, original)
+      queryClient.setQueryData(otherKey, other)
+      const updated = createAppDetailFixture({
+        name: 'Unrelated response field',
+        enable_api: false,
+        enable_site: false,
+      })
+      const context = createMutationContext(queryClient)
+
+      if (kind === 'api') {
+        await consoleQuery.apps.byAppId.apiEnable.post
+          .mutationOptions()
+          .onSettled?.(updated, null, { ...input, body: { enable_api: false } }, undefined, context)
+      } else {
+        await consoleQuery.apps.byAppId.siteEnable.post
+          .mutationOptions()
+          .onSettled?.(
+            updated,
+            null,
+            { ...input, body: { enable_site: false } },
+            undefined,
+            context,
+          )
+      }
+
+      expect(queryClient.getQueryData(detailKey)).toEqual({
+        ...original,
+        [kind === 'api' ? 'enable_api' : 'enable_site']: false,
+        updated_at: updated.updated_at,
+      })
+      expect(queryClient.getQueryData(otherKey)).toEqual(other)
+    },
+  )
+
   it('should write an updated app into its exact detail cache', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -694,14 +814,11 @@ describe('consoleQuery app mutation defaults', () => {
     const otherDetailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-2' } },
     })
-    const updatedApp = {
+    const updatedApp = createAppDetailFixture({
       enable_api: false,
       enable_site: false,
-      icon_url: null,
-      id: 'app-1',
-      mode: 'chat',
       name: 'Updated app',
-    }
+    })
     queryClient.setQueryData(detailQueryKey, { ...updatedApp, name: 'Old app' })
     queryClient.setQueryData(otherDetailQueryKey, { ...updatedApp, id: 'app-2', name: 'Other app' })
 
@@ -2136,5 +2253,67 @@ describe('workspace skill deletion cache', () => {
     } finally {
       client.clear()
     }
+  })
+})
+
+describe('consoleQuery resourceAccessTokens mutation defaults', () => {
+  const createdToken = { data: [], token: 'token' }
+  const tokenList = { data: [], has_more: false, limit: 20, page: 1, total: 0 }
+
+  it('should refresh the token list after a token is created, updated, or deleted', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const context = createMutationContext(queryClient)
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const tokens = consoleQuery.resourceAccessTokens
+
+    await tokens.post
+      .mutationOptions()
+      .onSettled?.(
+        createdToken,
+        null,
+        { body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.patch
+      .mutationOptions()
+      .onSettled?.(
+        tokenList,
+        null,
+        { params: { token_id: 'token-1' }, body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        null,
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        context,
+      )
+
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: tokens.get.key() })
+  })
+
+  it('should leave the token list alone when the mutation fails', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+
+    await consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        new Error('failed'),
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 })

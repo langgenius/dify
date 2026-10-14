@@ -34,7 +34,7 @@ const PluginMutationModal: FC<Props> = ({
   mutate,
   modalBottomLeft,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <Dialog

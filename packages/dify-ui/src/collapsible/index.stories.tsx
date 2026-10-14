@@ -50,7 +50,7 @@ function TriggerIcon() {
 
 function RecoveryKeys(props: Pick<CollapsiblePanelProps, 'keepMounted' | 'hiddenUntilFound'>) {
   return (
-    <>
+    <React.Fragment>
       <CollapsibleTrigger className={cn(triggerClassName, 'justify-between gap-2')}>
         Recovery keys
         <TriggerIcon />
@@ -62,7 +62,7 @@ function RecoveryKeys(props: Pick<CollapsiblePanelProps, 'keepMounted' | 'hidden
           <div>horse-battery-staple</div>
         </div>
       </CollapsiblePanel>
-    </>
+    </React.Fragment>
   )
 }
 
@@ -190,7 +190,7 @@ export const Disabled: Story = {
   ),
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Unavailable options' })
-    await expect(trigger).toHaveAttribute('aria-disabled', 'true')
+    await expect(trigger).toBeDisabled()
     await userEvent.click(trigger)
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await expect(canvas.queryByText('These options are not available.')).not.toBeInTheDocument()

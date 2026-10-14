@@ -7,6 +7,7 @@ import type {
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -23,6 +24,7 @@ import {
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
@@ -108,19 +110,8 @@ function recoveryQueryMaskForPermissionDenials(permissionDenialMask: number) {
   return recoveryQueryMask & ~permissionDenialMask
 }
 
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
-}
-
 function taskSnapshotErrorIsTransient(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === undefined || status === 408 || status === 429 || status >= 500
 }
 
@@ -144,8 +135,8 @@ function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessin
 }
 
 export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
@@ -186,21 +177,30 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   >({})
   const [terminalTaskPins, setTerminalTaskPins] = useState<Record<string, TerminalTaskPin>>({})
   const [taskObserverGenerations, setTaskObserverGenerations] = useState<Record<string, number>>({})
-  const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
-  const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
-  const blockedFailedTaskPollVersionsRef = useRef(new Map<string, string>())
-  const failedPollAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const terminalConfirmableAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
-  const equalRetryListGenerationsRef = useRef(new Map<string, number>())
-  const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
-  const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
-  const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
+  const terminalReconciliationGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const failedTaskPollGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const blockedFailedTaskPollVersionsRef = useRefWithInit(() => new Map<string, string>())
+  const failedPollAuxiliaryDenialsRef = useRefWithInit(
+    () => new Map<string, AuxiliaryTaskReadDenial>(),
+  )
+  const terminalConfirmableAuxiliaryDenialsRef = useRefWithInit(
+    () => new Map<string, AuxiliaryTaskReadDenial>(),
+  )
+  const equalRetryListGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const terminalReconciliationTimeoutsRef = useRefWithInit(() => new Map<string, number>())
+  const terminalReconciliationControllersRef = useRefWithInit(
+    () => new Map<string, AbortController>(),
+  )
+  const pendingTerminalProgressRef = useRefWithInit(
+    () => new Map<string, ProcessingTaskProgressEvent>(),
+  )
   const taskEventCursorsRef = useRef(new Map<string, string>())
   const streamActiveOverrideVersionsRef = useRef(new Map<string, string>())
-  const trustedActiveOverrideVersionsRef = useRef(new Map<string, TrustedActiveOverride>())
-  const trustedOverrideListGenerationsRef = useRef(new Map<string, number>())
-  const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
-  if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
+  const trustedActiveOverrideVersionsRef = useRefWithInit(
+    () => new Map<string, TrustedActiveOverride>(),
+  )
+  const trustedOverrideListGenerationsRef = useRefWithInit(() => new Map<string, number>())
+  const taskProgressStoreRef = useRefWithInit(createTaskProgressStore)
   const taskProgressStore = taskProgressStoreRef.current
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
@@ -227,7 +227,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       initialPageParam: null as string | null,
     }),
   )
-  const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
+  const documentPermissionDenied = getHttpErrorStatus(documentsQuery.error) === 403
   const refetchDocumentsQuery = documentsQuery.refetch
   const {
     deny: denyAuxiliaryTaskRead,
@@ -242,7 +242,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     if (!documentPermissionDenied) return
     failedPollAuxiliaryDenialsRef.current.clear()
     terminalConfirmableAuxiliaryDenialsRef.current.clear()
-  }, [documentPermissionDenied])
+  }, [
+    documentPermissionDenied,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+  ])
   const tasksQueryOptions = useMemo(
     () =>
       consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
@@ -276,8 +280,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const permissionDenialMask =
     (documentPermissionDenied || auxiliaryReadPermissionDenied ? DOCUMENT_PERMISSION_DENIED : 0) |
-    (responseStatus(tasksQuery.error) === 403 ? TASK_PERMISSION_DENIED : 0) |
-    (responseStatus(sourcesQuery.error) === 403 ? SOURCE_PERMISSION_DENIED : 0)
+    (getHttpErrorStatus(tasksQuery.error) === 403 ? TASK_PERMISSION_DENIED : 0) |
+    (getHttpErrorStatus(sourcesQuery.error) === 403 ? SOURCE_PERMISSION_DENIED : 0)
   const permissionDenied = permissionDenialMask !== 0
   const previousPermissionDenialMaskRef = useRef(permissionDenialMask)
   const permissionRecoveryQueryMaskRef = useRef(
@@ -445,7 +449,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         trustedOverrideListGenerationsRef.current.delete(task.id)
       }
     }
-  }, [tasks])
+  }, [tasks, trustedActiveOverrideVersionsRef, trustedOverrideListGenerationsRef])
 
   useEffect(() => {
     const clearedActiveTaskIds: string[] = []
@@ -470,9 +474,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       for (const taskId of clearedActiveTaskIds) next[taskId] = (next[taskId] ?? 0) + 1
       return next
     })
-  }, [auxiliaryTaskReadGuard, baseTasks, effectiveTaskById, taskListGeneration])
-  const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
-  const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
+  }, [
+    auxiliaryTaskReadGuard,
+    baseTasks,
+    effectiveTaskById,
+    taskListGeneration,
+    terminalConfirmableAuxiliaryDenialsRef,
+  ])
+  const currentTaskStateRef = useRefWithInit(
+    () => new Map(tasks.map((task) => [task.id, task.state])),
+  )
+  const currentTaskVersionRef = useRefWithInit(
+    () => new Map(tasks.map((task) => [task.id, task.updatedAt])),
+  )
   useLayoutEffect(() => {
     const currentTaskIds = new Set(tasks.map((task) => task.id))
     for (const task of tasks) {
@@ -487,7 +501,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       currentTaskStateRef.current.delete(taskId)
       currentTaskVersionRef.current.delete(taskId)
     }
-  }, [tasks])
+  }, [tasks, currentTaskStateRef, currentTaskVersionRef])
 
   const taskByDocument = useMemo(() => newestTaskByDocument(tasks), [tasks])
   const documentStatuses = useMemo(
@@ -808,12 +822,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     const shouldRestoreFocus =
       tasksOpen || documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current
     if (tasksOpen) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
       setTasksOpen(false)
     }
     if (shouldRestoreFocus) documentPermissionAlertRef.current?.focus()
     bulkActionsHadFocusRef.current = false
-  }, [permissionDenialMask, permissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
+  }, [
+    permissionDenialMask,
+    permissionDenied,
+    refetchSourcesQuery,
+    refetchTasksQuery,
+    tasksOpen,
+    blockedFailedTaskPollVersionsRef,
+  ])
 
   useEffect(() => {
     if (
@@ -835,9 +855,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     )
       return
     writePermissionRecoveryFetchSeenRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A post-denial permission request is the authoritative event that retires the local mutation lock.
     setWritePermissionRevoked(false)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The completed recovery generation is retired with its write lock.
     setWritePermissionRecoveryGeneration(undefined)
   }, [
     canEdit,
@@ -1084,7 +1102,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       } catch (error) {
         if (terminalReconciliationControllersRef.current.get(taskId) !== controller) return
         terminalReconciliationControllersRef.current.delete(taskId)
-        if (responseStatus(error) === 403) {
+        if (getHttpErrorStatus(error) === 403) {
           const currentTaskVersion = currentTaskVersionRef.current.get(taskId)
           const deniedVersion =
             currentTaskVersion && taskVersionIsAfter(currentTaskVersion, terminalVersion)
@@ -1123,7 +1141,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         window.clearTimeout(requestTimeout)
       }
     },
-    [auxiliaryTaskReadGuard, denyAuxiliaryTaskRead, knowledgeSpaceId, taskProgressStore],
+    [
+      auxiliaryTaskReadGuard,
+      denyAuxiliaryTaskRead,
+      knowledgeSpaceId,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+      terminalReconciliationTimeoutsRef,
+      terminalReconciliationControllersRef,
+      terminalReconciliationGenerationsRef,
+      failedPollAuxiliaryDenialsRef,
+      terminalConfirmableAuxiliaryDenialsRef,
+      trustedActiveOverrideVersionsRef,
+      blockedFailedTaskPollVersionsRef,
+      failedTaskPollGenerationsRef,
+    ],
   )
 
   useEffect(() => {
@@ -1147,7 +1180,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       terminalReconciliationGenerationsRef.current.set(task.id, reconciliationGeneration)
       void reconcileTerminalTask(task.id, task.updatedAt, reconciliationGeneration)
     }
-  }, [baseTasks, permissionDenied, reconcileTerminalTask, taskListGeneration, taskOverrides])
+  }, [
+    baseTasks,
+    permissionDenied,
+    reconcileTerminalTask,
+    taskListGeneration,
+    taskOverrides,
+    trustedActiveOverrideVersionsRef,
+    trustedOverrideListGenerationsRef,
+    terminalReconciliationGenerationsRef,
+  ])
 
   useEffect(
     () => () => {
@@ -1158,7 +1200,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         window.clearTimeout(timeout)
       terminalReconciliationTimeoutsRef.current.clear()
     },
-    [knowledgeSpaceId],
+    [knowledgeSpaceId, terminalReconciliationControllersRef, terminalReconciliationTimeoutsRef],
   )
 
   useEffect(() => {
@@ -1181,7 +1223,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       window.clearTimeout(timeout)
     terminalReconciliationTimeoutsRef.current.clear()
     equalRetryListGenerationsRef.current.clear()
-  }, [knowledgeSpaceId, permissionDenied, queryClient])
+  }, [
+    knowledgeSpaceId,
+    permissionDenied,
+    queryClient,
+    terminalReconciliationControllersRef,
+    terminalReconciliationGenerationsRef,
+    terminalReconciliationTimeoutsRef,
+    equalRetryListGenerationsRef,
+  ])
 
   useEffect(() => {
     const taskIds = new Set(baseTasks.map((task) => task.id))
@@ -1234,7 +1284,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setTerminalTaskPins(retainTaskState)
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Prune state for tasks removed by a refreshed cursor result.
     setTaskObserverGenerations(retainTaskState)
-  }, [auxiliaryTaskReadGuard, baseTasks, taskProgressStore])
+  }, [
+    auxiliaryTaskReadGuard,
+    baseTasks,
+    taskProgressStore,
+    terminalReconciliationControllersRef,
+    terminalReconciliationTimeoutsRef,
+    terminalReconciliationGenerationsRef,
+    failedTaskPollGenerationsRef,
+    blockedFailedTaskPollVersionsRef,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+    equalRetryListGenerationsRef,
+    pendingTerminalProgressRef,
+    trustedOverrideListGenerationsRef,
+    trustedActiveOverrideVersionsRef,
+  ])
 
   useEffect(() => {
     if (permissionDenied) return
@@ -1340,6 +1405,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     taskListGeneration,
     taskProgressStore,
     terminalTaskPins,
+    terminalReconciliationGenerationsRef,
+    terminalReconciliationControllersRef,
+    terminalReconciliationTimeoutsRef,
+    blockedFailedTaskPollVersionsRef,
+    failedPollAuxiliaryDenialsRef,
+    terminalConfirmableAuxiliaryDenialsRef,
+    failedTaskPollGenerationsRef,
+    equalRetryListGenerationsRef,
   ])
 
   const handleUploadFiles = useCallback(
@@ -1424,7 +1497,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
         refreshDocumentsAndTasks()
       } catch (error) {
-        if (responseStatus(error) === 403) {
+        if (getHttpErrorStatus(error) === 403) {
           writePermissionDenied = true
           handleWritePermissionDenied()
         } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
@@ -1490,7 +1563,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
       refreshDocumentsAndTasks()
     } catch (error) {
-      if (responseStatus(error) === 403) handleWritePermissionDenied()
+      if (getHttpErrorStatus(error) === 403) handleWritePermissionDenied()
       else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
     } finally {
       reindexPendingRef.current = false
@@ -1599,7 +1672,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }
       return true
     },
-    [reconcileTerminalTask, refreshDocuments, t, taskProgressStore],
+    [
+      reconcileTerminalTask,
+      refreshDocuments,
+      t,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+      pendingTerminalProgressRef,
+      trustedActiveOverrideVersionsRef,
+      failedTaskPollGenerationsRef,
+      terminalReconciliationTimeoutsRef,
+      terminalReconciliationGenerationsRef,
+    ],
   )
 
   const handleTaskUpdated = useCallback(
@@ -1643,7 +1728,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         })
       }
     },
-    [auxiliaryTaskReadGuard, taskProgressStore],
+    [
+      auxiliaryTaskReadGuard,
+      taskProgressStore,
+      currentTaskStateRef,
+      currentTaskVersionRef,
+      failedPollAuxiliaryDenialsRef,
+      terminalConfirmableAuxiliaryDenialsRef,
+      trustedActiveOverrideVersionsRef,
+      trustedOverrideListGenerationsRef,
+      blockedFailedTaskPollVersionsRef,
+      terminalReconciliationControllersRef,
+      terminalReconciliationTimeoutsRef,
+      terminalReconciliationGenerationsRef,
+      failedTaskPollGenerationsRef,
+      pendingTerminalProgressRef,
+    ],
   )
 
   useEffect(() => {
@@ -1656,7 +1756,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       failedPollAuxiliaryDenialsRef.current.delete(task.id)
       handleTaskUpdated(task)
     }
-  }, [baseTasks, handleTaskUpdated, permissionDenied, taskListGeneration])
+  }, [
+    baseTasks,
+    handleTaskUpdated,
+    permissionDenied,
+    taskListGeneration,
+    failedPollAuxiliaryDenialsRef,
+  ])
 
   useEffect(() => {
     for (const task of activeTasks) {
@@ -1665,7 +1771,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const generation = failedTaskPollGenerationsRef.current.get(task.id) ?? 0
       failedTaskPollGenerationsRef.current.set(task.id, generation + 1)
     }
-  }, [activeTasks])
+  }, [activeTasks, blockedFailedTaskPollVersionsRef, failedTaskPollGenerationsRef])
 
   useEffect(() => {
     if (permissionDenied || !orderedFailedTasksRef.current.length) return
@@ -1733,7 +1839,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
               )
                 return
-              if (responseStatus(error) === 403) {
+              if (getHttpErrorStatus(error) === 403) {
                 const currentTaskVersion = currentTaskVersionRef.current.get(task.id)
                 const deniedVersion =
                   currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)
@@ -1767,10 +1873,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [
     auxiliaryTaskReadGuard,
     denyAuxiliaryTaskRead,
+    currentTaskVersionRef,
     failedTaskPollSignature,
     handleTaskUpdated,
     knowledgeSpaceId,
     permissionDenied,
+    blockedFailedTaskPollVersionsRef,
+    failedTaskPollGenerationsRef,
+    failedPollAuxiliaryDenialsRef,
   ])
 
   const toggleDocument = useCallback(
@@ -1830,7 +1940,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       })
       denyAuxiliaryTaskRead(taskId, taskVersion)
     },
-    [denyAuxiliaryTaskRead],
+    [denyAuxiliaryTaskRead, terminalConfirmableAuxiliaryDenialsRef],
   )
 
   return (
@@ -1962,12 +2072,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             >
               <span className="system-xs-regular text-text-tertiary">
                 {t(($) =>
-                  responseStatus(documentsQuery.error) === 403
+                  getHttpErrorStatus(documentsQuery.error) === 403
                     ? $['newKnowledge.documentsPermissionDescription']
                     : $['newKnowledge.documentsErrorDescription'],
                 )}
               </span>
-              {responseStatus(documentsQuery.error) !== 403 && (
+              {getHttpErrorStatus(documentsQuery.error) !== 403 && (
                 <Button
                   ref={documentsRetryButtonRef}
                   aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}

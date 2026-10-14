@@ -1,7 +1,7 @@
 import type { IterationNodeType } from '../types'
 import type { Var } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, ErrorHandleMode, VarType } from '@/app/components/workflow/types'
 import useConfig from '../use-config'
 

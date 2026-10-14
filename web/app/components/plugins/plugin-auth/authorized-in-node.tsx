@@ -20,7 +20,7 @@ const AuthorizedInNode = ({
   credentialId,
   onDefaultCredentialChange,
 }: AuthorizedInNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const {
     canApiKey,
@@ -132,7 +132,7 @@ const AuthorizedInNode = ({
       renderTrigger={renderTrigger}
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      offset={4}
+      sideOffset={4}
       placement="bottom-end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"

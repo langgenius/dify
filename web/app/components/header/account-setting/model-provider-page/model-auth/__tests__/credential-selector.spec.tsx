@@ -60,6 +60,9 @@ describe('CredentialSelector', () => {
     render(<CredentialSelector credentials={mockCredentials} onSelect={mockOnSelect} />)
 
     await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    expect(
+      screen.getByRole('dialog', { name: /modelProvider.auth.selectModelCredential/ }),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Key 2' }))
 
     expect(mockOnSelect).toHaveBeenCalledWith(mockCredentials[1])
@@ -78,6 +81,21 @@ describe('CredentialSelector', () => {
         addNewCredential: true,
       }),
     )
+  })
+
+  it('allows adding a credential with the keyboard', async () => {
+    const user = userEvent.setup()
+    render(<CredentialSelector credentials={mockCredentials} onSelect={mockOnSelect} />)
+
+    await user.click(screen.getByText(/modelProvider.auth.selectModelCredential/))
+    const addButton = screen.getByRole('button', {
+      name: /modelProvider.auth.addNewModelCredential/,
+    })
+    addButton.focus()
+    expect(addButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({ addNewCredential: true }))
   })
 
   it('should not open options when disabled is true', async () => {

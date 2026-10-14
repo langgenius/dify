@@ -257,6 +257,7 @@
   "segment.searchResults_one": "SONUÇ",
   "segment.searchResults_other": "SONUÇLAR",
   "segment.searchResults_zero": "SONUÇ",
+  "segment.statusFilterLabel": "Segmentleri duruma göre filtrele",
   "segment.summary": "ÖZET",
   "segment.summaryPlaceholder": "Daha iyi arama için kısa bir özet yazın…"
 }

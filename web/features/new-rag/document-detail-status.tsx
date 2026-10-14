@@ -45,8 +45,8 @@ export function DocumentDetailStatus({
   tasksError: boolean
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const permissionRetryRef = useRef<HTMLButtonElement>(null)
   const permissionRecoveryWasNeededRef = useRef(false)
   const pendingRecoveryActionRef = useRef<'check' | 'retry' | null>(null)

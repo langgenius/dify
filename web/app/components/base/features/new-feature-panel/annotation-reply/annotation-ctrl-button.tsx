@@ -31,7 +31,7 @@ const AnnotationCtrlButton: FC<Props> = ({
   onAdded,
   onEdit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({

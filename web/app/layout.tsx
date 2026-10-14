@@ -18,7 +18,6 @@ import { headers } from '@/next/headers'
 import { getApplicationTitle } from '@/utils/document-title'
 import { basePath } from '@/utils/var'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
-import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
@@ -68,7 +67,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (nonce !== undefined) themeProviderProps.nonce = nonce
 
   return (
-    <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
+    <html lang={locale} className="h-full" suppressHydrationWarning>
       <head>
         <ReactScanLoader />
       </head>
@@ -83,7 +82,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <I18nServerProvider>
                       <AppToastHost timeout={5000} limit={3} />
                       <SystemFeaturesBootstrapBoundary>
-                        <PartnerStackCookieRecorder />
                         <TooltipProvider delay={300} closeDelay={200}>
                           {children}
                         </TooltipProvider>

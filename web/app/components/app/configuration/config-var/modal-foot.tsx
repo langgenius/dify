@@ -11,7 +11,7 @@ type IModalFootProps = {
 }
 
 const ModalFoot: FC<IModalFootProps> = ({ onConfirm, onCancel, confirmType = 'button' }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <div className="flex justify-end gap-2">
       <Button type="button" onClick={onCancel}>

@@ -1,10 +1,11 @@
 'use client'
 import type { MouseEvent } from 'react'
 import type { Member } from '@/models/common'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { getAvatarInitial } from '@/utils/avatar'
 import MemberMenu from './member-menu'
 import RoleBadges from './role-badges'
 
@@ -32,7 +33,7 @@ const MemberRow = ({
   onOpenDetails,
   onTransferOwnership,
 }: MemberRowProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workspaceMembers'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const roleNames = roles.map((role) => role.name)
@@ -63,7 +64,10 @@ const MemberRow = ({
     >
       <td className="px-3 py-2">
         <div className="flex min-w-0 items-center">
-          <Avatar avatar={member.avatar_url} size="sm" className="mr-2" name={member.name} />
+          <Avatar size="sm" className="mr-2" aria-hidden="true">
+            <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+            <AvatarImage src={member.avatar_url || undefined} alt="" />
+          </Avatar>
           <div className="min-w-0">
             <div className="system-sm-medium text-text-secondary">
               <button
@@ -75,12 +79,12 @@ const MemberRow = ({
               </button>
               {member.status === 'pending' && (
                 <span className="ml-1 system-xs-medium text-text-warning">
-                  {t(($) => $['members.pending'], { ns: 'common' })}
+                  {t(($) => $['members.pending'], { ns: 'workspaceMembers' })}
                 </span>
               )}
               {isCurrentUser && (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t(($) => $['members.you'], { ns: 'common' })}
+                  {t(($) => $['members.you'], { ns: 'workspaceMembers' })}
                 </span>
               )}
             </div>

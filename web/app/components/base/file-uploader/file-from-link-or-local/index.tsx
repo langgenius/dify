@@ -23,7 +23,7 @@ const FileFromLinkOrLocal = ({
   trigger,
   fileConfig,
 }: FileFromLinkOrLocalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const files = useStore((s) => s.files)
   const [url, setUrl] = useState('')
   const [showError, setShowError] = useState(false)

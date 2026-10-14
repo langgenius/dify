@@ -98,7 +98,7 @@ const MultiSteps = ({
   currentStep: EditStep
   onStepClick?: (step: EditStep) => void
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
@@ -117,7 +117,7 @@ const MultiSteps = ({
 }
 
 export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
@@ -169,9 +169,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
@@ -207,15 +207,12 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       {
         onSuccess: () => {
-          toast.success(
-            t(($) => $['subscription.list.item.actions.edit.success'], { ns: 'pluginTrigger' }),
-          )
           refetch?.()
           onClose()
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },

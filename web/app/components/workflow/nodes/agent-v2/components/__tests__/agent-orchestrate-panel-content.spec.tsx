@@ -8,6 +8,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { AgentScope } from '@/features/agent-v2/analytics'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
@@ -497,7 +498,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mocks.completeBuildConversation = undefined
     permission.canCreateAgents = true
-    mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
+    mocks.loadBuildDraft.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
       draft: {
@@ -579,7 +580,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       />,
     )
 
-    expect(screen.getByRole('progressbar', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
     await waitFor(() => expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(1))
   })
@@ -1049,7 +1050,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
     it('should enter build draft mode without resetting the current inline build chat', async () => {
       mocks.loadBuildDraft
-        .mockRejectedValueOnce(new Response(null, { status: 404 }))
+        .mockRejectedValueOnce(createHttpError(new Response(null, { status: 404 })))
         .mockResolvedValue({
           agent_soul: {
             schema_version: 1,
@@ -1202,7 +1203,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
     it('should re-enable inline build draft actions when build chat fails', async () => {
       mocks.loadBuildDraft
-        .mockRejectedValueOnce(new Response(null, { status: 404 }))
+        .mockRejectedValueOnce(createHttpError(new Response(null, { status: 404 })))
         .mockResolvedValue({
           agent_soul: {
             schema_version: 1,
@@ -1280,7 +1281,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
     it('should refresh the inline build debug conversation when restarting after a build send', async () => {
       mocks.loadBuildDraft
-        .mockRejectedValueOnce(new Response(null, { status: 404 }))
+        .mockRejectedValueOnce(createHttpError(new Response(null, { status: 404 })))
         .mockResolvedValue({
           agent_soul: {
             schema_version: 1,

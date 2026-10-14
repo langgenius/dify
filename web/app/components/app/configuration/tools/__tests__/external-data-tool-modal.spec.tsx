@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { mockEmojiData } from '@/test/emoji-picker'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import ExternalDataToolModal from '../external-data-tool-modal'
 
 const mockToastError = vi.fn()
@@ -136,12 +136,12 @@ describe('ExternalDataToolModal', () => {
     fireEvent.click(screen.getByText('pick-extension'))
     fireEvent.click(screen.getByText('open-emoji-picker'))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
     const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
     expect(emojiButton).toBeTruthy()
     fireEvent.click(emojiButton!)
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
@@ -153,7 +153,7 @@ describe('ExternalDataToolModal', () => {
           },
           enabled: true,
           icon: expect.any(String),
-          icon_background: '#E4FBCC',
+          icon_background: '#F3FEE7',
           label: 'Search',
           type: 'api',
           variable: 'search_api',
@@ -168,7 +168,7 @@ describe('ExternalDataToolModal', () => {
         },
         enabled: true,
         icon: expect.any(String),
-        icon_background: '#E4FBCC',
+        icon_background: '#F3FEE7',
         label: 'Search',
         type: 'api',
         variable: 'search_api',

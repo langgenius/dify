@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 from controllers.mcp.mcp import MCPAppApi
-from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer, AppMode, IconType
+from services.app.mcp_server_service import AppMCPServerStatus
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"

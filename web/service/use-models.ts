@@ -35,6 +35,8 @@ export const useGetProviderCredential = (
       get<ProviderCredential>(
         `/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`,
       ),
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 

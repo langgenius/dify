@@ -18,6 +18,12 @@ vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
   add: vi.fn(),
   setOptOut: vi.fn(),
+  track: vi.fn(),
+  flush: vi.fn(),
+  setUserId: vi.fn(),
+  Identify: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
 }))
 
 vi.mock('@amplitude/plugin-session-replay-browser', () => ({
@@ -29,13 +35,17 @@ describe('amplitude init helper', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
-    ;({ ensureAmplitudeInitialized } = await import('../init'))
+    const init = await import('../init')
+    ensureAmplitudeInitialized = init.ensureAmplitudeInitialized
+    init.setAmplitudeOptOut(false)
   })
 
   describe('ensureAmplitudeInitialized', () => {
-    it('should initialize amplitude only once across repeated calls', () => {
-      ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.8 })
-      ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.2 })
+    it('should initialize amplitude only once across concurrent calls', async () => {
+      await Promise.all([
+        ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.8 }),
+        ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.2 }),
+      ])
 
       expect(amplitude.init).toHaveBeenCalledTimes(1)
       expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
@@ -47,7 +57,7 @@ describe('amplitude init helper', () => {
       const { getIsAmplitudeInitialized } = await import('../init')
 
       expect(getIsAmplitudeInitialized()).toBe(false)
-      ensureAmplitudeInitialized()
+      await ensureAmplitudeInitialized()
 
       expect(getIsAmplitudeInitialized()).toBe(true)
     })
@@ -57,16 +67,30 @@ describe('amplitude init helper', () => {
       const listener = vi.fn()
       const unsubscribe = subscribeAmplitudeInitialization(listener)
 
-      ensureAmplitudeInitialized()
+      await ensureAmplitudeInitialized()
 
       expect(listener).toHaveBeenCalledTimes(1)
       unsubscribe()
     })
 
-    it('should skip initialization when amplitude is disabled', () => {
+    it('allows a later initialization attempt after SDK setup fails', async () => {
+      const { getIsAmplitudeInitialized } = await import('../init')
+      vi.mocked(amplitude.init).mockImplementationOnce(() => {
+        throw new Error('SDK setup failed')
+      })
+
+      await expect(ensureAmplitudeInitialized()).rejects.toThrow('SDK setup failed')
+      expect(getIsAmplitudeInitialized()).toBe(false)
+
+      await ensureAmplitudeInitialized()
+      expect(getIsAmplitudeInitialized()).toBe(true)
+      expect(amplitude.init).toHaveBeenCalledTimes(2)
+    })
+
+    it('should skip initialization when amplitude is disabled', async () => {
       mockConfig.AMPLITUDE_API_KEY = ''
 
-      ensureAmplitudeInitialized()
+      await ensureAmplitudeInitialized()
 
       expect(amplitude.init).not.toHaveBeenCalled()
       expect(sessionReplayPlugin).not.toHaveBeenCalled()
@@ -81,7 +105,8 @@ describe('amplitude init helper', () => {
       setAmplitudeOptOut(true)
       expect(amplitude.setOptOut).not.toHaveBeenCalled()
 
-      ensureAmplitudeInitialized()
+      setAmplitudeOptOut(false)
+      await ensureAmplitudeInitialized()
       setAmplitudeOptOut(true)
 
       expect(amplitude.setOptOut).toHaveBeenCalledWith(true)

@@ -37,6 +37,27 @@ describe('server translations', () => {
     }))
   })
 
+  it('does not preload the complete catalog for namespaced server metadata', async () => {
+    const { getTranslation } = await import('../server')
+    await getTranslation('en-US', 'login')
+    expect(mocks.loadResource).toHaveBeenCalledExactlyOnceWith('en-US', 'login')
+  })
+
+  it('loads only the requested tuple and translates across its namespaces', async () => {
+    mocks.loadResource.mockImplementation(async (_locale: string, namespace: string) => ({
+      default:
+        namespace === 'common'
+          ? { 'operation.save': 'Save' }
+          : { 'marketplace.home.plugins': 'Plugins' },
+    }))
+    const { getTranslation } = await import('../server')
+    const { t } = await getTranslation('en-US', ['common', 'plugin'])
+
+    expect(t(($) => $['operation.save'])).toBe('Save')
+    expect(t(($) => $['marketplace.home.plugins'], { ns: 'plugin' })).toBe('Plugins')
+    expect(mocks.loadResource.mock.calls.map(([, ns]) => ns).sort()).toEqual(['common', 'plugin'])
+  })
+
   it('loads resources once for concurrent consumers and reuses them after initialization', async () => {
     const { getTranslation } = await import('../server')
     const translations = await Promise.all([
@@ -62,7 +83,7 @@ describe('server translations', () => {
 
   it('keeps fallback and cross-namespace translations available', async () => {
     const { getTranslation } = await import('../server')
-    const { t } = await getTranslation('zh-Hans')
+    const { t } = await getTranslation('zh-Hans', 'common')
 
     expect(t(($) => $['operation.save'], { ns: 'common' })).toBe('保存')
     expect(t(($) => $['operation.cancel'], { ns: 'common' })).toBe('Cancel')

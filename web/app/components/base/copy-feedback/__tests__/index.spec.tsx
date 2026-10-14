@@ -22,11 +22,21 @@ describe('CopyFeedback', () => {
     const user = userEvent.setup()
     render(<CopyFeedback content="test content" />)
 
-    await user.click(
-      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
     expect(mockCopy).toHaveBeenCalledWith('test content')
+  })
+
+  it('keeps the tooltip open after the action is clicked', async () => {
+    const user = userEvent.setup()
+    render(<CopyFeedback content="test content" />)
+    const button = screen.getByRole('button', { name: 'common.operation.copy' })
+
+    await user.hover(button)
+    expect(await screen.findByText('common.operation.copy')).toBeInTheDocument()
+    await user.click(button)
+
+    expect(screen.getByText('common.operation.copy')).toBeInTheDocument()
   })
 
   it('announces the copied state through the action name', () => {
@@ -34,8 +44,6 @@ describe('CopyFeedback', () => {
 
     render(<CopyFeedback content="test content" />)
 
-    expect(
-      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copied' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copied' })).toBeInTheDocument()
   })
 })

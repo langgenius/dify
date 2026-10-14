@@ -63,7 +63,7 @@ export const useChildSegmentData = (
     refreshChunkListDataWithDetailChanged,
     updateSegmentInCache,
   } = options
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
   const datasetId = useDocumentContext((s) => s.datasetId) || ''
@@ -174,7 +174,6 @@ export const useChildSegmentData = (
         { datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params },
         {
           onSuccess: (res) => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             onCloseChildSegmentDetail()
             if (parentMode === 'paragraph') {
               // Update parent segment's child_chunks in cache

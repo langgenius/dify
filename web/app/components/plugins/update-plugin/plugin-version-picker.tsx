@@ -1,4 +1,5 @@
 'use client'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -10,25 +11,26 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
 
-type Props = Readonly<{
-  disabled?: boolean
-  isShow: boolean
-  onShowChange: (isShow: boolean) => void
-  pluginID: string
-  currentVersion: string
-  trigger: (open: boolean) => React.ReactNode
-  sideOffset?: number
-  alignOffset?: number
-  onSelect: ({
-    version,
-    unique_identifier,
-    isDowngrade,
-  }: {
-    version: string
-    unique_identifier: string
-    isDowngrade: boolean
-  }) => void
-}>
+type Props = Readonly<
+  Pick<PopoverContentProps, 'sideOffset' | 'alignOffset'> & {
+    disabled?: boolean
+    isShow: boolean
+    onShowChange: (isShow: boolean) => void
+    pluginID: string
+    currentVersion: string
+    trigger: (open: boolean) => React.ReactNode
+    triggerAccessibleName?: string
+    onSelect: ({
+      version,
+      unique_identifier,
+      isDowngrade,
+    }: {
+      version: string
+      unique_identifier: string
+      isDowngrade: boolean
+    }) => void
+  }
+>
 
 const PluginVersionPicker: FC<Props> = ({
   disabled = false,
@@ -37,11 +39,12 @@ const PluginVersionPicker: FC<Props> = ({
   pluginID,
   currentVersion,
   trigger,
+  triggerAccessibleName,
   sideOffset = 4,
   alignOffset = 0,
   onSelect,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common', 'plugin'])
   const format = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 
@@ -77,6 +80,7 @@ const PluginVersionPicker: FC<Props> = ({
           <button
             {...props}
             type="button"
+            aria-label={triggerAccessibleName}
             className={cn(
               'inline-flex cursor-pointer items-center data-disabled:cursor-default',
               props.className,

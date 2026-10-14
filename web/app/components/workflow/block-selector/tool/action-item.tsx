@@ -57,7 +57,7 @@ const ToolItem: FC<Props> = ({
   disabled,
   isAdded,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
 
   const language = useGetLanguage()
   const previewDescriptionId = React.useId()

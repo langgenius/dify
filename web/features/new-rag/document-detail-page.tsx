@@ -10,9 +10,10 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentDetailHeader } from './document-detail-header'
-import { initialDocumentRevision, responseStatus } from './document-detail-model'
+import { initialDocumentRevision } from './document-detail-model'
 import { DocumentDetailStatus } from './document-detail-status'
 import { DocumentRevisionContent } from './document-revision-content'
 import { newKnowledgeDocumentsPath } from './routes'
@@ -37,7 +38,7 @@ function ErrorState({
   onRetry?: () => void
   title: string
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   return (
     <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
       <span aria-hidden className="i-ri-error-warning-line size-8 text-text-destructive" />
@@ -59,8 +60,8 @@ export function DocumentDetailPage({
   documentId: string
   knowledgeSpaceId: string
 }) {
-  const { i18n, t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { i18n, t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const [selectedRevision, setSelectedRevision] = useQueryState('revision', documentRevisionParser)
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -70,7 +71,7 @@ export function DocumentDetailPage({
       consoleQuery.knowledgeFs.getKnowledgeSpacesByIdLogicalDocumentsByDocumentId.queryOptions({
         input: { params: { documentId, id: knowledgeSpaceId } },
         retry: (failureCount, error) => {
-          const status = responseStatus(error)
+          const status = getHttpErrorStatus(error)
           return status !== 403 && status !== 404 && failureCount < 2
         },
       }),
@@ -120,7 +121,7 @@ export function DocumentDetailPage({
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks.key()
   const documentActiveRevision =
     documentQuery.data?.activeRevision ?? documentQuery.data?.active?.revision ?? 0
-  const documentErrorStatus = responseStatus(documentQuery.error)
+  const documentErrorStatus = getHttpErrorStatus(documentQuery.error)
   const {
     continueLookup,
     documentMissing,

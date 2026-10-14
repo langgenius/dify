@@ -1,7 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
-import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { shouldUseMcpIcon } from '@/utils/mcp'
 
 const iconSizeMap = {
@@ -53,7 +52,10 @@ const Icon = ({
           className="rounded-md"
           innerIcon={
             shouldUseMcpIcon(src) ? (
-              <Mcp className="size-8 text-text-primary-on-surface" />
+              <span
+                aria-hidden
+                className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
+              />
             ) : undefined
           }
         />

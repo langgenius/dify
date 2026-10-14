@@ -1,7 +1,6 @@
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
 import { keepPreviousData } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -54,8 +53,6 @@ const mockLearnDifyApp = vi.hoisted(
         icon_background: '#fff',
         icon_url: '',
         name: 'Learn Dify Template',
-        description: 'Learn how to build with Dify',
-        use_icon_as_answer_icon: false,
       },
       description: 'Learn how to build with Dify',
       copyright: '',
@@ -64,12 +61,8 @@ const mockLearnDifyApp = vi.hoisted(
       categories: ['Assistant'],
       position: 1,
       is_listed: true,
-      install_count: 0,
-      installed: false,
-      editable: false,
-      is_agent: false,
       can_trial: true,
-    }) satisfies App,
+    }) satisfies RecommendedAppResponse,
 )
 
 let mockSearchParams = new URLSearchParams('')
@@ -269,7 +262,7 @@ vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (importFn: () => Promise<unknown>) => {
     const fnString = importFn.toString()
 
@@ -446,8 +439,8 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
     onTry,
   }: {
     title?: string
-    onCreate?: (app: App) => void
-    onTry?: (params: TryAppSelection) => void
+    onCreate?: (app: RecommendedAppResponse) => void
+    onTry?: (app: RecommendedAppResponse) => void
   }) =>
     React.createElement(
       'section',
@@ -457,7 +450,7 @@ vi.mock('@/app/components/explore/learn-dify', () => ({
         'button',
         {
           type: 'button',
-          onClick: () => onTry?.({ appId: mockLearnDifyApp.app_id, app: mockLearnDifyApp }),
+          onClick: () => onTry?.(mockLearnDifyApp),
         },
         'Preview Learn Dify template',
       ),
@@ -490,8 +483,8 @@ beforeAll(() => {
 })
 
 type RenderListOptions = {
-  onCreateLearnDify?: (app: App) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
+  onCreateLearnDify?: (app: RecommendedAppResponse) => void
+  onTryLearnDify?: (app: RecommendedAppResponse) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }
 
@@ -538,7 +531,7 @@ const openAppTypeSelect = async (user = userEvent.setup()) => {
 }
 
 const openAppSortSelect = async (user = userEvent.setup()) => {
-  await user.click(screen.getByRole('button', { name: 'Sort by Last modified' }))
+  await user.click(screen.getByRole('combobox', { name: 'Sort by' }))
   return user
 }
 
@@ -623,7 +616,7 @@ describe('List', () => {
       const searchInput = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
       })
-      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
+      const sortButton = screen.getByRole('combobox', { name: 'Sort by' })
       const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
@@ -889,7 +882,7 @@ describe('List', () => {
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
       )
-      expect(screen.getByRole('button', { name: /app\.importDSL/ })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: /app\.importApp/ })).toHaveAttribute(
         'data-step-by-step-tour-target',
         STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
       )
@@ -1003,7 +996,7 @@ describe('List', () => {
       fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
       expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.importDSL/ }))
+      fireEvent.click(screen.getByRole('button', { name: /app\.importApp/ }))
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
@@ -1020,10 +1013,7 @@ describe('List', () => {
       })
 
       await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
-      expect(onTryLearnDify).toHaveBeenCalledWith({
-        appId: mockLearnDifyApp.app_id,
-        app: mockLearnDifyApp,
-      })
+      expect(onTryLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
 
       await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
       expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
@@ -1081,11 +1071,10 @@ describe('List', () => {
 
   describe('Search Functionality', () => {
     it('should clear the keywords URL state', async () => {
+      const user = userEvent.setup()
       const { onUrlUpdate } = renderList('?keywords=existing+search')
 
-      const clearButton = document.querySelector('.i-ri-close-circle-fill')?.closest('button')
-      expect(clearButton)!.toBeInTheDocument()
-      if (clearButton) fireEvent.click(clearButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByRole('searchbox')).toHaveValue('')
       await waitFor(() => {
@@ -1100,7 +1089,7 @@ describe('List', () => {
       const searchBox = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
       })
-      const scrollContainer = screen.getByRole('region', { name: 'common.menus.apps' })
+      const scrollContainer = screen.getByRole('region', { name: 'navigation.menus.apps' })
       expect(scrollContainer).not.toContainElement(searchBox)
       const scrollTo = vi.fn()
       scrollContainer.scrollTo = scrollTo
@@ -1179,7 +1168,7 @@ describe('List', () => {
   })
 
   describe('Creators Filter', () => {
-    it('should handle creator selection', async () => {
+    it('should show the selected creator without an overflow count', async () => {
       const user = userEvent.setup()
       renderList()
 
@@ -1187,7 +1176,11 @@ describe('List', () => {
       await user.click(trigger)
       await user.click(screen.getByRole('option', { name: /Bob/ }))
 
-      expect(trigger).toHaveTextContent('+1')
+      expect(within(trigger).getByText('B')).toBeInTheDocument()
+      expect(
+        within(trigger).getByText('common.dynamicSelect.selected:{"count":1}'),
+      ).toBeInTheDocument()
+      expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
     })
   })
 
@@ -1251,15 +1244,44 @@ describe('List', () => {
       }
     })
 
-    it('should update app list query when sort option changes', async () => {
+    it.each([
+      ['earliest_created', 'earliest_created', 'Earliest created'],
+      ['invalid', 'last_modified', 'Last modified'],
+    ])('should resolve URL sort %s for the control and query', (urlSort, expectedSort, label) => {
+      renderList(`?sort_by=${urlSort}`)
+
+      expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent(label)
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+      expect(options.input(1).query.sort_by).toBe(expectedSort)
+    })
+
+    it('should update URL and query sorting while preserving filters and resetting scroll', async () => {
       const user = userEvent.setup()
-      renderList()
+      const { onUrlUpdate } = renderList('?category=workflow&keywords=sales')
+      const scrollContainer = screen.getByRole('region', { name: 'navigation.menus.apps' })
+      const scrollTo = vi.fn()
+      scrollContainer.scrollTo = scrollTo
       await openAppSortSelect(user)
 
-      await user.click(await screen.findByRole('menuitemradio', { name: 'Recently created' }))
+      await user.click(await screen.findByRole('option', { name: 'Recently created' }))
 
       const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
       expect(options.input(1).query.sort_by).toBe('recently_created')
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+      await waitFor(() => {
+        const params = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams
+        expect(params?.get('sort_by')).toBe('recently_created')
+        expect(params?.get('category')).toBe('workflow')
+        expect(params?.get('keywords')).toBe('sales')
+      })
+
+      await openAppSortSelect(user)
+      await user.click(await screen.findByRole('option', { name: 'Last modified' }))
+
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('sort_by')).toBe(false)
+      })
+      expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent('Last modified')
     })
   })
 

@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import inspect
-from types import SimpleNamespace
+from collections.abc import Callable
+from types import CodeType, SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
 from werkzeug.exceptions import Conflict, Forbidden, NotFound
+from werkzeug.wrappers import Response
 
 from controllers.console import flask_admission, workflow_run_archive
 from controllers.console.workflow_run_archive import (
@@ -23,6 +28,8 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveDownloadTaskNotFoundError,
     WorkflowRunArchiveNotFoundError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.model_factories import make_account
 
 _CONTEXT = RequestContext(
     request_id="request-1",
@@ -36,31 +43,34 @@ _ENDPOINTS = [
     WorkflowRunArchiveDownloadApi.get,
     WorkflowRunArchiveDownloadFileApi.get,
 ]
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+
+
+class _WrappedEndpoint(Protocol):
+    __code__: CodeType
+    __wrapped__: _WrappedEndpoint
 
 
 def _account(role: TenantAccountRole) -> Account:
     return make_account(name="Test User", email="user@example.com", role=role)
 
 
-def _original(method):
+def _original(method: Callable[..., object]) -> Callable[..., object]:
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
     return method
 
 
-def _admission_injector(method):
-    method = inspect.getclosurevars(method).nonlocals["admitted"]
-    while "inject_request_context" not in method.__code__.co_qualname:
-        method = method.__wrapped__
-    return method
+def _admission_injector(method: Callable[..., object]) -> Callable[..., object]:
+    current = cast(_WrappedEndpoint, method)
+    while "inject_request_context" not in current.__code__.co_qualname:
+        current = current.__wrapped__
+    return cast(Callable[..., object], current)
 
 
 @pytest.mark.parametrize("method", _ENDPOINTS)
-def test_workflow_run_archive_endpoints_declare_cloud_paid_plan_admission(method) -> None:
+def test_workflow_run_archive_endpoints_declare_cloud_paid_plan_admission(method: Callable[..., object]) -> None:
     decorator_names = set()
-    current = method
+    current = cast(_WrappedEndpoint, method)
     while hasattr(current, "__wrapped__"):
         decorator_names.add(current.__code__.co_qualname.partition(".<locals>")[0])
         current = current.__wrapped__
@@ -77,7 +87,7 @@ def test_workflow_run_archive_endpoints_declare_cloud_paid_plan_admission(method
 @pytest.mark.parametrize("method", _ENDPOINTS)
 def test_workflow_run_archive_endpoints_reject_non_manager_when_rbac_is_disabled(
     monkeypatch: pytest.MonkeyPatch,
-    method,
+    method: Callable[..., object],
 ) -> None:
     account = _account(TenantAccountRole.NORMAL)
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -101,12 +111,15 @@ def test_workflow_run_archive_endpoints_reject_non_manager_when_rbac_is_disabled
         (WorkflowRunArchiveDownloadFileApi.get, ("download-1",)),
     ],
 )
-def test_workflow_run_archive_endpoints_are_hidden_outside_cloud(
+def test_workflow_run_archive_endpoints_reject_unsupported_edition_after_initialization(
     monkeypatch: pytest.MonkeyPatch,
-    method,
+    method: Callable[..., object],
     args: tuple[object, ...],
 ) -> None:
-    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, LOGIN_DISABLED=True)
+    monkeypatch.setattr("controllers.console.wraps._is_setup_completed", lambda: True)
+    identity = AccountWithTenant(account=_account(TenantAccountRole.OWNER), tenant_id="tenant-1")
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
     app = Flask(__name__)
 
     with app.test_request_context(), pytest.raises(NotFound):
@@ -122,7 +135,7 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: account_with_tenant)
 
-    def get_billing_info(tenant_id: str, *, exclude_vector_space: bool):
+    def get_billing_info(tenant_id: str, *, exclude_vector_space: bool) -> dict[str, object]:
         assert tenant_id == "tenant-1"
         assert exclude_vector_space
         return {
@@ -216,7 +229,7 @@ def test_workflow_run_archive_endpoints_delegate_to_application_service(
 )
 def test_workflow_run_archive_endpoints_translate_service_errors(
     monkeypatch: pytest.MonkeyPatch,
-    method,
+    method: Callable[..., object],
     service_method: str,
     service_error: Exception,
     http_error: type[Exception],
@@ -247,5 +260,6 @@ def test_workflow_run_archive_file_redirects_to_signed_url(monkeypatch: pytest.M
     with app.test_request_context():
         response = _original(WorkflowRunArchiveDownloadFileApi.get)(None, _CONTEXT, "download-1")
 
+    assert isinstance(response, Response)
     assert response.status_code == 302
     assert response.location == "https://storage.example.com/archive.zip"

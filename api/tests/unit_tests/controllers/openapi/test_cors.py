@@ -16,7 +16,8 @@ from flask_cors import CORS
 from flask_restx import Resource
 
 from configs import dify_config
-from extensions.ext_blueprints import OPENAPI_HEADERS, OPENAPI_MAX_AGE_SECONDS
+from constants import HEADER_NAME_CATALOG
+from extensions.ext_blueprints import EXPOSED_HEADERS, OPENAPI_HEADERS, OPENAPI_MAX_AGE_SECONDS
 from libs.external_api import ExternalApi
 
 if not hasattr(builtins, "MethodView"):
@@ -32,7 +33,7 @@ def _make_app(allowed_origins: list[str], blueprint_name: str) -> Flask:
 
     @api.route("/_health")
     class _Health(Resource):
-        def get(self):
+        def get(self) -> dict[str, bool]:
             return {"ok": True}
 
     CORS(
@@ -41,7 +42,7 @@ def _make_app(allowed_origins: list[str], blueprint_name: str) -> Flask:
         supports_credentials=True,
         allow_headers=list(OPENAPI_HEADERS),
         methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        expose_headers=["X-Version"],
+        expose_headers=list(EXPOSED_HEADERS),
         max_age=OPENAPI_MAX_AGE_SECONDS,
     )
 
@@ -51,12 +52,12 @@ def _make_app(allowed_origins: list[str], blueprint_name: str) -> Flask:
     return app
 
 
-def test_default_openapi_cors_allowlist_is_empty():
+def test_default_openapi_cors_allowlist_is_empty() -> None:
     """Default config admits no cross-origin until operator opts in."""
     assert dify_config.OPENAPI_CORS_ALLOW_ORIGINS == []
 
 
-def test_preflight_allowed_origin_returns_cors_headers():
+def test_preflight_allowed_origin_returns_cors_headers() -> None:
     app = _make_app(["https://app.example.com"], "openapi_t1")
     client = app.test_client()
     response = client.options(
@@ -71,7 +72,7 @@ def test_preflight_allowed_origin_returns_cors_headers():
     assert response.headers.get("Access-Control-Max-Age") == str(OPENAPI_MAX_AGE_SECONDS)
 
 
-def test_preflight_disallowed_origin_omits_cors_headers():
+def test_preflight_disallowed_origin_omits_cors_headers() -> None:
     app = _make_app(["https://app.example.com"], "openapi_t2")
     client = app.test_client()
     response = client.options(
@@ -86,7 +87,7 @@ def test_preflight_disallowed_origin_omits_cors_headers():
     assert "Access-Control-Allow-Origin" not in response.headers
 
 
-def test_preflight_with_default_empty_allowlist_omits_cors_headers():
+def test_preflight_with_default_empty_allowlist_omits_cors_headers() -> None:
     app = _make_app([], "openapi_t3")
     client = app.test_client()
     response = client.options(
@@ -100,7 +101,7 @@ def test_preflight_with_default_empty_allowlist_omits_cors_headers():
     assert "Access-Control-Allow-Origin" not in response.headers
 
 
-def test_same_origin_request_succeeds_without_origin_header():
+def test_same_origin_request_succeeds_without_origin_header() -> None:
     app = _make_app(["https://app.example.com"], "openapi_t4")
     client = app.test_client()
     # Browsers don't send Origin on same-origin GETs.
@@ -110,7 +111,7 @@ def test_same_origin_request_succeeds_without_origin_header():
     assert response.get_json() == {"ok": True}
 
 
-def test_authorization_header_is_in_allow_headers():
+def test_authorization_header_is_in_allow_headers() -> None:
     """Bearer-authed routes need Authorization in the preflight response."""
     app = _make_app(["https://app.example.com"], "openapi_t5")
     client = app.test_client()
@@ -125,3 +126,29 @@ def test_authorization_header_is_in_allow_headers():
 
     allow_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
     assert "authorization" in allow_headers
+
+
+def test_catalog_fingerprint_header_is_exposed() -> None:
+    app = _make_app(["https://app.example.com"], "openapi_t6")
+    client = app.test_client()
+    response = client.get("/openapi/v1/_health", headers={"Origin": "https://app.example.com"})
+
+    expose_headers = response.headers.get("Access-Control-Expose-Headers", "")
+    assert HEADER_NAME_CATALOG in expose_headers
+
+
+def test_catalog_fingerprint_header_is_allowed_on_requests() -> None:
+    """Every guarded route needs the fingerprint on the request, so preflight must admit it."""
+    app = _make_app(["https://app.example.com"], "openapi_t7")
+    client = app.test_client()
+    response = client.options(
+        "/openapi/v1/_health",
+        headers={
+            "Origin": "https://app.example.com",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": HEADER_NAME_CATALOG,
+        },
+    )
+
+    allow_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
+    assert HEADER_NAME_CATALOG.lower() in allow_headers

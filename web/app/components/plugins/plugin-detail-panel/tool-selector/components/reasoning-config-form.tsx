@@ -1,9 +1,9 @@
 import type { Node } from 'reactflow'
 import type { ReasoningConfigValue as ReasoningConfigValueShape } from './reasoning-config-form.helpers'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -14,26 +14,21 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useBoolean } from 'ahooks'
-import { useCallback, useState } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { ToolDatePicker } from '@/app/components/tools/parameters/tool-date-picker'
+import { ToolDateRangePicker } from '@/app/components/tools/parameters/tool-date-range-picker'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
-import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   createPickerProps,
   getFieldFlags,
@@ -45,7 +40,7 @@ import {
   updateVariableSelectorValue,
   updateVariableTypeValue,
 } from './reasoning-config-form.helpers'
-import { SchemaModal } from './schema-modal'
+import { SchemaDialog } from './schema-dialog'
 
 export type ReasoningConfigValue = ReasoningConfigValueShape
 
@@ -58,20 +53,18 @@ type Props = Readonly<{
   nodeId: string
 }>
 
-const ReasoningConfigForm: React.FC<Props> = ({
+export function ReasoningConfigForm({
   value,
   onChange,
   schemas,
   nodeOutputVars,
   availableNodes,
   nodeId,
-}) => {
-  const { t } = useTranslation()
+}: Props) {
+  const fieldLabelId = useId()
+
+  const { t } = useTranslation(['plugin', 'tools', 'workflowAgent'])
   const language = useLanguage()
-  const { data: timezone } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.timezone ?? 'UTC',
-  })
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))
@@ -122,15 +115,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     [onChange, value],
   )
 
-  const [isShowSchema, { setTrue: showSchema, setFalse: hideSchema }] = useBoolean(false)
-
-  const [schema, setSchema] = useState<SchemaRoot | null>(null)
-  const [schemaRootName, setSchemaRootName] = useState<string>('')
-
-  const renderField = (
-    schema: ToolFormSchema,
-    showSchema: (schema: SchemaRoot, rootName: string) => void,
-  ) => {
+  const renderField = (schema: ToolFormSchema) => {
     const {
       default: defaultValue,
       variable,
@@ -148,8 +133,11 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const fieldTitle = getFieldTitle(label, language)
     const tooltipText = tooltip?.[language] || tooltip?.en_US
     const tooltipContent = tooltipText && (
-      <Infotip aria-label={tooltipText} className="ml-0.5 size-4" popupClassName="w-[200px]">
-        {tooltipText}
+      <Infotip>
+        <InfotipTrigger aria-labelledby={`${fieldLabelId}-${variable}`} className="ml-0.5" />
+        <InfotipContent aria-labelledby={`${fieldLabelId}-${variable}`} className="w-50">
+          {tooltipText}
+        </InfotipContent>
       </Infotip>
     )
     const varInput = value[variable]!.value
@@ -183,7 +171,10 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}>
+            <span
+              id={`${fieldLabelId}-${variable}`}
+              className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}
+            >
               {fieldTitle}
             </span>
             {required && <span className="ml-1 text-red-500">*</span>}
@@ -193,25 +184,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               {resolveTargetVarType(type)}
             </span>
             {isShowJSONEditor && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label={t(($) => $['nodes.agent.clickToViewParameterSchema'], {
-                        ns: 'workflow',
-                      })}
-                      className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                      onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
-                    >
-                      <span aria-hidden className="i-ri-braces-line size-3.5" />
-                    </button>
-                  }
-                />
-                <TooltipContent className="system-xs-medium text-text-secondary">
-                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflow' })}
-                </TooltipContent>
-              </Tooltip>
+              <SchemaDialog schema={input_schema} rootName={fieldTitle || variable} compact />
             )}
           </div>
           <label className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover">
@@ -254,9 +227,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isDate && isConstant && (
               <div className="min-w-0 grow">
                 <ToolDatePicker
-                  value={typeof varInput?.value === 'string' ? varInput.value : ''}
+                  aria-label={fieldTitle || variable}
+                  value={varInput?.value}
                   onChange={handleValueChange(variable, type)}
-                  timezone={timezone}
                   placeholder={placeholder?.[language] || placeholder?.en_US}
                 />
               </div>
@@ -264,9 +237,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {isDateRange && varInput?.type !== VarKindType.variable && (
               <div className="grow">
                 <ToolDateRangePicker
+                  label={fieldTitle || variable}
                   value={varInput?.value}
                   onChange={handleValueChange(variable, type)}
-                  timezone={timezone}
                 />
               </div>
             )}
@@ -367,26 +340,5 @@ const ReasoningConfigForm: React.FC<Props> = ({
       </div>
     )
   }
-  return (
-    <div className="space-y-3 px-4 py-2">
-      {!isShowSchema &&
-        schemas.map((schema) =>
-          renderField(schema, (s: SchemaRoot, rootName: string) => {
-            setSchema(s)
-            setSchemaRootName(rootName)
-            showSchema()
-          }),
-        )}
-      {isShowSchema && (
-        <SchemaModal
-          isShow={isShowSchema}
-          schema={schema!}
-          rootName={schemaRootName}
-          onClose={hideSchema}
-        />
-      )}
-    </div>
-  )
+  return <div className="space-y-3 px-4 py-2">{schemas.map(renderField)}</div>
 }
-
-export default ReasoningConfigForm

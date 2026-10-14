@@ -63,7 +63,7 @@ const FireCrawl: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const isMountedRef = useRef(true)
@@ -157,10 +157,9 @@ const FireCrawl: FC<Props> = ({
         return await waitForCrawlFinished(jobId)
       } catch (e: any) {
         if (!isMountedRef.current) return cancelledResult
-        const errorBody = typeof e?.json === 'function' ? await e.json() : undefined
         return {
           isError: true,
-          errorMessage: errorBody?.message,
+          errorMessage: e instanceof Error ? e.message : undefined,
           data: {
             data: [],
           },

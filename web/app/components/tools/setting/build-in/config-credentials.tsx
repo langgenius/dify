@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -14,11 +14,11 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -45,7 +45,7 @@ const ConfigCredential: FC<Props> = ({
   isSaving,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
@@ -102,9 +102,15 @@ const ConfigCredential: FC<Props> = ({
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['auth.setupModalTitle'], { ns: 'tools' })}
                   </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="size-6 rounded-md"
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="md"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
                 <DrawerDescription className="pr-10 pl-6 system-xs-regular text-text-tertiary">
@@ -136,7 +142,10 @@ const ConfigCredential: FC<Props> = ({
                             className="inline-flex items-center text-xs text-text-accent"
                           >
                             {t(($) => $.howToGet, { ns: 'tools' })}
-                            <LinkExternal02 className="ml-1 size-3" />
+                            <span
+                              aria-hidden
+                              className="ml-1 i-custom-vender-line-general-link-external-02 size-3"
+                            />
                           </a>
                         ) : null
                       }

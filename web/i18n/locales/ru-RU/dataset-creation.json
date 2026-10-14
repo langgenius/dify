@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Перетащите файлы или папки или",
   "stepOne.uploader.buttonSingleFile": "Перетащите файл или",
   "stepOne.uploader.change": "Изменить",
+  "stepOne.uploader.completed": "Загрузка завершена",
   "stepOne.uploader.failed": "Ошибка загрузки",
   "stepOne.uploader.tip": "Поддерживаются {{supportTypes}}. Максимум {{batchCount}} файлов за раз, каждый до {{size}} МБ.",
   "stepOne.uploader.tipWithTotalLimit": "Поддерживаются {{supportTypes}}. Максимум {{batchCount}} файлов за раз, каждый до {{size}} МБ. Всего максимум {{totalCount}} файлов.",

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -19,13 +19,12 @@ const { debounceState, mockAssign, mockPluginSearch, mockTemplateSearch } = vi.h
   mockTemplateSearch: vi.fn(),
 }))
 
-vi.mock('ahooks', async (importOriginal) => {
-  const original = await importOriginal<typeof import('ahooks')>()
+vi.mock('foxact/use-debounced-value', async (importOriginal) => {
+  const original = await importOriginal<typeof import('foxact/use-debounced-value')>()
 
   return {
-    ...original,
-    useDebounce: <T,>(value: T, options?: { wait?: number }) =>
-      debounceState.useRealDebounce ? original.useDebounce(value, options) : value,
+    useDebouncedValue: (value: string, wait: number) =>
+      debounceState.useRealDebounce ? original.useDebouncedValue(value, wait) : value,
   }
 })
 
@@ -265,7 +264,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(handleSubmit).not.toHaveBeenCalled()
   })
 
-  it('submits the typed query on Enter without selecting a hovered suggestion', async () => {
+  it('leaves Enter to the form submission when no suggestion is highlighted', async () => {
     mockTemplateSearch.mockResolvedValue({
       data: {
         templates: [
@@ -318,11 +317,25 @@ describe('MarketplaceSearchAutocomplete', () => {
     container.querySelector('form')?.addEventListener('submit', handleSubmit)
 
     await user.type(screen.getByRole('combobox'), 'search')
-    await user.hover(await screen.findByRole('option', { name: /Legal Research Agent/ }))
-    await user.keyboard('{Enter}')
+    await screen.findByRole('option', { name: /Legal Research Agent/ })
 
-    expect(handleSubmit).toHaveBeenCalledOnce()
+    // An IME confirmation keeps the suggestions open and submits nothing.
+    fireEvent.keyDown(screen.getByRole('combobox'), {
+      key: 'Enter',
+      keyCode: 229,
+      which: 229,
+      isComposing: true,
+    })
+    expect(handleSubmit).not.toHaveBeenCalled()
+    expect(screen.getByRole('option', { name: /Legal Research Agent/ })).toBeInTheDocument()
+
+    // Nothing is highlighted, so Enter is not consumed and the browser's implicit form submission
+    // runs; happy-dom has none, so the browser spec covers the submit.
+    expect(fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })).toBe(true)
     expect(screen.getByRole('combobox')).toHaveValue('search')
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    })
   })
 
   it('opens plugin detail when a suggestion is chosen', async () => {
@@ -521,7 +534,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.getByRole('combobox')).toHaveValue('')
   })
 
-  it('does not offer the previous term suggestions while a new search is pending', async () => {
+  it('keeps the previous suggestions listed under a loading status while a new search is pending', async () => {
     const googleResponse = {
       data: {
         plugins: [
@@ -539,8 +552,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     }
     mockPluginSearch.mockImplementation((input: { body: { query: string } }) => {
       if (input.body.query === 'google') return Promise.resolve(googleResponse)
-      // Keep the follow-up term pending so stale suggestions would be visible
-      // if the query still returned placeholder data.
+      // Keep the follow-up term pending so the loading state stays observable.
       return new Promise(() => {})
     })
     const user = userEvent.setup()
@@ -566,7 +578,7 @@ describe('MarketplaceSearchAutocomplete', () => {
 
     await user.type(screen.getByRole('combobox'), ' drive')
 
-    expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
+    expect(screen.getByText('Google Search')).toBeInTheDocument()
     expect(screen.getByText(/Loading/)).toBeInTheDocument()
     expect(screen.getByText(/Loading/).closest('[aria-busy="true"]')).not.toBeNull()
   })
@@ -617,9 +629,12 @@ describe('MarketplaceSearchAutocomplete', () => {
     await user.type(screen.getByRole('combobox'), 'google')
     expect(screen.getByText(/Loading/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Outside search' }))
+    // Base UI hides the rest of the page from assistive technology while the suggestions are
+    // open, so the outside control is reached by text rather than by role.
+    await user.click(screen.getByText('Outside search'))
     await waitFor(() => {
-      expect(screen.getByText(/Loading/)).not.toBeVisible()
+      const loading = screen.queryByText(/Loading/)
+      if (loading) expect(loading).not.toBeVisible()
     })
 
     resolvePluginSearch(pluginResponse)
@@ -658,7 +673,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.queryByText(/Loading/)).not.toBeInTheDocument()
   })
 
-  it('clears suggestions while the edited value is still debouncing', async () => {
+  it('keeps the previous suggestions listed while the edited value is still debouncing', async () => {
     debounceState.useRealDebounce = true
     mockPluginSearch.mockResolvedValue({
       data: {
@@ -698,10 +713,10 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(await screen.findByText('Google Search')).toBeInTheDocument()
 
     // For the first 300ms after editing, the debounced term still points at
-    // the old query; the previous suggestions must already be gone.
+    // the old query; its suggestions stay listed under the loading status.
     await user.type(screen.getByRole('combobox'), ' drive')
 
-    expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
+    expect(screen.getByText('Google Search')).toBeInTheDocument()
     expect(screen.getByText(/Loading/)).toBeInTheDocument()
     expect(screen.getByText(/Loading/).closest('[aria-busy="true"]')).not.toBeNull()
   })

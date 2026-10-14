@@ -257,6 +257,7 @@
   "segment.searchResults_one": "結果",
   "segment.searchResults_other": "結果",
   "segment.searchResults_zero": "結果",
+  "segment.statusFilterLabel": "按狀態篩選分段",
   "segment.summary": "摘要",
   "segment.summaryPlaceholder": "撰寫簡短的摘要以便更好地檢索…"
 }

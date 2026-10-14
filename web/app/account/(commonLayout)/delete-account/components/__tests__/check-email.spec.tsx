@@ -37,9 +37,9 @@ describe('CheckEmail', () => {
 
     render(<CheckEmail onCancel={vi.fn()} onConfirm={onConfirm} />)
 
-    const input = screen.getByRole('textbox', { name: 'common.account.deleteLabel' })
+    const input = screen.getByRole('textbox', { name: 'accountSettings.account.deleteLabel' })
     const submitButton = screen.getByRole('button', {
-      name: 'common.account.sendVerificationButton',
+      name: 'accountSettings.account.sendVerificationButton',
     })
 
     await user.type(input, 'someone@example.com{Enter}')

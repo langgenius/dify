@@ -1,13 +1,14 @@
 'use client'
 
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { PublishedWorkflow } from '../shared/utils'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -30,7 +31,7 @@ import { useAccessPointStatusLabel } from '../shared/use-access-point-status-lab
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
 type MCPAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: AppDetailWithSite
   canManageAccessPoint: boolean
   highlighted?: boolean
   triggerModeDisabled: boolean
@@ -46,7 +47,7 @@ export function MCPAccessPointCard({
   workflow,
   workflowLoading,
 }: MCPAccessPointCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
   const workflowApp = appInfo.mode === AppModeEnum.WORKFLOW
@@ -222,14 +223,14 @@ export function MCPAccessPointCard({
               {t(($) => $['mcp.server.reGen'], { ns: 'tools' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={() => void handleRegenerate()}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

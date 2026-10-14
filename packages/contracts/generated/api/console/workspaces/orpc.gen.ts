@@ -529,7 +529,7 @@ import {
   zPutWorkspacesCurrentSkillsBySkillIdFilesResponse,
   zPutWorkspacesCurrentToolProviderMcpBody,
   zPutWorkspacesCurrentToolProviderMcpResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get specific agent provider details
@@ -1769,20 +1769,12 @@ export const models2 = {
   modelTypes,
 }
 
-/**
- * Get workspace permission settings
- *
- * Returns permission flags that control workspace features like member invitations and owner transfer.
- */
 export const get24 = oc
   .route({
-    description:
-      'Returns permission flags that control workspace features like member invitations and owner transfer.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentPermission',
     path: '/workspaces/current/permission',
-    summary: 'Get workspace permission settings',
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPermissionResponse)
@@ -2355,6 +2347,7 @@ export const post44 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopy',
     path: '/workspaces/current/rbac/access-policies/{policy_id}/copy',
+    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath }))
@@ -3183,6 +3176,7 @@ export const post46 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacRolesByRoleIdCopy',
     path: '/workspaces/current/rbac/roles/{role_id}/copy',
+    successStatus: 201,
     tags: ['console'],
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
@@ -3264,6 +3258,7 @@ export const post47 = oc
     method: 'POST',
     operationId: 'postWorkspacesCurrentRbacRoles',
     path: '/workspaces/current/rbac/roles',
+    successStatus: 201,
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentRbacRolesResponse)

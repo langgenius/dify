@@ -1,4 +1,3 @@
-import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { useMemo } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
@@ -49,9 +48,7 @@ const RagPipelineWrapper = () => {
   if (!pipelineId) return <Conversion />
 
   return (
-    <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn}
-    >
+    <WorkflowContextProvider injectWorkflowStoreSliceFn={createRagPipelineSliceSlice}>
       <RagPipeline />
     </WorkflowContextProvider>
   )

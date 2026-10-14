@@ -1,12 +1,13 @@
 'use client'
 import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -20,7 +21,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
@@ -43,9 +44,9 @@ type ApiKeyModalProps = {
 }
 
 export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi', 'common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const [deleteKeyId, setDeleteKeyId] = useState<string>()
+  const deleteActionsRef = useRef<AlertDialogActions>(null)
   const [createdApiKey, setCreatedApiKey] = useState<CreatedApiKey>()
   const [scopeDialogOpen, setScopeDialogOpen] = useState(false)
   // Bumped on each open so the scope dialog remounts with fresh selection state.
@@ -102,17 +103,16 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
       : scope.type === 'dataset'
         ? createDatasetApiKey.isPending
         : createEnvironmentApiKey.isPending
-  const isDeleting =
+  const deleteMutation =
     scope.type === 'app'
-      ? deleteAppApiKey.isPending
+      ? deleteAppApiKey
       : scope.type === 'dataset'
-        ? deleteDatasetApiKey.isPending
-        : deleteEnvironmentApiKey.isPending
+        ? deleteDatasetApiKey
+        : deleteEnvironmentApiKey
   const createDisabled = !currentWorkspace.id || !canManage
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setDeleteKeyId(undefined)
       setCreatedApiKey(undefined)
       setScopeDialogOpen(false)
     }
@@ -157,10 +157,12 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
     )
   }
 
-  const handleDelete = () => {
-    if (!deleteKeyId || isDeleting) return
+  const handleDelete = (deleteKeyId: string | undefined) => {
+    if (!deleteKeyId || !canManage || deleteMutation.isPending) return
 
-    const onSuccess = () => setDeleteKeyId(undefined)
+    const onSuccess = () => {
+      deleteActionsRef.current?.close()
+    }
     switch (scope.type) {
       case 'app':
         deleteAppApiKey.mutate(
@@ -214,14 +216,48 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
               <LoadingPlaceholder />
             </div>
           )}
-          {!!apiKeys?.length && (
-            <ApiKeyTable
-              apiKeys={apiKeys}
-              canManage={canManage}
-              showScope={scope.type === 'dataset'}
-              onDeleteRequest={setDeleteKeyId}
-            />
-          )}
+          <AlertDialog<string>
+            actionsRef={deleteActionsRef}
+            onOpenChange={(nextOpen, details) => {
+              if (!nextOpen && deleteMutation.isPending && details.reason !== 'imperative-action') {
+                details.cancel()
+              }
+            }}
+          >
+            {({ payload }) => (
+              <>
+                {!!apiKeys?.length && (
+                  <ApiKeyTable
+                    apiKeys={apiKeys}
+                    canManage={canManage}
+                    showScope={scope.type === 'dataset'}
+                  />
+                )}
+                <AlertDialogContent backdropProps={{ forceRender: true }}>
+                  <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                    <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                      {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                      {t(($) => $['actionMsg.deleteConfirmTips'], { ns: 'appApi' })}
+                    </AlertDialogDescription>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancelButton disabled={deleteMutation.isPending}>
+                      {t(($) => $['operation.cancel'], { ns: 'common' })}
+                    </AlertDialogCancelButton>
+                    <AlertDialogConfirmButton
+                      loading={deleteMutation.isPending}
+                      disabled={!canManage}
+                      onClick={() => handleDelete(payload)}
+                    >
+                      {t(($) => $['operation.confirm'], { ns: 'common' })}
+                    </AlertDialogConfirmButton>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </>
+            )}
+          </AlertDialog>
           <div className="flex shrink-0 px-6 py-4">
             <Button disabled={createDisabled} loading={isCreating} onClick={handleCreate}>
               <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
@@ -230,31 +266,6 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
           </div>
         </DialogContent>
       </Dialog>
-      <AlertDialog
-        open={deleteKeyId !== undefined}
-        onOpenChange={(open) => {
-          if (!open && !isDeleting) setDeleteKeyId(undefined)
-        }}
-      >
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['actionMsg.deleteConfirmTips'], { ns: 'appApi' })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton disabled={isDeleting}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isDeleting} onClick={handleDelete}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
       <CreatedApiKeyDialog
         open={open && createdApiKey !== undefined}
         onOpenChange={(nextOpen) => {

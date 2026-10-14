@@ -44,7 +44,7 @@ describe('HomeCatalogNavigation', () => {
   it('keeps template navigation inside the Marketplace platform', () => {
     renderNavigation(true)
 
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+    const navigationSection = screen.getByRole('region', { name: 'navigation.mainNav.marketplace' })
 
     expect(navigationSection).toHaveClass(styles.catalogNavigation!)
     expect(navigationSection.firstElementChild).toHaveClass('w-full')
@@ -68,11 +68,9 @@ describe('HomeCatalogNavigation', () => {
     const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
 
     expect(pluginsTab).toHaveAttribute('href', '/plugins')
-    expect(pluginsTab).toHaveClass('cursor-pointer')
     expect(pluginsTab).toHaveClass('bg-state-base-active')
     expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     expect(templatesTab).toHaveAttribute('href', '/templates')
-    expect(templatesTab).toHaveClass('cursor-pointer')
     expect(templatesTab).not.toHaveClass('bg-state-base-active')
   })
 
@@ -231,7 +229,7 @@ describe('HomeCatalogNavigation', () => {
 
     renderNavigation(true)
 
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+    const navigationSection = screen.getByRole('region', { name: 'navigation.mainNav.marketplace' })
     const contentTabsSlot = document.querySelector<HTMLElement>(
       '[data-home-catalog-tabs-slot="content"]',
     )!
@@ -280,7 +278,7 @@ describe('HomeCatalogNavigation', () => {
 
     renderNavigation(true)
 
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+    const navigationSection = screen.getByRole('region', { name: 'navigation.mainNav.marketplace' })
     const contentTabsSlot = document.querySelector<HTMLElement>(
       '[data-home-catalog-tabs-slot="content"]',
     )!

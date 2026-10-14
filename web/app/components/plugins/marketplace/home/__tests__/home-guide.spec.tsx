@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
+    useLocale: () => 'en-US',
     useTranslation: () => ({
       i18n: {
         language: 'en-US',
@@ -102,7 +103,7 @@ describe('HomeGuide', () => {
     expect(trigger).toHaveAccessibleName(/marketplace\.home\.guide/)
 
     await user.hover(trigger)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(/marketplace\.home\.guide/)
+    expect((await screen.findByRole('tooltip')).textContent).toMatch(/marketplace\.home\.guide/)
 
     await user.unhover(trigger)
     await waitFor(() => {
@@ -111,7 +112,7 @@ describe('HomeGuide', () => {
 
     await user.tab()
     expect(trigger).toHaveFocus()
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(/marketplace\.home\.guide/)
+    expect((await screen.findByRole('tooltip')).textContent).toMatch(/marketplace\.home\.guide/)
   })
 
   it('keeps the Guide dropdown available after the tooltip is shown', async () => {

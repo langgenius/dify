@@ -2,6 +2,7 @@ import type { FileEntity } from '@/app/components/datasets/common/image-uploader
 import type { Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
 import QueryInput from '../index'
@@ -54,6 +55,10 @@ vi.mock('@/app/components/datasets/hit-testing/modify-external-retrieval-modal',
     _capturedModalOnSave = onSave
     return (
       <div data-testid="external-retrieval-modal">
+        <label>
+          Top K
+          <input type="number" defaultValue={4} />
+        </label>
         <button
           data-testid="modal-save"
           onClick={() => onSave({ top_k: 10, score_threshold: 0.8, score_threshold_enabled: true })}
@@ -65,21 +70,6 @@ vi.mock('@/app/components/datasets/hit-testing/modify-external-retrieval-modal',
         </button>
       </div>
     )
-  },
-}))
-
-// Capture handleTextChange callback
-let _capturedHandleTextChange: ((e: React.ChangeEvent<HTMLTextAreaElement>) => void) | null = null
-vi.mock('../textarea', () => ({
-  default: ({
-    text,
-    handleTextChange,
-  }: {
-    text: string
-    handleTextChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
-  }) => {
-    _capturedHandleTextChange = handleTextChange
-    return <textarea data-testid="textarea" defaultValue={text} onChange={handleTextChange} />
   },
 }))
 
@@ -114,17 +104,50 @@ describe('QueryInput', () => {
     defaultProps = makeDefaultProps()
     capturedOnChange = null
     _capturedModalOnSave = null
-    _capturedHandleTextChange = null
   })
 
-  it('should render title', () => {
+  it('labels the query input and focuses it when its visible label is clicked', async () => {
+    const user = userEvent.setup()
     render(<QueryInput {...defaultProps} />)
-    expect(screen.getByText('datasetHitTesting.input.title'))!.toBeInTheDocument()
+    const textbox = screen.getByRole('textbox', { name: 'datasetHitTesting.input.title' })
+    expect(textbox).toHaveValue('test query')
+    await user.click(screen.getByText('datasetHitTesting.input.title'))
+    expect(textbox).toHaveFocus()
   })
 
-  it('should render textarea with query text', () => {
+  it('supports keyboard activation of retrieval settings without submitting the query', async () => {
+    const user = userEvent.setup()
     render(<QueryInput {...defaultProps} />)
-    expect(screen.getByTestId('textarea'))!.toBeInTheDocument()
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'dataset.retrieval.semantic_search.title' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(defaultProps.onClickRetrievalMethod).toHaveBeenCalledTimes(1)
+    expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
+  })
+
+  it('describes and announces the character limit error until the query is corrected', () => {
+    const { rerender } = render(<QueryInput {...defaultProps} />)
+    const textbox = screen.getByRole('textbox', { name: 'datasetHitTesting.input.title' })
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement()
+    expect(textbox).not.toBeInvalid()
+
+    rerender(
+      <QueryInput
+        {...defaultProps}
+        queries={[{ content: 'a'.repeat(201), content_type: 'text_query', file_info: null }]}
+      />,
+    )
+    expect(textbox).toBeInvalid()
+    expect(textbox).toHaveAccessibleDescription('datasetHitTesting.input.countWarning')
+    expect(screen.getByRole('alert')).toHaveTextContent('datasetHitTesting.input.countWarning')
+    expect(screen.getByText('datasetHitTesting.input.countWarning')).toBeVisible()
+
+    rerender(<QueryInput {...defaultProps} />)
+    expect(textbox).not.toBeInvalid()
+    expect(textbox).not.toHaveAccessibleDescription()
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement()
   })
 
   it('should render submit button', () => {
@@ -245,6 +268,17 @@ describe('QueryInput', () => {
       expect(screen.queryByTestId('external-retrieval-modal')).not.toBeInTheDocument()
     })
 
+    it('keeps external settings edits outside the query submission form', async () => {
+      const user = userEvent.setup()
+      render(<QueryInput {...defaultProps} isExternal />)
+      await user.click(screen.getByRole('button', { name: /settingTitle/ }))
+      const topK = screen.getByRole('spinbutton', { name: 'Top K' }) as HTMLInputElement
+      expect(topK.form).toBeNull()
+      await user.click(topK)
+      await user.keyboard('{Enter}')
+      expect(defaultProps.externalKnowledgeBaseHitTestingMutation).not.toHaveBeenCalled()
+    })
+
     it('should save external retrieval settings and close modal', () => {
       render(<QueryInput {...defaultProps} isExternal={true} />)
 
@@ -263,7 +297,7 @@ describe('QueryInput', () => {
     it('should update existing text query on text change', () => {
       render(<QueryInput {...defaultProps} />)
 
-      const textarea = screen.getByTestId('textarea')
+      const textarea = screen.getByRole('textbox', { name: 'datasetHitTesting.input.title' })
       fireEvent.change(textarea, { target: { value: 'updated text' } })
 
       expect(defaultProps.setQueries).toHaveBeenCalledWith(
@@ -276,7 +310,7 @@ describe('QueryInput', () => {
     it('should create new text query when none exists', () => {
       render(<QueryInput {...defaultProps} queries={[]} />)
 
-      const textarea = screen.getByTestId('textarea')
+      const textarea = screen.getByRole('textbox', { name: 'datasetHitTesting.input.title' })
       fireEvent.change(textarea, { target: { value: 'new text' } })
 
       expect(defaultProps.setQueries).toHaveBeenCalledWith(
@@ -296,6 +330,31 @@ describe('QueryInput', () => {
       expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
     })
   })
+
+  it.each([false, true])(
+    'blocks native form submission while invalid or pending (external: %s)',
+    (isExternal) => {
+      const { rerender } = render(<QueryInput {...defaultProps} isExternal={isExternal} loading />)
+      const textbox = screen.getByRole('textbox', {
+        name: 'datasetHitTesting.input.title',
+      }) as HTMLTextAreaElement
+      expect(textbox.form).not.toBeNull()
+      fireEvent.submit(textbox.form!)
+      expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
+      expect(defaultProps.externalKnowledgeBaseHitTestingMutation).not.toHaveBeenCalled()
+
+      rerender(
+        <QueryInput
+          {...defaultProps}
+          isExternal={isExternal}
+          queries={[{ content: 'a'.repeat(201), content_type: 'text_query', file_info: null }]}
+        />,
+      )
+      fireEvent.submit(textbox.form!)
+      expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
+      expect(defaultProps.externalKnowledgeBaseHitTestingMutation).not.toHaveBeenCalled()
+    },
+  )
 
   // Cover lines 127-143: handleImageChange
   describe('Image Change Handling', () => {

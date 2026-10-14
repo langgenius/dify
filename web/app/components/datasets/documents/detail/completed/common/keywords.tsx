@@ -22,7 +22,7 @@ const Keywords: FC<IKeywordsProps> = ({
   isEditMode,
   actionType = 'view',
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   return (
     <div className={cn('flex flex-col', className)}>
       <div className="system-xs-medium-uppercase text-text-tertiary">

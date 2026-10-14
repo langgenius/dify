@@ -1,7 +1,3 @@
-from core.app.apps.agent_app.errors import (
-    AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE,
-    AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE,
-)
 from libs.exception import BaseHTTPException
 
 
@@ -53,12 +49,6 @@ class CompletionRequestError(BaseHTTPException):
     code = 400
 
 
-class AgentSessionConfigurationChangedError(BaseHTTPException):
-    error_code = AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE
-    description = AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE
-    code = 409
-
-
 class AppMoreLikeThisDisabledError(BaseHTTPException):
     error_code = "app_more_like_this_disabled"
     description = "The 'More like this' feature is disabled. Please refresh your page."
@@ -86,6 +76,12 @@ class UnsupportedAudioTypeError(BaseHTTPException):
 class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     error_code = "provider_not_support_speech_to_text"
     description = "Provider not support speech to text."
+    code = 400
+
+
+class ProviderNotSupportTextToSpeechError(BaseHTTPException):
+    error_code = "provider_not_support_text_to_speech"
+    description = "Provider does not support text to speech."
     code = 400
 
 
@@ -122,6 +118,12 @@ class TracingConfigAlreadyExistsError(BaseHTTPException):
 class UnsupportedTracingProviderError(BaseHTTPException):
     error_code = "unsupported_tracing_provider"
     description = "The tracing provider is not supported."
+    code = 400
+
+
+class TracingProviderUnavailableError(BaseHTTPException):
+    error_code = "tracing_provider_unavailable"
+    description = "The tracing provider is not available in this deployment."
     code = 400
 
 

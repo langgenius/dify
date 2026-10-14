@@ -7,6 +7,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
@@ -31,6 +32,7 @@ vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
     ...actual,
     useWorkflowVariables: () => ({
       getNodeAvailableVars: () => [],
+      getCurrentVariableType: () => VarType.string,
     }),
   }
 })
@@ -197,3 +199,24 @@ describe('FormInputItem', () => {
     })
   })
 })
+
+it.each([false, 0])(
+  'retains the static schema default %s when switching a variable to a constant',
+  (defaultValue) => {
+    const { onChange } = renderFormInputItem({
+      staticSchema: true,
+      schema: {
+        ...createSchema({
+          type: typeof defaultValue === 'number' ? FormTypeEnum.textNumber : FormTypeEnum.checkbox,
+          _type: typeof defaultValue === 'number' ? FormTypeEnum.textNumber : FormTypeEnum.boolean,
+        }),
+        default: defaultValue,
+      },
+      value: { field: { type: VarKindType.variable, value: ['upstream', 'value'] } },
+    })
+    fireEvent.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
+    expect(onChange).toHaveBeenCalledWith({
+      field: { type: VarKindType.constant, value: defaultValue },
+    })
+  },
+)

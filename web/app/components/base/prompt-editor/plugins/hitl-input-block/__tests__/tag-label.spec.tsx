@@ -11,7 +11,7 @@ describe('TagLabel', () => {
     const user = userEvent.setup()
     const onClick = vi.fn()
 
-    const { container } = render(
+    render(
       <TagLabel type="edit" onClick={onClick}>
         Edit
       </TagLabel>,
@@ -20,13 +20,11 @@ describe('TagLabel', () => {
     await user.click(screen.getByText('Edit'))
 
     expect(onClick).toHaveBeenCalledTimes(1)
-    expect(container.querySelector('svg')).toBeInTheDocument()
   })
 
   it('should render variable icon label when type is variable', () => {
-    const { container } = render(<TagLabel type="variable">Variable</TagLabel>)
+    render(<TagLabel type="variable">Variable</TagLabel>)
 
     expect(screen.getByText('Variable')).toBeInTheDocument()
-    expect(container.querySelector('svg')).toBeInTheDocument()
   })
 })

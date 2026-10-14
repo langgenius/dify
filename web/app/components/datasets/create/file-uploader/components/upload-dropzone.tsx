@@ -31,7 +31,7 @@ const UploadDropzone = ({
   onSelectFile,
   onFileChange,
 }: UploadDropzoneProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (

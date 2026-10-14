@@ -1,9 +1,9 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { toDeploymentVersion } from '@/app/components/app/deploy/utils/version'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -33,6 +33,7 @@ import { useWorkflowLaunch } from './use-workflow-launch'
 import { useWorkflowTool } from './use-workflow-tool'
 
 type PublisherContentProps = AppPublisherProps & {
+  appDetail: AppDetailWithSite
   canViewAccessPoint: boolean
   open: boolean
   supportsMultiEnvironment: boolean
@@ -40,6 +41,7 @@ type PublisherContentProps = AppPublisherProps & {
 }
 
 export function PublisherContent({
+  appDetail,
   canViewAccessPoint,
   crossAxisOffset = 0,
   debugWithMultipleModel = false,
@@ -67,8 +69,7 @@ export function PublisherContent({
   workflowKindChangePending = false,
   workflowToolAvailable = true,
 }: PublisherContentProps) {
-  const { t } = useTranslation()
-  const appDetail = useAppStore((state) => state.appDetail)
+  const { t } = useTranslation(['app', 'workflow', 'workflowHistory'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const environments = useAtomValue(appPublisherEnvironmentsAtom)
@@ -85,21 +86,20 @@ export function PublisherContent({
   const addEnvironment = useSetAtom(addPublisherEnvironmentAtom)
   const selectEnvironment = useSetAtom(selectedPublisherEnvironmentIdAtom)
 
-  useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appDetail?.id)
+  useRefreshAppEnvironmentsAfterPublisherDeploymentPolling(appDetail.id)
 
   function closePublisher() {
     onOpenStateChange(false)
   }
 
   const publish = usePublishController({
-    appId: appDetail?.id,
-    appMode: appDetail?.mode,
-    appName: appDetail?.name,
+    appId: appDetail.id,
+    appMode: appDetail.mode,
+    appName: appDetail.name,
     onClose: closePublisher,
     onPublish,
     onPublishEvaluation,
     onRestore,
-    publishDisabled,
     publishedAt,
     supportsMultiEnvironment,
   })
@@ -116,21 +116,21 @@ export function PublisherContent({
   }
 
   const workflowLaunch = useWorkflowLaunch(inputs)
-  const marketplace = useMarketplacePublish(appDetail?.id)
+  const marketplace = useMarketplacePublish(appDetail.id)
   const versionInfo = useVersionInfo({
-    appId: appDetail?.id,
-    appMode: appDetail?.mode,
+    appId: appDetail.id,
+    appMode: appDetail.mode,
     publishedWorkflow: publish.publishedWorkflow,
     onClosePublisher: closePublisher,
   })
   const workflowTool = useWorkflowTool({
-    appDescription: appDetail?.description,
-    appIcon: appDetail?.icon,
-    appIconBackground: appDetail?.icon_background,
-    appIconType: appDetail?.icon_type,
-    appId: appDetail?.id,
-    appMode: appDetail?.mode,
-    appName: appDetail?.name,
+    appDescription: appDetail.description,
+    appIcon: appDetail.icon,
+    appIconBackground: appDetail.icon_background,
+    appIconType: appDetail.icon_type,
+    appId: appDetail.id,
+    appMode: appDetail.mode,
+    appName: appDetail.name,
     appPublished: publish.published,
     hasHumanInputNode,
     hasPublishedVersion: publish.hasPublishedVersion,
@@ -143,22 +143,21 @@ export function PublisherContent({
     toolPublished,
     workflowToolAvailable,
   })
-  const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
+  const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail.site ?? {}
   const appURL = getPublisherAppUrl({
     appBaseUrl: appBaseURL,
-    accessToken,
-    mode: appDetail?.mode,
+    accessToken: accessToken ?? '',
+    mode: appDetail.mode,
   })
   const shouldLoadUserCanAccessApp = Boolean(
-    appDetail?.id && open && systemFeatures.webapp_auth.enabled,
+    appDetail.id && open && systemFeatures.webapp_auth.enabled,
   )
   const { data: userCanAccessApp } = useGetUserCanAccessApp({
-    appId: appDetail?.id,
+    appId: appDetail.id,
     enabled: shouldLoadUserCanAccessApp,
   })
   const noAccessPermission = Boolean(
     systemFeatures.webapp_auth.enabled &&
-    appDetail &&
     appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
     !userCanAccessApp?.result,
   )
@@ -174,7 +173,7 @@ export function PublisherContent({
     ? publish.publishedWorkflow
       ? toDeploymentVersion(
           publish.publishedWorkflow,
-          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
           publish.publishedWorkflow.id,
         )
       : null
@@ -206,6 +205,7 @@ export function PublisherContent({
             handlePublish: publish.handlePublish,
             handleRestore: publish.handleRestore,
             isChatApp: publish.isChatApp,
+            isPublishing: publish.isPublishing,
             isWorkflowApp: publish.isWorkflowApp,
             multipleModelConfigs,
             onEditVersion: versionInfo.openEditor,
@@ -217,7 +217,8 @@ export function PublisherContent({
             versionInfo: publish.publishedWorkflow,
           },
           actions: {
-            appDetail,
+            appId: appDetail.id,
+            appMode: appDetail.mode,
             appURL,
             canViewAccessPoint,
             disabledFunctionButton,
@@ -239,6 +240,7 @@ export function PublisherContent({
             workflowToolIsLoading: workflowTool.configuration.isLoading,
             workflowToolMessage: workflowTool.message,
             workflowToolOutdated: workflowTool.configuration.outdated,
+            workflowKind: appDetail.workflow_kind,
             workflowKindChangePending,
             onConfigureWorkflowTool: workflowTool.openDrawer,
             onPublishToMarketplace: marketplace.publish,
@@ -247,7 +249,7 @@ export function PublisherContent({
         crossAxisOffset={crossAxisOffset}
         disabled={disabled}
         environmentPublisher={{
-          appId: appDetail?.id,
+          appId: appDetail.id,
           canViewAccessPoint,
           deployment: selectedEnvironmentDeployment,
           environmentId: selectedEnvironmentId,

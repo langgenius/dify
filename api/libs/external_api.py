@@ -179,6 +179,11 @@ class ExternalApi(Api):
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
 
+    def finish_document(self, document: dict[str, object]) -> dict[str, object]:
+        """A surface overrides this to rewrite its finished OpenAPI document (see
+        ``DocumentFinisher`` in ``flask_restx_compat``); the default says nothing extra."""
+        return document
+
     @override
     def _register_doc(self, app_or_blueprint: Blueprint | Flask) -> None:
         if self._add_specs and self._doc:

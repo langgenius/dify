@@ -31,18 +31,18 @@ describe('VerifyEmail', () => {
 
     render(<VerifyEmail onCancel={vi.fn()} onConfirm={onConfirm} />)
 
-    const input = screen.getByLabelText('common.account.verificationLabel')
+    const input = screen.getByLabelText('accountSettings.account.verificationLabel')
     const submitButton = screen.getByRole('button', {
-      name: 'common.account.permanentlyDeleteButton',
+      name: 'accountSettings.account.permanentlyDeleteButton',
     })
 
     expect(submitButton).toBeEnabled()
     await user.click(submitButton)
 
-    const errors = await screen.findAllByText('common.account.verificationPlaceholder')
+    const errors = await screen.findAllByText('accountSettings.account.verificationPlaceholder')
     expect(errors).toHaveLength(1)
     expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(input).toHaveAccessibleDescription('common.account.verificationPlaceholder')
+    expect(input).toHaveAccessibleDescription('accountSettings.account.verificationPlaceholder')
     expect(input).toHaveFocus()
     expect(mockConfirmDeleteAccount).not.toHaveBeenCalled()
 

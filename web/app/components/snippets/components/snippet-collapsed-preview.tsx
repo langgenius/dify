@@ -6,14 +6,6 @@ import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
-const NodeTreeIcon = ({ className }: { className?: string }) => (
-  <span className={cn('i-ri-node-tree', className)} />
-)
-
-const EvaluationIcon = ({ className }: { className?: string }) => (
-  <span className={cn('i-ri-flask-line', className)} />
-)
-
 export function SnippetCollapsedPreview({
   inputFieldCount,
   snippetId,
@@ -25,7 +17,7 @@ export function SnippetCollapsedPreview({
   section: SnippetSection
   isPublished?: boolean
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['evaluation', 'snippet'])
   const orchestrateLabel = t(($) => $.sectionOrchestrate, { ns: 'snippet' })
   const evaluationLabel = t(($) => $.title, { ns: 'evaluation' })
 
@@ -43,7 +35,7 @@ export function SnippetCollapsedPreview({
             name={orchestrateLabel}
             href={`/snippets/${snippetId}/orchestrate`}
             active={section === 'orchestrate'}
-            iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+            iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
           />
           <NavLink
             mode="collapse"
@@ -51,17 +43,19 @@ export function SnippetCollapsedPreview({
             href={`/snippets/${snippetId}/evaluation`}
             active={section === 'evaluation'}
             disabled={!isPublished}
-            iconMap={{ selected: EvaluationIcon, normal: EvaluationIcon }}
+            iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
           />
         </nav>
       ) : (
         <div className="flex size-8 items-center justify-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only">
           <div className="flex size-5 items-center justify-center">
-            {section === 'evaluation' ? (
-              <EvaluationIcon className="size-4.5 shrink-0" />
-            ) : (
-              <NodeTreeIcon className="size-4.5 shrink-0" />
-            )}
+            <span
+              aria-hidden
+              className={cn(
+                section === 'evaluation' ? 'i-ri-flask-fill' : 'i-ri-node-tree',
+                'size-4.5 shrink-0',
+              )}
+            />
           </div>
           <span className="sr-only">
             {section === 'evaluation' ? evaluationLabel : orchestrateLabel}

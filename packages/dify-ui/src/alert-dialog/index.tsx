@@ -5,29 +5,50 @@ import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
-import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
+import { focusRingClassName } from '../internal/focus'
+import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root
-const AlertDialogTrigger = BaseAlertDialog.Trigger
 const AlertDialogTitle = BaseAlertDialog.Title
 const AlertDialogDescription = BaseAlertDialog.Description
+const createAlertDialogHandle = BaseAlertDialog.createHandle
+
+type AlertDialogActions = BaseAlertDialog.Root.Actions
+type AlertDialogChangeEventReason = BaseAlertDialog.Root.ChangeEventReason
+type AlertDialogChangeEventDetails = BaseAlertDialog.Root.ChangeEventDetails
 
 type AlertDialogProps<Payload = unknown> = BaseAlertDialog.Root.Props<Payload>
+type AlertDialogHandle<Payload = unknown> = BaseAlertDialog.Handle<Payload>
 type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<Payload>
+
+function AlertDialogTrigger<Payload = unknown>({
+  className,
+  ...props
+}: AlertDialogTriggerProps<Payload>) {
+  return (
+    <BaseAlertDialog.Trigger
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type AlertDialogTitleProps = BaseAlertDialog.Title.Props
 type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
 
-type AlertDialogBackdropProps = Omit<BaseAlertDialog.Backdrop.Props, 'className'> & {
-  className?: string
-}
+type AlertDialogBackdropProps = BaseAlertDialog.Backdrop.Props
 
 function AlertDialogBackdrop({ className, ...props }: AlertDialogBackdropProps) {
-  return <BaseAlertDialog.Backdrop {...props} className={cn(modalBackdropClassName, className)} />
+  return (
+    <BaseAlertDialog.Backdrop
+      {...props}
+      className={(state) => cn(modalBackdropClassName, resolveClassName(className, state))}
+    />
+  )
 }
 
-type AlertDialogContentProps = Omit<BaseAlertDialog.Popup.Props, 'children' | 'className'> & {
+type AlertDialogContentProps = Omit<BaseAlertDialog.Popup.Props, 'children'> & {
   children: React.ReactNode
-  className?: string
   backdropProps?: AlertDialogBackdropProps
 }
 
@@ -41,11 +62,13 @@ function AlertDialogContent({
     <BaseAlertDialog.Portal>
       <AlertDialogBackdrop {...backdropProps} />
       <BaseAlertDialog.Popup
-        className={cn(
-          'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-          modalPopupAnimationClassName,
-          className,
-        )}
+        className={(state) =>
+          cn(
+            'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            modalPopupAnimationClassName,
+            resolveClassName(className, state),
+          )
+        }
         {...props}
       >
         {children}
@@ -54,9 +77,9 @@ function AlertDialogContent({
   )
 }
 
-type AlertDialogActionsProps = React.ComponentProps<'div'>
+type AlertDialogFooterProps = React.ComponentProps<'div'>
 
-function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
+function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
   return (
     <div
       className={cn('flex items-start justify-end gap-2 self-stretch p-6', className)}
@@ -65,20 +88,11 @@ function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
   )
 }
 
-type AlertDialogCancelButtonProps = Omit<ButtonProps, 'children'> & {
-  children: React.ReactNode
-  closeProps?: Omit<BaseAlertDialog.Close.Props, 'children' | 'render'>
-}
+type AlertDialogCancelButtonProps = ButtonProps
 
-function AlertDialogCancelButton({
-  children,
-  closeProps,
-  ...buttonProps
-}: AlertDialogCancelButtonProps) {
+function AlertDialogCancelButton({ children, ...buttonProps }: AlertDialogCancelButtonProps) {
   return (
-    <BaseAlertDialog.Close {...closeProps} render={<Button {...buttonProps} />}>
-      {children}
-    </BaseAlertDialog.Close>
+    <BaseAlertDialog.Close render={<Button {...buttonProps} />}>{children}</BaseAlertDialog.Close>
   )
 }
 
@@ -94,21 +108,26 @@ function AlertDialogConfirmButton({
 
 export {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
+  createAlertDialogHandle,
 }
 
 export type {
-  AlertDialogActionsProps,
+  AlertDialogActions,
   AlertDialogCancelButtonProps,
+  AlertDialogChangeEventDetails,
+  AlertDialogChangeEventReason,
   AlertDialogConfirmButtonProps,
   AlertDialogContentProps,
   AlertDialogDescriptionProps,
+  AlertDialogFooterProps,
+  AlertDialogHandle,
   AlertDialogProps,
   AlertDialogTitleProps,
   AlertDialogTriggerProps,

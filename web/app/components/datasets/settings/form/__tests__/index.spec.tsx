@@ -204,7 +204,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useModelModalHandler: () => vi.fn(),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
+vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
   isReRankModelSelected: () => true,
 }))
 
@@ -301,14 +302,6 @@ describe('Form', () => {
       fireEvent.change(descriptionTextarea, { target: { value: 'Updated description' } })
 
       expect(descriptionTextarea).toHaveValue('Updated description')
-    })
-
-    it('should render app icon', () => {
-      const { container } = render(<Form />)
-      // The app icon wrapper should be rendered (icon may be in a span or SVG)
-      // The icon is rendered within a clickable container in the name and icon section
-      const iconSection = container.querySelector('[class*="cursor-pointer"]')
-      expect(iconSection).toBeInTheDocument()
     })
   })
 

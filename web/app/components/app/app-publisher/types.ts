@@ -23,6 +23,7 @@ export type AppPublisherWorkflowKindChangeHandler = (
 ) => Promise<unknown> | unknown
 
 export type AppPublisherProps = {
+  appId: string
   disabled?: boolean
   publishDisabled?: boolean
   publishedAt?: number

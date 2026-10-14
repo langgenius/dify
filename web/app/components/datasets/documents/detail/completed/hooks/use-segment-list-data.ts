@@ -76,7 +76,7 @@ export const useSegmentListData = (
     onCloseSegmentDetail,
     clearSelection,
   } = options
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const pathname = usePathname()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
@@ -207,7 +207,9 @@ export const useSegmentListData = (
         { datasetId, documentId, segmentIds: targetIds },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+            // A single segment is toggled from its switch, which already shows the result.
+            if (!segId)
+              toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             updateSegmentsInCache(targetIds, (seg) => ({ ...seg, enabled: enable }))
             refreshChunkListWithStatusChanged()
           },

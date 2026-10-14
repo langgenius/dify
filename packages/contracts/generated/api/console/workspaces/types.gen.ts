@@ -9,12 +9,14 @@ export type TenantListResponse = {
 }
 
 export type AgentProviderResponse = {
-  [key: string]: unknown
+  declaration: AgentProviderEntityWithPlugin
+  meta: Meta
+  plugin_id: string
+  plugin_unique_identifier: string
+  provider: string
 }
 
-export type AgentProviderListResponse = Array<{
-  [key: string]: unknown
-}>
+export type AgentProviderListResponse = Array<AgentProviderResponse>
 
 export type AgentSkillBindingsResponse = {
   agent_id: string
@@ -136,8 +138,8 @@ export type EndpointCreatePayload = {
   }
 }
 
-export type SuccessResponse = {
-  success: boolean
+export type EndpointMutationResponse = {
+  success: true
 }
 
 export type EndpointIdPayload = {
@@ -402,6 +404,10 @@ export type ParserExcludePlugin = {
   plugin_id: string
 }
 
+export type SuccessResponse = {
+  success: boolean
+}
+
 export type PluginAutoUpgradeFetchResponse = {
   auto_upgrade: PluginAutoUpgradeSettingsResponseModel
   category: TenantPluginAutoUpgradeCategory
@@ -532,6 +538,11 @@ export type PluginCategoryListResponse = {
   plugins: Array<PluginCategoryInstalledPluginResponse>
 }
 
+export type AccessPolicyList = {
+  data?: Array<AccessPolicy>
+  pagination?: Pagination | null
+}
+
 export type AccessPolicyCreateRequest = {
   description?: string
   name: string
@@ -557,6 +568,11 @@ export type AccessPolicyUpdateRequest = {
   description?: string
   name: string
   permission_keys?: Array<string>
+}
+
+export type AccessPolicyBindingState = {
+  binding_id: string
+  is_locked?: boolean
 }
 
 export type DeleteMemberBindingsRequest = {
@@ -630,6 +646,23 @@ export type MyPermissionsResponse = {
 
 export type PermissionCatalogResponse = {
   groups?: Array<PermissionCatalogGroup>
+}
+
+export type RbacRoleList = {
+  data?: Array<RbacRole>
+  pagination?: Pagination | null
+}
+
+export type RbacRole = {
+  category?: string
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  role_tag?: string
+  tenant_id?: string | null
+  type: string
 }
 
 export type MembersInRoleList = {
@@ -1263,6 +1296,17 @@ export type TenantListItemResponse = {
   status?: string | null
 }
 
+export type AgentProviderEntityWithPlugin = {
+  identity: AgentStrategyProviderIdentity
+  plugin_id?: string | null
+  strategies?: Array<AgentStrategyEntity>
+}
+
+export type Meta = {
+  minimum_dify_version?: string | null
+  version?: string | null
+}
+
 export type AgentSkillBindingItemResponse = {
   description: string
   display_name: string
@@ -1709,6 +1753,13 @@ export type PluginCategoryInstalledPluginResponse = {
   version: string
 }
 
+export type Pagination = {
+  current_page?: number
+  per_page?: number
+  total_count?: number
+  total_pages?: number
+}
+
 export type RbacResourceType = 'agent' | 'app' | 'dataset'
 
 export type AccessPolicyMemberBinding = {
@@ -1737,25 +1788,6 @@ export type ResourceUserAccessPolicies = {
   access_policies?: Array<AccessPolicy>
   account: RbacRoleAccount
   roles?: Array<RbacRole>
-}
-
-export type Pagination = {
-  current_page?: number
-  per_page?: number
-  total_count?: number
-  total_pages?: number
-}
-
-export type RbacRole = {
-  category?: string
-  description?: string
-  id: string
-  is_builtin?: boolean
-  name: string
-  permission_keys?: Array<string>
-  role_tag?: string
-  tenant_id?: string | null
-  type: string
 }
 
 export type ResourcePermissionSnapshot = {
@@ -2068,6 +2100,27 @@ export type TenantInfoResponse = {
   trial_end_reason?: string | null
 }
 
+export type AgentStrategyProviderIdentity = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon: string
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type AgentStrategyEntity = {
+  description: I18nObject
+  features?: Array<AgentFeature> | null
+  identity: AgentStrategyIdentity
+  meta_version?: string | null
+  output_schema?: {
+    [key: string]: unknown
+  } | null
+  parameters?: Array<AgentStrategyParameter>
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -2256,11 +2309,6 @@ export type CoreToolsEntitiesCommonEntitiesI18nObject = {
 export type EndpointProviderDeclaration = {
   endpoints?: Array<EndpointDeclaration> | null
   settings?: Array<ProviderConfig>
-}
-
-export type Meta = {
-  minimum_dify_version?: string | null
-  version?: string | null
 }
 
 export type ProviderEntity = {
@@ -2497,6 +2545,61 @@ export type OAuthSchema = {
   credentials_schema?: Array<ProviderConfig>
 }
 
+export type ToolLabelEnum =
+  | 'business'
+  | 'design'
+  | 'education'
+  | 'entertainment'
+  | 'finance'
+  | 'image'
+  | 'medical'
+  | 'news'
+  | 'other'
+  | 'productivity'
+  | 'rag'
+  | 'search'
+  | 'social'
+  | 'travel'
+  | 'utilities'
+  | 'videos'
+  | 'weather'
+
+export type AgentFeature = 'history-messages'
+
+export type AgentStrategyIdentity = {
+  author: string
+  icon?: string | null
+  label: I18nObject
+  name: string
+  provider: string
+}
+
+export type AgentStrategyParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  help?: I18nObject | null
+  label: I18nObject
+  max?: number | number | null
+  min?: number | number | null
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: AgentStrategyParameterType
+}
+
 export type AiModelEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
@@ -2574,16 +2677,6 @@ export type QuotaConfiguration = {
   quota_unit: QuotaUnit
   quota_used: number
   restrict_models?: Array<RestrictModel>
-}
-
-export type AgentStrategyProviderIdentity = {
-  author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
-  icon: string
-  icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
-  name: string
-  tags?: Array<ToolLabelEnum> | null
 }
 
 export type DatasourceProviderIdentity = {
@@ -2718,6 +2811,20 @@ export type EventParameterType =
   | 'select'
   | 'string'
 
+export type AgentStrategyParameterType =
+  | 'any'
+  | 'app-selector'
+  | 'array[tools]'
+  | 'boolean'
+  | 'file'
+  | 'files'
+  | 'model-selector'
+  | 'number'
+  | 'secret-input'
+  | 'select'
+  | 'string'
+  | 'system-files'
+
 export type PriceConfigResponse = {
   currency: string
   input: string
@@ -2772,25 +2879,6 @@ export type RestrictModel = {
   model: string
   model_type: ModelType
 }
-
-export type ToolLabelEnum =
-  | 'business'
-  | 'design'
-  | 'education'
-  | 'entertainment'
-  | 'finance'
-  | 'image'
-  | 'medical'
-  | 'news'
-  | 'other'
-  | 'productivity'
-  | 'rag'
-  | 'search'
-  | 'social'
-  | 'travel'
-  | 'utilities'
-  | 'videos'
-  | 'weather'
 
 export type PriceConfig = {
   currency: string
@@ -3200,7 +3288,7 @@ export type PostWorkspacesCurrentEndpointsErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsResponse =
@@ -3218,7 +3306,7 @@ export type PostWorkspacesCurrentEndpointsCreateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponse =
@@ -3236,7 +3324,7 @@ export type PostWorkspacesCurrentEndpointsDeleteErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponse =
@@ -3254,7 +3342,7 @@ export type PostWorkspacesCurrentEndpointsDisableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponse =
@@ -3272,7 +3360,7 @@ export type PostWorkspacesCurrentEndpointsEnableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponse =
@@ -3325,7 +3413,7 @@ export type PostWorkspacesCurrentEndpointsUpdateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponse =
@@ -3345,7 +3433,7 @@ export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponse =
@@ -3365,7 +3453,7 @@ export type PatchWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
-  200: SuccessResponse
+  200: EndpointMutationResponse
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
@@ -4448,9 +4536,7 @@ export type GetWorkspacesCurrentRbacAccessPoliciesData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicyList
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesResponse =
@@ -4480,9 +4566,7 @@ export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4498,9 +4582,7 @@ export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicy
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse =
@@ -4532,9 +4614,7 @@ export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: AccessPolicy
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse =
@@ -4550,9 +4630,7 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicyBindingState
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse =
@@ -4568,9 +4646,7 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockData = 
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AccessPolicyBindingState
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse =
@@ -4588,7 +4664,7 @@ export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMe
 
 export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
-    200: MemberBindingsResponse
+    200: SimpleResultResponse
   }
 
 export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse =
@@ -4745,7 +4821,7 @@ export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMember
 
 export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
-    200: MemberBindingsResponse
+    200: SimpleResultResponse
   }
 
 export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse =
@@ -4902,7 +4978,7 @@ export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicy
 
 export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses =
   {
-    200: MemberBindingsResponse
+    200: SimpleResultResponse
   }
 
 export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse =
@@ -5160,9 +5236,7 @@ export type GetWorkspacesCurrentRbacRolesData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RbacRoleList
 }
 
 export type GetWorkspacesCurrentRbacRolesResponse =
@@ -5176,9 +5250,7 @@ export type PostWorkspacesCurrentRbacRolesData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: RbacRole
 }
 
 export type PostWorkspacesCurrentRbacRolesResponse =
@@ -5194,9 +5266,7 @@ export type DeleteWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -5212,9 +5282,7 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RbacRole
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -5230,9 +5298,7 @@ export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RbacRole
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdResponse =
@@ -5248,9 +5314,7 @@ export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: RbacRole
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponse =

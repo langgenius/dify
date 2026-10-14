@@ -1,3 +1,4 @@
+import type { VariableAssignerNodeType } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
 import {
   createNode,
@@ -22,7 +23,7 @@ vi.mock('../../hooks', () => ({
   useGetAvailableVars: () => mockGetAvailableVars,
 }))
 
-const createData = () => ({
+const createData = (): VariableAssignerNodeType => ({
   title: 'Variable Assigner',
   desc: '',
   type: BlockEnum.VariableAssigner,
@@ -98,7 +99,7 @@ describe('variable-assigner/node-group-item', () => {
       },
     )
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.varNotSet'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.variableAssigner.varNotSet'))!.toBeInTheDocument()
     expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-text-accent!')
     expect(mockGetAvailableVars).toHaveBeenCalledWith(
       'assigner-node',

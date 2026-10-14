@@ -14,6 +14,7 @@ from controllers.console.app.error import (
     TracingConfigNotFoundError,
     TracingConfigProcessingError,
     TracingConfigVerificationFailedError,
+    TracingProviderUnavailableError,
     UnsupportedTracingProviderError,
 )
 from controllers.console.flask_admission import console_account_admission
@@ -33,6 +34,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigInvalidProviderError,
     AppTracingConfigNotFoundError,
     AppTracingConfigProcessingError,
+    AppTracingConfigProviderUnavailableError,
     AppTracingConfigRecord,
     AppTracingConfigVerificationFailedError,
 )
@@ -125,6 +127,8 @@ class TraceAppConfigApi(Resource):
             raise AppNotFoundError() from error
         except AppTracingConfigInvalidProviderError as error:
             raise UnsupportedTracingProviderError() from error
+        except AppTracingConfigProviderUnavailableError as error:
+            raise TracingProviderUnavailableError() from error
         except AppTracingConfigProcessingError as error:
             raise TracingConfigProcessingError() from error
         except ValueError as error:
@@ -177,6 +181,8 @@ class TraceAppConfigApi(Resource):
             raise TracingConfigAlreadyExistsError() from error
         except AppTracingConfigInvalidProviderError as error:
             raise UnsupportedTracingProviderError() from error
+        except AppTracingConfigProviderUnavailableError as error:
+            raise TracingProviderUnavailableError() from error
         except AppTracingConfigInvalidConfigurationError as error:
             raise InvalidTracingConfigError() from error
         except AppTracingConfigVerificationFailedError as error:
@@ -226,6 +232,8 @@ class TraceAppConfigApi(Resource):
             raise TracingConfigNotFoundError() from error
         except AppTracingConfigInvalidProviderError as error:
             raise UnsupportedTracingProviderError() from error
+        except AppTracingConfigProviderUnavailableError as error:
+            raise TracingProviderUnavailableError() from error
         except AppTracingConfigInvalidConfigurationError as error:
             raise InvalidTracingConfigError() from error
         except AppTracingConfigVerificationFailedError as error:

@@ -179,6 +179,22 @@ describe('error-handle path', () => {
       expect(onSelected.mock.calls[0]?.[0]).toBe(ErrorHandleTypeEnum.defaultValue)
     })
 
+    it('offers only stop and failure-branch strategies when default values are unsupported', async () => {
+      const user = userEvent.setup()
+      render(
+        <ErrorHandleTypeSelector
+          value={ErrorHandleTypeEnum.none}
+          onSelected={vi.fn()}
+          allowDefaultValue={false}
+        />,
+      )
+      await user.click(screen.getByRole('button'))
+      expect(screen.getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual([
+        expect.stringContaining('workflow.nodes.common.errorHandle.none.title'),
+        expect.stringContaining('workflow.nodes.common.errorHandle.failBranch.title'),
+      ])
+    })
+
     it('should render the error tip only when a strategy exists', () => {
       const { rerender, container } = render(<ErrorHandleTip />)
 

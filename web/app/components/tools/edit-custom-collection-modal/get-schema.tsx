@@ -21,7 +21,7 @@ type Props = Readonly<{
 }>
 
 const GetSchema: FC<Props> = ({ onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'tools'])
   const [showImportFromUrl, setShowImportFromUrl] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const [isParsing, setIsParsing] = useState(false)
@@ -41,8 +41,6 @@ const GetSchema: FC<Props> = ({ onChange }) => {
       setShowImportFromUrl(false)
     }
   }
-
-  const [showExamples, setShowExamples] = useState(false)
 
   return (
     <div className="flex w-56 justify-end gap-1">
@@ -90,7 +88,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
           </form>
         </PopoverContent>
       </Popover>
-      <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
+      <DropdownMenu>
         <DropdownMenuTrigger render={<Button size="small" />}>
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.examples'], { ns: 'tools' })}
@@ -103,7 +101,6 @@ const GetSchema: FC<Props> = ({ onChange }) => {
               key={item.key}
               onClick={() => {
                 onChange(item.content)
-                setShowExamples(false)
               }}
               className="system-sm-regular whitespace-nowrap text-text-secondary"
             >

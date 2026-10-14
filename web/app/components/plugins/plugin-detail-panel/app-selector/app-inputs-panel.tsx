@@ -1,5 +1,5 @@
 'use client'
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
@@ -13,12 +13,12 @@ type Props = Readonly<{
     app_id: string
     inputs: Record<string, unknown>
   }
-  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
+  appDetail: Pick<AppPartial, 'id' | 'mode'>
   onFormChange: (value: Record<string, unknown>) => void
 }>
 
 const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const inputsRef = useRef<Record<string, unknown>>(value?.inputs || {})
 
   const { inputFormSchema, isError, isLoading, retry } = useAppInputsFormSchema({ appDetail })

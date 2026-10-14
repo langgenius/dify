@@ -15,8 +15,8 @@ and semantic meaning.
 2. **TokenTextSplitter**: Splits text based on token count using tiktoken library,
    useful for LLM context window management.
 
-3. **EnhanceRecursiveCharacterTextSplitter**: Enhanced version with custom token
-   counting support via embedding models or GPT2 tokenizer.
+3. **EnhanceRecursiveCharacterTextSplitter**: Factory that uses character counts
+   for chunk limits, with or without an embedding model.
 
 4. **FixedRecursiveCharacterTextSplitter**: Prioritizes a fixed separator before
    falling back to recursive splitting, useful for structured documents.
@@ -130,7 +130,6 @@ import logging
 import string
 import sys
 import types
-from inspect import currentframe
 from unittest.mock import Mock, patch
 
 import pytest
@@ -803,65 +802,20 @@ class TestEnhanceRecursiveCharacterTextSplitter:
         # Should split into multiple chunks
         assert len(result) >= 2
 
-    def test_with_embedding_model_token_counting(self):
-        """Test token counting with embedding model."""
+    @pytest.mark.parametrize("use_model", [False, True])
+    def test_from_encoder_uses_character_lengths(self, use_model):
+        """Chunk limits count Unicode characters without invoking tokenization."""
         mock_model = Mock()
-        # Mock returns token counts for input texts
-        mock_model.get_text_embedding_num_tokens = Mock(side_effect=lambda texts: [len(t) // 2 for t in texts])
-
         splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-            embedding_model_instance=mock_model, chunk_size=50, chunk_overlap=5
+            embedding_model_instance=mock_model if use_model else None,
+            chunk_size=4,
+            chunk_overlap=0,
+            separators=[""],
         )
 
-        text = "This is a test text that should be split"
-        result = splitter.split_text(text)
-
-        assert len(result) > 0
-        assert all(isinstance(chunk, str) for chunk in result)
-
-    def test_from_encoder_internal_token_encoder_paths(self):
-        """
-        Test internal _token_encoder branches by capturing local closure from frame.
-
-        This validates:
-        - empty texts path
-        - embedding model path
-        - GPT2Tokenizer fallback path
-        - _character_encoder empty-path branch
-        """
-
-        class _SpySplitter(EnhanceRecursiveCharacterTextSplitter):
-            captured_token_encoder = None
-            captured_character_encoder = None
-
-            def __init__(self, **kwargs):
-                frame = currentframe()
-                if frame and frame.f_back:
-                    _SpySplitter.captured_token_encoder = frame.f_back.f_locals.get("_token_encoder")
-                    _SpySplitter.captured_character_encoder = frame.f_back.f_locals.get("_character_encoder")
-                super().__init__(**kwargs)
-
-        mock_model = Mock()
-        mock_model.get_text_embedding_num_tokens.return_value = [3, 5]
-
-        _SpySplitter.from_encoder(embedding_model_instance=mock_model, chunk_size=10, chunk_overlap=1)
-        token_encoder = _SpySplitter.captured_token_encoder
-        character_encoder = _SpySplitter.captured_character_encoder
-
-        assert token_encoder is not None
-        assert character_encoder is not None
-        assert token_encoder([]) == []
-        assert token_encoder(["abc", "defgh"]) == [3, 5]
-        assert character_encoder([]) == []
-
-        with patch(
-            "core.rag.splitter.fixed_text_splitter.GPT2Tokenizer.get_num_tokens",
-            side_effect=lambda text: len(text) + 1,
-        ):
-            _SpySplitter.from_encoder(embedding_model_instance=None, chunk_size=10, chunk_overlap=1)
-            token_encoder_without_model = _SpySplitter.captured_token_encoder
-            assert token_encoder_without_model is not None
-            assert token_encoder_without_model(["ab", "cdef"]) == [3, 5]
+        assert splitter.split_text("aé中🙂b") == ["aé中🙂", "b"]
+        assert splitter.split_text("") == []
+        mock_model.get_text_embedding_num_tokens.assert_not_called()
 
 
 # ============================================================================

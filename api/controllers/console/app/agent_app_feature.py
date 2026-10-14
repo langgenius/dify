@@ -13,34 +13,24 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import AgentId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
-from events.app_event import app_model_config_was_updated
-from libs.login import login_required
-from models import Account
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, validate_request
+from extensions.ext_application_services import application_services
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
 from models.agent_config_entities import (
     AgentFeatureToggleConfig,
     AgentSensitiveWordAvoidanceFeatureConfig,
     AgentSuggestedQuestionsAfterAnswerFeatureConfig,
     AgentTextToSpeechFeatureConfig,
 )
-from services.agent_app_feature_service import AgentAppFeatureConfigService
+from services.agent.errors import AgentNotFoundError
+from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
 class AgentAppFeaturesPayload(BaseModel):
@@ -80,37 +70,16 @@ class AgentAppFeatureConfigResource(Resource):
     @console_ns.response(200, "Features updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(400, "Invalid configuration")
     @console_ns.response(404, "Agent not found")
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    @model_validate(AgentAppFeaturesPayload)
-    def post(
-        self,
-        req_data: AgentAppFeaturesPayload,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
-
-        new_app_model_config = AgentAppFeatureConfigService.update_features(
-            app_model=app_model,
-            account=current_user,
-            config=req_data.model_dump(exclude_none=True),
-            session=session,
-        )
-
-        app_model_config_was_updated.send(
-            app_model,
-            app_model_config=new_app_model_config,
-            session=session,
-        )
-        session.commit()
-
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()),),
+    )
+    def post(self, context: RequestContext, agent_id: UUID):
+        payload = validate_request(AgentAppFeaturesPayload)
+        try:
+            application_services().agent_apps.features.update_features(
+                context, str(agent_id), payload.model_dump(exclude_none=True)
+            )
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
         return SimpleResultResponse(result="success").model_dump(mode="json")

@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "اسحب وأفلت الملف أو المجلد، أو",
   "stepOne.uploader.buttonSingleFile": "اسحب وأفلت الملف، أو",
   "stepOne.uploader.change": "تغيير",
+  "stepOne.uploader.completed": "اكتمل رفع الملف",
   "stepOne.uploader.failed": "فشل التحميل",
   "stepOne.uploader.tip": "يدعم {{supportTypes}}. بحد أقصى {{batchCount}} في الدفعة الواحدة و {{size}} ميجابايت لكل منها.",
   "stepOne.uploader.tipWithTotalLimit": "يدعم {{supportTypes}}. بحد أقصى {{batchCount}} في الدفعة الواحدة و {{size}} ميجابايت لكل منها. الحد الأقصى الإجمالي {{totalCount}} ملفات.",

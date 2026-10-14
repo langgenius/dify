@@ -1,34 +1,13 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TFunction } from 'i18next'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { Item } from '../item'
 
-const { mockDeleteApiBasedExtension } = vi.hoisted(() => ({
-  mockDeleteApiBasedExtension: vi.fn(),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apiBasedExtension: {
-      byId: {
-        delete: {
-          mutationOptions: () => ({ mutationFn: mockDeleteApiBasedExtension }),
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
-    },
-  })),
-}))
+const { request } = vi.hoisted(() => ({ request: vi.fn() }))
+vi.mock('@/service/base', () => ({ request }))
 
 describe('Item Component', () => {
   const mockData: ApiBasedExtensionResponse = {
@@ -41,6 +20,7 @@ describe('Item Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    request.mockImplementation(() => Promise.resolve(Response.json({ result: 'success' })))
   })
 
   describe('Rendering', () => {
@@ -52,6 +32,31 @@ describe('Item Component', () => {
       // Assert
       expect(screen.getByText('Test Extension'))!.toBeInTheDocument()
       expect(screen.getByText('https://api.example.com'))!.toBeInTheDocument()
+    })
+
+    it('should distinguish the edit and delete buttons for each extension by name', () => {
+      render(
+        <>
+          <Item apiBasedExtension={mockData} onEdit={mockOnEdit} />
+          <Item
+            apiBasedExtension={{ ...mockData, id: '2', name: 'Another Extension' }}
+            onEdit={mockOnEdit}
+          />
+        </>,
+      )
+
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.edit.*Test Extension/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.delete.*Test Extension/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.edit.*Another Extension/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.delete.*Another Extension/i }),
+      ).toBeInTheDocument()
     })
 
     it('should render with minimal extension data', () => {
@@ -88,8 +93,12 @@ describe('Item Component', () => {
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} canManage={false} />)
 
       // Assert
-      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.edit.*Test Extension/i }),
+      ).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /common\.operation\.delete.*Test Extension/i }),
+      ).toBeDisabled()
     })
 
     it('should not open edit or delete flows when management is not allowed', () => {
@@ -110,7 +119,12 @@ describe('Item Component', () => {
     it('should show delete confirmation dialog when clicking delete button', () => {
       // Act
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
-      fireEvent.click(screen.getByText('common.operation.delete'))
+      const trigger = screen.getByRole('button', {
+        name: /common\.operation\.delete.*Test Extension/i,
+      })
+      expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+      fireEvent.click(trigger)
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
 
       // Assert
       // Assert
@@ -121,7 +135,6 @@ describe('Item Component', () => {
 
     it('should call delete mutation when confirming deletion', async () => {
       // Arrange
-      mockDeleteApiBasedExtension.mockResolvedValue({})
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
 
       // Act
@@ -134,17 +147,15 @@ describe('Item Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockDeleteApiBasedExtension).toHaveBeenCalledWith({
-          params: {
-            id: '1',
-          },
-        })
+        expect(request).toHaveBeenCalledTimes(1)
+        const sent = request.mock.calls[0]![2].request as Request
+        expect(sent.method).toBe('DELETE')
+        expect(new URL(sent.url).pathname).toMatch(/\/api-based-extension\/1$/)
       })
     })
 
     it('should hide delete confirmation dialog after successful deletion', async () => {
       // Arrange
-      mockDeleteApiBasedExtension.mockResolvedValue({})
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
 
       // Act
@@ -184,7 +195,7 @@ describe('Item Component', () => {
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
       // Assert
-      expect(mockDeleteApiBasedExtension).not.toHaveBeenCalled()
+      expect(request).not.toHaveBeenCalled()
     })
   })
 
@@ -202,15 +213,12 @@ describe('Item Component', () => {
         t: withSelectorKey((key: string) => {
           if (key === 'operation.delete') return ''
           return `common.${key}`
-        }, 'common') as unknown as TFunction,
+        }, 'common') as unknown as TFunction<['common']>,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act
       render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} />)
-      const allButtons = screen.getAllByRole('button')
-      const editBtn = screen.getByText('common.operation.edit')
-      const deleteBtn = allButtons.find((btn) => btn !== editBtn)
-      if (deleteBtn) fireEvent.click(deleteBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'Test Extension' }))
 
       // Assert
       // Assert

@@ -1,5 +1,4 @@
 'use client'
-import type { DrawerProps } from '@langgenius/dify-ui/drawer'
 import type {
   Emoji,
   WorkflowToolOutputSource,
@@ -13,7 +12,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -21,15 +20,20 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { Infotip } from '@/app/components/base/infotip'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -86,22 +90,14 @@ type WorkflowToolDrawerFrameProps = {
   children: React.ReactNode
 }
 
-const InfoTooltip = ({ children }: { children: string }) => {
-  return (
-    <Infotip aria-label={children} className="ml-1 size-3.5" popupClassName="w-[180px]">
-      {children}
-    </Infotip>
-  )
-}
-
 const WorkflowToolDrawerFrame = ({
   title,
   closeLabel,
   onHide,
   children,
 }: WorkflowToolDrawerFrameProps) => {
-  const handleOpenChange = React.useCallback<NonNullable<DrawerProps['onOpenChange']>>(
-    (open) => {
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => {
       if (!open) onHide()
     },
     [onHide],
@@ -130,7 +126,13 @@ const WorkflowToolDrawerFrame = ({
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {title}
                   </DrawerTitle>
-                  <DrawerCloseButton className="size-6 rounded-md" aria-label={closeLabel} />
+                  <DrawerClose
+                    render={
+                      <IconButton aria-label={closeLabel} size="md">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
+                  />
                 </div>
               </div>
               <div className="grow overflow-hidden">{children}</div>
@@ -152,7 +154,9 @@ const WorkflowToolOutputName = React.memo(
     item: WorkflowToolProviderOutputParameter
     reservedOutputParameters: WorkflowToolProviderOutputParameter[]
   }) => {
-    const { t } = useTranslation()
+    const outputNameId = React.useId()
+
+    const { t } = useTranslation(['tools', 'workflow'])
     const reservedOutputDuplicateTip = t(
       ($) => $['createTool.toolOutput.reservedParameterDuplicateTip'],
       { ns: 'tools' },
@@ -165,50 +169,52 @@ const WorkflowToolOutputName = React.memo(
     const hasReservedNameConflict =
       !item.reserved && hasReservedWorkflowOutputConflict(reservedOutputParameters, item.name)
     const hasDuplicateNameConflict = !item.reserved && !!duplicateSources
-    const issueLabel = hasReservedNameConflict
-      ? hasDuplicateNameConflict
-        ? `${reservedOutputDuplicateTip} ${duplicateOutputTip}`
-        : reservedOutputDuplicateTip
-      : duplicateOutputTip
     const sources = duplicateSources || []
 
     return (
       <div className="text-[13px] leading-4.5">
         <div className="flex min-w-0 items-center gap-x-1">
-          <span className="truncate font-medium text-text-primary">{item.name}</span>
+          <span id={outputNameId} className="truncate font-medium text-text-primary">
+            {item.name}
+          </span>
           {item.reserved && (
             <span className="shrink-0 text-xs leading-4.5 text-[#ec4a0a]">
               {t(($) => $['createTool.toolOutput.reserved'], { ns: 'tools' })}
             </span>
           )}
           {hasReservedNameConflict || hasDuplicateNameConflict ? (
-            <Infotip
-              aria-label={issueLabel}
-              className="text-text-warning-secondary"
-              iconSize="small"
-              iconVariant="warning"
-              popupClassName={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
-            >
-              <div className="space-y-2">
-                {hasReservedNameConflict ? <p>{reservedOutputDuplicateTip}</p> : null}
-                {hasDuplicateNameConflict ? (
-                  <div className="space-y-1.5">
-                    <p>{duplicateOutputTip}</p>
-                    {sources.length > 0 ? (
-                      <ul className="space-y-1">
-                        {sources.map((source) => {
-                          const sourceTitle = getSourceNodeDisplayName(source, sources)
-                          return (
-                            <li key={source.nodeId} className="wrap-break-word">
-                              {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+            <Infotip>
+              <InfotipTrigger
+                aria-labelledby={outputNameId}
+                className="text-text-warning-secondary"
+                iconSize="small"
+                iconVariant="warning"
+              />
+              <InfotipContent
+                aria-labelledby={outputNameId}
+                className={hasDuplicateNameConflict ? 'w-60' : 'w-45'}
+              >
+                <div className="space-y-2">
+                  {hasReservedNameConflict ? <p>{reservedOutputDuplicateTip}</p> : null}
+                  {hasDuplicateNameConflict ? (
+                    <div className="space-y-1.5">
+                      <p>{duplicateOutputTip}</p>
+                      {sources.length > 0 ? (
+                        <ul className="space-y-1">
+                          {sources.map((source) => {
+                            const sourceTitle = getSourceNodeDisplayName(source, sources)
+                            return (
+                              <li key={source.nodeId}>
+                                {sourceNodeLabel}: <span translate="no">{sourceTitle}</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </InfotipContent>
             </Infotip>
           ) : null}
         </div>
@@ -232,10 +238,10 @@ export function WorkflowToolDrawer({
   onSave,
   onCreate,
 }: WorkflowToolDrawerProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'common', 'tools', 'navigation'])
   const parameterId = React.useId()
+  const toolNameLabelId = React.useId()
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
   const [label, setLabel] = useState<string>(payload.label)
   const [name, setName] = useState(payload.name)
@@ -322,7 +328,7 @@ export function WorkflowToolDrawer({
     <>
       <WorkflowToolDrawerFrame
         onHide={onHide}
-        title={t(($) => $['common.workflowAsTool'], { ns: 'workflow' })!}
+        title={t(($) => $['common.workflowAsTool'], { ns: 'navigation' })!}
         closeLabel={t(($) => $['operation.close'], { ns: 'common' })!}
       >
         <form
@@ -335,44 +341,56 @@ export function WorkflowToolDrawer({
         >
           <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
             {/* name & icon */}
-            <Field name="label" className="gap-0">
-              <FieldLabel className="py-2 text-text-primary">
-                {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
-                <span aria-hidden className="ml-1 text-text-destructive">
-                  *
-                </span>
-              </FieldLabel>
-              <div className="flex items-center justify-between gap-3">
-                <AppIcon
-                  size="large"
-                  onClick={() => {
-                    setShowEmojiPicker(true)
-                  }}
-                  className="cursor-pointer"
-                  iconType="emoji"
-                  icon={emoji.content}
-                  background={emoji.background}
-                />
-                <Input
-                  className="h-10 min-w-0 flex-1"
-                  placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
-                  value={label}
-                  onValueChange={(value) => setLabel(value)}
-                />
-              </div>
-            </Field>
+            <IconPicker
+              value={{
+                type: 'emoji',
+                icon: emoji.content,
+                background: emoji.background,
+              }}
+              onValueChange={(payload) => {
+                if (payload.type === 'emoji')
+                  setEmoji({ content: payload.icon, background: payload.background })
+              }}
+            >
+              <Field name="label" className="gap-0">
+                <FieldLabel className="py-2 text-text-primary">
+                  {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
+                  <span aria-hidden className="ml-1 text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <div className="flex items-center justify-between gap-3">
+                  <IconPickerTrigger
+                    aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                    className="shrink-0 cursor-pointer rounded-[10px]"
+                  >
+                    <IconPickerIcon size="large" />
+                  </IconPickerTrigger>
+                  <Input
+                    className="h-10 min-w-0 flex-1"
+                    placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
+                    value={label}
+                    onValueChange={(value) => setLabel(value)}
+                  />
+                </div>
+              </Field>
+              <IconPickerContent enableImageUpload={false} />
+            </IconPicker>
             {/* name for tool call */}
             <Field name="name" className="gap-0" invalid={!isWorkflowToolNameValid(name)}>
               <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                <FieldLabel className="py-0 text-text-primary">
+                <FieldLabel id={toolNameLabelId} className="py-0 text-text-primary">
                   {t(($) => $['createTool.nameForToolCall'], { ns: 'tools' })}
                 </FieldLabel>
                 <span aria-hidden className="ml-1 text-text-destructive">
                   *
                 </span>
-                <InfoTooltip>
-                  {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
-                </InfoTooltip>
+                <Infotip>
+                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ml-1 size-3.5" />
+                  <InfotipContent aria-labelledby={toolNameLabelId} className="w-45">
+                    {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
+                  </InfotipContent>
+                </Infotip>
               </div>
               <Input
                 className="h-10"
@@ -579,19 +597,6 @@ export function WorkflowToolDrawer({
           </div>
         </form>
       </WorkflowToolDrawerFrame>
-      <AppIconPicker
-        open={showEmojiPicker}
-        enableImageUpload={false}
-        initialEmoji={{
-          icon: emoji.content,
-          background: emoji.background,
-        }}
-        onOpenChange={setShowEmojiPicker}
-        onSelect={(payload) => {
-          if (payload.type === 'emoji')
-            setEmoji({ content: payload.icon, background: payload.background })
-        }}
-      />
       {confirmModalOpen && (
         <ConfirmModal
           show={confirmModalOpen}

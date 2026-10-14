@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "فایل ها یا پوشه ها را بکشید و رها کنید یا",
   "stepOne.uploader.buttonSingleFile": "فایل را بکشید و رها کنید یا",
   "stepOne.uploader.change": "تغییر",
+  "stepOne.uploader.completed": "بارگذاری کامل شد",
   "stepOne.uploader.failed": "بارگذاری ناموفق بود",
   "stepOne.uploader.tip": "پشتیبانی از {{supportTypes}}. حداکثر {{batchCount}} فایل در هر دسته و {{size}} مگابایت برای هر فایل.",
   "stepOne.uploader.tipWithTotalLimit": "پشتیبانی از {{supportTypes}}. حداکثر {{batchCount}} فایل در هر دسته و {{size}} مگابایت برای هر فایل. حداکثر کل {{totalCount}} فایل.",

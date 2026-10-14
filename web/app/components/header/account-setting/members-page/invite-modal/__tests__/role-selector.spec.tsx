@@ -73,7 +73,7 @@ describe('RoleSelector', () => {
   it('requires an explicit selection and exposes select semantics', () => {
     render(<RoleSelectorWrapper />)
 
-    expect(getTrigger()).toHaveTextContent(/members\.selectRole/i)
+    expect(getTrigger().textContent).toMatch(/members\.selectRole/i)
     expect(document.querySelector('input[name="role"]')).toBeRequired()
   })
 
@@ -109,9 +109,11 @@ describe('RoleSelector', () => {
 
     await user.click(getTrigger())
 
-    expect(within(getListbox()).getByText(/common\.members\.adminTip/i)).toBeInTheDocument()
     expect(
-      within(getListbox()).getByText(/common\.members\.datasetOperatorTip/i),
+      within(getListbox()).getByText(/workspaceMembers\.members\.adminTip/i),
+    ).toBeInTheDocument()
+    expect(
+      within(getListbox()).getByText(/workspaceMembers\.members\.datasetOperatorTip/i),
     ).toBeInTheDocument()
   })
 

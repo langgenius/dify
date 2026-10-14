@@ -266,132 +266,135 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock({
-      'common.stepByStepTour.title': 'Get to know Dify',
-      'common.stepByStepTour.duration': 'A quick tour — about 5 minutes',
-      'common.stepByStepTour.guides.integration.dataSource.description':
+      'onboarding.stepByStepTour.title': 'Get to know Dify',
+      'onboarding.stepByStepTour.duration': 'A quick tour — about 5 minutes',
+      'onboarding.stepByStepTour.guides.integration.dataSource.description':
         'Connect external data sources so Knowledge bases can pull from them.',
-      'common.stepByStepTour.guides.integration.dataSource.title': 'Data Source',
-      'common.stepByStepTour.guides.integration.mcp.description':
+      'onboarding.stepByStepTour.guides.integration.dataSource.title': 'Data Source',
+      'onboarding.stepByStepTour.guides.integration.mcp.description':
         'Connect MCP servers when your apps need access to external tools and services through MCP.',
-      'common.stepByStepTour.guides.integration.mcp.title': 'MCP',
-      'common.stepByStepTour.guides.integration.modelProvider.description':
+      'onboarding.stepByStepTour.guides.integration.mcp.title': 'MCP',
+      'onboarding.stepByStepTour.guides.integration.modelProvider.description':
         'Manage or install model providers here, set up model credentials, and check your Message Credits.',
-      'common.stepByStepTour.guides.integration.modelProvider.title': 'Model Provider',
-      'common.stepByStepTour.guides.integration.limitedAccess.dataSource.description':
+      'onboarding.stepByStepTour.guides.integration.modelProvider.title': 'Model Provider',
+      'onboarding.stepByStepTour.guides.integration.limitedAccess.dataSource.description':
         'Connect data sources here so Knowledge can bring in content from Drive, Notion, GitHub, Firecrawl, and more. Setup may require admin access.',
-      'common.stepByStepTour.guides.integration.limitedAccess.mcp.description':
+      'onboarding.stepByStepTour.guides.integration.limitedAccess.mcp.description':
         'View connected MCP servers that expose external tools and services to apps. Adding or editing servers requires the right workspace permission.',
-      'common.stepByStepTour.guides.integration.limitedAccess.modelProvider.description':
+      'onboarding.stepByStepTour.guides.integration.limitedAccess.modelProvider.description':
         'View model providers here, check model credentials, and see Message Credits. Installing or changing providers requires admin permission.',
-      'common.stepByStepTour.guides.integration.limitedAccess.toolPlugin.description':
+      'onboarding.stepByStepTour.guides.integration.limitedAccess.toolPlugin.description':
         'Browse installed tools and marketplace plugins that apps can call during execution. Ask an admin if you need to install or configure one.',
-      'common.stepByStepTour.guides.integration.limitedAccess.trigger.description':
+      'onboarding.stepByStepTour.guides.integration.limitedAccess.trigger.description':
         'View triggers that turn third-party events into app inputs. Creating or managing triggers requires permission from your Workspace Owner or Admin.',
-      'common.stepByStepTour.guides.integration.toolPlugin.description':
+      'onboarding.stepByStepTour.guides.integration.toolPlugin.description':
         'Manage built-in tools and marketplace plugins that apps can call during execution.',
-      'common.stepByStepTour.guides.integration.toolPlugin.title': 'Tool Plugin',
-      'common.stepByStepTour.guides.integration.trigger.description':
+      'onboarding.stepByStepTour.guides.integration.toolPlugin.title': 'Tool Plugin',
+      'onboarding.stepByStepTour.guides.integration.trigger.description':
         'Convert third-party events into inputs your apps can act on.',
-      'common.stepByStepTour.guides.integration.trigger.title': 'Trigger',
-      'common.stepByStepTour.guides.integration.updateSettings.description':
+      'onboarding.stepByStepTour.guides.integration.trigger.title': 'Trigger',
+      'onboarding.stepByStepTour.guides.integration.updateSettings.description':
         'Configure how integrations update automatically, including the update mode, scheduled time, and which integrations are included.',
-      'common.stepByStepTour.guides.integration.updateSettings.title': 'Update Settings',
-      'common.stepByStepTour.guides.home.create.description': 'Click here to make it yours',
-      'common.stepByStepTour.guides.home.noCreate.description':
+      'onboarding.stepByStepTour.guides.integration.updateSettings.title': 'Update Settings',
+      'onboarding.stepByStepTour.guides.home.create.description': 'Click here to make it yours',
+      'onboarding.stepByStepTour.guides.home.noCreate.description':
         'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
-      'common.stepByStepTour.guides.home.noCreate.title': 'Browse Learn Dify',
-      'common.stepByStepTour.guides.home.pick.description': 'Pick a lesson to see how it works.',
-      'common.stepByStepTour.guides.knowledge.empty.connect.description':
+      'onboarding.stepByStepTour.guides.home.noCreate.title': 'Browse Learn Dify',
+      'onboarding.stepByStepTour.guides.home.pick.description':
+        'Pick a lesson to see how it works.',
+      'onboarding.stepByStepTour.guides.knowledge.empty.connect.description':
         'Already have a knowledge base elsewhere? Connect it via API — no data migration needed.',
-      'common.stepByStepTour.guides.knowledge.empty.connect.title':
+      'onboarding.stepByStepTour.guides.knowledge.empty.connect.title':
         'Connect to an external knowledge base',
-      'common.stepByStepTour.guides.knowledge.empty.create.description':
+      'onboarding.stepByStepTour.guides.knowledge.empty.create.description':
         'Fastest way to get going. Upload documents and Dify handles chunking, indexing, and embedding for you. You can switch to custom anytime.',
-      'common.stepByStepTour.guides.knowledge.empty.create.title':
+      'onboarding.stepByStepTour.guides.knowledge.empty.create.title':
         'Create a ready-to-use knowledge base',
-      'common.stepByStepTour.guides.knowledge.empty.pipeline.description':
+      'onboarding.stepByStepTour.guides.knowledge.empty.pipeline.description':
         'Define your own chunking, cleanup, and indexing flow when you need finer control over how documents become searchable.',
-      'common.stepByStepTour.guides.knowledge.empty.pipeline.title':
+      'onboarding.stepByStepTour.guides.knowledge.empty.pipeline.title':
         'Build a custom knowledge base',
-      'common.stepByStepTour.guides.knowledge.withDatasets.create.description':
+      'onboarding.stepByStepTour.guides.knowledge.withDatasets.create.description':
         'Use Create to add a new knowledge base — start ready-to-use, build a custom one from your documents, or connect to an external knowledge base.',
-      'common.stepByStepTour.guides.knowledge.withDatasets.create.title':
+      'onboarding.stepByStepTour.guides.knowledge.withDatasets.create.title':
         'Create a new knowledge base',
-      'common.stepByStepTour.guides.knowledge.withDatasets.manage.description':
+      'onboarding.stepByStepTour.guides.knowledge.withDatasets.manage.description':
         'Tap any knowledge base to open its document management page — update documents, retrieval settings, and access from there.',
-      'common.stepByStepTour.guides.knowledge.withDatasets.manage.title':
+      'onboarding.stepByStepTour.guides.knowledge.withDatasets.manage.title':
         'Open and manage each knowledge base',
-      'common.stepByStepTour.guides.primaryActionLabel': 'Got it',
-      'common.stepByStepTour.guides.studio.empty.blank.description':
+      'onboarding.stepByStepTour.guides.primaryActionLabel': 'Got it',
+      'onboarding.stepByStepTour.guides.studio.empty.blank.description':
         'Start from an empty canvas when you already know what to build.',
-      'common.stepByStepTour.guides.studio.empty.blank.title': 'Create from blank',
-      'common.stepByStepTour.guides.studio.empty.dsl.description':
+      'onboarding.stepByStepTour.guides.studio.empty.blank.title': 'Create from blank',
+      'onboarding.stepByStepTour.guides.studio.empty.dsl.description':
         'Got a Dify DSL file? Import it here to restore an app you have shared or backed up.',
-      'common.stepByStepTour.guides.studio.empty.dsl.title': 'Import a DSL file',
-      'common.stepByStepTour.guides.studio.empty.learnDify.description':
+      'onboarding.stepByStepTour.guides.studio.empty.dsl.title': 'Import a DSL file',
+      'onboarding.stepByStepTour.guides.studio.empty.learnDify.description':
         'New to Dify? Walk through a guided lesson first.',
-      'common.stepByStepTour.guides.studio.empty.learnDify.title': 'Or start with Learn Dify',
-      'common.stepByStepTour.guides.studio.empty.template.description':
+      'onboarding.stepByStepTour.guides.studio.empty.learnDify.title': 'Or start with Learn Dify',
+      'onboarding.stepByStepTour.guides.studio.empty.template.description':
         'Browse Dify templates and pick one that matches what you want to build.',
-      'common.stepByStepTour.guides.studio.empty.template.title': 'Create from a template',
-      'common.stepByStepTour.guides.studio.noCreate.empty.description':
+      'onboarding.stepByStepTour.guides.studio.empty.template.title': 'Create from a template',
+      'onboarding.stepByStepTour.guides.studio.noCreate.empty.description':
         'You can view apps in this workspace, but there are no apps here yet. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.',
-      'common.stepByStepTour.guides.studio.noCreate.empty.title': 'No apps to view yet',
-      'common.stepByStepTour.guides.studio.noCreate.withApps.description':
+      'onboarding.stepByStepTour.guides.studio.noCreate.empty.title': 'No apps to view yet',
+      'onboarding.stepByStepTour.guides.studio.noCreate.withApps.description':
         'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
-      'common.stepByStepTour.guides.studio.noCreate.withApps.title': 'Studio is view-only for you',
-      'common.stepByStepTour.guides.studio.withApps.create.description':
+      'onboarding.stepByStepTour.guides.studio.noCreate.withApps.title':
+        'Studio is view-only for you',
+      'onboarding.stepByStepTour.guides.studio.withApps.create.description':
         'Use Create to add a new app — pick from a template, start from blank, or import a DSL file.',
-      'common.stepByStepTour.guides.studio.withApps.create.title': 'Create a new app',
-      'common.stepByStepTour.guides.studio.withApps.manage.description':
+      'onboarding.stepByStepTour.guides.studio.withApps.create.title': 'Create a new app',
+      'onboarding.stepByStepTour.guides.studio.withApps.manage.description':
         'Tap any app to open its orchestration page — edit prompts, models, and logic, or manage its settings from there.',
-      'common.stepByStepTour.guides.studio.withApps.manage.title': 'Open and manage each app',
-      'common.stepByStepTour.skip': 'Skip tour',
-      'common.stepByStepTour.skipRecovery.dismiss': 'Got it',
-      'common.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
-      'common.stepByStepTour.skipRecovery.message':
+      'onboarding.stepByStepTour.guides.studio.withApps.manage.title': 'Open and manage each app',
+      'onboarding.stepByStepTour.skip': 'Skip tour',
+      'onboarding.stepByStepTour.skipRecovery.dismiss': 'Got it',
+      'onboarding.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
+      'onboarding.stepByStepTour.skipRecovery.message':
         'Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.',
-      'common.stepByStepTour.completion.description':
+      'onboarding.stepByStepTour.completion.description':
         'You’ve seen the essentials. Time to build something.',
-      'common.stepByStepTour.completion.dismiss': 'Dismiss',
-      'common.stepByStepTour.completion.label': 'Step-by-step Tour completed',
-      'common.stepByStepTour.completion.title': 'You’re all set',
-      'common.stepByStepTour.minimize': 'Minimize tour',
-      'common.stepByStepTour.restore': 'Open step-by-step tour',
-      'common.stepByStepTour.learnMore': 'Learn more',
-      'common.stepByStepTour.markTaskComplete': 'Mark {{title}} complete',
-      'common.stepByStepTour.markTaskIncomplete': 'Mark {{title}} incomplete',
-      'common.stepByStepTour.progressAriaValueText': '{{completed}} of {{total}} steps completed',
-      'common.stepByStepTour.stepLabel': '{{current}} of {{total}}',
-      'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
-      'common.stepByStepTour.tasks.home.description':
+      'onboarding.stepByStepTour.completion.dismiss': 'Dismiss',
+      'onboarding.stepByStepTour.completion.label': 'Step-by-step Tour completed',
+      'onboarding.stepByStepTour.completion.title': 'You’re all set',
+      'onboarding.stepByStepTour.minimize': 'Minimize tour',
+      'onboarding.stepByStepTour.restore': 'Open step-by-step tour',
+      'onboarding.stepByStepTour.learnMore': 'Learn more',
+      'onboarding.stepByStepTour.markTaskComplete': 'Mark {{title}} complete',
+      'onboarding.stepByStepTour.markTaskIncomplete': 'Mark {{title}} incomplete',
+      'onboarding.stepByStepTour.progressAriaValueText':
+        '{{completed}} of {{total}} steps completed',
+      'onboarding.stepByStepTour.stepLabel': '{{current}} of {{total}}',
+      'onboarding.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
+      'onboarding.stepByStepTour.tasks.home.description':
         'Open a hands-on lesson from Learn Dify to see Dify in action.',
-      'common.stepByStepTour.tasks.home.noCreate.title': 'Browse Learn Dify',
-      'common.stepByStepTour.tasks.home.noCreate.description':
+      'onboarding.stepByStepTour.tasks.home.noCreate.title': 'Browse Learn Dify',
+      'onboarding.stepByStepTour.tasks.home.noCreate.description':
         'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
-      'common.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
-      'common.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
-      'common.stepByStepTour.tasks.studio.description':
+      'onboarding.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
+      'onboarding.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
+      'onboarding.stepByStepTour.tasks.studio.description':
         'All your apps live in Studio — edit, organize, and publish them here.',
-      'common.stepByStepTour.tasks.studio.noCreate.title': 'Find your apps in Studio',
-      'common.stepByStepTour.tasks.studio.noCreate.description':
+      'onboarding.stepByStepTour.tasks.studio.noCreate.title': 'Find your apps in Studio',
+      'onboarding.stepByStepTour.tasks.studio.noCreate.description':
         'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
-      'common.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
-      'common.stepByStepTour.tasks.knowledge.title': 'Add your own data',
-      'common.stepByStepTour.tasks.knowledge.description':
+      'onboarding.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
+      'onboarding.stepByStepTour.tasks.knowledge.title': 'Add your own data',
+      'onboarding.stepByStepTour.tasks.knowledge.description':
         'Build a knowledge base so your apps answer from your documents.',
-      'common.stepByStepTour.tasks.knowledge.noPermission.title': 'Knowledge needs permission',
-      'common.stepByStepTour.tasks.knowledge.noPermission.description':
+      'onboarding.stepByStepTour.tasks.knowledge.noPermission.title': 'Knowledge needs permission',
+      'onboarding.stepByStepTour.tasks.knowledge.noPermission.description':
         'To create or manage knowledge bases, switch to a workspace where you have access or contact your admin.',
-      'common.stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel': 'Got it',
-      'common.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
-      'common.stepByStepTour.tasks.integration.title': 'Explore integrations',
-      'common.stepByStepTour.tasks.integration.description':
+      'onboarding.stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel': 'Got it',
+      'onboarding.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
+      'onboarding.stepByStepTour.tasks.integration.title': 'Explore integrations',
+      'onboarding.stepByStepTour.tasks.integration.description':
         'Models, tools, data sources & more — explore what you can connect.',
-      'common.stepByStepTour.tasks.integration.noPermission.title': 'Explore Integrations',
-      'common.stepByStepTour.tasks.integration.noPermission.description':
+      'onboarding.stepByStepTour.tasks.integration.noPermission.title': 'Explore Integrations',
+      'onboarding.stepByStepTour.tasks.integration.noPermission.description':
         'Browse models, tools, and data sources, and see how they are managed.',
-      'common.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
+      'onboarding.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
     }),
   }
 })

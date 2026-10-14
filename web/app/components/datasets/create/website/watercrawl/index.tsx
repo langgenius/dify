@@ -49,7 +49,7 @@ const WaterCrawl: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -131,21 +131,7 @@ const WaterCrawl: FC<Props> = ({
         await sleep(2500)
         return await waitForCrawlFinished(jobId)
       } catch (error: unknown) {
-        let errorMessage = ''
-        const maybeErrorWithJson = error as {
-          json?: () => Promise<unknown>
-          message?: unknown
-        } | null
-        if (maybeErrorWithJson?.json) {
-          try {
-            const errorBody = (await maybeErrorWithJson.json()) as {
-              message?: unknown
-            } | null
-            if (typeof errorBody?.message === 'string') errorMessage = errorBody.message
-          } catch {}
-        }
-        if (!errorMessage && typeof maybeErrorWithJson?.message === 'string')
-          errorMessage = maybeErrorWithJson.message
+        const errorMessage = error instanceof Error ? error.message : ''
         return {
           isError: true,
           errorMessage,

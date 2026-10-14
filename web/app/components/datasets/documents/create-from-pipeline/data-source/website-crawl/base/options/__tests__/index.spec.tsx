@@ -188,17 +188,6 @@ describe('Options', () => {
       expect(screen.getByTestId('field-url')).toBeInTheDocument()
       expect(screen.getByTestId('field-depth')).toBeInTheDocument()
     })
-
-    it('should render arrow icon in correct orientation when expanded', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      // Assert - Arrow should not have -rotate-90 class when expanded
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toBeInTheDocument()
-      expect(arrowIcon).not.toHaveClass('-rotate-90')
-    })
   })
 
   describe('Props', () => {
@@ -386,20 +375,18 @@ describe('Options', () => {
   describe('Side Effects and Cleanup', () => {
     it('should expand options when step changes to init', () => {
       const props = createDefaultProps({ step: CrawlStep.finished })
-      const { rerender, container } = render(<Options {...props} />)
+      const { rerender } = render(<Options {...props} />)
 
       // Act - Change step to init
       rerender(<Options {...props} step={CrawlStep.init} />)
 
       // Assert - Fields should be visible (expanded)
       expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).not.toHaveClass('-rotate-90')
     })
 
     it('should collapse options when step changes to running', () => {
       const props = createDefaultProps({ step: CrawlStep.init })
-      const { rerender, container } = render(<Options {...props} />)
+      const { rerender } = render(<Options {...props} />)
 
       // Assert - Initially expanded
       expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
@@ -409,26 +396,22 @@ describe('Options', () => {
 
       // Assert - Should collapse (fields hidden, arrow rotated)
       expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toHaveClass('-rotate-90')
     })
 
     it('should collapse options when step changes to finished', () => {
       const props = createDefaultProps({ step: CrawlStep.init })
-      const { rerender, container } = render(<Options {...props} />)
+      const { rerender } = render(<Options {...props} />)
 
       // Act - Change step to finished
       rerender(<Options {...props} step={CrawlStep.finished} />)
 
       // Assert - Should collapse
       expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toHaveClass('-rotate-90')
     })
 
     it('should respond to step transitions from init -> running -> finished', () => {
       const props = createDefaultProps({ step: CrawlStep.init })
-      const { rerender, container } = render(<Options {...props} />)
+      const { rerender } = render(<Options {...props} />)
 
       // Assert - Initially expanded
       expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
@@ -438,16 +421,12 @@ describe('Options', () => {
 
       // Assert - Collapsed
       expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
-      let arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toHaveClass('-rotate-90')
 
       // Act - Transition to finished
       rerender(<Options {...props} step={CrawlStep.finished} />)
 
       // Assert - Still collapsed
       expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
-      arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toHaveClass('-rotate-90')
     })
 
     it('should expand when step transitions from finished to init', () => {
@@ -613,21 +592,6 @@ describe('Options', () => {
 
       // Assert - Should still be expanded (unless step changes)
       expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
-    })
-
-    it('should allow clicking on arrow icon container to toggle', () => {
-      const props = createDefaultProps()
-      const { container } = render(<Options {...props} />)
-
-      // Assert - Initially expanded
-      expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
-
-      // Act - Click on the toggle container (parent of the options text and arrow)
-      const toggleContainer = container.querySelector('.cursor-pointer')
-      fireEvent.click(toggleContainer!)
-
-      // Assert - Should be folded
-      expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
     })
   })
 
@@ -886,15 +850,6 @@ describe('Options', () => {
 
   // Styling Tests
   describe('Styling', () => {
-    it('should apply cursor-pointer class to toggle container', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      const toggleContainer = container.querySelector('.cursor-pointer')
-      expect(toggleContainer).toBeInTheDocument()
-    })
-
     it('should apply select-none class to prevent text selection on toggle', () => {
       const props = createDefaultProps()
 

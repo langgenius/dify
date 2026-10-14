@@ -19,7 +19,7 @@ import useConfig from './hooks/use-config'
 const i18nPrefix = 'nodes.tool'
 
 const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const {
     readOnly,
     inputs,

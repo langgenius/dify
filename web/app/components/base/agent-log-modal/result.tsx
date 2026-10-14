@@ -32,7 +32,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   tools,
   iterations,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'appLog', 'runLog'])
   const { formatTime } = useTimestamp()
 
   return (

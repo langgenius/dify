@@ -1,11 +1,12 @@
+import type { PopoverChangeEventDetails } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
-import type { BlockSelectorProps } from '../../../block-selector'
 import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, Position } from 'reactflow'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import BlockSelector from '../../../block-selector'
 import { useAvailableBlocks } from '../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
@@ -50,14 +51,11 @@ export const NodeTargetHandle = memo(
     )
     const isConnectable = !!availablePrevBlocks.length
 
-    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
-      (v, details) => {
-        preserveOutsideFocusRef.current =
-          details?.reason === 'outside-press' || details?.reason === 'focus-out'
-        setOpen(v)
-      },
-      [],
-    )
+    const handleOpenChange = useCallback((v: boolean, details?: PopoverChangeEventDetails) => {
+      preserveOutsideFocusRef.current =
+        details?.reason === 'outside-press' || details?.reason === 'focus-out'
+      setOpen(v)
+    }, [])
     const handleHandleClick = useCallback(
       (e: MouseEvent) => {
         e.stopPropagation()
@@ -149,7 +147,7 @@ export const NodeSourceHandle = memo(
     nodeSelectorClassName,
     showExceptionStatus,
   }: NodeHandleProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const shouldAutoOpenStartNodeSelector = useStore((s) => s.shouldAutoOpenStartNodeSelector)
     const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
     const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
@@ -177,16 +175,14 @@ export const NodeSourceHandle = memo(
     const hasMultipleSourceHandles =
       data.type === BlockEnum.IfElse ||
       data.type === BlockEnum.QuestionClassifier ||
+      hasAgentV2OutputRoutes(data) ||
       data.type === BlockEnum.HumanInput ||
       data.error_strategy === ErrorHandleTypeEnum.failBranch
-    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
-      (v, details) => {
-        preserveOutsideFocusRef.current =
-          details?.reason === 'outside-press' || details?.reason === 'focus-out'
-        setOpen(v)
-      },
-      [],
-    )
+    const handleOpenChange = useCallback((v: boolean, details?: PopoverChangeEventDetails) => {
+      preserveOutsideFocusRef.current =
+        details?.reason === 'outside-press' || details?.reason === 'focus-out'
+      setOpen(v)
+    }, [])
     const handleHandleClick = useCallback((e: MouseEvent) => {
       e.stopPropagation()
       preserveOutsideFocusRef.current = false

@@ -34,7 +34,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   onSuccess,
   onClose,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   // readyToInstall -> check installed -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.readyToInstall)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -75,6 +75,8 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     },
     [setIsInstalling],
   )
+
+  const completedSteps: InstallStep[] = [InstallStep.installed, InstallStep.installFailed]
 
   return (
     <Dialog
@@ -121,7 +123,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                 onTaskStarted={foldIntoTaskTrigger}
               />
             )}
-            {[InstallStep.installed, InstallStep.installFailed].includes(step) && (
+            {completedSteps.includes(step) && (
               <Installed
                 payload={manifest!}
                 isMarketPayload

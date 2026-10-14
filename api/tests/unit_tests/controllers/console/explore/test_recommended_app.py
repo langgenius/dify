@@ -1,14 +1,19 @@
 from inspect import unwrap
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 
 import controllers.console.explore.recommended_app as module
+from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models.model import AppMode, IconType
+from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.recommended_app_package_service import RecommendedAgentPackageSource, RecommendedAppPackageService
 from services.recommended_app_query_service import (
     LearnDifyAppListResult,
     RecommendedAppDetailSummary,
@@ -19,6 +24,77 @@ from services.recommended_app_query_service import (
 from services.recommended_app_query_service import (
     RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError,
 )
+
+
+@pytest.mark.parametrize("format", [None, "ifpkg", "yaml"])
+def test_template_export_works_without_browser_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    format: str | None,
+) -> None:
+    app = Flask(__name__)
+    app_id, version_id = uuid4(), uuid4()
+    artifact = RosterAgentPackageExport(archive=BytesIO(b"package-bytes"), filename="sample.ifpkg", size=13)
+    sources, exporter = MagicMock(), MagicMock()
+    sources.get_package_source.return_value = RecommendedAgentPackageSource("source-tenant", "source-agent", version_id)
+    exporter.export.return_value = artifact
+    exporter.export_yaml.return_value = "kind: app\n"
+    packages = RecommendedAppPackageService(sources=sources, exporter=exporter)
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(recommended_app_packages=packages))
+    ExternalApi(app).add_resource(module.RecommendedAgentExportApi, "/trial-apps/<uuid:app_id>/export")
+    query = {"version_id": str(version_id)}
+    if format is not None:
+        query["format"] = format
+    response = app.test_client().get(f"/trial-apps/{app_id}/export", query_string=query)
+    assert response.status_code == 200
+    if format == "yaml":
+        assert response.json == {"data": "kind: app\n"}
+        assert response.mimetype == "application/json"
+        exporter.export.assert_not_called()
+        exporter.export_yaml.assert_called_once_with(
+            tenant_id="source-tenant",
+            agent_id="source-agent",
+            version_id=version_id,
+        )
+    else:
+        assert response.data == b"package-bytes"
+        assert response.mimetype == "application/zip"
+        exporter.export_yaml.assert_not_called()
+        exporter.export.assert_called_once_with(
+            tenant_id="source-tenant", agent_id="source-agent", version_id=version_id
+        )
+    assert response.headers["Cache-Control"] == "no-store"
+    sources.get_package_source.assert_called_once_with(str(app_id), version_id)
+    response.close()
+    if format != "yaml":
+        assert artifact.archive.closed
+    else:
+        artifact.close()
+
+    exporter.reset_mock()
+    sources.get_package_source.return_value = None
+    response = app.test_client().get(f"/trial-apps/{app_id}/export", query_string=query)
+    assert response.status_code == 404
+    assert response.json is not None
+    assert response.json["code"] == "recommended_app_not_found"
+    exporter.export.assert_not_called()
+    exporter.export_yaml.assert_not_called()
+
+
+@pytest.mark.parametrize("option", [{"format": "json"}, {"include_secret": "true"}])
+def test_template_export_rejects_unsupported_options(
+    monkeypatch: pytest.MonkeyPatch,
+    option: dict[str, str],
+) -> None:
+    app = Flask(__name__)
+    exports = MagicMock()
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(recommended_app_packages=exports))
+    ExternalApi(app).add_resource(module.RecommendedAgentExportApi, "/trial-apps/<uuid:app_id>/export")
+    response = app.test_client().get(
+        f"/trial-apps/{uuid4()}/export",
+        query_string={"version_id": str(uuid4()), **option},
+    )
+    assert response.status_code == 422
+    exports.export.assert_not_called()
 
 
 def _request_context() -> RequestContext:
@@ -113,6 +189,8 @@ class TestRecommendedAppApi:
             "mode": "chat",
             "export_data": "{}",
             "can_trial": False,
+            "package_url": None,
+            "version_id": None,
         }
 
     def test_get_missing_raises_stable_not_found_error(self, app: Flask) -> None:

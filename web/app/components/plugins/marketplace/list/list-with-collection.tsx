@@ -108,7 +108,7 @@ const CollectionSection = ({
   installedPluginIds,
   deferMount,
 }: CollectionSectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const collectionLabelId = useId()
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -124,7 +124,6 @@ const CollectionSection = ({
     if (!section) return
 
     if (typeof IntersectionObserver === 'undefined') {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- This is the hydration fallback for browsers without IntersectionObserver.
       setIsMounted(true)
       return
     }

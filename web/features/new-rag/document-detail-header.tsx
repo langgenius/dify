@@ -48,8 +48,8 @@ export function DocumentDetailHeader({
   revisions: Array<Exclude<LogicalDocumentRevision, null>>
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const revisionTriggerRef = useRef<HTMLButtonElement>(null)
   const loadMoreRevisionLabelId = useId()
   const loadMoreRequestedRef = useRef(false)

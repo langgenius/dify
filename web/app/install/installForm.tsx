@@ -37,7 +37,7 @@ const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, passwor
 type AccountFormValues = z.infer<typeof accountFormSchema>
 
 const InstallForm = () => {
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['login'])
   const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
   useDocumentTitle(pageTitle)
   const { push, replace } = useRouter()

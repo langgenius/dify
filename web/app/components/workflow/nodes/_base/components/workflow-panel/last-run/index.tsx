@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
@@ -8,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { isNotFoundError } from '@/service/http-error'
 import { useLastRun } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
 import NoData from './no-data'
@@ -39,6 +41,15 @@ const LastRun: FC<Props> = ({
   isPaused,
   ...otherResultPanelProps
 }) => {
+  const finishedStatuses: readonly NodeRunningStatus[] = [
+    NodeRunningStatus.Succeeded,
+    NodeRunningStatus.Failed,
+  ]
+  const activeStatuses: readonly NodeRunningStatus[] = [
+    NodeRunningStatus.Running,
+    NodeRunningStatus.NotStart,
+  ]
+
   const configsMap = useHooksStore((s) => s.configsMap)
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
@@ -48,10 +59,7 @@ const LastRun: FC<Props> = ({
   const [pageHasHide, setPageHasHide] = useState(false)
   const [pageShowed, setPageShowed] = useState(false)
 
-  const hidePageOneStepRunFinished = [
-    NodeRunningStatus.Succeeded,
-    NodeRunningStatus.Failed,
-  ].includes(hidePageOneStepFinishedStatus!)
+  const hidePageOneStepRunFinished = finishedStatuses.includes(hidePageOneStepFinishedStatus!)
   const canRunLastRun =
     !isRunAfterSingleRun ||
     isOneStepRunSucceed ||
@@ -71,11 +79,10 @@ const LastRun: FC<Props> = ({
   const isRunning =
     !isPaused &&
     (isRunAfterSingleRun
-      ? !hasAuthoritativeLastRun &&
-        [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
+      ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
 
-  const noLastRun = (error as any)?.status === 404
+  const noLastRun = isNotFoundError(error)
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
 
   let resolvedStatus = (runResult as any).status || otherResultPanelProps.status
@@ -107,7 +114,12 @@ const LastRun: FC<Props> = ({
   ])
 
   useEffect(() => {
-    if ([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(oneStepRunRunningStatus!))
+    const finishedStatuses: readonly NodeRunningStatus[] = [
+      NodeRunningStatus.Succeeded,
+      NodeRunningStatus.Failed,
+    ]
+
+    if (finishedStatuses.includes(oneStepRunRunningStatus!))
       setHidePageOneStepFinishedStatus(oneStepRunRunningStatus!)
   }, [oneStepRunRunningStatus])
 

@@ -23,7 +23,7 @@ const getClientOrigin = () => window.location.origin
 const getServerOrigin = () => undefined
 
 function WebSSOForm() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login', 'share'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const searchParams = useSearchParams()

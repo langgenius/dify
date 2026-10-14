@@ -1,11 +1,13 @@
 import { useThrottleFn } from 'ahooks'
 import * as React from 'react'
 
-export enum ScrollPosition {
-  belowTheWrap = 'belowTheWrap',
-  showing = 'showing',
-  aboveTheWrap = 'aboveTheWrap',
-}
+export const ScrollPosition = {
+  belowTheWrap: 'belowTheWrap',
+  showing: 'showing',
+  aboveTheWrap: 'aboveTheWrap',
+} as const
+
+export type ScrollPosition = (typeof ScrollPosition)[keyof typeof ScrollPosition]
 
 type Params = {
   wrapElemRef: React.RefObject<HTMLElement | null>

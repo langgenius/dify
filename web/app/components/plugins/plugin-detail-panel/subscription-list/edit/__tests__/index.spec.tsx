@@ -224,7 +224,7 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
     endpoint: { settings: [], endpoints: [] },
     model: {},
     tags: [],
-    agent_strategy: {},
+    agent_strategy: null,
     meta: { version: '1.0.0' },
     trigger: {
       events: [],
@@ -550,17 +550,16 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Update Callbacks', () => {
-      it('should show success toast and call onClose on success', async () => {
+      it('should call onClose on success', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+          expect(onClose).toHaveBeenCalled()
         })
         expect(mockRefetch).toHaveBeenCalled()
-        expect(onClose).toHaveBeenCalled()
       })
 
       it('should show error toast with Error message on failure', async () => {
@@ -578,11 +577,9 @@ describe('Edit Modal Components', () => {
         })
       })
 
-      it('should use error.message from object when available', async () => {
+      it('should use error.message when available', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) =>
-          cb.onError({ message: 'Object error' }),
-        )
+        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Object error')))
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
@@ -847,16 +844,15 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Update Callbacks', () => {
-      it('should show success toast and call onClose on success', async () => {
+      it('should call onClose on success', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
         const onClose = vi.fn()
         render(<OAuthEditModal {...createProps({ onClose })} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+          expect(onClose).toHaveBeenCalled()
         })
-        expect(onClose).toHaveBeenCalled()
       })
 
       it('should show error toast on failure', async () => {
@@ -1101,7 +1097,7 @@ describe('Edit Modal Components', () => {
 
       it('should show error toast on verification failure', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'bad-key' }, isCheckValidated: true })
-        mockParsePluginErrorMessage.mockResolvedValue('Invalid API key')
+        mockParsePluginErrorMessage.mockReturnValue('Invalid API key')
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
@@ -1117,7 +1113,7 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback error message when parsePluginErrorMessage returns null', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'bad-key' }, isCheckValidated: true })
-        mockParsePluginErrorMessage.mockResolvedValue(null)
+        mockParsePluginErrorMessage.mockReturnValue(null)
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
@@ -1304,7 +1300,7 @@ describe('Edit Modal Components', () => {
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
 
-      it('should show success toast and close on successful update', async () => {
+      it('should close on successful update', async () => {
         formValuesMap.set('basic', {
           values: { subscription_name: 'Name' },
           isCheckValidated: true,
@@ -1319,14 +1315,6 @@ describe('Edit Modal Components', () => {
         })
 
         fireEvent.click(getConfirmButton())
-        await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(
-            expect.objectContaining({
-              type: 'success',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.success',
-            }),
-          )
-        })
         expect(mockRefetch).toHaveBeenCalled()
         expect(onClose).toHaveBeenCalled()
       })
@@ -1336,7 +1324,7 @@ describe('Edit Modal Components', () => {
           values: { subscription_name: 'Name' },
           isCheckValidated: true,
         })
-        mockParsePluginErrorMessage.mockResolvedValue('Update failed')
+        mockParsePluginErrorMessage.mockReturnValue('Update failed')
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Failed')))
         render(<ApiKeyEditModal {...createProps()} />)
 

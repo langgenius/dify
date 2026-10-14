@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGetAppPromptTemplatesQuery, zGetAppPromptTemplatesResponse } from './zod.gen'
+import { zGetAppPromptTemplatesQuery, zGetAppPromptTemplatesResponse } from './zod.gen.ts'
 
 /**
  * Get advanced prompt templates based on app mode and model configuration

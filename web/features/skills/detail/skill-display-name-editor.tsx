@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import {
-  getAsyncSkillErrorPayload,
   getErrorCode,
   getErrorDetailString,
   invalidateSkillDetail,
@@ -31,8 +30,8 @@ export function SkillDisplayNameEditor({
   readonly: boolean
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const submittingRef = useRef(false)
@@ -101,14 +100,13 @@ export function SkillDisplayNameEditor({
       })
       setDraftName(nextDisplayName)
       onEditingChange(false)
-      toast.success(t(($) => $['skillManagement.detail.renameSkillSuccess']))
     } catch (error) {
       setDraftName(displayName)
-      const errorPayload = await getAsyncSkillErrorPayload(error)
-      if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+
+      if (getErrorCode(error) === 'skill_name_conflict') {
         toast.error(
           t(($) => $['skillManagement.errors.nameConflict'], {
-            name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+            name: getErrorDetailString(error, 'name') ?? '',
           }),
         )
       } else {

@@ -1,12 +1,14 @@
+import type { AppModelConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
-import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import { produce } from 'immer'
 import { useMemo } from 'react'
 import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { DATASET_DEFAULT } from '@/config'
+import { WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { correctModelProvider } from '@/utils'
 
@@ -16,7 +18,7 @@ export function buildConfigurationDatasetConfigs({
   currentRerankProvider,
   nextDataSets,
 }: {
-  backendModelConfig: BackendModelConfig
+  backendModelConfig: AppModelConfigResponse
   currentRerankModel?: string
   currentRerankProvider?: string
   nextDataSets: DataSet[]
@@ -24,10 +26,23 @@ export function buildConfigurationDatasetConfigs({
   const retrievalConfig = getMultipleRetrievalConfig(
     {
       ...backendModelConfig.dataset_configs,
-      reranking_model: backendModelConfig.dataset_configs.reranking_model && {
-        provider: backendModelConfig.dataset_configs.reranking_model.reranking_provider_name,
-        model: backendModelConfig.dataset_configs.reranking_model.reranking_model_name,
-      },
+      top_k: backendModelConfig.dataset_configs.top_k ?? DATASET_DEFAULT.top_k,
+      score_threshold: backendModelConfig.dataset_configs.score_threshold,
+      weights: backendModelConfig.dataset_configs.weights
+        ? {
+            ...backendModelConfig.dataset_configs.weights,
+            weight_type:
+              backendModelConfig.dataset_configs.weights.weight_type ??
+              WeightedScoreEnum.Customized,
+          }
+        : undefined,
+      reranking_model:
+        (backendModelConfig.dataset_configs.reranking_model && {
+          provider:
+            backendModelConfig.dataset_configs.reranking_model.reranking_provider_name ?? '',
+          model: backendModelConfig.dataset_configs.reranking_model.reranking_model_name ?? '',
+        }) ||
+        undefined,
     },
     nextDataSets,
     nextDataSets,
@@ -37,22 +52,42 @@ export function buildConfigurationDatasetConfigs({
     },
   )
 
-  const nextDatasetConfigs = {
-    ...backendModelConfig.dataset_configs,
+  const config = backendModelConfig.dataset_configs
+  return {
+    ...config,
     ...retrievalConfig,
-    ...(retrievalConfig.reranking_model
+    retrieval_model: config.retrieval_model ?? RETRIEVE_TYPE.multiWay,
+    score_threshold_enabled: config.score_threshold_enabled ?? false,
+    datasets: {
+      datasets: nextDataSets.map(({ id }) => ({ enabled: true, id })),
+    },
+    reranking_model: {
+      reranking_model_name: retrievalConfig.reranking_model?.model ?? '',
+      reranking_provider_name: correctModelProvider(
+        retrievalConfig.reranking_model?.provider ?? '',
+      ),
+    },
+    metadata_filtering_conditions: config.metadata_filtering_conditions
       ? {
-          reranking_model: {
-            reranking_model_name: retrievalConfig.reranking_model.model,
-            reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
-          },
+          logical_operator: config.metadata_filtering_conditions.logical_operator ?? 'and',
+          conditions: (config.metadata_filtering_conditions.conditions ?? []).map(
+            (condition, index) => ({
+              ...condition,
+              id: condition.id ?? `${condition.name}-${index}`,
+            }),
+          ),
         }
-      : {}),
-  } as DatasetConfigs
-
-  nextDatasetConfigs.retrieval_model = nextDatasetConfigs.retrieval_model ?? RETRIEVE_TYPE.multiWay
-
-  return nextDatasetConfigs
+      : undefined,
+    metadata_model_config: config.metadata_model_config
+      ? {
+          ...config.metadata_model_config,
+          provider: config.metadata_model_config.provider ?? '',
+          name: config.metadata_model_config.name ?? '',
+          mode: config.metadata_model_config.mode ?? '',
+          completion_params: config.metadata_model_config.completion_params ?? {},
+        }
+      : undefined,
+  }
 }
 
 type DatasetSelectHandlerOptions = {

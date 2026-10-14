@@ -1,9 +1,9 @@
-import type { ToolNodeType, ToolVarInputs } from '../types'
+import type { ToolNodeType } from '../types'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import {
@@ -12,7 +12,6 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { toast } from '@/app/notifications'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import { useInvalidToolsByType } from '@/service/use-tools'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
@@ -28,7 +27,6 @@ const formatDisplayType = (output: Record<string, unknown>): string => {
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { t } = useTranslation()
 
   const language = useLanguage()
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ToolNodeType>(id, payload)
@@ -49,11 +47,10 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     async (value: any) => {
       await updateBuiltInToolCredential(currCollection?.name as string, value)
 
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       invalidToolsByType()
       setShowSetAuth(false)
     },
-    [currCollection?.name, t, invalidToolsByType],
+    [currCollection?.name, invalidToolsByType],
   )
 
   const currTool = useMemo(() => {
@@ -122,7 +119,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const configuredToolSettings = getConfiguredValue(
           tool_configurations,
           toolSettingSchema,
-        ) as ToolVarInputs
+        ) as ResourceVarInputs
         if (Object.keys(configuredToolSettings).length > 0)
           draft.tool_configurations = configuredToolSettings
       }
@@ -130,7 +127,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const configuredToolParameters = getConfiguredValue(
           tool_parameters,
           toolInputVarSchema,
-        ) as ToolVarInputs
+        ) as ResourceVarInputs
         if (Object.keys(configuredToolParameters).length > 0)
           draft.tool_parameters = configuredToolParameters
       }
@@ -154,7 +151,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   // setting when call
   const setInputVar = useCallback(
-    (value: ToolVarInputs) => {
+    (value: ResourceVarInputs) => {
       setInputs({
         ...inputs,
         tool_parameters: value,

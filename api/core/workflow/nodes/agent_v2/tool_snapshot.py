@@ -22,7 +22,6 @@ def build_runtime_tool_definitions(
     *,
     tool_layers: WorkflowAgentToolLayers,
     include_shell: bool,
-    ask_human_enabled: bool,
 ) -> tuple[AgentRuntimeToolDefinition, ...]:
     """Return the non-secret, model-visible tool surface for evaluation."""
 
@@ -53,17 +52,6 @@ def build_runtime_tool_definitions(
             )
     if include_shell:
         definitions.extend(_shell_runtime_tool_definitions())
-    if ask_human_enabled:
-        definitions.append(
-            AgentRuntimeToolDefinition(
-                tool_ref="dify.ask_human/ask_human",
-                name="ask_human",
-                display_name="Ask human",
-                description="Request structured input from a human when the task cannot continue autonomously.",
-                input_schema={},
-                schema_available=False,
-            )
-        )
     return tuple(definitions)
 
 

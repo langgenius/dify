@@ -25,7 +25,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const contextDatasetId = useDocumentContext((s) => s.datasetId)
   const contextDocumentId = useDocumentContext((s) => s.documentId)
   const datasetId = dstId ?? contextDatasetId

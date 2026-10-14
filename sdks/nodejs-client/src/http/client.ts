@@ -557,7 +557,12 @@ export class HttpClient {
       } catch (error) {
         const mapped = mapTransportError(error, timeoutContext)
         const shouldRetryRequest =
-          preparedBody.replayable && shouldRetry(mapped, attempt, maxRetries)
+          preparedBody.replayable &&
+          (method === 'GET' ||
+            method === 'PUT' ||
+            method === 'DELETE' ||
+            mapped instanceof RateLimitError) &&
+          shouldRetry(mapped, attempt, maxRetries)
         if (!shouldRetryRequest) {
           throw mapped
         }

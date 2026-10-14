@@ -103,11 +103,6 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.HumanInput]: checkHumanInputValid,
 }
 
-type RequestError = {
-  message: string
-  status: string
-}
-
 export type Params<T> = {
   id: string
   flowId: string
@@ -131,20 +126,19 @@ const varTypeToInputVarType = (
     isParagraph: boolean
   },
 ) => {
+  const structuredVariableTypes: readonly VarType[] = [
+    VarType.object,
+    VarType.array,
+    VarType.arrayNumber,
+    VarType.arrayString,
+    VarType.arrayObject,
+  ]
+
   if (isSelect) return InputVarType.select
   if (isParagraph) return InputVarType.paragraph
   if (type === VarType.number) return InputVarType.number
   if (type === VarType.boolean) return InputVarType.checkbox
-  if (
-    [
-      VarType.object,
-      VarType.array,
-      VarType.arrayNumber,
-      VarType.arrayString,
-      VarType.arrayObject,
-    ].includes(type)
-  )
-    return InputVarType.json
+  if (structuredVariableTypes.includes(type)) return InputVarType.json
   if (type === VarType.file) return InputVarType.singleFile
   if (type === VarType.arrayFile) return InputVarType.multiFiles
 
@@ -163,7 +157,7 @@ const useOneStepRun = <T>({
   isRunAfterSingleRun,
   isPaused,
 }: Params<T>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } =
     useWorkflow() as any
   const conversationVariables = useStore((s) => s.conversationVariables)
@@ -580,18 +574,13 @@ const useOneStepRun = <T>({
       const controller = new AbortController()
       pluginSingleRunAbortRef.current = controller
 
-      let requestError: RequestError | undefined
+      let requestError: unknown
       const response: any = await post(urlPath, {
         body: JSON.stringify({}),
         signal: controller.signal,
       })
-        .catch(async (error: Response) => {
-          const data = (await error.clone().json()) as Record<string, any>
-          const { error: respError, status } = data || {}
-          requestError = {
-            message: respError,
-            status,
-          }
+        .catch((error: unknown) => {
+          requestError = error
           return null
         })
         .finally(() => {
@@ -604,7 +593,7 @@ const useOneStepRun = <T>({
       if (requestError) {
         if (controller.signal.aborted) return null
 
-        toast.error(requestError.message)
+        toast.error(requestError instanceof Error ? requestError.message : 'Unknown error')
         cancelPluginSingleRun()
         throw requestError
       }

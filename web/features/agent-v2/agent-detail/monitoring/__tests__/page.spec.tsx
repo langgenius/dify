@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('echarts-for-react', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: ({ option, style }: { option: EChartsOption; style?: React.CSSProperties }) => {
     mocks.chartOptions.push(option)
 
@@ -266,6 +266,17 @@ describe('AgentMonitoringPage', () => {
       'system-sm-medium',
       'text-text-secondary',
     )
+
+    const clearButton = screen.getByRole('button', { name: /operation.clear.*Book Translation/ })
+    clearButton.focus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(getLatestStatisticsQueryInput().input.query).not.toHaveProperty('source')
+    })
+    expect(
+      screen.getByRole('combobox', { name: /metadata.sourceLabel.*sources.all/ }),
+    ).toBeInTheDocument()
   })
 
   it('should keep previous statistics visible while a source filter refetches', async () => {
@@ -296,5 +307,22 @@ describe('AgentMonitoringPage', () => {
     expect(screen.getByText('1.3k')).toBeInTheDocument()
 
     resolveNextStatistics(emptyStatisticsResponse)
+  })
+
+  it('announces a loading failure and recovers after retry', async () => {
+    const user = userEvent.setup()
+    mocks.statisticsQueryFn
+      .mockRejectedValueOnce(new Error('Statistics unavailable'))
+      .mockResolvedValueOnce(statisticsResponse)
+
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'agentV2.agentDetail.monitoring.loadFailed',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('1.3k')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

@@ -5,28 +5,28 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { KnowledgeConfig } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed'
+import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed.ts'
 import { readFile } from 'node:fs/promises'
-import { createTestApp } from '../../../support/api/apps'
-import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
-import { sleep } from '../../../support/process'
-import { blocked, created, skipped, updated, verified } from '../../../support/seed'
-import { createTestAgent, saveAgentComposerDraft } from './agent'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins.ts'
+import { sleep } from '../../../support/process.ts'
+import { blocked, created, skipped, updated, verified } from '../../../support/seed.ts'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
-} from './agent-builder-resources'
+} from './agent-builder-resources.ts'
 import {
   createAgentSoulConfigWithKnowledgeDataset,
   createAgentSoulConfigWithModel,
   normalAgentSoulConfig,
-} from './agent-soul'
-import { uploadAgentConfigFileToDraft, uploadAgentConfigSkillToDraft } from './config-assets'
-import { isRecord, matchesNameOrLabel } from './fixtures/common'
-import { splitToolDisplayName } from './fixtures/tools'
-import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials'
-import { syncAgentV2WorkflowDraft } from './workflow'
+} from './agent-soul.ts'
+import { createTestAgent, saveAgentComposerDraft } from './agent.ts'
+import { uploadAgentConfigFileToDraft, uploadAgentConfigSkillToDraft } from './config-assets.ts'
+import { isRecord, matchesNameOrLabel } from './fixtures/common.ts'
+import { splitToolDisplayName } from './fixtures/tools.ts'
+import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials.ts'
+import { syncAgentV2WorkflowDraft } from './workflow.ts'
 
 type StableModel = {
   name: string

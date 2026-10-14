@@ -11,7 +11,7 @@ import { useFileStore } from '../store'
 import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
 
 export const useUpload = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetHitTesting'])
   const fileStore = useFileStore()
 
   const [dragging, setDragging] = useState(false)

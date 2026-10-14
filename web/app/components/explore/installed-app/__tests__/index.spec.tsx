@@ -7,6 +7,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InstalledApp from '../index'
 
@@ -92,7 +93,6 @@ const createInstalledApp = (mode: AppMode = 'chat'): InstalledAppResponse => ({
   editable: true,
   is_pinned: false,
   last_used_at: null,
-  uninstallable: true,
   app: {
     id: 'app-123',
     name: 'Test App',
@@ -254,7 +254,7 @@ describe('InstalledApp', () => {
   })
 
   it('distinguishes a missing installed app from a recoverable detail failure', async () => {
-    mocks.getInstalledApp.mockRejectedValue(new Response(null, { status: 404 }))
+    mocks.getInstalledApp.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
     const { unmount } = renderWithConsoleQuery(<InstalledApp id="missing-app" />)
     expect(await screen.findByText(/404/)).toBeInTheDocument()
     unmount()

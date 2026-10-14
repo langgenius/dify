@@ -1,11 +1,11 @@
 import type { UnsupportedNode } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Node } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
-import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
+import { useQuery } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { findNodeIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
-import { useDataSourceList } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -39,10 +39,13 @@ export const useGetProviderIcon = (nodes: UnsupportedNode[]) => {
   const { data: customTools } = useAllCustomTools(hasToolNode)
   const { data: workflowTools } = useAllWorkflowTools(hasToolNode)
   const { data: mcpTools } = useAllMCPTools(hasToolNode)
-  const { data: dataSources } = useDataSourceList(hasDataSourceNode)
+  const { data: dataSourceList } = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      enabled: hasDataSourceNode,
+    }),
+  )
   const { data: triggerPlugins } = useAllTriggerPlugins(hasTriggerPluginNode)
   const { theme } = useTheme()
-  const dataSourceList = useMemo(() => dataSources?.map(transformDataSourceToTool), [dataSources])
 
   return useCallback(
     (node: UnsupportedNode) => {

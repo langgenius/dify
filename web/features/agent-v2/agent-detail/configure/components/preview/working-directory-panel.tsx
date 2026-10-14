@@ -12,15 +12,17 @@ import type {
 } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { ORPCError } from '@orpc/client'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { toast } from '@/app/notifications'
+import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { downloadUrl } from '@/utils/download'
-import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 import {
   AGENT_SAVED_FILES_ROOT_PATH,
@@ -48,10 +50,6 @@ export type AgentWorkingDirectorySource =
       nodeExecutionId: string
       workflowRunId: string
     }
-
-type SandboxErrorPayload = {
-  code?: string
-}
 
 const getSandboxRootPath = (path: string): AgentWorkingDirectoryRootPath =>
   path === AGENT_SAVED_FILES_ROOT_PATH || path.startsWith(`${AGENT_SAVED_FILES_ROOT_PATH}/`)
@@ -226,26 +224,22 @@ function countReadableFiles(files: AgentFileNode[]): number {
   }, 0)
 }
 
-async function isNoActiveBindingError(error: unknown) {
-  if (!(error instanceof Response) || error.status !== 404) return false
+function isNoActiveBindingError(error: unknown) {
+  if (!(error instanceof ORPCError) || error.status !== 404) return false
 
-  try {
-    const payload = (await error.clone().json()) as SandboxErrorPayload
-    return payload.code === 'no_active_binding'
-  } catch {
-    return false
-  }
+  return error.code === 'no_active_binding'
 }
-
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
 export function AgentWorkingDirectoryPanel({
   source,
   onOpenChange,
   open,
 }: AgentWorkingDirectoryPanelProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const temporaryFilesLabelId = useId()
+  const persistentFilesLabelId = useId()
+
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const persistentFilesTooltip = t(
     ($) => $['agentDetail.configure.workingDirectory.persistentFilesTooltip'],
   )
@@ -312,7 +306,7 @@ export function AgentWorkingDirectoryPanel({
       try {
         return await fileListQueryOptions.queryFn(context)
       } catch (error) {
-        if (await isNoActiveBindingError(error)) {
+        if (isNoActiveBindingError(error)) {
           return {
             entries: [],
             path: '.',
@@ -334,7 +328,7 @@ export function AgentWorkingDirectoryPanel({
           try {
             return await queryOptions.queryFn(context)
           } catch (error) {
-            if (await isNoActiveBindingError(error)) {
+            if (isNoActiveBindingError(error)) {
               return {
                 entries: [],
                 path,
@@ -415,7 +409,7 @@ export function AgentWorkingDirectoryPanel({
       try {
         return await fileReadQueryOptions.queryFn(context)
       } catch (error) {
-        if (isNotFoundResponse(error)) {
+        if (isNotFoundError(error)) {
           return {
             binary: false,
             path: selectedWorkingDirectoryFile?.id ?? '',
@@ -573,14 +567,18 @@ export function AgentWorkingDirectoryPanel({
                       value={AGENT_SAVED_FILES_ROOT_PATH}
                       className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                     >
-                      {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                      <span id={persistentFilesLabelId}>
+                        {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                      </span>
                     </TabsTab>
-                    <Infotip
-                      aria-label={persistentFilesTooltip}
-                      iconVariant="information"
-                      popupClassName="w-64"
-                    >
-                      {persistentFilesTooltip}
+                    <Infotip>
+                      <InfotipTrigger
+                        aria-labelledby={persistentFilesLabelId}
+                        iconVariant="information"
+                      />
+                      <InfotipContent aria-labelledby={persistentFilesLabelId} className="w-64">
+                        {persistentFilesTooltip}
+                      </InfotipContent>
                     </Infotip>
                   </div>
                   <div className="flex h-full items-center gap-0.5">
@@ -588,14 +586,18 @@ export function AgentWorkingDirectoryPanel({
                       value={AGENT_TEMPORARY_FILES_ROOT_PATH}
                       className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                     >
-                      {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                      <span id={temporaryFilesLabelId}>
+                        {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                      </span>
                     </TabsTab>
-                    <Infotip
-                      aria-label={temporaryFilesTooltip}
-                      iconVariant="information"
-                      popupClassName="w-64"
-                    >
-                      {temporaryFilesTooltip}
+                    <Infotip>
+                      <InfotipTrigger
+                        aria-labelledby={temporaryFilesLabelId}
+                        iconVariant="information"
+                      />
+                      <InfotipContent aria-labelledby={temporaryFilesLabelId} className="w-64">
+                        {temporaryFilesTooltip}
+                      </InfotipContent>
                     </Infotip>
                   </div>
                   <TabsIndicator
@@ -669,7 +671,7 @@ export function AgentWorkingDirectoryPanel({
                 : paths.filter((path) => path !== file.id),
             )
           },
-          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(file.id),
+          onFolderEnter: ({ file }) => handleDirectoryPathChange(file.id),
           onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) =>
             loadingFolderPaths.has(file.id) ? (

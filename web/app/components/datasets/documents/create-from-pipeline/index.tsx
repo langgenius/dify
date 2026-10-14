@@ -40,7 +40,7 @@ import { StepOneContent, StepThreeContent, StepTwoContent } from './steps'
 import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
 
 const CreateFormPipeline = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'datasetPipeline'])
   const router = useRouter()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(

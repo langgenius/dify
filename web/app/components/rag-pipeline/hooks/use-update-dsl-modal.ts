@@ -10,14 +10,11 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfo = {
   importedVersion: string
   systemVersion: string
-}
-type ImportErrorResponse = {
-  message?: unknown
-  error?: unknown
 }
 type UseUpdateDSLModalParams = {
   onCancel: () => void
@@ -25,26 +22,8 @@ type UseUpdateDSLModalParams = {
 }
 const isCompletedStatus = (status: DSLImportStatus): boolean =>
   status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-
-  const trimmedValue = value.trim()
-  return trimmedValue || undefined
-}
-const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Response && !error.bodyUsed) {
-    try {
-      const errorData = (await error.clone().json()) as ImportErrorResponse
-      return getNonEmptyString(errorData.message) ?? getNonEmptyString(errorData.error)
-    } catch {}
-  }
-
-  if (error instanceof Error) return getNonEmptyString(error.message)
-
-  return undefined
-}
 export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParams) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
   const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
@@ -154,7 +133,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         showVersionMismatch(id, imported_dsl_version, current_dsl_version)
       else notifyError(response.error)
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     }
     isCreatingRef.current = false
   }, [
@@ -176,7 +155,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       }
       if (status === DSLImportStatus.FAILED) notifyError(error)
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     }
   }, [importId, importDSLConfirm, completeImport, notifyError])
   return {

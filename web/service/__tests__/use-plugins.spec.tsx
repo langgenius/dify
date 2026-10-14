@@ -1,4 +1,5 @@
 import type {
+  DatasourceProviderEntity,
   PluginCategoryInstalledPluginResponse,
   PluginEntity,
   PluginInstallationItemResponse,
@@ -151,13 +152,14 @@ const createPluginInstallation = (): PluginInstallationItemResponse => ({
       ],
     },
     datasource: {
+      provider_type: 'online_document',
       identity: {
         author: 'Dify',
         name: 'datasource-provider',
         description: { en_US: 'Datasource provider' },
         icon: 'datasource.svg',
         label: { en_US: 'Datasource provider' },
-        tags: ['datasource'],
+        tags: ['rag'],
       },
       credentials_schema: [],
     },
@@ -292,6 +294,57 @@ const createPluginEntity = (): PluginEntity => ({
 })
 
 describe('normalizeInstalledPluginDetail', () => {
+  it('preserves the generated datasource domain at the unknown manifest boundary', () => {
+    const plugin = createPluginInstallation()
+    const datasource = {
+      provider_type: 'online_drive',
+      identity: {
+        author: 'Dify',
+        name: 'drive',
+        icon: 'drive.svg',
+        label: { en_US: 'Drive', zh_Hans: null },
+        description: { en_US: 'Read documents', ja_JP: null },
+        tags: null,
+      },
+      credentials_schema: [],
+      oauth_schema: { client_schema: [], credentials_schema: [] },
+    } satisfies DatasourceProviderEntity
+    plugin.declaration.datasource = datasource
+
+    expect(normalizeInstalledPluginDetail(plugin).declaration.datasource).toEqual(datasource)
+  })
+
+  it('preserves absent and null datasource declarations and nullable OAuth metadata', () => {
+    const plugin = createPluginInstallation()
+    plugin.declaration.datasource = null
+    expect(normalizeInstalledPluginDetail(plugin).declaration.datasource).toBeNull()
+    plugin.declaration.datasource = undefined
+    expect(normalizeInstalledPluginDetail(plugin).declaration.datasource).toBeUndefined()
+    plugin.declaration.datasource = {
+      provider_type: 'local_file',
+      identity: {
+        author: 'Dify',
+        name: 'file',
+        icon: 'file.svg',
+        label: { en_US: 'File' },
+        description: { en_US: 'Read local files' },
+        tags: [],
+      },
+      oauth_schema: null,
+    } satisfies DatasourceProviderEntity
+    expect(normalizeInstalledPluginDetail(plugin).declaration.datasource?.oauth_schema).toBeNull()
+  })
+
+  it.each([{}, { provider_type: 'builtin' }])(
+    'rejects an invalid datasource manifest instead of inventing tool fields: %j',
+    (datasource) => {
+      const plugin = createPluginInstallation()
+      plugin.declaration.datasource = datasource
+
+      expect(() => normalizeInstalledPluginDetail(plugin)).toThrow()
+    },
+  )
+
   it('preserves Portuguese metadata alongside the existing UI locale spelling', () => {
     const plugin = createPluginEntity()
     plugin.declaration.label = { en_US: 'Plugin', pt_BR: 'Extensão' }
@@ -310,6 +363,54 @@ describe('normalizeInstalledPluginDetail', () => {
 
     expect(genericDetail.plugin_id).toBe('langgenius/plugin-entity')
     expect(categoryDetail.plugin_id).toBe('langgenius/category-plugin')
+  })
+
+  it('preserves the generated agent identity and nullable metadata at the dynamic manifest boundary', () => {
+    const plugin = createPluginInstallation()
+    plugin.declaration.agent_strategy = {
+      identity: {
+        author: 'Dify',
+        name: 'agent',
+        icon: 'agent.svg',
+        icon_dark: null,
+        label: { en_US: 'Agent', zh_Hans: null },
+        description: { en_US: 'Agent strategy' },
+        tags: null,
+      },
+      plugin_id: null,
+    }
+    expect(normalizeInstalledPluginDetail(plugin).declaration.agent_strategy).toEqual(
+      plugin.declaration.agent_strategy,
+    )
+    plugin.declaration.agent_strategy = null
+    expect(normalizeInstalledPluginDetail(plugin).declaration.agent_strategy).toBeNull()
+  })
+
+  it('preserves endpoint setting types at the dynamic plugin manifest boundary', () => {
+    const plugin = createPluginInstallation()
+    plugin.declaration.endpoint = {
+      settings: [
+        { name: 'enabled', type: 'boolean', default: false, required: true, label: null },
+        {
+          name: 'count',
+          type: 'text-input',
+          default: '0',
+          placeholder: { en_US: 'Count', zh_Hans: null },
+        },
+      ],
+      endpoints: null,
+    }
+    const detail = normalizeInstalledPluginDetail(plugin)
+
+    expect(detail.declaration.endpoint?.settings?.[0]).toMatchObject({
+      default: false,
+      label: null,
+    })
+    expect(detail.declaration.endpoint?.settings?.[1]).toMatchObject({
+      default: '0',
+      placeholder: { zh_Hans: null },
+    })
+    expect(detail.declaration.endpoint?.endpoints).toBeNull()
   })
 
   it('should preserve generated plugin declaration capabilities', () => {

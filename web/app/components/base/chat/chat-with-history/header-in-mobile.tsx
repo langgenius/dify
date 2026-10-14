@@ -1,11 +1,11 @@
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -43,7 +43,7 @@ const HeaderInMobile = () => {
     conversationRenaming,
     inputsForms,
   } = useChatWithHistoryContext()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const isPin = pinnedConversationList.some((item) => item.id === currentConversationId)
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
@@ -82,12 +82,11 @@ const HeaderInMobile = () => {
     },
     [showRename, handleRenameConversation, handleCancelRename],
   )
-  const [showSidebar, setShowSidebar] = useState(false)
   const [showChatSettings, setShowChatSettings] = useState(false)
 
   return (
     <>
-      <Dialog open={showSidebar} onOpenChange={setShowSidebar}>
+      <Dialog>
         <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
           <DialogTrigger
             render={
@@ -196,14 +195,14 @@ const HeaderInMobile = () => {
               {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {showRename && (

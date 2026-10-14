@@ -14,7 +14,7 @@ const mockAccounts = [
 
 const getTrigger = () =>
   screen.getByRole('button', {
-    name: 'common.members.transferModal.transferPlaceholder',
+    name: 'workspaceMembers.members.transferModal.transferPlaceholder',
   })
 
 const getMemberButtons = () =>

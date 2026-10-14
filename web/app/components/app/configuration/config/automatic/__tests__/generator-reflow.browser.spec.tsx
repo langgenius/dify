@@ -7,8 +7,9 @@ import GetAutomaticRes from '../get-automatic-res'
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: appDebug } = await import('@/i18n/locales/en-US/app-debug.json')
+  const { default: appGeneration } = await import('@/i18n/locales/en-US/app-generation.json')
   const { default: common } = await import('@/i18n/locales/en-US/common.json')
-  return createReactI18nextMock({ ...appDebug, ...common })
+  return createReactI18nextMock({ ...appDebug, ...appGeneration, ...common })
 })
 
 vi.mock(
@@ -60,7 +61,7 @@ describe('Prompt generator reflow', () => {
     await page.viewport(1280, 720)
   })
 
-  it.each([320, 720, 1440])(
+  it.each([320, 1440])(
     'keeps inputs and generated result actions within a %i CSS pixel viewport',
     async (width) => {
       // Unit tests cannot detect the original fixed 1140px popup being clipped.

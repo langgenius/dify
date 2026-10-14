@@ -4,6 +4,7 @@ import type {
   SkillFileResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type {
   ChangeEvent,
   ComponentPropsWithoutRef,
@@ -15,15 +16,19 @@ import type {
   RefObject,
 } from 'react'
 import type { MarkdownProps } from '@/app/components/base/markdown'
+import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMutation } from '@tanstack/react-query'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { visit } from 'unist-util-visit'
 import { Markdown } from '@/app/components/base/markdown'
 import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
 import styles from './markdown-editor.module.css'
+import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import {
   getMarkdownLiveEditorSelectionOffset,
   getPathBaseName,
@@ -380,7 +385,7 @@ export function MarkdownModeSwitch({
   mode: 'live' | 'source'
   onChange: (mode: 'live' | 'source') => void
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   return (
     <div className="absolute top-3 right-2 z-10 flex h-8 items-center rounded-md bg-components-segmented-control-bg-normal p-0.5">
@@ -1145,16 +1150,23 @@ export function CsvTablePreview({ rows }: { rows: string[][] }) {
 
 export function VersionActionBar({
   onExit,
-  onRestore,
-  restoring,
+  onRestored,
   version,
 }: {
   onExit: () => void
-  onRestore: () => void
-  restoring: boolean
+  onRestored: () => void
   version: SkillVersionResponse
 }) {
-  const { t } = useTranslation('skill')
+  const actionsRef = useRef<AlertDialogActions>(null)
+  const restoreMutation = useMutation(
+    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
+      onSuccess: () => {
+        actionsRef.current?.close()
+        onRestored()
+      },
+    }),
+  )
+  const { t } = useTranslation(['skill'])
   const { formatTime } = useTimestamp()
   const publishedBy = version.published_by_name ?? version.published_by ?? '-'
   const publishedAt = formatTime(
@@ -1181,9 +1193,31 @@ export function VersionActionBar({
             })}
           </div>
         </div>
-        <Button variant="primary" className="h-9 px-5" loading={restoring} onClick={onRestore}>
-          {t(($) => $['skillManagement.detail.restoreVersion'])}
-        </Button>
+        <AlertDialog
+          actionsRef={actionsRef}
+          onOpenChange={(_open, details) => {
+            if (restoreMutation.isPending && details.reason !== 'imperative-action')
+              details.cancel()
+          }}
+        >
+          <AlertDialogTrigger
+            render={
+              <Button variant="primary" className="h-9 px-5" loading={restoreMutation.isPending} />
+            }
+          >
+            {t(($) => $['skillManagement.detail.restoreVersion'])}
+          </AlertDialogTrigger>
+          <RestoreVersionDialogContent
+            versionTitle={getSkillVersionTitle(version)}
+            isPending={restoreMutation.isPending}
+            onConfirm={() =>
+              restoreMutation.mutate({
+                params: { skill_id: version.skill_id },
+                body: { version_id: version.id, version_name: version.version_name },
+              })
+            }
+          />
+        </AlertDialog>
         <Button variant="secondary" className="h-9 px-4" onClick={onExit}>
           <span aria-hidden className="i-ri-history-line size-4" />
           {t(($) => $['skillManagement.detail.exitVersions'])}

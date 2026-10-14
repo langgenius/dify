@@ -102,7 +102,7 @@ export function WorkflowDependencyPreview({
   paths: WorkflowPath[]
   subjectName: string
 }) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
   const validPaths = uniqueWorkflowPaths(paths)
   const firstLeafWorkflow = validPaths[0]?.workflows.at(-1)
 
@@ -111,7 +111,7 @@ export function WorkflowDependencyPreview({
   const sourceLabel =
     validPaths.length === 1
       ? firstLeafWorkflow.name
-      : t(($) => $['studio.precheck.nodeCount_other'], { count: validPaths.length })
+      : t(($) => $['studio.precheck.nodeCount'], { count: validPaths.length })
 
   return (
     <Popover>
@@ -122,7 +122,7 @@ export function WorkflowDependencyPreview({
         render={
           <button
             type="button"
-            className="group/source flex min-w-0 shrink-0 cursor-help items-center gap-1 rounded-sm outline-hidden focus-visible:ring-1 focus-visible:ring-state-accent-solid"
+            className="group/source flex min-w-0 shrink-0 cursor-help items-center gap-1 rounded-sm"
           >
             <span className="sr-only">{subjectName}: </span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">
@@ -160,7 +160,7 @@ export function SubworkflowSourceTitle({ source }: { source: WorkflowAsToolSourc
         render={
           <button
             type="button"
-            className="group/source max-w-full min-w-0 cursor-help truncate rounded-sm border-b border-dotted border-text-quaternary text-start system-sm-semibold text-text-primary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-state-accent-solid data-popup-open:text-text-secondary"
+            className="group/source max-w-full min-w-0 cursor-help truncate rounded-sm border-b border-dotted border-text-quaternary text-start system-sm-semibold text-text-primary hover:text-text-secondary data-popup-open:text-text-secondary"
           >
             {workflow.name}
           </button>

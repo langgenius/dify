@@ -38,7 +38,7 @@ export const useAuth = (
   } = {},
 ) => {
   const { isModelCredential, onUpdate, onRemove, mode } = extra
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     getDeleteCredentialService,
     getActiveCredentialService,
@@ -158,7 +158,6 @@ export const useAuth = (
         }
         await deleteModelService(payload)
       }
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
@@ -166,7 +165,6 @@ export const useAuth = (
       handleSetDoingAction(false)
     }
   }, [
-    t,
     handleSetDoingAction,
     getDeleteCredentialService,
     isModelCredential,

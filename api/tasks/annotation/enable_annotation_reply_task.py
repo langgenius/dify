@@ -14,7 +14,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
 from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from services.dataset_service import DatasetCollectionBindingService
+from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 

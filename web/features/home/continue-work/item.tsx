@@ -30,7 +30,7 @@ type ContinueWorkItemProps = {
 }
 
 export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'explore'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),

@@ -106,7 +106,7 @@ export const preprocessThinkTag = (content: string) => {
  *    signal that the URI should be removed/disallowed by react-markdown.
  */
 export const customUrlTransform = (uri: string): string | undefined => {
-  const PERMITTED_SCHEME_REGEX = /^(https?|ircs?|mailto|xmpp|abbr):$/i
+  const PERMITTED_SCHEME_REGEX = /^(?:https?|ircs?|mailto|xmpp|abbr):$/i
 
   if (uri.startsWith('#')) return uri
 

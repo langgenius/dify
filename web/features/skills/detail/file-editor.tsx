@@ -11,13 +11,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillFileBlob } from '../client'
@@ -39,7 +39,6 @@ import {
   findBrokenMarkdownReferenceRangeAtCaret,
   findFileByPath,
   findMarkdownReferenceRangeAtCaret,
-  getAsyncSkillErrorPayload,
   getContentEditableCaretAnchor,
   getErrorCode,
   getErrorDetailNumber,
@@ -97,7 +96,7 @@ export function FileEditor({
   onOpenBuilder,
   onOpenVersions,
   onPublish,
-  onRestoreVersion,
+  onVersionRestored,
   onExitVersion,
   onCloseFile,
   onDraftDetailChange,
@@ -122,7 +121,7 @@ export function FileEditor({
   onOpenBuilder?: () => void
   onOpenVersions: () => void
   onPublish: () => void
-  onRestoreVersion: () => void
+  onVersionRestored: () => void
   onExitVersion: () => void
   onCloseFile: (path: string) => void
   onDraftDetailChange: (detail: SkillDetailResponse) => void
@@ -137,7 +136,7 @@ export function FileEditor({
   selectedVersionId: string | null
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const initialContent =
@@ -370,26 +369,19 @@ export function FileEditor({
         onDraftDetailChange(nextCachedDetail)
         return true
       } catch (error) {
-        const errorPayload = await getAsyncSkillErrorPayload(error)
-        if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+        if (getErrorCode(error) === 'skill_name_conflict') {
           toast.error(
             t(($) => $['skillManagement.errors.nameConflict'], {
-              name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+              name: getErrorDetailString(error, 'name') ?? '',
             }),
           )
           setSaveStatus('error')
           return false
         }
-        if (getErrorCode(errorPayload ?? error) === 'skill_conflict') {
+        if (getErrorCode(error) === 'skill_conflict') {
           try {
-            const currentUpdatedAt = getErrorDetailNumber(
-              errorPayload ?? error,
-              'current_updated_at',
-            )
-            const currentFileContent = getErrorDetailString(
-              errorPayload ?? error,
-              'current_file_content',
-            )
+            const currentUpdatedAt = getErrorDetailNumber(error, 'current_updated_at')
+            const currentFileContent = getErrorDetailString(error, 'current_file_content')
             let latestDetail: SkillDetailResponse | undefined
             try {
               latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {
@@ -737,7 +729,7 @@ export function FileEditor({
     event: KeyboardEvent<HTMLDivElement | HTMLTextAreaElement>,
     bodyMode = false,
   ) => {
-    if (!isMarkdown || readonly) return
+    if (!isMarkdown || readonly || event.nativeEvent.isComposing) return
 
     if (
       bodyMode &&
@@ -1209,7 +1201,8 @@ export function FileEditor({
                               setMetadataKey(event.target.value)
                             }}
                             onKeyDown={(event) => {
-                              if (event.key === 'Escape') handleCancelAddMetadata()
+                              if (!event.nativeEvent.isComposing && event.key === 'Escape')
+                                handleCancelAddMetadata()
                             }}
                           />
                           <button
@@ -1230,6 +1223,7 @@ export function FileEditor({
                             setMetadataValue(event.target.value)
                           }}
                           onKeyDown={(event) => {
+                            if (event.nativeEvent.isComposing) return
                             if (event.key === 'Escape') {
                               handleCancelAddMetadata()
                               return
@@ -1244,7 +1238,7 @@ export function FileEditor({
                             }
                           }}
                           onKeyUp={(event) => {
-                            if (event.key !== 'Enter') return
+                            if (event.nativeEvent.isComposing || event.key !== 'Enter') return
 
                             event.preventDefault()
                             event.stopPropagation()
@@ -1511,8 +1505,7 @@ export function FileEditor({
       {readonly && selectedVersion && (
         <VersionActionBar
           version={selectedVersion}
-          restoring={publishing}
-          onRestore={onRestoreVersion}
+          onRestored={onVersionRestored}
           onExit={onExitVersion}
         />
       )}

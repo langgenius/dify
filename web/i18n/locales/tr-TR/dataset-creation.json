@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "Dosyaları veya klasörleri sürükleyip bırakın veya",
   "stepOne.uploader.buttonSingleFile": "Dosyayı sürükleyip bırakın veya",
   "stepOne.uploader.change": "Değiştir",
+  "stepOne.uploader.completed": "Yükleme tamamlandı",
   "stepOne.uploader.failed": "Yükleme başarısız",
   "stepOne.uploader.tip": "{{supportTypes}} destekler. Parti başına en fazla {{batchCount}} dosya ve her biri {{size}} MB.",
   "stepOne.uploader.tipWithTotalLimit": "{{supportTypes}} destekler. Parti başına en fazla {{batchCount}} dosya ve her biri {{size}} MB. Toplam en fazla {{totalCount}} dosya.",

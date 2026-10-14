@@ -1,15 +1,14 @@
 'use client'
 
-import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
+import { focusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Drawer = BaseDrawer.Root
 const DrawerProvider = BaseDrawer.Provider
 const DrawerIndent = BaseDrawer.Indent
 const DrawerIndentBackground = BaseDrawer.IndentBackground
-const DrawerTrigger = BaseDrawer.Trigger
 const DrawerSwipeArea = BaseDrawer.SwipeArea
 const DrawerPortal = BaseDrawer.Portal
 const DrawerTitle = BaseDrawer.Title
@@ -17,117 +16,105 @@ const DrawerDescription = BaseDrawer.Description
 const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
+type DrawerActions = BaseDrawer.Root.Actions
+type DrawerSnapPoint = BaseDrawer.Root.SnapPoint
+type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
+type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
+type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
+type DrawerSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeEventDetails
+
 type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
 type DrawerHandle<Payload = unknown> = BaseDrawer.Handle<Payload>
 type DrawerProviderProps = BaseDrawer.Provider.Props
 type DrawerIndentProps = BaseDrawer.Indent.Props
 type DrawerIndentBackgroundProps = BaseDrawer.IndentBackground.Props
 type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
+
+function DrawerTrigger<Payload = unknown>({ className, ...props }: DrawerTriggerProps<Payload>) {
+  return (
+    <BaseDrawer.Trigger
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type DrawerSwipeAreaProps = BaseDrawer.SwipeArea.Props
 type DrawerPortalProps = BaseDrawer.Portal.Props
 type DrawerTitleProps = BaseDrawer.Title.Props
 type DrawerDescriptionProps = BaseDrawer.Description.Props
 type DrawerCloseProps = BaseDrawer.Close.Props
 
-type DrawerBackdropProps = Omit<BaseDrawer.Backdrop.Props, 'className'> & {
-  className?: string
-}
+type DrawerBackdropProps = BaseDrawer.Backdrop.Props
 
 function DrawerBackdrop({ className, ...props }: DrawerBackdropProps) {
   return (
     <BaseDrawer.Backdrop
-      className={cn(
-        'absolute inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
-        'transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-swiping:duration-0 motion-reduce:transition-none',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'absolute inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
+          'transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-swiping:duration-0 motion-reduce:transition-none',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type DrawerViewportProps = Omit<BaseDrawer.Viewport.Props, 'className'> & {
-  className?: string
-}
+type DrawerViewportProps = BaseDrawer.Viewport.Props
 
 function DrawerViewport({ className, ...props }: DrawerViewportProps) {
   return (
     <BaseDrawer.Viewport
-      className={cn(
-        'fixed inset-0 z-50 touch-none overflow-hidden overscroll-contain outline-hidden',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'fixed inset-0 z-50 touch-none overflow-hidden overscroll-contain outline-hidden',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type DrawerPopupProps = Omit<BaseDrawer.Popup.Props, 'className'> & {
-  className?: string
-}
+type DrawerPopupProps = BaseDrawer.Popup.Props
 
 function DrawerPopup({ className, ...props }: DrawerPopupProps) {
   return (
     <BaseDrawer.Popup
-      className={cn(
-        'fixed z-50 flex min-h-0 touch-none flex-col overflow-hidden border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl outline-hidden',
-        'transition-[transform,opacity,box-shadow] duration-200 data-swiping:duration-0 data-swiping:select-none motion-reduce:transition-none',
-        'data-[swipe-direction=right]:inset-y-0 data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:h-dvh data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-2rem)] data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-[swipe-direction=right]:rounded-l-2xl data-[swipe-direction=right]:border-r-0',
-        'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))]',
-        'data-[swipe-direction=left]:inset-y-0 data-[swipe-direction=left]:left-0 data-[swipe-direction=left]:h-dvh data-[swipe-direction=left]:w-120 data-[swipe-direction=left]:max-w-[calc(100vw-2rem)] data-[swipe-direction=left]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-[swipe-direction=left]:rounded-r-2xl data-[swipe-direction=left]:border-l-0',
-        'data-ending-style:data-[swipe-direction=left]:transform-[translateX(calc(-100%-2px))] data-starting-style:data-[swipe-direction=left]:transform-[translateX(calc(-100%-2px))]',
-        'data-[swipe-direction=down]:inset-x-0 data-[swipe-direction=down]:bottom-0 data-[swipe-direction=down]:max-h-[calc(100dvh-2rem)] data-[swipe-direction=down]:w-full data-[swipe-direction=down]:transform-[translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-[swipe-direction=down]:rounded-t-2xl data-[swipe-direction=down]:border-b-0',
-        'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%+2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%+2px))]',
-        'data-[swipe-direction=up]:inset-x-0 data-[swipe-direction=up]:top-0 data-[swipe-direction=up]:max-h-[calc(100dvh-2rem)] data-[swipe-direction=up]:w-full data-[swipe-direction=up]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-[swipe-direction=up]:rounded-b-2xl data-[swipe-direction=up]:border-t-0',
-        'data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%-2px))] data-starting-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%-2px))]',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'fixed z-50 flex min-h-0 touch-none flex-col overflow-hidden border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl outline-hidden',
+          'transition-[transform,opacity,box-shadow] duration-200 data-swiping:duration-0 data-swiping:select-none motion-reduce:transition-none',
+          'data-[swipe-direction=right]:inset-y-0 data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:h-dvh data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-2rem)] data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-[swipe-direction=right]:rounded-l-2xl data-[swipe-direction=right]:border-r-0',
+          'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))]',
+          'data-[swipe-direction=left]:inset-y-0 data-[swipe-direction=left]:left-0 data-[swipe-direction=left]:h-dvh data-[swipe-direction=left]:w-120 data-[swipe-direction=left]:max-w-[calc(100vw-2rem)] data-[swipe-direction=left]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-[swipe-direction=left]:rounded-r-2xl data-[swipe-direction=left]:border-l-0',
+          'data-ending-style:data-[swipe-direction=left]:transform-[translateX(calc(-100%-2px))] data-starting-style:data-[swipe-direction=left]:transform-[translateX(calc(-100%-2px))]',
+          'data-[swipe-direction=down]:inset-x-0 data-[swipe-direction=down]:bottom-0 data-[swipe-direction=down]:max-h-[calc(100dvh-2rem)] data-[swipe-direction=down]:w-full data-[swipe-direction=down]:transform-[translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-[swipe-direction=down]:rounded-t-2xl data-[swipe-direction=down]:border-b-0',
+          'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%+2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%+2px))]',
+          'data-[swipe-direction=up]:inset-x-0 data-[swipe-direction=up]:top-0 data-[swipe-direction=up]:max-h-[calc(100dvh-2rem)] data-[swipe-direction=up]:w-full data-[swipe-direction=up]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-[swipe-direction=up]:rounded-b-2xl data-[swipe-direction=up]:border-t-0',
+          'data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%-2px))] data-starting-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%-2px))]',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
 }
 
-type DrawerContentProps = Omit<BaseDrawer.Content.Props, 'className'> & {
-  className?: string
-}
+type DrawerContentProps = BaseDrawer.Content.Props
 
 function DrawerContent({ className, ...props }: DrawerContentProps) {
   return (
     <BaseDrawer.Content
-      className={cn(
-        'min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0))]',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0))]',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
-  )
-}
-
-type DrawerCloseButtonProps = Omit<BaseDrawer.Close.Props, 'children' | 'className'> & {
-  children?: React.ReactNode
-  className?: string
-}
-
-function DrawerCloseButton({
-  className,
-  children,
-  type = 'button',
-  'aria-label': ariaLabel = 'Close drawer',
-  ...props
-}: DrawerCloseButtonProps) {
-  return (
-    <BaseDrawer.Close
-      type={type}
-      aria-label={ariaLabel}
-      className={cn(
-        iconButtonVariants({ size: 'lg' }),
-        'focus-visible:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50 data-disabled:text-text-tertiary',
-        className,
-      )}
-      {...props}
-    >
-      {children ?? <span aria-hidden="true" className="i-ri-close-line size-4" />}
-    </BaseDrawer.Close>
   )
 }
 
@@ -136,7 +123,6 @@ export {
   Drawer,
   DrawerBackdrop,
   DrawerClose,
-  DrawerCloseButton,
   DrawerContent,
   DrawerDescription,
   DrawerIndent,
@@ -151,8 +137,10 @@ export {
 }
 
 export type {
+  DrawerActions,
   DrawerBackdropProps,
-  DrawerCloseButtonProps,
+  DrawerChangeEventDetails,
+  DrawerChangeEventReason,
   DrawerCloseProps,
   DrawerContentProps,
   DrawerDescriptionProps,
@@ -163,6 +151,9 @@ export type {
   DrawerPortalProps,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSnapPoint,
+  DrawerSnapPointChangeEventDetails,
+  DrawerSnapPointChangeEventReason,
   DrawerSwipeAreaProps,
   DrawerTitleProps,
   DrawerTriggerProps,

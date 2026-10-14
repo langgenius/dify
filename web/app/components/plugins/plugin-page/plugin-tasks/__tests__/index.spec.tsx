@@ -591,7 +591,6 @@ describe('PluginTasks Component', () => {
       fireEvent.click(getTaskMenuTrigger())
 
       // The popover content should be visible (PluginTaskList)
-      // The popover content should be visible (PluginTaskList)
       expect(screen.getByTestId('plugin-task-list'))!.toBeInTheDocument()
     })
 
@@ -602,12 +601,12 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
 
       const taskMenuTrigger = getTaskMenuTrigger()
-      expect(taskMenuTrigger).not.toHaveAttribute('data-menu-open')
+      expect(taskMenuTrigger).not.toHaveAttribute('data-popup-open')
 
       await user.click(taskMenuTrigger)
 
       expect(taskMenuTrigger).toHaveAttribute('aria-expanded', 'true')
-      expect(taskMenuTrigger).toHaveAttribute('data-menu-open', '')
+      expect(taskMenuTrigger).toHaveAttribute('data-popup-open', '')
     })
 
     it('should keep the task menu trigger enabled when it can open', () => {
@@ -618,10 +617,10 @@ describe('PluginTasks Component', () => {
       expect(getTaskMenuTrigger()).toHaveAttribute('aria-disabled', 'false')
     })
 
-    it('should apply custom dropdown positioning props', () => {
+    it('should apply custom popover positioning props', () => {
       setupMocks([createMockPlugin({ status: TaskStatus.failed })])
 
-      render(<PluginTasks dropdownPlacement="bottom-start" dropdownAnchor={() => document.body} />)
+      render(<PluginTasks placement="bottom-start" anchor={() => document.body} />)
 
       fireEvent.click(getTaskMenuTrigger())
 

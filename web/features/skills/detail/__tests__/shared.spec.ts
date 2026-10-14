@@ -4,9 +4,6 @@ import { consoleQuery } from '@/service/console'
 import {
   createUploadItemId,
   deriveSkillDetailFromDraftFiles,
-  getErrorCode,
-  getErrorDetailNumber,
-  getErrorDetailString,
   getUploadFileName,
   getUploadPath,
   isEditableKeyboardTarget,
@@ -15,29 +12,6 @@ import {
 } from '../shared'
 
 describe('skill detail shared utilities', () => {
-  it('reads error codes and details from supported error shapes', () => {
-    expect(getErrorCode({ code: 'direct' })).toBe('direct')
-    expect(getErrorCode({ data: { code: 'data' } })).toBe('data')
-    expect(getErrorCode({ body: { code: 'body' } })).toBe('body')
-    expect(getErrorCode('error')).toBeUndefined()
-
-    expect(
-      getErrorDetailNumber({ details: { current_updated_at: 12 } }, 'current_updated_at'),
-    ).toBe(12)
-    expect(
-      getErrorDetailNumber({ data: { details: { current_updated_at: 13 } } }, 'current_updated_at'),
-    ).toBe(13)
-    expect(
-      getErrorDetailString(
-        { body: { details: { current_file_hash: 'hash' } } },
-        'current_file_hash',
-      ),
-    ).toBe('hash')
-    expect(
-      getErrorDetailString({ details: { current_file_hash: 1 } }, 'current_file_hash'),
-    ).toBeUndefined()
-  })
-
   it('normalizes upload paths and names', () => {
     const plainFile = new File(['guide'], 'guide.md', { type: 'text/markdown' })
     const nestedFile = new File(['guide'], 'guide.md', { type: 'text/markdown' })

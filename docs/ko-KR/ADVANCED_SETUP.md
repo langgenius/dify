@@ -1,6 +1,6 @@
 # 고급 설정
 
-구성을 사용자 정의해야 하는 경우 [.env.example](../../docker/.env.example) 파일의 주석을 참조하고 `.env` 파일에서 해당 값을 업데이트하십시오. 또한 특정 배포 환경 및 요구 사항에 따라 `docker-compose.yaml` 파일 자체를 조정해야 할 수도 있습니다. 예를 들어 이미지 버전, 포트 매핑 또는 볼륨 마운트를 변경합니다. 변경 한 후 `docker-compose up -d`를 다시 실행하십시오. 사용 가능한 환경 변수의 전체 목록은 [여기](https://docs.dify.ai/getting-started/install-self-hosted/environments)에서 찾을 수 있습니다.
+로컬 설정은 `docker/.env`에서 변경하세요. [`.env.example`](../../docker/.env.example)에는 기본 배포에 필요한 설정만 있으며, 선택 사항과 서비스별 설정은 [`docker/envs/`](../../docker/envs/)에 있습니다. 필요한 템플릿을 `.example` 접미사 없이 복사하세요. `.env`의 값이 우선합니다. 변경 후 `docker/`에서 `docker compose up -d`를 실행하세요. 자세한 내용은 [Docker 가이드](../../docker/README.md)를 참고하세요.
 
 ## Grafana를 사용한 메트릭 모니터링
 

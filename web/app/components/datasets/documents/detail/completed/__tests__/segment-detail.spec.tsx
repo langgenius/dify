@@ -5,7 +5,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { SegmentDetail } from '../segment-detail'
 
 // Mock dataset detail context
-let mockIndexingTechnique = IndexingType.QUALIFIED
+let mockIndexingTechnique: IndexingType = IndexingType.QUALIFIED
 let mockRuntimeMode = 'general'
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
@@ -23,8 +23,8 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock document context
 let mockParentMode = 'paragraph'
 vi.mock('../../context', () => ({
-  useDocumentContext: (selector: (state: { parentMode: string }) => unknown) => {
-    return selector({ parentMode: mockParentMode })
+  useDocumentContext: (selector: (state: { parentMode: string; canEdit: boolean }) => unknown) => {
+    return selector({ parentMode: mockParentMode, canEdit: true })
   },
 }))
 

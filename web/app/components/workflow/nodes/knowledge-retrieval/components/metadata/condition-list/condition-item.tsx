@@ -183,7 +183,12 @@ const ConditionItem = ({
                 onValueMethodChange={handleValueMethodChange}
                 nodesOutputVars={availableNumberVars}
                 availableNodes={availableNumberNodesWithParent}
-                value={valueAndValueMethod.value}
+                value={
+                  typeof valueAndValueMethod.value === 'string' ||
+                  typeof valueAndValueMethod.value === 'number'
+                    ? valueAndValueMethod.value
+                    : undefined
+                }
                 onChange={handleValueChange}
                 isCommonVariable={isCommonVariable}
                 commonVariables={availableCommonNumberVars}
@@ -191,7 +196,11 @@ const ConditionItem = ({
             )}
           {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
             currentMetadata?.type === MetadataFilteringVariableType.time && (
-              <ConditionDate value={condition.value as number} onChange={handleValueChange} />
+              <ConditionDate
+                disabled={disabled}
+                value={condition.value as number}
+                onChange={handleValueChange}
+              />
             )}
         </div>
       </div>

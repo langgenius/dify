@@ -11,12 +11,17 @@ import type {
 } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldItem } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { registerPageLeaveGuard } from '@/utils/page-leave-guard'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import {
@@ -123,7 +128,7 @@ function SourceTypeSelector({
   value: SourceType
   onChange: (value: SourceType) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const options = [
     { icon: 'i-ri-global-line', key: 'websiteCrawl' as const },
     { icon: 'i-ri-file-text-line', key: 'onlineDocuments' as const },
@@ -131,35 +136,40 @@ function SourceTypeSelector({
   ]
 
   return (
-    <fieldset>
-      <legend className="mb-1.5 system-xs-medium text-text-secondary">
-        {t(($) => $['newKnowledge.sourceTypeLabel'])}
-      </legend>
-      <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3">
-        {options.map((option) => (
-          <label
-            key={option.key}
-            className={cn(
-              'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              value === option.key
-                ? 'bg-background-default text-text-primary shadow-xs'
-                : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
-            )}
-          >
-            <input
-              type="radio"
-              name="source-type"
-              value={option.key}
-              checked={value === option.key}
-              onChange={() => onChange(option.key)}
-              className="sr-only"
-            />
-            <span aria-hidden className={`${option.icon} size-4`} />
-            {t(($) => $[`newKnowledge.${option.key}`])}
-          </label>
-        ))}
-      </div>
-    </fieldset>
+    <Field className="contents">
+      <Fieldset
+        render={
+          <RadioGroup<SourceType>
+            name="source-type"
+            value={value}
+            onValueChange={onChange}
+            className="block"
+          />
+        }
+      >
+        <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+          {t(($) => $['newKnowledge.sourceTypeLabel'])}
+        </FieldsetLegend>
+        <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3">
+          {options.map((option) => (
+            <FieldItem key={option.key} className="contents">
+              <label
+                className={cn(
+                  'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+                  value === option.key
+                    ? 'bg-background-default text-text-primary shadow-xs'
+                    : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
+                )}
+              >
+                <Radio value={option.key} className="sr-only" />
+                <span aria-hidden className={`${option.icon} size-4`} />
+                {t(($) => $[`newKnowledge.${option.key}`])}
+              </label>
+            </FieldItem>
+          ))}
+        </div>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -170,38 +180,43 @@ function ProviderSelector({
   provider: NewKnowledgeWebsiteProvider
   onChange: (provider: NewKnowledgeWebsiteProvider) => void
 }) {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation(['datasetCreation'])
 
   return (
-    <fieldset>
-      <legend className="mb-1.5 system-xs-medium text-text-secondary">
-        {t(($) => $['stepOne.website.chooseProvider'])}
-      </legend>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {WEBSITE_PROVIDER_OPTIONS.map((option) => (
-          <label
-            key={option.value}
-            className={cn(
-              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              provider === option.value
-                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
-                : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
-            )}
-          >
-            <input
-              type="radio"
-              name="source-provider"
-              value={option.value}
-              checked={provider === option.value}
-              onChange={() => onChange(option.value)}
-              className="sr-only"
-            />
-            <span aria-hidden className={`${option.icon} size-4`} />
-            {option.value}
-          </label>
-        ))}
-      </div>
-    </fieldset>
+    <Field className="contents">
+      <Fieldset
+        render={
+          <RadioGroup<NewKnowledgeWebsiteProvider>
+            name="source-provider"
+            value={provider}
+            onValueChange={onChange}
+            className="block"
+          />
+        }
+      >
+        <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+          {t(($) => $['stepOne.website.chooseProvider'])}
+        </FieldsetLegend>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {WEBSITE_PROVIDER_OPTIONS.map((option) => (
+            <FieldItem key={option.value} className="contents">
+              <label
+                className={cn(
+                  'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+                  provider === option.value
+                    ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                    : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+                )}
+              >
+                <Radio value={option.value} className="sr-only" />
+                <span aria-hidden className={`${option.icon} size-4`} />
+                {option.value}
+              </label>
+            </FieldItem>
+          ))}
+        </div>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -214,7 +229,7 @@ function ProviderFieldControl({
   setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   values: Record<string, string>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const generatedId = useId()
   const inputId = `${generatedId}-input`
   const descriptionId = field.description ? `${generatedId}-description` : undefined
@@ -282,7 +297,7 @@ function ConnectionForm({
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const connectButtonLabelId = useId()
   const supportedAuthKinds = getSupportedAuthKinds(provider)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
@@ -376,28 +391,33 @@ function ConnectionForm({
   return (
     <form className="rounded-xl bg-background-section p-4" onSubmit={handleSubmit}>
       {supportedAuthKinds.length > 1 && (
-        <fieldset className="mb-4">
-          <legend className="mb-1.5 system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.authenticationMethod'])}
-          </legend>
-          <div className="flex gap-2">
-            {supportedAuthKinds.map((kind) => (
-              <label
-                key={kind}
-                className="flex items-center gap-1.5 system-xs-regular text-text-secondary"
-              >
-                <input
-                  type="radio"
-                  name="auth-kind"
-                  value={kind}
-                  checked={authKind === kind}
-                  onChange={() => changeAuthKind(kind)}
-                />
-                {t(($) => $[`newKnowledge.authKind.${kind}`])}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <Field className="contents">
+          <Fieldset
+            className="mb-4"
+            render={
+              <RadioGroup<ConnectionAuthKind>
+                name="auth-kind"
+                value={authKind}
+                onValueChange={changeAuthKind}
+                className="block"
+              />
+            }
+          >
+            <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+              {t(($) => $['newKnowledge.authenticationMethod'])}
+            </FieldsetLegend>
+            <div className="flex gap-2">
+              {supportedAuthKinds.map((kind) => (
+                <FieldItem key={kind} className="contents">
+                  <label className="flex cursor-pointer items-center gap-1.5 system-xs-regular text-text-secondary">
+                    <Radio value={kind} />
+                    {t(($) => $[`newKnowledge.authKind.${kind}`])}
+                  </label>
+                </FieldItem>
+              ))}
+            </div>
+          </Fieldset>
+        </Field>
       )}
       <div className="space-y-3">
         {visibleFields.map((field) => (
@@ -411,7 +431,7 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionFailed'])}
+          {t(($) => $['newKnowledge.connectionFailed'], { provider: FIRECRAWL_CONNECTION_NAME })}
         </p>
       )}
       <Button
@@ -424,7 +444,7 @@ function ConnectionForm({
         <span id={connectButtonLabelId}>
           {pending
             ? t(($) => $['newKnowledge.connectingProvider'])
-            : t(($) => $['newKnowledge.connectProvider'])}
+            : t(($) => $['newKnowledge.connectProvider'], { provider: FIRECRAWL_CONNECTION_NAME })}
         </span>
       </Button>
     </form>
@@ -444,7 +464,7 @@ function UnconfiguredProvider({
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const [configuring, setConfiguring] = useState(false)
 
   if (configuring)
@@ -493,8 +513,8 @@ function ConnectionProblem({
   onConnected: (connection: Connection) => void
   onReconcile: () => Promise<Connection | undefined>
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
@@ -528,7 +548,9 @@ function ConnectionProblem({
   return (
     <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionNeedsAttention'])}
+        {t(($) => $['newKnowledge.connectionNeedsAttention'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.connectionNeedsAttentionDescription'])}
@@ -559,7 +581,7 @@ function ProvisioningConnection({
 }: {
   onReconcile: () => Promise<Connection | undefined>
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
@@ -580,7 +602,9 @@ function ProvisioningConnection({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <p className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionProvisioning'])}
+        {t(($) => $['newKnowledge.connectionProvisioning'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
@@ -605,11 +629,12 @@ export function AddSourcePage({
   knowledgeSpaceId: string
   sourceDraftKey?: string
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const queryClient = useQueryClient()
-  const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
-    initialSourceDraft ??
+  const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
+    () =>
+      initialSourceDraft ??
       createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
   )
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
@@ -879,13 +904,11 @@ export function AddSourcePage({
 
   useEffect(() => {
     if (!hasUnsavedChanges) return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    globalThis.addEventListener('beforeunload', handleBeforeUnload)
-    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges])
+    return registerPageLeaveGuard({
+      message: t(($) => $['newKnowledge.discardSourceDraftDescription']),
+      shouldBlock: () => true,
+    })
+  }, [hasUnsavedChanges, t])
 
   useEffect(() => {
     if (!hasUnsavedChanges) return

@@ -15,7 +15,7 @@ import { sendResetPasswordCode } from '@/service/common'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '../components/signin/storage'
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
   const [loading, setLoading] = useState(false)

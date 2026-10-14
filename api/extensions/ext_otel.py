@@ -53,7 +53,7 @@ def init_app(app: DifyApp):
 
     setup_context_propagation()
     # Initialize OpenTelemetry
-    # Follow Semantic Convertions 1.32.0 to define resource attributes
+    # Follow Semantic Conventions 1.32.0 to define resource attributes
     resource = Resource(
         attributes={
             SERVICE_NAME: dify_config.APPLICATION_NAME,

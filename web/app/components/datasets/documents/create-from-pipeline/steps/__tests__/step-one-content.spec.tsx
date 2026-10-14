@@ -4,6 +4,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DatasourceType } from '@/models/pipeline'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOneContent from '../step-one-content'
@@ -169,6 +170,7 @@ vi.mock('@/hooks/use-theme', () => ({
 // Mock upload service
 vi.mock('@/service/base', () => ({
   upload: vi.fn().mockResolvedValue({ id: 'uploaded-file-id' }),
+  request: vi.fn(async () => Response.json([createDatasourceProvider()])),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -185,21 +187,6 @@ vi.mock('@/service/use-pipeline', () => ({
   })),
   useNotionPages: vi.fn(() => ({
     data: { pages: [] },
-    isLoading: false,
-  })),
-  useDataSourceList: vi.fn(() => ({
-    data: [
-      {
-        type: 'local_file',
-        declaration: {
-          identity: {
-            name: 'Local File',
-            icon: '/icons/local-file.svg',
-          },
-        },
-      },
-    ],
-    isSuccess: true,
     isLoading: false,
   })),
   useCrawlResult: vi.fn(() => ({

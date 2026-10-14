@@ -1,5 +1,12 @@
 @agent-v2 @authenticated @core
 Feature: Agent v2 configure persistence
+  @prepared @configure-persistence
+  Scenario: A new Agent shows the workspace default model in Configure
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    Then I should see the workspace default chat model in the Agent v2 model selector
+
   @prepared @configure-persistence @agent-decision-model
   Scenario: Selecting a compatible model in Configure persists after refresh
     Given I am signed in as the default E2E admin
@@ -7,14 +14,10 @@ Feature: Agent v2 configure persistence
     And an Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I select the agent-decision E2E model in the Agent v2 model selector
-    And I fill the Agent v2 prompt editor with the normal E2E prompt
-    Then the Agent v2 configuration should be saved automatically
-    And the Agent v2 draft should use the agent-decision E2E model
-    And the normal Agent v2 draft should use the normal E2E prompt
+    Then I should see the agent-decision E2E model in the Agent v2 model selector
+    And the Agent v2 configuration should be saved automatically
     When I refresh the current page
     Then I should see the agent-decision E2E model in the Agent v2 model selector
-    And I should see the normal E2E prompt in the Agent v2 prompt editor
-    And the Agent v2 draft should use the agent-decision E2E model
 
   @prepared @configure-persistence @stable-model
   Scenario: Persisted Agent v2 instructions remain visible after refresh

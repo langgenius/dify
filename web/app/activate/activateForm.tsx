@@ -10,7 +10,7 @@ import { useInvitationCheck } from '@/service/use-common'
 
 const ActivateForm = () => {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const workspaceID = searchParams.get('workspace_id')
   const email = searchParams.get('email')

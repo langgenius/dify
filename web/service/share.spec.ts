@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from './http-error'
 
 const getMock = vi.hoisted(() => vi.fn())
 
@@ -75,7 +76,7 @@ describe('fetchAccessToken', () => {
 
   it('starts a new environment passport request after a failure', async () => {
     window.history.replaceState({}, '', '/environment/workflow/environment-app')
-    const error = new Response(null, { status: 401 })
+    const error = createHttpError(new Response(null, { status: 401 }))
     getMock.mockRejectedValueOnce(error).mockResolvedValueOnce({ access_token: 'passport' })
 
     await expect(fetchAccessToken({ appCode: 'environment-app' })).rejects.toBe(error)

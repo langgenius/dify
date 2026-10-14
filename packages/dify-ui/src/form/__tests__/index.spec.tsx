@@ -4,21 +4,6 @@ import { Input } from '../../input'
 import { Form } from '../index'
 
 describe('Form primitive', () => {
-  it('should render a native named form and merge custom class names', async () => {
-    const screen = await render(
-      <Form aria-label="profile form" className="custom-form">
-        <Field name="name">
-          <FieldLabel>Name</FieldLabel>
-          <Input defaultValue="Ada" />
-        </Field>
-      </Form>,
-    )
-
-    await expect
-      .element(screen.getByRole('form', { name: 'profile form' }))
-      .toHaveClass('custom-form')
-  })
-
   it('should call onFormSubmit with submitted values', async () => {
     const onFormSubmit = vi.fn()
     const screen = await render(

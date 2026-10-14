@@ -14,7 +14,7 @@ type DatasetInfoProps = {
 }
 
 const DatasetInfo = ({ expand }: DatasetInfoProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
   const iconInfo = dataset.icon_info || {
     icon: '📙',

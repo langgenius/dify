@@ -1,6 +1,6 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import {
@@ -488,7 +488,9 @@ describe('ModelProviderPage', () => {
 
   it('should render main elements', () => {
     renderModelProviderPage()
-    expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('modelProvider.modelProvider.searchModels'),
+    ).toBeInTheDocument()
     const autoUpdateButton = screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ })
     const systemModelSelector = screen.getByTestId('system-model-selector')
     expect(autoUpdateButton).toBeInTheDocument()
@@ -546,7 +548,9 @@ describe('ModelProviderPage', () => {
       screen.getByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' }),
     ).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
-    expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /plugin\.autoUpdate\.updateTime/ }),
+    ).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.changeTimezone')).toBeInTheDocument()
     expect(
       screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' }),
@@ -602,12 +606,20 @@ describe('ModelProviderPage', () => {
     renderModelProviderPage()
 
     openUpdateSettings()
-    fireEvent.click(screen.getByDisplayValue('12:00 AM'))
-    fireEvent.click(screen.getByRole('button', { name: '01' }))
-    fireEvent.click(screen.getByRole('button', { name: '15' }))
+    fireEvent.click(screen.getByRole('button', { name: /12:00 AM/ }))
+    fireEvent.click(
+      within(screen.getByRole('listbox', { name: 'time.picker.hour' })).getByRole('option', {
+        name: '1',
+      }),
+    )
+    fireEvent.click(
+      within(screen.getByRole('listbox', { name: 'time.picker.minute' })).getByRole('option', {
+        name: '15',
+      }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'time.operation.ok' }))
 
-    expect(screen.getByDisplayValue('01:15 AM')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /1:15 AM/ })).toBeInTheDocument()
 
     saveUpdateSettings()
 
@@ -623,7 +635,7 @@ describe('ModelProviderPage', () => {
   it('should render configured and not configured providers sections', () => {
     renderModelProviderPage()
     expect(screen.getByText('openai')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.toBeConfigured')).toBeInTheDocument()
     expect(screen.getByText('anthropic')).toBeInTheDocument()
   })
 
@@ -636,7 +648,9 @@ describe('ModelProviderPage', () => {
       STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction,
     )
     const target = document.querySelector(selector)
-    expect(target).toContainElement(screen.getByText('common.modelProvider.emptyProviderTitle'))
+    expect(target).toContainElement(
+      screen.getByText('modelProvider.modelProvider.emptyProviderTitle'),
+    )
   })
 
   it('should use the summary plugin map to attach plugin metadata to provider cards', () => {
@@ -750,8 +764,10 @@ describe('ModelProviderPage', () => {
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('provider-card')).not.toBeInTheDocument()
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.emptyProviderTitle')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.emptyProviderTitle'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('modelProvider.modelProvider.noneConfigured')).not.toBeInTheDocument()
   })
 
   it('should filter providers based on search text', () => {
@@ -768,8 +784,10 @@ describe('ModelProviderPage', () => {
     act(() => {
       vi.advanceTimersByTime(600)
     })
-    expect(screen.queryByText('common.modelProvider.emptyProviderTitle')).not.toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.toBeConfigured')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.emptyProviderTitle'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('modelProvider.modelProvider.toBeConfigured')).not.toBeInTheDocument()
   })
 
   it('should hide marketplace section when marketplace feature is disabled', () => {
@@ -792,9 +810,11 @@ describe('ModelProviderPage', () => {
       })
 
       renderModelProviderPage()
-      expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.noneConfigured')).toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.notConfigured'),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.emptyProviderTitle')).toBeInTheDocument()
       const selector = getStepByStepTourTargetSelector(
         STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction,
       )
@@ -804,12 +824,12 @@ describe('ModelProviderPage', () => {
 
     it('should show none-configured warning when providers exist but no default models set', () => {
       renderModelProviderPage()
-      expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.noneConfigured')).toBeInTheDocument()
     })
 
     it('should render the none-configured warning inline with the system model selector', () => {
       const { container } = renderModelProviderPage()
-      const warning = screen.getByText('common.modelProvider.noneConfigured')
+      const warning = screen.getByText('modelProvider.modelProvider.noneConfigured')
       const warningContainer = warning.closest('.rounded-lg')
       const systemModelSelector = screen.getByTestId('system-model-selector')
 
@@ -832,8 +852,12 @@ describe('ModelProviderPage', () => {
       }
 
       renderModelProviderPage()
-      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.noneConfigured'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.notConfigured'),
+      ).not.toBeInTheDocument()
     })
 
     it('should not show warning when all default models are configured', () => {
@@ -852,9 +876,15 @@ describe('ModelProviderPage', () => {
       mockDefaultModels.tts = makeModel('tts-1', 'tts')
 
       renderModelProviderPage()
-      expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.noProviderInstalled'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.noneConfigured'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.notConfigured'),
+      ).not.toBeInTheDocument()
     })
 
     it('should not show warning while loading', () => {
@@ -863,9 +893,15 @@ describe('ModelProviderPage', () => {
       })
 
       renderModelProviderPage()
-      expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.noProviderInstalled'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.noneConfigured'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('modelProvider.modelProvider.notConfigured'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -913,7 +949,7 @@ describe('ModelProviderPage', () => {
       'langgenius/anthropic/anthropic',
       'zeta-provider',
     ])
-    expect(screen.queryByText('common.modelProvider.toBeConfigured')).not.toBeInTheDocument()
+    expect(screen.queryByText('modelProvider.modelProvider.toBeConfigured')).not.toBeInTheDocument()
   })
 
   it('should prioritize debugging model plugins within their provider section', () => {
@@ -983,6 +1019,6 @@ describe('ModelProviderPage', () => {
       'langgenius/normal-model/normal-model',
     ])
     expect(screen.getAllByTestId('provider-card')[2]).toHaveAttribute('data-not-configured', 'true')
-    expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.toBeConfigured')).toBeInTheDocument()
   })
 })

@@ -7,7 +7,7 @@ const mockCopy = vi.fn()
 const mockSuccess = vi.fn()
 const mockOnFeedback = vi.fn()
 const mockOnMoreLikeThis = vi.fn()
-const mockOnOpenLogModal = vi.fn()
+const mockOnOpenLog = vi.fn()
 const mockOnRetry = vi.fn()
 const mockOnSave = vi.fn()
 vi.mock('copy-to-clipboard', () => ({
@@ -37,7 +37,7 @@ describe('GenerationActionGroups', () => {
         messageId="msg-1"
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
         onSave={mockOnSave}
         supportFeedback
@@ -66,7 +66,7 @@ describe('GenerationActionGroups', () => {
         moreLikeThis
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
         onSave={mockOnSave}
         supportFeedback
@@ -96,7 +96,7 @@ describe('GenerationActionGroups', () => {
         messageId="msg-1"
         moreLikeThis
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
@@ -106,19 +106,17 @@ describe('GenerationActionGroups', () => {
     ).toBeDisabled()
   })
 
-  it('should hide the log action when requested by the owning surface', () => {
+  it('should hide the log action when the owner does not provide it', () => {
     render(
       <GenerationActionGroups
         appSourceType={AppSourceType.webApp}
         content="hello world"
         currentTab="DETAIL"
         depth={1}
-        hideLogAction
         isError={false}
         isInWebApp={false}
         messageId="msg-1"
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
         onRetry={mockOnRetry}
       />,
     )
@@ -139,7 +137,7 @@ describe('GenerationActionGroups', () => {
         isInWebApp
         messageId="msg-2"
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
@@ -162,7 +160,7 @@ describe('GenerationActionGroups', () => {
         messageId="msg-3"
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
@@ -189,7 +187,7 @@ describe('GenerationActionGroups', () => {
         messageId="msg-4"
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
@@ -213,7 +211,7 @@ describe('GenerationActionGroups', () => {
         messageId="msg-4"
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )
@@ -237,7 +235,7 @@ describe('GenerationActionGroups', () => {
         messageId="msg-4"
         onFeedback={mockOnFeedback}
         onMoreLikeThis={mockOnMoreLikeThis}
-        onOpenLogModal={mockOnOpenLogModal}
+        onOpenLog={mockOnOpenLog}
         onRetry={mockOnRetry}
       />,
     )

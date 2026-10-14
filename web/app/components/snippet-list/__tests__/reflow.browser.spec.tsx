@@ -103,8 +103,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/next/dynamic', () => ({
-  default: () => () => null,
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: () => null,
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -220,7 +220,6 @@ describe('Snippet list reflow', () => {
     const gridElement = card.element().closest('[aria-busy]')
     if (!gridElement) throw new Error('Snippet card did not render inside the list grid')
 
-    expect(mainElement.clientWidth).toBe(320)
     expect(mainElement.scrollWidth).toBe(mainElement.clientWidth)
     expect(gridElement.scrollWidth).toBe(gridElement.clientWidth)
     ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {

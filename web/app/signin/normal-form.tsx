@@ -6,11 +6,12 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
+import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -24,7 +25,7 @@ import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 type AuthType = 'code' | 'password'
 
 function NormalForm() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()
@@ -38,7 +39,7 @@ function NormalForm() {
     error: probeError,
   } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: (err) => !isLegacyBase401(err),
+    throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
   })
   const isLoggedIn = !!userResp && !probeError

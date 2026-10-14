@@ -33,7 +33,7 @@ describe('TriggerScheduleNode', () => {
       renderNodeComponent(Node, data)
 
       expect(
-        screen.getByText('workflow.nodes.triggerSchedule.nextExecutionTime'),
+        screen.getByText('workflowIntegrations.nodes.triggerSchedule.nextExecutionTime'),
       ).toBeInTheDocument()
       expect(screen.getByText(getNextExecutionTime(data))).toBeInTheDocument()
     })

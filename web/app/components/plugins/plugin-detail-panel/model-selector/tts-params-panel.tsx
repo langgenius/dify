@@ -22,7 +22,7 @@ type Props = Readonly<{
 const supportedLanguages = languages.filter((item) => item.supported)
 
 const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const voiceList = useMemo<Array<{ label: string; value: string }>>(() => {
     if (!currentModel) return []
     return currentModel.model_properties.voices.map((item: { mode: string; name: string }) => ({

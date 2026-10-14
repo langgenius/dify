@@ -1,628 +1,129 @@
-import type { MockedFunction } from 'vite-plus/test'
+import type { TextContentResponse } from '@dify/contracts/api/console/files/types.gen'
+import type { ReactElement } from 'react'
 import type { CustomFile as File } from '@/models/datasets'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { fetchFilePreview } from '@/service/common'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import FilePreview from '../index'
 
-// Mock the fetchFilePreview service
-vi.mock('@/service/common', () => ({
-  fetchFilePreview: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  request: vi.fn<(url: string) => Promise<Response>>(),
 }))
+vi.mock('@/service/base', () => ({ request: mocks.request }))
 
-const mockFetchFilePreview = fetchFilePreview as MockedFunction<typeof fetchFilePreview>
-
-// Factory function to create mock file objects
-const createMockFile = (overrides: Partial<File> = {}): File => {
-  const fileName = overrides.name ?? 'test-file.txt'
-  // Create a plain object that looks like a File with CustomFile properties
-  // We can't use Object.assign on a real File because 'name' is a getter-only property
-  return {
-    name: fileName,
-    size: 1024,
-    type: 'text/plain',
-    lastModified: Date.now(),
+const createFile = (overrides: Partial<File> = {}): File =>
+  Object.assign(new globalThis.File(['Preview'], 'document.txt', { type: 'text/plain' }), {
     id: 'file-123',
     extension: 'txt',
-    mime_type: 'text/plain',
-    created_by: 'user-1',
-    created_at: Date.now(),
     ...overrides,
-  } as File
+  })
+const response = (content: string) => Response.json({ content } satisfies TextContentResponse)
+const renderPreview = (ui: ReactElement) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  })
 }
 
-// Helper to render FilePreview with default props
-const renderFilePreview = (props: Partial<{ file?: File; hidePreview: () => void }> = {}) => {
-  const defaultProps = {
-    file: createMockFile(),
-    hidePreview: vi.fn(),
-    ...props,
-  }
-  return {
-    ...render(<FilePreview {...defaultProps} />),
-    props: defaultProps,
-  }
-}
-
-// Helper to find the loading spinner element
-const findLoadingSpinner = (container: HTMLElement) => {
-  return within(container).queryByRole('progressbar')
-}
-
-// FilePreview Component Tests
+// Exercise generated query options and transport; mock only the HTTP boundary.
 describe('FilePreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default successful API response
-    mockFetchFilePreview.mockResolvedValue({ content: 'Preview content here' })
+    mocks.request.mockResolvedValue(response('Preview content'))
   })
 
-  // Rendering Tests - Verify component renders properly
-  describe('Rendering', () => {
-    it('should render file preview header', async () => {
-      renderFilePreview()
+  it('loads the selected file through the generated endpoint and announces success', async () => {
+    let resolveRequest!: (value: Response) => void
+    mocks.request.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve
+      }),
+    )
+    renderPreview(<FilePreview file={createFile()} hidePreview={vi.fn()} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
-    })
+    expect(
+      screen.getByRole('region', { name: 'datasetCreation.stepOne.filePreview' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'datasetCreation.stepOne.filePreview' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('document.txt: common.loading')
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledOnce())
+    expect(mocks.request.mock.calls[0]?.[0]).toContain('/files/file-123/preview')
 
-    it('should render close button with XMarkIcon', async () => {
-      renderFilePreview()
-
-      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
-      expect(closeButton)!.toBeInTheDocument()
-      const xMarkIcon = closeButton?.querySelector('svg')
-      expect(xMarkIcon)!.toBeInTheDocument()
-    })
-
-    it('should render file name without extension', async () => {
-      const file = createMockFile({ name: 'document.pdf' })
-
-      renderFilePreview({ file })
-
-      await waitFor(() => {
-        expect(screen.getByText('document'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should render file extension', async () => {
-      const file = createMockFile({ extension: 'pdf' })
-
-      renderFilePreview({ file })
-
-      expect(screen.getByText('.pdf'))!.toBeInTheDocument()
-    })
+    await act(async () => resolveRequest(response('Preview content')))
+    expect(await screen.findByText('Preview content')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('document.txt: common.api.success')
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  // Loading State Tests
-  describe('Loading State', () => {
-    it('should show loading indicator initially', async () => {
-      // Arrange - Delay API response to keep loading state
-      mockFetchFilePreview.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ content: 'test' }), 100)),
+  it.each([undefined, createFile({ id: undefined }), createFile({ id: '' })])(
+    'does not request or announce a preview without an uploaded file ID (%#)',
+    (file) => {
+      renderPreview(<FilePreview file={file} hidePreview={vi.fn()} />)
+      expect(mocks.request).not.toHaveBeenCalled()
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    },
+  )
+
+  it('starts the preview when an upload receives its file ID', async () => {
+    const { rerender } = renderPreview(
+      <FilePreview file={createFile({ id: undefined })} hidePreview={vi.fn()} />,
+    )
+    expect(mocks.request).not.toHaveBeenCalled()
+    rerender(<FilePreview file={createFile()} hidePreview={vi.fn()} />)
+    expect(await screen.findByText('Preview content')).toBeInTheDocument()
+    expect(mocks.request).toHaveBeenCalledOnce()
+  })
+
+  it('announces failure and stops loading when the request fails', async () => {
+    mocks.request.mockResolvedValue(new Response(null, { status: 500 }))
+    renderPreview(<FilePreview file={createFile()} hidePreview={vi.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('document.txt: common.api.actionFailed'),
+    )
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(mocks.request).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the current preview when an earlier file request finishes last', async () => {
+    let resolveFirst!: (value: Response) => void
+    mocks.request
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve
+        }),
       )
-
-      const { container } = renderFilePreview()
-      const loadingElement = findLoadingSpinner(container)
-      expect(loadingElement)!.toBeInTheDocument()
-    })
-
-    it('should hide loading indicator after content loads', async () => {
-      mockFetchFilePreview.mockResolvedValue({ content: 'Loaded content' })
-
-      const { container } = renderFilePreview()
-
-      await waitFor(() => {
-        expect(screen.getByText('Loaded content'))!.toBeInTheDocument()
-      })
-      // Loading should be gone
-      const loadingElement = findLoadingSpinner(container)
-      expect(loadingElement).not.toBeInTheDocument()
-    })
-
-    it('should show loading when file changes', async () => {
-      const file1 = createMockFile({ id: 'file-1', name: 'file1.txt' })
-      const file2 = createMockFile({ id: 'file-2', name: 'file2.txt' })
-
-      let resolveFirst: (value: { content: string }) => void
-      let resolveSecond: (value: { content: string }) => void
-
-      mockFetchFilePreview
-        .mockImplementationOnce(
-          () =>
-            new Promise((resolve) => {
-              resolveFirst = resolve
-            }),
-        )
-        .mockImplementationOnce(
-          () =>
-            new Promise((resolve) => {
-              resolveSecond = resolve
-            }),
-        )
-
-      // Act - Initial render
-      const { rerender, container } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
-
-      // First file loading - spinner should be visible
-      // First file loading - spinner should be visible
-      expect(findLoadingSpinner(container))!.toBeInTheDocument()
-
-      // Resolve first file
-      await act(async () => {
-        resolveFirst({ content: 'Content 1' })
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Content 1'))!.toBeInTheDocument()
-      })
-
-      // Rerender with new file
-      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
-
-      // Should show loading again
-      await waitFor(() => {
-        expect(findLoadingSpinner(container))!.toBeInTheDocument()
-      })
-
-      // Resolve second file
-      await act(async () => {
-        resolveSecond({ content: 'Content 2' })
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Content 2'))!.toBeInTheDocument()
-      })
-    })
+      .mockResolvedValueOnce(response('Latest preview'))
+    const { rerender } = renderPreview(
+      <FilePreview file={createFile({ id: 'first' })} hidePreview={vi.fn()} />,
+    )
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledOnce())
+    rerender(<FilePreview file={createFile({ id: 'second' })} hidePreview={vi.fn()} />)
+    expect(await screen.findByText('Latest preview')).toBeInTheDocument()
+    expect(mocks.request.mock.calls[1]?.[0]).toContain('/files/second/preview')
+    await act(async () => resolveFirst(response('Stale preview')))
+    expect(screen.getByText('Latest preview')).toBeInTheDocument()
+    expect(screen.queryByText('Stale preview')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('common.api.success')
   })
 
-  // API Call Tests
-  describe('API Calls', () => {
-    it('should call fetchFilePreview with correct fileID', async () => {
-      const file = createMockFile({ id: 'test-file-id' })
-
-      renderFilePreview({ file })
-
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledWith({ fileID: 'test-file-id' })
-      })
-    })
-
-    it('should not call fetchFilePreview when file is undefined', async () => {
-      renderFilePreview({ file: undefined })
-
-      expect(mockFetchFilePreview).not.toHaveBeenCalled()
-    })
-
-    it('should not call fetchFilePreview when file has no id', async () => {
-      const file = createMockFile({ id: undefined })
-
-      renderFilePreview({ file })
-
-      expect(mockFetchFilePreview).not.toHaveBeenCalled()
-    })
-
-    it('should call fetchFilePreview again when file changes', async () => {
-      const file1 = createMockFile({ id: 'file-1' })
-      const file2 = createMockFile({ id: 'file-2' })
-
-      const { rerender } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledWith({ fileID: 'file-1' })
-      })
-
-      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledWith({ fileID: 'file-2' })
-        expect(mockFetchFilePreview).toHaveBeenCalledTimes(2)
-      })
-    })
-
-    it('should handle API success and display content', async () => {
-      mockFetchFilePreview.mockResolvedValue({ content: 'File preview content from API' })
-
-      renderFilePreview()
-
-      await waitFor(() => {
-        expect(screen.getByText('File preview content from API'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should keep the preview header visible when loading fails', async () => {
-      mockFetchFilePreview.mockRejectedValue(new Error('Network error'))
-
-      renderFilePreview()
-
-      await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should handle empty content response', async () => {
-      mockFetchFilePreview.mockResolvedValue({ content: '' })
-
-      const { container } = renderFilePreview()
-
-      // Assert - Should still render without loading
-      await waitFor(() => {
-        const loadingElement = findLoadingSpinner(container)
-        expect(loadingElement).not.toBeInTheDocument()
-      })
-    })
+  it('announces success for an empty preview', async () => {
+    mocks.request.mockResolvedValue(response(''))
+    renderPreview(<FilePreview file={createFile()} hidePreview={vi.fn()} />)
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('common.api.success'))
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
   })
 
-  describe('User Interactions', () => {
-    it('should call hidePreview when close button is clicked', async () => {
-      const hidePreview = vi.fn()
-      renderFilePreview({ hidePreview })
-
-      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
-
-      expect(hidePreview).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call hidePreview with event object when clicked', async () => {
-      const hidePreview = vi.fn()
-      renderFilePreview({ hidePreview })
-
-      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
-
-      // Assert - onClick receives the event object
-      expect(hidePreview).toHaveBeenCalled()
-      expect(hidePreview.mock.calls[0]![0]).toBeDefined()
-    })
-
-    it('should handle multiple clicks on close button', async () => {
-      const hidePreview = vi.fn()
-      renderFilePreview({ hidePreview })
-
-      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
-      fireEvent.click(closeButton)
-      fireEvent.click(closeButton)
-      fireEvent.click(closeButton)
-
-      expect(hidePreview).toHaveBeenCalledTimes(3)
-    })
-  })
-
-  describe('State Management', () => {
-    it('should initialize with loading state true', async () => {
-      // Arrange - Keep loading indefinitely (never resolves)
-      mockFetchFilePreview.mockImplementation(
-        () =>
-          new Promise(() => {
-            /* intentionally empty */
-          }),
-      )
-
-      const { container } = renderFilePreview()
-
-      const loadingElement = findLoadingSpinner(container)
-      expect(loadingElement)!.toBeInTheDocument()
-    })
-
-    it('should update previewContent state after successful fetch', async () => {
-      mockFetchFilePreview.mockResolvedValue({ content: 'New preview content' })
-
-      renderFilePreview()
-
-      await waitFor(() => {
-        expect(screen.getByText('New preview content'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should reset loading to true when file changes', async () => {
-      const file1 = createMockFile({ id: 'file-1' })
-      const file2 = createMockFile({ id: 'file-2' })
-
-      mockFetchFilePreview.mockResolvedValueOnce({ content: 'Content 1' }).mockImplementationOnce(
-        () =>
-          new Promise(() => {
-            /* never resolves */
-          }),
-      )
-
-      const { rerender, container } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(screen.getByText('Content 1'))!.toBeInTheDocument()
-      })
-
-      // Change file
-      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
-
-      // Assert - Loading should be shown again
-      await waitFor(() => {
-        const loadingElement = findLoadingSpinner(container)
-        expect(loadingElement)!.toBeInTheDocument()
-      })
-    })
-
-    it('should preserve content until new content loads', async () => {
-      const file1 = createMockFile({ id: 'file-1' })
-      const file2 = createMockFile({ id: 'file-2' })
-
-      let resolveSecond: (value: { content: string }) => void
-
-      mockFetchFilePreview.mockResolvedValueOnce({ content: 'Content 1' }).mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveSecond = resolve
-          }),
-      )
-
-      const { rerender } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(screen.getByText('Content 1'))!.toBeInTheDocument()
-      })
-
-      // Change file - loading should replace content
-      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
-
-      // Resolve second fetch
-      await act(async () => {
-        resolveSecond({ content: 'Content 2' })
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Content 2'))!.toBeInTheDocument()
-        expect(screen.queryByText('Content 1')).not.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Props', () => {
-    describe('file prop', () => {
-      it('should render correctly with file prop', async () => {
-        const file = createMockFile({ name: 'my-document.pdf', extension: 'pdf' })
-
-        renderFilePreview({ file })
-
-        expect(screen.getByText('my-document'))!.toBeInTheDocument()
-        expect(screen.getByText('.pdf'))!.toBeInTheDocument()
-      })
-
-      it('should render correctly without file prop', async () => {
-        renderFilePreview({ file: undefined })
-
-        // Assert - Header should still render
-        // Assert - Header should still render
-        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
-      })
-
-      it('should handle file with multiple dots in name', async () => {
-        const file = createMockFile({ name: 'my.document.v2.pdf' })
-
-        renderFilePreview({ file })
-
-        // Assert - Should join all parts except last with comma
-        // Assert - Should join all parts except last with comma
-        expect(screen.getByText('my,document,v2'))!.toBeInTheDocument()
-      })
-
-      it('should handle file with no extension in name', async () => {
-        const file = createMockFile({ name: 'README' })
-
-        const { container } = renderFilePreview({ file })
-
-        // Assert - getFileName returns empty for single segment, but component still renders
-        const fileNameElement = container.querySelector('[class*="fileName"]')
-        expect(fileNameElement)!.toBeInTheDocument()
-        // The first span (file name) should be empty
-        const fileNameSpan = fileNameElement?.querySelector('span:first-child')
-        expect(fileNameSpan?.textContent).toBe('')
-      })
-    })
-
-    describe('hidePreview prop', () => {
-      it('should accept hidePreview callback', async () => {
-        const hidePreview = vi.fn()
-
-        renderFilePreview({ hidePreview })
-
-        // Assert - No errors thrown
-        // Assert - No errors thrown
-        expect(screen.getByText('datasetCreation.stepOne.filePreview'))!.toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle file with undefined id', async () => {
-      const file = createMockFile({ id: undefined })
-
-      renderFilePreview({ file })
-
-      expect(mockFetchFilePreview).not.toHaveBeenCalled()
-    })
-
-    it('should handle file with empty string id', async () => {
-      const file = createMockFile({ id: '' })
-
-      renderFilePreview({ file })
-
-      // Assert - Empty string is falsy, should not call API
-      expect(mockFetchFilePreview).not.toHaveBeenCalled()
-    })
-
-    it('should handle very long file names', async () => {
-      const longName = `${'a'.repeat(200)}.pdf`
-      const file = createMockFile({ name: longName })
-
-      renderFilePreview({ file })
-
-      expect(screen.getByText('a'.repeat(200)))!.toBeInTheDocument()
-    })
-
-    it('should handle file with special characters in name', async () => {
-      const file = createMockFile({ name: 'file-with_special@#$%.txt' })
-
-      renderFilePreview({ file })
-
-      expect(screen.getByText('file-with_special@#$%'))!.toBeInTheDocument()
-    })
-
-    it('should handle very long preview content', async () => {
-      const longContent = 'x'.repeat(10000)
-      mockFetchFilePreview.mockResolvedValue({ content: longContent })
-
-      renderFilePreview()
-
-      await waitFor(() => {
-        expect(screen.getByText(longContent))!.toBeInTheDocument()
-      })
-    })
-
-    it('should handle preview content with special characters safely', async () => {
-      const specialContent = '<script>alert("xss")</script>\n\t& < > "'
-      mockFetchFilePreview.mockResolvedValue({ content: specialContent })
-
-      const { container } = renderFilePreview()
-
-      // Assert - Should render as text, not execute scripts
-      await waitFor(() => {
-        const contentDiv = container.querySelector('[class*="fileContent"]')
-        expect(contentDiv)!.toBeInTheDocument()
-        // Content is escaped by React, so HTML entities are displayed
-        expect(contentDiv?.textContent).toContain('alert')
-      })
-    })
-
-    it('should handle preview content with unicode', async () => {
-      const unicodeContent = '中文内容 🚀 émojis & spëcîal çhàrs'
-      mockFetchFilePreview.mockResolvedValue({ content: unicodeContent })
-
-      renderFilePreview()
-
-      await waitFor(() => {
-        expect(screen.getByText(unicodeContent))!.toBeInTheDocument()
-      })
-    })
-
-    it('should handle preview content with newlines', async () => {
-      const multilineContent = 'Line 1\nLine 2\nLine 3'
-      mockFetchFilePreview.mockResolvedValue({ content: multilineContent })
-
-      const { container } = renderFilePreview()
-
-      // Assert - Content should be in the DOM
-      await waitFor(() => {
-        const contentDiv = container.querySelector('[class*="fileContent"]')
-        expect(contentDiv)!.toBeInTheDocument()
-        expect(contentDiv?.textContent).toContain('Line 1')
-        expect(contentDiv?.textContent).toContain('Line 2')
-        expect(contentDiv?.textContent).toContain('Line 3')
-      })
-    })
-  })
-
-  // Side Effects and Cleanup Tests
-  describe('Side Effects and Cleanup', () => {
-    it('should trigger effect when file prop changes', async () => {
-      const file1 = createMockFile({ id: 'file-1' })
-      const file2 = createMockFile({ id: 'file-2' })
-
-      const { rerender } = render(<FilePreview file={file1} hidePreview={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
-      })
-
-      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledTimes(2)
-      })
-    })
-
-    it('should not trigger effect when hidePreview changes', async () => {
-      const file = createMockFile()
-      const hidePreview1 = vi.fn()
-      const hidePreview2 = vi.fn()
-
-      const { rerender } = render(<FilePreview file={file} hidePreview={hidePreview1} />)
-
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
-      })
-
-      rerender(<FilePreview file={file} hidePreview={hidePreview2} />)
-
-      // Assert - Should not call API again (file didn't change)
-      // Note: This depends on useEffect dependency array only including [file]
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    it('should handle rapid file changes', async () => {
-      const files = Array.from({ length: 5 }, (_, i) => createMockFile({ id: `file-${i}` }))
-
-      const { rerender } = render(<FilePreview file={files[0]} hidePreview={vi.fn()} />)
-
-      // Rapidly change files
-      for (let i = 1; i < files.length; i++)
-        rerender(<FilePreview file={files[i]} hidePreview={vi.fn()} />)
-
-      // Assert - Should have called API for each file
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledTimes(5)
-      })
-    })
-
-    it('should handle file changing from defined to undefined', async () => {
-      const file = createMockFile()
-
-      const { rerender } = render(<FilePreview file={file} hidePreview={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
-      })
-
-      rerender(<FilePreview file={undefined} hidePreview={vi.fn()} />)
-
-      expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // getFileName Helper Tests
-  describe('getFileName Helper', () => {
-    it('should extract name without extension for simple filename', async () => {
-      const file = createMockFile({ name: 'document.pdf' })
-
-      renderFilePreview({ file })
-
-      expect(screen.getByText('document'))!.toBeInTheDocument()
-    })
-
-    it('should handle filename with multiple dots', async () => {
-      const file = createMockFile({ name: 'file.name.with.dots.txt' })
-
-      renderFilePreview({ file })
-
-      // Assert - Should join all parts except last with comma
-      // Assert - Should join all parts except last with comma
-      expect(screen.getByText('file,name,with,dots'))!.toBeInTheDocument()
-    })
-
-    it('should return empty for filename without dot', async () => {
-      const file = createMockFile({ name: 'nodotfile' })
-
-      const { container } = renderFilePreview({ file })
-
-      // Assert - slice(0, -1) on single element array returns empty
-      const fileNameElement = container.querySelector('[class*="fileName"]')
-      const firstSpan = fileNameElement?.querySelector('span:first-child')
-      expect(firstSpan?.textContent).toBe('')
-    })
-
-    it('should return empty string when file is undefined', async () => {
-      const { container } = renderFilePreview({ file: undefined })
-
-      // Assert - File name area should have empty first span
-      const fileNameElement = container.querySelector('.system-xs-medium')
-      expect(fileNameElement)!.toBeInTheDocument()
-    })
+  it('closes the preview through its named button', async () => {
+    const user = userEvent.setup()
+    const hidePreview = vi.fn()
+    renderPreview(<FilePreview file={createFile()} hidePreview={hidePreview} />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(hidePreview).toHaveBeenCalledOnce()
   })
 })

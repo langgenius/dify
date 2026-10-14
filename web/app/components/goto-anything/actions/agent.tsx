@@ -1,5 +1,5 @@
 import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
-import type { ActionItem, AgentSearchResult } from './types'
+import type { ActionItem, AgentSearchResult, SearchQueryOptions } from './types'
 import { getI18n } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import AppIcon from '../../base/app-icon'
@@ -35,15 +35,15 @@ export const agentAction: ActionItem = {
   key: '@agents',
   shortcut: '@agents',
   get title() {
-    return getI18n().t(($) => $['roster.title'], { ns: 'agentV2' })
+    return getI18n().t(($) => $['roster.title'], { ns: 'agentRoster' })
   },
   get description() {
-    return getI18n().t(($) => $['roster.searchLabel'], { ns: 'agentV2' })
+    return getI18n().t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })
   },
   source: 'remote',
 }
 
-export function agentSearchQueryOptions(searchTerm: string) {
+export function agentSearchQueryOptions(searchTerm: string, options: SearchQueryOptions = {}) {
   return consoleQuery.agent.get.queryOptions({
     input: {
       query: {
@@ -54,6 +54,7 @@ export function agentSearchQueryOptions(searchTerm: string) {
       },
     },
     retry: false,
+    ...options,
     select: (response) => getAgentResults(response.data),
   })
 }

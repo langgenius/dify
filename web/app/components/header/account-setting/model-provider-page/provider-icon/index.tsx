@@ -1,8 +1,6 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
-import { Openai } from '@/app/components/base/icons/src/vender/other'
 import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n/metadata'
 import { Theme } from '@/types/app'
@@ -27,8 +25,12 @@ const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
       <div className={cn('py-1.75', className)}>
-        {theme === Theme.dark && <AnthropicLight className="h-2.5 w-22.5" />}
-        {theme === Theme.light && <AnthropicDark className="h-2.5 w-22.5" />}
+        {theme === Theme.dark && (
+          <span aria-hidden className="i-custom-public-llm-anthropic-light h-2.5 w-22.5" />
+        )}
+        {theme === Theme.light && (
+          <span aria-hidden className="i-custom-public-llm-anthropic-dark h-2.5 w-22.5" />
+        )}
       </div>
     )
   }
@@ -36,7 +38,10 @@ const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
   if (provider.provider === 'langgenius/openai/openai') {
     return (
       <div className={className}>
-        <Openai className="h-6 w-auto text-text-inverted-dimmed" />
+        <span
+          aria-hidden
+          className="i-custom-vender-other-openai h-6 w-[calc(1.5rem*80/22)] text-text-inverted-dimmed"
+        />
       </div>
     )
   }

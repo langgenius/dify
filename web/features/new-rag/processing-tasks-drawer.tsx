@@ -9,7 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerPopup,
@@ -17,12 +17,15 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 
 type TaskAction = 'cancel' | 'retry'
@@ -36,17 +39,6 @@ function taskTime(task: DocumentProcessingTask) {
 
 function taskLifecycle(task: DocumentProcessingTask) {
   return `${task.updatedAt}:${task.state}`
-}
-
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
 }
 
 function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
@@ -141,8 +133,8 @@ export function ProcessingTasksDrawer({
   onRetryDocumentQuery: () => void
   onRetryTaskQuery: () => void
 }) {
-  const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const cancelTask = useMutation(
     consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),
@@ -150,7 +142,7 @@ export function ProcessingTasksDrawer({
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry.mutationOptions(),
   )
-  const pendingActionsRef = useRef(new Set<string>())
+  const pendingActionsRef = useRefWithInit(() => new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
   const documentQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -222,8 +214,8 @@ export function ProcessingTasksDrawer({
     () => new Map(tasks.map((task) => [task.id, taskLifecycle(task)])),
     [tasks],
   )
-  const taskLifecycleGenerationsRef = useRef(
-    new Map<string, { generation: number; lifecycle: string }>(),
+  const taskLifecycleGenerationsRef = useRefWithInit(
+    () => new Map<string, { generation: number; lifecycle: string }>(),
   )
   useLayoutEffect(() => {
     actionResultsValidRef.current = actionResultsValid
@@ -240,7 +232,7 @@ export function ProcessingTasksDrawer({
     for (const taskId of taskLifecycleGenerationsRef.current.keys()) {
       if (!currentTaskIds.has(taskId)) taskLifecycleGenerationsRef.current.delete(taskId)
     }
-  }, [actionResultsValid, tasks])
+  }, [actionResultsValid, tasks, taskLifecycleGenerationsRef])
 
   useEffect(() => {
     openRef.current = open
@@ -249,9 +241,7 @@ export function ProcessingTasksDrawer({
     if (!wasOpen || open) return
     openCycleRef.current += 1
     loadMoreRequestedRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close resets drawer-local pagination and errors.
     setVisibleTaskLimit(TASK_DRAWER_LIMIT)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Every committed controlled close starts a fresh action-error cycle.
     setActionErrors({})
   }, [open])
 
@@ -352,7 +342,7 @@ export function ProcessingTasksDrawer({
       )
         drawerCloseButtonRef.current?.focus()
     } catch (error) {
-      const permissionDenied = responseStatus(error) === 403
+      const permissionDenied = getHttpErrorStatus(error) === 403
       if (permissionDenied) onWritePermissionDenied()
       if (
         !permissionDenied &&
@@ -393,10 +383,13 @@ export function ProcessingTasksDrawer({
                   <DrawerTitle className="system-md-semibold text-text-primary">
                     {t(($) => $['newKnowledge.backgroundTasks'])}
                   </DrawerTitle>
-                  <DrawerCloseButton
+                  <DrawerClose
                     ref={drawerCloseButtonRef}
-                    aria-label={tCommon(($) => $['operation.close'])}
-                    className="size-6 rounded-md"
+                    render={
+                      <IconButton aria-label={tCommon(($) => $['operation.close'])} size="md">
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">

@@ -23,6 +23,7 @@
   "stepOne.uploader.button": "ลากและวางไฟล์หรือโฟลเดอร์หรือ",
   "stepOne.uploader.buttonSingleFile": "ลากและวางไฟล์หรือ",
   "stepOne.uploader.change": "เปลี่ยน",
+  "stepOne.uploader.completed": "อัปโหลดเสร็จสมบูรณ์",
   "stepOne.uploader.failed": "อัปโหลดล้มเหลว",
   "stepOne.uploader.tip": "รองรับ {{supportTypes}} สูงสุด {{batchCount}} ไฟล์ต่อชุดและ {{size}} MB แต่ละไฟล์",
   "stepOne.uploader.tipWithTotalLimit": "รองรับ {{supportTypes}} สูงสุด {{batchCount}} ไฟล์ต่อชุดและ {{size}} MB แต่ละไฟล์ รวมสูงสุด {{totalCount}} ไฟล์",

@@ -1,223 +1,168 @@
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
-import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { PropsWithChildren } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { PluginCategoryEnum } from '../../../types'
+import useRefreshPluginList from '../use-refresh-plugin-list'
 
-// Mock invalidation / refresh functions
-const mockInvalidateInstalledPluginList = vi.fn()
-const mockInvalidateCheckInstalled = vi.fn()
-const mockRefetchLLMModelList = vi.fn()
-const mockRefetchEmbeddingModelList = vi.fn()
-const mockRefetchRerankModelList = vi.fn()
-const mockRefetchSpeech2textModelList = vi.fn()
-const mockRefetchTTSModelList = vi.fn()
-const mockInvalidateDefaultModel = vi.fn()
-const mockInvalidateQueries = vi.fn()
-const mockInvalidateAllToolProviders = vi.fn()
-const mockInvalidateAllBuiltInTools = vi.fn()
-const mockInvalidateAllDataSources = vi.fn()
-const mockInvalidateDataSourceListAuth = vi.fn()
-const mockInvalidateStrategyProviders = vi.fn()
-const mockInvalidateAllTriggerPlugins = vi.fn()
-const mockInvalidateRAGRecommendedPlugins = vi.fn()
+const mocks = vi.hoisted(() => ({
+  request: vi.fn<(url: string) => Promise<Response>>(),
+  installed: vi.fn(),
+  checkInstalled: vi.fn(),
+  defaultModel: vi.fn(),
+  toolProviders: vi.fn(),
+  builtInTools: vi.fn(),
+  dataSourceAuth: vi.fn(),
+  triggers: vi.fn(),
+  recommended: vi.fn(),
+}))
 
+vi.mock('@/service/base', () => ({ request: mocks.request }))
 vi.mock('@/service/use-plugins', () => ({
-  useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
-  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+  useInvalidateCheckInstalled: () => mocks.checkInstalled,
+  useInvalidateInstalledPluginList: () => mocks.installed,
 }))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ModelTypeEnum: {
-    textGeneration: 'llm',
-    textEmbedding: 'text-embedding',
-    rerank: 'rerank',
-    speech2text: 'speech2text',
-    tts: 'tts',
-  },
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
+  useInvalidateDefaultModel: () => mocks.defaultModel,
 }))
-
 vi.mock('@/service/use-tools', () => ({
-  useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
-  useInvalidateAllBuiltInTools: () => mockInvalidateAllBuiltInTools,
-  useInvalidateRAGRecommendedPlugins: () => mockInvalidateRAGRecommendedPlugins,
+  useInvalidateAllToolProviders: () => mocks.toolProviders,
+  useInvalidateAllBuiltInTools: () => mocks.builtInTools,
+  useInvalidateRAGRecommendedPlugins: () => mocks.recommended,
 }))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: () => mockInvalidateAllDataSources,
-}))
-
 vi.mock('@/service/use-datasource', () => ({
-  useInvalidDataSourceListAuth: () => mockInvalidateDataSourceListAuth,
+  useInvalidDataSourceListAuth: () => mocks.dataSourceAuth,
 }))
-
-vi.mock('@/service/use-strategy', () => ({
-  useInvalidateStrategyProviders: () => mockInvalidateStrategyProviders,
-}))
-
 vi.mock('@/service/use-triggers', () => ({
-  useInvalidateAllTriggerPlugins: () => mockInvalidateAllTriggerPlugins,
+  useInvalidateAllTriggerPlugins: () => mocks.triggers,
 }))
 
-const { default: useRefreshPluginList } = await import('../use-refresh-plugin-list')
+const current = consoleQuery.workspaces.current
+const strategyKeys = [
+  current.agentProviders.get.queryKey(),
+  current.agentProvider.byProviderName.get.queryKey({
+    input: { params: { provider_name: 'langgenius/agent/react' } },
+  }),
+  current.agentProvider.byProviderName.get.queryKey({
+    input: { params: { provider_name: 'langgenius/agent/function-calling' } },
+  }),
+]
+const providerKeys = [
+  current.modelProviders.summary.get.key(),
+  commonQueryKeys.modelProviderDetails,
+]
+const datasourceKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+const unrelatedKey = consoleQuery.account.profile.get.key()
+const modelTypes = ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts']
 
-describe('useRefreshPluginList', () => {
+describe('plugin installation refresh', () => {
+  let client: QueryClient
+
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(QueryClientProvider, { client }, children)
+
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should always invalidate installed plugin list and installation checks', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
-
-    result.current.refreshPluginList()
-
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateCheckInstalled).toHaveBeenCalledTimes(1)
-  })
-
-  it('should refresh tool providers for tool category manifest', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
-
-    result.current.refreshPluginList({ category: PluginCategoryEnum.tool } as never)
-
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.tool)
-    expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateRAGRecommendedPlugins).toHaveBeenCalledWith('tool')
-  })
-
-  it('should refresh model lists for model category manifest', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
-
-    result.current.refreshPluginList({ category: PluginCategoryEnum.model } as never)
-
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+    client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     })
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: commonQueryKeys.modelProviderDetails,
-    })
-    expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchRerankModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchSpeech2textModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchTTSModelList).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
-    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('llm')
-    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('text-embedding')
-    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('rerank')
-    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('speech2text')
-    expect(mockInvalidateDefaultModel).toHaveBeenCalledWith('tts')
+    for (const key of [...strategyKeys, ...providerKeys, unrelatedKey])
+      client.setQueryData(key, { cached: true })
+    client.setQueryData(datasourceKey, [])
+    for (const model_type of modelTypes) {
+      client.setQueryData(
+        current.models.modelTypes.byModelType.get.queryKey({ input: { params: { model_type } } }),
+        { data: [] },
+      )
+    }
+    mocks.request.mockImplementation(async () => Response.json({ data: [] }))
   })
 
-  it('should refresh datasource lists for datasource category manifest', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
+  afterEach(() => client.clear())
 
-    result.current.refreshPluginList({ category: PluginCategoryEnum.datasource } as never)
+  it('invalidates the strategy catalog and every provider detail after an agent plugin changes', () => {
+    const { result } = renderHook(useRefreshPluginList, { wrapper })
 
-    expect(mockInvalidateAllDataSources).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateDataSourceListAuth).toHaveBeenCalledTimes(1)
+    act(() => result.current.refreshPluginList({ category: PluginCategoryEnum.agent }))
+
+    expect(mocks.installed).toHaveBeenCalledWith(PluginCategoryEnum.agent)
+    expect(mocks.checkInstalled).toHaveBeenCalledOnce()
+    for (const key of strategyKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+    for (const key of [...providerKeys, unrelatedKey])
+      expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+    expect(mocks.request).not.toHaveBeenCalled()
   })
 
-  it('should refresh trigger plugins for trigger category manifest', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
+  it.each([PluginCategoryEnum.tool, PluginCategoryEnum.datasource, PluginCategoryEnum.trigger])(
+    'keeps strategy caches fresh when a %s plugin changes',
+    (category) => {
+      const { result } = renderHook(useRefreshPluginList, { wrapper })
 
-    result.current.refreshPluginList({ category: PluginCategoryEnum.trigger } as never)
+      act(() => result.current.refreshPluginList({ category }))
 
-    expect(mockInvalidateAllTriggerPlugins).toHaveBeenCalledTimes(1)
-  })
-
-  it('should refresh strategy providers for agent category manifest', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
-
-    result.current.refreshPluginList({ category: PluginCategoryEnum.agent } as never)
-
-    expect(mockInvalidateStrategyProviders).toHaveBeenCalledTimes(1)
-  })
-
-  it('should refresh all types when refreshAllType is true', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
-
-    result.current.refreshPluginList(undefined, true)
-
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith()
-    expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateRAGRecommendedPlugins).toHaveBeenCalledWith('tool')
-    expect(mockInvalidateAllTriggerPlugins).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateAllDataSources).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateDataSourceListAuth).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
-    })
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: commonQueryKeys.modelProviderDetails,
-    })
-    expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchRerankModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchSpeech2textModelList).toHaveBeenCalledTimes(1)
-    expect(mockRefetchTTSModelList).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
-    expect(mockInvalidateStrategyProviders).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not refresh category-specific lists when manifest is null', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
-
-    result.current.refreshPluginList(null)
-
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateAllToolProviders).not.toHaveBeenCalled()
-    expect(mockInvalidateQueries).not.toHaveBeenCalled()
-    expect(mockInvalidateAllDataSources).not.toHaveBeenCalled()
-    expect(mockInvalidateAllTriggerPlugins).not.toHaveBeenCalled()
-    expect(mockInvalidateStrategyProviders).not.toHaveBeenCalled()
-  })
-
-  it('should not refresh unrelated categories for a specific manifest', () => {
-    const { result } = renderHook(() => useRefreshPluginList())
-
-    result.current.refreshPluginList({ category: PluginCategoryEnum.tool } as never)
-
-    expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateQueries).not.toHaveBeenCalled()
-    expect(mockInvalidateAllDataSources).not.toHaveBeenCalled()
-    expect(mockInvalidateAllTriggerPlugins).not.toHaveBeenCalled()
-    expect(mockInvalidateStrategyProviders).not.toHaveBeenCalled()
-  })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-
-      const type = options.queryKey[1].input?.params?.model_type
-      if (!type) throw new Error('Missing model type in query')
-      const map: Record<string, { refetch: ReturnType<typeof vi.fn> }> = {
-        llm: { refetch: mockRefetchLLMModelList },
-        'text-embedding': { refetch: mockRefetchEmbeddingModelList },
-        rerank: { refetch: mockRefetchRerankModelList },
-        speech2text: { refetch: mockRefetchSpeech2textModelList },
-        tts: { refetch: mockRefetchTTSModelList },
+      expect(mocks.installed).toHaveBeenCalledWith(category)
+      for (const key of strategyKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+      expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(
+        category === PluginCategoryEnum.datasource,
+      )
+      if (category === PluginCategoryEnum.tool) {
+        expect(mocks.toolProviders).toHaveBeenCalledOnce()
+        expect(mocks.builtInTools).toHaveBeenCalledOnce()
+        expect(mocks.recommended).toHaveBeenCalledWith('tool')
       }
-      return map[type] ?? { refetch: vi.fn() }
+      if (category === PluginCategoryEnum.datasource) {
+        expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(true)
+        expect(mocks.dataSourceAuth).toHaveBeenCalledOnce()
+      }
+      if (category === PluginCategoryEnum.trigger) expect(mocks.triggers).toHaveBeenCalledOnce()
     },
-  }
+  )
+
+  it.each([false, true])('refreshes model data and defaults; all categories = %s', async (all) => {
+    const { result } = renderHook(useRefreshPluginList, { wrapper })
+
+    act(() => result.current.refreshPluginList({ category: PluginCategoryEnum.model }, all))
+
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledTimes(modelTypes.length))
+    for (const modelType of modelTypes) {
+      expect(
+        mocks.request.mock.calls.some(([url]) => url.endsWith(`/model-types/${modelType}`)),
+      ).toBe(true)
+      expect(mocks.defaultModel).toHaveBeenCalledWith(modelType)
+    }
+    for (const key of providerKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+    for (const key of strategyKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(all)
+    expect(client.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
+    expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(all)
+    if (all) {
+      expect(mocks.installed).toHaveBeenCalledWith()
+      expect(mocks.toolProviders).toHaveBeenCalledOnce()
+      expect(mocks.builtInTools).toHaveBeenCalledOnce()
+      expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(true)
+      expect(mocks.dataSourceAuth).toHaveBeenCalledOnce()
+      expect(mocks.triggers).toHaveBeenCalledOnce()
+      expect(mocks.recommended).toHaveBeenCalledWith('tool')
+    }
+  })
+
+  it.each([null, undefined])(
+    'only refreshes installation caches without a manifest (%s)',
+    (manifest) => {
+      const { result } = renderHook(useRefreshPluginList, { wrapper })
+
+      act(() => result.current.refreshPluginList(manifest))
+
+      expect(mocks.installed).toHaveBeenCalledWith()
+      expect(mocks.checkInstalled).toHaveBeenCalledOnce()
+      for (const key of [...strategyKeys, ...providerKeys])
+        expect(client.getQueryState(key)?.isInvalidated).toBe(false)
+      expect(mocks.toolProviders).not.toHaveBeenCalled()
+      expect(client.getQueryState(datasourceKey)?.isInvalidated).toBe(false)
+      expect(mocks.triggers).not.toHaveBeenCalled()
+      expect(mocks.request).not.toHaveBeenCalled()
+    },
+  )
 })

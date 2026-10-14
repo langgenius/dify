@@ -43,7 +43,7 @@ export function PublisherEnvironmentFlow({
   onConfigurationOpenChange,
   onGoToPublish,
 }: PublisherEnvironmentFlowProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['deployments'])
   const deploymentPolling = useAtomValue(publisherEnvironmentDeploymentPollingAtom)
   const startDeploymentPolling = useSetAtom(startPublisherEnvironmentDeploymentPollingAtom)
 

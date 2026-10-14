@@ -44,7 +44,7 @@ const JinaReader: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -125,10 +125,9 @@ const JinaReader: FC<Props> = ({
         await sleep(2500)
         return await waitForCrawlFinished(jobId)
       } catch (e: any) {
-        const errorBody = await e.json()
         return {
           isError: true,
-          errorMessage: errorBody.message,
+          errorMessage: e instanceof Error ? e.message : undefined,
           data: {
             data: [],
           },

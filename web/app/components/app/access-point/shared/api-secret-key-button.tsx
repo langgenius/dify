@@ -23,7 +23,7 @@ export function ApiSecretKeyButton({
   disabled = false,
   environmentId,
 }: ApiSecretKeyButtonProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appApi'])
   const [modalOpen, setModalOpen] = useState(false)
   const isEnvironmentScope = Boolean(environmentId)
   const apiKeysQuery = useQuery(

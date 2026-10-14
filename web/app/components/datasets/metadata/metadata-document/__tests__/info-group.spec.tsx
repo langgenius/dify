@@ -89,7 +89,7 @@ describe('InfoGroup', () => {
           titleTooltip="This is a tooltip"
         />,
       )
-      expect(screen.getByLabelText('This is a tooltip'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Test' }))!.toBeInTheDocument()
     })
 
     it('should render headerRight content', () => {

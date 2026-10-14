@@ -44,7 +44,7 @@ describe('BaseForm validation accessibility', () => {
         </button>
       </>,
     )
-    const input = screen.getByLabelText('API token')
+    const input = screen.getByLabelText('API token', { selector: 'input' })
     await user.type(input, 'rejected-token')
     act(() => {
       ref.current?.setFields([{ name: 'token', errors: ['Token was rejected'] }])
@@ -77,13 +77,13 @@ describe('BaseForm validation accessibility', () => {
         </button>
       </>,
     )
-    const input = screen.getByLabelText('API token')
+    const input = screen.getByLabelText('API token', { selector: 'input' })
     expect(input).not.toBeInvalid()
     await user.click(screen.getByRole('button', { name: 'Save credentials' }))
     expect(input).toHaveFocus()
     expect(input).toBeInvalid()
     expect(input).toHaveAccessibleDescription('Paste your API token Token is required')
-    expect(screen.getByLabelText('Other token')).not.toBeInvalid()
+    expect(screen.getByLabelText('Other token', { selector: 'input' })).not.toBeInvalid()
 
     await user.type(input, 'valid-token')
     expect(input).not.toBeInvalid()
@@ -115,7 +115,7 @@ describe('BaseForm validation accessibility', () => {
       </>,
     )
     await user.click(screen.getByRole('button', { name: 'Save credentials' }))
-    expect(screen.getByLabelText('Visible token')).toHaveFocus()
-    expect(screen.queryByLabelText('Hidden token')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Visible token', { selector: 'input' })).toHaveFocus()
+    expect(screen.queryByLabelText('Hidden token', { selector: 'input' })).not.toBeInTheDocument()
   })
 })

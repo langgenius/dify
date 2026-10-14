@@ -8,8 +8,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
 from celery.exceptions import Retry
+from dify_agent.protocol.snapshot import SessionSnapshot
 from openpyxl import load_workbook
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -378,7 +378,7 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
         session.commit()
 
     @contextmanager
-    def create_session() -> Generator[Session, None, None]:
+    def create_session() -> Generator[Session]:
         with sqlite_session_factory() as session:
             yield session
 
@@ -450,7 +450,7 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
         session.commit()
 
     @contextmanager
-    def create_session() -> Generator[Session, None, None]:
+    def create_session() -> Generator[Session]:
         with sqlite_session_factory() as session:
             yield session
 
@@ -702,7 +702,7 @@ def test_execute_agent_target_persists_backend_checkpoint_and_normalized_result(
         run_id="backend-run-1",
         source_event_id="event-1",
         output={"text": "done"},
-        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        session_snapshot=SessionSnapshot(layers={}),
     )
     adapter = MagicMock()
     adapter.adapt.return_value = [terminal]

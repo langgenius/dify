@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { I18nText } from '@/i18n/language'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import { LanguagesSupported } from '@/i18n/language'
@@ -13,7 +14,7 @@ const t = withSelectorKey((key: string, options?: Record<string, unknown>) => {
   if (options?.key) return `${key}:${options.key as string}`
 
   return key
-})
+}) as TFunction<['appDebug', 'common']>
 
 const i18n = (en: string, zh = en): I18nText =>
   ({ 'en-US': en, 'zh-Hans': zh }) as unknown as I18nText
@@ -32,6 +33,14 @@ const codeBasedExtensionList: { data: CodeBasedExtensionItem[] } = {
           placeholder: '',
           options: [],
           label: i18n('API Key', '接口密钥'),
+        },
+        {
+          variable: 'optional_token',
+          required: false,
+          type: 'text',
+          placeholder: '',
+          options: [],
+          label: i18n('Optional token'),
         },
       ],
     },
@@ -58,7 +67,7 @@ describe('external-data-tool-modal-utils', () => {
     ])
 
     expect(getProviderDefaultConfig('api', providers)).toBeUndefined()
-    expect(getProviderDefaultConfig('code-tool', providers)).toEqual({
+    expect(getProviderDefaultConfig('code-tool', providers)).toStrictEqual({
       api_key: 'default-key',
     })
   })

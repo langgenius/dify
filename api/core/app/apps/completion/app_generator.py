@@ -46,7 +46,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: Literal[True],
         *,
         session: Session,
-    ) -> Generator[str | Mapping[str, Any], None, None]: ...
+    ) -> Generator[str | Mapping[str, Any]]: ...
 
     @overload
     def generate(
@@ -70,7 +70,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: bool = False,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]: ...
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]: ...
 
     def generate(
         self,
@@ -81,7 +81,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -119,9 +119,12 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 tenant_id=app_model.tenant_id, config=args.get("model_config", {}), session=session
             )
 
-        annotation_reply = (
-            None if override_model_config_dict else load_annotation_reply_config(session, app_model_config.app_id)
-        )
+        if override_model_config_dict:
+            annotation_reply = None
+            effective_model_config_dict = override_model_config_dict
+        else:
+            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+            effective_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -131,9 +134,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         # `DraftWorkflowNodeRunApi` class which handle this properly.
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args["files"] if args.get("files") else []
-            file_extra_config = FileUploadConfigManager.convert(
-                override_model_config_dict or app_model_config.to_dict(annotation_reply=annotation_reply)
-            )
+            file_extra_config = FileUploadConfigManager.convert(effective_model_config_dict)
             if file_extra_config:
                 file_objs = file_factory.build_from_mappings(
                     mappings=files,
@@ -279,7 +280,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         stream: bool = True,
         *,
         session: Session,
-    ) -> Mapping | Generator[Mapping | str, None, None]:
+    ) -> Mapping | Generator[Mapping | str]:
         """
         Generate App response.
 

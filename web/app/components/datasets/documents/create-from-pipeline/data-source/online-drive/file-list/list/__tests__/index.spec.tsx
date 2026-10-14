@@ -1056,13 +1056,6 @@ describe('EmptySearchResult', () => {
       expect(screen.getByRole('button')).toBeInTheDocument()
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.resetKeywords/)).toBeInTheDocument()
     })
-
-    it('should render search icon', () => {
-      const onResetKeywords = vi.fn()
-      const { container } = render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
-      const svgElement = container.querySelector('svg')
-      expect(svgElement).toBeInTheDocument()
-    })
   })
 
   describe('Props', () => {
@@ -1104,64 +1097,6 @@ describe('EmptySearchResult', () => {
 })
 
 // FileIcon Component Tests (using actual component)
-describe('FileIcon', () => {
-  // Get real component for testing
-  type FileIconProps = {
-    type: OnlineDriveFileType
-    fileName: string
-    size?: 'sm' | 'md' | 'lg' | 'xl'
-    className?: string
-  }
-  let ActualFileIcon: React.ComponentType<FileIconProps>
-
-  beforeAll(async () => {
-    const mod = await vi.importActual<{ default: React.ComponentType<FileIconProps> }>(
-      '../file-icon',
-    )
-    ActualFileIcon = mod.default
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render bucket icon for bucket type', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="my-bucket" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-
-    it('should render folder icon for folder type', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.folder} fileName="Documents" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-  })
-
-  describe('Icon Type Determination', () => {
-    it('should render bucket icon regardless of fileName', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="file.pdf" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-
-    it('should render folder icon regardless of fileName', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.folder} fileName="document.pdf" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-  })
-})
-
 // Item Component Tests (using actual component)
 describe('Item', () => {
   // Get real component for testing

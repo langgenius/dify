@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { LICENSE_LINK } from '@/constants/link'
-import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n } from '@/i18n'
@@ -30,6 +30,7 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { consoleQuery } from '@/service/console'
+import { isUnauthorizedError } from '@/service/http-error'
 import { useInvitationCheck } from '@/service/use-common'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
@@ -66,7 +67,7 @@ const getInitialLanguage = (locale: Locale): Locale => {
 }
 
 export default function InviteSettingsPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -78,7 +79,7 @@ export default function InviteSettingsPage() {
     error: profileError,
   } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: (err) => !isLegacyBase401(err),
+    throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
   })
   const locale = useLocale()
@@ -114,7 +115,7 @@ export default function InviteSettingsPage() {
     !isProfilePending &&
     Boolean(
       checkRes?.is_valid &&
-      (isLegacyBase401(profileError) || (userResp && !isInvitationForCurrentAccount)),
+      (isUnauthorizedError(profileError) || (userResp && !isInvitationForCurrentAccount)),
     )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'

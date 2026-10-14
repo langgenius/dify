@@ -7,16 +7,20 @@ import type {
 import type { OperationKey } from '@orpc/tanstack-query'
 import type userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { vi } from 'vite-plus/test'
+import { afterEach, vi } from 'vite-plus/test'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SkillDetailPage } from '../detail/page'
 
 export const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
 
 const mocks = vi.hoisted(() => ({
+  request:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
   deleteSkillMutationFn: vi.fn(),
   copyToClipboard: vi.fn(),
   downloadBlob: vi.fn(),
@@ -27,9 +31,11 @@ const mocks = vi.hoisted(() => ({
   publishSkillMutationFn: vi.fn(),
   publishSkillMutationOptions: vi.fn(),
   routerPush: vi.fn(),
-  restoreSkillMutationFn: vi.fn(),
+  routeSkillId: 'skill-1',
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
+  modelParameterRulesFetch: vi.fn<typeof fetch>(),
+  textGenerationModelListGet: vi.fn(),
   defaultTextGenerationModel: undefined as
     | { provider: { provider: string }; model: string }
     | undefined,
@@ -56,7 +62,6 @@ const mocks = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
   uploadSkillFile: vi.fn(),
-  versionDeleteMutationFn: vi.fn(),
   versionPatchMutationFn: vi.fn(),
 }))
 
@@ -112,27 +117,27 @@ vi.mock('@/app/components/main-nav/components/help-menu', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useLanguage: () => 'en_US',
   useDefaultModel: () => ({
     data: mocks.defaultTextGenerationModel,
   }),
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    currentProvider: mocks.textGenerationModelList[0],
-    currentModel: mocks.textGenerationModelList[0]?.models[0],
-    activeTextGenerationModelList: mocks.textGenerationModelList,
-  }),
+  useTextGenerationCurrentProviderAndModelAndModelList: (selectedModel?: DefaultModel) => {
+    const currentProvider = mocks.textGenerationModelList.find(
+      (provider) => provider.provider === selectedModel?.provider,
+    )
+    return {
+      currentProvider,
+      currentModel: currentProvider?.models.find((model) => model.model === selectedModel?.model),
+      activeTextGenerationModelList: mocks.textGenerationModelList.filter(
+        (provider) => provider.status === 'active',
+      ),
+    }
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: () => <button type="button">model-settings</button>,
   SplitModelSelector: () => <button type="button">model-settings</button>,
-}))
-
-vi.mock('@/service/use-common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-common')>()),
-  useModelParameterRules: () => ({
-    data: { data: [] },
-    isLoading: false,
-  }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -174,7 +179,13 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mocks.request,
+}))
+
 vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ skillId: mocks.routeSkillId }),
   useRouter: () => ({
     push: mocks.routerPush,
   }),
@@ -250,11 +261,7 @@ vi.mock('@/service/console', async (importOriginal) => {
                   queryOptions: mocks.skillReferencesQueryOptions,
                 },
               },
-              restore: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.restoreSkillMutationFn }),
-                },
-              },
+              restore: actual.consoleQuery.workspaces.current.skills.bySkillId.restore,
               files: {
                 check: {
                   post: {
@@ -277,9 +284,9 @@ vi.mock('@/service/console', async (importOriginal) => {
                   patch: {
                     mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
                   },
-                  delete: {
-                    mutationOptions: () => ({ mutationFn: mocks.versionDeleteMutationFn }),
-                  },
+                  delete:
+                    actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId
+                      .delete,
                 },
               },
             },
@@ -489,11 +496,15 @@ export function renderSkillDetailPage({
       mutations: { retry: false },
     },
   }),
+  searchParams = '',
   strict = false,
 }: {
   queryClient?: QueryClient
+  searchParams?: string
   strict?: boolean
 } = {}) {
+  const { wrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+
   return {
     ...render(
       <QueryClientProvider client={queryClient}>
@@ -505,7 +516,9 @@ export function renderSkillDetailPage({
           <SkillDetailPage skillId="skill-1" />
         )}
       </QueryClientProvider>,
+      { wrapper },
     ),
+    onUrlUpdate,
     queryClient,
   }
 }
@@ -676,6 +689,23 @@ export function getMocks() {
 export function resetDetailPageFixture() {
   vi.useRealTimers()
   vi.resetAllMocks()
+  mocks.request.mockImplementation(async (_url, _init, options) => {
+    const req = options.request
+    const pathname = new URL(req.url).pathname
+    if (req.method === 'POST' && /\/skills\/[^/]+\/restore$/.test(pathname))
+      return Response.json(mocks.skillDetail)
+    if (req.method === 'DELETE' && /\/skills\/[^/]+\/versions\/[^/]+$/.test(pathname))
+      return Response.json({ result: 'success' })
+    throw new Error(`Unexpected request: ${req.method} ${pathname}`)
+  })
+  mocks.modelParameterRulesFetch.mockImplementation(async (input) => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (!url.includes('/models/parameter-rules'))
+      throw new Error(`Unexpected Skill detail request: ${url}`)
+    return Response.json({ data: [] })
+  })
+  vi.stubGlobal('fetch', mocks.modelParameterRulesFetch)
+  mocks.routeSkillId = 'skill-1'
   mocks.defaultTextGenerationModel = {
     provider: {
       provider: 'langgenius/openai/openai',
@@ -694,6 +724,9 @@ export function resetDetailPageFixture() {
       ],
     },
   ]
+  mocks.textGenerationModelListGet.mockImplementation(async () => ({
+    data: mocks.textGenerationModelList,
+  }))
   mocks.skillDetail = createSkillDetail()
   mocks.skillDetailGetFn.mockImplementation(async () => mocks.skillDetail)
   mocks.skillDetailKey.mockImplementation((options) => ['skill-detail', options])
@@ -807,9 +840,7 @@ export function resetDetailPageFixture() {
       : mocks.skillDetail
     return version
   })
-  mocks.restoreSkillMutationFn.mockResolvedValue({})
   mocks.versionPatchMutationFn.mockResolvedValue({})
-  mocks.versionDeleteMutationFn.mockResolvedValue({})
   mocks.sendSkillAssistMessage.mockResolvedValue(undefined)
   mocks.checkDraftFilesMutationFn.mockImplementation(
     async (input: {
@@ -845,6 +876,10 @@ export function resetDetailPageFixture() {
   })
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -856,7 +891,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       >
     }) =>
       options.queryKey[0].includes('modelTypes')
-        ? { data: mocks.textGenerationModelList, isPending: false }
+        ? actual.useQuery({ ...options, queryFn: mocks.textGenerationModelListGet })
         : actual.useQuery(options),
   }
 })

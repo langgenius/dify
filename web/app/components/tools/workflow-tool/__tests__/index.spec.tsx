@@ -1,16 +1,10 @@
 import type { WorkflowToolDrawerPayload } from '../index'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { emojiCatalogOptions } from '@/app/components/base/icon-picker/emoji-data'
 import { WorkflowToolDrawer } from '../index'
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick, icon }: { onClick?: () => void; icon: string }) => (
-    <button data-testid="app-icon" onClick={onClick}>
-      {icon}
-    </button>
-  ),
-}))
 
 vi.mock('@/app/components/tools/labels/selector', () => ({
   default: ({ value, onChange }: { value: string[]; onChange: (labels: string[]) => void }) => (
@@ -115,6 +109,33 @@ describe('WorkflowToolDrawer', () => {
     expect(onCreate.mock.calls[0]![0]).not.toHaveProperty('outputParameters')
   })
 
+  it('saves the confirmed icon without submitting the tool from the picker', async () => {
+    const user = userEvent.setup()
+    const client = new QueryClient()
+    client.setQueryData(emojiCatalogOptions.queryKey, [])
+    const onCreate = vi.fn()
+    render(
+      <QueryClientProvider client={client}>
+        <WorkflowToolDrawer isAdd payload={createPayload()} onHide={vi.fn()} onCreate={onCreate} />
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'tools.createTool.changeIcon' }))
+    await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+    expect(onCreate).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
+      ).not.toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(onCreate).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ icon: { content: '🔧', background: '#F3FEE7' } }),
+    )
+    client.clear()
+  })
+
   it('should block invalid tool-call names before saving', async () => {
     const user = userEvent.setup()
     const onCreate = vi.fn()
@@ -173,7 +194,7 @@ describe('WorkflowToolDrawer', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: /reservedParameterDuplicateTip|duplicateOutputVariable/,
+        name: 'answer',
       }),
     ).not.toBeInTheDocument()
   })
@@ -186,7 +207,7 @@ describe('WorkflowToolDrawer', () => {
     const userOutputRow = screen.getByRole('row', { name: /text.*Reserved output duplicate/ })
     expect(
       within(userOutputRow).getByRole('button', {
-        name: 'tools.createTool.toolOutput.reservedParameterDuplicateTip',
+        name: 'text',
       }),
     ).toBeInTheDocument()
 
@@ -228,7 +249,7 @@ describe('WorkflowToolDrawer', () => {
     ).toBeInTheDocument()
 
     const duplicateWarnings = screen.getAllByRole('button', {
-      name: /workflow\.errorMsg\.duplicateOutputVariable/,
+      name: 'result',
     })
     expect(duplicateWarnings).toHaveLength(2)
 
@@ -266,7 +287,7 @@ describe('WorkflowToolDrawer', () => {
     )
 
     const issueWarnings = screen.getAllByRole('button', {
-      name: /tools\.createTool\.toolOutput\.reservedParameterDuplicateTip.*workflow\.errorMsg\.duplicateOutputVariable/,
+      name: 'text',
     })
     expect(issueWarnings).toHaveLength(2)
 

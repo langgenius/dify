@@ -55,7 +55,6 @@ from models.evaluation import EvaluationConfiguration, EvaluationRun, Evaluation
 from models.model import AppMode
 from models.snippet import CustomizedSnippet
 from models.workflow import WorkflowKind, WorkflowType
-from services.dataset_service import DatasetService
 from services.errors.evaluation import (
     EvaluationDatasetInvalidError,
     EvaluationFrameworkNotConfiguredError,
@@ -63,6 +62,7 @@ from services.errors.evaluation import (
     EvaluationNotFoundError,
 )
 from services.evaluation_service import EvaluationService
+from services.knowledge.dataset_service import DatasetService
 from services.workflow_service import WorkflowService
 
 P = ParamSpec("P")

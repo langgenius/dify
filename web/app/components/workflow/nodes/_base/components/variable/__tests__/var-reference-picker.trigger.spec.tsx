@@ -1,8 +1,8 @@
 import type { ComponentProps } from 'react'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '../../../../tool/types'
 import VarReferencePickerTrigger from '../var-reference-picker.trigger'
 
 const createProps = (

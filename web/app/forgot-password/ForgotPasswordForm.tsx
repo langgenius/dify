@@ -27,7 +27,7 @@ const emailSchema = z.email('error.emailInValid').min(1, {
 })
 
 const ForgotPasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)

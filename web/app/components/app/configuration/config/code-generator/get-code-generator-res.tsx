@@ -3,15 +3,6 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
 import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -68,7 +59,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   onClose,
   onFinished,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'appGeneration'])
   const [storedModel, setStoredModel] = useAutoGenModel()
   const [selectedModel, setSelectedModel] = React.useState<Model>()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
@@ -182,16 +173,11 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     }
   }
 
-  const [
-    isShowConfirmOverwrite,
-    { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
-  ] = useBoolean(false)
-
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
-        {t(($) => $['codegen.loading'], { ns: 'appDebug' })}
+        {t(($) => $['codegen.loading'], { ns: 'appGeneration' })}
       </div>
     </div>
   )
@@ -208,10 +194,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
           <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
               <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
-                {t(($) => $['codegen.title'], { ns: 'appDebug' })}
+                {t(($) => $['codegen.title'], { ns: 'appGeneration' })}
               </div>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
-                {t(($) => $['codegen.description'], { ns: 'appDebug' })}
+                {t(($) => $['codegen.description'], { ns: 'appGeneration' })}
               </div>
             </div>
             <div className="mb-4">
@@ -229,7 +215,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
             <div>
               <div className="text-[0px]">
                 <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['codegen.instruction'], { ns: 'appDebug' })}
+                  {t(($) => $['codegen.instruction'], { ns: 'appGeneration' })}
                 </div>
                 <InstructionEditor
                   editorKey={instructionEditorKey}
@@ -244,7 +230,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
 
               <div className="mt-7 flex justify-end space-x-2">
                 <Button onClick={onClose}>
-                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
+                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}
                 </Button>
                 <Button
                   className="flex"
@@ -254,7 +240,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
                 >
                   <span aria-hidden className="i-custom-vender-other-generator size-4" />
                   <span className="text-xs font-semibold">
-                    {t(($) => $['codegen.generate'], { ns: 'appDebug' })}
+                    {t(($) => $['codegen.generate'], { ns: 'appGeneration' })}
                   </span>
                 </Button>
               </div>
@@ -269,40 +255,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
                 currentVersionIndex={currentVersionIndex || 0}
                 setCurrentVersionIndex={setCurrentVersionIndex}
                 versions={versions || []}
-                onApply={showConfirmOverwrite}
+                onApply={() => onFinished(current!)}
                 generatorType={GeneratorType.code}
               />
             </div>
           )}
         </div>
-        <AlertDialog
-          open={isShowConfirmOverwrite}
-          onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
-        >
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appDebug' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appDebug' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogActions>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                onClick={() => {
-                  hideShowConfirmOverwrite()
-                  onFinished(current!)
-                }}
-              >
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogActions>
-          </AlertDialogContent>
-        </AlertDialog>
       </DialogContent>
     </Dialog>
   )

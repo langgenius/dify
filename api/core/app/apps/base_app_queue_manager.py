@@ -25,7 +25,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     WorkflowQueueMessage,
 )
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import RedisClientWrapper, redis_client
 from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
@@ -186,12 +186,15 @@ class AppQueueManager(ABC):
         raise NotImplementedError
 
     @classmethod
-    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str):
+    def set_stop_flag(
+        cls, task_id: str, invoke_from: InvokeFrom, user_id: str, *, redis: RedisClientWrapper | None = None
+    ) -> None:
         """
         Set task stop flag
         :return:
         """
-        result: Any | None = redis_client.get(cls._generate_task_belong_cache_key(task_id))
+        client = redis if redis is not None else redis_client
+        result: Any | None = client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
             return
 
@@ -200,7 +203,7 @@ class AppQueueManager(ABC):
             return
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
-        redis_client.setex(stopped_cache_key, 600, 1)
+        client.setex(stopped_cache_key, 600, 1)
 
     @classmethod
     def set_stop_flag_no_user_check(cls, task_id: str) -> None:

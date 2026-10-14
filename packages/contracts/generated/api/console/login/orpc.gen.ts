@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zPostLoginBody, zPostLoginResponse } from './zod.gen'
+import { zPostLoginBody, zPostLoginResponse } from './zod.gen.ts'
 
 /**
  * Authenticate user and login

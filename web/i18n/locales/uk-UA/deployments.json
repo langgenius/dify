@@ -73,6 +73,9 @@
   "studio.noCredentialsYetDescription": "Додайте облікові дані в розділі «Інтеграції» або в налаштуваннях вузла",
   "studio.precheck.description": "Вона містить типи вузлів, які ще не підтримуються:",
   "studio.precheck.from": "З",
+  "studio.precheck.nodeCount_few": "{{count}} вузли",
+  "studio.precheck.nodeCount_many": "{{count}} вузлів",
+  "studio.precheck.nodeCount_one": "{{count}} вузол",
   "studio.precheck.nodeCount_other": "{{count}} вузлів",
   "studio.precheck.supportMessage": "Підтримка цих типів вузлів з’явиться в одному з майбутніх випусків.",
   "studio.precheck.title": "Цю версію не можна розгорнути в цьому середовищі",
@@ -84,6 +87,8 @@
   "studio.undeployConfirmTitle": "Скасувати розгортання {{versionName}} у середовищі {{envName}}",
   "studio.updatedAtBy": "Оновлено {{time}}, {{name}}",
   "studio.versionValue": "Значення версії",
+  "studio.versionsBehind_few": "Відставання на {{count}} версії",
+  "studio.versionsBehind_many": "Відставання на {{count}} версій",
   "studio.versionsBehind_one": "Відставання на {{count}} версію",
   "studio.versionsBehind_other": "Відставання на {{count}} версій",
   "versions.deployTo": "Розгорнути в {{name}}"

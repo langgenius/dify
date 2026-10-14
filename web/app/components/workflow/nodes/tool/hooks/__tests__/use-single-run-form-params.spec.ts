@@ -1,8 +1,9 @@
-import type { ToolNodeType, VarType } from '../../types'
+import type { ToolNodeType } from '../../types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -93,13 +94,13 @@ describe('useSingleRunFormParams', () => {
     it('should build form inputs from variable params and settings and expose dependent vars', () => {
       const payload = createNodeData({
         tool_parameters: {
-          query: { type: 'variable' as VarType, value: ['start', 'query'] },
-          legacy_query: { type: 'variable' as VarType, value: 'legacy.answer' },
-          constant_query: { type: 'constant' as VarType, value: 'fixed' },
+          query: { type: VarKindType.variable, value: ['start', 'query'] },
+          legacy_query: { type: VarKindType.variable, value: 'legacy.answer' },
+          constant_query: { type: VarKindType.constant, value: 'fixed' },
         },
         tool_configurations: {
-          prompt: { type: 'mixed' as VarType, value: 'prefix {{#tool.result#}}' },
-          api_key: { type: 'constant' as VarType, value: 'secret' },
+          prompt: { type: VarKindType.mixed, value: 'prefix {{#tool.result#}}' },
+          api_key: { type: VarKindType.constant, value: 'secret' },
           plainText: 'ignored',
         },
       })
@@ -147,8 +148,8 @@ describe('useSingleRunFormParams', () => {
     it('should update form values and forward run input data on change', () => {
       const payload = createNodeData({
         tool_parameters: {
-          nullable_constant: { type: 'constant' as VarType, value: null },
-          query: { type: 'variable' as VarType, value: ['start', 'query'] },
+          nullable_constant: { type: VarKindType.constant, value: null },
+          query: { type: VarKindType.variable, value: ['start', 'query'] },
         },
       })
       const getInputVars = vi.fn(() => [createInputVar('#start.query#')])

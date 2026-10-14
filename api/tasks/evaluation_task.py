@@ -20,7 +20,6 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
@@ -208,7 +207,7 @@ def _renew_evaluation_run_heartbeat_while_running(lease: EvaluationRunLease, sto
 
 
 @contextmanager
-def _maintain_evaluation_run_heartbeat(lease: EvaluationRunLease) -> Generator[None, None, None]:
+def _maintain_evaluation_run_heartbeat(lease: EvaluationRunLease) -> Generator[None]:
     stop_event = Event()
     heartbeat_thread = Thread(
         target=_renew_evaluation_run_heartbeat_while_running,
@@ -692,7 +691,6 @@ def _execute_agent_target(
         AgentBackendRunSucceededInternalEvent
         | AgentBackendRunFailedInternalEvent
         | AgentBackendRunCancelledInternalEvent
-        | AgentBackendDeferredToolCallInternalEvent
         | None
     ) = None
     stop_error: EvaluationRunCancelledError | EvaluationRunOwnershipLostError | None = None
@@ -719,8 +717,7 @@ def _execute_agent_target(
                 event,
                 AgentBackendRunSucceededInternalEvent
                 | AgentBackendRunFailedInternalEvent
-                | AgentBackendRunCancelledInternalEvent
-                | AgentBackendDeferredToolCallInternalEvent,
+                | AgentBackendRunCancelledInternalEvent,
             ):
                 terminal = event
                 break
@@ -736,9 +733,6 @@ def _execute_agent_target(
     if isinstance(terminal, AgentBackendRunSucceededInternalEvent):
         agent_item = collector.build_item(dataset_item=dataset_item, node_info=node_info, output=terminal.output)
         target_error = None
-    elif isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
-        agent_item = None
-        target_error = "Agent requested human input, which dataset evaluation does not support."
     elif isinstance(terminal, AgentBackendRunFailedInternalEvent):
         agent_item = None
         target_error = f"Agent execution failed: {terminal.error}"

@@ -35,7 +35,7 @@ function useMCPCreateAction({ handleCreate }: Props) {
 }
 
 export function NewMCPButton({ handleCreate }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const addMCPServerLabel = t(($) => $['mcp.create.cardTitle'], { ns: 'tools' })
   const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
 
@@ -61,7 +61,7 @@ export function NewMCPButton({ handleCreate }: Props) {
 }
 
 const NewMCPCard = ({ handleCreate }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
 

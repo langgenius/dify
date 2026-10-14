@@ -21,7 +21,7 @@ type UseDatasetCardStateOptions = {
 }
 
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'dataset'])
   const { push } = useRouter()
   const queryClient = useQueryClient()
 
@@ -110,12 +110,9 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         showConfirmDelete: true,
       }))
     } catch (e: unknown) {
-      if (e instanceof Response) {
-        const res = await e.json()
-        toast.error(res?.message || t(($) => $.unknownError, { ns: 'dataset' }))
-      } else {
-        toast.error((e as Error)?.message || t(($) => $.unknownError, { ns: 'dataset' }))
-      }
+      toast.error(
+        (e instanceof Error ? e.message : '') || t(($) => $.unknownError, { ns: 'dataset' }),
+      )
     }
   }, [dataset.id, queryClient, t])
 
@@ -126,12 +123,11 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
           dataset_id: dataset.id,
         },
       })
-      toast.success(t(($) => $.datasetDeleted, { ns: 'dataset' }))
       onSuccess?.()
     } finally {
       closeConfirmDelete()
     }
-  }, [dataset.id, deleteDatasetMutation, onSuccess, t, closeConfirmDelete])
+  }, [dataset.id, deleteDatasetMutation, onSuccess, closeConfirmDelete])
 
   return {
     // Modal state

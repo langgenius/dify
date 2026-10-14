@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 
 type ExportAppDslInput = {
   appId: string
@@ -17,6 +18,7 @@ type ExportAppDslInput = {
   includeSecret?: boolean
   versionId?: string
   format?: NonNullable<GetAppsByAppIdExportData['query']>['format']
+  workflowId?: string
 }
 
 type ExportWorkflowAppDslInput = Pick<ExportAppDslInput, 'appId' | 'appName'>
@@ -46,10 +48,11 @@ async function getSecretEnvironmentVariables(appId: string) {
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
 }
 
-async function exportAppDslFile({
+export async function exportAppDslFile({
   appId,
   appName,
   includeSecret = false,
+  workflowId,
   versionId,
   format,
 }: ExportAppDslInput) {
@@ -58,6 +61,7 @@ async function exportAppDslFile({
       params: { app_id: appId },
       query: {
         include_secret: includeSecret,
+        ...(workflowId ? { workflow_id: workflowId } : {}),
         ...(versionId ? { version_id: versionId } : {}),
         ...(format && { format }),
       },
@@ -90,17 +94,18 @@ async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMe
       title: format === 'ifpkg' ? messages.packageSuccess : messages.success,
       timeout: 3000,
     }),
-    error: {
-      title: input.format === 'ifpkg' ? messages.packageError : messages.error,
-    },
+    error: (error) => ({
+      title: input.format === 'yaml' ? messages.error : messages.packageError,
+      description: getErrorMessage(error),
+    }),
   })
 
   return { status: 'downloaded' } as const
 }
 
 function useExportAppDslMessages() {
-  const { t: tApp } = useTranslation('app')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation(['app'])
+  const { t: tCommon } = useTranslation(['common'])
 
   return {
     loading: tCommon(($) => $['operation.exporting']),
@@ -145,7 +150,7 @@ export function useExportWorkflowAppDsl() {
       try {
         secretEnvList = await getSecretEnvironmentVariables(input.appId)
       } catch (error) {
-        toast.error(messages.error)
+        toast.error(messages.packageError, { description: getErrorMessage(error) })
         throw error
       }
 

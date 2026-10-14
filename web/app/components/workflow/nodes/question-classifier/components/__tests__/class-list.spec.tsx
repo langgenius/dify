@@ -1,9 +1,9 @@
-import type { Topic } from '../../types'
+import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
-import ClassList from '../class-list'
+import ClassList from '../../../_base/components/branch-list/class-list'
 
 vi.mock('react-sortablejs', () => ({
   __esModule: true,
@@ -18,7 +18,7 @@ vi.mock('../../../../hooks/use-edges-interactions', async (importOriginal) => {
   }
 })
 
-vi.mock('../class-item', () => ({
+vi.mock('../../../_base/components/branch-list/class-item', () => ({
   __esModule: true,
   default: ({
     payload,
@@ -91,13 +91,13 @@ describe('question-classifier/class-list', () => {
       screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
     )
     expect(
-      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+      screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
     ).not.toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: /workflow\.nodes\.questionClassifiers\.class/ }),
     )
-    await user.click(screen.getByText('workflow.nodes.questionClassifiers.addClass'))
+    await user.click(screen.getByText('workflowModels.nodes.questionClassifiers.addClass'))
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ name: '' })]),
     )
@@ -147,7 +147,7 @@ describe('question-classifier/class-list', () => {
     )
 
     expect(
-      screen.queryByText('workflow.nodes.questionClassifiers.addClass'),
+      screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
     ).not.toBeInTheDocument()
     expect(container.querySelector('.handle')).toBeNull()
   })

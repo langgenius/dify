@@ -2,11 +2,11 @@ import type { Ref } from 'react'
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -38,7 +38,7 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
     handleSidebarCollapse,
     isResponding,
   } = useChatWithHistoryContext()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const isSidebarCollapsed = sidebarCollapseState
 
   const isPin = pinnedConversationList.some((item) => item.id === currentConversationId)
@@ -183,14 +183,14 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
               {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {showRename && (

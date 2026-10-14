@@ -5,6 +5,7 @@ import type {
   LLMEnvironmentVariableValue,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { RiCloseLine } from '@remixicon/react'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
@@ -412,7 +413,7 @@ const useEnvPanelActions = ({
 }
 
 const EnvPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)
@@ -447,25 +448,28 @@ const EnvPanel = () => {
 
   const [showRemoveVarConfirm, setShowRemoveVarConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
-  const saveOperationQueueRef = useRef(Promise.resolve())
+  const saveOperationQueueRef = useRefWithInit(() => Promise.resolve())
   const committedEnvListRef = useRef(envList)
   const latestEnvListRef = useRef(envList)
-  const pendingSaveEnvIdsRef = useRef(new Map<string, number>())
+  const pendingSaveEnvIdsRef = useRefWithInit(() => new Map<string, number>())
   useLayoutEffect(() => {
     latestEnvListRef.current = envList
   }, [envList])
 
   useEffect(() => {
     if (pendingSaveEnvIdsRef.current.size === 0) committedEnvListRef.current = envList
-  }, [envList])
+  }, [envList, pendingSaveEnvIdsRef])
 
-  const mergeLatestUntouchedEnvList = useCallback((envListToMerge: EnvironmentVariable[]) => {
-    return mergeUntouchedEnvironmentVariables(
-      envListToMerge,
-      latestEnvListRef.current,
-      new Set(pendingSaveEnvIdsRef.current.keys()),
-    )
-  }, [])
+  const mergeLatestUntouchedEnvList = useCallback(
+    (envListToMerge: EnvironmentVariable[]) => {
+      return mergeUntouchedEnvironmentVariables(
+        envListToMerge,
+        latestEnvListRef.current,
+        new Set(pendingSaveEnvIdsRef.current.keys()),
+      )
+    },
+    [pendingSaveEnvIdsRef],
+  )
 
   const restoreCommittedEnvList = useCallback(() => {
     committedEnvListRef.current = mergeLatestUntouchedEnvList(committedEnvListRef.current)
@@ -523,7 +527,7 @@ const EnvPanel = () => {
       saveOperationQueueRef.current = queuedOperation.catch(() => undefined)
       return queuedOperation
     },
-    [mergeLatestUntouchedEnvList],
+    [mergeLatestUntouchedEnvList, pendingSaveEnvIdsRef, saveOperationQueueRef],
   )
 
   const syncDraftWithResult = useCallback(

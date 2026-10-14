@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -18,6 +19,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
@@ -26,15 +28,8 @@ type IAppDetailLayoutProps = {
   datasetId: string
 }
 
-const getResponseStatus = (error: unknown) => {
-  if (error instanceof Response) return error.status
-
-  if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number')
-    return error.status
-}
-
 const shouldRedirectToDatasetList = (error: unknown) => {
-  const status = getResponseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === 403 || status === 404
 }
 
@@ -52,10 +47,10 @@ const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTransl
   if (pathname.endsWith('/evaluation')) return t(($) => $.title, { ns: 'evaluation' })
   if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
-    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+    return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
   if (pathname.endsWith('/api')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
 
-  return t(($) => $['menus.datasets'], { ns: 'common' })
+  return t(($) => $['menus.datasets'], { ns: 'navigation' })
 }
 
 const isDocumentDetailPath = (pathname: string) =>
@@ -87,7 +82,7 @@ const getDatasetRedirectionPath = (
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { children, datasetId } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline', 'navigation'])
   const router = useRouter()
   const pathname = usePathname()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -138,7 +133,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           (datasetRes.runtime_mode === 'rag_pipeline' && !datasetRes.is_published) ||
           !datasetACLCapabilities.canPipelineTest)))
   const pageTitle = datasetDetailPageTitle(pathname, t)
-  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' })}`
+  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })}`
 
   useEffect(() => {
     if (shouldRedirect) router.replace('/datasets')
