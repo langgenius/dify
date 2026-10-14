@@ -7369,3 +7369,369 @@ class TestResponseMetadata:
         assert "attempt=1 response_characters=25" in records[0]
         assert "attempt=2 response_characters=25" in records[1]
         assert "private-" not in caplog.text
+
+
+class TestNativeConstantAndMutableProducerMessages:
+    """Real planner and isolated-consumer messages carry qualified native producer facts."""
+
+    _HEADING = "# Native constant and mutation producer contracts"
+    _TARGET = "consumer_bound_73"
+    _INSTRUCTION = (
+        "ORIGINAL_GOAL_AUTHORITY_73: GET each supplied URL, compare status_code = 200, "
+        "return exactly healthy or unhealthy, and combine branch results before End. "
+        "Preserve USER_AUTHORED_METADATA_73 and the existing mutable target USER_MUTABLE_TARGET_73."
+    )
+
+    @staticmethod
+    def _assert_constant_rules(system: str):
+        assert "assigner v2 publishes no own outputs" in system
+        assert "existing declared mutable" in system
+        assert "conversation or loop variable" in system
+        assert "template-transform v1 publishes output:string" in system
+        assert "literal" in system
+        assert "variables=[]" in system
+
+    @classmethod
+    def _contract(cls, user: str) -> dict[str, Any] | None:
+        if cls._HEADING not in user:
+            return None
+        payload, _ = json.JSONDecoder().raw_decode(user.split(cls._HEADING, 1)[1].lstrip())
+        assert isinstance(payload, dict)
+        return payload
+
+    @classmethod
+    def _planner_messages(cls):
+        plan = {
+            "nodes": [
+                {"id": "node1", "node_type": "start", "label": "USER_START_LABEL_73"},
+                {"id": cls._TARGET, "node_type": "end", "label": "End"},
+            ],
+            "edges": [{"source": "node1", "target": cls._TARGET}],
+        }
+        model = _ParallelBuilderModel(plan, {}, barrier_parties=0)
+        result = WorkflowGenerator._run_planner(
+            model_instance=model,
+            model_parameters={},
+            mode="workflow",
+            instruction=cls._INSTRUCTION,
+            ideal_output="USER_IDEAL_OUTPUT_73",
+            tool_catalogue_text="",
+            current_graph={"nodes": [{"id": "node1", "data": {"type": "start", "title": "USER_START_LABEL_73"}}]},
+        )
+        assert result == plan
+        assert model.planner_calls == 1
+        return model.planner_prompt_messages
+
+    @classmethod
+    def _build_messages(
+        cls,
+        plan_nodes: list[dict[str, Any]],
+        plan_edges: list[dict[str, Any]],
+        *,
+        current_nodes: list[dict[str, Any]] | None = None,
+        target_type: str = "end",
+    ):
+        nodes = [*deepcopy(plan_nodes), {"id": cls._TARGET, "node_type": target_type, "label": "Consumer"}]
+        current_graph = {"nodes": deepcopy(current_nodes or []), "edges": []}
+        configs_by_type = {
+            "start": {"variables": [{"variable": "api_url", "label": "URL", "type": "text-input"}]},
+            "template-transform": {"template": "healthy", "variables": []},
+            "assigner": {
+                "version": "2",
+                "items": [
+                    {
+                        "variable_selector": ["conversation", "USER_MUTABLE_TARGET_73"],
+                        "input_type": "constant",
+                        "operation": "over-write",
+                        "value": "unhealthy",
+                    }
+                ],
+            },
+            "variable-aggregator": {"variables": []},
+            "http-request": {"method": "get", "url": "USER_ENDPOINT_LITERAL_73", "body": {"type": "none"}},
+            "if-else": {"cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}]},
+            "end": {"outputs": []},
+        }
+        existing_ids = {node["id"] for node in current_graph["nodes"]}
+        configs = {
+            node["id"]: deepcopy(configs_by_type.get(node["node_type"], {}))
+            for node in nodes
+            if not (node.get("action") == "keep" and node["id"] in existing_ids)
+        }
+        model = _ParallelBuilderModel({}, configs, barrier_parties=0)
+        original = deepcopy((nodes, plan_edges, current_graph))
+        graph = WorkflowGenerator._run_parallel_node_builders(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction=cls._INSTRUCTION,
+            ideal_output="USER_IDEAL_OUTPUT_73",
+            plan_nodes=nodes,
+            plan_edges=plan_edges,
+            tool_catalogue_text="",
+            tool_catalogue_entries=[],
+            start_inputs=[],
+            node_outputs={},
+            current_graph=current_graph,
+        )
+        assert (nodes, plan_edges, current_graph) == original
+        return model.messages_by_node[cls._TARGET][0], graph
+
+    @classmethod
+    def _transitive_messages(cls, target_type: str = "end"):
+        nodes = [
+            {"id": "entry_bound_73", "node_type": "start", "label": "USER_START_LABEL_73"},
+            {"id": "literal_bound_73", "node_type": "template-transform", "label": "USER_LITERAL_LABEL_73"},
+            {"id": "mutation_bound_73", "node_type": "assigner", "action": "keep", "label": "Mutation"},
+            {"id": "bridge_bound_73", "node_type": "variable-aggregator"},
+            {"id": "unrelated_literal_73", "node_type": "template-transform"},
+            {"id": "dynamic_tool_73", "node_type": "tool", "action": "keep"},
+        ]
+        edges = [
+            {"source": "entry_bound_73", "target": "literal_bound_73"},
+            {"source": "entry_bound_73", "target": "mutation_bound_73"},
+            {"source": "entry_bound_73", "target": "unrelated_literal_73"},
+            {"source": "literal_bound_73", "target": "bridge_bound_73"},
+            {"source": "mutation_bound_73", "target": "bridge_bound_73"},
+            {"source": "dynamic_tool_73", "target": "bridge_bound_73"},
+            {"source": "bridge_bound_73", "target": cls._TARGET},
+        ]
+        current = [
+            {
+                "id": "mutation_bound_73",
+                "data": {
+                    "type": "assigner",
+                    "version": "2",
+                    "title": "USER_AUTHORED_METADATA_73",
+                    "items": [
+                        {
+                            "variable_selector": ["conversation", "USER_MUTABLE_TARGET_73"],
+                            "input_type": "constant",
+                            "operation": "over-write",
+                            "value": "unhealthy",
+                        }
+                    ],
+                },
+            },
+            {
+                "id": "dynamic_tool_73",
+                "data": {
+                    "type": "tool",
+                    "provider_type": "builtin",
+                    "provider_id": "USER_DYNAMIC_PROVIDER_73",
+                    "tool_name": "fetch",
+                    "output_schema": {"properties": {"status": {"type": "string"}}},
+                },
+            },
+        ]
+        return cls._build_messages(nodes, edges, current_nodes=current, target_type=target_type)
+
+    def test_shared_planner_system_distinguishes_mutation_from_a_published_constant(self):
+        messages = self._planner_messages()
+
+        self._assert_constant_rules(str(messages[0].content))
+
+    def test_shared_planner_keeps_original_goal_and_authored_metadata_in_user_message(self):
+        system, user = self._planner_messages()
+
+        for value in (
+            "ORIGINAL_GOAL_AUTHORITY_73",
+            "healthy",
+            "unhealthy",
+            "USER_AUTHORED_METADATA_73",
+            "USER_MUTABLE_TARGET_73",
+            "USER_IDEAL_OUTPUT_73",
+            "USER_START_LABEL_73",
+        ):
+            assert value in str(user.content)
+            assert value not in str(system.content)
+
+    @pytest.mark.parametrize("target_type", ["http-request", "if-else", "end"])
+    def test_consumer_system_distinguishes_transitive_mutation_from_a_published_constant(self, target_type):
+        messages, _ = self._transitive_messages(target_type)
+
+        self._assert_constant_rules(str(messages[0].content))
+
+    def test_consumer_user_context_binds_only_relevant_qualified_transitive_producers(self):
+        from operator import itemgetter
+
+        messages, _ = self._transitive_messages()
+
+        contract = self._contract(str(messages[1].content))
+        assert contract is not None
+        assert contract["state"] == "known"
+        assert sorted(contract["producers"], key=itemgetter("node_id")) == [
+            {
+                "node_id": "entry_bound_73",
+                "node_type": "start",
+                "version": "1",
+                "identity_source": "planned-schema",
+                "output_declarations": "not_asserted",
+            },
+            {
+                "node_id": "literal_bound_73",
+                "node_type": "template-transform",
+                "version": "1",
+                "identity_source": "planned-schema",
+                "output_roots": {"output": "string"},
+            },
+            {
+                "node_id": "mutation_bound_73",
+                "node_type": "assigner",
+                "version": "2",
+                "identity_source": "retained-config",
+                "output_roots": {},
+            },
+        ]
+
+    def test_consumer_keeps_authored_literals_metadata_and_mutable_assignment_unchanged(self):
+        messages, graph = self._transitive_messages()
+        system, user = (str(message.content) for message in messages)
+
+        for value in (
+            "entry_bound_73",
+            "literal_bound_73",
+            "mutation_bound_73",
+            "healthy",
+            "unhealthy",
+            "USER_AUTHORED_METADATA_73",
+            "USER_MUTABLE_TARGET_73",
+            "ORIGINAL_GOAL_AUTHORITY_73",
+        ):
+            assert value in user
+            assert value not in system
+        literal = next(node["data"] for node in graph["nodes"] if node["id"] == "literal_bound_73")
+        assert literal["template"] == "healthy"
+        assert literal["variables"] == []
+        mutation = next(node["data"] for node in graph["nodes"] if node["id"] == "mutation_bound_73")
+        assert mutation == {
+            "type": "assigner",
+            "version": "2",
+            "title": "USER_AUTHORED_METADATA_73",
+            "items": [
+                {
+                    "variable_selector": ["conversation", "USER_MUTABLE_TARGET_73"],
+                    "input_type": "constant",
+                    "operation": "over-write",
+                    "value": "unhealthy",
+                }
+            ],
+        }
+
+    @pytest.mark.parametrize("start_id", ["node1", "start"])
+    @pytest.mark.parametrize("target_type", ["http-request", "if-else", "end"])
+    def test_each_consumer_receives_actual_fresh_start_id_without_invented_inputs(self, start_id, target_type):
+        messages, _ = self._build_messages(
+            [{"id": start_id, "node_type": "start", "label": "USER_START_LABEL_73"}],
+            [{"source": start_id, "target": self._TARGET}],
+            target_type=target_type,
+        )
+        contract = self._contract(str(messages[1].content))
+
+        assert contract is not None
+        assert contract["producers"] == [
+            {
+                "node_id": start_id,
+                "node_type": "start",
+                "version": "1",
+                "identity_source": "planned-schema",
+                "output_declarations": "not_asserted",
+            }
+        ]
+        assert "actual bound producer ID" in str(messages[0].content)
+        assert "labels are not automatic IDs" in str(messages[0].content)
+        assert "unavailable input declarations establish no variable names or types" in str(messages[0].content)
+        assert "Use only explicitly supplied input declarations" in str(messages[0].content)
+
+    @pytest.mark.parametrize(
+        ("node_type", "version", "expected"),
+        [
+            pytest.param("assigner", "2", {"version": "2", "output_roots": {}}, id="assigner-v2"),
+            pytest.param(
+                "template-transform", "1", {"version": "1", "output_roots": {"output": "string"}}, id="template-v1"
+            ),
+            pytest.param(
+                "template-transform",
+                "MISSING",
+                {"version": "1", "output_roots": {"output": "string"}},
+                id="template-default-v1",
+            ),
+            pytest.param("start", "1", {"version": "1", "output_declarations": "not_asserted"}, id="start-v1"),
+            pytest.param(
+                "start",
+                "MISSING",
+                {"version": "1", "output_declarations": "not_asserted"},
+                id="start-default-v1",
+            ),
+        ],
+    )
+    def test_kept_actual_type_and_version_override_the_planners_claim(self, node_type, version, expected):
+        data = {"type": node_type, "title": "USER_KEPT_METADATA_73"}
+        if version != "MISSING":
+            data["version"] = version
+        messages, graph = self._build_messages(
+            [{"id": "kept_bound_73", "node_type": "code", "action": "keep"}],
+            [{"source": "kept_bound_73", "target": self._TARGET}],
+            current_nodes=[{"id": "kept_bound_73", "data": data}],
+        )
+        contract = self._contract(str(messages[1].content))
+
+        assert contract is not None
+        assert contract["producers"] == [
+            {"node_id": "kept_bound_73", "node_type": node_type, "identity_source": "retained-config", **expected}
+        ]
+        assert next(node["data"] for node in graph["nodes"] if node["id"] == "kept_bound_73") == data
+
+    @pytest.mark.parametrize(
+        ("node_type", "version"),
+        [
+            ("assigner", "MISSING"),
+            ("assigner", "1"),
+            ("assigner", None),
+            ("assigner", 2),
+            ("template-transform", "future"),
+            ("start", None),
+            ("start", 1),
+            ("code", "1"),
+            ("tool", "1"),
+        ],
+    )
+    def test_unknown_or_dynamic_kept_producer_does_not_gain_a_native_contract(self, node_type, version):
+        data = {"type": node_type, "output_schema": {"properties": {"status": {"type": "string"}}}}
+        if version != "MISSING":
+            data["version"] = version
+        messages, graph = self._build_messages(
+            [{"id": "unknown_bound_73", "node_type": "template-transform", "action": "keep"}],
+            [{"source": "unknown_bound_73", "target": self._TARGET}],
+            current_nodes=[{"id": "unknown_bound_73", "data": data}],
+        )
+        contract = self._contract(str(messages[1].content))
+
+        assert contract is None or contract["producers"] == []
+        assert next(node["data"] for node in graph["nodes"] if node["id"] == "unknown_bound_73") == data
+
+    @pytest.mark.parametrize("duplicate_source", ["plan", "current"])
+    def test_duplicate_start_identity_does_not_gain_a_native_contract(self, duplicate_source):
+        planned = [{"id": "ambiguous_bound_73", "node_type": "start", "action": "keep"}]
+        current = [{"id": "ambiguous_bound_73", "data": {"type": "start", "version": "1"}}]
+        if duplicate_source == "plan":
+            planned.append(deepcopy(planned[0]))
+        else:
+            current.append({"id": "ambiguous_bound_73", "data": {"type": "tool"}})
+        messages, _ = self._build_messages(
+            planned, [{"source": "ambiguous_bound_73", "target": self._TARGET}], current_nodes=current
+        )
+
+        contract = self._contract(str(messages[1].content))
+        assert contract is None or contract["producers"] == []
+
+    def test_unrelated_constant_producer_is_not_added_to_consumer_contract(self):
+        messages, _ = self._build_messages(
+            [{"id": "unrelated_bound_73", "node_type": "template-transform"}],
+            [],
+        )
+
+        assert self._contract(str(messages[1].content)) is None

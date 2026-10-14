@@ -27,6 +27,10 @@ from services.dify_builder.agent import form_schema, graph_translate, llm, resou
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
 from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.native_constant_output_contract import (
+    native_build_capability_system_rules,
+    native_constant_output_system_rules,
+)
 from services.dify_builder.presentation import copy_text
 from services.dify_builder.tool_setup import reconcile_generated_tool_setup
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -504,7 +508,9 @@ def propose_plan_v1(
         "mentions, do not alone require using a resource."
         f"{_planner_tool_section(tools)}\n\n"
         'Reply with ONLY JSON: {"plan": ["step", ...]}.'
-    ) + llm.json_language_instruction("plan steps")
+    )
+    system += "\n\n" + native_constant_output_system_rules()
+    system += llm.json_language_instruction("plan steps")
     source = _cognition_source(goal_text, requirements)
     user = source
     for attempt in range(2):
@@ -598,15 +604,17 @@ def _discovery_line(rid: str, kind: str, ref: ResourceRef) -> str:
 
 _GAP_SYSTEM = (
     "You check whether the original goal, confirmed requirements and workflow plan can be built "
-    "from the resources listed. Respect optional and negative resource instructions; a mention "
+    "from native workflow building blocks and the selected external resources listed. "
+    "Respect optional and negative resource instructions; a mention "
     "alone is not a required invocation. A missing HTTP endpoint can be a required Start input "
     "provided at runtime; do not treat a missing URL alone as an unsupported capability or "
     "invent an API contract. Each resource is "
     "shown with its readiness: 'ready' or 'missing_config'. A missing_config Tool is installed "
     "and can cover a draft step with delayed credential setup; credentials must be configured "
     "or selected before testing or publishing. Setup is not a missing capability. "
-    "Name in ONE plain sentence any step no listed resource can perform, and say what "
-    "capability is missing -- never which product to install. Reply with ONLY JSON: "
+    "Name in ONE plain sentence any step not covered by a native building block or a confirmed selected binding, "
+    "and say which coverage remains unconfirmed; absence from selected candidates is not proof of an unavailable "
+    "workspace capability. Never name a product to install. Reply with ONLY JSON: "
     '{"gap": "<sentence, or empty string when the plan is covered>"}.'
 )
 
@@ -619,10 +627,11 @@ def assess_capability_gap(
     goal_text: str = "",
     requirements: dict[str, Any] | None = None,
 ) -> str:
-    """One sentence naming what the workspace cannot do, or "".
+    """One sentence naming an uncovered draft capability or named requirement.
 
-    Grounded only in what is installed -- there is no marketplace lookup, so
-    this says a capability is missing, never which plugin would supply it. A
+    Native build vocabulary is separate from the selected external resources;
+    neither grants runtime admission. There is no marketplace lookup, so this
+    says a capability is missing, never which plugin would supply it. A
     ``missing_config`` Tool has an installed action schema and can cover a draft
     step; its credentials require later setup before testing or publishing. A model we cannot
     reach reports no gap: inventing one would block a build that might be
@@ -634,7 +643,16 @@ def assess_capability_gap(
     try:
         data = llm.invoke_json(
             model,
-            system=_GAP_SYSTEM + llm.json_language_instruction("the gap sentence"),
+            system=(
+                _GAP_SYSTEM
+                + "\n\n# Native workflow build vocabulary\n\n"
+                + _DIFY_NODE_VOCABULARY
+                + "\n\n"
+                + native_constant_output_system_rules()
+                + "\n\n"
+                + native_build_capability_system_rules()
+                + llm.json_language_instruction("the gap sentence")
+            ),
             user=(
                 f"{_cognition_source(goal_text, requirements)}\n\n"
                 f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
