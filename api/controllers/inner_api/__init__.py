@@ -10,6 +10,15 @@ api = ExternalApi(
     version="1.0",
     title="Inner API",
     description="Internal APIs for enterprise features, billing, knowledge retrieval, and plugin communication",
+    authorizations={
+        "InnerApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Inner-Api-Key",
+            "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        }
+    },
+    security="InnerApiKey",
 )
 
 # Create namespace
