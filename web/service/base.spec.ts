@@ -153,6 +153,53 @@ describe('handleStream', () => {
       expect(onCompleted).toHaveBeenCalled()
     })
 
+    it('should decode uppercase unicode escapes in a message answer', async () => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+
+      const escapedMessage = {
+        event: 'message',
+        // JSON.parse leaves a literal `\uXXXX` sequence intact, so the stream
+        // boundary has to decode it — and `\u4F60` is as valid as `\u4f60`.
+        answer: '\\u4F60\\u597D',
+        conversation_id: 'conv-123',
+        task_id: 'task-456',
+        id: 'msg-789',
+      }
+
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(escapedMessage)}\n`),
+          })
+          .mockResolvedValueOnce({
+            done: true,
+            value: undefined,
+          }),
+      }
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+
+      handleStream(mockResponse, onData, onCompleted)
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(onData).toHaveBeenCalledWith('你好', true, {
+        event: 'message',
+        conversationId: 'conv-123',
+        taskId: 'task-456',
+        messageId: 'msg-789',
+      })
+      expect(onCompleted).toHaveBeenCalled()
+    })
+
     it('should handle error status 400 correctly', async () => {
       const onData = vi.fn()
       const onCompleted = vi.fn()
