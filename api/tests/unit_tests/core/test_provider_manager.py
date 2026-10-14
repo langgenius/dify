@@ -16,6 +16,7 @@ from core.entities.provider_entities import (
     ModelSettings,
     ProviderQuotaType,
 )
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
@@ -510,6 +511,84 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, provider_db: Sessi
     assert result[0].model_type == ModelType.LLM
     assert result[0].enabled is True
     assert len(result[0].load_balancing_configs) == 0
+
+
+def test__to_model_settings_skips_lb_config_with_malformed_credentials(mock_provider_entity, provider_db: Session):
+    ps = ProviderModelSetting(
+        tenant_id="tenant_id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="llm",
+        enabled=True,
+        load_balancing_enabled=True,
+    )
+    ps.id = "id"
+    load_balancing_model_configs = [
+        LoadBalancingModelConfig(
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="llm",
+            name="__inherit__",
+            encrypted_config=None,
+            enabled=True,
+        ),
+        LoadBalancingModelConfig(
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="llm",
+            name="malformed",
+            encrypted_config="{not-json",
+            enabled=True,
+        ),
+        LoadBalancingModelConfig(
+            tenant_id="tenant_id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="llm",
+            name="first",
+            encrypted_config='{"openai_api_key": "fake_key"}',
+            enabled=True,
+        ),
+    ]
+    for index, config in enumerate(load_balancing_model_configs, start=1):
+        config.id = f"id{index}"
+    provider_model_settings, load_balancing_model_configs = _persist_model_configuration(
+        provider_db, ps, load_balancing_model_configs
+    )
+    provider_manager = _build_provider_manager()
+
+    with (
+        patch("core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value=None),
+        patch("core.helper.model_provider_cache.ProviderCredentialsCache.set") as cache_set,
+        patch.object(provider_manager, "_get_decoding_context", return_value=None),
+    ):
+        result = provider_manager._to_model_settings(
+            provider_entity=mock_provider_entity,
+            provider_model_settings=provider_model_settings,
+            load_balancing_model_configs=load_balancing_model_configs,
+        )
+
+    assert len(result) == 1
+    assert [config.name for config in result[0].load_balancing_configs] == ["__inherit__", "first"]
+    cache_set.assert_called_once_with(credentials={"openai_api_key": "fake_key"})
+
+
+def test_get_and_decrypt_credentials_returns_empty_dict_for_malformed_config():
+    provider_manager = _build_provider_manager()
+
+    with patch("core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value=None):
+        credentials = provider_manager._get_and_decrypt_credentials(
+            tenant_id="tenant_id",
+            record_id="record_id",
+            encrypted_config="{not-json",
+            secret_variables=["openai_api_key"],
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+            is_provider=True,
+        )
+
+    assert credentials == {}
 
 
 def test_get_default_model_uses_first_available_active_model(provider_db: Session):

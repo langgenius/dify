@@ -24,10 +24,12 @@ from models.dataset import (
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
 from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
+from services.errors.document import DocumentIndexingError
 from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
+from services.knowledge.documents.application import DocumentInvalidActionError
 from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
@@ -375,3 +377,24 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert related["total"] == 1
     assert related["data"][0]["id"] == "app"
     assert related["data"][0]["mode"] == "chat"
+
+
+@pytest.mark.usefixtures("operations")
+@pytest.mark.parametrize(
+    "error",
+    [ValueError("Invalid action"), DocumentIndexingError("Document is being indexed")],
+    ids=["value-error", "document-indexing-error"],
+)
+def test_change_status_reports_rejected_status_updates_as_invalid_actions(
+    sqlite_session_factory: sessionmaker[Session], error: ValueError
+) -> None:
+    with (
+        patch(
+            "services.knowledge.documents.adapters.DocumentService.batch_update_document_status",
+            side_effect=error,
+        ),
+        pytest.raises(DocumentInvalidActionError, match=str(error)) as error_info,
+    ):
+        SQLAlchemyDocumentOperations(session_factory=sqlite_session_factory).change_status(CONTEXT, REF, [], "enable")
+
+    assert error_info.value.__cause__ is error
