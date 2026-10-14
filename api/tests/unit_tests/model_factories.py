@@ -16,10 +16,13 @@ from models.account import Account, AccountStatus, Tenant, TenantAccountRole, Te
 from models.dataset import Dataset, Document
 from models.enums import (
     AppStatus,
+    ConversationStatus,
     CreatorUserRole,
     DataSourceType,
     DocumentCreatedFrom,
     EndUserType,
+    InvokeFrom,
+    MessageStatus,
     PermissionEnum,
 )
 from models.model import (
@@ -342,11 +345,11 @@ def make_conversation(
     mode: AppMode = AppMode.CHAT,
     name: str = "Conversation",
     inputs: Mapping[str, object] | None = None,
-    status: str | None = None,
+    status: ConversationStatus | str | None = None,
     from_source: ConversationFromSource | None = None,
     from_account_id: str | None = None,
     from_end_user_id: str | None = None,
-    invoke_from: str | None = None,
+    invoke_from: InvokeFrom | str | None = None,
     introduction: str | None = None,
     system_instruction: str | None = None,
     system_instruction_tokens: int | None = None,
@@ -357,26 +360,38 @@ def make_conversation(
     agent_workspace_binding_id: str | None = None,
 ) -> Conversation:
     """Build a transient ``Conversation``; unset keywords leave their column unset."""
-    values: dict[str, object] = {"app_id": app_id, "mode": mode, "name": name}
-    optional: dict[str, object | None] = {
-        "id": conversation_id,
-        "_inputs": inputs,
-        "status": status,
-        "from_source": from_source,
-        "from_account_id": from_account_id,
-        "from_end_user_id": from_end_user_id,
-        "invoke_from": invoke_from,
-        "introduction": introduction,
-        "system_instruction": system_instruction,
-        "system_instruction_tokens": system_instruction_tokens,
-        "override_model_configs": override_model_configs,
-        "summary": summary,
-        "dialogue_count": dialogue_count,
-        "is_deleted": is_deleted,
-        "agent_workspace_binding_id": agent_workspace_binding_id,
-    }
-    values.update({key: value for key, value in optional.items() if value is not None})
-    return Conversation(**values)
+    result = Conversation(app_id=app_id, mode=mode, name=name)
+    if conversation_id is not None:
+        result.id = conversation_id
+    if inputs is not None:
+        result.inputs = inputs
+    if status is not None:
+        result.status = ConversationStatus(status)
+    if from_source is not None:
+        result.from_source = from_source
+    if from_account_id is not None:
+        result.from_account_id = from_account_id
+    if from_end_user_id is not None:
+        result.from_end_user_id = from_end_user_id
+    if invoke_from is not None:
+        result.invoke_from = InvokeFrom(invoke_from)
+    if introduction is not None:
+        result.introduction = introduction
+    if system_instruction is not None:
+        result.system_instruction = system_instruction
+    if system_instruction_tokens is not None:
+        result.system_instruction_tokens = system_instruction_tokens
+    if override_model_configs is not None:
+        result.override_model_configs = override_model_configs
+    if summary is not None:
+        result.summary = summary
+    if dialogue_count is not None:
+        result.dialogue_count = dialogue_count
+    if is_deleted is not None:
+        result.is_deleted = is_deleted
+    if agent_workspace_binding_id is not None:
+        result.agent_workspace_binding_id = agent_workspace_binding_id
+    return result
 
 
 def make_message(
@@ -388,7 +403,7 @@ def make_message(
     query: str | None = None,
     message: object | None = None,
     answer: str | None = None,
-    status: str | None = None,
+    status: MessageStatus | str | None = None,
     message_unit_price: Decimal | None = None,
     answer_unit_price: Decimal | None = None,
     total_price: Decimal | None = None,
@@ -396,7 +411,7 @@ def make_message(
     from_source: ConversationFromSource | None = None,
     from_account_id: str | None = None,
     from_end_user_id: str | None = None,
-    invoke_from: str | None = None,
+    invoke_from: InvokeFrom | str | None = None,
     message_tokens: int | None = None,
     answer_tokens: int | None = None,
     provider_response_latency: float | None = None,
@@ -405,31 +420,47 @@ def make_message(
     updated_at: datetime | None = None,
 ) -> Message:
     """Build a transient ``Message``; unset keywords leave their column unset."""
-    values: dict[str, object] = {}
-    optional: dict[str, object | None] = {
-        "id": message_id,
-        "app_id": app_id,
-        "conversation_id": conversation_id,
-        "_inputs": inputs,
-        "query": query,
-        "message": message,
-        "answer": answer,
-        "status": status,
-        "message_unit_price": message_unit_price,
-        "answer_unit_price": answer_unit_price,
-        "total_price": total_price,
-        "currency": currency,
-        "from_source": from_source,
-        "from_account_id": from_account_id,
-        "from_end_user_id": from_end_user_id,
-        "invoke_from": invoke_from,
-        "message_tokens": message_tokens,
-        "answer_tokens": answer_tokens,
-        "provider_response_latency": provider_response_latency,
-        "workflow_run_id": workflow_run_id,
-    }
-    values.update({key: value for key, value in optional.items() if value is not None})
-    result = Message(**values)
+    result = Message()
+    if message_id is not None:
+        result.id = message_id
+    if app_id is not None:
+        result.app_id = app_id
+    if conversation_id is not None:
+        result.conversation_id = conversation_id
+    if inputs is not None:
+        result.inputs = inputs
+    if query is not None:
+        result.query = query
+    if message is not None:
+        result.message = message
+    if answer is not None:
+        result.answer = answer
+    if status is not None:
+        result.status = MessageStatus(status)
+    if message_unit_price is not None:
+        result.message_unit_price = message_unit_price
+    if answer_unit_price is not None:
+        result.answer_unit_price = answer_unit_price
+    if total_price is not None:
+        result.total_price = total_price
+    if currency is not None:
+        result.currency = currency
+    if from_source is not None:
+        result.from_source = from_source
+    if from_account_id is not None:
+        result.from_account_id = from_account_id
+    if from_end_user_id is not None:
+        result.from_end_user_id = from_end_user_id
+    if invoke_from is not None:
+        result.invoke_from = InvokeFrom(invoke_from)
+    if message_tokens is not None:
+        result.message_tokens = message_tokens
+    if answer_tokens is not None:
+        result.answer_tokens = answer_tokens
+    if provider_response_latency is not None:
+        result.provider_response_latency = provider_response_latency
+    if workflow_run_id is not None:
+        result.workflow_run_id = workflow_run_id
     if created_at is not None:
         result.created_at = created_at
     if updated_at is not None:
