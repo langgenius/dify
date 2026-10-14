@@ -35,6 +35,14 @@ def _obj(value: object) -> Json:
     return cast(Json, value)
 
 
+def _at(value: object, *keys: str) -> Json:
+    """Walk nested JSON objects by key; each step is cast because the spec is untyped JSON."""
+    node = _obj(value)
+    for key in keys:
+        node = _obj(node[key])
+    return node
+
+
 def _load_generate_swagger_specs_module() -> ModuleType:
     api_dir = Path(__file__).resolve().parents[4]
     script_path = api_dir / "dev" / "generate_swagger_specs.py"
@@ -68,11 +76,11 @@ def _enterprise_operations(spec: Json) -> Iterator[tuple[str, str, Json, Json]]:
 
 
 def _operation(spec: Json, path: str, method: str) -> Json:
-    return _obj(_obj(_obj(spec["paths"])[path])[method])
+    return _at(spec, "paths", path, method)
 
 
 def _schema(spec: Json, name: str) -> Json:
-    return _obj(_obj(_obj(spec["components"])["schemas"])[name])
+    return _at(spec, "components", "schemas", name)
 
 
 def _refs(value: object) -> Iterator[str]:
@@ -98,7 +106,7 @@ def test_enterprise_operations_declare_typed_request_bodies(inner_spec: Json) ->
 
     for path, method, _, operation in operations:
         if method in WRITE_METHODS:
-            media = _obj(_obj(_obj(operation["requestBody"])["content"])["application/json"])
+            media = _at(operation, "requestBody", "content", "application/json")
             assert "schema" in media, f"{method} {path} request body has no schema"
         if method == "get":
             assert "requestBody" not in operation, f"GET {path} must not declare a request body"
@@ -142,7 +150,7 @@ def test_enterprise_path_placeholders_have_required_path_parameters(inner_spec: 
 
 
 def test_enterprise_schema_references_resolve(inner_spec: Json) -> None:
-    schemas = _obj(_obj(inner_spec["components"])["schemas"])
+    schemas = _at(inner_spec, "components", "schemas")
     for _, _, _, operation in _enterprise_operations(inner_spec):
         for ref in _refs(operation):
             assert ref.removeprefix("#/components/schemas/") in schemas, ref
@@ -156,16 +164,14 @@ def test_enterprise_operation_ids_are_unchanged(inner_spec: Json) -> None:
 
 
 def test_enterprise_mail_documents_simple_message_response(inner_spec: Json) -> None:
-    media = _obj(_obj(_operation(inner_spec, "/enterprise/mail", "post")["responses"])["200"])
+    media = _at(_operation(inner_spec, "/enterprise/mail", "post"), "responses", "200", "content", "application/json")
 
-    assert _obj(_obj(media["content"])["application/json"])["schema"] == {
-        "$ref": "#/components/schemas/SimpleMessageResponse"
-    }
+    assert media["schema"] == {"$ref": "#/components/schemas/SimpleMessageResponse"}
 
 
 def test_ownerless_workspace_custom_config_is_object(inner_spec: Json) -> None:
     schema = _schema(inner_spec, "WorkspaceOwnerlessTenantResponse")
-    custom_config = _obj(_obj(schema["properties"])["custom_config"])
+    custom_config = _at(schema, "properties", "custom_config")
 
     assert custom_config["type"] == "object"
     assert custom_config["additionalProperties"] is True
@@ -179,7 +185,7 @@ def test_owner_workspace_variant_excludes_custom_config_and_public_key(inner_spe
 
 
 def test_runtime_credential_values_accept_arbitrary_fields(inner_spec: Json) -> None:
-    values = _obj(_obj(_schema(inner_spec, "InnerRuntimeCredentialResponse")["properties"])["values"])
+    values = _at(_schema(inner_spec, "InnerRuntimeCredentialResponse"), "properties", "values")
 
     assert values["type"] == "object"
     assert values["additionalProperties"] is True
@@ -190,7 +196,7 @@ def test_import_response_excludes_app_created(inner_spec: Json) -> None:
 
 
 def test_dsl_export_documents_yaml_data_string(inner_spec: Json) -> None:
-    assert _obj(_obj(_schema(inner_spec, "AppExportResponse")["properties"])["data"])["type"] == "string"
+    assert _at(_schema(inner_spec, "AppExportResponse"), "properties", "data")["type"] == "string"
 
 
 def test_ownerless_create_sample_validates_custom_config_object(inner_spec: Json) -> None:
@@ -232,7 +238,7 @@ FILE_GRANT_BUSINESS_COMPONENTS = {
 
 
 def _response_schema(operation: Json, code: str) -> Json:
-    return _obj(_obj(_obj(_obj(operation["responses"])[code])["content"])["application/json"])["schema"]
+    return _at(operation, "responses", code, "content", "application/json", "schema")
 
 
 def _alternatives(schema: Json) -> list[Json]:
@@ -240,7 +246,7 @@ def _alternatives(schema: Json) -> list[Json]:
 
 
 def _operations_by_id(spec: Json) -> dict[str, Json]:
-    return {operation["operationId"]: _obj(operation) for _, _, _, operation in _enterprise_operations(spec)}
+    return {str(operation["operationId"]): operation for _, _, _, operation in _enterprise_operations(spec)}
 
 
 def test_enterprise_operations_document_default_error_response(inner_spec: Json) -> None:
@@ -278,15 +284,15 @@ def test_file_grants_document_business_error_components(inner_spec: Json) -> Non
     operation = _operations_by_id(inner_spec)["enterprise_mint_file_grant"]
     for code, expected in FILE_GRANT_BUSINESS_COMPONENTS.items():
         refs = {
-            item["$ref"].rsplit("/", 1)[-1]
+            str(item["$ref"]).rsplit("/", 1)[-1]
             for item in _alternatives(_response_schema(operation, code))
             if "$ref" in item
         }
         assert expected <= refs, (code, refs)
         for name in expected:
             error_body = cast(list[object], _schema(inner_spec, name)["allOf"])[1]
-            assert _obj(_obj(_obj(error_body)["properties"])["status"])["const"] == int(code), name
+            assert _at(error_body, "properties", "status")["const"] == int(code), name
 
 
 def test_inner_api_error_response_component_is_gone(inner_spec: Json) -> None:
-    assert "InnerApiErrorResponse" not in inner_spec["components"]["schemas"]
+    assert "InnerApiErrorResponse" not in _at(inner_spec, "components", "schemas")
