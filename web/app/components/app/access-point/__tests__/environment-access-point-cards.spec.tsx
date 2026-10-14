@@ -60,22 +60,25 @@ vi.mock('../deployed-environment-access-points/environment-access-control', () =
   },
 }))
 
-vi.mock('@/app/components/app/access-point/shared/api-secret-key-button', () => ({
-  ApiSecretKeyButton: (props: {
-    apiKeyCount?: number
-    appId: string
-    canManage: boolean
-    disabled?: boolean
-    environmentId?: string
-  }) => {
-    mocks.apiKeyButtonProps(props)
-    return (
-      <button type="button" disabled={!props.canManage || props.disabled}>
-        environment-api-keys
-      </button>
-    )
-  },
-}))
+vi.mock(
+  '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button',
+  () => ({
+    EnvironmentApiKeyButton: (props: {
+      apiKeyCount?: number
+      appId: string
+      canManage: boolean
+      disabled?: boolean
+      environmentId?: string
+    }) => {
+      mocks.apiKeyButtonProps(props)
+      return (
+        <button type="button" disabled={!props.canManage || props.disabled}>
+          environment-api-keys
+        </button>
+      )
+    },
+  }),
+)
 
 vi.mock('@/app/notifications', () => ({
   toast: {

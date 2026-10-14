@@ -1,14 +1,24 @@
 import type { ApiKeyList as AppApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ApiKeyList as DatasetApiKeyList } from '@dify/contracts/api/console/datasets/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { ComponentProps } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { ApiSecretKeyButton } from '@/app/components/app/access-point/built-in-access-points/api-secret-key-button'
+import { EnvironmentApiKeyButton } from '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button'
+import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
-import { ApiKeyDialog } from '../api-key-dialog'
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['dataset.api_key.manage'],
+  }))
+})
+vi.mock('@/hooks/use-api-access-url', () => ({
+  useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
+}))
 
 const apiMocks = vi.hoisted(() => ({
   appKeys: [] as AppApiKeyList['data'],
@@ -99,40 +109,35 @@ const environmentScope = {
   environmentId: 'staging',
 } as const
 
-function DialogHarness(props: Omit<ComponentProps<typeof ApiKeyDialog>, 'open'>) {
-  const [open, setOpen] = useState(true)
-  return (
-    <ApiKeyDialog
-      {...props}
-      open={open}
-      onOpenChange={(nextOpen, details) => {
-        setOpen(nextOpen)
-        props.onOpenChange?.(nextOpen, details)
-      }}
-    />
-  )
-}
-
 async function renderDialog(
-  scope: ComponentProps<typeof ApiKeyDialog>['scope'],
-  overrides: { canManage?: boolean } = {},
+  scope: typeof appScope | typeof datasetScope | typeof environmentScope,
 ) {
   const queryClient = createTestQueryClient()
-  const onOpenChange = vi.fn()
-  const result = render(
+  const user = userEvent.setup()
+  render(
     <QueryClientProvider client={queryClient}>
-      <DialogHarness
-        canManage={overrides.canManage ?? true}
-        scope={scope}
-        onOpenChange={onOpenChange}
-      />
+      {scope.type === 'dataset' ? (
+        <ServiceApi apiBaseUrl="https://api.example.com" />
+      ) : scope.type === 'environment' ? (
+        <EnvironmentApiKeyButton
+          appId={scope.appId}
+          environmentId={scope.environmentId}
+          canManage
+        />
+      ) : (
+        <ApiSecretKeyButton appId={scope.appId} canManage />
+      )}
     </QueryClientProvider>,
   )
-  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+  if (scope.type === 'dataset') {
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
+  } else {
+    await user.click(screen.getByRole('button', { name: /^appApi.apiKeyModal.apiSecretKey/ }))
+  }
   await screen.findByRole('button', {
     name: /appApi.apiKeyModal.createNewSecretKey|common.operation.retry/,
   })
-  return { ...result, onOpenChange }
 }
 
 async function confirmKeyDeletion(accessibleName: string) {
@@ -142,7 +147,7 @@ async function confirmKeyDeletion(accessibleName: string) {
   await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 }
 
-describe('ApiKeyDialog', () => {
+describe('API key management', () => {
   beforeEach(() => {
     mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
     apiMocks.listApp.mockReset()
@@ -338,7 +343,7 @@ describe('ApiKeyDialog', () => {
         { id: 'first', token: 'app-first', type: 'app', created_at: 1 },
         { id: 'second', token: 'app-second', type: 'app', created_at: 1 },
       ]
-      const { onOpenChange } = await renderDialog(appScope)
+      await renderDialog(appScope)
       const firstTrigger = screen.getByRole('button', {
         name: 'common.operation.delete app-f...irst',
       })
@@ -354,7 +359,9 @@ describe('ApiKeyDialog', () => {
 
       await waitFor(() => expect(dialog).not.toBeInTheDocument())
       expect(firstTrigger).toHaveFocus()
-      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(
+        screen.getByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' }),
+      ).toBeInTheDocument()
       expect(apiMocks.deleteApp).not.toHaveBeenCalled()
 
       await confirmKeyDeletion('common.operation.delete app-s...cond')
@@ -405,7 +412,8 @@ describe('ApiKeyDialog', () => {
         rejectDeletion = reject
       })
       apiMocks[remove].mockReturnValueOnce(request)
-      const { onOpenChange } = await renderDialog(scope)
+      await renderDialog(scope)
+      const manager = screen.getByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
       await confirmKeyDeletion('common.operation.delete key-s...cret')
       const dialog = screen.getByRole('alertdialog')
       const confirm = screen.getByRole('button', { name: 'common.operation.delete' })
@@ -416,7 +424,7 @@ describe('ApiKeyDialog', () => {
       await user.click(cancel)
       await user.keyboard('{Escape}')
       expect(dialog).toBeInTheDocument()
-      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(manager).toBeInTheDocument()
       expect(apiMocks[remove]).toHaveBeenCalledExactlyOnceWith({ params })
 
       await act(async () => rejectDeletion(new Error('Deletion failed')))
@@ -442,28 +450,17 @@ describe('ApiKeyDialog', () => {
           screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
         ).toHaveFocus(),
       )
-      expect(onOpenChange).not.toHaveBeenCalled()
       expect(apiMocks[remove]).toHaveBeenCalledTimes(2)
     },
   )
 
-  it('disables creation when the caller cannot manage keys', async () => {
-    await renderDialog(datasetScope, { canManage: false })
-
-    expect(
-      screen.getByRole('button', {
-        name: 'appApi.apiKeyModal.createNewSecretKey',
-      }),
-    ).toBeDisabled()
-  })
-
   it('exposes an accessible close button', async () => {
-    const { onOpenChange } = await renderDialog(datasetScope)
+    await renderDialog(datasetScope)
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
   it.each([
     { scope: appScope, keys: 'appKeys' },
@@ -509,11 +506,13 @@ describe('ApiKeyDialog', () => {
         resolve = done
       }),
     )
-    const { onOpenChange } = await renderDialog(appScope)
+    await renderDialog(appScope)
     await user.click(screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }))
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' }),
+    ).toBeInTheDocument()
     await act(async () => resolve({ token: 'created-secret' }))
     expect(
       await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
