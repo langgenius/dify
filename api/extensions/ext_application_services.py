@@ -167,6 +167,7 @@ from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
 from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
     sign_workflow_run_archive_download_url,
 )
@@ -678,6 +679,7 @@ def build_application_services(
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
             dispatcher=dispatch_workflow_run_archive_download_task,
             sign_download_url=sign_workflow_run_archive_download_url,
+            deletion_dispatcher=dispatch_workflow_run_archive_deletion_task,
         ),
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
