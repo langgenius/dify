@@ -8,7 +8,7 @@ from contextlib import contextmanager
 
 import pytest
 from flask_restx import Namespace, abort
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from dev import lint_error_responses as lint
 from libs.exception import BaseHTTPException
@@ -65,6 +65,13 @@ def _handler() -> None:
     abort(409)
 
 
+def _validating_handler() -> None:
+    try:
+        _Payload.model_validate({})
+    except ValidationError:
+        raise _MissingError()
+
+
 @pytest.fixture
 def analyzer(monkeypatch: pytest.MonkeyPatch) -> lint.RaiseAnalyzer:
     monkeypatch.setattr(lint, "RECURSE_PREFIXES", (__name__,))
@@ -83,6 +90,11 @@ def test_infers_raises_translations_aborts_and_validation(analyzer: lint.RaiseAn
 
 def test_skips_translations_of_exceptions_nothing_raises(analyzer: lint.RaiseAnalyzer) -> None:
     assert _GuardError not in analyzer.raises_of_function(_handler, None, 0)
+
+
+def test_keeps_translations_of_library_exceptions(analyzer: lint.RaiseAnalyzer) -> None:
+    # pydantic raises ValidationError from code the analyzer never indexes, so the handler is live.
+    assert _MissingError in analyzer.raises_of_function(_validating_handler, None, 0)
 
 
 def test_prunes_branches_decided_by_constant_factory_arguments(analyzer: lint.RaiseAnalyzer) -> None:

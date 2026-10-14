@@ -305,12 +305,14 @@ register_response_schema_models(
 @console_ns.route("/datasets/process-rule")
 class GetProcessRuleApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.doc("get_process_rule")
     @console_ns.doc(description="Get dataset document processing rules")
@@ -338,12 +340,14 @@ class GetProcessRuleApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents")
 class DatasetDocumentListApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.doc("get_dataset_documents")
     @console_ns.doc(description="Get documents in a dataset")
@@ -384,12 +388,14 @@ class DatasetDocumentListApi(Resource):
         return dump_response(DocumentWithSegmentsListResponse, result)
 
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            InvalidActionError,
+        ),
     )
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(200, "Documents created successfully", console_ns.models[DatasetAndDocumentResponse.__name__])
@@ -409,12 +415,14 @@ class DatasetDocumentListApi(Resource):
         return dump_response(DatasetAndDocumentResponse, result)
 
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            InvalidActionError,
+        ),
     )
     @console_ns.response(204, "Documents deleted successfully")
     @console_account_admission(
@@ -435,12 +443,14 @@ class DatasetDocumentListApi(Resource):
 @console_ns.route("/datasets/init")
 class DatasetInitApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            InvalidActionError,
+        ),
     )
     @console_ns.doc("init_dataset")
     @console_ns.doc(description="Initialize dataset with documents")
@@ -559,12 +569,14 @@ class DocumentBatchIndexingEstimateApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status")
 class DocumentBatchIndexingStatusApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.response(
         200, "Indexing status retrieved successfully", console_ns.models[DocumentStatusListResponse.__name__]
@@ -583,12 +595,14 @@ class DocumentBatchIndexingStatusApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
 class DocumentIndexingStatusApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.doc("get_document_indexing_status")
     @console_ns.doc(description="Get document indexing status")
@@ -613,13 +627,15 @@ class DocumentApi(Resource):
     METADATA_CHOICES = {"all", "only", "without"}
 
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
         InvalidMetadataError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        ),
     )
     @console_ns.doc("get_document")
     @console_ns.doc(description="Get document details")
@@ -657,12 +673,14 @@ class DocumentApi(Resource):
         ), 200
 
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            InvalidActionError,
+        ),
     )
     @console_ns.response(204, "Document deleted successfully")
     @console_account_admission(
@@ -685,12 +703,14 @@ class DocumentDownloadApi(Resource):
     """Return a signed download URL for a dataset document's original uploaded file."""
 
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            InvalidActionError,
+        ),
     )
     @console_ns.doc("get_dataset_document_download_url")
     @console_ns.doc(description="Get a signed download URL for a dataset document's original uploaded file")
@@ -712,12 +732,14 @@ class DocumentBatchDownloadZipApi(Resource):
     """Download multiple uploaded-file documents as a single ZIP (avoids browser multi-download limits)."""
 
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            InvalidActionError,
+        ),
     )
     @console_ns.doc("download_dataset_documents_as_zip")
     @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
@@ -754,12 +776,14 @@ class DocumentBatchDownloadZipApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")
 class DocumentProcessingApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
         InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        ),
     )
     @console_ns.doc("update_document_processing")
     @console_ns.doc(description="Update document processing status (pause/resume)")
@@ -792,12 +816,14 @@ class DocumentProcessingApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
 class DocumentMetadataApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.doc("update_document_metadata")
     @console_ns.doc(description="Update document metadata")
@@ -839,12 +865,12 @@ class DocumentMetadataApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
         InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(ArchivedDocumentImmutableError,),
     )
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
@@ -875,10 +901,10 @@ class DocumentPauseApi(Resource):
     @error_responses(
         ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(InvalidActionError,),
     )
     @console_ns.response(204, "Document paused successfully")
     @console_account_admission(
@@ -901,10 +927,10 @@ class DocumentRecoverApi(Resource):
     @error_responses(
         ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(InvalidActionError,),
     )
     @console_ns.response(204, "Document resumed successfully")
     @console_account_admission(
@@ -925,12 +951,14 @@ class DocumentRecoverApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/retry")
 class DocumentRetryApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            InvalidActionError,
+        ),
     )
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     @console_ns.response(204, "Documents retry started successfully")
@@ -953,12 +981,14 @@ class DocumentRetryApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
 class DocumentRenameApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.response(200, "Document renamed successfully", console_ns.models[DocumentResponse.__name__])
     @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
@@ -983,10 +1013,10 @@ class WebsiteDocumentSyncApi(Resource):
     @error_responses(
         ArchivedDocumentImmutableError,
         DocumentIndexingError,
-        InvalidActionError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
+        unreachable=(InvalidActionError,),
     )
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
@@ -1006,12 +1036,14 @@ class WebsiteDocumentSyncApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
 class DocumentPipelineExecutionLogApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.response(
         200,
@@ -1032,12 +1064,14 @@ class DocumentPipelineExecutionLogApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/generate-summary")
 class DocumentGenerateSummaryApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.doc("generate_summary_for_documents")
     @console_ns.doc(description="Generate summary index for documents")
@@ -1078,12 +1112,14 @@ class DocumentGenerateSummaryApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/summary-status")
 class DocumentSummaryStatusApi(Resource):
     @error_responses(
-        ArchivedDocumentImmutableError,
-        DocumentIndexingError,
-        InvalidActionError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
+        unreachable=(
+            ArchivedDocumentImmutableError,
+            DocumentIndexingError,
+            InvalidActionError,
+            ProviderModelCurrentlyNotSupportError,
+            ProviderNotInitializeError,
+            ProviderQuotaExceededError,
+        )
     )
     @console_ns.doc("get_document_summary_status")
     @console_ns.doc(description="Get summary index generation status for a document")

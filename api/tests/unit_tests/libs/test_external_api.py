@@ -461,6 +461,10 @@ def test_surface_specific_handlers_are_implicit_codes():
     # Handler-emitted codes stay generic: the contract check admits them, the document does not list them.
     assert _error_options(document, "409") == ["DocumentedConflictError"]
     assert api.implicit_error_codes(409) == {"conflict", "surface_conflict"}
+    # The cached answer is a copy, and a later handler declaration refreshes it.
+    api.implicit_error_codes(409).add("mutated")
+    api.document_error_handler(_SurfaceOnlyError, status=409, code="surface_conflict_v2")
+    assert api.implicit_error_codes(409) == {"conflict", "surface_conflict_v2"}
 
 
 def test_error_components_are_shared_across_operations_and_carry_details():
@@ -516,6 +520,49 @@ def test_error_responses_union_explicit_schema_with_documented_codes():
             }
         }
     }
+
+
+def test_documented_status_keeps_its_other_media_types():
+    content = {
+        "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+        "application/json": {"schema": {"$ref": "#/components/schemas/Custom"}, "example": {"error": "x"}},
+    }
+    document: dict[str, object] = {
+        "paths": {
+            "/items": {
+                "get": {
+                    "responses": {"409": {"description": "Conflict", "content": content}},
+                    "x-dify-error-codes": _documented_names_for(_ConflictError),
+                }
+            }
+        }
+    }
+
+    attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
+
+    assert document["paths"]["/items"]["get"]["responses"]["409"]["content"] == {  # type: ignore[index]
+        "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+        "application/json": {
+            "example": {"error": "x"},
+            "schema": {
+                "anyOf": [
+                    {"$ref": "#/components/schemas/Custom"},
+                    {"$ref": "#/components/schemas/DocumentedConflictError"},
+                    _ERROR_BODY_REF,
+                ]
+            },
+        },
+    }
+
+
+def test_details_model_definitions_must_not_collide_with_different_schemas():
+    document: dict[str, object] = {
+        "components": {"schemas": {"_ConflictDetails": {"type": "object", "properties": {"other": {}}}}},
+        "paths": {"/items": {"get": {"responses": {}, "x-dify-error-codes": _documented_names_for(_ConflictError)}}},
+    }
+
+    with pytest.raises(ValueError, match="_ConflictDetails .*collides with a different component"):
+        attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
 
 
 def test_error_component_names_must_not_collide():

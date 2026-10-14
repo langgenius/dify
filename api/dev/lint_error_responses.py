@@ -31,8 +31,12 @@ factory returns, ``abort(<status>)``, Pydantic validation, and calls that
 resolve to backend functions (``controllers``, ``libs``, ``services``, ``core``,
 ``machinery``) up to ``--max-depth``. Calls through instances, signals and other dynamic
 dispatch are invisible, so a missing report is reliable but the absence of one is not
-proof. A translation inside ``except X`` is skipped when nothing in the backend raises
-``X``. Record any other unreachable branch with ``@error_responses(..., unreachable=(X,))``.
+proof. A translation inside ``except X`` is skipped when ``X`` is defined in the backend and
+nothing in the backend raises it; builtin and library exceptions (pydantic's
+``ValidationError``) are always treated as reachable. Inference also cannot tell which branch
+of a shared translator a given operation reaches, so ``--fix`` declares the translator's whole
+union: review each suggestion against what the called service raises and record the branches
+that cannot occur with ``@error_responses(..., unreachable=(X,))``.
 ``/openapi/v1`` and resources built by factories are not linted.
 """
 
@@ -272,7 +276,7 @@ class RaiseAnalyzer:
                     self._unresolved_raise_names.add(target.id)
 
     def _handler_is_dead(self, handler: ast.ExceptHandler, env: Mapping[str, object], owner: type | None) -> bool:
-        """An ``except X`` translating a backend exception that nothing raises."""
+        """An ``except X`` translating a backend-defined exception that nothing in the backend raises."""
         exprs = _handler_types(handler)
         if not exprs:
             return False
@@ -281,7 +285,9 @@ class RaiseAnalyzer:
             if not _is_exception_class(caught):
                 return False
             assert isinstance(caught, type)
-            if issubclass(caught, HTTPException) or caught.__module__ == "builtins":
+            # Only an exception this codebase defines can be shown unraised: builtins and library
+            # errors (pydantic's ``ValidationError``, Werkzeug's) are raised by code that is not indexed.
+            if issubclass(caught, HTTPException) or not (caught.__module__ or "").startswith(RECURSE_PREFIXES):
                 return False
             subclasses = _all_subclasses(caught)
             if subclasses & self._raised_classes or any(

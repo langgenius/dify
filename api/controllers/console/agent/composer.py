@@ -33,6 +33,7 @@ from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
+    AgentNameConflictError,
     AgentNotFoundError,
     AgentSoulLockedError,
     AgentVersionConflictError,
@@ -97,6 +98,7 @@ class WorkflowAgentComposerApi(Resource):
         )
 
     @error_responses(
+        AgentNameConflictError,
         AgentNotFoundError,
         AgentSoulLockedError,
         AgentVersionNotFoundError,
@@ -260,6 +262,7 @@ class WorkflowAgentComposerImpactApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class WorkflowAgentComposerSaveToRosterApi(Resource):
     @error_responses(
+        AgentNameConflictError,
         AgentNotFoundError,
         AgentSoulLockedError,
         AgentVersionNotFoundError,
@@ -347,6 +350,7 @@ class SnippetAgentComposerApi(Resource):
         )
 
     @error_responses(
+        AgentNameConflictError,
         AgentNotFoundError,
         AgentSoulLockedError,
         AgentVersionNotFoundError,
@@ -505,6 +509,7 @@ class SnippetAgentComposerImpactApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class SnippetAgentComposerSaveToRosterApi(Resource):
     @error_responses(
+        AgentNameConflictError,
         AgentNotFoundError,
         AgentSoulLockedError,
         AgentVersionNotFoundError,

@@ -11,7 +11,7 @@ from functools import wraps
 from typing import Any, Concatenate, Literal, NoReturn
 from uuid import UUID
 
-from flask import Response, make_response, request, send_file, url_for
+from flask import Response, after_this_request, make_response, request, send_file, url_for
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -278,6 +278,12 @@ def _with_trial_config[T, Q: TrialAgentConfigQuery, **P](
 ) -> Callable[Concatenate[T, Q, AppPreviewRef, P], Response]:
     @wraps(view)
     def decorated(self: T, query: Q, app: AppPreviewRef, /, *args: P.args, **kwargs: P.kwargs) -> Response:
+        @after_this_request
+        def _no_store(response: Response) -> Response:
+            # Published template assets and their errors are never cached by the browser.
+            response.headers["Cache-Control"] = "no-store"
+            return response
+
         try:
             state = AgentAppComposerResponse.model_validate(
                 application_services().app_previews.get_agent_composer(app=app)
@@ -294,14 +300,12 @@ def _with_trial_config[T, Q: TrialAgentConfigQuery, **P](
                 version_id=snapshot.id,
                 version_kind=AgentConfigVersionKind.SNAPSHOT,
             )
-            response = make_response(view(self, target, query, *args, **kwargs))
+            return make_response(view(self, target, query, *args, **kwargs))
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
         except AgentConfigServiceError as exc:
-            error = _relayed_error(exc)
-            response = make_response(error.data, error.code)
-        response.headers["Cache-Control"] = "no-store"
-        return response
+            # Raised, not returned, so the surface's error handler builds the body.
+            raise _relayed_error(exc) from exc
 
     return document_errors(decorated, AppUnavailableError, RelayedHTTPError)
 

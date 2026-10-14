@@ -82,7 +82,10 @@ from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
     AgentAccessNotReadyError,
     AgentBuildSandboxNotFoundError,
+    AgentHomeSnapshotCreateFailedError,
+    AgentHomeSnapshotTooLargeError,
     AgentModelNotConfiguredError,
+    AgentNameConflictError,
     AgentNotFoundError,
     AgentSoulLockedError,
     AgentVersionNotFoundError,
@@ -709,7 +712,7 @@ class AgentAppListApi(Resource):
             agent_permissions=permissions.agent,
         )
 
-    @error_responses(AgentNotFoundError)
+    @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(409, "Agent name already exists")
@@ -755,7 +758,7 @@ class AgentAppApi(Resource):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return _serialize_agent_app_detail(session, app_model, current_user=current_user, agent_id=str(agent_id))
 
-    @error_responses(AgentNotFoundError)
+    @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
@@ -977,6 +980,8 @@ class AgentBuildDraftApi(Resource):
 class AgentBuildDraftApplyApi(Resource):
     @error_responses(
         AgentBuildSandboxNotFoundError,
+        AgentHomeSnapshotCreateFailedError,
+        AgentHomeSnapshotTooLargeError,
         AgentNotFoundError,
         AgentSoulLockedError,
         AgentVersionNotFoundError,

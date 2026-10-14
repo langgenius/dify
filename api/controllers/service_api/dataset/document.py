@@ -1259,6 +1259,7 @@ class DocumentDownloadApi(DatasetApiResource):
 class DocumentApi(DatasetApiResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
+    @error_responses(InvalidMetadataError)
     @service_api_ns.doc(
         summary="Get Document",
         description=(

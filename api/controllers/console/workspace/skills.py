@@ -455,7 +455,7 @@ class WorkspaceSkillApi(Resource):
         except SkillManagementServiceError as exc:
             raise _relayed_error(exc) from exc
 
-    @error_responses(RelayedHTTPError)
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
     @console_account_admission(
@@ -526,7 +526,7 @@ class WorkspaceSkillExportApi(Resource):
 class WorkspaceSkillAssistMessageApi(Resource):
     """Stream read-only Skill Authoring suggestions from the default workspace model."""
 
-    @error_responses(RelayedHTTPError)
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillAssistMessagePayload.__name__])
     @console_ns.response(200, "Skill Authoring assistant event stream")
     @console_account_admission()
@@ -692,7 +692,7 @@ class WorkspaceSkillFileContentApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/publish")
 class WorkspaceSkillPublishApi(Resource):
-    @error_responses(RelayedHTTPError)
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillPublishPayload.__name__])
     @console_ns.response(200, "Skill published", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission(
@@ -718,7 +718,7 @@ class WorkspaceSkillPublishApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/restore")
 class WorkspaceSkillRestoreApi(Resource):
-    @error_responses(RelayedHTTPError)
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillRestorePayload.__name__])
     @console_ns.response(200, "Skill version restored to draft", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
@@ -791,7 +791,7 @@ class WorkspaceSkillVersionApi(Resource):
         except SkillManagementServiceError as exc:
             raise _relayed_error(exc) from exc
 
-    @error_responses(RelayedHTTPError)
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillVersionUpdatePayload.__name__])
     @console_ns.response(200, "Skill version updated", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission()
@@ -841,7 +841,7 @@ class WorkspaceAgentSkillBindingsApi(Resource):
         )
         return dump_response(AgentSkillBindingsResponse, result)
 
-    @error_responses(RelayedHTTPError)
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[AgentSkillBindingsPayload.__name__])
     @console_ns.response(200, "Agent Skill bindings replaced", console_ns.models[AgentSkillBindingsResponse.__name__])
     @console_account_admission()

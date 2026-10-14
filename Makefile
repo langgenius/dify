@@ -91,7 +91,7 @@ api-contract-lint:
 	@echo "✅ Response contract lint complete"
 
 api-error-lint:
-	@echo "🔎 Suggesting documented API errors from what handlers statically raise (advisory; the error contract tests are the gate)..."
+	@echo "🔎 Checking documented API errors against what handlers statically raise..."
 	@uv run --project api --dev python api/dev/lint_error_responses.py $(ERROR_LINT_ARGS)
 	@echo "✅ API error lint complete"
 
@@ -218,7 +218,7 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
-	@echo "  make api-error-lint  - Suggest documented business errors from what views raise (ERROR_LINT_ARGS='--fix' applies them)"
+	@echo "  make api-error-lint  - Check documented business errors against what views raise (ERROR_LINT_ARGS='--fix' adds missing ones)"
 	@echo "  make type-check     - Run type checks (pyrefly)"
 	@echo "  make type-check-core - Run core type checks (pyrefly)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"

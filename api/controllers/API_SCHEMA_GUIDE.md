@@ -250,17 +250,21 @@ Listing a Werkzeug exception, a handled exception, or a `BaseHTTPException` subc
 `@error_responses(..., unreachable=(SomeError,))`; it stays undocumented. View decorators must keep `__apidoc__` from
 the view they wrap (`functools.wraps` does, unless `updated=()`; then add `"__apidoc__"` to `assigned`).
 
-The gate is runtime, not static: controller unit tests check every 4xx/5xx JSON response an `ExternalApi` serves
-against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be the
-standard error body, unless the status declares its own model, and its `code` must be one the operation documents for
-that status or one of the surface's generic codes (`ExternalApi.implicit_error_codes`). A new business error without
-a declaration fails there on every path a test exercises.
+Two gates keep declarations honest. `make api-error-lint` (`api/dev/lint_error_responses.py`, run in CI) infers
+what each Console, Web and Service API operation statically raises and fails on a business error nothing documents;
+`ERROR_LINT_ARGS=--fix` adds the missing entries, and `--fix --prune` also removes entries it cannot infer, so review
+a prune before keeping it. Inference cannot see instance calls, signals or other dynamic dispatch, so hand-declared
+entries it reports as stale may be right. It also cannot tell which branch of a shared translator (`_raise_*_error`
+helpers that dispatch on `isinstance`) a given operation reaches, so `--fix` suggests the translator's whole union:
+check each suggestion against what the called service raises and record the branches that cannot occur with
+`unreachable=(...)`, as `controllers/console/auth/login.py` does. `--report-unproduced` lists declared error statuses
+nothing inferred produces.
 
-`make api-error-lint` (`api/dev/lint_error_responses.py`) is advisory: it infers what each Console, Web and Service
-API operation statically raises and suggests `@error_responses` entries; `ERROR_LINT_ARGS=--fix` applies them, and
-`--fix --prune` also removes entries it cannot infer, so review a prune before keeping it. CI runs it without failing
-the build. Inference cannot see instance calls, signals or other dynamic dispatch, so hand-declared entries it reports
-as stale may be right. `--report-unproduced` lists declared error statuses nothing inferred produces.
+Controller unit tests cover the paths inference cannot follow: every 4xx/5xx JSON response an `ExternalApi` serves
+is checked against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be
+the standard error body, unless the status declares its own model, and its `code` must be one the operation documents
+for that status or one of the surface's generic codes (`ExternalApi.implicit_error_codes`). A new business error
+without a declaration fails there on every path a test exercises.
 
 Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
 `DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a

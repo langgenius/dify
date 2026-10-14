@@ -2,6 +2,7 @@ import pkgutil
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from functools import cache
 from typing import Any, ClassVar, Protocol, TypedDict, override
 
 from flask import Blueprint, Flask, current_app, got_request_exception, request
@@ -78,11 +79,13 @@ def _snake_case(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
-def _framework_error_codes() -> dict[int, set[str]]:
+@cache
+def _framework_error_codes() -> Mapping[int, frozenset[str]]:
     """The codes Werkzeug's own HTTP exceptions produce, by status.
 
     The HTTP handler names the code after the raised class, so subclasses such as
     ``BadRequestKeyError`` (a missing form or file field) answer with their own code.
+    Werkzeug defines all of them at import, so the walk happens once.
     """
     by_status: dict[int, set[str]] = {}
     pending: list[type[HTTPException]] = [HTTPException]
@@ -91,7 +94,7 @@ def _framework_error_codes() -> dict[int, set[str]]:
         pending.extend(exception.__subclasses__())
         if exception.__module__.startswith("werkzeug.") and isinstance(exception.code, int) and exception.code >= 400:
             by_status.setdefault(exception.code, set()).add(_snake_case(exception.__name__))
-    return by_status
+    return {status: frozenset(codes) for status, codes in by_status.items()}
 
 
 def _error_spec(
@@ -268,21 +271,34 @@ class _ErrorComponent:
 
 
 def _explicit_json_schema(response: Mapping[str, Any]) -> object | None:
-    """The body schema a response already declares, if any."""
+    """The JSON body schema a response already declares, if any; other media types are not errors."""
     content = response.get("content")
-    if not isinstance(content, dict):
-        return None
-    for media in content.values():
-        if isinstance(media, dict) and "schema" in media:
-            return media["schema"]
-    return None
+    media = content.get("application/json") if isinstance(content, dict) else None
+    return media.get("schema") if isinstance(media, dict) else None
+
+
+def _comparable_schema(schema: object) -> object:
+    """``schema`` with order-insensitive parts (``required``) normalized, for equality checks."""
+    if isinstance(schema, dict):
+        return {
+            key: sorted(value) if key == "required" and isinstance(value, list) else _comparable_schema(value)
+            for key, value in schema.items()
+        }
+    if isinstance(schema, list):
+        return [_comparable_schema(item) for item in schema]
+    return schema
 
 
 def _add_model_schemas(schemas: dict[str, object], model: type[BaseModel]) -> None:
+    """Add ``model`` and its nested definitions; a name already documenting a different schema is an error."""
     schema = model.model_json_schema(ref_template=_ERROR_SCHEMA_REF_TEMPLATE, mode="serialization")
     definitions = schema.pop("$defs", {})
     for name, definition in {**definitions, model.__name__: schema}.items():
-        schemas.setdefault(name, definition)
+        existing = schemas.setdefault(name, definition)
+        if _comparable_schema(existing) != _comparable_schema(definition):
+            raise ValueError(
+                f"schema {name} (from {model.__name__}) collides with a different component of the same name"
+            )
 
 
 def attach_error_response_schema(
@@ -375,7 +391,13 @@ def attach_error_response_schema(
                 # Generic errors (validation, auth) answer this status as well, and ``default``
                 # does not apply to a status the operation declares, so the open body stays.
                 options.append(dict(ref))
-                response["content"] = {"application/json": {"schema": {"anyOf": options}}}
+                content = response.get("content")
+                if not isinstance(content, dict):
+                    content = response["content"] = {}
+                media = content.get("application/json")
+                # Other media types the status declares (a binary or text body) stay as they are.
+                json_media = media if isinstance(media, dict) else {}
+                content["application/json"] = {**json_media, "schema": {"anyOf": options}}
                 used = True
 
             responses.setdefault("default", {"description": "Error"})
@@ -565,6 +587,7 @@ class ExternalApi(Api):
         self._error_body_formatter = error_body_formatter
         self._handled_errors: dict[type[Exception], tuple[int, str]] = dict(_SHARED_HANDLED_ERRORS)
         self._generic_errors: list[type[Exception]] = []
+        self._implicit_codes: dict[int, frozenset[str]] = {}
         self._register_default_root = register_default_root
         install_swagger_compatibility()
         kwargs.setdefault("authorizations", self._authorizations)
@@ -594,6 +617,7 @@ class ExternalApi(Api):
     def document_error_handler(self, exception: type[Exception], *, status: int, code: str) -> None:
         """Record what a surface-specific handler for ``exception`` emits, for ``error_responses``."""
         self._handled_errors[exception] = (status, code)
+        self._implicit_codes.clear()
 
     def document_generic_errors(self, *exceptions: type[Exception]) -> None:
         """Declare business-shaped errors this surface's clients handle centrally.
@@ -613,6 +637,7 @@ class ExternalApi(Api):
             self.resolve_error(exception)
             if exception not in self._generic_errors:
                 self._generic_errors.append(exception)
+        self._implicit_codes.clear()
 
     def is_generic_error(self, exception: type[Exception]) -> bool:
         """Whether this surface documents ``exception`` as generic (see ``document_generic_errors``)."""
@@ -642,8 +667,12 @@ class ExternalApi(Api):
 
         The document covers them with each operation's open ``default`` error; checks that
         compare served error bodies with the document admit them beside the documented
-        business codes.
+        business codes. The result is cached per status until the surface declares another
+        handler or generic error, since checks ask for it on every error response.
         """
+        cached = self._implicit_codes.get(status)
+        if cached is not None:
+            return set(cached)
         codes = set(_framework_error_codes().get(status, ()))
         codes.update(code for handled_status, code in self._handled_errors.values() if handled_status == status)
         for exception in self._generic_errors:
@@ -653,6 +682,7 @@ class ExternalApi(Api):
         if status == 500:
             # Unhandled exceptions reach the catch-all handler.
             codes.add("unknown")
+        self._implicit_codes[status] = frozenset(codes)
         return codes
 
     @override
