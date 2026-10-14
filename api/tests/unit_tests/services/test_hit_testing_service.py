@@ -1,6 +1,6 @@
 """Unit tests for the database-independent hit-testing helpers."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import select
@@ -39,6 +39,29 @@ class TestHitTestingServiceArguments:
             HitTestingService.hit_testing_args_check({"attachment_ids": "not a list"})
 
 
+class _FakeSegment:
+    """Minimal stand-in for a retrieval segment carrying a document id."""
+
+    def __init__(self, document_id: str) -> None:
+        self.document_id = document_id
+
+
+class _FakeRetrievalRecord:
+    """Minimal stand-in for a RetrievalSegments record.
+
+    Implements just the two members ``_dump_retrieval_records`` reads:
+    ``model_dump()`` and ``segment.document_id``.
+    """
+
+    def __init__(self, document_id: str, content: str, score: float) -> None:
+        self.segment = _FakeSegment(document_id)
+        self._content = content
+        self._score = score
+
+    def model_dump(self) -> dict:
+        return {"content": self._content, "score": self._score}
+
+
 class TestHitTestingServiceRetrieveTransaction:
     """Regression tests for https://github.com/langgenius/dify/issues/38998."""
 
@@ -56,9 +79,7 @@ class TestHitTestingServiceRetrieveTransaction:
         account.id = "user-789"
         query = "test query"
 
-        record = Mock()
-        record.model_dump.return_value = {"content": "Doc 1", "score": 0.95}
-        record.segment = Mock(document_id="doc-1")
+        record = _FakeRetrievalRecord(document_id="doc-1", content="Doc 1", score=0.95)
 
         with (
             patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
