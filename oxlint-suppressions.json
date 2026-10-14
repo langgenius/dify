@@ -4132,7 +4132,7 @@
   },
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
     "@tanstack/query/prefer-query-options": {
-      "count": 4
+      "count": 2
     }
   },
   "web/features/agent-v2/agent-detail/logs/__tests__/page.spec.tsx": {
