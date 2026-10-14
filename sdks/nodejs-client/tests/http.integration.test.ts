@@ -105,6 +105,31 @@ describe('HttpClient integration', () => {
     expect(requests.at(-1)?.body.toString('utf8')).toBe(JSON.stringify({ user: 'u' }))
   })
 
+  it.each(['Content-Type', 'content-type', 'CoNtEnT-TyPe'])(
+    'overrides the JSON content type with %s',
+    async (headerName) => {
+      await client.request({
+        method: 'POST',
+        path: '/json',
+        data: { user: 'u' },
+        headers: { [headerName]: 'application/custom+json' },
+      })
+
+      expect(requests.at(-1)?.headers['content-type']).toBe('application/custom+json')
+      expect(requests.at(-1)?.body.toString('utf8')).toBe(JSON.stringify({ user: 'u' }))
+    },
+  )
+
+  it('overrides authorization without combining differently cased defaults', async () => {
+    await client.request({
+      method: 'GET',
+      path: '/json',
+      headers: { authorization: 'Bearer override-key' },
+    })
+
+    expect(requests.at(-1)?.headers.authorization).toBe('Bearer override-key')
+  })
+
   it('supports streaming request bodies with duplex fetch', async () => {
     const response = await client.request<{ received: string }>({
       method: 'POST',
