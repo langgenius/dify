@@ -195,6 +195,8 @@ class ConversationItem:
 
 @dataclass(kw_only=True)
 class Diagnosis:
+    # Bounded sanitized condition projection only; never raw native execution rows.
+    condition_evidence: dict[str, Any] | None = None
     culprit_node_id: str = ""
     root_cause: str = ""
     severity: str = ""

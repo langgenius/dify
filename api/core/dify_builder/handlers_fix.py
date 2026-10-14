@@ -977,9 +977,10 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     progress.activate("fix-inspect-workflow")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
-    outputs = env.dify.node_outputs(s.app_id, turn.actor, failed.dify_run_id)
+    from services.dify_builder.condition_evidence import diagnose_failure
+
     progress.activate("fix-diagnose-cause")
-    diagnosis = env.agent.diagnose(failed, graph, outputs)
+    diagnosis = diagnose_failure(env, s.app_id, turn.actor, failed, graph)
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
@@ -1050,7 +1051,16 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     progress.activate("fix-apply-repair")
     try:
         result = env.dify.apply_repair(
-            s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
+            s.app_id,
+            turn.actor,
+            fc.staged_repair,
+            on_canvas=env.emit_canvas,
+            expected_revision=fc.last_snapshot_hash,
+            failed_run_id=(
+                env.repo.get_run(fc.failed_run_id).dify_run_id
+                if fc.source != "checklist" and fc.failed_run_id
+                else None
+            ),
         )
     except DraftWouldNotStartError as exc:
         # The fix applied, but apply_repair's preflight found the result would

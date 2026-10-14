@@ -800,6 +800,8 @@ def vet_intents(
     graph: Graph,
     intents: list[MutationIntent],
     allowed_node_types: set[str] | None = None,
+    *,
+    evidence: dict[str, Any] | None = None,
 ) -> VettedIntents:
     """Put a proposed batch through the whole engine check, structure AND node
     data, before it can reach a human approval gate.
@@ -835,8 +837,11 @@ def vet_intents(
     # They are keyed on proposed native effects, never the model's verdict.
     # Keep policy refusals as whole-batch verdicts: Edit/Fix/Build must explain
     # them through their corrective path, never apply a silently filtered subset.
+    from services.dify_builder.condition_evidence import repair_evidence_rejections
+
     would_run_wrong = (
-        proposal_policy_rejections(graph, dry_run.applicable)
+        repair_evidence_rejections(graph, dry_run.graph, dry_run.changed_nodes, evidence)
+        + proposal_policy_rejections(graph, dry_run.applicable)
         + _unfed_aggregator_reasons(graph, dry_run.graph)
         + _dropped_identity_reasons(graph, dry_run.graph, dry_run.applicable)
     )
