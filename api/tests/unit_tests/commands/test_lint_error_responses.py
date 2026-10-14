@@ -72,6 +72,34 @@ def _validating_handler() -> None:
         raise _MissingError()
 
 
+def _delegating_handler() -> None:
+    _service()
+
+
+def _swallowing_handler() -> None:
+    try:
+        _service()
+        raise _MissingError()
+    except (_ServiceError, _MissingError):
+        pass
+
+
+def _passthrough_handler() -> None:
+    try:
+        raise _MissingError()
+    except (BaseHTTPException, ValueError):
+        raise
+    except Exception as error:
+        raise _GuardError() from error
+
+
+def _named_reraise_handler() -> None:
+    try:
+        raise _MissingError()
+    except BaseHTTPException as error:
+        raise error
+
+
 def _missing_factory() -> BaseHTTPException:
     return _MissingError()
 
@@ -98,8 +126,21 @@ def test_infers_raises_translations_aborts_and_validation(analyzer: lint.RaiseAn
     raised = analyzer.raises_of_function(_handler, None, 0)
 
     assert {_MissingError, Conflict, ValueError} <= raised
-    # The callee's own raise is followed too.
-    assert _ServiceError in raised
+    # The callee's raise is translated by the handler's ``except``, so only the translation escapes.
+    assert _ServiceError not in raised
+    assert _ServiceError in analyzer.raises_of_function(_delegating_handler, None, 0)
+
+
+def test_caught_exceptions_do_not_escape(analyzer: lint.RaiseAnalyzer) -> None:
+    assert analyzer.raises_of_function(_swallowing_handler, None, 0) == set()
+
+
+def test_bare_and_named_reraises_escape_what_the_handler_caught(analyzer: lint.RaiseAnalyzer) -> None:
+    passthrough = analyzer.raises_of_function(_passthrough_handler, None, 0)
+    assert _MissingError in passthrough
+    # Every handler body is analysed, since an exception this analysis cannot see may reach it.
+    assert _GuardError in passthrough
+    assert analyzer.raises_of_function(_named_reraise_handler, None, 0) == {_MissingError}
 
 
 def test_skips_translations_of_exceptions_nothing_raises(analyzer: lint.RaiseAnalyzer) -> None:

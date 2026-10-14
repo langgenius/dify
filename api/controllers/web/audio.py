@@ -29,7 +29,6 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, EndUser
-from services.agent.errors import AgentVersionNotFoundError
 from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
@@ -65,7 +64,6 @@ logger = logging.getLogger(__name__)
 @web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
     @error_responses(
-        AgentVersionNotFoundError,
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
@@ -136,14 +134,10 @@ class AudioApi(WebApiResource):
 class TextApi(WebApiResource):
     @error_responses(
         AppUnavailableError,
-        AudioTooLargeError,
         CompletionRequestError,
-        NoAudioUploadedError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
-        ProviderNotSupportSpeechToTextError,
         ProviderQuotaExceededError,
-        UnsupportedAudioTypeError,
     )
     @web_ns.expect(web_ns.models[TextToAudioPayload.__name__])
     @web_ns.doc("Text to Audio")
@@ -185,14 +179,6 @@ class TextApi(WebApiResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

@@ -24,6 +24,7 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
+    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
@@ -59,6 +60,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -318,14 +320,8 @@ def _text_to_speech(*, payload: TextToSpeechPayload, app_model: App, session: Se
     except services.errors.app_model_config.AppModelConfigBrokenError:
         logger.exception("App model config broken.")
         raise AppUnavailableError()
-    except NoAudioUploadedServiceError:
-        raise NoAudioUploadedError()
-    except AudioTooLargeServiceError as e:
-        raise AudioTooLargeError(str(e))
-    except UnsupportedAudioTypeServiceError:
-        raise UnsupportedAudioTypeError()
-    except ProviderNotSupportSpeechToTextServiceError:
-        raise ProviderNotSupportSpeechToTextError()
+    except ProviderNotSupportTextToSpeechServiceError:
+        raise ProviderNotSupportTextToSpeechError()
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     except QuotaExceededError:
@@ -347,14 +343,11 @@ def _text_to_speech(*, payload: TextToSpeechPayload, app_model: App, session: Se
 class ChatMessageTextApi(Resource):
     @error_responses(
         AppUnavailableError,
-        AudioTooLargeError,
         CompletionRequestError,
-        NoAudioUploadedError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
-        ProviderNotSupportSpeechToTextError,
+        ProviderNotSupportTextToSpeechError,
         ProviderQuotaExceededError,
-        UnsupportedAudioTypeError,
     )
     @console_ns.doc("chat_message_text_to_speech")
     @console_ns.doc(description="Convert text to speech for chat messages")
@@ -383,14 +376,11 @@ class AgentChatMessageTextApi(Resource):
     @error_responses(
         AgentNotFoundError,
         AppUnavailableError,
-        AudioTooLargeError,
         CompletionRequestError,
-        NoAudioUploadedError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
-        ProviderNotSupportSpeechToTextError,
+        ProviderNotSupportTextToSpeechError,
         ProviderQuotaExceededError,
-        UnsupportedAudioTypeError,
     )
     @console_ns.doc("agent_chat_message_text_to_speech")
     @console_ns.doc(description="Preview an Agent TTS voice or read an Agent chat message")
@@ -445,14 +435,6 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
         return dump_response(TextToSpeechVoiceListResponse, response)
     except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
         raise AppUnavailableError("Text to audio voices language parameter loss.")
-    except NoAudioUploadedServiceError:
-        raise NoAudioUploadedError()
-    except AudioTooLargeServiceError as e:
-        raise AudioTooLargeError(str(e))
-    except UnsupportedAudioTypeServiceError:
-        raise UnsupportedAudioTypeError()
-    except ProviderNotSupportSpeechToTextServiceError:
-        raise ProviderNotSupportSpeechToTextError()
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     except QuotaExceededError:
@@ -471,14 +453,11 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
     @error_responses(
-        AudioTooLargeError,
+        AppUnavailableError,
         CompletionRequestError,
-        NoAudioUploadedError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
-        ProviderNotSupportSpeechToTextError,
         ProviderQuotaExceededError,
-        UnsupportedAudioTypeError,
     )
     @console_ns.doc("get_text_to_speech_voices")
     @console_ns.doc(description="Get available TTS voices for a specific language")
@@ -503,14 +482,11 @@ class TextModesApi(Resource):
 class AgentTextToSpeechVoicesApi(Resource):
     @error_responses(
         AgentNotFoundError,
-        AudioTooLargeError,
+        AppUnavailableError,
         CompletionRequestError,
-        NoAudioUploadedError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
-        ProviderNotSupportSpeechToTextError,
         ProviderQuotaExceededError,
-        UnsupportedAudioTypeError,
     )
     @console_ns.doc("get_agent_text_to_speech_voices")
     @console_ns.doc(description="Get available TTS voices for an Agent and language")

@@ -26,7 +26,9 @@ Inference is static and conservative toward over-reporting: it follows direct ra
 re-raises in ``except`` blocks, ``raise factory(...)`` through the exception classes the
 factory returns, ``abort(<status>)``, Pydantic validation, and calls that
 resolve to backend functions (``controllers``, ``libs``, ``services``, ``core``,
-``machinery``) up to ``--max-depth``. Calls through instances, ``application_services()``,
+``machinery``) up to ``--max-depth``. Only exceptions that escape count: one raised inside
+a ``try`` and caught by a matching ``except`` escapes only if that handler re-raises it
+(a bare ``raise`` re-raises exactly what the handler caught). Calls through instances, ``application_services()``,
 signals and other dynamic dispatch are invisible, so a missing report is reliable but the
 absence of one is not proof, and a declaration the lint cannot infer is left alone: it is
 neither reported nor removed unless ``--fix --prune`` is asked to. A translation inside
@@ -168,20 +170,6 @@ def _eval_test(test: ast.expr, bindings: Mapping[str, object]) -> bool | None:
         if isinstance(test.ops[0], ast.IsNot):
             return value is not None
     return None
-
-
-def _walk_pruned(nodes: Iterable[ast.AST], bindings: Mapping[str, object]) -> Iterator[ast.AST]:
-    """``ast.walk`` over ``nodes`` that follows only the taken branch of decided ``if``s."""
-    stack = list(nodes)
-    while stack:
-        node = stack.pop()
-        yield node
-        if isinstance(node, ast.If) and bindings:
-            taken = _eval_test(node.test, bindings)
-            if taken is not None:
-                stack.extend(node.body if taken else node.orelse)
-                continue
-        stack.extend(ast.iter_child_nodes(node))
 
 
 def constant_bindings(fn: Callable[..., object], call: ast.Call | None) -> dict[str, object]:
@@ -341,52 +329,95 @@ class RaiseAnalyzer:
             return self._memo[key]
         self._memo[key] = set()  # breaks recursion cycles
 
-        parents: dict[ast.AST, ast.AST] = {}
-        for statement in node.body:
-            for parent in ast.walk(statement):
-                for child in ast.iter_child_nodes(parent):
-                    parents[child] = parent
-
-        def enclosing_handler(child: ast.AST, name: str | None) -> ast.ExceptHandler | None:
-            current = parents.get(child)
-            while current is not None:
-                if isinstance(current, ast.ExceptHandler) and (name is None or current.name == name):
-                    return current
-                current = parents.get(current)
-            return None
-
         instances = local_instances(node, env, owner)
         env = {**env, **{name: classes[0] for name, classes in instances.items() if len(classes) == 1}}
         branching = {name: classes for name, classes in instances.items() if len(classes) > 1}
-        found: set[type] = set()
-        for child in _walk_pruned(node.body, bindings):
-            if isinstance(child, ast.Raise):
-                handler = enclosing_handler(child, None)
-                if handler is not None and self._handler_is_dead(handler, env, owner):
-                    continue
-                found |= self._raised_by(child, env, owner, enclosing_handler)
-            elif isinstance(child, ast.Call):
-                found |= self._raised_by_call(child, env, owner, depth, branching)
+        found = self._escaping(node.body, env, owner, depth, bindings, branching, ())
 
         self._memo[key] = found
         return found
+
+    def _escaping(
+        self,
+        nodes: Iterable[ast.AST],
+        env: Mapping[str, object],
+        owner: type | None,
+        depth: int,
+        bindings: Mapping[str, object],
+        branching: Mapping[str, tuple[type, ...]],
+        handlers: tuple[tuple[ast.ExceptHandler, set[type]], ...],
+    ) -> set[type]:
+        """Exceptions that escape ``nodes``: raised in them, or by what they call, and not caught on the way out.
+
+        ``handlers`` are the enclosing ``except`` clauses with what each one caught, innermost last, so
+        a bare ``raise`` (or ``raise <handler name>``) re-raises exactly that. Decided ``if`` branches are
+        pruned; a ``try`` is analysed by ``_escaping_try``.
+        """
+        found: set[type] = set()
+        stack = list(nodes)
+        while stack:
+            child = stack.pop()
+            if isinstance(child, ast.If) and bindings:
+                taken = _eval_test(child.test, bindings)
+                if taken is not None:
+                    stack.extend(child.body if taken else child.orelse)
+                    continue
+            if isinstance(child, (ast.Try, ast.TryStar)):
+                found |= self._escaping_try(child, env, owner, depth, bindings, branching, handlers)
+                continue
+            if isinstance(child, ast.Raise):
+                found |= self._raised_by(child, env, owner, handlers)
+            elif isinstance(child, ast.Call):
+                found |= self._raised_by_call(child, env, owner, depth, branching)
+            stack.extend(ast.iter_child_nodes(child))
+        return found
+
+    def _escaping_try(
+        self,
+        node: ast.Try | ast.TryStar,
+        env: Mapping[str, object],
+        owner: type | None,
+        depth: int,
+        bindings: Mapping[str, object],
+        branching: Mapping[str, tuple[type, ...]],
+        handlers: tuple[tuple[ast.ExceptHandler, set[type]], ...],
+    ) -> set[type]:
+        """What escapes a ``try``: the body's exceptions no handler matches, plus what the handlers raise.
+
+        Handlers are matched in order by subclass, as Python does; a bare ``except`` or one naming
+        ``Exception``/``BaseException`` catches everything left. A handler whose exception nothing in the
+        backend raises is dead and its translations are skipped. Every other handler body is analysed,
+        since an exception this analysis cannot see may still reach it.
+        """
+        remaining = self._escaping(node.body, env, owner, depth, bindings, branching, handlers)
+        found = self._escaping(node.orelse, env, owner, depth, bindings, branching, handlers)
+        found |= self._escaping(node.finalbody, env, owner, depth, bindings, branching, handlers)
+        for handler in node.handlers:
+            types = [self.resolve(expr, env, owner) for expr in _handler_types(handler)]
+            if handler.type is None or any(t in (Exception, BaseException) for t in types):
+                caught = set(remaining)
+                remaining = set()
+            else:
+                matched = [t for t in types if _is_exception_class(t)]
+                caught = {raised for raised in remaining if any(issubclass(raised, t) for t in matched)}  # type: ignore[arg-type]
+                remaining -= caught
+            if self._handler_is_dead(handler, env, owner):
+                continue
+            found |= self._escaping(
+                handler.body, env, owner, depth, bindings, branching, (*handlers, (handler, caught))
+            )
+        return found | remaining
 
     def _raised_by(
         self,
         node: ast.Raise,
         env: Mapping[str, object],
         owner: type | None,
-        enclosing_handler: Callable[[ast.AST, str | None], ast.ExceptHandler | None],
+        handlers: tuple[tuple[ast.ExceptHandler, set[type]], ...],
     ) -> set[type]:
-        def caught_by(handler: ast.ExceptHandler | None) -> set[type]:
-            if handler is None:
-                return set()
-            types = {self.resolve(expr, env, owner) for expr in _handler_types(handler)}
-            # Re-raising a catch-all says nothing stable about what escapes.
-            return {t for t in types if _is_exception_class(t) and t not in (Exception, BaseException)}  # type: ignore[misc]
-
         if node.exc is None:
-            return caught_by(enclosing_handler(node, None))
+            # A bare re-raise escapes what the innermost handler caught.
+            return set(handlers[-1][1]) if handlers else set()
         target = node.exc.func if isinstance(node.exc, ast.Call) else node.exc
         obj = self.resolve(target, env, owner)
         if _is_exception_class(obj):
@@ -395,7 +426,10 @@ class RaiseAnalyzer:
         if factory is not None:
             return self._returned_exceptions(factory)
         if isinstance(target, ast.Name):
-            return caught_by(enclosing_handler(node, target.id))
+            # ``raise error`` re-raises what the handler that bound ``error`` caught.
+            for handler, caught in reversed(handlers):
+                if handler.name == target.id:
+                    return set(caught)
         return set()
 
     def _returned_exceptions(self, factory: FunctionType, visited: set[object] | None = None) -> set[type]:
