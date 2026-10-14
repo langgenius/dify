@@ -71,3 +71,19 @@ class VolcengineTosStorage(BaseStorage):
         if not self.bucket_name:
             return
         self.client.delete_object(bucket=self.bucket_name, key=filename)
+
+    @override
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        if not self.bucket_name:
+            raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
+        keys: list[str] = []
+        marker = ""
+        while True:
+            page = self.client.list_objects(bucket=self.bucket_name, prefix=path, marker=marker, max_keys=1000)
+            keys.extend(obj.key for obj in page.contents)
+            if not page.is_truncated:
+                break
+            if not page.next_marker or page.next_marker == marker:
+                raise RuntimeError("TOS object listing did not advance its pagination marker")
+            marker = page.next_marker
+        return self._filter_scan_keys(keys, files, directories)

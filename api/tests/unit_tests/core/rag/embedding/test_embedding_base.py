@@ -2,7 +2,7 @@
 
 import asyncio
 import inspect
-from typing import Any, override
+from typing import override
 
 import pytest
 
@@ -17,7 +17,7 @@ class ConcreteEmbeddings(Embeddings):
         return [[1.0] * 10 for _ in texts]
 
     @override
-    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
         return [[1.0] * 10 for _ in multimodel_documents]
 
     @override
@@ -25,7 +25,7 @@ class ConcreteEmbeddings(Embeddings):
         return [1.0] * 10
 
     @override
-    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
         return [1.0] * 10
 
 
@@ -37,7 +37,7 @@ class _SuperCallingEmbeddings(Embeddings):
         return super().embed_documents(texts)
 
     @override
-    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
         return super().embed_multimodal_documents(multimodel_documents)
 
     @override
@@ -45,7 +45,7 @@ class _SuperCallingEmbeddings(Embeddings):
         return super().embed_query(text)
 
     @override
-    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
         return super().embed_multimodal_query(multimodel_document)
 
 
@@ -119,7 +119,7 @@ class TestEmbeddingsBase:
     def test_concrete_implementation_embed_multimodal_documents(self) -> None:
         """Test concrete implementation of embed_multimodal_documents."""
         concrete = ConcreteEmbeddings()
-        docs: list[dict[str, Any]] = [{"file_id": "file1"}, {"file_id": "file2"}]
+        docs: list[dict[str, object]] = [{"file_id": "file1"}, {"file_id": "file2"}]
         result = concrete.embed_multimodal_documents(docs)
         assert len(result) == 2
 

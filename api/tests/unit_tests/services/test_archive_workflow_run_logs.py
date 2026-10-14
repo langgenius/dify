@@ -8,7 +8,7 @@ This module contains tests for:
 
 from collections.abc import Callable
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from enums import DeploymentEdition
 
@@ -16,8 +16,7 @@ from enums import DeploymentEdition
 class TestWorkflowRunArchiver:
     """Tests for the WorkflowRunArchiver class."""
 
-    @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.get_archive_storage", autospec=True)
-    def test_archiver_initialization(self, mock_get_storage: MagicMock, config_overrides: Callable[..., None]) -> None:
+    def test_archiver_initialization(self, config_overrides: Callable[..., None]) -> None:
         """Test archiver can be initialized with various options."""
         from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 

@@ -17,6 +17,12 @@ from controllers.console.error import NotInitValidateError, NotSetupError, Unaut
 from controllers.console.workspace.error import AccountNotInitializedError
 from libs.external_api import ExternalApi
 from machinery.errors import ActiveWorkspaceRequiredError
+from services.retention.workflow_run.archive_log_service import (
+    WorkflowRunArchiveDownloadNotReadyError,
+    WorkflowRunArchiveDownloadTaskNotFoundError,
+    WorkflowRunArchiveInvalidMonthError,
+    WorkflowRunArchiveNotFoundError,
+)
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
@@ -55,14 +61,55 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
     }, status.value
 
 
+@api.errorhandler(WorkflowRunArchiveInvalidMonthError)
+def _handle_workflow_run_archive_invalid_month_error(
+    error: WorkflowRunArchiveInvalidMonthError,
+) -> tuple[dict[str, str | int], int]:
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.BAD_REQUEST
+    return {"code": "bad_request", "message": str(error), "status": status.value}, status.value
+
+
+@api.errorhandler(WorkflowRunArchiveNotFoundError)
+@api.errorhandler(WorkflowRunArchiveDownloadTaskNotFoundError)
+def _handle_workflow_run_archive_not_found_error(
+    error: WorkflowRunArchiveNotFoundError | WorkflowRunArchiveDownloadTaskNotFoundError,
+) -> tuple[dict[str, str | int], int]:
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.NOT_FOUND
+    return {"code": "not_found", "message": str(error), "status": status.value}, status.value
+
+
+@api.errorhandler(WorkflowRunArchiveDownloadNotReadyError)
+def _handle_workflow_run_archive_download_not_ready_error(
+    error: WorkflowRunArchiveDownloadNotReadyError,
+) -> tuple[dict[str, str | int], int]:
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.CONFLICT
+    return {"code": "conflict", "message": str(error), "status": status.value}, status.value
+
+
 # Flask-RESTX dispatches in registration order; the shared Exception handler
-# must not shadow this Console-specific error mapping.
-cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(ActiveWorkspaceRequiredError, last=False)
+# must not shadow these Console-specific error mappings.
+for error_type in (
+    ActiveWorkspaceRequiredError,
+    WorkflowRunArchiveInvalidMonthError,
+    WorkflowRunArchiveNotFoundError,
+    WorkflowRunArchiveDownloadTaskNotFoundError,
+    WorkflowRunArchiveDownloadNotReadyError,
+):
+    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(error_type, last=False)
+# What those handlers emit, so the document resolves a declared error to its status and code and the
+# contract check admits the codes they serve.
 api.document_error_handler(
     ActiveWorkspaceRequiredError,
     status=HTTPStatus.INTERNAL_SERVER_ERROR,
     code=ActiveWorkspaceRequiredError.error_code,
 )
+api.document_error_handler(WorkflowRunArchiveInvalidMonthError, status=HTTPStatus.BAD_REQUEST, code="bad_request")
+api.document_error_handler(WorkflowRunArchiveNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
+api.document_error_handler(WorkflowRunArchiveDownloadTaskNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
+api.document_error_handler(WorkflowRunArchiveDownloadNotReadyError, status=HTTPStatus.CONFLICT, code="conflict")
 
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
