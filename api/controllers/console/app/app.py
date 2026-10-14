@@ -506,7 +506,6 @@ class AppCopyApi(AppResource):
 
 @console_ns.route("/apps/<uuid:app_id>/export")
 class AppExportApi(AppResource):
-    # Raised by the package exporter behind ``application_services()``; invisible to the error lint.
     @error_responses(RosterAgentPackageExportFailedError)
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")

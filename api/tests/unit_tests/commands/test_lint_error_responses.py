@@ -123,10 +123,10 @@ def test_prunes_branches_decided_by_constant_factory_arguments(analyzer: lint.Ra
     assert _GuardError in analyzer.raises_of_function(_guard, None, 1, lint.constant_bindings(_guard, call))
 
 
-def test_reads_declarations_with_unreachable_entries() -> None:
+def test_reads_declarations_and_names_what_it_cannot_resolve() -> None:
     source = textwrap.dedent(
         """
-        @error_responses(_MissingError, unreachable=(_GuardError,))
+        @error_responses(_MissingError, _GuardError, unknown.Error)
         def handler():
             pass
         """
@@ -136,9 +136,8 @@ def test_reads_declarations_with_unreachable_entries() -> None:
 
     declaration = lint.read_declaration(node, vars(sys.modules[__name__]))
 
-    assert declaration.exceptions == {_MissingError}
-    assert declaration.unreachable == {_GuardError}
-    assert declaration.unresolved == []
+    assert declaration.exceptions == {_MissingError, _GuardError}
+    assert declaration.unresolved == ["unknown.Error"]
 
 
 SOURCE = """from flask_restx import Resource
@@ -151,7 +150,7 @@ class ItemApi(Resource):
     def get(self):
         pass
 
-    @error_responses(OldError, unreachable=(DeadError,))
+    @error_responses(OldError)
     @console_ns.doc("delete_item")
     def delete(self):
         pass
@@ -164,11 +163,9 @@ class ItemApi(Resource):
 
 def test_apply_edits_inserts_rewrites_and_removes_decorators() -> None:
     edits = [
-        lint.DecoratorEdit(class_name="ItemApi", method="get", names=("NewError",), unreachable=()),
-        lint.DecoratorEdit(
-            class_name="ItemApi", method="delete", names=("NewError", "OldError"), unreachable=("DeadError",)
-        ),
-        lint.DecoratorEdit(class_name="ItemApi", method="put", names=(), unreachable=()),
+        lint.DecoratorEdit(class_name="ItemApi", method="get", names=("NewError",)),
+        lint.DecoratorEdit(class_name="ItemApi", method="delete", names=("NewError", "OldError")),
+        lint.DecoratorEdit(class_name="ItemApi", method="put", names=()),
     ]
 
     result = lint.apply_edits(
@@ -190,7 +187,7 @@ class ItemApi(Resource):
     def get(self):
         pass
 
-    @error_responses(NewError, OldError, unreachable=(DeadError,))
+    @error_responses(NewError, OldError)
     @console_ns.doc("delete_item")
     def delete(self):
         pass

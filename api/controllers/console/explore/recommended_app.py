@@ -156,7 +156,6 @@ class RecommendedAppApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/export")
 class RecommendedAgentExportApi(Resource):
-    # The package exporter raises this behind ``application_services()``; invisible to the error lint.
     @error_responses(RecommendedAppNotFoundError, RosterAgentPackageExportFailedError)
     @console_ns.doc(params=query_params_from_model(RecommendedAgentExportQuery))
     @console_ns.doc(

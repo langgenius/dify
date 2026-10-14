@@ -10,15 +10,12 @@ with what those declarations document at runtime:
   documents. ``--fix`` adds it to the handler's ``@error_responses``.
 - undocumented decorator (error): a view decorator raises a business error it does not
   document. Fix it in the decorator; the report names it.
-- stale (warning): ``@error_responses`` lists an error the handler is not inferred to
-  raise, or ``unreachable=`` lists one it no longer raises. ``--prune`` removes them.
 - placeholder code (error): the handler raises a ``BaseHTTPException`` subclass that never
   declares an ``error_code``, so nothing can document it. Declare one; ``--fix`` never
   adds such a class.
-- unproduced status (warning): a declared error status that no inferred raise, hand-built
-  body, generic handler or framework behavior produces. Declare the business error that
-  produces it (a hand declaration for an error raised through dynamic dispatch is right even
-  though it is reported stale) or drop the bare ``@ns.response(status)``.
+- unproduced status (warning): a declared error status that no declared or inferred error,
+  hand-built body, generic handler or framework behavior produces. Declare the business
+  error that produces it or drop the bare ``@ns.response(status)``.
 - non-standard error body (error): the handler, or a ``controllers`` helper it calls,
   returns ``(body, 4xx/5xx)`` whose body lacks ``code``/``message``/``status`` for a
   status with no ``@ns.response(status, ..., Model)``, or calls ``flask_restx.abort``
@@ -29,15 +26,16 @@ Inference is static and conservative toward over-reporting: it follows direct ra
 re-raises in ``except`` blocks, ``raise factory(...)`` through the exception classes the
 factory returns, ``abort(<status>)``, Pydantic validation, and calls that
 resolve to backend functions (``controllers``, ``libs``, ``services``, ``core``,
-``machinery``) up to ``--max-depth``. Calls through instances, signals and other dynamic
-dispatch are invisible, so a missing report is reliable but the absence of one is not
-proof. A translation inside ``except X`` is skipped when ``X`` is defined in the backend and
-nothing in the backend raises it; builtin and library exceptions (pydantic's
-``ValidationError``) are always treated as reachable. Inference also cannot tell which branch
-of a shared translator a given operation reaches, so ``--fix`` declares the translator's whole
-union: review each suggestion against what the called service raises and record the branches
-that cannot occur with ``@error_responses(..., unreachable=(X,))``.
-``/openapi/v1`` and resources built by factories are not linted.
+``machinery``) up to ``--max-depth``. Calls through instances, ``application_services()``,
+signals and other dynamic dispatch are invisible, so a missing report is reliable but the
+absence of one is not proof, and a declaration the lint cannot infer is left alone: it is
+neither reported nor removed unless ``--fix --prune`` is asked to. A translation inside
+``except X`` is skipped when ``X`` is defined in the backend and nothing in the backend
+raises it; builtin and library exceptions (pydantic's ``ValidationError``) are always treated
+as reachable. Inference also cannot tell which branch of a shared translator a given
+operation reaches, so ``--fix`` declares the translator's whole union: give each operation a
+translator that maps only what its service call raises, and the inferred set is the
+documented set. ``/openapi/v1`` and resources built by factories are not linted.
 """
 
 from __future__ import annotations
@@ -486,7 +484,6 @@ class Declaration:
 
     node: ast.Call | None
     exceptions: set[type] = field(default_factory=set)
-    unreachable: set[type] = field(default_factory=set)
     unresolved: list[str] = field(default_factory=list)
 
 
@@ -516,9 +513,6 @@ def read_declaration(node: FunctionNode, env: Mapping[str, object]) -> Declarati
                 declaration.unresolved.append(ast.unparse(expr))
 
     collect(call.args, declaration.exceptions)
-    for keyword in call.keywords:
-        if keyword.arg == "unreachable" and isinstance(keyword.value, (ast.Tuple, ast.List)):
-            collect(keyword.value.elts, declaration.unreachable)
     return declaration
 
 
@@ -654,11 +648,10 @@ class HandlerReport:
 
     @property
     def stale(self) -> set[type]:
-        return self.declaration.exceptions - self.inferred
+        """Declared but not inferred: a hand declaration behind dynamic dispatch, or a leftover.
 
-    @property
-    def stale_unreachable(self) -> set[type]:
-        return self.declaration.unreachable - self.inferred
+        Only ``--prune`` acts on it."""
+        return self.declaration.exceptions - self.inferred
 
 
 @dataclass
@@ -774,7 +767,7 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                     raised_by_handler = analyzer.raises_of_node(node, env, resource)
                     inferred = business(raised_by_handler, f"{owner.__name__}.{method}")
                     report.inferred |= inferred
-                    report.missing |= inferred - documented - report.declaration.unreachable
+                    report.missing |= inferred - documented
 
                     guards: list[tuple[str, FunctionType, set[type]]] = []
                     for decorator, bindings in analyzer.decorators_of(node, env, resource):
@@ -833,14 +826,10 @@ class DecoratorEdit:
     class_name: str
     method: str
     names: tuple[str, ...]
-    unreachable: tuple[str, ...]
 
 
 def _render(edit: DecoratorEdit) -> str:
-    args = list(edit.names)
-    if edit.unreachable:
-        args.append(f"unreachable=({', '.join(edit.unreachable)},)")
-    return f"@{DECORATOR_NAME}({', '.join(args)})"
+    return f"@{DECORATOR_NAME}({', '.join(edit.names)})"
 
 
 def apply_edits(source: str, edits: Sequence[DecoratorEdit], imports: Iterable[str]) -> str:
@@ -865,7 +854,7 @@ def apply_edits(source: str, edits: Sequence[DecoratorEdit], imports: Iterable[s
         if node is None:
             raise ValueError(f"{edit.class_name}.{edit.method} not found")
         call = _decorator_call(node)
-        text = "" if not edit.names and not edit.unreachable else f"{' ' * node.col_offset}{_render(edit)}\n"
+        text = "" if not edit.names else f"{' ' * node.col_offset}{_render(edit)}\n"
         if call is not None:
             replacements.append((call.lineno - 1, call.end_lineno or call.lineno, text))
         elif text:
@@ -911,8 +900,7 @@ def plan_fixes(
     unfixable: list[str] = []
     for report in result.handlers.values():
         declared = report.declaration.exceptions - (report.stale if prune else set())
-        unreachable = report.declaration.unreachable - (report.stale_unreachable if prune else set())
-        if declared | report.missing == report.declaration.exceptions and unreachable == report.declaration.unreachable:
+        if declared | report.missing == report.declaration.exceptions:
             continue
         if report.declaration.unresolved:
             unfixable.append(f"{report.location}: cannot resolve {', '.join(report.declaration.unresolved)}")
@@ -920,24 +908,16 @@ def plan_fixes(
         file_imports: set[str] = set()
         rendered: dict[type, str | None] = {
             exception: _name_in_module(exception, report.module, file_imports)
-            for exception in declared | report.missing | unreachable
+            for exception in declared | report.missing
         }
         shadowed = [exception.__name__ for exception, name in rendered.items() if name is None]
         if shadowed:
             unfixable.append(f"{report.location}: {', '.join(sorted(shadowed))} shadowed in the module")
             continue
         names = sorted((rendered[e] or "" for e in declared | report.missing), key=str.lower)
-        unreachable_names = sorted((rendered[e] or "" for e in unreachable), key=str.lower)
-        if (names or unreachable_names) and vars(report.module).get(DECORATOR_NAME) is not error_responses:
+        if names and vars(report.module).get(DECORATOR_NAME) is not error_responses:
             file_imports.add(f"from libs.external_api import {DECORATOR_NAME}")
-        edits[report.path].append(
-            DecoratorEdit(
-                class_name=report.class_name,
-                method=report.method,
-                names=tuple(names),
-                unreachable=tuple(unreachable_names),
-            )
-        )
+        edits[report.path].append(DecoratorEdit(class_name=report.class_name, method=report.method, names=tuple(names)))
         imports[report.path] |= file_imports
     return edits, imports, unfixable
 
@@ -976,7 +956,12 @@ def _names(exceptions: Iterable[type]) -> str:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--fix", action="store_true", help="add missing errors to handlers' @error_responses")
-    parser.add_argument("--prune", action="store_true", help="with --fix, also remove stale entries")
+    parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="with --fix, also remove entries the handler is not inferred to raise; review the result, since "
+        "inference cannot see dynamic dispatch and a hand declaration behind it is right",
+    )
     parser.add_argument("--max-depth", type=int, default=DEFAULT_MAX_DEPTH, help="call depth to follow")
     return parser.parse_args(argv)
 
@@ -1014,14 +999,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         if report.missing and key not in fixed:
             _emit(f"error: {report.location}: raises undocumented {_names(report.missing)} (run with --fix)")
             failures += 1
-        if args.fix and args.prune and key in fixed:
-            continue
-        if report.stale:
-            _emit(f"warning: {report.location}: documents {_names(report.stale)} it is not inferred to raise")
-        if report.stale_unreachable:
-            _emit(
-                f"warning: {report.location}: unreachable= lists {_names(report.stale_unreachable)} it no longer raises"
-            )
     for site, operations in sorted(result.body_violations.items(), key=lambda item: item[0].location):
         where = ", ".join(sorted(operations))
         if site.abort:

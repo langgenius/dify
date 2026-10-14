@@ -1,6 +1,6 @@
 import pkgutil
 import re
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from functools import cache
 from typing import Any, ClassVar, Protocol, TypedDict, override
@@ -210,10 +210,7 @@ class ViewDecorator(Protocol):
     def __call__[F: Callable[..., object]](self, view: F, /) -> F: ...
 
 
-def error_responses(
-    *exceptions: type[Exception],
-    unreachable: Sequence[type[Exception]] = (),
-) -> ViewDecorator:
+def error_responses(*exceptions: type[Exception]) -> ViewDecorator:
     """Document the business errors an operation's handler raises.
 
     List what the handler and its callees raise; decorators document their own errors
@@ -222,13 +219,12 @@ def error_responses(
     own handlers when it builds the document, and documents each code once as a shared
     ``{Code}Error`` component, so a business error must declare an ``error_code``.
 
-    ``unreachable`` names errors ``dev/lint_error_responses.py`` infers but that cannot
-    occur (for example an ``except`` for a service error the call never raises). They are
-    not documented; the entry records the decision so the linter does not re-add them.
+    ``dev/lint_error_responses.py`` reports what a handler statically raises but does not
+    list here. An error raised through dispatch it cannot follow (``application_services()``)
+    is listed by hand and left alone by the lint.
     """
 
     _documented_names(exceptions)
-    _documented_names(unreachable)
 
     def decorator[F: Callable[..., object]](view: F, /) -> F:
         return document_errors(view, *exceptions)

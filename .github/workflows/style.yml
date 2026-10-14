@@ -81,9 +81,9 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
-      # Static inference cannot see dynamic dispatch, so a branch it infers but that cannot occur is
-      # recorded with `@error_responses(..., unreachable=(...))`; the controller error contract tests
-      # gate the paths inference cannot follow.
+      # Fails on a business error a handler statically raises but does not declare. Errors raised
+      # behind dynamic dispatch are declared by hand and left alone; the controller error contract
+      # tests gate those paths.
       - name: Run API Error Linter
         if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_error_responses.py

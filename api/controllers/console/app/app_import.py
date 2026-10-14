@@ -43,8 +43,6 @@ _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, Tenan
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
-    # The package reader and importer raise these from behind ``application_services()``, which the
-    # error lint cannot follow; the contract tests check them on the paths they exercise.
     @error_responses(
         AgentNameConflictError,
         InvalidRosterAgentPackageError,

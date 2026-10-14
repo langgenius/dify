@@ -246,23 +246,22 @@ A handler lists what it and its callees raise with `@error_responses(SomeError, 
 view decorator documents its own errors on the wrapper it returns: `return document_errors(decorated, SomeError)`.
 Guards in a Resource's `method_decorators` are documented on the class with `document_errors(ResourceClass, ...)`.
 Listing a Werkzeug exception, a handled exception, or a `BaseHTTPException` subclass that keeps the placeholder
-`error_code` is an error. Record an error raised only from an unreachable branch as
-`@error_responses(..., unreachable=(SomeError,))`; it stays undocumented. View decorators must keep `__apidoc__` from
+`error_code` is an error. View decorators must keep `__apidoc__` from
 the view they wrap (`functools.wraps` does, unless `updated=()`; then add `"__apidoc__"` to `assigned`).
 
 Two gates keep declarations honest. `make api-error-lint` (`api/dev/lint_error_responses.py`, run in CI) infers
 what each Console, Web and Service API operation statically raises and fails on a business error nothing documents;
-`ERROR_LINT_ARGS=--fix` adds the missing entries, and `--fix --prune` also removes entries it cannot infer, so review
-a prune before keeping it. Inference cannot see instance calls, signals or other dynamic dispatch, so hand-declared
-entries it reports as stale may be right. It also cannot tell which branch of a shared translator (`_raise_*_error`
-helpers that dispatch on `isinstance`) a given operation reaches, so `--fix` suggests the translator's whole union.
-Give each operation a translator that maps only what its service call raises: a base translator for the scope errors
-every operation shares, and narrow ones that add their own branches before delegating to it (see
+`ERROR_LINT_ARGS=--fix` adds the missing entries. Inference cannot see instance calls, `application_services()`,
+signals or other dynamic dispatch, so an error raised behind them is declared by hand; the lint leaves such entries
+alone (it never reports an entry it cannot infer), and `--fix --prune`, which removes them, is a cleanup to review
+rather than a routine run. The lint also cannot tell which branch of a shared translator (`_raise_*_error` helpers that
+dispatch on `isinstance`) a given operation reaches, so `--fix` suggests the translator's whole union. Give each
+operation a translator that maps only what its service call raises: a base translator for the scope errors every
+operation shares, and narrow ones that add their own branches before delegating to it (see
 `controllers/console/datasets/datasets_document.py` and `controllers/console/auth/login.py`). The inferred set is then
-the documented set. Fall back to `unreachable=(...)` only for a branch that cannot be split out. A declared 4xx/5xx
-status that nothing inferred, generic or framework-level produces is reported as a warning: declare the business error
-behind it (a hand declaration for an error raised through `application_services()` is right even though the lint
-reports it stale) or drop the bare `@ns.response(status)`.
+the documented set. A declared 4xx/5xx status that no declared or inferred error, generic handler or framework
+behavior produces is reported as a warning: declare the business error behind it or drop the bare
+`@ns.response(status)`.
 
 Controller unit tests cover the paths inference cannot follow: every 4xx/5xx JSON response an `ExternalApi` serves
 is checked against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be
