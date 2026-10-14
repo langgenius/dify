@@ -69,6 +69,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+_provider_configuration_cache_rows_adapter: TypeAdapter[list[Any]] = TypeAdapter(list[Any])
 _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS = 300
 _PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS = 360
 _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:version"
@@ -356,9 +357,7 @@ class _ProviderConfigurationSourceCache:
                 return None, version
 
             cached_text = cached_records.decode("utf-8") if isinstance(cached_records, bytes) else cached_records
-            rows = json.loads(cached_text)
-            if not isinstance(rows, list):
-                return None, version
+            rows = _provider_configuration_cache_rows_adapter.validate_json(cached_text)
 
             return [entry_cls.from_cache_row(row) for row in rows if isinstance(row, dict)], version
         except Exception:
