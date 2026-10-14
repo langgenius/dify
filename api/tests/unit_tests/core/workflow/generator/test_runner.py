@@ -258,7 +258,7 @@ class TestDynamicToolRouting:
         model.invoke_llm.return_value = _llm_result("invalid")
         entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
 
-        with patch("core.workflow.generator.runner.json_repair.loads", side_effect=ValueError("bad JSON")):
+        with patch("services.workflow_generator_response.json_repair.loads", side_effect=ValueError("bad JSON")):
             text = WorkflowGenerator._resolve_prompt_tool_catalogue(
                 model_instance=model,
                 model_parameters={},
@@ -1088,6 +1088,7 @@ class TestBoundedFragmentRecovery:
     @pytest.mark.parametrize("recover", [False, True])
     def test_parser_exception_response_text_is_not_echoed_or_logged(self, recover, caplog):
         from core.workflow.generator import runner
+        from services import workflow_generator_response
 
         caplog.set_level("INFO", logger=runner.__name__)
         responses = ["parser-rejection-trigger"]
@@ -1096,14 +1097,14 @@ class TestBoundedFragmentRecovery:
         model = _ParallelBuilderModel(
             self._PLAN, self._CONFIGS, barrier_parties=3, responses_by_node={"node2": responses}
         )
-        original_loads = runner.json_repair.loads
+        original_loads = workflow_generator_response.json_repair.loads
 
         def loads(text):
             if text == "parser-rejection-trigger":
                 raise ValueError("private-parser-response-body")
             return original_loads(text)
 
-        with patch.object(runner.json_repair, "loads", side_effect=loads):
+        with patch.object(workflow_generator_response.json_repair, "loads", side_effect=loads):
             result = self._generate(model)
 
         if recover:
@@ -7152,7 +7153,7 @@ class TestResponseMetadata:
         response = SimpleNamespace(message=AssistantPromptMessage(content="private-response-sentinel"))
         caplog.set_level("INFO", logger="core.workflow.generator.runner")
         with patch(
-            "core.workflow.generator.runner.json_repair.loads", side_effect=ValueError("private-parser-sentinel")
+            "services.workflow_generator_response.json_repair.loads", side_effect=ValueError("private-parser-sentinel")
         ):
             with pytest.raises(_StageJSONError):
                 self._invoke([response, response], parameters={})
