@@ -2,12 +2,14 @@ from flask_restx import Resource
 from pydantic import BaseModel
 
 from controllers.common.errors import InvalidArgumentError
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import setup_required, validate_request
 from controllers.inner_api import inner_api_ns
+from controllers.inner_api.schema import INNER_API_ERROR_RESPONSE
 from controllers.inner_api.wraps import inner_api_only
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
@@ -38,6 +40,51 @@ class WorkspaceMemberPayload(BaseModel):
 register_schema_models(inner_api_ns, WorkspaceCreatePayload, WorkspaceOwnerlessPayload, WorkspaceMemberPayload)
 
 
+class WorkspaceResponse(ResponseModel):
+    id: str
+    name: str
+    plan: str
+    status: str
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class WorkspaceOwnerlessTenantResponse(WorkspaceResponse):
+    encrypt_public_key: str | None = None
+    custom_config: str | None = None
+
+
+class WorkspaceCreateResponse(ResponseModel):
+    message: str
+    tenant: WorkspaceResponse
+
+
+class WorkspaceOwnerlessCreateResponse(ResponseModel):
+    message: str
+    tenant: WorkspaceOwnerlessTenantResponse
+
+
+class WorkspaceMemberInfoResponse(ResponseModel):
+    workspace_id: str
+    account_id: str
+    role: str
+
+
+class WorkspaceMemberResponse(ResponseModel):
+    message: str
+    member: WorkspaceMemberInfoResponse
+
+
+register_response_schema_models(
+    inner_api_ns,
+    WorkspaceResponse,
+    WorkspaceOwnerlessTenantResponse,
+    WorkspaceCreateResponse,
+    WorkspaceOwnerlessCreateResponse,
+    WorkspaceMemberResponse,
+)
+
+
 @inner_api_ns.route("/enterprise/workspace")
 class EnterpriseWorkspace(Resource):
     @setup_required
@@ -45,13 +92,10 @@ class EnterpriseWorkspace(Resource):
     @inner_api_ns.doc("create_enterprise_workspace")
     @inner_api_ns.doc(description="Create a new enterprise workspace with owner assignment")
     @inner_api_ns.expect(inner_api_ns.models[WorkspaceCreatePayload.__name__])
-    @inner_api_ns.doc(
-        responses={
-            200: "Workspace created successfully",
-            401: "Unauthorized - invalid API key",
-            404: "Owner account not found or service not available",
-        }
-    )
+    @inner_api_ns.response(200, "Workspace created successfully", inner_api_ns.models[WorkspaceCreateResponse.__name__])
+    @inner_api_ns.response(400, "Invalid workspace request", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(401, "Unauthorized - invalid API key", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(404, "Owner account not found or service not available", INNER_API_ERROR_RESPONSE)
     def post(self):
         args = validate_request(WorkspaceCreatePayload)
         try:
@@ -80,13 +124,11 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     @inner_api_ns.doc("create_enterprise_workspace_ownerless")
     @inner_api_ns.doc(description="Create a new enterprise workspace without initial owner assignment")
     @inner_api_ns.expect(inner_api_ns.models[WorkspaceOwnerlessPayload.__name__])
-    @inner_api_ns.doc(
-        responses={
-            200: "Workspace created successfully",
-            401: "Unauthorized - invalid API key",
-            404: "Service not available",
-        }
+    @inner_api_ns.response(
+        200, "Workspace created successfully", inner_api_ns.models[WorkspaceOwnerlessCreateResponse.__name__]
     )
+    @inner_api_ns.response(401, "Unauthorized - invalid API key", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(404, "Service not available", INNER_API_ERROR_RESPONSE)
     def post(self):
         args = validate_request(WorkspaceOwnerlessPayload)
         tenant = application_services().workspaces.provisioning.create(name=args.name)
@@ -112,14 +154,12 @@ class EnterpriseWorkspaceMember(Resource):
     @inner_api_ns.doc("join_enterprise_workspace_member")
     @inner_api_ns.doc(description="Add an existing account to an enterprise workspace")
     @inner_api_ns.expect(inner_api_ns.models[WorkspaceMemberPayload.__name__])
-    @inner_api_ns.doc(
-        responses={
-            200: "Workspace member joined successfully",
-            400: "Invalid workspace member role",
-            401: "Unauthorized - invalid API key",
-            404: "Workspace or account not found",
-        }
+    @inner_api_ns.response(
+        200, "Workspace member joined successfully", inner_api_ns.models[WorkspaceMemberResponse.__name__]
     )
+    @inner_api_ns.response(400, "Invalid workspace member role", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(401, "Unauthorized - invalid API key", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(404, "Workspace or account not found", INNER_API_ERROR_RESPONSE)
     def post(self):
         args = validate_request(WorkspaceMemberPayload)
         try:

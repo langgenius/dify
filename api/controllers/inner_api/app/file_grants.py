@@ -14,6 +14,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console.wraps import setup_required
 from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api import inner_api_ns
+from controllers.inner_api.schema import INNER_API_ERROR_RESPONSE
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -126,11 +127,9 @@ class EnterpriseFileGrantApi(Resource):
         "File grant minted",
         inner_api_ns.models[FileGrantMintResponse.__name__],
     )
-    @inner_api_ns.doc(
-        responses={
-            400: "Invalid request, subject, or grant TTL",
-            404: "App not found, or a required file is not owned by the subject",
-        }
+    @inner_api_ns.response(400, "Invalid request, subject, or grant TTL", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(
+        404, "App not found, or a required file is not owned by the subject", INNER_API_ERROR_RESPONSE
     )
     def post(self):
         try:

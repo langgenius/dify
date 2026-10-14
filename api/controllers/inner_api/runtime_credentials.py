@@ -14,9 +14,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
+from controllers.inner_api.schema import INNER_API_ERROR_RESPONSE
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.helper import encrypter
 from core.helper.provider_cache import ToolProviderCredentialsCache
@@ -24,6 +25,7 @@ from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
 
@@ -51,22 +53,32 @@ class InnerRuntimeCredentialsResolvePayload(BaseModel):
     credentials: list[InnerRuntimeCredentialResolveItem] = Field(default_factory=list)
 
 
+class InnerRuntimeCredentialResponse(ResponseModel):
+    credential_id: str
+    provider: str
+    kind: str
+    values: dict[str, Any]
+
+
+class InnerRuntimeCredentialsResolveResponse(ResponseModel):
+    credentials: list[InnerRuntimeCredentialResponse] = Field(default_factory=list)
+
+
 register_schema_model(inner_api_ns, InnerRuntimeCredentialsResolvePayload)
+register_response_schema_models(inner_api_ns, InnerRuntimeCredentialResponse, InnerRuntimeCredentialsResolveResponse)
 
 
 @inner_api_ns.route("/enterprise/credentials/resolve")
 class EnterpriseRuntimeCredentialsResolve(Resource):
     @setup_required
     @enterprise_inner_api_only
-    @inner_api_ns.doc(
-        "enterprise_runtime_credentials_resolve",
-        responses={
-            200: "Credentials resolved",
-            400: "Invalid request or credential config",
-            404: "Provider or credential not found",
-        },
-    )
+    @inner_api_ns.doc("enterprise_runtime_credentials_resolve")
     @inner_api_ns.expect(inner_api_ns.models[InnerRuntimeCredentialsResolvePayload.__name__])
+    @inner_api_ns.response(
+        200, "Credentials resolved", inner_api_ns.models[InnerRuntimeCredentialsResolveResponse.__name__]
+    )
+    @inner_api_ns.response(400, "Invalid request or credential config", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(404, "Provider or credential not found", INNER_API_ERROR_RESPONSE)
     @model_validate(InnerRuntimeCredentialsResolvePayload)
     def post(self, args: InnerRuntimeCredentialsResolvePayload):
         if not args.credentials:
