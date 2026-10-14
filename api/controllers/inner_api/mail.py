@@ -4,12 +4,16 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import SimpleMessageResponse
-from controllers.common.schema import register_response_schema_model, register_schema_model
+from controllers.common.schema import (
+    register_response_schema_model,
+    register_response_schema_models,
+    register_schema_model,
+)
 from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.schema import INNER_API_ERROR_RESPONSE
 from controllers.inner_api.wraps import inner_api_only
 from extensions.ext_application_services import application_services
+from fields.inner_api_fields import InnerApiErrorResponse
 from services.entities.mail_entities import InnerMailMessage
 
 
@@ -22,6 +26,7 @@ class InnerMailPayload(BaseModel):
 
 register_schema_model(inner_api_ns, InnerMailPayload)
 register_response_schema_model(inner_api_ns, SimpleMessageResponse)
+register_response_schema_models(inner_api_ns, InnerApiErrorResponse)
 
 
 class BaseMail(Resource):
@@ -49,8 +54,11 @@ class EnterpriseMail(BaseMail):
     @inner_api_ns.doc(description="Send internal email for enterprise features")
     @inner_api_ns.expect(inner_api_ns.models[InnerMailPayload.__name__])
     @inner_api_ns.response(200, "Email sent successfully", inner_api_ns.models[SimpleMessageResponse.__name__])
-    @inner_api_ns.response(401, "Unauthorized - invalid API key", INNER_API_ERROR_RESPONSE)
-    @inner_api_ns.response(404, "Service not available", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(
+        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
+    )
+    @inner_api_ns.response(404, "Inner API disabled", inner_api_ns.models[InnerApiErrorResponse.__name__])
+    @inner_api_ns.response(422, "Request body validation failed", inner_api_ns.models[InnerApiErrorResponse.__name__])
     @inner_api_only
     @setup_required
     def post(self):

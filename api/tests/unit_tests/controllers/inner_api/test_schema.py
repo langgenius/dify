@@ -30,6 +30,21 @@ EXPECTED_ENTERPRISE_OPERATION_IDS = {
     "send_enterprise_mail",
 }
 
+BODY_VALIDATED_OPERATION_IDS = {
+    "create_enterprise_workspace",
+    "create_enterprise_workspace_ownerless",
+    "enterprise_app_dsl_import",
+    "enterprise_runtime_credentials_resolve",
+    "join_enterprise_workspace_member",
+    "send_enterprise_mail",
+}
+
+NON_BODY_VALIDATED_OPERATION_IDS = {
+    "delete_enterprise_workspace_resources",
+    "enterprise_app_dsl_export",
+    "enterprise_mint_file_grant",
+}
+
 
 def _obj(value: object) -> Json:
     return cast(Json, value)
@@ -223,3 +238,30 @@ def test_inner_error_response_allows_optional_central_fields(inner_spec: Json) -
 
     validator.validate({"message": "legacy"})
     validator.validate({"message": "central", "code": "c", "status": 401})
+
+
+def test_enterprise_operations_document_auth_and_not_found_errors(inner_spec: Json) -> None:
+    for path, method, _, operation in _enterprise_operations(inner_spec):
+        for code in ("401", "404"):
+            media = _obj(_obj(_obj(_obj(operation["responses"])[code])["content"])["application/json"])
+            assert "schema" in media, f"{method} {path} {code} has no JSON schema"
+
+
+def test_body_validation_422_is_documented_only_for_body_validated_operations(inner_spec: Json) -> None:
+    validation_error = {"$ref": "#/components/schemas/InnerApiErrorResponse"}
+    documented = {
+        operation["operationId"]: _obj(_obj(operation["responses"]).get("422"))
+        for _, _, _, operation in _enterprise_operations(inner_spec)
+    }
+
+    for operation_id in BODY_VALIDATED_OPERATION_IDS:
+        content = _obj(documented[operation_id]["content"])
+        assert _obj(content["application/json"])["schema"] == validation_error, operation_id
+    for operation_id in NON_BODY_VALIDATED_OPERATION_IDS:
+        assert not documented[operation_id], operation_id
+
+
+def test_werkzeug_validation_body_validates_as_inner_api_error(inner_spec: Json) -> None:
+    _validator(inner_spec, "InnerApiErrorResponse").validate(
+        {"code": "unprocessable_entity", "message": "[]", "status": 422}
+    )

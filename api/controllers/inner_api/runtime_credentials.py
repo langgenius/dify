@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.wraps import model_validate, setup_required
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.schema import INNER_API_ERROR_RESPONSE
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.helper import encrypter
 from core.helper.provider_cache import ToolProviderCredentialsCache
@@ -26,6 +25,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from fields.inner_api_fields import InnerApiErrorResponse
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
 
@@ -77,8 +77,18 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
     @inner_api_ns.response(
         200, "Credentials resolved", inner_api_ns.models[InnerRuntimeCredentialsResolveResponse.__name__]
     )
-    @inner_api_ns.response(400, "Invalid request or credential config", INNER_API_ERROR_RESPONSE)
-    @inner_api_ns.response(404, "Provider or credential not found", INNER_API_ERROR_RESPONSE)
+    @inner_api_ns.response(
+        400, "Invalid request or credential config", inner_api_ns.models[InnerApiErrorResponse.__name__]
+    )
+    @inner_api_ns.response(
+        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
+    )
+    @inner_api_ns.response(
+        404,
+        "Provider or credential not found, or inner API disabled",
+        inner_api_ns.models[InnerApiErrorResponse.__name__],
+    )
+    @inner_api_ns.response(422, "Request body validation failed", inner_api_ns.models[InnerApiErrorResponse.__name__])
     @model_validate(InnerRuntimeCredentialsResolvePayload)
     def post(self, args: InnerRuntimeCredentialsResolvePayload):
         if not args.credentials:

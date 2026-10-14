@@ -14,11 +14,11 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console.wraps import setup_required
 from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.schema import INNER_API_ERROR_RESPONSE
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.file_grant_fields import ResolvedFileResponse
+from fields.inner_api_fields import InnerApiErrorResponse
 from libs.exception import BaseHTTPException
 from services.entities.file_grant_entities import FileGrantMintRequest, FileGrantScope, FileKind, FileRef
 from services.file_grant_service import (
@@ -111,7 +111,7 @@ class FileGrantMintResponse(ResponseModel):
 
 
 register_schema_models(inner_api_ns, FileGrantMintPayload)
-register_response_schema_models(inner_api_ns, FileGrantMintResponse)
+register_response_schema_models(inner_api_ns, FileGrantMintResponse, InnerApiErrorResponse)
 
 
 @inner_api_ns.route("/enterprise/file-grants")
@@ -127,9 +127,16 @@ class EnterpriseFileGrantApi(Resource):
         "File grant minted",
         inner_api_ns.models[FileGrantMintResponse.__name__],
     )
-    @inner_api_ns.response(400, "Invalid request, subject, or grant TTL", INNER_API_ERROR_RESPONSE)
     @inner_api_ns.response(
-        404, "App not found, or a required file is not owned by the subject", INNER_API_ERROR_RESPONSE
+        400, "Invalid request, subject, or grant TTL", inner_api_ns.models[InnerApiErrorResponse.__name__]
+    )
+    @inner_api_ns.response(
+        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
+    )
+    @inner_api_ns.response(
+        404,
+        "App not found, or a required file is not owned by the subject, or inner API disabled",
+        inner_api_ns.models[InnerApiErrorResponse.__name__],
     )
     def post(self):
         try:
