@@ -989,10 +989,11 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:conversation-name-boundary]
-name = Conversation naming policy is framework and persistence neutral
+name = Conversation naming and commands are framework and persistence neutral
 type = forbidden
 source_modules =
     services.conversation_name_service
+    services.conversation_command_service
 forbidden_modules =
     controllers
     extensions

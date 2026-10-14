@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_service import ConversationNameService
-from services.conversation_service import ConversationService
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_conversation_service import InstalledAppConversationService, InstalledAppConversationStore
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
@@ -32,6 +32,7 @@ def build_installed_app_services(
     database_client: sessionmaker[Session],
     conversations: InstalledAppConversationStore,
     conversation_names: ConversationNameService,
+    conversation_commands: ConversationCommandService,
     webapp_access: WebAppAccessQueryService,
     get_workspace_role: WorkspaceRoleLookup,
     webapp_auth_enabled: bool,
@@ -58,7 +59,7 @@ def build_installed_app_services(
         conversations=InstalledAppConversationService(
             conversations=conversations,
             names=conversation_names,
-            enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+            commands=conversation_commands,
         ),
         messages=InstalledAppMessageService(
             messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
