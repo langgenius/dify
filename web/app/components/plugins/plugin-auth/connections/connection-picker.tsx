@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import type { CredentialTypeEnum as CredentialType } from './types'
+import type { CredentialTypeEnum as CredentialType } from '../types'
 import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { CredentialTypeEnum } from './types'
+import { CredentialTypeEnum } from '../types'
 
 export type ConnectionPickerOption = {
   id: string

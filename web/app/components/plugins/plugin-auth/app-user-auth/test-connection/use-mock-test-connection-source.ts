@@ -1,5 +1,5 @@
+import type { ConnectionSelectorDataSource } from '../../connections/connection-selector'
 import type { Credential, PluginPayload } from '../../types'
-import type { ConnectionSelectorDataSource } from '../../workspace-auth/connection-selector'
 import type { TestConnection, TestConnectionDraft } from './model'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { skipToken, useQuery } from '@tanstack/react-query'

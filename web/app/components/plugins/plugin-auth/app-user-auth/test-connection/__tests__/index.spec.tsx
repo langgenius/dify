@@ -1,4 +1,4 @@
-import type { TestConnection, TestConnectionDraft } from '../../app-user-auth/test-connection/model'
+import type { TestConnection, TestConnectionDraft } from '../model'
 import type { ConsoleClient } from '@/service/console'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -8,25 +8,15 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { useMockTestConnectionSource } from '../../app-user-auth/test-connection/use-mock-test-connection-source'
-import { AuthCategory, CredentialTypeEnum } from '../../types'
-import ConnectionSelector from '../connection-selector'
+import ConnectionSelector from '../../../connections/connection-selector'
+import { AuthCategory, CredentialTypeEnum } from '../../../types'
+import { useMockTestConnectionSource } from '../use-mock-test-connection-source'
 
 const mocks = vi.hoisted(() => ({
   consoleCall: vi.fn(),
-  schemaHook: vi.fn(() => ({ data: [], isLoading: false })),
-  addHook: vi.fn(() => ({ mutateAsync: vi.fn() })),
-  updateHook: vi.fn(() => ({ mutateAsync: vi.fn() })),
 }))
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: (...args: unknown[]) => mocks.consoleCall(...args) },
-}))
-
-vi.mock('../../hooks/use-credential', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../hooks/use-credential')>()),
-  useGetPluginCredentialSchemaHook: mocks.schemaHook,
-  useAddPluginCredentialHook: mocks.addHook,
-  useUpdatePluginCredentialHook: mocks.updateHook,
 }))
 
 const oauthConnection: TestConnection = {
@@ -152,9 +142,6 @@ describe('App user mock test connections', () => {
           path.slice(-4).join('.') !== 'credential.schema.byCredentialType.get',
       ),
     ).toEqual([])
-    expect(mocks.schemaHook).not.toHaveBeenCalled()
-    expect(mocks.addHook).not.toHaveBeenCalled()
-    expect(mocks.updateHook).not.toHaveBeenCalled()
   })
 
   it('discards a canceled API key draft, then saves only its name and masked key locally', async () => {

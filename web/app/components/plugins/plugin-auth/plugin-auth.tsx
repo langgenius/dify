@@ -1,7 +1,7 @@
 import type { AppUserAuthDraft, AuthorizationTab } from './app-user-auth/draft'
 import type { ReuseFromNodeProps } from './reuse-from-node'
 import type { PluginPayload } from './types'
-import type { ConnectionSelectorProps } from './workspace-auth/connection-selector'
+import type { WorkspaceConnectionSelectorProps } from './workspace-auth/workspace-connection-selector'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -15,7 +15,7 @@ import WorkspaceAuth from './workspace-auth'
 
 export type PluginAuthProps = {
   pluginPayload: PluginPayload
-  nodeAuth?: Omit<ConnectionSelectorProps, 'pluginPayload' | 'authorization'>
+  nodeAuth?: Omit<WorkspaceConnectionSelectorProps, 'pluginPayload' | 'authorization'>
   className?: string
   showAuthorizationTabs?: boolean
   authorizationTab?: AuthorizationTab

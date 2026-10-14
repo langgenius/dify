@@ -1,4 +1,4 @@
-import type { Credential, PluginPayload } from '../types'
+import type { Credential } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,17 +14,14 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
-import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { PermissionLevel } from '@/models/permission'
-import { consoleQuery } from '@/service/console'
 
 export type EditConnectionDataSource = {
   canEdit: boolean
   canUse: boolean
+  resetSession?: () => void
   save: (args: {
     credential: Credential
     name: string
@@ -39,23 +36,20 @@ type EditConnectionModalCommonProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCloseComplete: () => void
-  onUpdate?: () => void
 }
 
-type EditConnectionModalProps = EditConnectionModalCommonProps &
-  (
-    | { pluginPayload: PluginPayload; onUpdate: () => void; dataSource?: undefined }
-    | { dataSource: EditConnectionDataSource; pluginPayload?: PluginPayload }
-  )
+type EditConnectionModalProps = EditConnectionModalCommonProps & {
+  dataSource: EditConnectionDataSource
+}
 
-const EditConnectionContent = ({
+const EditConnectionModal = ({
   credential,
   providerName,
   open,
   onOpenChange,
   onCloseComplete,
   dataSource,
-}: EditConnectionModalCommonProps & { dataSource: EditConnectionDataSource }) => {
+}: EditConnectionModalProps) => {
   const { t } = useTranslation(['common', 'plugin', 'datasetSettings'])
   const canEditConnection = dataSource.canEdit
   const canUseCredential = dataSource.canUse
@@ -122,7 +116,10 @@ const EditConnectionContent = ({
         if (!isSavingConnection) onOpenChange(nextOpen)
       }}
       onOpenChangeComplete={(nextOpen) => {
-        if (!nextOpen) onCloseComplete()
+        if (!nextOpen) {
+          dataSource.resetSession?.()
+          onCloseComplete()
+        }
       }}
       disablePointerDismissal={isSavingConnection}
     >
@@ -245,56 +242,5 @@ const EditConnectionContent = ({
     </Dialog>
   )
 }
-
-const WorkspaceEditConnectionModal = (
-  props: EditConnectionModalCommonProps & { pluginPayload: PluginPayload; onUpdate: () => void },
-) => {
-  const { credential, pluginPayload, onUpdate } = props
-  const { t } = useTranslation(['common'])
-  const { canUseCredential, canManageCredential } = useCredentialPermissions()
-  const providerApi = consoleQuery.workspaces.current.toolProvider.builtin.byProvider
-  const params = { provider: pluginPayload.provider }
-  const updateCredential = useMutation(providerApi.update.post.mutationOptions())
-  const setDefaultCredential = useMutation(providerApi.defaultCredential.post.mutationOptions())
-  const dataSource: EditConnectionDataSource = {
-    canEdit:
-      canManageCredential &&
-      !credential.from_enterprise &&
-      !credential.from_other_member &&
-      !credential.not_allowed_to_use,
-    canUse: canUseCredential,
-    save: async ({ credential, name, setDefault }) => {
-      setDefaultCredential.reset()
-      try {
-        // Retry only the remaining default step when the same rename already succeeded.
-        if (
-          !updateCredential.isSuccess ||
-          updateCredential.variables.body.credential_id !== credential.id ||
-          updateCredential.variables.body.name !== name
-        ) {
-          await updateCredential.mutateAsync({
-            params,
-            body: { credential_id: credential.id, name },
-          })
-        }
-        if (setDefault) {
-          await setDefaultCredential.mutateAsync({ params, body: { id: credential.id } })
-        }
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      } finally {
-        // Renaming can succeed even when the separate default-setting request fails.
-        onUpdate()
-      }
-    },
-  }
-  return <EditConnectionContent {...props} dataSource={dataSource} />
-}
-
-const EditConnectionModal = (props: EditConnectionModalProps) =>
-  props.dataSource ? (
-    <EditConnectionContent {...props} dataSource={props.dataSource} />
-  ) : (
-    <WorkspaceEditConnectionModal {...props} />
-  )
 
 export default EditConnectionModal

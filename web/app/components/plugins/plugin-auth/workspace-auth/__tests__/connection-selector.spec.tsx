@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { usePluginAuth } from '../../hooks/use-plugin-auth'
 import type { Credential } from '../../types'
-import type { ConnectionSelectorProps } from '../connection-selector'
+import type { WorkspaceConnectionSelectorProps } from '../workspace-connection-selector'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -12,12 +12,10 @@ import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
-import ConnectionSelector from '../connection-selector'
+import WorkspaceConnectionSelector from '../workspace-connection-selector'
 
 const mocks = vi.hoisted(() => ({
   consoleCall: vi.fn(),
-  addCredential: vi.fn(),
-  updateCredential: vi.fn(),
   setOAuthClient: vi.fn(),
   deleteOAuthClient: vi.fn(),
   invalidOAuthClient: vi.fn(),
@@ -31,12 +29,6 @@ vi.mock('@/service/console/browser', () => ({
 }))
 
 vi.mock('../../hooks/use-credential', () => ({
-  useGetPluginCredentialSchemaHook: () => ({
-    data: [{ name: 'api_key', label: 'API Key', type: 'secret-input', required: true }],
-    isLoading: false,
-  }),
-  useAddPluginCredentialHook: () => ({ mutateAsync: mocks.addCredential }),
-  useUpdatePluginCredentialHook: () => ({ mutateAsync: mocks.updateCredential }),
   useSetPluginOAuthCustomClientHook: () => ({ mutateAsync: mocks.setOAuthClient }),
   useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: mocks.deleteOAuthClient }),
   useInvalidPluginOAuthClientSchemaHook: () => mocks.invalidOAuthClient,
@@ -119,7 +111,7 @@ const createAuthorization = (
 })
 
 const renderSelector = (
-  props: Partial<ConnectionSelectorProps> = {},
+  props: Partial<WorkspaceConnectionSelectorProps> = {},
   workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage'],
   ui?: ReactElement,
 ) => {
@@ -151,7 +143,7 @@ const renderSelector = (
   return renderWithConsoleQuery(
     <TooltipProvider delay={0} closeDelay={0}>
       {ui ?? (
-        <ConnectionSelector
+        <WorkspaceConnectionSelector
           pluginPayload={pluginPayload}
           authorization={createAuthorization()}
           onAuthorizationItemClick={vi.fn()}
@@ -163,14 +155,12 @@ const renderSelector = (
   )
 }
 
-describe('ConnectionSelector', () => {
+describe('WorkspaceConnectionSelector', () => {
   beforeEach(() => {
     mocks.consoleCall.mockImplementation(async (path: string[]) => {
       if (path.slice(-3).join('.') === 'oauth.clientSchema.get') return oauthClient
       return { result: 'success' }
     })
-    mocks.addCredential.mockResolvedValue({})
-    mocks.updateCredential.mockResolvedValue({})
     mocks.setOAuthClient.mockResolvedValue({})
     mocks.deleteOAuthClient.mockResolvedValue({})
   })
@@ -293,7 +283,7 @@ describe('ConnectionSelector', () => {
       const ControlledSelector = ({ serverCredentials }: { serverCredentials: Credential[] }) => {
         const [credentialId, setCredentialId] = useState('personal-oauth')
         return (
-          <ConnectionSelector
+          <WorkspaceConnectionSelector
             pluginPayload={pluginPayload}
             authorization={createAuthorization({ credentials: serverCredentials })}
             credentialId={credentialId}
@@ -394,6 +384,51 @@ describe('ConnectionSelector', () => {
     expect(
       screen.queryByRole('button', { name: /common\.operation\.moreActionsFor/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('replaces an existing API key when the provider no longer allows adding API key connections', async () => {
+    const user = userEvent.setup()
+    const onUpdate = vi.fn()
+    renderSelector({
+      authorization: createAuthorization({
+        canApiKey: false,
+        invalidPluginCredentialInfo: onUpdate,
+      }),
+    })
+    await user.click(screen.getByRole('button', { name: /^Team API connection/ }))
+    const picker = screen.getByRole('dialog', { name: 'plugin.auth.authorization' })
+    expect(
+      within(picker).queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+    ).not.toBeInTheDocument()
+    await user.click(
+      within(picker).getByRole('button', {
+        name: 'common.operation.moreActionsFor:{"name":"Team API connection"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'plugin.auth.connection.replaceApiKey' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
+    const apiKey = within(dialog).getByLabelText('API Key', { exact: false })
+    expect(apiKey).toBeRequired()
+    await user.clear(apiKey)
+    await user.type(apiKey, 'replacement-for-existing-key')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mocks.consoleCall).toHaveBeenCalledWith(
+      ['workspaces', 'current', 'toolProvider', 'builtin', 'byProvider', 'update', 'post'],
+      {
+        params: { provider: pluginPayload.provider },
+        body: {
+          credential_id: 'workspace-api',
+          name: 'Team API connection',
+          credentials: { api_key: 'replacement-for-existing-key' },
+        },
+      },
+      expect.anything(),
+    )
+    expect(mocks.consoleCall.mock.calls.filter(([path]) => path.at(-1) === 'post')).toHaveLength(1)
+    expect(onUpdate).toHaveBeenCalledOnce()
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
   })
 
   it('shows a borrowed connection separately and prevents managing it', async () => {

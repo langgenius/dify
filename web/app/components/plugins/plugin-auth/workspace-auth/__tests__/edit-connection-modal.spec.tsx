@@ -6,8 +6,9 @@ import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import EditConnectionModal from '../../connections/edit-connection-modal'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
-import EditConnectionModal from '../edit-connection-modal'
+import { useWorkspaceConnectionOperations } from '../use-workspace-connection-operations'
 
 const mocks = vi.hoisted(() => ({
   consoleCall: vi.fn(),
@@ -24,7 +25,9 @@ vi.mock('@/app/notifications', () => ({
   toast: { success: mocks.toastSuccess, error: vi.fn() },
 }))
 
-type ModalProps = ComponentProps<typeof EditConnectionModal>
+type ModalProps = Omit<ComponentProps<typeof EditConnectionModal>, 'dataSource'> & {
+  onUpdate: () => void
+}
 
 const pluginPayload = { category: AuthCategory.tool, provider: 'test-provider' }
 const updatePath = [
@@ -70,9 +73,18 @@ const oauthCredential = createCredential({
 
 const ControlledModal = (props: ModalProps) => {
   const [open, setOpen] = useState(props.open)
+  const { connectionActions } = useWorkspaceConnectionOperations({
+    pluginPayload,
+    canApiKey: false,
+    onUpdate: props.onUpdate,
+  })
   return (
     <EditConnectionModal
       {...props}
+      dataSource={{
+        ...connectionActions.edit,
+        canEdit: connectionActions.canEditConnection(props.credential),
+      }}
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
@@ -88,7 +100,6 @@ const renderModal = (
 ) => {
   const props: ModalProps = {
     credential: createCredential(),
-    pluginPayload,
     open: true,
     onOpenChange: vi.fn(),
     onCloseComplete: vi.fn(),

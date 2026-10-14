@@ -7,28 +7,18 @@ import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PermissionLevel } from '@/models/permission'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import ConnectionActions, { ConnectionActionsTrigger } from '../../connections/connection-actions'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
-import ConnectionActions, { ConnectionActionsTrigger } from '../connection-actions'
+import { useWorkspaceConnectionOperations } from '../use-workspace-connection-operations'
 
 const mocks = vi.hoisted(() => ({
   consoleCall: vi.fn(),
-  addCredential: vi.fn(),
-  updateCredential: vi.fn(),
 }))
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: (...args: unknown[]) => mocks.consoleCall(...args),
   },
-}))
-
-vi.mock('../../hooks/use-credential', () => ({
-  useGetPluginCredentialSchemaHook: () => ({
-    data: [{ name: 'api_key', label: 'API Key', type: 'secret-input', required: true }],
-    isLoading: false,
-  }),
-  useAddPluginCredentialHook: () => ({ mutateAsync: mocks.addCredential }),
-  useUpdatePluginCredentialHook: () => ({ mutateAsync: mocks.updateCredential }),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -64,14 +54,29 @@ type ActionsHarnessProps = {
   onUpdate: () => void
 }
 
-const ActionsHarness = ({ connections, ...props }: ActionsHarnessProps) => {
+const ActionsHarness = ({ connections, onUpdate, ...props }: ActionsHarnessProps) => {
+  const { connectionActions } = useWorkspaceConnectionOperations({
+    pluginPayload,
+    canApiKey: true,
+    onUpdate,
+  })
   const [handle] = useState(() => createDropdownMenuHandle<Credential>())
   return (
     <TooltipProvider delay={0} closeDelay={0}>
       {connections.map((credential) => (
-        <ConnectionActionsTrigger key={credential.id} handle={handle} credential={credential} />
+        <ConnectionActionsTrigger
+          key={credential.id}
+          handle={handle}
+          credential={credential}
+          dataSource={connectionActions}
+        />
       ))}
-      <ConnectionActions handle={handle} pluginPayload={pluginPayload} {...props} />
+      <ConnectionActions
+        handle={handle}
+        pluginPayload={pluginPayload}
+        dataSource={connectionActions}
+        {...props}
+      />
     </TooltipProvider>
   )
 }
@@ -129,11 +134,15 @@ const deletePath = [
   'post',
 ]
 
+const mutationCalls = () => mocks.consoleCall.mock.calls.filter(([path]) => path.at(-1) === 'post')
+
 describe('ConnectionActions', () => {
   beforeEach(() => {
-    mocks.consoleCall.mockResolvedValue({ result: 'success' })
-    mocks.addCredential.mockResolvedValue({})
-    mocks.updateCredential.mockResolvedValue({})
+    mocks.consoleCall.mockImplementation(async (path: string[]) =>
+      path.at(-1) === 'get'
+        ? [{ name: 'api_key', label: { en_US: 'API Key' }, type: 'secret-input', required: true }]
+        : { result: 'success' },
+    )
   })
 
   it.each([
@@ -186,7 +195,7 @@ describe('ConnectionActions', () => {
     await user.click(reauthorize)
 
     expect(onAction).not.toHaveBeenCalled()
-    expect(mocks.consoleCall).not.toHaveBeenCalled()
+    expect(mutationCalls()).toHaveLength(0)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -237,7 +246,7 @@ describe('ConnectionActions', () => {
 
     expect(await screen.findByRole('alertdialog')).toHaveTextContent(unavailable.name)
     expect(onAction).toHaveBeenCalledOnce()
-    expect(mocks.consoleCall).not.toHaveBeenCalled()
+    expect(mutationCalls()).toHaveLength(0)
   })
 
   it.each([apiConnection, oauthConnection])(
@@ -295,7 +304,54 @@ describe('ConnectionActions', () => {
       within(reopened).getByRole('combobox', { name: 'plugin.auth.whoCanUse' }),
     ).toHaveTextContent('plugin.auth.connection.allWorkspaceMembers')
     expect(within(reopened).getByRole('button', { name: 'common.operation.save' })).toBeEnabled()
-    expect(mocks.consoleCall).not.toHaveBeenCalled()
+    expect(mutationCalls()).toHaveLength(0)
+  })
+
+  it('retries renaming after closing a failed default change and opening a new edit session', async () => {
+    const user = userEvent.setup()
+    let defaultFailed = false
+    mocks.consoleCall.mockImplementation(async (path: string[]) => {
+      if (path.at(-1) === 'get')
+        return [
+          { name: 'api_key', label: { en_US: 'API Key' }, type: 'secret-input', required: true },
+        ]
+      if (path.includes('defaultCredential') && !defaultFailed) {
+        defaultFailed = true
+        throw new Error('Default change failed')
+      }
+      return { result: 'success' }
+    })
+    renderActions()
+    const firstDialog = await openEditor(user)
+    await user.click(
+      within(firstDialog).getByRole('checkbox', {
+        name: 'plugin.auth.connection.setWorkspaceDefault',
+      }),
+    )
+    await user.click(
+      within(firstDialog).getByRole('button', {
+        name: 'plugin.auth.connection.saveAsDefault',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    await user.click(within(firstDialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(firstDialog).not.toBeInTheDocument())
+
+    const secondDialog = await openEditor(user)
+    await user.click(
+      within(secondDialog).getByRole('checkbox', {
+        name: 'plugin.auth.connection.setWorkspaceDefault',
+      }),
+    )
+    await user.click(
+      within(secondDialog).getByRole('button', {
+        name: 'plugin.auth.connection.saveAsDefault',
+      }),
+    )
+
+    await waitFor(() => expect(secondDialog).not.toBeInTheDocument())
+    expect(mutationCalls().filter(([path]) => path.includes('update'))).toHaveLength(2)
+    expect(mutationCalls().filter(([path]) => path.includes('defaultCredential'))).toHaveLength(2)
   })
 
   it('removes the selected connection only after confirmation and refreshes the list', async () => {
@@ -307,7 +363,7 @@ describe('ConnectionActions', () => {
     expect(canceled).toHaveTextContent(oauthConnection.name)
     await user.click(within(canceled).getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(canceled).not.toBeInTheDocument())
-    expect(mocks.consoleCall).not.toHaveBeenCalled()
+    expect(mutationCalls()).toHaveLength(0)
     expect(onUpdate).not.toHaveBeenCalled()
 
     menu = await openMenu(user, oauthConnection)
@@ -347,9 +403,7 @@ describe('ConnectionActions', () => {
         name: 'plugin.auth.authorizationName',
       }),
     ).toHaveValue(apiConnection.name)
-    expect(mocks.updateCredential).not.toHaveBeenCalled()
-    expect(mocks.addCredential).not.toHaveBeenCalled()
-    expect(mocks.consoleCall).not.toHaveBeenCalled()
+    expect(mutationCalls()).toHaveLength(0)
   })
 
   it('updates the existing API key connection and refreshes after replacement', async () => {
@@ -362,13 +416,19 @@ describe('ConnectionActions', () => {
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() =>
-      expect(mocks.updateCredential).toHaveBeenCalledWith({
-        credentials: { api_key: 'replacement-test-key' },
-        credential_id: apiConnection.id,
-        name: apiConnection.name,
-      }),
+      expect(mocks.consoleCall).toHaveBeenCalledWith(
+        ['workspaces', 'current', 'toolProvider', 'builtin', 'byProvider', 'update', 'post'],
+        {
+          params: { provider: pluginPayload.provider },
+          body: {
+            credentials: { api_key: 'replacement-test-key' },
+            credential_id: apiConnection.id,
+            name: apiConnection.name,
+          },
+        },
+        expect.anything(),
+      ),
     )
-    expect(mocks.addCredential).not.toHaveBeenCalled()
     expect(onUpdate).toHaveBeenCalledOnce()
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
   })
@@ -382,8 +442,7 @@ describe('ConnectionActions', () => {
     const confirmation = await screen.findByRole('alertdialog')
     expect(confirmation).toHaveTextContent(apiConnection.name)
     await waitFor(() => expect(replacement).not.toBeInTheDocument())
-    expect(mocks.consoleCall).not.toHaveBeenCalled()
-    expect(mocks.updateCredential).not.toHaveBeenCalled()
+    expect(mutationCalls()).toHaveLength(0)
     await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() =>
