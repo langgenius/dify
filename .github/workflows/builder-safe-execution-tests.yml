@@ -323,6 +323,7 @@ jobs:
               "api/tests/unit_tests/core/workflow/generator/test_tool_catalogue.py",
               "api/tests/unit_tests/services/tools/test_api_tool_catalogue.py",
               "api/tests/unit_tests/services/dify_builder/test_api_tool_output_context.py",
+              "api/tests/unit_tests/services/dify_builder/test_native_api_string_input_binding.py",
               "api/tests/unit_tests/services/dify_builder/test_native_api_output_contract.py",
               "api/tests/unit_tests/core/workflow/generator/test_runner.py",
               "api/tests/unit_tests/services/dify_builder/test_build_cognition.py",
