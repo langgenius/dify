@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,7 +22,7 @@ def make_features(
 
 
 @pytest.fixture
-def mock_installer(monkeypatch: pytest.MonkeyPatch):
+def mock_installer(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Patch PluginInstaller at the service import site."""
     mock = MagicMock()
     monkeypatch.setattr("core.plugin.plugin_service.PluginInstaller", lambda: mock)
@@ -29,7 +30,7 @@ def mock_installer(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture
-def mock_features():
+def mock_features() -> Iterator[MagicMock]:
     """Patch SystemFeatureService to return permissive defaults."""
     from unittest.mock import patch
 

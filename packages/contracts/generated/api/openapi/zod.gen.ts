@@ -1536,7 +1536,7 @@ export const zSubjectType = z.enum(['account', 'external_sso', 'resource_access'
 /**
  * SupportedAppType
  *
- * App types the app list ops list and filter by.
+ * App types the ``app`` usage face (``get app``) lists and filters.
  *
  * A curated subset of :class:`AppMode`: the real, user-facing app categories.
  * Excludes runtime-only mode tags that are not standalone apps
@@ -1545,7 +1545,8 @@ export const zSubjectType = z.enum(['account', 'external_sso', 'resource_access'
  *
  * Members reference ``AppMode.*.value`` so the subset relationship is
  * type-checked: dropping a member from ``AppMode`` breaks this at import.
- * This is the single source for the listable set — params and filters derive from it.
+ * This is the single source for the listable set — params, filters, and the
+ * generated CLI whitelist all derive from it.
  */
 export const zSupportedAppType = z.enum([
   'advanced-chat',

@@ -73,7 +73,12 @@ def make_controller(
 
 
 def make_subscription(**overrides: Any) -> Subscription:
-    defaults = {"expires_at": 9999999999, "endpoint": "https://hook.test", "properties": {"k": "v"}, "parameters": {}}
+    defaults = {
+        "expires_at": 9999999999,
+        "endpoint": "https://hook.test",
+        "properties": {"k": "v"},
+        "parameters": dict[str, object](),
+    }
     defaults.update(overrides)
     return Subscription(**defaults)
 

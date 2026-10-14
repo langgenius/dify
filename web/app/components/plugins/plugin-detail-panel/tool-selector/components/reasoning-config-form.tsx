@@ -1,7 +1,6 @@
 import type { Node } from 'reactflow'
 import type { ReasoningConfigValue as ReasoningConfigValueShape } from './reasoning-config-form.helpers'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -15,9 +14,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useBoolean } from 'ahooks'
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -43,7 +40,7 @@ import {
   updateVariableSelectorValue,
   updateVariableTypeValue,
 } from './reasoning-config-form.helpers'
-import { SchemaModal } from './schema-modal'
+import { SchemaDialog } from './schema-dialog'
 
 export type ReasoningConfigValue = ReasoningConfigValueShape
 
@@ -56,14 +53,14 @@ type Props = Readonly<{
   nodeId: string
 }>
 
-const ReasoningConfigForm: React.FC<Props> = ({
+export function ReasoningConfigForm({
   value,
   onChange,
   schemas,
   nodeOutputVars,
   availableNodes,
   nodeId,
-}) => {
+}: Props) {
   const fieldLabelId = useId()
 
   const { t } = useTranslation(['plugin', 'tools', 'workflowAgent'])
@@ -118,15 +115,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     [onChange, value],
   )
 
-  const [isShowSchema, { setTrue: showSchema, setFalse: hideSchema }] = useBoolean(false)
-
-  const [schema, setSchema] = useState<SchemaRoot | null>(null)
-  const [schemaRootName, setSchemaRootName] = useState<string>('')
-
-  const renderField = (
-    schema: ToolFormSchema,
-    showSchema: (schema: SchemaRoot, rootName: string) => void,
-  ) => {
+  const renderField = (schema: ToolFormSchema) => {
     const {
       default: defaultValue,
       variable,
@@ -195,25 +184,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               {resolveTargetVarType(type)}
             </span>
             {isShowJSONEditor && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label={t(($) => $['nodes.agent.clickToViewParameterSchema'], {
-                        ns: 'workflowAgent',
-                      })}
-                      className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                      onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
-                    >
-                      <span aria-hidden className="i-ri-braces-line size-3.5" />
-                    </button>
-                  }
-                />
-                <TooltipContent>
-                  {t(($) => $['nodes.agent.clickToViewParameterSchema'], { ns: 'workflowAgent' })}
-                </TooltipContent>
-              </Tooltip>
+              <SchemaDialog schema={input_schema} rootName={fieldTitle || variable} compact />
             )}
           </div>
           <label className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover">
@@ -369,26 +340,5 @@ const ReasoningConfigForm: React.FC<Props> = ({
       </div>
     )
   }
-  return (
-    <div className="space-y-3 px-4 py-2">
-      {!isShowSchema &&
-        schemas.map((schema) =>
-          renderField(schema, (s: SchemaRoot, rootName: string) => {
-            setSchema(s)
-            setSchemaRootName(rootName)
-            showSchema()
-          }),
-        )}
-      {isShowSchema && (
-        <SchemaModal
-          isShow={isShowSchema}
-          schema={schema!}
-          rootName={schemaRootName}
-          onClose={hideSchema}
-        />
-      )}
-    </div>
-  )
+  return <div className="space-y-3 px-4 py-2">{schemas.map(renderField)}</div>
 }
-
-export default ReasoningConfigForm

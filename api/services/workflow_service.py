@@ -95,7 +95,6 @@ from services.errors.app import (
     WorkflowNotFoundError,
 )
 from services.system_feature_service import SystemFeatureService
-from tasks.new_agent_beta_task import register_new_agent_beta_workflow_publish_after_commit
 
 
 @dataclass(frozen=True)
@@ -244,19 +243,16 @@ class WorkflowService:
         )
         return session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, *, session: Session
-    ) -> Workflow | None:
+    @staticmethod
+    def get_draft_workflow(app_model: App, *, session: Session) -> Workflow | None:
         """
-        Get draft workflow
+        Return the app's draft workflow, or None if no draft exists.
 
         Reuses the caller's active session so workflow reads stay in the same
-        transaction as the surrounding request or task.
+        transaction as the surrounding request or task. No service construction
+        or Flask database binding is needed for this read.
         """
-        if workflow_id:
-            return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
-        # fetch draft workflow by app_model
-        workflow = session.scalar(
+        return session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -265,9 +261,6 @@ class WorkflowService:
             )
             .limit(1)
         )
-
-        # return draft workflow
-        return workflow
 
     def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
         """Return the app draft while holding its row lock for the caller's transaction."""
@@ -282,8 +275,8 @@ class WorkflowService:
             .with_for_update()
         )
 
+    @staticmethod
     def get_published_workflow_by_id(
-        self,
         app_model: App,
         workflow_id: str,
         *,
@@ -756,17 +749,11 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        has_inline_agent = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
         )
-        if has_inline_agent:
-            register_new_agent_beta_workflow_publish_after_commit(
-                session=session,
-                published_workflow_id=workflow.id,
-                published_at=workflow.created_at,
-            )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)

@@ -17,7 +17,7 @@ from core.plugin.entities.plugin import PluginDependency, PluginInstallation
 from core.plugin.impl.plugin import PluginInstaller
 from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.app import AppServices
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext, RequestContext
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
@@ -33,6 +33,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
+from repositories.app.export_repository import AppExportRepository
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
@@ -41,6 +42,7 @@ from services.agent.roster_service import AgentRosterService
 from services.app import console_gateway
 from services.app.console_gateway import AppLifecycleGateway, AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app.console_service import ConsoleAppNotFoundError, InvalidAppAccessModesError
+from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService, PreparedAppPackage
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
@@ -185,7 +187,9 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
     monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
     workflow_service = WorkflowService(session_maker=sqlite_session_factory)
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowService", Mock(wraps=WorkflowService, return_value=workflow_service)
+    )
 
     exported = app_services.console.export(context, app_id, AppExportOptions(format="yaml"))
     assert isinstance(exported, str)
@@ -471,7 +475,10 @@ def test_access_mode_batch_validates_completeness(monkeypatch: pytest.MonkeyPatc
 @pytest.mark.parametrize(
     "mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT]
 )
-def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engine: Engine, mode: AppMode) -> None:
+def test_dsl_export_uses_owned_short_session_and_preserves_selectors(
+    sqlite_engine: Engine,
+    mode: AppMode,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace = str(uuid4()), str(uuid4())
     with factory.begin() as session:
@@ -491,6 +498,8 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
         @staticmethod
         def serialize_export_data(prepared: AppDslExportData) -> str:
             assert prepared.tenant_id == workspace
+            with pytest.raises(InvalidRequestError):
+                opened[-1].execute(select(App))
             return f"kind: app\napp: {{mode: {mode}}}"
 
     gateway = AppTransferGateway(
@@ -504,6 +513,7 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
     context = RequestContext("request", None, "actor", workspace)
     options = AppExportOptions(include_secret=True, workflow_id="workflow")
     dsl = gateway.export_dsl(context, app_id, options)
+    assert dsl == f"kind: app\napp: {{mode: {mode}}}"
     exported_app = calls[0]["app_model"]
     assert isinstance(exported_app, App)
     assert exported_app.id == app_id
@@ -521,8 +531,9 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(sqlite_engi
     [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.AGENT],
 )
 @pytest.mark.parametrize("remote_fails", [False, True])
+@pytest.mark.parametrize("surface", ["console", "openapi", "inner"])
 def test_real_dsl_export_releases_connection_before_plugin_request(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, mode: AppMode, remote_fails: bool
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, mode: AppMode, remote_fails: bool, surface: str
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     app_id, workspace, actor = str(uuid4()), str(uuid4()), str(uuid4())
@@ -552,8 +563,6 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
             session.flush()
             app.app_model_config_id = config.id
 
-    workflow_service = WorkflowService(session_maker=factory)
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
     checked_out: set[object] = set()
     calls: list[list[str]] = []
 
@@ -580,15 +589,28 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
+    exports = AppExportService(
+        apps=AppExportRepository(session_factory=factory), serialize=AppDslService.serialize_export_data
+    )
+
+    def export() -> str:
+        if surface == "console":
+            return gateway.export_dsl(RequestContext("request", None, actor, workspace), app_id, AppExportOptions())
+        if surface == "openapi":
+            return exports.export_app(
+                AppRequestContext(tenant_id=workspace, app_id=app_id),
+                AppExportOptions(),
+            )
+        return exports.export_for_inner(app_id, AppExportOptions())
+
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
     try:
-        context = RequestContext("request", None, actor, workspace)
         if remote_fails:
             with pytest.raises(RuntimeError, match="Plugin daemon unavailable"):
-                gateway.export_dsl(context, app_id, AppExportOptions())
+                export()
         else:
-            exported = yaml.safe_load(gateway.export_dsl(context, app_id, AppExportOptions()))
+            exported = yaml.safe_load(export())
             assert exported["app"]["mode"] == mode
             assert exported["dependencies"] == []
         assert len(calls) == 1
@@ -765,3 +787,77 @@ def test_chatflow_starter_draft_is_start_llm_answer_as_the_editor_saves_it() -> 
 
 def test_workflow_starter_draft_is_empty() -> None:
     assert console_gateway._STARTER_DRAFT_GRAPHS[AppMode.WORKFLOW] == {"nodes": [], "edges": []}
+
+
+@pytest.mark.parametrize("commit_fails", [False, True])
+@pytest.mark.parametrize("entry", ["import", "confirm", "copy"])
+@pytest.mark.parametrize("status", list(ImportStatus))
+@pytest.mark.parametrize("created", [False, True])
+def test_import_creator_access_runs_after_successful_commit(
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+    copy_connections: set[object],
+    monkeypatch: pytest.MonkeyPatch,
+    entry: str,
+    status: ImportStatus,
+    created: bool,
+    commit_fails: bool,
+) -> None:
+    context, app_id = copy_source
+    result = Import(id="import", status=status, app_id=app_id, app_mode=AppMode.WORKFLOW, app_created=created)
+    events: list[str] = []
+
+    class Dsl:
+        def __init__(self, session: Session) -> None:
+            if commit_fails:
+
+                def fail_commit(_: Session) -> None:
+                    raise RuntimeError("commit failed")
+
+                event.listen(session, "before_commit", fail_commit)
+            event.listen(session, "after_commit", lambda _: events.append("commit"))
+            event.listen(session, "after_rollback", lambda _: events.append("rollback"))
+
+        def import_app(self, **_kwargs: object) -> Import:
+            return result
+
+        def confirm_import(self, **_kwargs: object) -> Import:
+            return result
+
+    def sync(tenant_id: str, account_id: str, resource_type: str, resource_id: str) -> None:
+        assert not copy_connections
+        assert events == ["commit"]
+        assert (tenant_id, account_id, resource_type, resource_id) == (
+            context.active_workspace_id,
+            context.account_id,
+            "app",
+            app_id,
+        )
+        events.append("sync")
+
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync)
+    gateway = AppTransferGateway(
+        session_factory=sqlite_session_factory,
+        dsl_factory=cast(Callable[[Session], AppDslService], Dsl),
+        packages=AppPackageService(),
+        agent_packages=RosterAgentPackageExporter(),
+        agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+    )
+    if commit_fails and status != ImportStatus.FAILED and not (entry == "copy" and status == ImportStatus.PENDING):
+        if entry == "confirm":
+            with pytest.raises(RuntimeError, match="commit failed"):
+                gateway.confirm_import(context, "import")
+        else:
+            with pytest.raises(RuntimeError, match="commit failed"):
+                gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+        assert "sync" not in events
+        return
+    if entry == "confirm":
+        returned, was_created = gateway.confirm_import(context, "import")
+        assert was_created is created
+    else:
+        returned = gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+    assert returned is result
+    expected = created and status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
+    assert (events.count("sync") == 1) is expected

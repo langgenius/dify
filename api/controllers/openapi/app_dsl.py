@@ -5,9 +5,10 @@ from typing import Final
 from uuid import UUID, uuid4
 
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from constants.oauth_bearer import Scope
+from controllers.common.errors import ForbiddenError
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -109,7 +110,7 @@ class AppDslImportApi(Resource):
     """
 
     @endpoint(
-        account_context=True,
+        context="workspace",
         op="import.console_app.dsl",
         kind=Kind.OBJECT,
         summary="Import an app from DSL text or URL",
@@ -147,7 +148,7 @@ class AppDslImportApi(Resource):
         try:
             result = application_services().apps.imports.import_app(ctx, params)
         except NoPermissionError as exc:
-            raise Forbidden(str(exc)) from exc
+            raise ForbiddenError(str(exc)) from exc
         except DraftChangedError as exc:
             raise DraftChanged() from exc
 
@@ -170,7 +171,7 @@ class AppDslCheckApi(Resource):
     """
 
     @endpoint(
-        account_context=True,
+        context="workspace",
         op="check.console_app.dsl",
         kind=Kind.OBJECT,
         summary="Check a DSL without importing it: every problem with its node and field",
@@ -207,7 +208,7 @@ class AppDslImportConfirmApi(Resource):
     """
 
     @endpoint(
-        account_context=True,
+        context="workspace",
         op="confirm.console_app.dsl_import",
         kind=Kind.OBJECT,
         summary="Confirm a pending DSL import",
@@ -219,7 +220,7 @@ class AppDslImportConfirmApi(Resource):
         try:
             result = application_services().apps.imports.confirm_import(ctx, import_id)
         except NoPermissionError as exc:
-            raise Forbidden(str(exc)) from exc
+            raise ForbiddenError(str(exc)) from exc
         except DraftChangedError as exc:
             raise DraftChanged() from exc
 
@@ -283,7 +284,7 @@ class AppDslCheckDependenciesApi(Resource):
     """
 
     @endpoint(
-        account_context=True,
+        context="workspace",
         op="check.console_app.dependency",
         kind=Kind.OBJECT,
         summary="Check plugin dependencies of an app",

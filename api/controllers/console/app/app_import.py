@@ -6,7 +6,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp, RBACCheck, Workspace
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console.app.error import AppNotFoundError, DraftWorkflowNotSync
 from controllers.console.explore.error import RecommendedAppNotFoundError as RecommendedAppNotFoundHttpError
 from controllers.console.flask_admission import console_account_admission
@@ -29,7 +29,8 @@ class AppImportPayload(AppImportParams):
 
 
 register_enum_models(console_ns, ImportStatus)
-register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
+register_schema_models(console_ns, AppImportPayload, CheckDependenciesResult)
+register_response_schema_models(console_ns, Import)
 
 
 _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})

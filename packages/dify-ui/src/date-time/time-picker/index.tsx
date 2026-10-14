@@ -8,7 +8,7 @@ import type {
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
-import type { TimePanelLabels, TimePanelProps } from '../time-picker/time-panel'
+import type { TimePanelLabels, TimePanelProps } from '../internal/time-panel'
 import { useControlled } from '@base-ui/utils/useControlled'
 import { TZDate } from '@date-fns/tz'
 import * as React from 'react'
@@ -23,8 +23,8 @@ import {
   PickerValue,
   usePickerContext,
 } from '../internal/picker-parts'
-import { TimePanel } from '../time-picker/time-panel'
-import { formatTimeValue, requireTimeValue } from '../time-picker/time-value'
+import { TimePanel } from '../internal/time-panel'
+import { formatTimeValue, requireTimeValue } from '../internal/time-value'
 
 type TimePickerLabels = TimePanelLabels & {
   title: string

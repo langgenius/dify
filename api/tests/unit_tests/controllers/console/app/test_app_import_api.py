@@ -82,7 +82,7 @@ def test_import_transaction_and_response_contract(
     config_overrides(RBAC_ENABLED=True, DEPLOYMENT_EDITION="COMMUNITY")
     monkeypatch.setattr("services.app.console_gateway.rbac_service.RBACService.CheckAccess.check", lambda *a, **k: True)
     app_id = str(uuid4())
-    result = Import(id="import-1", status=status, app_id=app_id)
+    result = Import(id="import-1", status=status, app_id=app_id, app_created=not overwrite)
     pending = PendingData(
         tenant_id=import_context.active_workspace_id,
         account_id=import_context.account_id,
@@ -233,3 +233,7 @@ def test_confirming_an_import_whose_draft_changed_is_a_conflict(app_query_servic
             unwrap(api.post)(api, context, import_id="import-1")
 
     assert exc_info.value.code == 409
+
+
+def test_import_response_schema_hides_creation_marker() -> None:
+    assert "app_created" not in controller.console_ns.models[Import.__name__].__schema__["properties"]

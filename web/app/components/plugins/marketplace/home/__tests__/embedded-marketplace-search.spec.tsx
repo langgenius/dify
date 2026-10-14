@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -25,13 +25,12 @@ const { debounceState, mockPluginSearch, mockTemplateSearch, mockCheckInstalled 
   }),
 )
 
-vi.mock('ahooks', async (importOriginal) => {
-  const original = await importOriginal<typeof import('ahooks')>()
+vi.mock('foxact/use-debounced-value', async (importOriginal) => {
+  const original = await importOriginal<typeof import('foxact/use-debounced-value')>()
 
   return {
-    ...original,
-    useDebounce: <T,>(value: T, options?: { wait?: number }) =>
-      debounceState.useRealDebounce ? original.useDebounce(value, options) : value,
+    useDebouncedValue: (value: string, wait: number) =>
+      debounceState.useRealDebounce ? original.useDebouncedValue(value, wait) : value,
   }
 })
 
@@ -247,8 +246,11 @@ describe('EmbeddedMarketplaceSearch', () => {
     const { onUrlUpdate } = renderSearch()
 
     await user.type(screen.getByRole('combobox'), 'google')
-    await user.hover(await screen.findByRole('option', { name: /Google Search/ }))
-    await user.keyboard('{Enter}')
+    await screen.findByRole('option', { name: /Google Search/ })
+    // Nothing is highlighted, so Enter is left to the browser's implicit form submission;
+    // happy-dom has none, so the form is submitted here.
+    expect(fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' })).toBe(true)
+    fireEvent.submit(screen.getByRole('combobox').closest('form')!)
 
     await waitFor(() => {
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('q')).toBe('google')

@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from werkzeug.exceptions import Conflict, Forbidden, NotFound
+from werkzeug.wrappers import Response
 
 from controllers.console import flask_admission, workflow_run_archive
 from controllers.console.workflow_run_archive import (
@@ -53,7 +54,7 @@ def _account(role: TenantAccountRole) -> Account:
     return make_account(name="Test User", email="user@example.com", role=role)
 
 
-def _original(method):
+def _original(method: Callable[..., object]) -> Callable[..., object]:
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
     return method
@@ -134,7 +135,7 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: account_with_tenant)
 
-    def get_billing_info(tenant_id: str, *, exclude_vector_space: bool):
+    def get_billing_info(tenant_id: str, *, exclude_vector_space: bool) -> dict[str, object]:
         assert tenant_id == "tenant-1"
         assert exclude_vector_space
         return {
@@ -228,7 +229,7 @@ def test_workflow_run_archive_endpoints_delegate_to_application_service(
 )
 def test_workflow_run_archive_endpoints_translate_service_errors(
     monkeypatch: pytest.MonkeyPatch,
-    method,
+    method: Callable[..., object],
     service_method: str,
     service_error: Exception,
     http_error: type[Exception],
@@ -259,5 +260,6 @@ def test_workflow_run_archive_file_redirects_to_signed_url(monkeypatch: pytest.M
     with app.test_request_context():
         response = _original(WorkflowRunArchiveDownloadFileApi.get)(None, _CONTEXT, "download-1")
 
+    assert isinstance(response, Response)
     assert response.status_code == 302
     assert response.location == "https://storage.example.com/archive.zip"

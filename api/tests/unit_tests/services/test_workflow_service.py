@@ -322,36 +322,20 @@ class TestWorkflowService:
 
         assert result is None
 
-    def test_get_draft_workflow_with_workflow_id(self, workflow_service: WorkflowService, sqlite_session: Session):
-        """Test get_draft_workflow with workflow_id calls get_published_workflow_by_id."""
+    # ==================== Get Published Workflow Tests ====================
+    # These tests verify retrieval of published workflows (versioned snapshots)
+
+    def test_get_published_workflow_by_id_reuses_provided_session(self, sqlite_session: Session):
+        """Published lookup sees uncommitted rows through the caller's session."""
         app = TestWorkflowAssociatedDataFactory.create_app()
         workflow_id = "workflow-123"
         workflow = TestWorkflowAssociatedDataFactory.create_workflow(workflow_id=workflow_id, version="v1")
         sqlite_session.add(workflow)
-        sqlite_session.commit()
+        sqlite_session.flush()
 
-        result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id, session=sqlite_session)
+        result = WorkflowService.get_published_workflow_by_id(app, workflow_id, session=sqlite_session)
 
         assert result is workflow
-
-    def test_get_draft_workflow_with_workflow_id_reuses_provided_session(
-        self, workflow_service: WorkflowService, sqlite_session: Session
-    ):
-        """Test get_draft_workflow passes an injected session to published workflow lookup."""
-        app = TestWorkflowAssociatedDataFactory.create_app()
-        workflow_id = "workflow-123"
-        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
-
-        with patch.object(
-            workflow_service, "get_published_workflow_by_id", return_value=mock_workflow
-        ) as mock_get_published:
-            result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id, session=sqlite_session)
-
-        assert result == mock_workflow
-        mock_get_published.assert_called_once_with(app, workflow_id, session=sqlite_session)
-
-    # ==================== Get Published Workflow Tests ====================
-    # These tests verify retrieval of published workflows (versioned snapshots)
 
     def test_get_published_workflow_by_id_success(self, workflow_service: WorkflowService, sqlite_session: Session):
         """Test get_published_workflow_by_id returns published workflow."""
@@ -1281,12 +1265,7 @@ class TestWorkflowService:
         sqlite_session.add(draft)
         sqlite_session.commit()
 
-        with (
-            patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch(
-                "services.workflow_service.register_new_agent_beta_workflow_publish_after_commit"
-            ) as register_workflow_publish,
-        ):
+        with patch("services.workflow_service.app_published_workflow_was_updated"):
             result = workflow_service.publish_workflow(
                 session=sqlite_session,
                 app_model=app,
@@ -1300,41 +1279,6 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.marked_name == "Version 1"
         assert result.marked_comment == "Initial release"
-        register_workflow_publish.assert_not_called()
-
-    def test_publish_workflow_registers_inline_agent_after_commit(
-        self, workflow_service: WorkflowService, sqlite_session: Session
-    ) -> None:
-        app = TestWorkflowAssociatedDataFactory.create_app()
-        account = TestWorkflowAssociatedDataFactory.create_account()
-        draft = TestWorkflowAssociatedDataFactory.create_workflow(
-            version=Workflow.VERSION_DRAFT,
-            graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
-        )
-        sqlite_session.add(draft)
-        sqlite_session.commit()
-
-        with (
-            patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch(
-                "services.agent.workflow_publish_service.WorkflowAgentPublishService.copy_agent_node_bindings_to_published",
-                return_value=True,
-            ),
-            patch(
-                "services.workflow_service.register_new_agent_beta_workflow_publish_after_commit"
-            ) as register_workflow_publish,
-        ):
-            published = workflow_service.publish_workflow(
-                session=sqlite_session,
-                app_model=app,
-                account=account,
-            )
-
-        register_workflow_publish.assert_called_once_with(
-            session=sqlite_session,
-            published_workflow_id=published.id,
-            published_at=published.created_at,
-        )
 
     def test_publish_workflow_numbers_versions_from_one(
         self, workflow_service: WorkflowService, sqlite_session: Session

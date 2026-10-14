@@ -7,8 +7,9 @@ from unittest.mock import Mock
 import pytest
 import yaml
 from flask import Flask
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
+from controllers.common.errors import ForbiddenError
 from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
 from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, OpenApiError, VersionNotFound
@@ -81,10 +82,12 @@ def test_permission_denial_maps_to_forbidden(
     context = RequestContext("request-1", None, "account-1", "workspace-1")
 
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        with pytest.raises(Forbidden, match="denied") as exc_info:
+        with pytest.raises(ForbiddenError, match="denied") as exc_info:
             cast(_EndpointView, api.post).__handler__(api, context, **kwargs)
 
     assert isinstance(exc_info.value.__cause__, NoPermissionError)
+    assert exc_info.value.code == 403
+    assert exc_info.value.data == {"code": "forbidden", "message": "denied", "status": 403}
 
 
 @pytest.mark.parametrize(

@@ -26,36 +26,13 @@ from graphon.variables import SegmentType
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
-from services.app_dsl_service import Import
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode
+from services.entities.app_entities import SupportedAppType
+from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 100
-
-
-class SupportedAppType(StrEnum):
-    """App types the app list ops list and filter by.
-
-    A curated subset of :class:`AppMode`: the real, user-facing app categories.
-    Excludes runtime-only mode tags that are not standalone apps
-    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
-    roster-owned ``agent`` type (surfaced through the roster, not this list).
-
-    Members reference ``AppMode.*.value`` so the subset relationship is
-    type-checked: dropping a member from ``AppMode`` breaks this at import.
-    This is the single source for the listable set — params and filters derive from it.
-    """
-
-    COMPLETION = AppMode.COMPLETION.value
-    CHAT = AppMode.CHAT.value
-    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
-    WORKFLOW = AppMode.WORKFLOW.value
-    AGENT_CHAT = AppMode.AGENT_CHAT.value
-
-
-SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 
 class UsageInfo(BaseModel):

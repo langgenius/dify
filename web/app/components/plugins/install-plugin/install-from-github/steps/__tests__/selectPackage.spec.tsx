@@ -2,6 +2,7 @@ import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../../typ
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { PluginCategoryEnum } from '../../../../types'
 import SelectPackage from '../selectPackage'
 
@@ -321,7 +322,9 @@ describe('SelectPackage', () => {
     })
 
     it('should call onFailed with response message on upload error', async () => {
-      mockHandleUpload.mockRejectedValue({ response: { message: 'API Error' } })
+      mockHandleUpload.mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { message: 'API Error' }),
+      )
 
       const onFailed = vi.fn()
       renderSelectPackage({
@@ -350,7 +353,7 @@ describe('SelectPackage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
 
       await waitFor(() => {
-        expect(onFailed).toHaveBeenCalledWith('plugin.installFromGitHub.uploadFailed')
+        expect(onFailed).toHaveBeenCalledWith('Network error')
       })
     })
 
@@ -684,7 +687,9 @@ describe('SelectPackage', () => {
   // ================================
   describe('Error Response Handling', () => {
     it('should handle error with response.message property', async () => {
-      mockHandleUpload.mockRejectedValue({ response: { message: 'Custom API Error' } })
+      mockHandleUpload.mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { message: 'Custom API Error' }),
+      )
 
       const onFailed = vi.fn()
       renderSelectPackage({
@@ -701,7 +706,7 @@ describe('SelectPackage', () => {
     })
 
     it('should handle error with empty response object', async () => {
-      mockHandleUpload.mockRejectedValue({ response: {} })
+      mockHandleUpload.mockRejectedValue(createHttpError(new Response(null, { status: 500 }), {}))
 
       const onFailed = vi.fn()
       renderSelectPackage({
@@ -713,7 +718,7 @@ describe('SelectPackage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
 
       await waitFor(() => {
-        expect(onFailed).toHaveBeenCalledWith('plugin.installFromGitHub.uploadFailed')
+        expect(onFailed).toHaveBeenCalledWith('HTTP 500')
       })
     })
 
@@ -735,7 +740,9 @@ describe('SelectPackage', () => {
     })
 
     it('should handle error with response but no message', async () => {
-      mockHandleUpload.mockRejectedValue({ response: { status: 500 } })
+      mockHandleUpload.mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { status: 500 }),
+      )
 
       const onFailed = vi.fn()
       renderSelectPackage({
@@ -747,7 +754,7 @@ describe('SelectPackage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
 
       await waitFor(() => {
-        expect(onFailed).toHaveBeenCalledWith('plugin.installFromGitHub.uploadFailed')
+        expect(onFailed).toHaveBeenCalledWith('HTTP 500')
       })
     })
 
