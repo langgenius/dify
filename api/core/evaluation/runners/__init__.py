@@ -24,7 +24,7 @@ def get_service_account_for_app(session: Session, app_id: str, tenant_id: str) -
     if not tenant_membership:
         raise ValueError(f"Creator account {account.id} is not a member of tenant {tenant_id}")
 
-    account.set_tenant_id(tenant_id)
+    account.set_tenant_id_with_session(tenant_id, session=session)
     return account
 
 
@@ -53,5 +53,5 @@ def get_service_account_for_snippet(session: Session, snippet_id: str, tenant_id
     if not tenant_membership:
         raise ValueError(f"Creator account {account.id} is not a member of tenant {tenant_id}")
 
-    account.set_tenant_id(tenant_id)
+    account.set_tenant_id_with_session(tenant_id, session=session)
     return account
