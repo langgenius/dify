@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { DifyBuilderActiveInteraction, DifyBuilderDecision } from '../types'
+import type { InteractionResponseCopy } from './optimistic-response'
 import { Button } from '@langgenius/dify-ui/button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -7,7 +8,9 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormCard } from '../conversation/form-card'
 import { ResourceCard } from '../conversation/resource-card'
+import { useBuilderText } from '../copy/use-builder-text'
 import { getDefaultActionPayload } from './action-payload'
+import { useDifyBuilderInteractionLocale } from './use-interaction-locale'
 
 type SubmitInteraction = (actionId: string, payload?: Record<string, unknown>) => Promise<boolean>
 
@@ -23,10 +26,12 @@ const InteractionDockShell = ({
   title: string
 }) => {
   const titleId = useId()
+  const locale = useDifyBuilderInteractionLocale()
 
   return (
     <section
       aria-labelledby={titleId}
+      lang={locale}
       className="mx-4 flex max-h-[min(60vh,26rem)] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
     >
       <header className="shrink-0 px-4 pt-4 pb-3">
@@ -52,13 +57,12 @@ const ChoiceInteraction = ({
   recheckReady: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation(['workflow', 'common'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const formId = useId()
   const options = decision.options ?? []
-  const noRepair = options.some((option) => option.id === 'retry_repair')
-  const title = noRepair
-    ? t(($) => $['difyBuilder.noRepair.title'], { ns: 'workflow' })
-    : decision.title
+  const { renderText } = useBuilderText()
+  const title = renderText(decision.title)
   const [selectedId, setSelectedId] = useState(decision.default_option_id || options[0]?.id || '')
   const [freeText, setFreeText] = useState('')
   const [pending, setPending] = useState(false)
@@ -89,11 +93,7 @@ const ChoiceInteraction = ({
   return (
     <InteractionDockShell
       title={title}
-      description={
-        noRepair
-          ? t(($) => $['difyBuilder.noRepair.description'], { ns: 'workflow' })
-          : decision.description
-      }
+      description={renderText(decision.description)}
       footer={
         <Button
           type="submit"
@@ -103,7 +103,7 @@ const ChoiceInteraction = ({
           loading={pending}
           disabled={pending ? false : busy || !canSubmit}
         >
-          {t(($) => $['operation.submit'], { ns: 'common' })}
+          {renderText(decision.submit?.label) || t(($) => $['operation.submit'], { ns: 'common' })}
         </Button>
       }
     >
@@ -131,16 +131,10 @@ const ChoiceInteraction = ({
               className="flex min-h-9 w-full cursor-pointer items-center rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-left system-sm-medium text-text-secondary outline-hidden transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid/30 data-checked:bg-util-colors-blue-brand-blue-brand-50 data-checked:text-text-primary data-checked:hover:border-state-accent-solid/30 data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 data-disabled:cursor-not-allowed data-disabled:opacity-50"
             >
               <span className="min-w-0">
-                <span className="block">
-                  {option.id === 'retry_repair'
-                    ? t(($) => $['difyBuilder.noRepair.retry'], { ns: 'workflow' })
-                    : option.id === 'finish_repair'
-                      ? t(($) => $['difyBuilder.noRepair.finish'], { ns: 'workflow' })
-                      : option.label}
-                </span>
+                <span className="block">{renderText(option.label)}</span>
                 {option.description && (
                   <span className="mt-0.5 block system-xs-regular text-text-tertiary">
-                    {option.description}
+                    {renderText(option.description)}
                   </span>
                 )}
               </span>
@@ -154,8 +148,8 @@ const ChoiceInteraction = ({
             required={optionInput.required}
             minLength={optionInput.min_length}
             maxLength={optionInput.max_length}
-            aria-label={optionInput.placeholder || selectedOption?.label}
-            placeholder={optionInput.placeholder}
+            aria-label={renderText(optionInput.placeholder) || renderText(selectedOption?.label)}
+            placeholder={renderText(optionInput.placeholder)}
             className="mt-2 min-h-18 resize-y"
             onValueChange={setFreeText}
           />
@@ -176,7 +170,8 @@ const FormInteraction = ({
   busy: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation(['workflow', 'common'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const formId = useId()
   const actionId = activeInteraction.action_id
   const [payload, setPayload] = useState<Record<string, unknown>>(() =>
@@ -185,6 +180,7 @@ const FormInteraction = ({
   const [valid, setValid] = useState(false)
   const [pending, setPending] = useState(false)
   const card = activeInteraction.card
+  const { renderText } = useBuilderText()
 
   const handleSubmit = async () => {
     if (busy || pending || !valid) return
@@ -198,8 +194,10 @@ const FormInteraction = ({
 
   return (
     <InteractionDockShell
-      title={card.payload.title || t(($) => $['difyBuilder.cardCategory.form'], { ns: 'workflow' })}
-      description={card.payload.description}
+      title={
+        renderText(card.payload.title) || t(($) => $['cardCategory.form'], { ns: 'difyBuilder' })
+      }
+      description={renderText(card.payload.description)}
       footer={
         <Button
           type="submit"
@@ -210,7 +208,7 @@ const FormInteraction = ({
           disabled={pending ? false : busy}
         >
           {actionId === 'provide_testdata'
-            ? t(($) => $['difyBuilder.runTest'], { ns: 'workflow' })
+            ? t(($) => $.runTest, { ns: 'difyBuilder' })
             : t(($) => $['operation.submit'], { ns: 'common' })}
         </Button>
       }
@@ -242,7 +240,8 @@ const ResourceInteraction = ({
   busy: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation(['workflow', 'common'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const formId = useId()
   const actionId = activeInteraction.action_id
   const [payload, setPayload] = useState<Record<string, unknown>>(() =>
@@ -250,6 +249,7 @@ const ResourceInteraction = ({
   )
   const [pending, setPending] = useState(false)
   const card = activeInteraction.card
+  const { renderText } = useBuilderText()
 
   const handleSubmit = async () => {
     if (busy || pending) return
@@ -264,9 +264,10 @@ const ResourceInteraction = ({
   return (
     <InteractionDockShell
       title={
-        card.payload.title || t(($) => $['difyBuilder.cardCategory.resources'], { ns: 'workflow' })
+        renderText(card.payload.title) ||
+        t(($) => $['cardCategory.resources'], { ns: 'difyBuilder' })
       }
-      description={card.payload.description}
+      description={renderText(card.payload.description)}
       footer={
         <Button
           type="submit"
@@ -312,16 +313,32 @@ export const DifyBuilderInteractionDock = ({
   decision: DifyBuilderDecision | null
   interactionPending: boolean
   recheckReady: boolean
-  submitInteraction: SubmitInteraction
+  submitInteraction: (
+    actionId: string,
+    payload: Record<string, unknown>,
+    copy: InteractionResponseCopy,
+  ) => Promise<boolean>
 }) => {
-  const { t } = useTranslation(['common'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
+  const { renderText } = useBuilderText()
+  const submitWithResponseCopy: SubmitInteraction = (actionId, payload = {}) =>
+    submitInteraction(actionId, payload, {
+      renderText,
+      replyLanguage: locale,
+      booleanFalse: t(($) => $['interactionResponse.booleanFalse'], { ns: 'difyBuilder' }),
+      booleanTrue: t(($) => $['interactionResponse.booleanTrue'], { ns: 'difyBuilder' }),
+      noResourcesSelected: t(($) => $['interactionResponse.noResourcesSelected'], {
+        ns: 'difyBuilder',
+      }),
+    })
 
   if (activeInteraction?.card.kind === 'form') {
     return (
       <FormInteraction
         activeInteraction={{ ...activeInteraction, card: activeInteraction.card }}
         busy={busy}
-        submitInteraction={submitInteraction}
+        submitInteraction={submitWithResponseCopy}
       />
     )
   }
@@ -331,7 +348,7 @@ export const DifyBuilderInteractionDock = ({
       <ResourceInteraction
         activeInteraction={{ ...activeInteraction, card: activeInteraction.card }}
         busy={busy}
-        submitInteraction={submitInteraction}
+        submitInteraction={submitWithResponseCopy}
       />
     )
   }
@@ -342,7 +359,7 @@ export const DifyBuilderInteractionDock = ({
         busy={busy}
         decision={decision}
         recheckReady={recheckReady}
-        submitInteraction={submitInteraction}
+        submitInteraction={submitWithResponseCopy}
       />
     )
   }

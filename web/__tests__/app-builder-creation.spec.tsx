@@ -170,21 +170,19 @@ describe('App Builder creation flow', () => {
       screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
 
     expect(await screen.findByRole('heading', { name: 'New app editor' })).toBeInTheDocument()
     await waitFor(() => expect(mocks.setShowPanel).toHaveBeenCalledWith(true))
     expect(mocks.startBuild).not.toHaveBeenCalled()
     expect(mocks.syncDraft).not.toHaveBeenCalled()
     const composer = screen.getByRole('textbox', {
-      name: 'workflow.difyBuilder.messagePlaceholder',
+      name: 'difyBuilder.messagePlaceholder',
     })
     await waitFor(() => expect(composer).toHaveValue('Build an expense assistant'))
     expect(composer).toBeEnabled()
-    expect(composer).toHaveAccessibleDescription(
-      'workflowGenerator.workflowGenerator.modelRequired',
-    )
-    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })).toBeDisabled()
+    expect(composer).toHaveAccessibleDescription('difyBuilder.modelRequired')
+    expect(screen.getByRole('button', { name: 'difyBuilder.messageSend' })).toBeDisabled()
     await act(async () =>
       queryClient.setQueryData(builderModelListQueryKey, { data: builderModelList }),
     )
@@ -195,7 +193,7 @@ describe('App Builder creation flow', () => {
     await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
     await user.click(await screen.findByRole('button', { name: /gpt-4.1/ }))
     await user.keyboard('{Escape}')
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
 
     await waitFor(() =>
       expect(mocks.startBuild).toHaveBeenCalledWith(
@@ -221,13 +219,13 @@ describe('App Builder creation flow', () => {
       screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     const composer = await screen.findByRole('textbox', {
-      name: 'workflow.difyBuilder.messagePlaceholder',
+      name: 'difyBuilder.messagePlaceholder',
     })
     await waitFor(() => expect(composer).toHaveValue('Build an expense assistant'))
     await user.type(composer, ' with approval steps')
-    await user.click(screen.getByRole('button', { name: 'workflow.errorMsg.configureModel' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.configureModel' }))
     await waitFor(() =>
       expect(mocks.updateUrl).toHaveBeenCalledWith(
         expect.objectContaining({ queryString: '?settings=provider' }),
@@ -242,7 +240,7 @@ describe('App Builder creation flow', () => {
       queryClient.setQueryData(builderModelListQueryKey, { data: builderModelList })
     })
     expect(mocks.startBuild).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     await waitFor(() =>
       expect(mocks.startBuild).toHaveBeenCalledWith(
         'created-app',
@@ -266,14 +264,14 @@ describe('App Builder creation flow', () => {
       screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     const composer = await screen.findByRole('textbox', {
-      name: 'workflow.difyBuilder.messagePlaceholder',
+      name: 'difyBuilder.messagePlaceholder',
     })
-    expect(composer).toHaveAccessibleDescription('workflow.difyBuilder.modelContactAdmin')
+    expect(composer).toHaveAccessibleDescription('difyBuilder.modelContactAdmin')
     expect(composer).toHaveValue('Build an expense assistant')
     expect(
-      screen.queryByRole('button', { name: 'workflow.errorMsg.configureModel' }),
+      screen.queryByRole('button', { name: 'difyBuilder.configureModel' }),
     ).not.toBeInTheDocument()
     expect(mocks.startBuild).not.toHaveBeenCalled()
   })
@@ -291,12 +289,10 @@ describe('App Builder creation flow', () => {
       screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'workflow.difyBuilder.modelLoadFailed',
-    )
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('difyBuilder.modelLoadFailed')
     const composer = screen.getByRole('textbox', {
-      name: 'workflow.difyBuilder.messagePlaceholder',
+      name: 'difyBuilder.messagePlaceholder',
     })
     expect(composer).toHaveValue('Build an expense assistant')
     expect(mocks.startBuild).not.toHaveBeenCalled()
@@ -305,7 +301,7 @@ describe('App Builder creation flow', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
     expect(mocks.startBuild).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     await waitFor(() =>
       expect(mocks.startBuild).toHaveBeenCalledWith(
         'created-app',
@@ -330,7 +326,7 @@ describe('App Builder creation flow', () => {
       screen.getByRole('textbox', { name: 'app.newApp.starter.chatflowTitle' }),
       'Build an expense assistant',
     )
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     expect(await screen.findByRole('heading', { name: 'New app editor' })).toBeInTheDocument()
     expect(mocks.startBuild).not.toHaveBeenCalled()
     await act(async () =>

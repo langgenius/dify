@@ -869,7 +869,6 @@ def run_confirmed_handler(
         repo=typed_repo,
         now=lambda: datetime.min,
         detect_language=no_detection,
-        localize_items=no_localization,
     )
     session = Session(
         app_id="app-1",

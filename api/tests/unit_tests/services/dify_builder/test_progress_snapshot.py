@@ -10,6 +10,8 @@ from configs import dify_config
 from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
 from extensions.redis_names import serialize_redis_name
 from services.dify_builder import progress_snapshot, session_lock
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import copy_text
 
 
 def _snapshot() -> progress_snapshot.ProgressSnapshot:
@@ -18,10 +20,13 @@ def _snapshot() -> progress_snapshot.ProgressSnapshot:
         operation_id="operation-1",
         at_version=3,
         revision=7,
+        reply_language="zh-Hans",
         execution=ExecutionProgress(
             status="running",
             activities=[
-                ExecutionActivity(id="inspect", label="Inspect the current workflow", state="done"),
+                ExecutionActivity(
+                    id="inspect", label=copy_text(BuilderCopyId.PROGRESS_INSPECT_THE_CURRENT_WORKFLOW), state="done"
+                ),
                 ExecutionActivity(id="plan", label="Generate change plan", state="active"),
                 ExecutionActivity(id="node:llm", label="LLM", state="active", kind="node", parent_id="plan"),
             ],
@@ -56,7 +61,7 @@ def test_save_scopes_snapshot_to_tenant_session_and_activated_owner(redis, monke
     assert args[7] == session_lock.active_advance_time_limit()
 
 
-def test_read_restores_ordered_steps_states_and_node_parent(redis):
+def test_read_restores_ordered_steps_states_locale_and_node_parent(redis):
     snapshot = _snapshot()
     raw = json.dumps(asdict(snapshot)).encode()
     redis.get.side_effect = [b"activated-owner", raw, b"activated-owner"]

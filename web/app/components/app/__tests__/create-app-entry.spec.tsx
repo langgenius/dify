@@ -172,7 +172,7 @@ describe('Create app entry', () => {
       await openMenu(user)
       await user.click(screen.getByRole('menuitem', { name: label }))
       const input = await screen.findByRole('textbox', { name: title })
-      const send = screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' })
+      const send = screen.getByRole('button', { name: 'difyBuilder.messageSend' })
       expect(send).toBeDisabled()
       expect(mocks.createApp).not.toHaveBeenCalled()
       await user.type(input, '  Summarize support tickets  ')
@@ -213,7 +213,7 @@ describe('Create app entry', () => {
       expect.anything(),
     )
     expect(mocks.createApp).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
     expect(mocks.createApp.mock.calls[0]?.[0].body).toMatchObject({
       mode,
@@ -387,7 +387,7 @@ describe('Create app entry', () => {
     await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
     const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
     await user.type(input, 'Build an assistant')
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Create failed')
     expect(input).toHaveValue('Build an assistant')
     let resolveCreation!: (app: Awaited<ReturnType<typeof mocks.createApp>>) => void
@@ -397,7 +397,7 @@ describe('Create app entry', () => {
           resolveCreation = resolve
         }),
     )
-    await user.dblClick(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+    await user.dblClick(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
     expect(mocks.createApp).toHaveBeenCalledTimes(2)
     expect(input).toBeDisabled()
     await act(async () =>

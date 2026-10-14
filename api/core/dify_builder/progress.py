@@ -8,6 +8,7 @@ from typing import Literal
 
 from core.dify_builder.contract import ExecutionActivity, ExecutionProgress, ProgressEventData
 from core.dify_builder.models import NodeEvent, Session
+from services.dify_builder.presentation import BuilderText
 
 __all__ = ["ProgressReporter"]
 
@@ -17,7 +18,7 @@ _InternalActivityState = Literal["pending", "active", "done", "failed", "stopped
 @dataclass
 class _ActivityRecord:
     id: str
-    label: str
+    label: BuilderText
     state: _InternalActivityState = "pending"
     kind: Literal["stage", "node"] = "stage"
     parent_id: str | None = None
@@ -42,10 +43,12 @@ class ProgressReporter:
         at_version: int,
         activities: Iterable[ExecutionActivity],
         operation_id: str | None = None,
+        reply_language: str = "",
     ) -> None:
         self._emit = emit
         self._session_id = session_id
         self._stage_id = stage_id
+        self._reply_language = reply_language
         self._at_version = at_version
         self._operation_id = operation_id or str(uuid.uuid4())
         self._revision = 0
@@ -70,8 +73,9 @@ class ProgressReporter:
         emit: Callable[[ProgressEventData], None] | None,
         session: Session,
         stage_id: str,
-        steps: Iterable[tuple[str, str]],
+        steps: Iterable[tuple[str, BuilderText]],
         operation_id: str | None = None,
+        reply_language: str = "",
     ) -> "ProgressReporter":
         return cls(
             emit=emit,
@@ -80,6 +84,7 @@ class ProgressReporter:
             at_version=session.version + 1,
             activities=[ExecutionActivity(id=activity_id, label=label, state="active") for activity_id, label in steps],
             operation_id=operation_id,
+            reply_language=reply_language,
         )
 
     @property
@@ -119,7 +124,7 @@ class ProgressReporter:
         activity.state = "done"
         self._publish(activity)
 
-    def add_steps(self, steps: Iterable[tuple[str, str]]) -> None:
+    def add_steps(self, steps: Iterable[tuple[str, BuilderText]]) -> None:
         """Declare branch-specific stages without revealing them yet."""
         additions = [_ActivityRecord(id=activity_id, label=label) for activity_id, label in steps]
         known_ids = {activity.id for activity in self._activities}
@@ -218,6 +223,7 @@ class ProgressReporter:
                 session_id=self._session_id,
                 operation_id=self._operation_id,
                 stage_id=self._stage_id,
+                reply_language=self._reply_language,
                 at_version=self._at_version,
                 revision=self._revision,
                 status=self._status,

@@ -2,6 +2,7 @@
 
 import type {
   DifyBuilderCanvasEventData,
+  DifyBuilderReceiptSnapshot,
   DifyBuilderStreamEventResponse,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
@@ -376,7 +377,19 @@ export function useDifyBuilderSessionController(
           if (outcome.commandId && event.data.command_id !== outcome.commandId) return false
           outcome.sessionId = event.data.session_id
           if (store.get(difyBuilderActiveSessionIdAtom) !== event.data.session_id) return false
-          setConversation((current) => mergeConversation(current, [event.data.item]))
+          const item = event.data.item
+          setConversation((current) =>
+            mergeConversation(current, [
+              item.kind === 'assistant_turn' &&
+              !current.some((candidate) => candidate.seq === item.seq)
+                ? { ...item, receivedAt: Date.now() }
+                : item,
+            ]),
+          )
+          if (item.kind === 'assistant_turn') {
+            executionProgress.clearThroughVersion(event.data.session_id, item.at_version)
+            reasoningBuffer.clearThroughVersion(event.data.session_id, item.at_version)
+          }
           confirmLocalUserMessage(event.data.session_id, [event.data.item])
           return false
         }
@@ -1045,7 +1058,11 @@ export function useDifyBuilderSessionController(
   }, [continueRetest, runEvents])
 
   const runAction = useCallback(
-    async (actionId: string, payload: Record<string, unknown> = {}) => {
+    async (
+      actionId: string,
+      payload: Record<string, unknown> = {},
+      receiptSnapshot?: DifyBuilderReceiptSnapshot,
+    ) => {
       const view = store.get(difyBuilderSessionViewAtom)
       if (!view || store.get(difyBuilderSessionBusyAtom)) return false
       const succeeded = await runCommand({
@@ -1059,6 +1076,7 @@ export function useDifyBuilderSessionController(
             view.version,
             view.app_revision?.current ?? '',
             signal,
+            receiptSnapshot,
           ),
         trace: {
           kind: 'action',

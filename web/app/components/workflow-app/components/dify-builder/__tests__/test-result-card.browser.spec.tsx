@@ -27,7 +27,7 @@ describe('Builder final result scrolling', () => {
       </div>,
     )
     const output = screen.getByRole('region', {
-      name: 'workflow.difyBuilder.testResult.terminalOutputs',
+      name: 'difyBuilder.testResult.terminalOutputs',
     })
     await expect.element(screen.getByRole('heading', { name: 'Partial report' })).toBeVisible()
     await expect.element(screen.getByText('The next step timed out.')).toBeVisible()

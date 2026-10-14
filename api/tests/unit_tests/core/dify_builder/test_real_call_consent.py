@@ -35,6 +35,7 @@ from core.dify_builder.real_call_consent import (
     validate_phase,
     validate_scope,
 )
+from services.dify_builder.execution_contracts import JsonToolExecutionContext
 
 KEY = b"k" * 32
 NOW = datetime(2026, 10, 11, 12, 0, tzinfo=UTC)
@@ -447,9 +448,14 @@ CONTEXT = TypeAdapter(BuilderExecutionContextValue)
 
 def test_context_value_is_the_exact_locked_field_discriminated_union() -> None:
     union, field = get_args(BuilderExecutionContextValue)
-    assert set(get_args(union)) == {BuilderExecutionContext, ConfirmedToolExecutionContext}
+    assert set(get_args(union)) == {BuilderExecutionContext, ConfirmedToolExecutionContext, JsonToolExecutionContext}
     assert isinstance(field, FieldInfo)
     assert field.discriminator == "policy_version"
+    assert set(CONTEXT.json_schema()["discriminator"]["mapping"]) == {
+        "builder-confirmed-gmail-read-v1",
+        "builder-json-parse-v1",
+        "builder-restricted-v1",
+    }
 
 
 def test_exact_union_requires_tag_while_restricted_class_keeps_default() -> None:

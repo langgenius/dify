@@ -1,65 +1,29 @@
 """Finite sanitized execution-refusal copy; no graph/input/error interpolation."""
 
-FALLBACK = "Execution safety requires review or revised test inputs; automatic repair and publication are blocked."
-_BLOCKED = " Automatic repair and publication are blocked."
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import BuilderText, copy_text
+
+FALLBACK = copy_text(BuilderCopyId.REPLIES_EXECUTION_SAFETY_REQUIRES_REVIEW_OR_REVISED)
 _MESSAGES = {
-    "unsupported_node_implementation": (
-        "Builder does not yet have safe-test support for a node in this workflow. "
-        "The draft can still be edited; this test did not run." + _BLOCKED
+    "unsupported_node_implementation": copy_text(BuilderCopyId.REPLIES_BUILDER_DOES_NOT_YET_HAVE_SAFE),
+    "unsupported_json_tool_configuration": copy_text(BuilderCopyId.REPLIES_BUILDER_CANNOT_SAFELY_TEST_THIS_TOOL),
+    "unsupported_json_credentials": copy_text(BuilderCopyId.REPLIES_BUILDER_CANNOT_SAFELY_TEST_THIS_TOOL2),
+    "unsupported_json_content_constant": copy_text(BuilderCopyId.REPLIES_PUT_THIS_J_S_O_N_CONTENT_IN_A),
+    "unsupported_json_filter": copy_text(BuilderCopyId.REPLIES_USE_A_SUPPORTED_J_S_O_N_PATH_SELECTION),
+    "unsupported_json_selector": copy_text(BuilderCopyId.REPLIES_BIND_J_S_O_N_PARSE_TEXT_FROM_A),
+    "invalid_json_parameters": copy_text(BuilderCopyId.REPLIES_SET_J_S_O_N_PARSE_CONTENT_AND_FILTER),
+    "json_execution_limit": copy_text(BuilderCopyId.REPLIES_REDUCE_J_S_O_N_PARSE_INPUT_OR_OUTPUT),
+    "installed_json_tool_unavailable": copy_text(BuilderCopyId.REPLIES_INSTALL_THE_QUALIFIED_J_S_O_N_PROCESS_VERSION),
+    "unsupported_json_tool_installation": copy_text(
+        BuilderCopyId.REPLIES_INSTALL_THE_QUALIFIED_J_S_O_N_PROCESS_VERSION
     ),
-    "unsupported_json_tool_configuration": (
-        "Builder cannot safely test this Tool configuration yet. Use the qualified JSON Parse setup with string "
-        "inputs and an explicit Ensure ASCII value, or keep editing the draft. This test did not run." + _BLOCKED
-    ),
-    "unsupported_json_credentials": (
-        "Builder cannot safely test this Tool configuration yet. Use the qualified JSON Parse setup without "
-        "credentials, or keep editing the draft. This test did not run." + _BLOCKED
-    ),
-    "unsupported_json_content_constant": (
-        "Put this JSON content in a Start string input and bind it directly to JSON Parse. "
-        "Content constants containing dots or template markers are not covered by safe testing. "
-        "This test did not run." + _BLOCKED
-    ),
-    "unsupported_json_filter": (
-        "Use a supported JSONPath selection in JSON Parse, or keep editing the draft. This test did not run." + _BLOCKED
-    ),
-    "unsupported_json_selector": (
-        "Bind JSON Parse text from a declared Start string input, or keep editing the draft. "
-        "This test did not run." + _BLOCKED
-    ),
-    "invalid_json_parameters": (
-        "Set JSON Parse content and filter to strings and Ensure ASCII to an explicit boolean value. "
-        "This test did not run." + _BLOCKED
-    ),
-    "json_execution_limit": (
-        "Reduce JSON Parse input or output to fit safe testing limits; this test did not run." + _BLOCKED
-    ),
-    "installed_json_tool_unavailable": (
-        "Install the qualified JSON Process version before testing; this test did not run." + _BLOCKED
-    ),
-    "unsupported_json_tool_installation": (
-        "Install the qualified JSON Process version before testing; this test did not run." + _BLOCKED
-    ),
-    "json_tool_installation_changed": (
-        "The installed JSON Process version changed. Refresh the Tool setup and test again; this test did not run."
-        + _BLOCKED
-    ),
-    "unsupported_template_syntax": (
-        "Template supports scalar text, if/elif/else, and trim. Edit unsupported syntax; the test did not run."
-        + _BLOCKED
-    ),
-    "unsupported_template_configuration": (
-        "Edit Template variables to use unique legal names and complete selectors; the test did not run." + _BLOCKED
-    ),
-    "unsupported_template_selector": (
-        "Use Template inputs from Start scalars, earlier Template output or HTTP body; the test did not run." + _BLOCKED
-    ),
-    "template_execution_limit": (
-        "Reduce Template size or selected text to fit safe testing limits; the test did not run." + _BLOCKED
-    ),
+    "json_tool_installation_changed": copy_text(BuilderCopyId.REPLIES_THE_INSTALLED_J_S_O_N_PROCESS_VERSION_CHANGED),
+    "unsupported_template_syntax": copy_text(BuilderCopyId.REPLIES_TEMPLATE_SUPPORTS_SCALAR_TEXT_IF_ELIF),
+    "unsupported_template_configuration": copy_text(BuilderCopyId.REPLIES_EDIT_TEMPLATE_VARIABLES_TO_USE_UNIQUE),
+    "unsupported_template_selector": copy_text(BuilderCopyId.REPLIES_USE_TEMPLATE_INPUTS_FROM_START_SCALARS),
+    "template_execution_limit": copy_text(BuilderCopyId.REPLIES_REDUCE_TEMPLATE_SIZE_OR_SELECTED_TEXT),
 }
-STATIC_COPY = frozenset({FALLBACK, *_MESSAGES.values()})
 
 
-def execution_refusal_message(reason_code: str) -> str:
+def execution_refusal_message(reason_code: str) -> BuilderText:
     return _MESSAGES.get(reason_code, FALLBACK)

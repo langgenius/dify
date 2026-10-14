@@ -1,31 +1,40 @@
+import type { RefObject } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import DebugLogExport from '../debug-log-export'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 
 type DifyBuilderPanelHeaderProps = {
   resetDisabled: boolean
+  titleRef: RefObject<HTMLHeadingElement | null>
   onReset: () => void
   onClose: () => void
 }
 
 export const DifyBuilderPanelHeader = ({
   resetDisabled,
+  titleRef,
   onReset,
   onClose,
 }: DifyBuilderPanelHeaderProps) => {
-  const { t } = useTranslation()
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
 
   return (
     <header className="relative z-10 flex h-11 shrink-0 items-center gap-2 bg-linear-to-b from-background-section to-transparent pr-3 pl-4.5">
-      <h2 className="relative min-w-0 grow py-2 system-sm-semibold-uppercase text-text-primary">
-        {t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}
+      <h2
+        ref={titleRef}
+        tabIndex={-1}
+        className="relative min-w-0 grow rounded-sm py-2 system-sm-semibold-uppercase text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      >
+        {t(($) => $.panelTitle, { ns: 'difyBuilder' })}
       </h2>
       <div className="relative flex shrink-0 items-center gap-2">
         <DebugLogExport />
         <Infotip
-          aria-label={t(($) => $['difyBuilder.helpTitle'], { ns: 'workflow' })}
+          aria-label={t(($) => $.helpTitle, { ns: 'difyBuilder' })}
           iconSize="large"
           placement="bottom-end"
           sideOffset={8}
@@ -33,16 +42,16 @@ export const DifyBuilderPanelHeader = ({
           popupClassName="flex w-58 flex-col gap-1 rounded-xl bg-components-tooltip-bg px-4 py-3.5 backdrop-blur-[5px]"
         >
           <PopoverTitle className="system-xs-semibold text-text-primary">
-            {t(($) => $['difyBuilder.helpTitle'], { ns: 'workflow' })}
+            {t(($) => $.helpTitle, { ns: 'difyBuilder' })}
           </PopoverTitle>
           <PopoverDescription className="system-xs-regular text-text-secondary">
-            {t(($) => $['difyBuilder.helpDescription'], { ns: 'workflow' })}
+            {t(($) => $.helpDescription, { ns: 'difyBuilder' })}
           </PopoverDescription>
         </Infotip>
         <IconButton
           size="md"
           disabled={resetDisabled}
-          aria-label={t(($) => $['difyBuilder.reset'], { ns: 'workflow' })}
+          aria-label={t(($) => $.reset, { ns: 'difyBuilder' })}
           className="size-7"
           onClick={onReset}
         >

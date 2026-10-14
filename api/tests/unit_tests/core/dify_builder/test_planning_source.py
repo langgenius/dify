@@ -5,13 +5,13 @@ from datetime import datetime
 
 import pytest
 
-from core.dify_builder import strings
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, MutationIntent, Session, Turn
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 GOAL = "Generate a real presentation file, then POST it to the supplied endpoint. " + "保留原始目标。" * 1800
 REQUIREMENTS = {"endpoint": "https://example.test/upload", "output": {"format": "pptx", "slides": 12}}
@@ -141,12 +141,14 @@ def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state, faile
         assert requirements_forms[0].payload["values"] == confirmed
     else:
         assert requirements_forms == []
-    notices = [item.payload["text"] for item in items if item.kind == "notice"]
-    assert notices
-    assert all(text in strings.PLAIN for text in notices)
-    assert all("couldn't" in text.lower() and "plan" in text.lower() for text in notices)
+    assert not any(item.kind == "notice" for item in items)
     assert progress[-1].status == "error"
     failed = [event.activity for event in progress if event.activity is not None and event.activity.state == "failed"]
     assert [activity.id for activity in failed] == [failed_step]
     assistant = next(item for item in items if item.kind == "assistant_turn")
+    assert len([item for item in items if item.kind == "assistant_turn"]) == 1
+    reply = english_text(assistant.payload["reply_text"])
+    assert "couldn't" in reply.lower()
+    assert "plan" in reply.lower()
+    assert assistant.payload["reply_mode"] == "complete"
     assert assistant.payload["execution"]["status"] == "error"

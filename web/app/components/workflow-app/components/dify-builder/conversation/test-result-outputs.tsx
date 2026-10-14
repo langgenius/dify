@@ -4,6 +4,7 @@ import { ChatContextProvider } from '@/app/components/base/chat/chat/context-pro
 import { FileList } from '@/app/components/base/file-uploader'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { Markdown } from '@/app/components/base/markdown'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 
 const isOutputFile = (value: unknown): value is FileResponse =>
   typeof value === 'object' &&
@@ -40,7 +41,8 @@ const OutputValue = ({ value }: { value: unknown }) => {
 }
 
 export const TestResultOutputs = ({ outputs }: { outputs: unknown }) => {
-  const { t } = useTranslation(['workflow'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const entries =
     typeof outputs === 'object' && outputs !== null && !Array.isArray(outputs)
       ? Object.entries(outputs)
@@ -49,7 +51,7 @@ export const TestResultOutputs = ({ outputs }: { outputs: unknown }) => {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       {outputs == null || entries?.length === 0 ? (
-        <p>{t(($) => $['difyBuilder.testResult.noOutputs'], { ns: 'workflow' })}</p>
+        <p>{t(($) => $['testResult.noOutputs'], { ns: 'difyBuilder' })}</p>
       ) : entries ? (
         <dl className="flex min-w-0 flex-col gap-3">
           {entries.map(([name, value]) => (

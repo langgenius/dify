@@ -10,8 +10,8 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 
 import json
 import logging
-from collections.abc import Callable, Iterator, Mapping
-from dataclasses import asdict, replace
+from collections.abc import Callable, Iterator
+from dataclasses import asdict
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 from uuid import uuid4
@@ -28,7 +28,6 @@ from core.dify_builder.contract import (
     Decision,
     InteractionResponseField,
     InteractionResponseItem,
-    NoticeItem,
     Phase,
     PreflightContextCard,
     PreflightIssue,
@@ -62,6 +61,9 @@ from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 from core.dify_builder.verification import publication_decision
 from services.dify_builder.agent.model_resolver import validate_model_config
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import BuilderText, copy_text, stored_text, text_parts
+from services.dify_builder.receipt_snapshot import apply_receipt_snapshot
 from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
 
 if TYPE_CHECKING:
@@ -166,34 +168,36 @@ def _phase_for(state: PcState) -> Phase:
 
 _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.FIX_AWAIT_APPROVAL: [
-        UiAction(id="approve_plan", label="Approve fix", kind=ActionKind.PRIMARY),
-        UiAction(id="reject_repair", label="Reject", kind=ActionKind.DESTRUCTIVE),
+        UiAction(id="approve_plan", label=copy_text(BuilderCopyId.ACTIONS_APPROVE_FIX), kind=ActionKind.PRIMARY),
+        UiAction(id="reject_repair", label=copy_text(BuilderCopyId.ACTIONS_REJECT), kind=ActionKind.DESTRUCTIVE),
     ],
     PcState.FIX_AWAIT_VERIFY: [
-        UiAction(id="run_validation", label="Run validation", kind=ActionKind.PRIMARY),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+        UiAction(id="run_validation", label=copy_text(BuilderCopyId.ACTIONS_RUN_VALIDATION), kind=ActionKind.PRIMARY),
+        UiAction(id="revert", label=copy_text(BuilderCopyId.ACTIONS_REVERT), kind=ActionKind.DESTRUCTIVE),
     ],
     PcState.FIX_AWAIT_TESTDATA: [
-        UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
+        UiAction(id="provide_testdata", label=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE), kind=ActionKind.PRIMARY),
     ],
     PcState.FIX_AWAIT_DECISION: [
-        UiAction(id="publish_fix", label="Publish fix", kind=ActionKind.PRIMARY),
-        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY),
-        UiAction(id="continue_adjusting", label="Fix again", kind=ActionKind.SECONDARY),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+        UiAction(id="publish_fix", label=copy_text(BuilderCopyId.ACTIONS_PUBLISH_FIX), kind=ActionKind.PRIMARY),
+        UiAction(id="keep_draft", label=copy_text(BuilderCopyId.ACTIONS_KEEP_DRAFT), kind=ActionKind.SECONDARY),
+        UiAction(id="continue_adjusting", label=copy_text(BuilderCopyId.ACTIONS_FIX_AGAIN), kind=ActionKind.SECONDARY),
+        UiAction(id="revert", label=copy_text(BuilderCopyId.ACTIONS_REVERT), kind=ActionKind.DESTRUCTIVE),
     ],
     PcState.CHECKLIST_AWAIT_RECHECK: [
-        UiAction(id="recheck", label="Re-check", kind=ActionKind.PRIMARY),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+        UiAction(id="recheck", label=copy_text(BuilderCopyId.ACTIONS_RE_CHECK), kind=ActionKind.PRIMARY),
+        UiAction(id="revert", label=copy_text(BuilderCopyId.ACTIONS_REVERT), kind=ActionKind.DESTRUCTIVE),
     ],
     PcState.FAILED: [
-        UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY),
+        UiAction(
+            id="restart", label=copy_text(BuilderCopyId.ACTIONS_RESTART_FROM_CURRENT_DRAFT), kind=ActionKind.PRIMARY
+        ),
     ],
     # Build (Slice 2). next_state/canvas_event carry the frozen state-map hints.
     PcState.BUILD_GOAL_ANALYSIS: [
         UiAction(
             id="submit_requirements",
-            label="Submit requirements",
+            label=copy_text(BuilderCopyId.ACTIONS_SUBMIT_REQUIREMENTS),
             kind=ActionKind.PRIMARY,
             next_state="build.resource_recommendation",
         ),
@@ -206,13 +210,16 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     # runs its handler unconditionally on entry, with no action to gate on.
     PcState.BUILD_RESOURCE_RECOMMENDATION: [
         UiAction(
-            id="confirm_resources", label="Confirm resources", kind=ActionKind.PRIMARY, next_state="build.plan_approval"
+            id="confirm_resources",
+            label=copy_text(BuilderCopyId.ACTIONS_CONFIRM_RESOURCES),
+            kind=ActionKind.PRIMARY,
+            next_state="build.plan_approval",
         ),
     ],
     PcState.BUILD_PLAN_APPROVAL: [
         UiAction(
             id="approve_plan",
-            label="Approve plan",
+            label=copy_text(BuilderCopyId.ACTIONS_APPROVE_PLAN),
             kind=ActionKind.PRIMARY,
             next_state="build.execution",
         ),
@@ -220,27 +227,37 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.BUILD_EXECUTION: [
         UiAction(
             id="run_test",
-            label="Run test",
+            label=copy_text(BuilderCopyId.ACTIONS_RUN_TEST),
             kind=ActionKind.PRIMARY,
             next_state="build.test_and_repair",
         ),
         UiAction(
             id="revert",
-            label="Revert",
+            label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="build.reverted",
             canvas_event="revert_checkpoint",
         ),
     ],
     PcState.BUILD_AWAIT_TESTDATA: [
-        UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
+        UiAction(id="provide_testdata", label=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE), kind=ActionKind.PRIMARY),
     ],
     PcState.BUILD_AWAIT_REPAIR: [
-        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="build.execution"),
-        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY, next_state="build.review"),
+        UiAction(
+            id="approve_plan",
+            label=copy_text(BuilderCopyId.ACTIONS_APPLY_THE_FIX),
+            kind=ActionKind.PRIMARY,
+            next_state="build.execution",
+        ),
+        UiAction(
+            id="keep_draft",
+            label=copy_text(BuilderCopyId.ACTIONS_KEEP_DRAFT),
+            kind=ActionKind.SECONDARY,
+            next_state="build.review",
+        ),
         UiAction(
             id="revert",
-            label="Revert",
+            label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="build.reverted",
             canvas_event="revert_checkpoint",
@@ -249,41 +266,54 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.BUILD_REVIEW: [
         UiAction(
             id="publish_workflow",
-            label="Publish",
+            label=copy_text(BuilderCopyId.ACTIONS_PUBLISH),
             kind=ActionKind.PRIMARY,
             next_state="build.publish",
             canvas_event="publish_workflow",
         ),
         UiAction(
             id="keep_draft",
-            label="Keep draft",
+            label=copy_text(BuilderCopyId.ACTIONS_KEEP_DRAFT),
             kind=ActionKind.SECONDARY,
             next_state="build.governance_feedback",
         ),
         UiAction(
             id="continue_adjusting",
-            label="Continue adjusting",
+            label=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING),
             kind=ActionKind.SECONDARY,
             next_state="build.initial_plan",
         ),
         UiAction(
             id="revert",
-            label="Revert",
+            label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="build.reverted",
             canvas_event="revert_checkpoint",
         ),
     ],
     PcState.BUILD_REVERTED: [
-        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY, next_state="build.initial_plan"),
+        UiAction(
+            id="retry_after_revert",
+            label=copy_text(BuilderCopyId.ACTIONS_RETRY),
+            kind=ActionKind.PRIMARY,
+            next_state="build.initial_plan",
+        ),
     ],
     # Edit (Slice 3). next_state/canvas_event carry the frozen state-map hints.
     PcState.EDIT_CAPABILITY_CHECK: [
-        UiAction(id="send_edit_goal", label="Send", kind=ActionKind.PRIMARY, next_state="edit.impact_analysis"),
+        UiAction(
+            id="send_edit_goal",
+            label=copy_text(BuilderCopyId.ACTIONS_SEND),
+            kind=ActionKind.PRIMARY,
+            next_state="edit.impact_analysis",
+        ),
     ],
     PcState.EDIT_IMPACT_ANALYSIS: [
         UiAction(
-            id="submit_edit_rules", label="Submit rules", kind=ActionKind.PRIMARY, next_state="edit.plan_approval"
+            id="submit_edit_rules",
+            label=copy_text(BuilderCopyId.ACTIONS_SUBMIT_RULES),
+            kind=ActionKind.PRIMARY,
+            next_state="edit.plan_approval",
         ),
     ],
     # Approve is NOT the only exit: an approval the engine refuses leaves the
@@ -293,13 +323,13 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.EDIT_PLAN_APPROVAL: [
         UiAction(
             id="approve_plan",
-            label="Approve changes",
+            label=copy_text(BuilderCopyId.ACTIONS_APPROVE_CHANGES),
             kind=ActionKind.PRIMARY,
             next_state="edit.apply_changes",
         ),
         UiAction(
             id="continue_adjusting",
-            label="Continue adjusting",
+            label=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING),
             kind=ActionKind.SECONDARY,
             next_state="edit.impact_analysis",
         ),
@@ -309,7 +339,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
         # user can see on the canvas.
         UiAction(
             id="revert",
-            label="Discard this change plan",
+            label=copy_text(BuilderCopyId.ACTIONS_DISCARD_THIS_CHANGE_PLAN),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
             canvas_event="revert_checkpoint",
@@ -318,27 +348,37 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.EDIT_APPLY_CHANGES: [
         UiAction(
             id="run_affected_tests",
-            label="Run affected tests",
+            label=copy_text(BuilderCopyId.ACTIONS_RUN_AFFECTED_TESTS),
             kind=ActionKind.PRIMARY,
             next_state="edit.test_affected_paths",
         ),
         UiAction(
             id="revert",
-            label="Revert",
+            label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
             canvas_event="revert_checkpoint",
         ),
     ],
     PcState.EDIT_AWAIT_TESTDATA: [
-        UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
+        UiAction(id="provide_testdata", label=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE), kind=ActionKind.PRIMARY),
     ],
     PcState.EDIT_AWAIT_REPAIR: [
-        UiAction(id="approve_plan", label="Apply the fix", kind=ActionKind.PRIMARY, next_state="edit.apply_changes"),
-        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY, next_state="edit.review"),
+        UiAction(
+            id="approve_plan",
+            label=copy_text(BuilderCopyId.ACTIONS_APPLY_THE_FIX),
+            kind=ActionKind.PRIMARY,
+            next_state="edit.apply_changes",
+        ),
+        UiAction(
+            id="keep_draft",
+            label=copy_text(BuilderCopyId.ACTIONS_KEEP_DRAFT),
+            kind=ActionKind.SECONDARY,
+            next_state="edit.review",
+        ),
         UiAction(
             id="revert",
-            label="Revert",
+            label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
             canvas_event="revert_checkpoint",
@@ -347,33 +387,38 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.EDIT_REVIEW: [
         UiAction(
             id="publish_workflow",
-            label="Publish",
+            label=copy_text(BuilderCopyId.ACTIONS_PUBLISH),
             kind=ActionKind.PRIMARY,
             next_state="edit.publish",
             canvas_event="publish_workflow",
         ),
         UiAction(
             id="keep_draft",
-            label="Keep draft",
+            label=copy_text(BuilderCopyId.ACTIONS_KEEP_DRAFT),
             kind=ActionKind.SECONDARY,
             next_state="edit.complete",
         ),
         UiAction(
             id="continue_adjusting",
-            label="Continue adjusting",
+            label=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING),
             kind=ActionKind.SECONDARY,
             next_state="edit.impact_analysis",
         ),
         UiAction(
             id="revert",
-            label="Revert",
+            label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
             canvas_event="revert_checkpoint",
         ),
     ],
     PcState.EDIT_REVERTED: [
-        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY, next_state="edit.plan_approval"),
+        UiAction(
+            id="retry_after_revert",
+            label=copy_text(BuilderCopyId.ACTIONS_RETRY),
+            kind=ActionKind.PRIMARY,
+            next_state="edit.plan_approval",
+        ),
     ],
 }
 
@@ -392,31 +437,55 @@ def _actions_for(
         # re-runs the interrupted working handler in place; Start over resets and
         # re-enters the flow's entry state from the current draft.
         return [
-            UiAction(id="recovery_continue", label="Retry", kind=ActionKind.PRIMARY),
-            UiAction(id="restart", label="Restart from current draft", kind=ActionKind.SECONDARY),
+            UiAction(id="recovery_continue", label=copy_text(BuilderCopyId.ACTIONS_RETRY), kind=ActionKind.PRIMARY),
+            UiAction(
+                id="restart",
+                label=copy_text(BuilderCopyId.ACTIONS_RESTART_FROM_CURRENT_DRAFT),
+                kind=ActionKind.SECONDARY,
+            ),
         ]
     if state == PcState.FAILED:
         # A durable, deterministic failure -- re-running the same handler would
         # just fail again, so only offer a restart from the current draft.
-        return [UiAction(id="restart", label="Restart from current draft", kind=ActionKind.PRIMARY)]
+        return [
+            UiAction(
+                id="restart", label=copy_text(BuilderCopyId.ACTIONS_RESTART_FROM_CURRENT_DRAFT), kind=ActionKind.PRIMARY
+            )
+        ]
     if fc is not None and fc.paused:
         return []
     recovery_ref = recovery.recovery_ref_for(fc.recovery_class) if fc is not None else None
     if recovery_ref is not None:
         actions: list[UiAction] = []
         if recovery_ref.can_continue:
-            actions.append(UiAction(id="recovery_continue", label="Continue", kind=ActionKind.PRIMARY))
+            actions.append(
+                UiAction(
+                    id="recovery_continue", label=copy_text(BuilderCopyId.ACTIONS_CONTINUE), kind=ActionKind.PRIMARY
+                )
+            )
         if recovery_ref.can_restart:
-            actions.append(UiAction(id="restart", label="Restart from current draft", kind=ActionKind.SECONDARY))
+            actions.append(
+                UiAction(
+                    id="restart",
+                    label=copy_text(BuilderCopyId.ACTIONS_RESTART_FROM_CURRENT_DRAFT),
+                    kind=ActionKind.SECONDARY,
+                )
+            )
         return actions
     if app_revision_conflicted:
-        return [UiAction(id="check_recovery", label="Review draft changes", kind=ActionKind.PRIMARY)]
+        return [
+            UiAction(
+                id="check_recovery",
+                label=copy_text(BuilderCopyId.ACTIONS_REVIEW_DRAFT_CHANGES),
+                kind=ActionKind.PRIMARY,
+            )
+        ]
 
     actions = list(_ACTIONS_FOR.get(state, []))
     retest = {
-        PcState.BUILD_REVIEW: ("run_test", "Run test"),
-        PcState.EDIT_REVIEW: ("run_affected_tests", "Run affected tests"),
-        PcState.FIX_AWAIT_DECISION: ("run_validation", "Run validation"),
+        PcState.BUILD_REVIEW: ("run_test", copy_text(BuilderCopyId.ACTIONS_RUN_TEST)),
+        PcState.EDIT_REVIEW: ("run_affected_tests", copy_text(BuilderCopyId.ACTIONS_RUN_AFFECTED_TESTS)),
+        PcState.FIX_AWAIT_DECISION: ("run_validation", copy_text(BuilderCopyId.ACTIONS_RUN_VALIDATION)),
     }
     if state in retest and (publication is None or not publication.allowed):
         actions = [a for a in actions if a.id not in {"publish_workflow", "publish_fix"}]
@@ -444,29 +513,89 @@ _ACTION_ID_TO_KIND: dict[str, str] = {
 }
 
 
-_DECISION_COPY_FOR: dict[PcState, tuple[str, str]] = {
-    PcState.FIX_AWAIT_APPROVAL: ("How should Builder proceed with this fix?", "Choose one option to continue."),
-    PcState.FIX_AWAIT_VERIFY: ("What should Builder do with the applied fix?", "Choose one option to continue."),
-    PcState.FIX_AWAIT_DECISION: ("What should happen to this fix?", "Choose one option to continue."),
-    PcState.CHECKLIST_AWAIT_RECHECK: ("What should Builder do next?", "Choose one option to continue."),
-    PcState.BUILD_PLAN_APPROVAL: ("Is this workflow plan ready to apply?", "Choose one option to continue."),
-    PcState.BUILD_EXECUTION: ("What should Builder do with the built workflow?", "Choose one option to continue."),
-    PcState.BUILD_AWAIT_REPAIR: ("What should Builder do with the proposed repair?", "Choose one option to continue."),
-    PcState.BUILD_REVIEW: ("What should happen to this workflow?", "Choose one option to continue."),
-    PcState.BUILD_REVERTED: ("How should Builder continue after the revert?", "Choose one option to continue."),
-    PcState.EDIT_PLAN_APPROVAL: ("Is this change plan ready to apply?", "Choose one option to continue."),
-    PcState.EDIT_APPLY_CHANGES: ("What should Builder do with the updated workflow?", "Choose one option to continue."),
-    PcState.EDIT_AWAIT_REPAIR: ("What should Builder do with the proposed repair?", "Choose one option to continue."),
-    PcState.EDIT_REVIEW: ("What should happen to these changes?", "Choose one option to continue."),
-    PcState.EDIT_REVERTED: ("How should Builder continue after the revert?", "Choose one option to continue."),
-    PcState.FAILED: ("How should Builder recover?", "Choose one option to continue."),
+_DECISION_COPY_FOR: dict[PcState, tuple[BuilderText, BuilderText]] = {
+    PcState.FIX_AWAIT_APPROVAL: (
+        copy_text(BuilderCopyId.DECISION_HOW_SHOULD_BUILDER_PROCEED_WITH_THIS_FIX),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.FIX_AWAIT_VERIFY: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_BUILDER_DO_WITH_THE_APPLIED_FIX),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.FIX_AWAIT_DECISION: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_HAPPEN_TO_THIS_FIX),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.CHECKLIST_AWAIT_RECHECK: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_BUILDER_DO_NEXT),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.BUILD_PLAN_APPROVAL: (
+        copy_text(BuilderCopyId.DECISION_IS_THIS_WORKFLOW_PLAN_READY_TO_APPLY),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.BUILD_EXECUTION: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_BUILDER_DO_WITH_THE_BUILT_WORKFLOW),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.BUILD_AWAIT_REPAIR: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_BUILDER_DO_WITH_THE_PROPOSED_REPAIR),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.BUILD_REVIEW: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_HAPPEN_TO_THIS_WORKFLOW),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.BUILD_REVERTED: (
+        copy_text(BuilderCopyId.DECISION_HOW_SHOULD_BUILDER_CONTINUE_AFTER_THE_REVERT),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.EDIT_PLAN_APPROVAL: (
+        copy_text(BuilderCopyId.DECISION_IS_THIS_CHANGE_PLAN_READY_TO_APPLY),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.EDIT_APPLY_CHANGES: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_BUILDER_DO_WITH_THE_UPDATED_WORKFLOW),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.EDIT_AWAIT_REPAIR: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_BUILDER_DO_WITH_THE_PROPOSED_REPAIR),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.EDIT_REVIEW: (
+        copy_text(BuilderCopyId.DECISION_WHAT_SHOULD_HAPPEN_TO_THESE_CHANGES),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.EDIT_REVERTED: (
+        copy_text(BuilderCopyId.DECISION_HOW_SHOULD_BUILDER_CONTINUE_AFTER_THE_REVERT),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+    PcState.FAILED: (
+        copy_text(BuilderCopyId.DECISION_HOW_SHOULD_BUILDER_RECOVER),
+        copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+    ),
+}
+
+_RECOVERY_DESCRIPTION: dict[str, BuilderText] = {
+    RecoveryClass.UNCHANGED: copy_text(BuilderCopyId.REPLIES_NO_CHANGES_SINCE_YOU_LAST_LEFT_RESUMING_WHERE_YOU_WERE),
+    RecoveryClass.CONFIG_ONLY: copy_text(
+        BuilderCopyId.REPLIES_ONLY_NODE_SETTINGS_CHANGED_SINCE_YOU_LEFT_CONTINUE_OR_RESTART
+    ),
+    RecoveryClass.STRUCTURAL_COMPATIBLE: copy_text(BuilderCopyId.REPLIES_THE_WORKFLOW_STRUCTURE_CHANGED_BUT_THE),
+    RecoveryClass.STRUCTURAL_INVALIDATING: copy_text(BuilderCopyId.REPLIES_THE_NODES_THIS_TASK_WAS_WORKING),
 }
 
 
-def _decision_copy_for(state: PcState, actions: list[UiAction]) -> tuple[str, str]:
+def _decision_copy_for(state: PcState, actions: list[UiAction]) -> tuple[BuilderText, BuilderText]:
     if state == PcState.FIX_AWAIT_APPROVAL and any(action.id == "retry_repair" for action in actions):
         return NO_REPAIR_DECISION_COPY
-    return _DECISION_COPY_FOR.get(state, ("How should Builder continue?", "Choose one option to continue."))
+    return _DECISION_COPY_FOR.get(
+        state,
+        (
+            copy_text(BuilderCopyId.DECISION_HOW_SHOULD_BUILDER_CONTINUE),
+            copy_text(BuilderCopyId.LABELS_CHOOSE_ONE_OPTION_TO_CONTINUE),
+        ),
+    )
 
 
 def _decision_for(state: PcState, actions: list[UiAction]) -> Decision | None:
@@ -492,7 +621,7 @@ def _decision_for(state: PcState, actions: list[UiAction]) -> Decision | None:
         title=title,
         description=description,
         options=options,
-        submit=UiAction(id=CONFIRM_ACTION_ID, label="Submit", kind=ActionKind.PRIMARY),
+        submit=UiAction(id=CONFIRM_ACTION_ID, label=copy_text(BuilderCopyId.ACTIONS_SUBMIT), kind=ActionKind.PRIMARY),
         default_option_id=options[default_index].id if default_index >= 0 else "",
     )
 
@@ -504,99 +633,38 @@ _ACTIVE_INTERACTION_CARD_FOR_ACTION: dict[str, tuple[str, str | None]] = {
     "confirm_resources": ("resource_select", None),
 }
 
-_FORM_COPY_FOR_VARIANT: dict[str, tuple[str, str]] = {
+_FORM_COPY_FOR_VARIANT: dict[str, tuple[BuilderText, BuilderText]] = {
     "build_requirements": (
-        "Review the requirements",
-        "Adjust any values before Builder continues.",
+        copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
+        copy_text(BuilderCopyId.FORMS_REQUIREMENTS_DESCRIPTION),
     ),
     "edit_rules": (
-        "Review the change rules",
-        "Adjust any values before Builder applies the change plan.",
+        copy_text(BuilderCopyId.FORMS_EDIT_RULES_TITLE),
+        copy_text(BuilderCopyId.FORMS_EDIT_RULES_DESCRIPTION),
     ),
     "testdata": (
-        "Provide test data",
-        "Review the inputs Builder will use for this run.",
+        copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
+        copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
     ),
 }
 
 
-# Finite presentation vocabulary used by fresh session views and submitted
-# receipts. This is prepared in the worker and persisted with the context so
-# GET/SSE need no model call and a restarted worker can reuse prior translations.
-# Keep raw user values, dynamic resource labels, IDs and action guards out of it.
-UI_COPY_SOURCES: frozenset[str] = frozenset(
-    {
-        *(action.label for actions in _ACTIONS_FOR.values() for action in actions),
-        *(action.label for action in NO_REPAIR_ACTIONS),
-        *(text for pair in _DECISION_COPY_FOR.values() for text in pair),
-        *NO_REPAIR_DECISION_COPY,
-        *(text for pair in _FORM_COPY_FOR_VARIANT.values() for text in pair),
-        *(
-            ref.message
-            for ref in (recovery.recovery_ref_for(recovery_class) for recovery_class in RecoveryClass)
-            if ref is not None
-        ),
-        # Conditional actions/decision copy outside _ACTIONS_FOR.
-        "Retry",
-        "Restart from current draft",
-        "Continue",
-        "Review draft changes",
-        "Run test",
-        "Run affected tests",
-        "Run validation",
-        "How should Builder continue?",
-        "Choose one option to continue.",
-        "Submit",
-        # Checkpoint and fixed receipt presentation.
-        "Restore point",
-        "Goal",
-        "Yes",
-        "No",
-        "—",
-        "No resources selected",
-        "Submitted form",
-        "Which resources should Builder use?",
-    }
-)
-_MAX_UI_TRANSLATION_CHARS = 4096
-
-
-def filter_ui_copy(copy: object) -> dict[str, str]:
-    """Accept only bounded translations of the service's fixed source text."""
-    if not isinstance(copy, Mapping):
-        return {}
-    return {
-        source: translated
-        for source, translated in copy.items()
-        if isinstance(source, str)
-        and source in UI_COPY_SOURCES
-        and isinstance(translated, str)
-        and bool(translated.strip())
-        and len(translated) <= _MAX_UI_TRANSLATION_CHARS
-    }
-
-
-def _ui_copy_for(context: DifyBuilderContext) -> Mapping[str, str]:
-    """Only translations prepared for this exact language may enter a view."""
-    if not context.reply_language or context.ui_copy_language != context.reply_language:
-        return {}
-    return filter_ui_copy(context.ui_copy)
-
-
-def _translated_ui(source: str, copy: Mapping[str, str]) -> str:
-    translation = copy.get(source)
-    return translation if isinstance(translation, str) and translation else source
-
-
-def _display_interaction_value(value: object, copy: Mapping[str, str] | None = None) -> str:
+def _display_interaction_value(value: object) -> BuilderText:
     if value is None or value == "":
-        return _translated_ui("—", copy) if copy is not None else "—"
+        return copy_text(BuilderCopyId.VALUES_EMPTY)
     if isinstance(value, bool):
-        source = "Yes" if value else "No"
-        return _translated_ui(source, copy) if copy is not None else source
+        return copy_text(BuilderCopyId.VALUES_YES if value else BuilderCopyId.VALUES_NO)
     if isinstance(value, list):
-        return ", ".join(_display_interaction_value(item, copy) for item in value) or (
-            _translated_ui("—", copy) if copy is not None else "—"
+        return (
+            text_parts(
+                *[
+                    part
+                    for i, item in enumerate(value)
+                    for part in ((", ", _display_interaction_value(item)) if i else (_display_interaction_value(item),))
+                ]
+            )
+            if value
+            else copy_text(BuilderCopyId.VALUES_EMPTY)
         )
     if isinstance(value, dict):
         name = value.get("name") or value.get("filename")
@@ -621,7 +689,7 @@ def _interaction_response_for(
     session: Session,
     action: Action,
     visible_actions: list[UiAction],
-    copy: Mapping[str, str],
+    reply_language: str,
 ) -> InteractionResponseItem | None:
     selected_action = _selected_ui_action(visible_actions, action)
     if selected_action is None:
@@ -631,9 +699,10 @@ def _interaction_response_for(
     if card_contract is None:
         title, _description = _decision_copy_for(session.current_state, visible_actions)
         return InteractionResponseItem(
+            reply_language=reply_language,
             interaction_kind="choice",
-            question=_translated_ui(title, copy),
-            answer=_translated_ui(selected_action.label, copy),
+            question=title,
+            answer=selected_action.label,
             submitted_data={"option_id": selected_action.id},
         )
 
@@ -653,10 +722,11 @@ def _interaction_response_for(
             if isinstance(resource, dict) and resource.get("id") in selected_ids
         ]
         return InteractionResponseItem(
+            reply_language=reply_language,
             interaction_kind="resource",
-            question=_translated_ui(str(card.payload.get("title") or "Which resources should Builder use?"), copy),
+            question=stored_text(card.payload.get("title") or copy_text(BuilderCopyId.RESOURCES_TITLE)),
             answer=", ".join(label for label in selected_labels if label)
-            or _translated_ui("No resources selected", copy),
+            or copy_text(BuilderCopyId.RECEIPTS_NO_RESOURCES_SELECTED),
             submitted_data={"resource_ids": selected_ids},
         )
 
@@ -680,18 +750,19 @@ def _interaction_response_for(
         response_fields.append(
             InteractionResponseField(
                 key=key,
-                label=_translated_ui(str(raw_field.get("label") or key), copy),
+                label=stored_text(raw_field.get("label") or key),
                 value=value,
-                display_value=_display_interaction_value(value, copy),
+                display_value=_display_interaction_value(value),
             )
         )
     fallback_title, _fallback_description = _FORM_COPY_FOR_VARIANT.get(
         variant,
-        ("Submitted form", ""),
+        (copy_text(BuilderCopyId.RECEIPTS_SUBMITTED_FORM), ""),
     )
     return InteractionResponseItem(
+        reply_language=reply_language,
         interaction_kind="form",
-        question=_translated_ui(str(card.payload.get("title") or fallback_title), copy),
+        question=stored_text(card.payload.get("title") or fallback_title),
         fields=response_fields,
         submitted_data=normalized_values,
     )
@@ -1371,31 +1442,17 @@ class DifyBuilderService:
                 s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
             ),
         )
-        copy = _ui_copy_for(fc)
-        actions = [replace(action, label=_translated_ui(action.label, copy)) for action in actions]
         decision = _decision_for(st, actions)
-        if decision is not None:
-            decision = replace(
-                decision,
-                title=_translated_ui(decision.title, copy),
-                description=_translated_ui(decision.description, copy),
-                submit=(
-                    replace(decision.submit, label=_translated_ui(decision.submit.label, copy))
-                    if decision.submit is not None
-                    else None
-                ),
-            )
+        if decision is not None and fc.recovery_class:
+            decision.description = _RECOVERY_DESCRIPTION[fc.recovery_class]
         checkpoint = (
-            CheckpointRef(checkpoint_id=fc.checkpoint_id, label=_translated_ui("Restore point", copy), created_at="")
+            CheckpointRef(
+                checkpoint_id=fc.checkpoint_id, label=copy_text(BuilderCopyId.LABELS_RESTORE_POINT), created_at=""
+            )
             if fc.checkpoint_id
             else None
         )
-        # The interrupted-step offer (Retry / Start over) is projected as concrete
-        # actions by ``_actions_for(interrupted=...)`` above. The ``recovery`` field
-        # carries only the drift-recovery class set at a waiting gate.
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
-        if recovery_ref is not None:
-            recovery_ref = replace(recovery_ref, message=_translated_ui(recovery_ref.message, copy))
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,
@@ -1554,7 +1611,9 @@ class DifyBuilderService:
                 s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
             ),
         )
-        interaction_response = _interaction_response_for(self._repo, s, action, visible_actions, _ui_copy_for(fc))
+        interaction_response = _interaction_response_for(self._repo, s, action, visible_actions, fc.reply_language)
+        if interaction_response is not None and action.receipt_snapshot is not None:
+            apply_receipt_snapshot(interaction_response, action.receipt_snapshot)
         action.interaction_response = asdict(interaction_response) if interaction_response is not None else None
         if action.kind == "update_model":
             if is_working(s.current_state) or self._session_lock.exists(session_id):
@@ -1563,25 +1622,9 @@ class DifyBuilderService:
             if not isinstance(model_config, dict) or not model_config:
                 raise BadRequestError("model_config is required")
             fc.model_config = validate_model_config(actor.tenant_id, model_config)
-            item = NoticeItem(text=f"Model changed to {model_config.get('name', '')}").to_item(
-                seq=fc.next_seq,
-                at_version=s.version + 1,
-            )
-            fc.next_seq += 1
             fc.last_command_id = action.command_id
-            items = [item]
-            # This notice is committed directly (not via Runner._commit), so the
-            # engine's reply-language localization hook never sees it. Localize it
-            # here so it matches the session's detected language like every other
-            # card. No-op when reply_language is unset (English fallback).
-            if fc.reply_language:
-                from services.dify_builder.agent.llm_agent import LlmBuilderAgent
-                from services.dify_builder.agent.localize import Localizer
-
-                localizer = Localizer(LlmBuilderAgent(actor.tenant_id, fc.model_config).model_or_none)
-                items = localizer.localize_items(items, fc.reply_language)
-            self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, items)
-            return self.get_session_view(session_id, actor), False, items
+            self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, [])
+            return self.get_session_view(session_id, actor), False, []
         return self._build_session_view(s, fc), True, []
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:

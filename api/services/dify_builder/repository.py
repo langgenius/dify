@@ -394,13 +394,16 @@ class SqlDifyBuilderRepository:
             return [self._to_domain_conversation_item(row) for row in rows]
 
     def list_recent_conversation(self, session_id: str, *, limit: int) -> list[ConversationItem]:
-        """Return a bounded conversation tail in chronological order."""
+        """Return model history without legacy notices consuming its bounded tail."""
         if limit < 1:
             raise ValueError("limit must be positive")
         with self._session_factory() as db_session, db_session.begin():
             stmt = (
                 select(DifyBuilderConversationItem)
-                .where(DifyBuilderConversationItem.session_id == session_id)
+                .where(
+                    DifyBuilderConversationItem.session_id == session_id,
+                    DifyBuilderConversationItem.kind != "notice",
+                )
                 .order_by(DifyBuilderConversationItem.seq.desc())
                 .limit(limit)
             )

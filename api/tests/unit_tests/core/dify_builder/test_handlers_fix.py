@@ -41,6 +41,7 @@ from tests.unit_tests.core.dify_builder.fakes import (
     saved_test_context,
     successful_verification,
 )
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 # ---- shared fixtures / helpers -------------------------------------------
 
@@ -132,7 +133,7 @@ def test_diagnose_then_propose_high_risk_stops_at_await_approval():
     assert not canvas_read_only(out.current_state), "await states leave the canvas editable"
 
 
-def test_handle_propose_empty_intents_shows_notice():
+def test_handle_propose_empty_intents_explains_the_missing_repair():
     # propose_repair may legitimately return no intents alongside a high-risk
     # surface-to-human Risk (Task 3) -- the reply must explain that instead of
     # claiming "0 change(s)".
@@ -148,7 +149,7 @@ def test_handle_propose_empty_intents_shows_notice():
 
     assert result.next == PcState.FIX_AWAIT_APPROVAL
     turns = [i for i in result.items if i.kind == "assistant_turn"]
-    assert turns[-1].payload["reply_text"].startswith("No automatic fix found")
+    assert english_text(turns[-1].payload["reply_text"]).startswith("No automatic fix found")
 
 
 def test_diagnose_then_propose_low_risk_creates_checkpoint_and_stages_repair():
@@ -199,7 +200,9 @@ def test_apply_refuses_to_apply_an_empty_staged_repair():
     result = handle_apply(env, Turn(actor=_actor()), s, fc)
 
     assert result.next == PcState.FIX_AWAIT_DECISION
-    assert "notice" in [item.kind for item in result.items]
+    assert [item.kind for item in result.items] == ["assistant_turn"]
+    assert result.items[0].payload["reply_mode"] == "complete"
+    assert "No fix is staged" in english_text(result.items[0].payload["reply_text"])
     assert not env.dify.applied, "nothing staged -> the adapter must not be called"
 
 
@@ -224,8 +227,8 @@ def test_apply_surfaces_a_stale_intent_instead_of_failing_the_session():
     assert result.next == PcState.FIX_AWAIT_DECISION
     assert not any(i.kind == "error" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "Couldn't apply the fix" in assistant.payload["reply_text"]
-    assert "no key 'outputs'" in assistant.payload["reply_text"]
+    assert "Couldn't apply the fix" in english_text(assistant.payload["reply_text"])
+    assert "no key 'outputs'" in english_text(assistant.payload["reply_text"])
     assert result.context.staged_repair == []
 
 
@@ -250,8 +253,10 @@ def test_apply_says_a_fix_that_would_not_start_is_not_a_stale_fix():
 
     assert result.next == PcState.FIX_AWAIT_DECISION
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
-    assert "The workflow can't start" in assistant.payload["reply_text"]
-    assert "the draft would not start: node 'code' (code): 1 validation error" in assistant.payload["reply_text"]
+    assert "The workflow can't start" in english_text(assistant.payload["reply_text"])
+    assert "the draft would not start: node 'code' (code): 1 validation error" in english_text(
+        assistant.payload["reply_text"]
+    )
     assert assistant.payload["execution"]["status"] == "error"
     assert result.context.staged_repair == []
 
@@ -296,9 +301,11 @@ def test_apply_streams_change_summary_when_adapter_omits_scope_and_changes():
 
     items = repo.list_conversation(s.id)
     assert not any(i.kind == "change_set" for i in items)
-    assistant = next(i for i in items if i.kind == "assistant_turn" and i.payload["reply_text"].startswith("Applied"))
-    assert "(configuration)" in assistant.payload["reply_text"]
-    assert "output" in assistant.payload["reply_text"]
+    assistant = next(
+        i for i in items if i.kind == "assistant_turn" and english_text(i.payload["reply_text"]).startswith("Applied")
+    )
+    assert "(configuration)" in english_text(assistant.payload["reply_text"])
+    assert "output" in english_text(assistant.payload["reply_text"])
 
 
 def test_diagnose_records_structure_fingerprint():
@@ -640,7 +647,8 @@ def test_checklist_fix_diagnose_to_apply_reaches_await_recheck():
     assert preflight[0].payload["issues"][0]["messages"] == ["missing prompt"]
     assert not any(item.kind == "summary" for item in items)
     assert any(
-        item.kind == "assistant_turn" and "Checklist diagnosis complete" in item.payload["reply_text"] for item in items
+        item.kind == "assistant_turn" and "Checklist diagnosis complete" in english_text(item.payload["reply_text"])
+        for item in items
     )
 
 
@@ -677,6 +685,7 @@ def test_checklist_fix_recheck_failed_loops_back_to_diagnose():
     assert len(fc.checklist_errors) == 1
     assert fc.checklist_errors[0].node_id == "n2"
     assert fc.checklist_errors[0].messages == ["still broken"]
+    assert not any(item.kind == "notice" for item in repo.list_conversation(s.id))
 
 
 def test_checklist_fix_await_recheck_undo_reaches_success():
@@ -1097,7 +1106,7 @@ def test_testdata_form_fields_preserves_file_type():
     assert [f.key for f in fields] == ["document", "topic"]
     assert fields[0].type == "file"  # NOT clamped to "text"
     assert fields[0].required is True
-    assert fields[1].label == "topic"  # falls back to the variable name
+    assert english_text(fields[1].label) == "topic"  # falls back to the variable name
 
 
 def test_testdata_form_fields_copies_start_input_constraints():
@@ -1338,9 +1347,9 @@ def test_verify_marks_a_succeeded_run_that_reached_no_end_as_no_output():
     assert res.run.culprit_node_id == "node2"
     test_result = next(i for i in res.items if i.kind == "test_result")
     assert test_result.payload["status"] == "failed"
-    assert "produced no terminal output" in test_result.payload["failure_reason"]
-    assert (
-        "produced no terminal output" in next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "produced no terminal output" in english_text(test_result.payload["failure_reason"])
+    assert "produced no terminal output" in english_text(
+        next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
 
@@ -1433,9 +1442,8 @@ def test_each_unknown_outcome_stops_at_the_fix_decision_gate():
 
     assert second.next == PcState.FIX_AWAIT_DECISION
     assert second.context.unknown_outcome_count == 0
-    assert (
-        "Execution safety requires review"
-        in next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
+    assert "Execution safety requires review" in english_text(
+        next(i for i in second.items if i.kind == "assistant_turn").payload["reply_text"]
     )
 
 
@@ -1500,8 +1508,8 @@ def test_a_repair_the_guards_condemned_reaches_the_gate_with_its_reason():
     assert result.context.staged_repair == []
     assert result.next == PcState.FIX_AWAIT_APPROVAL
     turns = [i for i in result.items if i.kind == "assistant_turn"]
-    assert _UNFED_AGGREGATOR_REASON in turns[-1].payload["reply_text"]
-    assert "node5" in turns[-1].payload["reply_text"]
+    assert _UNFED_AGGREGATOR_REASON in english_text(turns[-1].payload["reply_text"])
+    assert "node5" in english_text(turns[-1].payload["reply_text"])
     assert turns[-1].payload["cards"] == []
 
 

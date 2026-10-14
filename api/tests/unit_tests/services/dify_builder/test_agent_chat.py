@@ -1,6 +1,6 @@
 import pytest
 
-from core.dify_builder.models import DifyBuilderContext
+from core.dify_builder.models import ConversationItem, DifyBuilderContext
 from core.dify_builder.state import PcState
 from services.dify_builder.agent import chat
 
@@ -66,3 +66,29 @@ def test_respond_does_not_replace_an_already_streamed_partial_reply(monkeypatch)
         )
 
     assert deltas == ["Partial"]
+
+
+def test_respond_keeps_dynamic_history_and_ignores_legacy_notices(monkeypatch):
+    prompts: list[str] = []
+
+    def stream(_model, *, user, **_kwargs):
+        prompts.append(user)
+        return iter(["动态 ", "response"])
+
+    monkeypatch.setattr(chat.llm, "invoke_text_stream", stream)
+    history = [
+        ConversationItem(kind="user", payload={"text": "Original {{value}} <tag>"}),
+        ConversationItem(kind="assistant_turn", payload={"reply_text": "Earlier dynamic response"}),
+        *[ConversationItem(kind="notice", payload={"text": "Legacy recovery notice"}) for _ in range(24)],
+    ]
+    deltas: list[str] = []
+
+    reply = chat.respond(
+        object(), {}, PcState.BUILD_REVIEW, DifyBuilderContext(), history, {"nodes": []}, "Explain", deltas.append
+    )
+
+    assert "Original {{value}} <tag>" in prompts[0]
+    assert "Earlier dynamic response" in prompts[0]
+    assert "Legacy recovery notice" not in prompts[0]
+    assert reply == "动态 response"
+    assert deltas == ["动态 ", "response"]

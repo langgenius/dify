@@ -36,7 +36,7 @@ describe('WorkflowPreview Fix', () => {
       { initialStoreState: { workflowRunningData: createLiveRun() } },
     )
 
-    await user.click(await screen.findByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
+    await user.click(await screen.findByRole('button', { name: 'difyBuilder.fixRun' }))
     expect(onFixRun).toHaveBeenLastCalledWith('live-run-1')
 
     await user.click(screen.getByRole('button', { name: 'runLog.result' }))
@@ -45,7 +45,7 @@ describe('WorkflowPreview Fix', () => {
     expect(screen.queryByRole('button', { name: /difyBuilder\.fix/ })).not.toBeInTheDocument()
 
     act(() => store.setState({ workflowRunningData: createLiveRun({ id: 'live-run-2' }) }))
-    await user.click(await screen.findByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
+    await user.click(await screen.findByRole('button', { name: 'difyBuilder.fixRun' }))
     expect(onFixRun).toHaveBeenLastCalledWith('live-run-2')
     expect(onFixRun).toHaveBeenCalledTimes(2)
   })
@@ -60,7 +60,7 @@ describe('WorkflowPreview Fix', () => {
       { initialStoreState: { workflowRunningData: createLiveRun() } },
     )
 
-    const button = await screen.findByRole('button', { name: 'workflow.difyBuilder.fixRun' })
+    const button = await screen.findByRole('button', { name: 'difyBuilder.fixRun' })
     expect(button).toBeDisabled()
     await user.click(button)
     expect(onFixRun).not.toHaveBeenCalled()

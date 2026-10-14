@@ -8,25 +8,25 @@ from core.dify_builder.models import Diagnosis, DifyBuilderContext, Session, Tur
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.runner import Env, StepResult
 from core.dify_builder.state import PcState
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import copy_text, text_parts
 
-NO_REPAIR_REPLY = "No automatic fix found — try again or finish this session."
+NO_REPAIR_REPLY = copy_text(BuilderCopyId.REPLIES_NO_AUTOMATIC_FIX_FOUND_TRY_AGAIN_OR_FINISH_THIS_SESSION)
 NO_REPAIR_REASON = "No safe automatic fix found — try again or finish this session."
-NO_REPAIR_DECISION_COPY = ("No repair available", "Try again to find a repair, or finish this session.")
-RETRY_REPAIR_TEXT = "Retrying the repair"
-FINISH_REPAIR_TEXT = "Finished the repair attempt"
-NO_REPAIR_ACTIONS = (
-    Action(id="retry_repair", label="Try again", kind=ActionKind.PRIMARY),
-    Action(id="finish_repair", label="Finish", kind=ActionKind.SECONDARY, next_state=str(PcState.SUCCESS)),
+NO_REPAIR_DECISION_COPY = (
+    copy_text(BuilderCopyId.LABELS_NO_REPAIR_AVAILABLE),
+    copy_text(BuilderCopyId.REPLIES_TRY_AGAIN_TO_FIND_A_REPAIR_OR_FINISH_THIS_SESSION),
 )
-STATIC_COPY = frozenset(
-    {
-        NO_REPAIR_REPLY,
-        NO_REPAIR_REASON,
-        *NO_REPAIR_DECISION_COPY,
-        RETRY_REPAIR_TEXT,
-        FINISH_REPAIR_TEXT,
-        *(action.label for action in NO_REPAIR_ACTIONS),
-    }
+RETRY_REPAIR_TEXT = copy_text(BuilderCopyId.LABELS_RETRYING_THE_REPAIR)
+FINISH_REPAIR_TEXT = copy_text(BuilderCopyId.LABELS_FINISHED_THE_REPAIR_ATTEMPT)
+NO_REPAIR_ACTIONS = (
+    Action(id="retry_repair", label=copy_text(BuilderCopyId.ACTIONS_TRY_AGAIN), kind=ActionKind.PRIMARY),
+    Action(
+        id="finish_repair",
+        label=copy_text(BuilderCopyId.ACTIONS_FINISH),
+        kind=ActionKind.SECONDARY,
+        next_state=str(PcState.SUCCESS),
+    ),
 )
 
 
@@ -40,11 +40,12 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("fix-prepare-context", "Prepare repair context"),
-            ("fix-propose-repair", "Propose a safe repair"),
-            ("fix-assess-risk", "Assess repair risk"),
+            ("fix-prepare-context", copy_text(BuilderCopyId.PROGRESS_PREPARE_REPAIR_CONTEXT)),
+            ("fix-propose-repair", copy_text(BuilderCopyId.PROGRESS_PROPOSE_A_SAFE_REPAIR)),
+            ("fix-assess-risk", copy_text(BuilderCopyId.PROGRESS_ASSESS_REPAIR_RISK)),
         ],
     )
     progress.activate("fix-prepare-context")
@@ -62,13 +63,16 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 
     if intents:
         proposed_changes = "\n".join(f"- `{intent.op}`" for intent in intents)
-        reply_text = f"Proposed repair (risk: {risk.level}, {len(intents)} change(s)).\n{proposed_changes}" + (
-            f"\nRisk note: {risk.reason}" if risk.reason else ""
+        reply_text = text_parts(
+            copy_text(BuilderCopyId.REPAIR_PROPOSED, level=risk.level, count=len(intents)),
+            ".\n",
+            proposed_changes,
+            (text_parts("\n", copy_text(BuilderCopyId.REPAIR_RISK_NOTE, reason=risk.reason)) if risk.reason else ""),
         )
     else:
         reply_text = NO_REPAIR_REPLY
         if risk.reason and risk.reason != NO_REPAIR_REASON:
-            reply_text += f"\nReason: {risk.reason}"
+            reply_text = text_parts(reply_text, "\n", copy_text(BuilderCopyId.REPAIR_REASON, reason=risk.reason))
     items = append_assistant(
         env,
         s,
@@ -105,6 +109,6 @@ def handle_await_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         if kind == "approve_repair":
             return StepResult(next=PcState.FIX_APPLY, context=fc)
         if kind == "reject_repair":
-            items = append_card(fc, DecisionItem(text="Rejected the proposed repair"))
+            items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REJECTED_THE_PROPOSED_REPAIR)))
             return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc)

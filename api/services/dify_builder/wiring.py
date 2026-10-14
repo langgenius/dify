@@ -475,6 +475,7 @@ def _progress_event(raw: bytes) -> tuple[str, object] | None:
         return kind, {
             "session_id": data.get("session_id", ""),
             "operation_id": data.get("operation_id", ""),
+            "reply_language": data.get("reply_language", ""),
             "at_version": data.get("at_version", 0),
             "revision": data.get("revision", 0),
             "status": data.get("status", "running"),
@@ -595,6 +596,7 @@ def stream_advance_frames(
                         "operation_id": initial_progress.operation_id,
                         "at_version": initial_progress.at_version,
                         "revision": initial_progress.revision,
+                        "reply_language": initial_progress.reply_language,
                         "execution": _public_execution(dataclasses.asdict(initial_progress.execution)),
                     },
                 )

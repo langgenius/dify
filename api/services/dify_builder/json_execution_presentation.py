@@ -1,11 +1,10 @@
 """Presentation gates for the qualified JSON Parse safe-test variant."""
 
+from services.dify_builder.copy_ids import BuilderCopyId
 from services.dify_builder.execution_contracts import ExecutionEvidenceSummary
+from services.dify_builder.presentation import BuilderText, copy_text
 
-JSON_FAILED_REASON = (
-    "The JSON Parse test failed. Review the native run and edit the draft before testing again. "
-    "Automatic repair and publication are blocked."
-)
+JSON_FAILED_REASON = copy_text(BuilderCopyId.JSON_FAILED)
 
 
 def json_execution_blocks_repair(summary: ExecutionEvidenceSummary, run_status: str) -> bool:
@@ -15,7 +14,7 @@ def json_execution_blocks_repair(summary: ExecutionEvidenceSummary, run_status: 
     )
 
 
-def json_failed_reason(summary: ExecutionEvidenceSummary | None, run_status: str) -> str | None:
+def json_failed_reason(summary: ExecutionEvidenceSummary | None, run_status: str) -> BuilderText | None:
     """Use fixed copy for a known native failure, never provider error text."""
     if (
         summary is not None

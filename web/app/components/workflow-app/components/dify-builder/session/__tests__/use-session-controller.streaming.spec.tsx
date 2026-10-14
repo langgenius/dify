@@ -68,6 +68,59 @@ describe('useDifyBuilderSessionController streaming', () => {
     vi.unstubAllGlobals()
   })
 
+  it('publishes a complete scene reply immediately before the terminal frame', async () => {
+    const waiting = createSessionView({
+      version: 1,
+      conversation_last_seq: -1,
+      run_status: 'waiting_input',
+    })
+    const stream = createControlledEventStream()
+    clientMocks.action.mockResolvedValue(stream.iterable)
+    const { result, store } = renderSessionHook()
+    store.set(difyBuilderSessionViewAtom, waiting)
+    store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
+    let pending!: Promise<boolean>
+    act(() => {
+      pending = result.current.runAction('confirm', { option_id: 'approve_plan' })
+    })
+    await waitFor(() => expect(clientMocks.action).toHaveBeenCalledOnce())
+    const fixed = {
+      kind: 'assistant_turn' as const,
+      seq: 0,
+      at_version: 2,
+      payload: {
+        stage_id: 'build.execution',
+        turn_id: 'fixed-turn',
+        reply_language: 'zh-Hans',
+        reply_mode: 'complete' as const,
+        execution: { status: 'completed' as const },
+        reply_text: {
+          type: 'copy' as const,
+          id: 'build.graphApplied' as const,
+          params: { count: 3, scope: 'configuration' },
+        },
+      },
+    }
+    act(() => {
+      stream.push(commandStartedEvent(waiting))
+      stream.push(conversationItemEvent(fixed))
+    })
+    await waitFor(() => expect(store.get(difyBuilderConversationAtom)).toHaveLength(1))
+    expect(store.get(difyBuilderConversationAtom)[0]).toMatchObject(fixed)
+    expect(store.get(difyBuilderStreamingTurnAtom)).toBeNull()
+    expect(globalThis.requestAnimationFrame).not.toHaveBeenCalled()
+    expect(store.get(difyBuilderSessionBusyAtom)).toBe(true)
+    act(() => stream.push(conversationItemEvent(fixed)))
+    await waitFor(() => expect(store.get(difyBuilderConversationAtom)).toHaveLength(1))
+    await act(async () => {
+      stream.push(
+        stateEvent(createSessionView({ ...waiting, version: 2, conversation_last_seq: 0 })),
+      )
+      expect(await pending).toBe(true)
+    })
+    expect(clientMocks.conversation).not.toHaveBeenCalled()
+  })
+
   it('shows a user message immediately and replaces it with the durable SSE item', async () => {
     const waiting = createSessionView({
       conversation_last_seq: -1,
