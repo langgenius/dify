@@ -29,6 +29,7 @@ from repositories.trial_app_repository import TrialAppRepository
 from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -101,7 +102,10 @@ class _Runtime:
         assert self.sessions
         assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
 
-    def transcript_asr(self, *, app: AudioAppRef, audio: AudioUpload | None) -> dict[str, str]:
+    def transcript_asr(
+        self, *, app: AudioAppRef, audio: AudioUpload | None, end_user: str | None = None
+    ) -> dict[str, str]:
+        assert end_user is None
         self._assert_admission_closed()
         self.calls.append(_AsrCall(app, audio.stream.read() if audio else None, audio.mime_type if audio else None))
         if self.error is not None:
@@ -114,13 +118,16 @@ class _Runtime:
         self,
         *,
         app: AudioAppRef,
-        account_id: str,
+        actor: MessageActor,
         text: str | None,
         voice: str | None,
         message_id: str | None,
+        end_user: str | None = None,
     ) -> AudioOutput | None:
+        assert isinstance(actor, MessageAccount)
+        assert end_user is None
         self._assert_admission_closed()
-        self.calls.append(_TtsCall(app, account_id, text, voice, message_id))
+        self.calls.append(_TtsCall(app, actor.account_id, text, voice, message_id))
         if self.error is not None:
             raise self.error
         return self.output

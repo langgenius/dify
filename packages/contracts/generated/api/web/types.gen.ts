@@ -1052,6 +1052,7 @@ export type PostAudioToTextErrors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
   413: unknown
   415: unknown
   500: unknown
@@ -1862,6 +1863,8 @@ export type PostTextToAudioErrors = {
   400: unknown
   401: unknown
   403: unknown
+  404: unknown
+  422: unknown
   500: unknown
 }
 

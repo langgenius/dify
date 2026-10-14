@@ -15,6 +15,7 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
+from services.entities.message_entities import MessageAccount, MessageActor, MessageEndUser
 
 
 class AppAudioRuntime(AppAudio):
@@ -22,28 +23,34 @@ class AppAudioRuntime(AppAudio):
         self._session_factory: sessionmaker[Session] = session_factory
 
     @override
-    def transcript_asr(self, *, app: AudioAppRef, audio: AudioUpload | None) -> dict[str, str]:
+    def transcript_asr(
+        self, *, app: AudioAppRef, audio: AudioUpload | None, end_user: str | None = None
+    ) -> dict[str, str]:
         with self._session_factory(expire_on_commit=False) as session:
             app_model = self._get_app(session=session, app=app)
             AudioService.prepare_asr(app_model, session=session)
 
-        return AudioService.invoke_speech_to_text(app_model, audio, end_user=None)
+        return AudioService.invoke_speech_to_text(app_model, audio, end_user=end_user)
 
     @override
     def transcript_tts(
         self,
         *,
         app: AudioAppRef,
-        account_id: str,
+        actor: MessageActor,
         text: str | None,
         voice: str | None,
         message_id: str | None,
+        end_user: str | None = None,
     ) -> AudioOutput | None:
         with self._session_factory(expire_on_commit=False) as session:
             app_model = self._get_app(session=session, app=app)
             message_ref = (
                 AppRefService.create_message_ref(
-                    AppRefService.create_app_ref(app_model), message_id, account_id=account_id
+                    AppRefService.create_app_ref(app_model),
+                    message_id,
+                    account_id=actor.account_id if isinstance(actor, MessageAccount) else None,
+                    end_user_id=actor.end_user_id if isinstance(actor, MessageEndUser) else None,
                 )
                 if message_id
                 else None
@@ -54,7 +61,7 @@ class AppAudioRuntime(AppAudio):
 
         if prepared is None:
             return None
-        return AudioService.invoke_tts(app_model, text=prepared.text, voice=prepared.voice, end_user=None)
+        return AudioService.invoke_tts(app_model, text=prepared.text, voice=prepared.voice, end_user=end_user)
 
     @staticmethod
     def _get_app(*, session: Session, app: AudioAppRef) -> App:

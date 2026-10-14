@@ -1651,7 +1651,7 @@ export const zGetSystemFeaturesResponse = zSystemFeatureModel
 export const zPostTextToAudioBody = zTextToAudioPayload
 
 /**
- * Success
+ * Success; null when no message audio is available
  */
 export const zPostTextToAudioResponse = z.record(z.string(), z.unknown())
 

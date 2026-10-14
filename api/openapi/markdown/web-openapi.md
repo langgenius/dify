@@ -25,6 +25,7 @@ Convert audio file to text using speech-to-text service.
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
+| 404 | App or end user not found |  |
 | 413 | Audio file too large |  |
 | 415 | Unsupported audio type |  |
 | 500 | Internal Server Error |  |
@@ -814,10 +815,12 @@ Convert text to audio using text-to-speech service.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 200 | Success; null when no message audio is available |
 | 400 | Bad Request |
 | 401 | Unauthorized |
 | 403 | Forbidden |
+| 404 | App or end user not found |
+| 422 | Invalid request payload |
 | 500 | Internal Server Error |
 
 ### [GET] /webapp/access-mode

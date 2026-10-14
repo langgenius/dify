@@ -53,6 +53,7 @@ def service_api_end_user_admission[T, **P, R](
                 app_id=app.app_id,
                 app_mode=app.mode,
                 end_user_id=end_user.id,
+                external_user_id=end_user.external_user_id,
             )
             return view(self, context, *args, **kwargs)
 
