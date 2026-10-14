@@ -291,7 +291,7 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
         if not isinstance(parsed, dict):
             raise OutputParserError(f"Failed to parse structured output: {result_text}")
         structured_output = parsed
-    except ValidationError:
+    except ValidationError as caught_error:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
         match temp_parsed:
@@ -301,7 +301,7 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
                 # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
                 temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
             case _:
-                raise OutputParserError(f"Failed to parse structured output: {result_text}")
+                raise OutputParserError(f"Failed to parse structured output: {result_text}") from caught_error
         structured_output = cast(dict, temp_parsed)
     return structured_output
 

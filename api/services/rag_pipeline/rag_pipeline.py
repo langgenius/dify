@@ -913,13 +913,13 @@ class RagPipelineService:
                         return variables
                     except Exception as e:
                         logger.exception("Error during get online document content.")
-                        raise RuntimeError(str(e))
+                        raise RuntimeError(str(e)) from e
                 # TODO Online Drive
                 case _:
                     raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
         except Exception as e:
             logger.exception("Error in run_datasource_node_preview.")
-            raise RuntimeError(str(e))
+            raise RuntimeError(str(e)) from e
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]

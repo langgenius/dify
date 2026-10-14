@@ -130,7 +130,7 @@ class MCPClient:
             self._exit_stack.close()
         except Exception as e:
             logger.exception("Error during cleanup")
-            raise ValueError(f"Error during cleanup: {e}")
+            raise ValueError(f"Error during cleanup: {e}") from e
         finally:
             self._session = None
             self._initialized = False

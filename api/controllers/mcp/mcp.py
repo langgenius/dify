@@ -201,7 +201,7 @@ class MCPAppApi(Resource):
         try:
             return self._convert_user_input_form(raw_user_input_form)
         except ValidationError as e:
-            raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}")
+            raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid user_input_form: {str(e)}") from e
 
     def _convert_user_input_form(self, raw_form: list[dict[str, Any]]) -> list[VariableEntity]:
         """Convert raw user input form to VariableEntity objects"""
@@ -237,7 +237,7 @@ class MCPAppApi(Resource):
             try:
                 return mcp_types.ClientNotification.model_validate(args)
             except ValidationError as e:
-                raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
+                raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}") from e
 
     def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str, session: Session) -> EndUser | None:
         """Get end user in the caller session"""

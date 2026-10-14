@@ -230,7 +230,7 @@ def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
 
         return oauth_state
     except ValidationError as e:
-        raise ValueError(f"Invalid state parameter: {str(e)}")
+        raise ValueError(f"Invalid state parameter: {str(e)}") from e
 
 
 def handle_callback(state_key: str, authorization_code: str) -> tuple[OAuthCallbackState, OAuthTokens]:
@@ -606,7 +606,7 @@ def auth(
         try:
             full_information = register_client(server_url, server_metadata, client_metadata)
         except RequestError as e:
-            raise ValueError(f"Could not register OAuth client: {e}")
+            raise ValueError(f"Could not register OAuth client: {e}") from e
 
         # Return action to save client information
         actions.append(
@@ -649,7 +649,7 @@ def auth(
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
             # KeyError: Missing required fields in response
-            raise ValueError(f"Client credentials flow failed: {e}")
+            raise ValueError(f"Client credentials flow failed: {e}") from e
 
     # Exchange authorization code for tokens (Authorization Code flow)
     if authorization_code is not None:
@@ -667,7 +667,7 @@ def auth(
                 raise ValueError("Missing code_verifier or redirect_uri in state data")
 
         except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Invalid state parameter: {e}")
+            raise ValueError(f"Invalid state parameter: {e}") from e
 
         tokens = exchange_authorization(
             server_url,
@@ -714,7 +714,7 @@ def auth(
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
             # KeyError: Missing required fields in response
-            raise ValueError(f"Could not refresh OAuth tokens: {e}")
+            raise ValueError(f"Could not refresh OAuth tokens: {e}") from e
 
     # Start new authorization flow (only for authorization code flow)
     authorization_url, code_verifier = start_authorization(

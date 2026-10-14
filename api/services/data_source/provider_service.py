@@ -748,7 +748,7 @@ class DatasourceProviderService:
                         credentials=credentials,
                     )
                 except Exception as e:
-                    raise ValueError(f"Failed to validate credentials: {str(e)}")
+                    raise ValueError(f"Failed to validate credentials: {str(e)}") from e
 
                 provider_credential_secret_variables = self.extract_secret_variables(
                     tenant_id=tenant_id, provider_id=f"{provider_id}", credential_type=CredentialType.API_KEY
@@ -1079,7 +1079,7 @@ class DatasourceProviderService:
                         credentials=new_credentials,
                     )
                 except Exception as e:
-                    raise ValueError(f"Failed to validate credentials: {str(e)}")
+                    raise ValueError(f"Failed to validate credentials: {str(e)}") from e
 
                 encrypted_credentials = {}
                 for key, value in new_credentials.items():
