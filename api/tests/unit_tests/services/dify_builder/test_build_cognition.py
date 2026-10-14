@@ -1583,3 +1583,176 @@ def test_discovery_prompt_keeps_the_readiness_reason_for_a_long_description(
     assert len(huddle_lines) == 1
     assert "missing_config" in huddle_lines[0]
     assert expected_note in huddle_lines[0]
+
+
+class TestNativeBuildCapabilityMessages:
+    """Cognition receives native build facts separately from authored source and external resources."""
+
+    _GOAL = (
+        "ORIGINAL_GOAL_AUTHORITY_73: GET each supplied URL, check HTTP status_code = 200, "
+        "return exactly healthy or unhealthy, and combine the branch results before End."
+    )
+    _REQUIREMENTS = {
+        "success_literal": "healthy",
+        "failure_literal": "unhealthy",
+        "authored_node_id": "USER_BRANCH_ID_73",
+        "authored_metadata": "USER_METADATA_ONLY_73",
+    }
+
+    @staticmethod
+    def _assert_constant_rules(system: str):
+        assert "assigner v2 publishes no own outputs" in system
+        assert "existing declared mutable" in system
+        assert "conversation or loop variable" in system
+        assert "template-transform v1 publishes output:string" in system
+        assert "literal" in system
+        assert "variables=[]" in system
+
+    @classmethod
+    def _outline_messages(cls):
+        plan = ["http-request node GETs the URL", "if-else node checks status", "end node returns the result"]
+        model = _FakeInstance([json.dumps({"plan": plan})])
+        result = build.propose_plan_v1(model, cls._REQUIREMENTS, goal_text=cls._GOAL)
+        assert result == plan
+        assert len(model.calls) == 1
+        return model.calls[0][0]
+
+    @classmethod
+    def _gap_messages(cls, option=None):
+        plan = ["http-request node GETs the URL", "if-else node checks status", "end node returns the result"]
+        model = _FakeInstance(['{"gap":""}'])
+        assert (
+            build.assess_capability_gap(
+                model, plan, [] if option is None else [option], goal_text=cls._GOAL, requirements=cls._REQUIREMENTS
+            )
+            == ""
+        )
+        assert len(model.calls) == 1
+        return model.calls[0][0]
+
+    def test_outline_system_distinguishes_mutation_from_a_published_constant(self):
+        messages = self._outline_messages()
+
+        self._assert_constant_rules(messages[0].content)
+
+    def test_outline_keeps_original_goal_literals_and_metadata_in_user_message(self):
+        system, user = self._outline_messages()
+
+        assert user.content == (
+            f"ORIGINAL GOAL:\n{self._GOAL}\n\nCONFIRMED REQUIREMENTS:\n"
+            + json.dumps(self._REQUIREMENTS, ensure_ascii=False)
+        )
+        for value in (
+            "ORIGINAL_GOAL_AUTHORITY_73",
+            "healthy",
+            "unhealthy",
+            "USER_BRANCH_ID_73",
+            "USER_METADATA_ONLY_73",
+        ):
+            assert value in user.content
+            assert value not in system.content
+
+    def test_gap_system_receives_native_workflow_vocabulary_with_no_selected_external_resources(self):
+        system, user = self._gap_messages()
+
+        for node_type in ("start", "http-request", "if-else", "template-transform", "assigner", "end"):
+            assert f'"{node_type}"' in system.content
+        assert "selected external resources" in system.content.lower()
+        assert "native" in system.content.lower()
+        assert "- (none)" in user.content
+
+    def test_gap_system_distinguishes_mutation_from_a_published_constant(self):
+        messages = self._gap_messages()
+
+        self._assert_constant_rules(messages[0].content)
+
+    @pytest.mark.parametrize("readiness", [None, "ready", "missing_config"])
+    def test_gap_keeps_source_and_external_resource_readiness_in_user_message(self, readiness):
+        from core.dify_builder.contract import ResourceOption
+
+        option = (
+            None
+            if readiness is None
+            else ResourceOption(
+                id="USER_SELECTED_TOOL_73", label="USER_SELECTED_LABEL_73", meta="", kind="plugin", readiness=readiness
+            )
+        )
+        system, user = self._gap_messages(option)
+
+        assert user.content.startswith(
+            f"ORIGINAL GOAL:\n{self._GOAL}\n\nCONFIRMED REQUIREMENTS:\n"
+            + json.dumps(self._REQUIREMENTS, ensure_ascii=False)
+        )
+        for value in (
+            "ORIGINAL_GOAL_AUTHORITY_73",
+            "healthy",
+            "unhealthy",
+            "USER_BRANCH_ID_73",
+            "USER_METADATA_ONLY_73",
+        ):
+            assert value in user.content
+            assert value not in system.content
+        if option is not None:
+            assert f"{option.id} (plugin, {readiness}): {option.label}" in user.content
+            assert option.id not in system.content
+            assert option.label not in system.content
+
+    def test_gap_system_preserves_explicit_named_tool_model_and_new_agent_constraints(self):
+        goal = (
+            "Use Tool USER_NAMED_TOOL_91 with model USER_NAMED_MODEL_91 and NewAgent USER_NAMED_AGENT_91. "
+            "Preserve these exact identities; do not replace them with an HTTP fallback."
+        )
+        model = _FakeInstance(['{"gap":"The explicitly requested identities still require matching resources."}'])
+        result = build.assess_capability_gap(
+            model,
+            ["Tool USER_NAMED_TOOL_91 executes through NewAgent USER_NAMED_AGENT_91"],
+            [],
+            goal_text=goal,
+            requirements={"model_id": "USER_NAMED_MODEL_91"},
+        )
+        assert result == "The explicitly requested identities still require matching resources."
+        assert len(model.calls) == 1
+        system, user = model.calls[0][0]
+        for value in ("USER_NAMED_TOOL_91", "USER_NAMED_MODEL_91", "USER_NAMED_AGENT_91"):
+            assert value in user.content
+            assert value not in system.content
+        assert "explicitly requested named Tool, model, or NewAgent" in system.content
+        assert "do not silently substitute" in system.content
+
+    def test_gap_system_separates_native_draft_coverage_from_runtime_admission(self):
+        system, _ = self._gap_messages()
+
+        assert "does not grant runtime admission" in system.content
+        assert "network access" in system.content
+        assert "authorization" in system.content
+        assert "credential readiness" in system.content
+
+    def test_gap_system_treats_absent_named_candidates_as_unconfirmed_external_inventory(self):
+        goal = (
+            "Use Tool USER_NAMED_TOOL_104 through NewAgent USER_NAMED_AGENT_104 "
+            "with model USER_NAMED_MODEL_104. Preserve the requested identities."
+        )
+        gap = "Recommendation coverage for the selected binding is unconfirmed."
+        model = _FakeInstance([json.dumps({"gap": gap})])
+
+        result = build.assess_capability_gap(
+            model,
+            ["Tool USER_NAMED_TOOL_104 executes through NewAgent USER_NAMED_AGENT_104"],
+            [],
+            goal_text=goal,
+            requirements={"model_id": "USER_NAMED_MODEL_104"},
+        )
+
+        assert result == gap
+        assert len(model.calls) == 1
+        system, user = model.calls[0][0]
+        assert "- (none)" in user.content
+        for value in ("USER_NAMED_TOOL_104", "USER_NAMED_MODEL_104", "USER_NAMED_AGENT_104"):
+            assert value in user.content
+            assert value not in system.content
+        assert "non-exhaustive subset" in system.content
+        assert "not the complete workspace inventory" in system.content
+        assert "recommendation/binding coverage is unconfirmed" in system.content
+        assert (
+            "does not establish that the resource is uninstalled, unavailable, or permission denied" in system.content
+        )
