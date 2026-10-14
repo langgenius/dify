@@ -3,8 +3,9 @@
 One entry point -- list_tenant_resources -- returns the tenant's configured
 models and datasets and every INSTALLED tool, normalized to id+label. A tool
 is listed whether or not it is authorized; its ``readiness`` is metadata
-readiness: whether a credential row visible to the acting member exists (or
-none is needed). Verified installed action schemas are eligible for Builder
+readiness: whether a builtin credential row visible to the acting member
+exists (or none is needed). Native API authorization remains unverified from
+public bundles and is reported with an explicit note. Verified installed action schemas are eligible for Builder
 planning, binding and generation even when setup is missing. Readiness is
 computed from credential-row metadata only
 (provider id, owner, visibility) -- never credential values, decryption,
@@ -112,6 +113,11 @@ def _tool_readiness(entry: ToolCatalogueEntry, authorized: set[str] | None) -> t
     with a note saying it could not be verified. Runtime authorization
     remains the final gate either way.
     """
+    # API authorization belongs to its native owner, never builtin credential
+    # rows. Public metadata cannot prove authorization even for an API tool
+    # that uses no credentials; keep it bindable with an honest setup note.
+    if entry.get("provider_type") == "api" or entry.get("authorization_metadata") == "unverified":
+        return "missing_config", AUTHORIZATION_UNVERIFIED_NOTE
     if not entry.get("needs_credentials"):
         return "ready", ""
     if authorized is None:
@@ -174,7 +180,12 @@ def list_tenant_resources(tenant_id: str, *, account_id: str | None = None) -> T
         # actually be gated on it -- a tenant with no credentialed tools
         # installed never needs to touch tool_builtin_providers.
         authorized: set[str] | None = None
-        if any(t.get("needs_credentials") for t in tools):
+        if any(
+            t.get("needs_credentials")
+            and t.get("provider_type") != "api"
+            and t.get("authorization_metadata") != "unverified"
+            for t in tools
+        ):
             try:
                 authorized = _authorized_providers(tenant_id, account_id)
             except Exception:  # the lookup degrades to "unknown", not "none authorized"

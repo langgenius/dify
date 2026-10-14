@@ -321,6 +321,7 @@ jobs:
               "api/tests/unit_tests/core/helper/test_encrypter.py",
               "api/tests/unit_tests/services/dify_builder/test_resources.py",
               "api/tests/unit_tests/core/workflow/generator/test_tool_catalogue.py",
+              "api/tests/unit_tests/services/tools/test_api_tool_catalogue.py",
               "api/tests/unit_tests/core/workflow/generator/test_runner.py",
               "api/tests/unit_tests/services/dify_builder/test_build_cognition.py",
               "api/tests/unit_tests/services/dify_builder/test_build_nodes.py",
