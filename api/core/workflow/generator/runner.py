@@ -34,8 +34,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from typing import Any, ClassVar, cast
 
-import json_repair
-
 from configs import dify_config
 from core.workflow import graph_normalizers
 from core.workflow.generator.prompts.node_builder_prompts import (
@@ -87,6 +85,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from services.workflow_generator_response import parse_workflow_generator_response
 
 logger = logging.getLogger(__name__)
 
@@ -951,7 +950,7 @@ class WorkflowGenerator:
         )
         response_text = response.message.get_text_content() or ""
         try:
-            parsed = json_repair.loads(response_text)
+            parsed = parse_workflow_generator_response(response_text)
         except Exception as e:
             raise _StageJSONError("Tool Router", str(e)) from e
         if not isinstance(parsed, dict):
@@ -1098,7 +1097,7 @@ class WorkflowGenerator:
                 *(value if type(value) is int else "unavailable" for value in token_counts),
             )
             try:
-                parsed = json_repair.loads(text)
+                parsed = parse_workflow_generator_response(text)
             except Exception as e:
                 # Parser exception messages can embed rejected response text.
                 last_error = _StageJSONError(stage, f"JSON parse failed: {type(e).__name__}")
