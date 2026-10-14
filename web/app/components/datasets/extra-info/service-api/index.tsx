@@ -117,8 +117,7 @@ function DatasetApiKeys({
   const [scopeOpen, setScopeOpen] = useState(false)
   const [createdOpen, setCreatedOpen] = useState(false)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const createDisabled =
-    !canManage || !keys.isSuccess || keys.isFetching || keys.data.data.length >= API_KEY_LIMIT
+  const atLimit = keys.data.data.length >= API_KEY_LIMIT
   return (
     <ApiKeyListContent
       apiKeys={keys.data.data}
@@ -135,9 +134,8 @@ function DatasetApiKeys({
     >
       <ApiKeyCreateAction
         ref={createButtonRef}
-        count={keys.data.data.length}
-        limit={API_KEY_LIMIT}
-        disabled={createDisabled}
+        atLimit={atLimit}
+        disabled={!canManage}
         focusableWhenDisabled={canManage}
         loading={isCreating}
         onClick={() => setScopeOpen(true)}
@@ -153,15 +151,14 @@ function DatasetApiKeys({
         open={scopeOpen}
         onOpenChange={setScopeOpen}
         isCreating={isCreating}
-        createDisabled={createDisabled}
+        createDisabled={!canManage || atLimit}
         finalFocus={() => (createdOpen ? false : createButtonRef.current)}
-        onConfirm={(datasetIds) => {
-          if (createDisabled || isCreating) return
+        onConfirm={(datasetIds) =>
           onCreate(datasetIds, () => {
             setCreatedOpen(true)
             setScopeOpen(false)
           })
-        }}
+        }
       />
     </ApiKeyListContent>
   )

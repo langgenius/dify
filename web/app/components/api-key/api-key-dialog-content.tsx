@@ -94,20 +94,16 @@ type ApiKeyCreateActionProps = Pick<
   ButtonProps,
   'ref' | 'disabled' | 'loading' | 'onClick' | 'focusableWhenDisabled'
 > & {
-  count: number
-  limit?: number
+  atLimit?: boolean
 }
 
 export function ApiKeyCreateAction({
-  count,
-  limit,
+  atLimit = false,
   disabled,
-  loading,
   ...props
 }: ApiKeyCreateActionProps) {
   const { t } = useTranslation(['appApi'])
   const descriptionId = useId()
-  const atLimit = limit !== undefined && count >= limit
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 px-6 py-4">
@@ -115,7 +111,6 @@ export function ApiKeyCreateAction({
         {...props}
         className="shrink-0"
         disabled={disabled || atLimit}
-        loading={loading}
         aria-describedby={atLimit ? descriptionId : undefined}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />

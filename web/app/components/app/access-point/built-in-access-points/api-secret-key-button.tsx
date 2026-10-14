@@ -108,8 +108,7 @@ function AppApiKeys({
   )
   const [createdOpen, setCreatedOpen] = useState(false)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const createDisabled =
-    !canManage || !keys.isSuccess || keys.isFetching || keys.data.data.length >= API_KEY_LIMIT
+  const atLimit = keys.data.data.length >= API_KEY_LIMIT
   return (
     <ApiKeyListContent
       apiKeys={keys.data.data}
@@ -126,15 +125,11 @@ function AppApiKeys({
     >
       <ApiKeyCreateAction
         ref={createButtonRef}
-        count={keys.data.data.length}
-        limit={API_KEY_LIMIT}
-        disabled={createDisabled}
+        atLimit={atLimit}
+        disabled={!canManage}
         focusableWhenDisabled={canManage}
         loading={isCreating}
-        onClick={() => {
-          if (createDisabled || isCreating) return
-          onCreate(() => setCreatedOpen(true))
-        }}
+        onClick={() => onCreate(() => setCreatedOpen(true))}
       />
       <CreatedApiKeyDialog
         open={createdOpen}

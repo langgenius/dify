@@ -117,7 +117,6 @@ function EnvironmentApiKeys({
   )
   const [createdOpen, setCreatedOpen] = useState(false)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const createDisabled = !canManage || !keys.isSuccess || keys.isFetching
   return (
     <ApiKeyListContent
       apiKeys={keys.data.data}
@@ -133,14 +132,10 @@ function EnvironmentApiKeys({
     >
       <ApiKeyCreateAction
         ref={createButtonRef}
-        count={keys.data.data.length}
-        disabled={createDisabled}
+        disabled={!canManage}
         focusableWhenDisabled={canManage}
         loading={isCreating}
-        onClick={() => {
-          if (createDisabled || isCreating) return
-          onCreate(() => setCreatedOpen(true))
-        }}
+        onClick={() => onCreate(() => setCreatedOpen(true))}
       />
       <CreatedApiKeyDialog
         open={createdOpen}
