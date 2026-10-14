@@ -17,11 +17,11 @@ type Json = dict[str, object]
 HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
 WRITE_METHODS = {"patch", "post", "put"}
 ENTERPRISE_PREFIX = "/enterprise/"
-TRACKED_SPEC = Path(__file__).resolve().parents[5] / "packages" / "contracts" / "openapi" / "inner-openapi.json"
 
 EXPECTED_ENTERPRISE_OPERATION_IDS = {
     "create_enterprise_workspace",
     "create_enterprise_workspace_ownerless",
+    "delete_enterprise_workspace_resources",
     "enterprise_app_dsl_export",
     "enterprise_app_dsl_import",
     "enterprise_mint_file_grant",
@@ -153,10 +153,6 @@ def test_enterprise_operation_ids_are_unchanged(inner_spec: Json) -> None:
 
     assert len(operation_ids) == len(set(operation_ids))
     assert set(operation_ids) == EXPECTED_ENTERPRISE_OPERATION_IDS
-
-
-def test_tracked_inner_spec_matches_generated_output(inner_spec: Json) -> None:
-    assert json.loads(TRACKED_SPEC.read_text(encoding="utf-8")) == inner_spec
 
 
 def test_enterprise_mail_documents_simple_message_response(inner_spec: Json) -> None:

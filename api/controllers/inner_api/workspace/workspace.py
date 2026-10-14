@@ -4,6 +4,7 @@ from flask_restx import Resource
 from pydantic import BaseModel
 
 from controllers.common.errors import InvalidArgumentError
+from controllers.common.fields import SimpleMessageResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import setup_required, validate_request
 from controllers.inner_api import inner_api_ns
@@ -84,6 +85,7 @@ register_response_schema_models(
     WorkspaceCreateResponse,
     WorkspaceOwnerlessCreateResponse,
     WorkspaceMemberResponse,
+    SimpleMessageResponse,
 )
 
 
@@ -194,7 +196,8 @@ class EnterpriseWorkspaceResourceDeletion(Resource):
     @inner_api_only
     @inner_api_ns.doc("delete_enterprise_workspace_resources")
     @inner_api_ns.doc(description="Schedule App, Dataset and Agent cleanup; retain the workspace and memberships")
-    @inner_api_ns.doc(responses={202: "Cleanup accepted", 401: "Invalid API key"})
+    @inner_api_ns.response(202, "Cleanup accepted", inner_api_ns.models[SimpleMessageResponse.__name__])
+    @inner_api_ns.response(401, "Invalid API key", INNER_API_ERROR_RESPONSE)
     def delete(self, workspace_id: UUID):
         application_services().workspaces.resource_cleanup.cleanup(str(workspace_id))
         return {"message": "workspace resource cleanup accepted."}, 202
