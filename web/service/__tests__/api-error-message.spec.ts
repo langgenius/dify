@@ -58,7 +58,8 @@ describe('translateApiError', () => {
       undefined,
     )
     await expect(translateApiError(undefined, i18n)).resolves.toBeUndefined()
-    await expect(translateApiError(keyLimit, undefined)).resolves.toBeUndefined()
+    // Without an instance, server-side callers keep the served message.
+    await expect(translateApiError(keyLimit)).resolves.toBeUndefined()
   })
 })
 

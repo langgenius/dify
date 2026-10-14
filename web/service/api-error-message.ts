@@ -1,5 +1,4 @@
 import type { i18n as I18n } from 'i18next'
-import { getI18n } from 'react-i18next'
 
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -11,12 +10,11 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined =>
  * namespace and interpolated from its `details`; `undefined` keeps the served `message`.
  * Requests rendered on the server keep the backend's English.
  */
-export async function translateApiError(
-  body: unknown,
-  i18n: I18n | undefined = typeof window === 'undefined' ? undefined : getI18n(),
-): Promise<string | undefined> {
+export async function translateApiError(body: unknown, i18n?: I18n): Promise<string | undefined> {
   const data = asRecord(body)
-  if (!i18n || !data || typeof data.code !== 'string') return undefined
+  if (!data || typeof data.code !== 'string') return undefined
+  i18n ??= await browserI18n()
+  if (!i18n) return undefined
   const { code } = data
   try {
     await i18n.loadNamespaces('apiError')
@@ -29,4 +27,12 @@ export async function translateApiError(
     // A translation is an enhancement: failing to produce one never changes the error.
     return undefined
   }
+}
+
+// This module is reachable from server code (RSC, instrumentation), where react-i18next's
+// React context cannot load, so it is imported only in the browser.
+async function browserI18n(): Promise<I18n | undefined> {
+  if (typeof window === 'undefined') return undefined
+  const { getI18n } = await import('react-i18next')
+  return getI18n()
 }
