@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Mapping
-from typing import Any
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -15,7 +14,7 @@ from services.data_source.provider_service import DatasourceProviderService
 from services.data_source.website_service import WebsiteService
 
 
-def _response(status_code: int, json_data: Mapping[str, Any] | None = None, text: str = "") -> MagicMock:
+def _response(status_code: int, json_data: Mapping[str, object] | None = None, text: str = "") -> MagicMock:
     response = MagicMock()
     response.status_code = status_code
     response.text = text

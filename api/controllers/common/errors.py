@@ -3,9 +3,9 @@ from http import HTTPStatus
 from typing import cast
 
 from flask import current_app, got_request_exception
-from flask_restx import Api
 
 from libs.exception import BaseHTTPException
+from libs.external_api import ExternalApi
 from services.errors.base import NoPermissionError
 
 
@@ -120,7 +120,7 @@ class InvalidArgumentError(BaseHTTPException):
     code = 400
 
 
-def register_permission_error_handler(api: Api) -> None:
+def register_permission_error_handler(api: ExternalApi) -> None:
     """Preserve the default permission-error response for Console and Service API."""
 
     @api.errorhandler(NoPermissionError)
@@ -134,3 +134,4 @@ def register_permission_error_handler(api: Api) -> None:
 
     # Flask-RESTX picks the first matching handler, including the generic Exception handler.
     cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
+    api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)

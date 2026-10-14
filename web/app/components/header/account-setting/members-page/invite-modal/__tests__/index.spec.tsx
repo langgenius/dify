@@ -19,6 +19,9 @@ const { fetchFeatures, inviteMember } = vi.hoisted(() => ({
 vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { workspaces } = await import('@dify/contracts/api/console/workspaces/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ workspaces })
   return {
     ...actual,
     consoleQuery: {
@@ -43,7 +46,17 @@ vi.mock('@/service/console', async (importOriginal) => {
                   options: Parameters<
                     typeof actual.consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions
                   >[0],
-                ) => ({ ...options, mutationFn: inviteMember }),
+                ) => ({
+                  ...options,
+                  // Rejections pass through the console link's contract validation, as in production.
+                  mutationFn: (input: unknown) =>
+                    validate({
+                      context: {},
+                      input,
+                      path: ['workspaces', 'current', 'members', 'inviteEmail', 'post'],
+                      next: () => inviteMember(input),
+                    }),
+                }),
               },
             },
           },
@@ -548,7 +561,11 @@ describe('InviteModal', () => {
   ])('maps %s server validation to the owning field', async (code, message, fieldName, role) => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValue(
-      createHttpError(new Response(null, { status: 400 }), { code, message: 'Backend message' }),
+      createHttpError(new Response(null, { status: 400 }), {
+        code,
+        message: 'Backend message',
+        status: 400,
+      }),
     )
     await renderModal()
 
@@ -572,6 +589,7 @@ describe('InviteModal', () => {
       createHttpError(new Response(null, { status: 400 }), {
         code: 'invalid_role',
         message: 'Backend message',
+        status: 400,
       }),
     )
     await renderModal()
@@ -611,6 +629,7 @@ describe('InviteModal', () => {
         createHttpError(new Response(null, { status: 400 }), {
           code: 'limit_exceeded',
           message: 'Backend message',
+          status: 400,
         }),
       ),
     )
@@ -627,6 +646,7 @@ describe('InviteModal', () => {
         createHttpError(new Response(null, { status: 400 }), {
           code: 'limit_exceeded',
           message: 'Backend message',
+          status: 400,
         }),
       )
       .mockResolvedValueOnce({
@@ -667,6 +687,7 @@ describe('InviteModal', () => {
         createHttpError(new Response(null, { status: 400 }), {
           code: 'limit_exceeded',
           message: 'Backend message',
+          status: 400,
         }),
       )
       .mockResolvedValueOnce({

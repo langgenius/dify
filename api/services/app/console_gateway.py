@@ -38,7 +38,7 @@ from services.app.console_service import (
 )
 from services.app.import_service import AppDefinitionImports
 from services.app.response_gateway import AppResponseGateway
-from services.app_dsl_service import IMPORT_INFO_REDIS_KEY_PREFIX, AppDslService, PendingData
+from services.app_dsl_service import AppDslService, initialize_imported_app_creator_access
 from services.app_import_source import download_app_import_source, try_read_yaml
 from services.app_package_service import AppPackageService
 from services.app_service import AppService
@@ -251,16 +251,15 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(
+            result, tenant_id=context.active_workspace_id, account_id=context.account_id
+        )
         return result
 
     @override
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]:
-        from extensions.ext_redis import redis_client
-
-        raw = redis_client.get(f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}")
-        pending = PendingData.model_validate_json(raw) if raw else None
         result = self.confirm_definition(context, import_id)
-        return result, pending is not None and pending.app_id is None
+        return result, result.app_created
 
     @override
     def confirm_definition(self, context: RequestContext, import_id: str) -> Import:
@@ -271,6 +270,9 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(
+            result, tenant_id=context.active_workspace_id, account_id=context.account_id
+        )
         return result
 
     @override

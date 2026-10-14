@@ -51,6 +51,7 @@ from services.skill_management_service import (
     SkillRestorePayload,
     SkillVersionUpdatePayload,
 )
+from tests.unit_tests.controllers.error_body import raised_error
 
 
 @dataclass(frozen=True)
@@ -184,7 +185,7 @@ def test_create_skill_maps_validation_and_service_errors(
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"name": "finance-sop"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context)
+        payload, status = raised_error(lambda: method(api, request_context))
 
     assert status == 400
     assert payload["code"] in {"invalid_request", "skill_error"}
@@ -198,7 +199,7 @@ def test_create_skill_rejects_extra_payload(app: Flask, request_context: Request
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"unknown": "field"}),
     ):
-        payload, status = method(api, request_context)
+        payload, status = raised_error(lambda: method(api, request_context))
 
     assert status == 400
     assert payload["code"] == "invalid_request"
@@ -309,7 +310,7 @@ def test_upload_skill_file_requires_file(app: Flask, request_context: RequestCon
     method = unwrap(api.post)
 
     with app.test_request_context("/", method="POST", data={}, content_type="multipart/form-data"):
-        payload, status = method(api, request_context)
+        payload, status = raised_error(lambda: method(api, request_context))
 
     assert status == 400
     assert payload == {"code": "no_file_uploaded", "message": "no file uploaded"}
@@ -325,7 +326,7 @@ def test_upload_skill_file_requires_filename(app: Flask, request_context: Reques
         data={"file": (io.BytesIO(b"payload"), "")},
         content_type="multipart/form-data",
     ):
-        payload, status = method(api, request_context)
+        payload, status = raised_error(lambda: method(api, request_context))
 
     assert status == 400
     assert payload == {"code": "filename_missing", "message": "filename is required"}
@@ -363,7 +364,7 @@ def test_import_skill_requires_file(app: Flask, request_context: RequestContext)
     method = unwrap(api.post)
 
     with app.test_request_context("/", method="POST", data={}, content_type="multipart/form-data"):
-        payload, status = method(api, request_context)
+        payload, status = raised_error(lambda: method(api, request_context))
 
     assert status == 400
     assert payload == {"code": "invalid_request", "message": "file is required"}
@@ -385,7 +386,7 @@ def test_import_skill_maps_service_error(app: Flask, request_context: RequestCon
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context)
+        payload, status = raised_error(lambda: method(api, request_context))
 
     assert status == 400
     assert payload == {"code": "invalid_skill_archive", "message": "invalid archive"}
@@ -418,7 +419,7 @@ def test_get_skill_detail_maps_service_error(app: Flask, request_context: Reques
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 404
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
@@ -471,7 +472,7 @@ def test_update_skill_metadata_maps_service_errors(
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"display_name": "Finance"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status in {400, 409}
     assert payload["code"] in {"invalid_request", "skill_conflict"}
@@ -520,7 +521,7 @@ def test_delete_skill_maps_service_error(app: Flask, request_context: RequestCon
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 409
     assert payload == {"code": "skill_referenced", "message": "skill is referenced"}
@@ -560,7 +561,7 @@ def test_duplicate_skill_maps_service_error(app: Flask, request_context: Request
         app.test_request_context("/", method="POST"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 404
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
@@ -610,7 +611,7 @@ def test_export_skill_maps_service_error(app: Flask, request_context: RequestCon
         app.test_request_context("/", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 404
     assert payload == {"code": "skill_not_found", "message": "skill not found"}
@@ -745,7 +746,7 @@ def test_patch_skill_file_operation_returns_error_details(app: Flask, request_co
         ),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload == {
@@ -1241,7 +1242,7 @@ def test_skill_assistant_rejects_invalid_payload(
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
     ):
-        response_body, status = method(api, request_context, "skill-1")
+        response_body, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert response_body["code"] == "invalid_request"
@@ -1263,7 +1264,7 @@ def test_skill_assistant_maps_service_error(app: Flask, request_context: Request
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"message": "help"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload == {"code": "model_provider_not_configured", "message": "model provider not configured"}
@@ -1300,7 +1301,7 @@ def test_skill_file_write_methods_map_conflicts(
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        response_body, status = method(api, request_context, "skill-1")
+        response_body, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 409
     assert response_body["code"] == "skill_conflict"
@@ -1316,7 +1317,7 @@ def test_replace_skill_draft_tree_maps_value_error(app: Flask, request_context: 
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"files": []}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload == {"code": "invalid_request", "message": "bad path"}
@@ -1330,7 +1331,7 @@ def test_preview_skill_file_rejects_invalid_query(
     method = unwrap(api.get)
 
     with app.test_request_context(f"/{query_string}", method="GET"):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload["code"] == "invalid_request"
@@ -1347,7 +1348,7 @@ def test_preview_skill_file_maps_service_error(app: Flask, request_context: Requ
         app.test_request_context("/?path=SKILL.md", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 404
     assert payload == {"code": "file_not_found", "message": "file not found"}
@@ -1361,7 +1362,7 @@ def test_pull_skill_file_content_rejects_invalid_query(
     method = unwrap(api.get)
 
     with app.test_request_context(f"/{query_string}", method="GET"):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload["code"] == "invalid_request"
@@ -1378,7 +1379,7 @@ def test_pull_skill_file_content_maps_service_error(app: Flask, request_context:
         app.test_request_context("/?path=SKILL.md", method="GET"),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 404
     assert payload == {"code": "file_not_found", "message": "file not found"}
@@ -1392,7 +1393,7 @@ def test_publish_skill_rejects_invalid_payload(app: Flask, request_context: Requ
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"publish_note": "x" * 1025}),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload["code"] == "invalid_request"
@@ -1410,7 +1411,7 @@ def test_publish_skill_maps_service_error(app: Flask, request_context: RequestCo
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload == {"code": "missing_skill_name", "message": "name required"}
@@ -1424,7 +1425,7 @@ def test_restore_skill_version_rejects_invalid_payload(app: Flask, request_conte
         app.test_request_context("/", method="POST"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={}),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 400
     assert payload["code"] == "invalid_request"
@@ -1447,7 +1448,7 @@ def test_restore_skill_version_maps_service_error(app: Flask, request_context: R
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"version_id": "version-1"}),
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
-        payload, status = method(api, request_context, "skill-1")
+        payload, status = raised_error(lambda: method(api, request_context, "skill-1"))
 
     assert status == 404
     assert payload == {"code": "version_not_found", "message": "version not found"}
@@ -1489,7 +1490,7 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_contex
         app.test_request_context("/", method="PUT"),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value={"skill_ids": "skill-1"}),
     ):
-        payload, status = method(api, request_context, "agent-1")
+        payload, status = raised_error(lambda: method(api, request_context, "agent-1"))
 
     assert status == 400
     assert payload["code"] == "invalid_request"
