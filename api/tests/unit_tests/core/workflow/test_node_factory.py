@@ -294,12 +294,14 @@ def test_graph_validation_with_dify_node_factory(invalid_kind, monkeypatch):
         assert set(graph.nodes) == {"start", "left", "right", "end"}
         assert len(graph.edges) == 4
     else:
-        create_node = MagicMock(side_effect=AssertionError("Invalid graphs must fail before node construction"))
-        monkeypatch.setattr(node_factory.DifyNodeFactory, "create_node", create_node)
+
+        def reject_node_creation(*_args, **_kwargs):
+            pytest.fail("Invalid graphs must fail before node construction")
+
+        monkeypatch.setattr(node_factory.DifyNodeFactory, "create_node", reject_node_creation)
         with pytest.raises(GraphValidationError) as error:
             Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
         assert [issue.code for issue in error.value.issues] == [invalid_kind]
-        create_node.assert_not_called()
 
 
 class TestDefaultWorkflowCodeExecutor:
@@ -868,7 +870,7 @@ class TestDifyNodeFactoryCreateNode:
         constructor.validate_node_data.side_effect = lambda node_data: LLMNodeData.model_validate(
             node_data.model_dump(mode="python") if isinstance(node_data, BaseNodeData) else node_data
         )
-        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+        monkeypatch.setattr(factory, "_resolve_node_class", lambda **_kwargs: constructor)
         monkeypatch.setattr(factory, "_build_llm_compatible_node_init_kwargs", MagicMock(return_value={}))
 
         node_config = {
@@ -1029,7 +1031,7 @@ class TestDifyNodeFactoryCreateNode:
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
-            MagicMock(return_value=constructor),
+            lambda **_kwargs: constructor,
         )
         llm_init_kwargs = {
             "credentials_provider": sentinel.credentials_provider,

@@ -30,6 +30,7 @@ from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.core.app.apps.test_workflow_app_runner_core import _workflow_entry
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -39,10 +40,6 @@ class _RecordingWorkflowAppRunner(WorkflowAppRunner):
 
     def _publish_event(self, event):
         self.published_events.append(event)
-
-
-class _FakeRuntimeState:
-    variable_pool = object()
 
 
 @pytest.fixture
@@ -133,9 +130,7 @@ def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
         node_title="Human Step",
     )
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
-    workflow_entry = SimpleNamespace(
-        graph_engine=SimpleNamespace(runtime_state=_FakeRuntimeState()),
-    )
+    workflow_entry = _workflow_entry(runner)
 
     enriched_reason = HumanInputRequired(
         form_id="form-1",

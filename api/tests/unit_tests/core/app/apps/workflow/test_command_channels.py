@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -11,7 +11,7 @@ from core.app.apps.workflow.command_channels import (
     CombinedCommandChannel,
     StopFlagCommandChannel,
 )
-from graphon.engine.command import AbortCommand, PauseCommand
+from graphon.engine.command import AbortCommand, PauseCommand, RedisChannel
 
 
 class _CommandChannelStub:
@@ -28,35 +28,27 @@ class _CommandChannelStub:
         self.sent.append(command)
 
 
-def test_send_abort_command_uses_workflow_redis_channel(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis_channel = Mock()
-    redis_channel_factory = Mock(return_value=redis_channel)
-    monkeypatch.setattr(
-        "core.app.apps.execution_coordinator.RedisChannel",
-        redis_channel_factory,
-    )
+def test_send_abort_command_uses_workflow_redis_channel() -> None:
+    with patch.object(RedisChannel, "send_command", autospec=True) as send:
+        send_abort_command("task-id", reason="stop")
 
-    send_abort_command("task-id", reason="stop")
-
-    redis_channel_factory.assert_called_once()
-    assert redis_channel_factory.call_args.args[1] == "workflow:task-id:commands"
-    redis_channel.send_command.assert_called_once()
-    command = redis_channel.send_command.call_args.args[0]
+    send.assert_called_once()
+    channel, command = send.call_args.args
+    assert channel._key == "workflow:task-id:commands"
     assert isinstance(command, AbortCommand)
     assert command.reason == "stop"
 
 
-def test_send_abort_command_preserves_legacy_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    redis_channel_factory = Mock()
-    redis_channel_factory.return_value.send_command.side_effect = RuntimeError("redis unavailable")
-    monkeypatch.setattr("core.app.apps.execution_coordinator.RedisChannel", redis_channel_factory)
+def test_send_abort_command_preserves_legacy_fallback(caplog: pytest.LogCaptureFixture) -> None:
+    with patch.object(
+        RedisChannel, "send_command", autospec=True, side_effect=RuntimeError("redis unavailable")
+    ) as send:
+        send_abort_command("task-id")
+        send_abort_command("")
 
-    send_abort_command("task-id")
-    send_abort_command("")
-
-    redis_channel_factory.assert_called_once()
-    command = redis_channel_factory.return_value.send_command.call_args.args[0]
-    assert command.reason == "User requested stop"
+    send.assert_called_once()
+    assert send.call_args.args[1].reason == "User requested stop"
+    assert "Failed to send Engine abort command for task task-id" in caplog.text
 
 
 def test_combined_command_channel_fetches_from_all_sources() -> None:

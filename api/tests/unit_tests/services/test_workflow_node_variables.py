@@ -1,8 +1,9 @@
 from collections.abc import Mapping, Sequence
 from typing import Literal
-from unittest.mock import Mock
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.workflow_entry import WorkflowEntry
@@ -10,7 +11,9 @@ from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.nodes.list_operator.entities import FilterOperator
 from graphon.runtime import VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
-from graphon.variables.variables import StringVariable
+from graphon.variables import StringSegment, VariableBase
+from models.workflow import WorkflowDraftVariable
+from services.workflow_draft_variable_service import DraftVarLoader
 from services.workflow_node_variables import get_human_input_form_variable_mapping, load_additional_node_variables
 
 
@@ -100,7 +103,9 @@ def test_human_input_body_and_email_keep_nested_editor_selectors(
 
 
 @pytest.mark.parametrize("operator", [FilterOperator.EMPTY, FilterOperator.NOT_EMPTY])
-def test_value_free_list_filters_do_not_require_stale_operands(operator: FilterOperator) -> None:
+def test_value_free_list_filters_do_not_require_stale_operands(
+    operator: FilterOperator, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     config = NodeConfigDictAdapter.validate_python(
         {
             "id": "list",
@@ -117,8 +122,15 @@ def test_value_free_list_filters_do_not_require_stale_operands(operator: FilterO
             },
         }
     )
-    loader = Mock()
-    loader.load_variables.return_value = list[StringVariable]()
+    loader = DraftVarLoader(sqlite_engine, "app", "tenant", "user")
+    selectors_loaded: list[list[list[str]]] = []
+    original_load = loader.load_variables
+
+    def load_variables(selectors: list[list[str]]) -> list[VariableBase]:
+        selectors_loaded.append(selectors)
+        return original_load(selectors)
+
+    monkeypatch.setattr(loader, "load_variables", load_variables)
 
     mapping = load_additional_node_variables(
         node_config=config,
@@ -130,7 +142,7 @@ def test_value_free_list_filters_do_not_require_stale_operands(operator: FilterO
     )
 
     assert mapping == {"list.#source.items#": ["source", "items"]}
-    loader.load_variables.assert_called_once_with([])
+    assert selectors_loaded == [[]]
 
 
 @pytest.mark.parametrize(
@@ -179,7 +191,9 @@ def test_dify_node_input_mappings(
     assert mapping == expected
 
 
-def test_missing_end_input_loads_saved_draft_value() -> None:
+def test_missing_end_input_loads_saved_draft_value(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+) -> None:
     config = NodeConfigDictAdapter.validate_python(
         {
             "id": "end",
@@ -191,8 +205,26 @@ def test_missing_end_input_loads_saved_draft_value() -> None:
         }
     )
     variable_pool = VariablePool()
-    loader = Mock()
-    loader.load_variables.return_value = [StringVariable(name="value", value="saved", selector=["source", "value"])]
+    sqlite_session.add(
+        WorkflowDraftVariable.new_node_variable(
+            app_id="app",
+            user_id="user",
+            node_id="source",
+            name="value",
+            value=StringSegment(value="saved"),
+            node_execution_id="execution",
+        )
+    )
+    sqlite_session.commit()
+    loader = DraftVarLoader(sqlite_engine, "app", "tenant", "user")
+    selectors_loaded: list[list[list[str]]] = []
+    original_load = loader.load_variables
+
+    def load_variables(selectors: list[list[str]]) -> list[VariableBase]:
+        selectors_loaded.append(selectors)
+        return original_load(selectors)
+
+    monkeypatch.setattr(loader, "load_variables", load_variables)
 
     mapping = load_additional_node_variables(
         node_config=config,
@@ -204,13 +236,15 @@ def test_missing_end_input_loads_saved_draft_value() -> None:
     )
 
     assert mapping == {"end.#source.value#": ["source", "value"]}
-    loader.load_variables.assert_called_once_with([["source", "value"]])
+    assert selectors_loaded == [[["source", "value"]]]
     variable = variable_pool.get(["source", "value"])
     assert variable is not None
     assert variable.value == "saved"
 
 
-def test_unavailable_end_output_remains_unset_after_draft_loading() -> None:
+def test_unavailable_end_output_remains_unset_after_draft_loading(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     config = NodeConfigDictAdapter.validate_python(
         {
             "id": "end",
@@ -222,8 +256,15 @@ def test_unavailable_end_output_remains_unset_after_draft_loading() -> None:
         }
     )
     variable_pool = VariablePool()
-    loader = Mock()
-    loader.load_variables.return_value = list[StringVariable]()
+    loader = DraftVarLoader(sqlite_engine, "app", "tenant", "user")
+    selectors_loaded: list[list[list[str]]] = []
+    original_load = loader.load_variables
+
+    def load_variables(selectors: list[list[str]]) -> list[VariableBase]:
+        selectors_loaded.append(selectors)
+        return original_load(selectors)
+
+    monkeypatch.setattr(loader, "load_variables", load_variables)
 
     mapping = load_additional_node_variables(
         node_config=config,
@@ -234,7 +275,7 @@ def test_unavailable_end_output_remains_unset_after_draft_loading() -> None:
         user_inputs={},
     )
 
-    loader.load_variables.assert_called_once_with([["source", "missing"]])
+    assert selectors_loaded == [[["source", "missing"]]]
     assert mapping == {}
     assert variable_pool.get(["source", "missing"]) is None
 

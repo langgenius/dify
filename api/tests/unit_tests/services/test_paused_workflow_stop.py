@@ -3,17 +3,18 @@
 import json
 from collections.abc import Callable
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
+from redis import Redis
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_task_service as task_module
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
+from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from libs.broadcast_channel.redis.pubsub_channel import Topic
 from models import EndUser
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
@@ -60,23 +61,25 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
     monkeypatch.setattr(
         "repositories.sqlalchemy_api_workflow_run_repository.naive_utc_now", lambda: datetime(2026, 10, 10, 0, 1)
     )
-    logstore = MagicMock()
+    logstore_records: dict[str, list[dict[str, str]]] = {}
+    monkeypatch.setattr(AliyunLogStore, "_instance", None)
+    monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+    monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "localhost")
+    monkeypatch.setattr(AliyunLogStore, "_check_endpoint_connectivity", staticmethod(lambda *_: None))
     monkeypatch.setattr(
-        "extensions.logstore.repositories.logstore_workflow_execution_repository.AliyunLogStore",
-        MagicMock(return_value=logstore),
+        AliyunLogStore,
+        "put_log",
+        lambda _self, name, record: logstore_records.setdefault(name, []).append(dict(record)),
     )
-    node_logstore = MagicMock()
-    monkeypatch.setattr(
-        "extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore",
-        MagicMock(return_value=node_logstore),
-    )
+    queued_node_saves: list[object] = []
+    queued_saves: list[object] = []
     monkeypatch.setattr(
         "core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task.delay",
-        MagicMock(),
+        lambda *args, **kwargs: queued_node_saves.append((args, kwargs)),
     )
-    queued_save = MagicMock()
     monkeypatch.setattr(
-        "core.repositories.celery_workflow_execution_repository.save_workflow_execution_task.delay", queued_save
+        "core.repositories.celery_workflow_execution_repository.save_workflow_execution_task.delay",
+        lambda *args, **kwargs: queued_saves.append((args, kwargs)),
     )
     run = WorkflowRun(
         id="run-1",
@@ -120,10 +123,10 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
                 created_at=run.created_at,
             )
         )
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
-    redis = MagicMock()
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
+    redis = _StopRedis()
     monkeypatch.setattr(task_module, "redis_client", redis)
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", MagicMock())
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", lambda _: None)
     calls: list[str] = []
 
     def retire(*, tenant_id: str, app_id: str, workflow_run_id: str) -> list[str]:
@@ -136,10 +139,22 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
         return ["workspace-1"]
 
     monkeypatch.setattr(WorkflowAgentWorkspaceStore, "retire_workflow_run", staticmethod(retire))
-    enqueue = MagicMock(side_effect=lambda **_: calls.append("collect"))
+    collections: list[dict[str, object]] = []
+
+    def enqueue(**kwargs: object) -> None:
+        calls.append("collect")
+        collections.append(kwargs)
+
     monkeypatch.setattr("tasks.collect_agent_resources_task.enqueue_agent_resource_collection", enqueue)
-    topic = MagicMock()
-    topic.publish.side_effect = lambda _: calls.append("publish")
+    publications: list[bytes] = []
+
+    def publish(_channel: str, payload: bytes) -> None:
+        calls.append("publish")
+        publications.append(payload)
+
+    topic_client = Redis()
+    monkeypatch.setattr(topic_client, "publish", publish)
+    topic = Topic(topic_client, "workflow-events")
     monkeypatch.setattr(task_module.MessageBasedAppGenerator, "get_response_topic", lambda *_: topic)
 
     assert run.task_id is not None
@@ -152,20 +167,23 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
     )
 
     assert calls == ["retire", "collect", "publish"]
-    enqueue.assert_called_once_with(tenant_id="tenant-1", workspace_ids=["workspace-1"])
-    event = json.loads(topic.publish.call_args.args[0])
+    assert collections == [{"tenant_id": "tenant-1", "workspace_ids": ["workspace-1"]}]
+    assert len(publications) == 1
+    event = json.loads(publications[0])
     assert event["event"] == "workflow_finished"
     assert event["data"]["status"] == "stopped"
     assert event["data"]["elapsed_time"] == 60
     assert event["workflow_run_id"] == "run-1"
     assert event["task_id"] == run.task_id
-    assert redis.mock_calls == []
-    queued_save.assert_not_called()
+    assert redis.reads == []
+    assert redis.operations == []
+    assert queued_saves == []
     if backend == "logstore":
-        history = dict(logstore.put_log.call_args.args[1])
+        assert len(logstore_records[AliyunLogStore.workflow_execution_logstore]) == 1
+        history = logstore_records[AliyunLogStore.workflow_execution_logstore][0]
         assert history["status"] == "stopped"
         assert (history["tenant_id"], history["app_id"], history["id"]) == ("tenant-1", "app-1", "run-1")
-        node_history = [dict(call.args[1]) for call in node_logstore.put_log.call_args_list]
+        node_history = logstore_records[AliyunLogStore.workflow_node_execution_logstore]
         assert all(float(record["elapsed_time"]) == 60 for record in node_history)
         assert {(record["app_id"], record["triggered_from"], record["status"]) for record in node_history} == {
             ("app-1", "workflow-run", "failed"),
@@ -200,7 +218,7 @@ def test_stop_after_resume_claim_uses_durable_owner_before_queue_is_recreated(
     assert entity is not None
     repository.resume_workflow_pause(run.id, entity)
     redis = _StopRedis()
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
     monkeypatch.setattr(task_module, "redis_client", redis)
     AppTaskService.stop_workflow_task(
         tenant_id="tenant-1",
@@ -247,7 +265,7 @@ def test_running_task_admission_rejects_foreign_tenant_app_user_and_role(
     )
     sqlite_session.add(run)
     sqlite_session.commit()
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
     redis = _StopRedis(values={f"generate_task_belong:{task_id}": b"end-user-user-1"})
     monkeypatch.setattr(task_module, "redis_client", redis)
     AppTaskService.stop_workflow_task(

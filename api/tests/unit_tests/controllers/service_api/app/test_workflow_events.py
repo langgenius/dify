@@ -176,7 +176,12 @@ class TestWorkflowEventsApi:
         workflow_run = _workflow_run()
         workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run, sqlite_engine=sqlite_engine)
         msg_generator = Mock()
-        snapshot_builder = Mock(return_value=[{"event": "snapshot"}])
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
@@ -190,4 +195,4 @@ class TestWorkflowEventsApi:
 
         assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
         msg_generator.retrieve_events.assert_not_called()
-        snapshot_builder.assert_called_once()
+        assert len(snapshot_calls) == 1

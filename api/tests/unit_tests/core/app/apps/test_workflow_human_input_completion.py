@@ -2,8 +2,7 @@ import json
 from collections.abc import Generator, Mapping
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, PropertyMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -61,7 +60,10 @@ from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from services.workflow_run_agg import WorkflowRunAgg
-from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import _build_pipeline
+from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import (
+    _build_generate_entity,
+    _build_pipeline,
+)
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
@@ -278,8 +280,14 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
     sqlite_session: Session,
     workflow_queue: tuple[WorkflowAppQueueManager, MagicMock],
     monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
 ) -> None:
-    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    mocker.patch.object(
+        type(workflow_response_converter.db),
+        "engine",
+        new_callable=PropertyMock,
+        return_value=sqlite_session.get_bind(),
+    )
     submitted_at = 1_700_000_000
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: submitted_at)
     factory = DifyFileReferenceFactory(build_test_run_context())
@@ -428,8 +436,11 @@ def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(
 def test_chat_history_keeps_repeated_forms_by_form_id(sqlite_session: Session) -> None:
     pipeline = _build_pipeline()
     pipeline._workflow_tenant_id = "tenant"
-    pipeline._application_generate_entity = MagicMock(task_id="task")
-    pipeline._workflow_response_converter = MagicMock()
+    pipeline._application_generate_entity = _build_generate_entity()
+    pipeline._workflow_response_converter = _build_converter()
+    pipeline._workflow_response_converter.workflow_start_to_stream_response(
+        task_id="task-1", workflow_run_id="run-1", workflow_id="workflow-1", reason=WorkflowStartReason.INITIAL
+    )
     for form_id in ("first-form", "second-form", "first-form"):
         event = QueueHumanInputFormFilledEvent(
             form_id=form_id,

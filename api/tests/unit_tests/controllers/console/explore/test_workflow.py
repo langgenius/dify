@@ -2,7 +2,6 @@ import json
 from collections.abc import Generator, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from types import SimpleNamespace
 
 import pytest
 from flask import Flask, got_request_exception
@@ -134,7 +133,7 @@ def runtime(
         app_tasks=AppTaskControlService(redis_client=stop_redis),
     )
     monkeypatch.setattr(workflow_module, "application_services", lambda: services)
-    monkeypatch.setattr(app_task_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    monkeypatch.setattr(type(app_task_module.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
     harness.api.add_resource(
         workflow_module.InstalledAppWorkflowRunApi,
         "/installed-apps/<uuid:installed_app_id>/workflows/run",

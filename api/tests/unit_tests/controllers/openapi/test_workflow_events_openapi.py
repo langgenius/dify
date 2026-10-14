@@ -243,7 +243,7 @@ class TestOpenApiWorkflowEventsApi:
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter(["a", "b"])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
-        monkeypatch.setattr(module, "build_workflow_event_stream", Mock(return_value=iter(["a", "b"])))
+        monkeypatch.setattr(module, "build_workflow_event_stream", lambda **_kwargs: iter(["a", "b"]))
 
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
         api = OpenApiWorkflowEventsApi()
