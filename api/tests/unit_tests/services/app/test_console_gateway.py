@@ -735,3 +735,77 @@ def test_console_package_import_forwards_archive_and_closes_it(
     assert result.status == status
     assert len(archives) == 1
     assert archives[0].archive.closed
+
+
+@pytest.mark.parametrize("commit_fails", [False, True])
+@pytest.mark.parametrize("entry", ["import", "confirm", "copy"])
+@pytest.mark.parametrize("status", list(ImportStatus))
+@pytest.mark.parametrize("created", [False, True])
+def test_import_creator_access_runs_after_successful_commit(
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+    copy_connections: set[object],
+    monkeypatch: pytest.MonkeyPatch,
+    entry: str,
+    status: ImportStatus,
+    created: bool,
+    commit_fails: bool,
+) -> None:
+    context, app_id = copy_source
+    result = Import(id="import", status=status, app_id=app_id, app_mode=AppMode.WORKFLOW, app_created=created)
+    events: list[str] = []
+
+    class Dsl:
+        def __init__(self, session: Session) -> None:
+            if commit_fails:
+
+                def fail_commit(_: Session) -> None:
+                    raise RuntimeError("commit failed")
+
+                event.listen(session, "before_commit", fail_commit)
+            event.listen(session, "after_commit", lambda _: events.append("commit"))
+            event.listen(session, "after_rollback", lambda _: events.append("rollback"))
+
+        def import_app(self, **_kwargs: object) -> Import:
+            return result
+
+        def confirm_import(self, **_kwargs: object) -> Import:
+            return result
+
+    def sync(tenant_id: str, account_id: str, resource_type: str, resource_id: str) -> None:
+        assert not copy_connections
+        assert events == ["commit"]
+        assert (tenant_id, account_id, resource_type, resource_id) == (
+            context.active_workspace_id,
+            context.account_id,
+            "app",
+            app_id,
+        )
+        events.append("sync")
+
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync)
+    gateway = AppTransferGateway(
+        session_factory=sqlite_session_factory,
+        dsl_factory=cast(Callable[[Session], AppDslService], Dsl),
+        packages=AppPackageService(),
+        agent_packages=RosterAgentPackageExporter(),
+        agent_importer=RosterAgentPackageImporter(),
+        recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+    )
+    if commit_fails and status != ImportStatus.FAILED and not (entry == "copy" and status == ImportStatus.PENDING):
+        if entry == "confirm":
+            with pytest.raises(RuntimeError, match="commit failed"):
+                gateway.confirm_import(context, "import")
+        else:
+            with pytest.raises(RuntimeError, match="commit failed"):
+                gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+        assert "sync" not in events
+        return
+    if entry == "confirm":
+        returned, was_created = gateway.confirm_import(context, "import")
+        assert was_created is created
+    else:
+        returned = gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+    assert returned is result
+    expected = created and status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
+    assert (events.count("sync") == 1) is expected
