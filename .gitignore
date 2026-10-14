@@ -231,7 +231,9 @@ node_modules
 plugins.jsonl
 
 # generated API OpenAPI specs
-packages/contracts/openapi/
+packages/contracts/openapi/*
+# for enterprise side codegen
+!packages/contracts/openapi/inner-openapi.json
 
 # mise
 mise.toml

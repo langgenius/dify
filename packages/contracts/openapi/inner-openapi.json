@@ -1,0 +1,3445 @@
+{
+  "components": {
+    "responses": {
+      "AppInvokeQuotaExceededError": {
+        "description": "AppInvokeQuotaExceededError"
+      },
+      "Exception": {
+        "description": "Exception"
+      },
+      "HTTPException": {
+        "description": "HTTPException"
+      },
+      "MaskError": {
+        "description": "When any error occurs on mask"
+      },
+      "ParseError": {
+        "description": "When a mask can't be parsed"
+      },
+      "PluginRuntimeError": {
+        "description": "PluginRuntimeError"
+      },
+      "ValueError": {
+        "description": "ValueError"
+      }
+    },
+    "schemas": {
+      "AgentConfigVersionKind": {
+        "enum": [
+          "build_draft",
+          "draft",
+          "snapshot"
+        ],
+        "type": "string"
+      },
+      "AgentFileDownloadRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "$ref": "#/components/schemas/RequestDownloadFileMapping"
+          },
+          "for_frontend": {
+            "default": true,
+            "title": "For Frontend",
+            "type": "boolean"
+          },
+          "invoke_from": {
+            "enum": [
+              "debugger",
+              "explore",
+              "openapi",
+              "published",
+              "service-api",
+              "trigger",
+              "validation",
+              "web-app"
+            ],
+            "title": "Invoke From",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "user_from": {
+            "enum": [
+              "account",
+              "end-user"
+            ],
+            "title": "User From",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "invoke_from",
+          "tenant_id",
+          "user_from",
+          "user_id"
+        ],
+        "title": "AgentFileDownloadRequestPayload",
+        "type": "object"
+      },
+      "AgentFileDownloadRequestResponse": {
+        "properties": {
+          "download_uri": {
+            "title": "Download Uri",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime Type"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "download_uri",
+          "filename",
+          "size"
+        ],
+        "title": "AgentFileDownloadRequestResponse",
+        "type": "object"
+      },
+      "AgentFileUploadRequestPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conversation Id"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "max_size": {
+            "description": "Maximum upload size in bytes",
+            "minimum": 0,
+            "title": "Max Size",
+            "type": "integer"
+          },
+          "mimetype": {
+            "title": "Mimetype",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "user_from": {
+            "anyOf": [
+              {
+                "enum": [
+                  "account",
+                  "end-user"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "User From"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "max_size",
+          "mimetype",
+          "tenant_id",
+          "user_id"
+        ],
+        "title": "AgentFileUploadRequestPayload",
+        "type": "object"
+      },
+      "AgentFileUploadRequestResponse": {
+        "properties": {
+          "upload_uri": {
+            "title": "Upload Uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_uri"
+        ],
+        "title": "AgentFileUploadRequestResponse",
+        "type": "object"
+      },
+      "AgentLLMInvokeCaller": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_config_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Config Version Id"
+          },
+          "agent_config_version_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentConfigVersionKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Id"
+          },
+          "agent_mode": {
+            "$ref": "#/components/schemas/AgentLLMMode"
+          },
+          "agent_run_id": {
+            "title": "Agent Run Id",
+            "type": "string"
+          },
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "call_index": {
+            "minimum": 1,
+            "title": "Call Index",
+            "type": "integer"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conversation Id"
+          },
+          "invocation_id": {
+            "title": "Invocation Id",
+            "type": "string"
+          },
+          "invoke_from": {
+            "title": "Invoke From",
+            "type": "string"
+          },
+          "node_execution_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Node Execution Id"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Node Id"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Trace Id"
+          },
+          "user_from": {
+            "enum": [
+              "account",
+              "end-user"
+            ],
+            "title": "User From",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workflow Id"
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workflow Run Id"
+          }
+        },
+        "required": [
+          "agent_mode",
+          "agent_run_id",
+          "app_id",
+          "call_index",
+          "invocation_id",
+          "invoke_from",
+          "tenant_id",
+          "user_from",
+          "user_id"
+        ],
+        "title": "AgentLLMInvokeCaller",
+        "type": "object"
+      },
+      "AgentLLMInvokeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "caller": {
+            "$ref": "#/components/schemas/AgentLLMInvokeCaller"
+          },
+          "target": {
+            "$ref": "#/components/schemas/AgentLLMInvokeTarget"
+          }
+        },
+        "required": [
+          "caller",
+          "target"
+        ],
+        "title": "AgentLLMInvokeRequest",
+        "type": "object"
+      },
+      "AgentLLMInvokeTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_parameters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Model Parameters",
+            "type": "object"
+          },
+          "prompt_messages": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "title": "Prompt Messages",
+            "type": "array"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stop"
+          },
+          "stream": {
+            "default": true,
+            "title": "Stream",
+            "type": "boolean"
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PromptMessageTool"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tools"
+          }
+        },
+        "required": [
+          "model",
+          "prompt_messages",
+          "provider"
+        ],
+        "title": "AgentLLMInvokeTarget",
+        "type": "object"
+      },
+      "AgentLLMMode": {
+        "enum": [
+          "agent_app",
+          "babysit",
+          "fasten",
+          "single_step",
+          "workflow_run"
+        ],
+        "type": "string"
+      },
+      "AgentToolInvokeCaller": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_config_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Config Version Id"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Id"
+          },
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conversation Id"
+          },
+          "invoke_from": {
+            "title": "Invoke From",
+            "type": "string"
+          },
+          "node_execution_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Node Execution Id"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Node Id"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "user_from": {
+            "title": "User From",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workflow Id"
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workflow Run Id"
+          }
+        },
+        "required": [
+          "app_id",
+          "invoke_from",
+          "tenant_id",
+          "user_from",
+          "user_id"
+        ],
+        "title": "AgentToolInvokeCaller",
+        "type": "object"
+      },
+      "AgentToolInvokeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "caller": {
+            "$ref": "#/components/schemas/AgentToolInvokeCaller"
+          },
+          "tool": {
+            "$ref": "#/components/schemas/AgentToolInvokeTarget"
+          }
+        },
+        "required": [
+          "caller",
+          "tool"
+        ],
+        "title": "AgentToolInvokeRequest",
+        "type": "object"
+      },
+      "AgentToolInvokeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "messages": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Metadata",
+            "type": "object"
+          },
+          "observation": {
+            "title": "Observation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation"
+        ],
+        "title": "AgentToolInvokeResponse",
+        "type": "object"
+      },
+      "AgentToolInvokeTarget": {
+        "additionalProperties": false,
+        "description": "One tool invocation payload.\n\n`runtime_parameters` are API-prepared hidden/form/runtime values forwarded\ninto `ToolManager` runtime construction. `tool_parameters` are the live\nLLM/user invocation arguments supplied at call time.",
+        "properties": {
+          "credential_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Credential Id"
+          },
+          "provider_id": {
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "provider_type": {
+            "$ref": "#/components/schemas/AgentToolProviderType"
+          },
+          "runtime_parameters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Runtime Parameters",
+            "type": "object"
+          },
+          "tool_name": {
+            "title": "Tool Name",
+            "type": "string"
+          },
+          "tool_parameters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Tool Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "provider_id",
+          "provider_type",
+          "tool_name"
+        ],
+        "title": "AgentToolInvokeTarget",
+        "type": "object"
+      },
+      "AgentToolProviderType": {
+        "enum": [
+          "api",
+          "builtin",
+          "mcp",
+          "plugin",
+          "workflow"
+        ],
+        "type": "string"
+      },
+      "FileGrantFileMetadata": {
+        "properties": {
+          "extension": {
+            "title": "Extension",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FileKind"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime Type"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "extension",
+          "id",
+          "kind",
+          "name",
+          "size"
+        ],
+        "title": "FileGrantFileMetadata",
+        "type": "object"
+      },
+      "FileGrantFileRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FileKind"
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ],
+        "title": "FileGrantFileRef",
+        "type": "object"
+      },
+      "FileGrantLimits": {
+        "properties": {
+          "audio_file_size_limit": {
+            "title": "Audio File Size Limit",
+            "type": "integer"
+          },
+          "batch_count_limit": {
+            "title": "Batch Count Limit",
+            "type": "integer"
+          },
+          "file_size_limit": {
+            "title": "File Size Limit",
+            "type": "integer"
+          },
+          "image_file_size_limit": {
+            "title": "Image File Size Limit",
+            "type": "integer"
+          },
+          "video_file_size_limit": {
+            "title": "Video File Size Limit",
+            "type": "integer"
+          },
+          "workflow_file_upload_limit": {
+            "title": "Workflow File Upload Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "audio_file_size_limit",
+          "batch_count_limit",
+          "file_size_limit",
+          "image_file_size_limit",
+          "video_file_size_limit",
+          "workflow_file_upload_limit"
+        ],
+        "title": "FileGrantLimits",
+        "type": "object"
+      },
+      "FileGrantMintPayload": {
+        "properties": {
+          "actor_key_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actor Key Digest"
+          },
+          "app_id": {
+            "title": "App Id",
+            "type": "string"
+          },
+          "file_ids": {
+            "items": {
+              "$ref": "#/components/schemas/FileGrantFileRef"
+            },
+            "title": "File Ids",
+            "type": "array"
+          },
+          "is_anonymous": {
+            "default": false,
+            "title": "Is Anonymous",
+            "type": "boolean"
+          },
+          "optional_file_ids": {
+            "items": {
+              "$ref": "#/components/schemas/FileGrantFileRef"
+            },
+            "title": "Optional File Ids",
+            "type": "array"
+          },
+          "run_deadline": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Run Deadline"
+          },
+          "scopes": {
+            "items": {
+              "$ref": "#/components/schemas/FileGrantScope"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "ttl_seconds": {
+            "exclusiveMinimum": 0,
+            "title": "Ttl Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "app_id",
+          "scopes",
+          "subject",
+          "tenant_id",
+          "ttl_seconds"
+        ],
+        "title": "FileGrantMintPayload",
+        "type": "object"
+      },
+      "FileGrantMintResponse": {
+        "properties": {
+          "expires_at": {
+            "title": "Expires At",
+            "type": "integer"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileGrantFileMetadata"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "grant": {
+            "title": "Grant",
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/FileGrantLimits"
+          },
+          "optional_files": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedFileResponse"
+            },
+            "title": "Optional Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expires_at",
+          "files",
+          "grant",
+          "limits",
+          "optional_files"
+        ],
+        "title": "FileGrantMintResponse",
+        "type": "object"
+      },
+      "FileGrantScope": {
+        "enum": [
+          "produce",
+          "resolve",
+          "upload"
+        ],
+        "title": "FileGrantScope",
+        "type": "string"
+      },
+      "FileKind": {
+        "enum": [
+          "tool",
+          "upload"
+        ],
+        "title": "FileKind",
+        "type": "string"
+      },
+      "InnerAppDSLImportPayload": {
+        "properties": {
+          "creator_email": {
+            "description": "Email of the workspace member who will own the imported app",
+            "title": "Creator Email",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Override app description from DSL",
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Override app name from DSL",
+            "title": "Name"
+          },
+          "yaml_content": {
+            "description": "YAML DSL content",
+            "title": "Yaml Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "creator_email",
+          "yaml_content"
+        ],
+        "title": "InnerAppDSLImportPayload",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveCaller": {
+        "additionalProperties": false,
+        "description": "Execution context provided by the trusted internal caller.",
+        "properties": {
+          "app_id": {
+            "minLength": 1,
+            "title": "App Id",
+            "type": "string"
+          },
+          "invoke_from": {
+            "minLength": 1,
+            "title": "Invoke From",
+            "type": "string"
+          },
+          "tenant_id": {
+            "minLength": 1,
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "user_from": {
+            "enum": [
+              "account",
+              "end-user"
+            ],
+            "title": "User From",
+            "type": "string"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_id",
+          "invoke_from",
+          "tenant_id",
+          "user_from",
+          "user_id"
+        ],
+        "title": "InnerKnowledgeRetrieveCaller",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveMetadataCondition": {
+        "additionalProperties": false,
+        "description": "Single metadata filter condition.",
+        "properties": {
+          "comparison_operator": {
+            "enum": [
+              "<",
+              "=",
+              ">",
+              "after",
+              "before",
+              "contains",
+              "empty",
+              "end with",
+              "in",
+              "is",
+              "is not",
+              "not contains",
+              "not empty",
+              "not in",
+              "start with",
+              "\u2260",
+              "\u2264",
+              "\u2265"
+            ],
+            "title": "Comparison Operator",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/MetadataValue",
+            "default": null
+          }
+        },
+        "required": [
+          "comparison_operator",
+          "name"
+        ],
+        "title": "InnerKnowledgeRetrieveMetadataCondition",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveMetadataConditions": {
+        "additionalProperties": false,
+        "description": "Boolean composition for metadata filter conditions.",
+        "properties": {
+          "conditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/InnerKnowledgeRetrieveMetadataCondition"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conditions"
+          },
+          "logical_operator": {
+            "anyOf": [
+              {
+                "enum": [
+                  "and",
+                  "or"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "and",
+            "title": "Logical Operator"
+          }
+        },
+        "title": "InnerKnowledgeRetrieveMetadataConditions",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveMetadataFilteringConfig": {
+        "additionalProperties": false,
+        "description": "Metadata filtering configuration forwarded to workflow retrieval.\n\n``automatic`` mode requires ``model_config`` so downstream metadata model\nplanning has the necessary LLM settings. ``manual`` mode requires\nnon-empty conditions because workflow retrieval expects explicit filters\ninstead of a bare mode switch.",
+        "properties": {
+          "conditions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InnerKnowledgeRetrieveMetadataConditions"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "mode": {
+            "default": "disabled",
+            "enum": [
+              "automatic",
+              "disabled",
+              "manual"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InnerKnowledgeRetrieveModelConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "title": "InnerKnowledgeRetrieveMetadataFilteringConfig",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveModelConfig": {
+        "additionalProperties": false,
+        "description": "Model configuration used by single-retrieval or metadata filtering.",
+        "properties": {
+          "completion_params": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Completion Params",
+            "type": "object"
+          },
+          "mode": {
+            "minLength": 1,
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "name",
+          "provider"
+        ],
+        "title": "InnerKnowledgeRetrieveModelConfig",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveRequest": {
+        "additionalProperties": false,
+        "description": "Top-level request payload for the inner knowledge retrieval endpoint.\n\nRequest validation enforces the endpoint's behavioral contract: callers\nmust provide at least one dataset ID, at least one of ``query`` or\n``attachment_ids``, and a text query for ``single`` retrieval mode.",
+        "properties": {
+          "attachment_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Attachment Ids",
+            "type": "array"
+          },
+          "caller": {
+            "$ref": "#/components/schemas/InnerKnowledgeRetrieveCaller"
+          },
+          "dataset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dataset Ids",
+            "type": "array"
+          },
+          "metadata_filtering": {
+            "$ref": "#/components/schemas/InnerKnowledgeRetrieveMetadataFilteringConfig"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Query"
+          },
+          "retrieval": {
+            "$ref": "#/components/schemas/InnerKnowledgeRetrieveRetrievalConfig"
+          }
+        },
+        "required": [
+          "caller",
+          "dataset_ids",
+          "retrieval"
+        ],
+        "title": "InnerKnowledgeRetrieveRequest",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveRerankingModelConfig": {
+        "additionalProperties": false,
+        "description": "Reranking model configuration for multiple retrieval mode.",
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "provider"
+        ],
+        "title": "InnerKnowledgeRetrieveRerankingModelConfig",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveResponse": {
+        "additionalProperties": false,
+        "description": "Workflow-style retrieval results plus accumulated usage.",
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/InnerKnowledgeRetrieveUsage"
+          }
+        },
+        "required": [
+          "results",
+          "usage"
+        ],
+        "title": "InnerKnowledgeRetrieveResponse",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveRetrievalConfig": {
+        "additionalProperties": false,
+        "description": "Retrieval strategy and its mode-specific configuration.",
+        "properties": {
+          "mode": {
+            "enum": [
+              "multiple",
+              "single"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InnerKnowledgeRetrieveModelConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "reranking_enable": {
+            "default": true,
+            "title": "Reranking Enable",
+            "type": "boolean"
+          },
+          "reranking_mode": {
+            "default": "reranking_model",
+            "title": "Reranking Mode",
+            "type": "string"
+          },
+          "reranking_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InnerKnowledgeRetrieveRerankingModelConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "score_threshold": {
+            "default": 0.0,
+            "title": "Score Threshold",
+            "type": "number"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Top K"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightsDict"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "InnerKnowledgeRetrieveRetrievalConfig",
+        "type": "object"
+      },
+      "InnerKnowledgeRetrieveUsage": {
+        "description": "Serialized LLM usage payload returned by dataset retrieval.",
+        "properties": {
+          "completion_price": {
+            "title": "Completion Price",
+            "type": "string"
+          },
+          "completion_price_unit": {
+            "title": "Completion Price Unit",
+            "type": "string"
+          },
+          "completion_tokens": {
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "completion_unit_price": {
+            "title": "Completion Unit Price",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Currency"
+          },
+          "latency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Latency"
+          },
+          "prompt_price": {
+            "title": "Prompt Price",
+            "type": "string"
+          },
+          "prompt_price_unit": {
+            "title": "Prompt Price Unit",
+            "type": "string"
+          },
+          "prompt_tokens": {
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "prompt_unit_price": {
+            "title": "Prompt Unit Price",
+            "type": "string"
+          },
+          "total_price": {
+            "title": "Total Price",
+            "type": "string"
+          },
+          "total_tokens": {
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "completion_price",
+          "completion_price_unit",
+          "completion_tokens",
+          "completion_unit_price",
+          "latency",
+          "prompt_price",
+          "prompt_price_unit",
+          "prompt_tokens",
+          "prompt_unit_price",
+          "total_price",
+          "total_tokens"
+        ],
+        "title": "InnerKnowledgeRetrieveUsage",
+        "type": "object"
+      },
+      "InnerMailPayload": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "substitutions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Substitutions"
+          },
+          "to": {
+            "description": "Recipient email addresses",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "To",
+            "type": "array"
+          }
+        },
+        "required": [
+          "body",
+          "subject",
+          "to"
+        ],
+        "title": "InnerMailPayload",
+        "type": "object"
+      },
+      "InnerRuntimeCredentialResolveItem": {
+        "additionalProperties": false,
+        "properties": {
+          "credential_id": {
+            "description": "Credential id",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Credential kind, either 'model' or 'tool'",
+            "title": "Kind",
+            "type": "string"
+          },
+          "provider": {
+            "description": "Runtime provider identifier, for example langgenius/openai/openai",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "kind",
+          "provider"
+        ],
+        "title": "InnerRuntimeCredentialResolveItem",
+        "type": "object"
+      },
+      "InnerRuntimeCredentialsResolvePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "credentials": {
+            "items": {
+              "$ref": "#/components/schemas/InnerRuntimeCredentialResolveItem"
+            },
+            "title": "Credentials",
+            "type": "array"
+          },
+          "tenant_id": {
+            "description": "Workspace id",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id"
+        ],
+        "title": "InnerRuntimeCredentialsResolvePayload",
+        "type": "object"
+      },
+      "JsonScalar": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "JsonValue": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JsonScalar"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/JsonScalar"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonScalar"
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "KeywordSettingDict": {
+        "additionalProperties": false,
+        "properties": {
+          "keyword_weight": {
+            "title": "Keyword Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "keyword_weight"
+        ],
+        "title": "KeywordSettingDict",
+        "type": "object"
+      },
+      "MetadataValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "PromptMessageTool": {
+        "description": "Model class for prompt message tool.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "description",
+          "name",
+          "parameters"
+        ],
+        "title": "PromptMessageTool",
+        "type": "object"
+      },
+      "RequestDownloadFileMapping": {
+        "additionalProperties": false,
+        "description": "File mapping accepted by trusted download-request control-plane APIs.",
+        "properties": {
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reference"
+          },
+          "transfer_method": {
+            "enum": [
+              "datasource_file",
+              "local_file",
+              "remote_url",
+              "tool_file"
+            ],
+            "title": "Transfer Method",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "transfer_method"
+        ],
+        "title": "RequestDownloadFileMapping",
+        "type": "object"
+      },
+      "ResolvedFileResponse": {
+        "description": "One requested file reference, either resolved or accounted for.\n\nThe resolve endpoint and optional mint references answer item by item so one\nmissing history file cannot fail a whole run. A file that exists but belongs\nto another owner is reported exactly like one that never existed.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          },
+          "extension": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Extension"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Internal Url"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mime Type"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "ok"
+        ],
+        "title": "ResolvedFileResponse",
+        "type": "object"
+      },
+      "SandboxUsageDiagnosticsResponse": {
+        "properties": {
+          "conflict_events": {
+            "default": 0,
+            "title": "Conflict Events",
+            "type": "integer"
+          },
+          "open_executions": {
+            "default": 0,
+            "title": "Open Executions",
+            "type": "integer"
+          },
+          "unattributed_executions": {
+            "default": 0,
+            "title": "Unattributed Executions",
+            "type": "integer"
+          },
+          "unresolved_events": {
+            "default": 0,
+            "title": "Unresolved Events",
+            "type": "integer"
+          }
+        },
+        "title": "SandboxUsageDiagnosticsResponse",
+        "type": "object"
+      },
+      "SandboxUsageEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "execution_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Execution Id"
+          },
+          "id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Payload",
+            "type": "object"
+          },
+          "sandbox_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sandbox Id"
+          },
+          "source": {
+            "enum": [
+              "application",
+              "provider"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timestamp"
+          },
+          "type": {
+            "maxLength": 96,
+            "minLength": 1,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "payload",
+          "source",
+          "type"
+        ],
+        "title": "SandboxUsageEvent",
+        "type": "object"
+      },
+      "SandboxUsagePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/SandboxUsageEvent"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          },
+          "project_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "events",
+          "project_id"
+        ],
+        "title": "SandboxUsagePayload",
+        "type": "object"
+      },
+      "SandboxUsageQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "project_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "SandboxUsageQuery",
+        "type": "object"
+      },
+      "SandboxUsageResponse": {
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "conflicts": {
+            "title": "Conflicts",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "ignored": {
+            "title": "Ignored",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted",
+          "conflicts",
+          "duplicates",
+          "ignored"
+        ],
+        "title": "SandboxUsageResponse",
+        "type": "object"
+      },
+      "SandboxUsageStateResponse": {
+        "properties": {
+          "checkpoint_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoint At"
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/SandboxUsageDiagnosticsResponse"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "full_scan_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Scan At"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "required": [
+          "checkpoint_at",
+          "diagnostics",
+          "enabled",
+          "full_scan_at",
+          "project_id",
+          "started_at"
+        ],
+        "title": "SandboxUsageStateResponse",
+        "type": "object"
+      },
+      "Source": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Segment content text",
+            "title": "Content"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Associated file references",
+            "title": "Files"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/SourceMetadata",
+            "description": "Source metadata information"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Content summary if available",
+            "title": "Summary"
+          },
+          "title": {
+            "description": "Document title",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "metadata",
+          "title"
+        ],
+        "title": "Source",
+        "type": "object"
+      },
+      "SourceChildChunk": {
+        "properties": {
+          "content": {
+            "default": "",
+            "description": "Child chunk content",
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "default": "",
+            "description": "Child chunk ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "default": 0,
+            "description": "Child chunk position",
+            "title": "Position",
+            "type": "integer"
+          },
+          "score": {
+            "default": 0.0,
+            "description": "Child chunk relevance score",
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "title": "SourceChildChunk",
+        "type": "object"
+      },
+      "SourceMetadata": {
+        "properties": {
+          "_source": {
+            "default": "knowledge",
+            "description": "Data source identifier",
+            "title": "Source",
+            "type": "string"
+          },
+          "child_chunks": {
+            "description": "List of child chunks",
+            "items": {
+              "$ref": "#/components/schemas/SourceChildChunk"
+            },
+            "title": "Child Chunks",
+            "type": "array"
+          },
+          "data_source_type": {
+            "description": "Type of data source",
+            "title": "Data Source Type",
+            "type": "string"
+          },
+          "dataset_id": {
+            "description": "Dataset unique identifier",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "dataset_name": {
+            "description": "Dataset display name",
+            "title": "Dataset Name",
+            "type": "string"
+          },
+          "doc_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Additional document metadata",
+            "title": "Doc Metadata"
+          },
+          "document_id": {
+            "description": "Document unique identifier",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_name": {
+            "description": "Document display name",
+            "title": "Document Name",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "description": "Position of the document in the dataset",
+            "title": "Position"
+          },
+          "retriever_from": {
+            "default": "workflow",
+            "description": "Retriever source context",
+            "title": "Retriever From",
+            "type": "string"
+          },
+          "score": {
+            "default": 0.0,
+            "description": "Retrieval relevance score",
+            "title": "Score",
+            "type": "number"
+          },
+          "segment_hit_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "description": "Number of times segment was retrieved",
+            "title": "Segment Hit Count"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Segment unique identifier",
+            "title": "Segment Id"
+          },
+          "segment_index_node_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Hash of index node for the segment",
+            "title": "Segment Index Node Hash"
+          },
+          "segment_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "description": "Position of segment in document",
+            "title": "Segment Position"
+          },
+          "segment_word_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "description": "Word count of the segment",
+            "title": "Segment Word Count"
+          }
+        },
+        "required": [
+          "data_source_type",
+          "dataset_id",
+          "dataset_name",
+          "document_id",
+          "document_name"
+        ],
+        "title": "SourceMetadata",
+        "type": "object"
+      },
+      "VectorSettingDict": {
+        "additionalProperties": false,
+        "properties": {
+          "embedding_model_name": {
+            "title": "Embedding Model Name",
+            "type": "string"
+          },
+          "embedding_provider_name": {
+            "title": "Embedding Provider Name",
+            "type": "string"
+          },
+          "vector_weight": {
+            "title": "Vector Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "embedding_model_name",
+          "embedding_provider_name",
+          "vector_weight"
+        ],
+        "title": "VectorSettingDict",
+        "type": "object"
+      },
+      "WeightsDict": {
+        "additionalProperties": false,
+        "properties": {
+          "keyword_setting": {
+            "$ref": "#/components/schemas/KeywordSettingDict"
+          },
+          "vector_setting": {
+            "$ref": "#/components/schemas/VectorSettingDict"
+          }
+        },
+        "required": [
+          "keyword_setting",
+          "vector_setting"
+        ],
+        "title": "WeightsDict",
+        "type": "object"
+      },
+      "WorkspaceCreatePayload": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_email": {
+            "title": "Owner Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "owner_email"
+        ],
+        "title": "WorkspaceCreatePayload",
+        "type": "object"
+      },
+      "WorkspaceMemberPayload": {
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "current": {
+            "default": false,
+            "title": "Current",
+            "type": "boolean"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "operator_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operator Account Id"
+          },
+          "role": {
+            "default": "normal",
+            "title": "Role",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "email",
+          "workspace_id"
+        ],
+        "title": "WorkspaceMemberPayload",
+        "type": "object"
+      },
+      "WorkspaceOwnerlessPayload": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WorkspaceOwnerlessPayload",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "InnerApiKey": {
+        "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        "in": "header",
+        "name": "X-Inner-Api-Key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Internal APIs for enterprise features, billing, knowledge retrieval, and plugin communication",
+    "title": "Inner API",
+    "version": "1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/agent-config/{agent_id}/download-request": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "agent_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "agent_config_download_request",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent-config/{agent_id}/env": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "agent_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "operationId": "agent_config_env",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent-config/{agent_id}/manifest": {
+      "get": {
+        "operationId": "agent_config_manifest",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "agent_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/agent-config/{agent_id}/note": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "agent_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "agent_config_note",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent-config/{agent_id}/push": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "agent_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "agent_config_push",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent-config/{agent_id}/skills/{name}/inspect": {
+      "get": {
+        "operationId": "agent_config_skill_inspect",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "agent_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "in": "path",
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/agent/files/download-request": {
+      "post": {
+        "operationId": "inner_agent_file_download_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentFileDownloadRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFileDownloadRequestResponse"
+                }
+              }
+            },
+            "description": "Download URI allocated"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent/files/upload-request": {
+      "post": {
+        "operationId": "inner_agent_file_upload_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentFileUploadRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentFileUploadRequestResponse"
+                }
+              }
+            },
+            "description": "Upload URI allocated"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent/llm/invoke": {
+      "post": {
+        "operationId": "inner_agent_llm_invoke",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentLLMInvokeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent/sandbox-usage/events": {
+      "post": {
+        "operationId": "inner_agent_sandbox_usage_events",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SandboxUsagePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxUsageResponse"
+                }
+              }
+            },
+            "description": "Durably committed"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent/sandbox-usage/state": {
+      "get": {
+        "operationId": "inner_agent_sandbox_usage_state",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxUsageStateResponse"
+                }
+              }
+            },
+            "description": "Persisted activation and completed scans"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/agent/tools/invoke": {
+      "post": {
+        "operationId": "inner_agent_tool_invoke",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentToolInvokeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentToolInvokeResponse"
+                }
+              }
+            },
+            "description": "Tool invoked successfully"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/billing/mail": {
+      "post": {
+        "description": "Send internal email for billing notifications\nThis endpoint allows sending internal emails for billing-related\nnotifications and alerts.\n\nReturns:\n    dict: Success message with status code 200",
+        "operationId": "send_billing_mail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InnerMailPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email sent successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "summary": "Send internal email for billing notifications",
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/download/file/request": {
+      "post": {
+        "description": "Request signed URL for file download through plugin interface\n``FileRequestService`` rebuilds the caller's ``FileAccessScope`` and\nresolves one origin-free signed URI. This controller binds that URI to\nthe Plugin-selected external or internal files base URL, then returns\nthe existing backward-invocation envelope.",
+        "operationId": "plugin_download_file_request",
+        "responses": {
+          "200": {
+            "description": "Signed URL generated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "summary": "Adapt a shared file request result to the Plugin backward contract",
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/enterprise/apps/{app_id}/dsl": {
+      "get": {
+        "operationId": "enterprise_app_dsl_export",
+        "parameters": [
+          {
+            "description": "Whether to include secret values in the exported DSL",
+            "in": "query",
+            "name": "include_secret",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Whether to include secret values in the exported DSL",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Published workflow version ID to export",
+            "in": "query",
+            "name": "workflow_id",
+            "required": false,
+            "schema": {
+              "description": "Published workflow version ID to export",
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export successful"
+          },
+          "400": {
+            "description": "Invalid workflow ID or unpublished workflow version"
+          },
+          "404": {
+            "description": "App or workflow version not found"
+          }
+        },
+        "summary": "Export an app's DSL as YAML",
+        "tags": [
+          "inner_api"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "app_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/enterprise/credentials/resolve": {
+      "post": {
+        "operationId": "enterprise_runtime_credentials_resolve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InnerRuntimeCredentialsResolvePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Credentials resolved"
+          },
+          "400": {
+            "description": "Invalid request or credential config"
+          },
+          "404": {
+            "description": "Provider or credential not found"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/enterprise/file-grants": {
+      "post": {
+        "operationId": "enterprise_mint_file_grant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileGrantMintPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileGrantMintResponse"
+                }
+              }
+            },
+            "description": "File grant minted"
+          },
+          "400": {
+            "description": "Invalid request, subject, or grant TTL"
+          },
+          "404": {
+            "description": "App not found, or a required file is not owned by the subject"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/enterprise/mail": {
+      "post": {
+        "description": "Send internal email for enterprise features\nThis endpoint allows sending internal emails for enterprise-specific\nnotifications and communications.\n\nReturns:\n    dict: Success message with status code 200",
+        "operationId": "send_enterprise_mail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InnerMailPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Email sent successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "summary": "Send internal email for enterprise features",
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/enterprise/workspace": {
+      "post": {
+        "description": "Create a new enterprise workspace with owner assignment",
+        "operationId": "create_enterprise_workspace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceCreatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace created successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Owner account not found or service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/enterprise/workspace/member": {
+      "post": {
+        "description": "Add an existing account to an enterprise workspace",
+        "operationId": "join_enterprise_workspace_member",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceMemberPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace member joined successfully"
+          },
+          "400": {
+            "description": "Invalid workspace member role"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Workspace or account not found"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/enterprise/workspace/ownerless": {
+      "post": {
+        "description": "Create a new enterprise workspace without initial owner assignment",
+        "operationId": "create_enterprise_workspace_ownerless",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceOwnerlessPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Workspace created successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/enterprise/workspaces/{workspace_id}/dsl/import": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "workspace_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "enterprise_app_dsl_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InnerAppDSLImportPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Import completed"
+          },
+          "202": {
+            "description": "Import pending (DSL version mismatch requires confirmation)"
+          },
+          "400": {
+            "description": "Import failed (business error)"
+          },
+          "404": {
+            "description": "Creator account not found or inactive"
+          }
+        },
+        "summary": "Import a DSL into a workspace on behalf of a specified creator",
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/fetch/app/info": {
+      "post": {
+        "description": "Fetch application information through plugin interface",
+        "operationId": "plugin_fetch_app_info",
+        "responses": {
+          "200": {
+            "description": "App information retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/app": {
+      "post": {
+        "description": "Invoke application through plugin interface",
+        "operationId": "plugin_invoke_app",
+        "responses": {
+          "200": {
+            "description": "App invocation successful (streaming response)"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/encrypt": {
+      "post": {
+        "description": "Encrypt or decrypt data through plugin interface",
+        "operationId": "plugin_invoke_encrypt",
+        "responses": {
+          "200": {
+            "description": "Encryption/decryption successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "summary": "encrypt or decrypt data",
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/llm": {
+      "post": {
+        "description": "Invoke LLM models through plugin interface",
+        "operationId": "plugin_invoke_llm",
+        "responses": {
+          "200": {
+            "description": "LLM invocation successful (streaming response)"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/llm/structured-output": {
+      "post": {
+        "description": "Invoke LLM models with structured output through plugin interface",
+        "operationId": "plugin_invoke_llm_structured",
+        "responses": {
+          "200": {
+            "description": "LLM structured output invocation successful (streaming response)"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/moderation": {
+      "post": {
+        "description": "Invoke moderation models through plugin interface",
+        "operationId": "plugin_invoke_moderation",
+        "responses": {
+          "200": {
+            "description": "Moderation successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/parameter-extractor": {
+      "post": {
+        "description": "Invoke parameter extractor node through plugin interface",
+        "operationId": "plugin_invoke_parameter_extractor",
+        "responses": {
+          "200": {
+            "description": "Parameter extraction successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/question-classifier": {
+      "post": {
+        "description": "Invoke question classifier node through plugin interface",
+        "operationId": "plugin_invoke_question_classifier",
+        "responses": {
+          "200": {
+            "description": "Question classification successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/rerank": {
+      "post": {
+        "description": "Invoke rerank models through plugin interface",
+        "operationId": "plugin_invoke_rerank",
+        "responses": {
+          "200": {
+            "description": "Rerank successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/speech2text": {
+      "post": {
+        "description": "Invoke speech-to-text models through plugin interface",
+        "operationId": "plugin_invoke_speech2text",
+        "responses": {
+          "200": {
+            "description": "Speech2Text successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/summary": {
+      "post": {
+        "description": "Invoke summary functionality through plugin interface",
+        "operationId": "plugin_invoke_summary",
+        "responses": {
+          "200": {
+            "description": "Summary generation successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/text-embedding": {
+      "post": {
+        "description": "Invoke text embedding models through plugin interface",
+        "operationId": "plugin_invoke_text_embedding",
+        "responses": {
+          "200": {
+            "description": "Text embedding successful"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/tool": {
+      "post": {
+        "description": "Invoke tools through plugin interface",
+        "operationId": "plugin_invoke_tool",
+        "responses": {
+          "200": {
+            "description": "Tool invocation successful (streaming response)"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/invoke/tts": {
+      "post": {
+        "description": "Invoke text-to-speech models through plugin interface",
+        "operationId": "plugin_invoke_tts",
+        "responses": {
+          "200": {
+            "description": "TTS invocation successful (streaming response)"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/knowledge/retrieve": {
+      "post": {
+        "description": "Retrieve knowledge for trusted internal callers",
+        "operationId": "inner_knowledge_retrieve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InnerKnowledgeRetrieveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InnerKnowledgeRetrieveResponse"
+                }
+              }
+            },
+            "description": "Knowledge retrieved successfully"
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "403": {
+            "description": "Caller tenant does not own the requested resource"
+          },
+          "404": {
+            "description": "Invalid plugin inner API key, app not found, or dataset not found"
+          },
+          "422": {
+            "description": "Invalid retrieval configuration"
+          },
+          "429": {
+            "description": "Knowledge retrieval rate limited"
+          },
+          "500": {
+            "description": "Unexpected knowledge retrieval failure"
+          },
+          "502": {
+            "description": "External knowledge retrieval failed"
+          }
+        },
+        "summary": "Validate the payload, run retrieval, and return workflow-style sources",
+        "tags": [
+          "inner_api"
+        ]
+      }
+    },
+    "/skills/{skill_id}/pull": {
+      "get": {
+        "operationId": "published_skill_pull",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "skill_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/upload/file/request": {
+      "post": {
+        "description": "Request signed URL for file upload through plugin interface",
+        "operationId": "plugin_upload_file_request",
+        "responses": {
+          "200": {
+            "description": "Signed URL generated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API key"
+          },
+          "404": {
+            "description": "Service not available"
+          }
+        },
+        "tags": [
+          "inner_api"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "InnerApiKey": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "/inner/api"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Internal API operations",
+      "name": "inner_api"
+    }
+  ]
+}

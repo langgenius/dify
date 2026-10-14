@@ -71,7 +71,7 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
-def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: Path):
+def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -88,6 +88,20 @@ def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: P
         payload = json.loads(path.read_text(encoding="utf-8"))
         assert payload["openapi"] == "3.1.0"
         assert "paths" in payload
+
+    inner_path = next(path for path in written_paths if path.name == "inner-openapi.json")
+    inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
+    assert inner_payload["security"] == [{"InnerApiKey": []}]
+    assert inner_payload["components"]["securitySchemes"] == {
+        "InnerApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Inner-Api-Key",
+            "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        }
+    }
+    assert "Bearer" not in inner_payload["components"]["securitySchemes"]
+    assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
 
 
 def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
