@@ -22,6 +22,81 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_MAX_RESPONSE_SCHEMA_DEPTH = 12
+_MAX_RESPONSE_SCHEMA_NODES = 512
+_MAX_RESPONSE_SCHEMA_BYTES = 8192
+
+
+def _response_schema_state(schema: object) -> str:
+    """Bound directly declared JSON without resolving refs or dropping fields."""
+    if not isinstance(schema, dict):
+        return "unsupported"
+    pending: list[tuple[object, int]] = [(schema, 0)]
+    visited = 0
+    while pending:
+        value, depth = pending.pop()
+        visited += 1
+        if depth > _MAX_RESPONSE_SCHEMA_DEPTH or visited > _MAX_RESPONSE_SCHEMA_NODES:
+            return "oversized"
+        if isinstance(value, dict):
+            if "$ref" in value:
+                return "unsupported"
+            if len(value) > _MAX_RESPONSE_SCHEMA_NODES:
+                return "oversized"
+            for key, child in value.items():
+                if not isinstance(key, str):
+                    return "unsupported"
+                if len(key) > _MAX_RESPONSE_SCHEMA_BYTES:
+                    return "oversized"
+                pending.append((child, depth + 1))
+        elif isinstance(value, list):
+            if len(value) > _MAX_RESPONSE_SCHEMA_NODES:
+                return "oversized"
+            pending.extend((child, depth + 1) for child in value)
+        elif isinstance(value, str):
+            if len(value) > _MAX_RESPONSE_SCHEMA_BYTES:
+                return "oversized"
+        elif value is not None and not isinstance(value, (bool, int, float)):
+            return "unsupported"
+    try:
+        serialized = json.dumps(schema, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return "unsupported"
+    return "declared" if len(serialized.encode()) <= _MAX_RESPONSE_SCHEMA_BYTES else "oversized"
+
+
+def _response_contracts(operation: dict[str, object]) -> dict[str, object]:
+    """Keep one directly declared successful JSON body schema as public facts.
+
+    Absent, ambiguous, referenced or oversized declarations establish no body
+    shape. These are HTTP response facts, never native Tool output selectors.
+    """
+    responses = operation.get("responses")
+    empty: list[dict[str, object]] = []
+    if not isinstance(responses, dict):
+        return {"state": "absent", "schemas": empty}
+    if len(responses) > 64:
+        return {"state": "oversized", "schemas": empty}
+    schemas: list[dict[str, object]] = []
+    for status, response in responses.items():
+        if not isinstance(status, str) or not (
+            (len(status) == 3 and status.isdigit() and 200 <= int(status) < 300) or status.upper() == "2XX"
+        ):
+            continue
+        if not isinstance(response, dict):
+            continue
+        content = response.get("content")
+        media = content.get("application/json") if isinstance(content, dict) else None
+        if not isinstance(media, dict) or "schema" not in media:
+            continue
+        schemas.append({"status": status, "media_type": "application/json", "schema": media["schema"]})
+    if not schemas:
+        return {"state": "absent", "schemas": empty}
+    if len(schemas) != 1:
+        return {"state": "ambiguous", "schemas": empty}
+    state = _response_schema_state(schemas[0]["schema"])
+    return {"state": state, "schemas": schemas if state == "declared" else empty}
+
 
 def list_api_tool_metadata(tenant_id: str) -> list["ToolCatalogueEntry"]:
     """Return tenant-wide native API declarations, isolated per provider/action.
@@ -86,6 +161,7 @@ def list_api_tool_metadata(tenant_id: str) -> list["ToolCatalogueEntry"]:
                         # Native ApiTool's ToolEntity exposes generic text/json;
                         # response declarations never create dynamic selectors.
                         "output_schema": {},
+                        "response_contracts": _response_contracts(bundle.openapi),
                         "needs_credentials": True,
                         "authorization_metadata": "unverified",
                     }
