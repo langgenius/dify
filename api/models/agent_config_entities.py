@@ -547,7 +547,7 @@ class AgentFeatureToggleConfig(AgentFlexibleConfig):
 class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
     language: str | None = None
     voice: str | None = None
-    autoPlay: Literal["enabled", "disabled"] | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None  # noqa: N815  # Public field name.
 
 
 class AgentSuggestedQuestionsAfterAnswerModelConfig(AgentFlexibleConfig):

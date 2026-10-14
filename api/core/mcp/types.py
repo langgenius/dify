@@ -38,7 +38,7 @@ RequestId = Annotated[int | str, Field(union_mode="left_to_right")]
 
 class RequestParams(BaseModel):
     class Meta(BaseModel):
-        progressToken: ProgressToken | None = None
+        progressToken: ProgressToken | None = None  # noqa: N815  # Public field name.
         """
         If specified, the caller requests out-of-band progress notifications for
         this request (as represented by notifications/progress). The value of this
@@ -105,7 +105,7 @@ class Result(BaseModel):
 
 
 class PaginatedResult(Result):
-    nextCursor: Cursor | None = None
+    nextCursor: Cursor | None = None  # noqa: N815  # Public field name.
     """
     An opaque token representing the pagination position after the last returned result.
     If present, there may be more results available.
@@ -224,7 +224,7 @@ class Implementation(BaseMetadata):
 class RootsCapability(BaseModel):
     """Capability for root operations."""
 
-    listChanged: bool | None = None
+    listChanged: bool | None = None  # noqa: N815  # Public field name.
     """Whether the client supports notifications for changes to the roots list."""
     model_config = ConfigDict(extra="allow")
 
@@ -250,7 +250,7 @@ class ClientCapabilities(BaseModel):
 class PromptsCapability(BaseModel):
     """Capability for prompts operations."""
 
-    listChanged: bool | None = None
+    listChanged: bool | None = None  # noqa: N815  # Public field name.
     """Whether this server supports notifications for changes to the prompt list."""
     model_config = ConfigDict(extra="allow")
 
@@ -260,7 +260,7 @@ class ResourcesCapability(BaseModel):
 
     subscribe: bool | None = None
     """Whether this server supports subscribing to resource updates."""
-    listChanged: bool | None = None
+    listChanged: bool | None = None  # noqa: N815  # Public field name.
     """Whether this server supports notifications for changes to the resource list."""
     model_config = ConfigDict(extra="allow")
 
@@ -268,7 +268,7 @@ class ResourcesCapability(BaseModel):
 class ToolsCapability(BaseModel):
     """Capability for tools operations."""
 
-    listChanged: bool | None = None
+    listChanged: bool | None = None  # noqa: N815  # Public field name.
     """Whether this server supports notifications for changes to the tool list."""
     model_config = ConfigDict(extra="allow")
 
@@ -306,10 +306,10 @@ class ServerCapabilities(BaseModel):
 class InitializeRequestParams(RequestParams):
     """Parameters for the initialize request."""
 
-    protocolVersion: str | int
+    protocolVersion: str | int  # noqa: N815  # Public field name.
     """The latest version of the Model Context Protocol that the client supports."""
     capabilities: ClientCapabilities
-    clientInfo: Implementation
+    clientInfo: Implementation  # noqa: N815  # Public field name.
     model_config = ConfigDict(extra="allow")
 
 
@@ -326,10 +326,10 @@ class InitializeRequest(Request[InitializeRequestParams, Literal["initialize"]])
 class InitializeResult(Result):
     """After receiving an initialize request from the client, the server sends this."""
 
-    protocolVersion: str | int
+    protocolVersion: str | int  # noqa: N815  # Public field name.
     """The version of the Model Context Protocol that the server wants to use."""
     capabilities: ServerCapabilities
-    serverInfo: Implementation
+    serverInfo: Implementation  # noqa: N815  # Public field name.
     instructions: str | None = None
     """Instructions describing how to use the server and its features."""
 
@@ -357,7 +357,7 @@ class PingRequest(Request[RequestParams | None, Literal["ping"]]):
 class ProgressNotificationParams(NotificationParams):
     """Parameters for progress notifications."""
 
-    progressToken: ProgressToken
+    progressToken: ProgressToken  # noqa: N815  # Public field name.
     """
     The progress token which was given in the initial request, used to associate this
     notification with the request that is proceeding.
@@ -406,7 +406,7 @@ class Resource(BaseMetadata):
     """The URI of this resource."""
     description: str | None = None
     """A description of what this resource represents."""
-    mimeType: str | None = None
+    mimeType: str | None = None  # noqa: N815  # Public field name.
     """The MIME type of this resource, if known."""
     size: int | None = None
     """
@@ -427,14 +427,14 @@ class Resource(BaseMetadata):
 class ResourceTemplate(BaseMetadata):
     """A template description for resources available on the server."""
 
-    uriTemplate: str
+    uriTemplate: str  # noqa: N815  # Public field name.
     """
     A URI template (according to RFC 6570) that can be used to construct resource
     URIs.
     """
     description: str | None = None
     """A human-readable description of what this template is for."""
-    mimeType: str | None = None
+    mimeType: str | None = None  # noqa: N815  # Public field name.
     """
     The MIME type for all resources that match this template. This should only be
     included if all resources matching this template have the same type.
@@ -463,7 +463,7 @@ class ListResourceTemplatesRequest(PaginatedRequest[Literal["resources/templates
 class ListResourceTemplatesResult(PaginatedResult):
     """The server's response to a resources/templates/list request from the client."""
 
-    resourceTemplates: list[ResourceTemplate]
+    resourceTemplates: list[ResourceTemplate]  # noqa: N815  # Public field name.
 
 
 class ReadResourceRequestParams(RequestParams):
@@ -489,7 +489,7 @@ class ResourceContents(BaseModel):
 
     uri: Annotated[AnyUrl, UrlConstraints(host_required=False)]
     """The URI of this resource."""
-    mimeType: str | None = None
+    mimeType: str | None = None  # noqa: N815  # Public field name.
     """The MIME type of this resource, if known."""
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
@@ -673,7 +673,7 @@ class ImageContent(BaseModel):
     type: Literal["image"]
     data: str
     """The base64-encoded image data."""
-    mimeType: str
+    mimeType: str  # noqa: N815  # Public field name.
     """
     The MIME type of the image. Different providers may support different
     image types.
@@ -693,7 +693,7 @@ class AudioContent(BaseModel):
     type: Literal["audio"]
     data: str
     """The base64-encoded audio data."""
-    mimeType: str
+    mimeType: str  # noqa: N815  # Public field name.
     """
     The MIME type of the audio. Different providers may support different
     audio types.
@@ -800,13 +800,13 @@ class ToolAnnotations(BaseModel):
     title: str | None = None
     """A human-readable title for the tool."""
 
-    readOnlyHint: bool | None = None
+    readOnlyHint: bool | None = None  # noqa: N815  # Public field name.
     """
     If true, the tool does not modify its environment.
     Default: false
     """
 
-    destructiveHint: bool | None = None
+    destructiveHint: bool | None = None  # noqa: N815  # Public field name.
     """
     If true, the tool may perform destructive updates to its environment.
     If false, the tool performs only additive updates.
@@ -814,7 +814,7 @@ class ToolAnnotations(BaseModel):
     Default: true
     """
 
-    idempotentHint: bool | None = None
+    idempotentHint: bool | None = None  # noqa: N815  # Public field name.
     """
     If true, calling the tool repeatedly with the same arguments
     will have no additional effect on the its environment.
@@ -822,7 +822,7 @@ class ToolAnnotations(BaseModel):
     Default: false
     """
 
-    openWorldHint: bool | None = None
+    openWorldHint: bool | None = None  # noqa: N815  # Public field name.
     """
     If true, this tool may interact with an "open world" of external
     entities. If false, the tool's domain of interaction is closed.
@@ -838,9 +838,9 @@ class Tool(BaseMetadata):
 
     description: str | None = None
     """A human-readable description of the tool."""
-    inputSchema: dict[str, Any]
+    inputSchema: dict[str, Any]  # noqa: N815  # Public field name.
     """A JSON Schema object defining the expected parameters for the tool."""
-    outputSchema: dict[str, Any] | None = None
+    outputSchema: dict[str, Any] | None = None  # noqa: N815  # Public field name.
     """
     An optional JSON Schema object defining the structure of the tool's output
     returned in the structuredContent field of a CallToolResult.
@@ -880,9 +880,9 @@ class CallToolResult(Result):
     """The server's response to a tool call."""
 
     content: list[ContentBlock]
-    structuredContent: dict[str, Any] | None = None
+    structuredContent: dict[str, Any] | None = None  # noqa: N815  # Public field name.
     """An optional JSON object that represents the structured result of the tool call."""
-    isError: bool = False
+    isError: bool = False  # noqa: N815  # Public field name.
 
 
 class ToolListChangedNotification(Notification[NotificationParams | None, Literal["notifications/tools/list_changed"]]):
@@ -974,21 +974,21 @@ class ModelPreferences(BaseModel):
     MAY still use the priorities to select from ambiguous matches.
     """
 
-    costPriority: float | None = None
+    costPriority: float | None = None  # noqa: N815  # Public field name.
     """
     How much to prioritize cost when selecting a model. A value of 0 means cost
     is not important, while a value of 1 means cost is the most important
     factor.
     """
 
-    speedPriority: float | None = None
+    speedPriority: float | None = None  # noqa: N815  # Public field name.
     """
     How much to prioritize sampling speed (latency) when selecting a model. A
     value of 0 means speed is not important, while a value of 1 means speed is
     the most important factor.
     """
 
-    intelligencePriority: float | None = None
+    intelligencePriority: float | None = None  # noqa: N815  # Public field name.
     """
     How much to prioritize intelligence and capabilities when selecting a
     model. A value of 0 means intelligence is not important, while a value of 1
@@ -1002,22 +1002,22 @@ class CreateMessageRequestParams(RequestParams):
     """Parameters for creating a message."""
 
     messages: list[SamplingMessage]
-    modelPreferences: ModelPreferences | None = None
+    modelPreferences: ModelPreferences | None = None  # noqa: N815  # Public field name.
     """
     The server's preferences for which model to select. The client MAY ignore
     these preferences.
     """
-    systemPrompt: str | None = None
+    systemPrompt: str | None = None  # noqa: N815  # Public field name.
     """An optional system prompt the server wants to use for sampling."""
-    includeContext: IncludeContext | None = None
+    includeContext: IncludeContext | None = None  # noqa: N815  # Public field name.
     """
     A request to include context from one or more MCP servers (including the caller), to
     be attached to the prompt.
     """
     temperature: float | None = None
-    maxTokens: int
+    maxTokens: int  # noqa: N815  # Public field name.
     """The maximum number of tokens to sample, as requested by the server."""
-    stopSequences: list[str] | None = None
+    stopSequences: list[str] | None = None  # noqa: N815  # Public field name.
     metadata: dict[str, Any] | None = None
     """Optional metadata to pass through to the LLM provider."""
     model_config = ConfigDict(extra="allow")
@@ -1040,7 +1040,7 @@ class CreateMessageResult(Result):
     content: TextContent | ImageContent | AudioContent
     model: str
     """The name of the model that generated the message."""
-    stopReason: StopReason | None = None
+    stopReason: StopReason | None = None  # noqa: N815  # Public field name.
     """The reason why sampling stopped, if known."""
 
 
@@ -1107,7 +1107,7 @@ class Completion(BaseModel):
     The total number of completion options available. This can exceed the number of
     values actually sent in the response.
     """
-    hasMore: bool | None = None
+    hasMore: bool | None = None  # noqa: N815  # Public field name.
     """
     Indicates whether there are additional completion options beyond those provided in
     the current response, even if the exact total is unknown.
@@ -1188,7 +1188,7 @@ class RootsListChangedNotification(
 class CancelledNotificationParams(NotificationParams):
     """Parameters for cancellation notifications."""
 
-    requestId: RequestId
+    requestId: RequestId  # noqa: N815  # Public field name.
     """The ID of the request to cancel."""
     reason: str | None = None
     """An optional string describing the reason for the cancellation."""

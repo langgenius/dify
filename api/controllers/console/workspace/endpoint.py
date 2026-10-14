@@ -92,10 +92,10 @@ class EndpointProviderConfigScope(StrEnum):
 
 
 class EndpointProviderConfigI18nResponse(ResponseModel):
-    en_US: str
-    zh_Hans: str | None = None
-    pt_BR: str | None = None
-    ja_JP: str | None = None
+    en_US: str  # noqa: N815  # Public field name.
+    zh_Hans: str | None = None  # noqa: N815  # Public field name.
+    pt_BR: str | None = None  # noqa: N815  # Public field name.
+    ja_JP: str | None = None  # noqa: N815  # Public field name.
 
 
 class EndpointProviderConfigOptionResponse(ResponseModel):
