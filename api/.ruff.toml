@@ -71,7 +71,6 @@ ignore = [
     "UP032",   # f-string
     "B006",    # mutable-argument-default
     "B007",    # unused-loop-control-variable
-    "B026",    # star-arg-unpacking-after-keyword-arg
     "B901",    # allow return in yield
     "B903",    # class-as-data-structure
     "B904",    # raise-without-from-inside-except
