@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
 import { fetchTryAppDatasets, fetchTryAppParams } from './try-app'
 
-export const useGetTryAppParams = (appId: string) => {
+export const useGetTryAppParams = (appId: string, { meta }: { meta?: QueryMeta } = {}) => {
   return useQuery({
+    meta,
     queryKey: consoleQuery.trialApps.byAppId.parameters.get.queryKey({
       input: { params: { app_id: appId } },
     }),

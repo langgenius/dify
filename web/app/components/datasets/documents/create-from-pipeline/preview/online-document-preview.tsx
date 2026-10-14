@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { usePreviewOnlineDocument } from '@/service/use-pipeline'
 import { formatNumberAbbreviated } from '@/utils/format'
 import { useDataSourceStore } from '../data-source/store'
@@ -25,7 +26,10 @@ const OnlineDocumentPreview = ({
   const { t } = useTranslation(['datasetPipeline'])
   const [content, setContent] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
-  const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument()
+  const loadFailureMeta = useLoadFailureMeta()
+  const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument({
+    meta: loadFailureMeta,
+  })
   const dataSourceStore = useDataSourceStore()
 
   useEffect(() => {

@@ -1,10 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { httpErrorFromResponse } from '@/service/http-error'
 import MailAndPasswordAuth from '../mail-and-password-auth'
 
 const replaceMock = vi.fn()
 const webAppLoginMock = vi.fn()
 const fetchAccessTokenMock = vi.fn()
+const toastErrorMock = vi.hoisted(() => vi.fn())
 const searchParams = new URLSearchParams({
   redirect_url: encodeURIComponent('/chatbot/test-app'),
 })
@@ -30,6 +32,10 @@ vi.mock('@/service/common', () => ({
 
 vi.mock('@/service/share', () => ({
   fetchAccessToken: (...args: unknown[]) => fetchAccessTokenMock(...args),
+}))
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: toastErrorMock },
 }))
 
 vi.mock('@/service/webapp-auth', () => ({
@@ -104,5 +110,27 @@ describe('MailAndPasswordAuth', () => {
 
     await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
     expect(passwordInput).toHaveAttribute('type', 'password')
+  })
+
+  it('explains a rejected password', async () => {
+    const user = userEvent.setup()
+    webAppLoginMock.mockRejectedValueOnce(
+      await httpErrorFromResponse(
+        Response.json(
+          { code: 'authentication_failed', message: 'Invalid email or password.' },
+          { status: 401 },
+        ),
+        'http://localhost/api/login',
+      ),
+    )
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
+    await user.type(screen.getByLabelText(/login\.password/), 'wrong-password{Enter}')
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith('Invalid email or password.', expect.anything())
+    })
+    expect(replaceMock).not.toHaveBeenCalled()
   })
 })

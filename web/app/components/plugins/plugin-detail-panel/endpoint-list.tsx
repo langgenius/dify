@@ -9,6 +9,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toastRequestError } from '@/app/notifications/request-error'
 import { useDocLink } from '@/context/i18n'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
@@ -27,8 +28,10 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   const docLink = useDocLink()
   const pluginUniqueID = detail.plugin_unique_identifier
   const showTopBorder = detail.declaration.tool
+  const loadFailureMeta = useLoadFailureMeta()
   const { data } = useQuery(
     consoleQuery.workspaces.current.endpoints.list.plugin.get.queryOptions({
+      meta: loadFailureMeta,
       input: { query: { plugin_id: detail.plugin_id, page: 1, page_size: 100 } },
     }),
   )

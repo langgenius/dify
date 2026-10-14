@@ -46,11 +46,15 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation()
+  const updateSnippetMutation = useUpdateSnippetMutation({
+    meta: { errorMessage: t(($) => $.editFailed) },
+  })
   const exportSnippetMutation = useExportSnippetMutation({
     meta: { errorMessage: t(($) => $.exportFailed) },
   })
-  const deleteSnippetMutation = useDeleteSnippetMutation()
+  const deleteSnippetMutation = useDeleteSnippetMutation({
+    meta: { errorMessage: t(($) => $.deleteFailed) },
+  })
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet

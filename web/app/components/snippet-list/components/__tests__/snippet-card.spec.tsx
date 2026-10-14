@@ -72,20 +72,26 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@/service/use-snippets', () => ({
-  useDeleteSnippetMutation: () => ({
-    mutate: mockDeleteMutate,
-    isPending: false,
-  }),
+  useDeleteSnippetMutation: (...args: unknown[]) => {
+    hookOptions.useDeleteSnippetMutation = args.at(-1)
+    return {
+      mutate: mockDeleteMutate,
+      isPending: false,
+    }
+  },
   useExportSnippetMutation: (...args: unknown[]) => {
     hookOptions.useExportSnippetMutation = args.at(-1)
     return {
       mutateAsync: mockExportMutateAsync,
     }
   },
-  useUpdateSnippetMutation: () => ({
-    mutate: mockUpdateMutate,
-    isPending: false,
-  }),
+  useUpdateSnippetMutation: (...args: unknown[]) => {
+    hookOptions.useUpdateSnippetMutation = args.at(-1)
+    return {
+      mutate: mockUpdateMutate,
+      isPending: false,
+    }
+  },
 }))
 
 vi.mock('@/utils/time', () => ({
@@ -422,6 +428,9 @@ describe('SnippetCard', () => {
           expect.any(Object),
         )
       })
+      expect(hookOptions.useUpdateSnippetMutation).toEqual({
+        meta: { errorMessage: 'snippet.editFailed' },
+      })
       expect(mockToastError).not.toHaveBeenCalled()
       expect(mockOnRefresh).not.toHaveBeenCalled()
     })
@@ -468,6 +477,9 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() => expect(mockDeleteMutate).toHaveBeenCalled())
+      expect(hookOptions.useDeleteSnippetMutation).toEqual({
+        meta: { errorMessage: 'snippet.deleteFailed' },
+      })
       expect(mockToastError).not.toHaveBeenCalled()
       expect(mockOnRefresh).not.toHaveBeenCalled()
     })

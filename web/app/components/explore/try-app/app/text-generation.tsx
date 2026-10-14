@@ -19,6 +19,7 @@ import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { AppSourceType } from '@/service/share'
 import { useGetTryAppParams } from '@/service/use-try-app'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -50,7 +51,8 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   }, [])
 
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
-  const { data: tryAppParams } = useGetTryAppParams(appId)
+  const loadFailureMeta = useLoadFailureMeta()
+  const { data: tryAppParams } = useGetTryAppParams(appId, { meta: loadFailureMeta })
 
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const appParams = useWebAppStore((s) => s.appParams)

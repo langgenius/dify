@@ -220,10 +220,11 @@ export const useCreateSnippetMutation = () => {
   })
 }
 
-export const useUpdateSnippetMutation = () => {
+export const useUpdateSnippetMutation = ({ meta }: { meta?: MutationMeta } = {}) => {
   const queryClient = useQueryClient()
 
   return useMutation<SnippetContract, Error, UpdateSnippetInput>({
+    meta,
     mutationKey: customizedSnippetsContract.bySnippetId.patch.mutationKey(),
     mutationFn: ({ params, body }) =>
       customizedSnippetsClient.bySnippetId.patch({
@@ -238,10 +239,11 @@ export const useUpdateSnippetMutation = () => {
   })
 }
 
-export const useDeleteSnippetMutation = () => {
+export const useDeleteSnippetMutation = ({ meta }: { meta?: MutationMeta } = {}) => {
   const queryClient = useQueryClient()
 
   return useMutation<unknown, Error, SnippetIdInput>({
+    meta,
     mutationKey: customizedSnippetsContract.bySnippetId.delete.mutationKey(),
     mutationFn: ({ params }) =>
       customizedSnippetsClient.bySnippetId.delete({

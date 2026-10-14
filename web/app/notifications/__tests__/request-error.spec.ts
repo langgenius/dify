@@ -77,6 +77,19 @@ describe('toastRequestError', () => {
     expect(toast.error).not.toHaveBeenCalled()
   })
 
+  it('should explain a rejected sign-in, which the transport does not redirect', () => {
+    toastRequestError(
+      requestError('Invalid email or password', {
+        status: 401,
+        url: 'http://localhost/api/login',
+      }),
+    )
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('Invalid email or password', {
+      id: 'request-error:Invalid email or password',
+    })
+  })
+
   it('should stay quiet for workflow requests that race an app deletion', () => {
     const appId = 'deleting-app'
     markAppDeletionStarted(appId)

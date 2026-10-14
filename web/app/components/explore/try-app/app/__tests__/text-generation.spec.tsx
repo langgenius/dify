@@ -285,7 +285,9 @@ describe('TextGeneration', () => {
 
       render(<TextGeneration appId="my-app-id" appData={appData} />)
 
-      expect(mockUseGetTryAppParams).toHaveBeenCalledWith('my-app-id')
+      expect(mockUseGetTryAppParams).toHaveBeenCalledWith('my-app-id', {
+        meta: { errorMessage: 'common.api.loadFailed' },
+      })
     })
   })
 

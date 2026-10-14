@@ -3,6 +3,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useModelProviderModelList } from '@/service/use-models'
 
 type Props = Readonly<{
@@ -11,8 +12,10 @@ type Props = Readonly<{
 
 const ModelList = ({ detail }: Props) => {
   const { t } = useTranslation(['plugin'])
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: res } = useModelProviderModelList(
     `${detail.plugin_id}/${detail.declaration.model.provider}`,
+    { meta: loadFailureMeta },
   )
 
   if (!res) return null

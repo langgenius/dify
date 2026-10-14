@@ -1,4 +1,4 @@
-import type { MutationMeta } from '@tanstack/react-query'
+import type { MutationMeta, QueryMeta } from '@tanstack/react-query'
 import type {
   ModelCredential,
   ModelCredentialPayload,
@@ -16,8 +16,12 @@ import { del, get, post, put } from './base'
 
 const NAME_SPACE = 'models'
 
-export const useModelProviderModelList = (provider: string) => {
+export const useModelProviderModelList = (
+  provider: string,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   return useQuery({
+    meta,
     queryKey: [NAME_SPACE, 'model-list', provider],
     queryFn: () =>
       get<{ data: ModelItem[] }>(`/workspaces/current/model-providers/${provider}/models`),

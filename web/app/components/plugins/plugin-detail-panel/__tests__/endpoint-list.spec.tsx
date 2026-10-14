@@ -72,6 +72,18 @@ beforeEach(() => {
 })
 
 describe('Endpoint management', () => {
+  it('reports a failed first load instead of disappearing silently', async () => {
+    request.mockImplementation(async () =>
+      Response.json({ message: 'Endpoint service unavailable' }, { status: 500 }),
+    )
+
+    renderEndpoints()
+
+    await waitFor(() => {
+      expect(showError).toHaveBeenCalledWith('common.api.loadFailed', expect.anything())
+    })
+  })
+
   it('loads the plugin endpoints and only displays public paths', async () => {
     renderEndpoints()
     expect(await screen.findByText('Endpoint 1')).toBeInTheDocument()

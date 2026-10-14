@@ -3,6 +3,7 @@ import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import StrategyItem from '@/app/components/plugins/plugin-detail-panel/strategy-item'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
@@ -12,8 +13,10 @@ type Props = Readonly<{
 const AgentStrategyList = ({ detail }: Props) => {
   const { t } = useTranslation(['plugin'])
   const providerName = detail.declaration.agent_strategy?.identity.name
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: strategyProviderDetail } = useQuery(
     consoleQuery.workspaces.current.agentProvider.byProviderName.get.queryOptions({
+      meta: loadFailureMeta,
       input: providerName
         ? { params: { provider_name: `${detail.plugin_id}/${providerName}` } }
         : skipToken,

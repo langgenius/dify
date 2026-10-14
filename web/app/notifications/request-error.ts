@@ -1,14 +1,19 @@
 import { ORPCError } from '@orpc/client'
 import { isAppDeletionError } from '@/service/app-deletion'
+import { getHttpErrorUrl } from '@/service/http-error'
 import { toast } from '.'
 
 const isAbortError = (error: unknown) => error instanceof Error && error.name === 'AbortError'
 
-// Unauthorized responses are resolved by the transport redirecting to sign-in, and requests that
-// race an app deletion fail by design.
+// The transport resolves unauthorized responses by redirecting to sign-in, except for sign-in
+// requests themselves, whose 401 explains the failed attempt.
+const isLoginRequest = (error: unknown) => /\/login/.test(getHttpErrorUrl(error) ?? '')
+
+// Requests that race an app deletion fail by design.
 const isExpectedRequestError = (error: unknown) =>
   isAbortError(error) ||
-  (error instanceof ORPCError && (error.status === 401 || isAppDeletionError(error)))
+  (error instanceof ORPCError &&
+    ((error.status === 401 && !isLoginRequest(error)) || isAppDeletionError(error)))
 
 /**
  * Show a request failure to the user. The request layer never notifies on its own, so callers
