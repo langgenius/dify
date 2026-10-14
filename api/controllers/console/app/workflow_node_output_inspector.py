@@ -98,7 +98,7 @@ def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
             app_model=app_model, workflow_run_id=str(run_id), session=db.session()
         )
     except NodeOutputInspectorError as error:
-        raise _inspector_not_found(error) from error
+        raise _run_not_found(error) from error
     return snapshot.model_dump(mode="json")
 
 
@@ -112,7 +112,7 @@ def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
             session=db.session(),
         )
     except NodeOutputInspectorError as error:
-        raise _inspector_not_found(error) from error
+        raise _node_not_found(error) from error
     return view.model_dump(mode="json")
 
 
@@ -127,7 +127,7 @@ def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_nam
             session=db.session(),
         )
     except NodeOutputInspectorError as error:
-        raise _inspector_not_found(error) from error
+        raise _output_not_found(error) from error
     return preview.model_dump(mode="json")
 
 
@@ -160,22 +160,32 @@ class NodeOutputNotDeclaredError(_InspectorNotFound):
     description = "The node does not declare this output."
 
 
-def _inspector_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
-    """The 404 for an inspector error; a code the service adds later is relayed as is."""
+def _run_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
+    """The 404 for a whole-run lookup; a code the service adds later is relayed as is."""
     if error.code == WorkflowRunNotFoundError.error_code:
         return WorkflowRunNotFoundError(error)
+    return RelayedHTTPError(status=404, error_code=error.code, message=str(error))
+
+
+def _node_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
+    """Node lookups also fail when the node is not part of the run."""
     if error.code == NodeNotInWorkflowRunError.error_code:
         return NodeNotInWorkflowRunError(error)
+    return _run_not_found(error)
+
+
+def _output_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
+    """Output lookups also fail when the node does not declare the output."""
     if error.code == NodeOutputNotDeclaredError.error_code:
         return NodeOutputNotDeclaredError(error)
-    return RelayedHTTPError(status=404, error_code=error.code, message=str(error))
+    return _node_not_found(error)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/runs/<uuid:run_id>/node-outputs")
 class WorkflowDraftRunNodeOutputsApi(Resource):
     """Whole-run snapshot organized by producer node."""
 
-    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_draft_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -194,7 +204,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
 class WorkflowDraftRunNodeOutputDetailApi(Resource):
     """One node's declared outputs + per-output status."""
 
-    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
+    @error_responses(NodeNotInWorkflowRunError, RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_draft_run_node_output_detail")
     @console_ns.doc(description="One node's declared outputs for a draft workflow run.")
     @console_ns.doc(
@@ -281,7 +291,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
     try:
         snapshot = service.snapshot_workflow_run(app_model=app_model, workflow_run_id=run_id_str, session=db.session())
     except NodeOutputInspectorError as error:
-        raise _inspector_not_found(error) from error
+        raise _run_not_found(error) from error
 
     event_id = 0
     yield _sse_envelope("snapshot", snapshot.model_dump(mode="json"), event_id)
@@ -370,7 +380,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
 class WorkflowDraftRunNodeOutputEventsApi(Resource):
     """SSE stream of inspector deltas for a draft run."""
 
-    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("stream_workflow_draft_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -406,7 +416,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     based on which page (Composer test-run vs. Run History) is mounted.
     """
 
-    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_published_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -425,7 +435,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
 class WorkflowPublishedRunNodeOutputDetailApi(Resource):
     """One node's declared outputs + per-output status (published run)."""
 
-    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
+    @error_responses(NodeNotInWorkflowRunError, RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("get_workflow_published_run_node_output_detail")
     @console_ns.doc(description="One node's declared outputs for a published workflow run.")
     @console_ns.doc(
@@ -479,7 +489,7 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
 class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     """SSE stream of inspector deltas for a published run."""
 
-    @error_responses(NodeNotInWorkflowRunError, NodeOutputNotDeclaredError, RelayedHTTPError, WorkflowRunNotFoundError)
+    @error_responses(RelayedHTTPError, WorkflowRunNotFoundError)
     @console_ns.doc("stream_workflow_published_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})

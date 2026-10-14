@@ -5,6 +5,7 @@ from importlib import import_module
 from inspect import unwrap
 from typing import NamedTuple, override
 from unittest.mock import Mock, create_autospec
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -353,35 +354,67 @@ def test_invite_maps_capacity_error(app: Flask, services: Mock, seats: bool, exp
         unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
 
 
+_OWNER_TRANSFER_STEPS = {
+    "send_code": (SendOwnerTransferEmailApi, {"language": "en-US"}, ()),
+    "verify_code": (OwnerTransferCheckApi, {"token": "token", "code": "123456"}, ()),
+    "transfer": (OwnerTransfer, {"token": "token"}, (UUID("22222222-2222-2222-2222-222222222222"),)),
+}
+
+
 @pytest.mark.parametrize(
-    ("error", "expected"),
+    ("step", "error", "expected"),
     [
-        (NoPermissionError(), NotOwnerError),
-        (AccountNotFoundError(), NotFound),
-        (WorkspaceNotFoundError(), NotFound),
-        (OwnerTransferSendIPLimitedError(), EmailSendIpLimitError),
-        (OwnerTransferSendRateLimitError(3), OwnerTransferRateLimitExceededError),
-        (OwnerTransferVerificationLimitError(), OwnerTransferLimitError),
-        (InvalidOwnerTransferTokenError(), InvalidTokenError),
-        (InvalidOwnerTransferEmailError(), InvalidEmailError),
-        (InvalidOwnerTransferCodeError(), EmailCodeError),
-        (CannotOperateSelfError(), CannotTransferOwnerToSelfError),
-        (MemberNotInTenantError(), MemberNotInTenantRequestError),
+        # Every step first checks that the caller is the owner.
+        ("send_code", NoPermissionError(), NotOwnerError),
+        ("verify_code", NoPermissionError(), NotOwnerError),
+        ("transfer", NoPermissionError(), NotOwnerError),
+        ("send_code", AccountNotFoundError(), NotFound),
+        ("send_code", WorkspaceNotFoundError(), NotFound),
+        ("transfer", AccountNotFoundError(), NotFound),
+        ("transfer", WorkspaceNotFoundError(), NotFound),
+        ("send_code", OwnerTransferSendIPLimitedError(), EmailSendIpLimitError),
+        ("send_code", OwnerTransferSendRateLimitError(3), OwnerTransferRateLimitExceededError),
+        ("verify_code", OwnerTransferVerificationLimitError(), OwnerTransferLimitError),
+        ("verify_code", InvalidOwnerTransferTokenError(), InvalidTokenError),
+        ("verify_code", InvalidOwnerTransferEmailError(), InvalidEmailError),
+        ("verify_code", InvalidOwnerTransferCodeError(), EmailCodeError),
+        ("transfer", InvalidOwnerTransferTokenError(), InvalidTokenError),
+        ("transfer", InvalidOwnerTransferEmailError(), InvalidEmailError),
+        ("transfer", CannotOperateSelfError(), CannotTransferOwnerToSelfError),
+        ("transfer", MemberNotInTenantError(), MemberNotInTenantRequestError),
     ],
 )
-def test_owner_verification_maps_errors(
-    app: Flask, services: Mock, error: Exception, expected: type[Exception]
+def test_owner_transfer_steps_map_their_own_errors(
+    app: Flask, services: Mock, step: str, error: Exception, expected: type[Exception]
 ) -> None:
-    services.workspaces.owner_transfer.verify_code.side_effect = error
-    api = OwnerTransferCheckApi()
-    with (
-        app.test_request_context("/", method="POST", json={"token": "token", "code": "123456"}),
-        pytest.raises(expected) as raised,
-    ):
-        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
+    resource, payload, args = _OWNER_TRANSFER_STEPS[step]
+    getattr(services.workspaces.owner_transfer, step).side_effect = error
+    api = resource()
+    with app.test_request_context("/", method="POST", json=payload), pytest.raises(expected) as raised:
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"), *args)
     assert raised.value.__cause__ is error
     if isinstance(error, OwnerTransferSendRateLimitError):
         assert "3" in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("step", "error"),
+    [
+        # A step never translates an error only another step's service call raises.
+        ("send_code", InvalidOwnerTransferCodeError()),
+        ("verify_code", OwnerTransferSendIPLimitedError()),
+        ("verify_code", CannotOperateSelfError()),
+        ("transfer", InvalidOwnerTransferCodeError()),
+    ],
+)
+def test_owner_transfer_steps_do_not_translate_other_steps_errors(
+    app: Flask, services: Mock, step: str, error: Exception
+) -> None:
+    resource, payload, args = _OWNER_TRANSFER_STEPS[step]
+    getattr(services.workspaces.owner_transfer, step).side_effect = error
+    api = resource()
+    with app.test_request_context("/", method="POST", json=payload), pytest.raises(type(error)):
+        unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"), *args)
 
 
 def test_owner_verification_serializes_promoted_token(app: Flask, services: Mock) -> None:

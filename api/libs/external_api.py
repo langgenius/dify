@@ -672,6 +672,12 @@ class ExternalApi(Api):
         """The ``code`` this surface emits for a documented exception."""
         return spec["default_code"]
 
+    def generic_error_statuses(self) -> set[int]:
+        """Statuses any operation may answer with: those of the shared handlers and the generic errors."""
+        statuses = {status for status, _ in self._handled_errors.values()}
+        statuses.update(self.resolve_error(exception)[0] for exception in self._generic_errors)
+        return statuses
+
     def implicit_error_codes(self, status: int) -> set[str]:
         """Generic codes any operation may emit at ``status`` without listing them.
 

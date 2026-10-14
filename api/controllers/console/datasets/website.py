@@ -66,7 +66,6 @@ class WebsiteCrawlStatusApi(Resource):
     @console_ns.doc(params={"job_id": "Crawl job ID", "provider": "Crawl provider (firecrawl/watercrawl/jinareader)"})
     @console_ns.doc(params=query_params_from_model(WebsiteCrawlStatusQuery))
     @console_ns.response(200, "Crawl status retrieved successfully", console_ns.models[WebsiteCrawlResponse.__name__])
-    @console_ns.response(404, "Crawl job not found")
     @console_ns.response(400, "Invalid provider")
     @setup_required
     @login_required

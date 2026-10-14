@@ -293,17 +293,7 @@ class DatasetOperatorMemberListApi(Resource):
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
-    @error_responses(
-        CannotTransferOwnerToSelfError,
-        EmailCodeError,
-        EmailSendIpLimitError,
-        InvalidEmailError,
-        InvalidTokenError,
-        MemberNotInTenantError,
-        NotOwnerError,
-        OwnerTransferLimitError,
-        OwnerTransferRateLimitExceededError,
-    )
+    @error_responses(EmailSendIpLimitError, NotOwnerError, OwnerTransferRateLimitExceededError)
     @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
@@ -316,23 +306,13 @@ class SendOwnerTransferEmailApi(Resource):
                 language=args.language,
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_owner_transfer_error(error)
+            _raise_owner_transfer_send_error(error)
         return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
-    @error_responses(
-        CannotTransferOwnerToSelfError,
-        EmailCodeError,
-        EmailSendIpLimitError,
-        InvalidEmailError,
-        InvalidTokenError,
-        MemberNotInTenantError,
-        NotOwnerError,
-        OwnerTransferLimitError,
-        OwnerTransferRateLimitExceededError,
-    )
+    @error_responses(EmailCodeError, InvalidEmailError, InvalidTokenError, NotOwnerError, OwnerTransferLimitError)
     @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
@@ -343,22 +323,14 @@ class OwnerTransferCheckApi(Resource):
                 request_context, token=args.token, code=args.code
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_owner_transfer_error(error)
+            _raise_owner_transfer_check_error(error)
         return VerificationTokenResponse(is_valid=True, email=email, token=token).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
     @error_responses(
-        CannotTransferOwnerToSelfError,
-        EmailCodeError,
-        EmailSendIpLimitError,
-        InvalidEmailError,
-        InvalidTokenError,
-        MemberNotInTenantError,
-        NotOwnerError,
-        OwnerTransferLimitError,
-        OwnerTransferRateLimitExceededError,
+        CannotTransferOwnerToSelfError, InvalidEmailError, InvalidTokenError, MemberNotInTenantError, NotOwnerError
     )
     @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
@@ -400,27 +372,53 @@ def _raise_member_role_error(
     _raise_member_error(error)
 
 
-def _raise_owner_transfer_error(
+def _raise_owner_transfer_step_error(
     error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
 ) -> NoReturn:
+    """Translate the errors every owner-transfer step checks first: the caller must be the owner."""
     if isinstance(error, NoPermissionError):
         raise NotOwnerError() from error
     if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
         raise NotFound() from error
-    if isinstance(error, workspace_errors.OwnerTransferSendIPLimitedError):
-        raise EmailSendIpLimitError() from error
-    if isinstance(error, workspace_errors.OwnerTransferSendRateLimitError):
-        raise OwnerTransferRateLimitExceededError(error.retry_after_minutes) from error
-    if isinstance(error, workspace_errors.OwnerTransferVerificationLimitError):
-        raise OwnerTransferLimitError() from error
+    raise error
+
+
+def _raise_owner_transfer_challenge_error(
+    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
+) -> NoReturn:
+    """Verifying a code and transferring both read the challenge token."""
     if isinstance(error, workspace_errors.InvalidOwnerTransferTokenError):
         raise InvalidTokenError() from error
     if isinstance(error, workspace_errors.InvalidOwnerTransferEmailError):
         raise InvalidEmailError() from error
+    _raise_owner_transfer_step_error(error)
+
+
+def _raise_owner_transfer_send_error(
+    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
+) -> NoReturn:
+    if isinstance(error, workspace_errors.OwnerTransferSendIPLimitedError):
+        raise EmailSendIpLimitError() from error
+    if isinstance(error, workspace_errors.OwnerTransferSendRateLimitError):
+        raise OwnerTransferRateLimitExceededError(error.retry_after_minutes) from error
+    _raise_owner_transfer_step_error(error)
+
+
+def _raise_owner_transfer_check_error(
+    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
+) -> NoReturn:
+    if isinstance(error, workspace_errors.OwnerTransferVerificationLimitError):
+        raise OwnerTransferLimitError() from error
     if isinstance(error, workspace_errors.InvalidOwnerTransferCodeError):
         raise EmailCodeError() from error
+    _raise_owner_transfer_challenge_error(error)
+
+
+def _raise_owner_transfer_error(
+    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
+) -> NoReturn:
     if isinstance(error, workspace_errors.CannotOperateSelfError):
         raise CannotTransferOwnerToSelfError() from error
     if isinstance(error, workspace_errors.MemberNotInTenantError):
         raise MemberNotInTenantError() from error
-    raise error
+    _raise_owner_transfer_challenge_error(error)

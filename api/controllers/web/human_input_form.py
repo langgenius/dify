@@ -109,7 +109,8 @@ _FORM_UPLOAD_TOKEN_RATE_LIMITER = RateLimiter(
 class HumanInputFormUploadTokenApi(Resource):
     """API for issuing HITL upload tokens for active human input forms."""
 
-    @error_responses(WebFormRateLimitExceededError)
+    # The upload service checks the form state behind ``application_services()``; invisible to the error lint.
+    @error_responses(FormExpiredError, FormSubmittedError, WebFormRateLimitExceededError)
     @web_ns.doc("create_human_input_form_upload_token")
     @web_ns.doc(description="Issue an upload token for an active human input form")
     @web_ns.doc(params={"form_token": "Human input form token"})

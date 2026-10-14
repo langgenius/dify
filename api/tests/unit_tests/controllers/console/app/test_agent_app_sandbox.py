@@ -148,12 +148,6 @@ def test_controller_parses_and_serializes(
     [
         (AgentSandboxBindingNotFoundError("no active binding"), "no_active_binding", "no active binding", 404),
         (AgentSandboxUnavailableError("unavailable"), "inspector_unavailable", "unavailable", 503),
-        (
-            AgentSandboxDownloadUnavailableError("cannot download"),
-            "binding_file_download_unavailable",
-            "cannot download",
-            502,
-        ),
         (DifyAgentHTTPError(409, {"code": "conflict", "message": "busy"}), "conflict", "busy", 409),
         (DifyAgentHTTPError(500, "backend exploded"), "agent_backend_error", "backend exploded", 500),
         (DifyAgentTimeoutError("connection refused"), "agent_backend_unreachable", "connection refused", 502),
@@ -180,3 +174,17 @@ def test_sandbox_error_responses(
 def test_resource_errors_keep_existing_http_contract(error: Exception, expected: type[Exception]) -> None:
     with pytest.raises(expected):
         module._handle(error)
+
+
+def test_download_unavailable_is_translated_only_for_downloads(app: Flask, service: SandboxService) -> None:
+    service.error = AgentSandboxDownloadUnavailableError("cannot download")
+    with app.test_request_context(
+        "/", method="POST", json={"caller_type": "conversation", "caller_id": "conversation", "path": "a"}
+    ):
+        result = raised_error(
+            lambda: unwrap(module.AgentAppSandboxDownloadResource.post)(object(), CONTEXT, RESOURCE_ID)
+        )
+    assert result == ({"code": "binding_file_download_unavailable", "message": "cannot download"}, 502)
+    # Listing, reading and info never convert a file to a download URL, so they do not document the code.
+    with pytest.raises(AgentSandboxDownloadUnavailableError):
+        module._handle(AgentSandboxDownloadUnavailableError("cannot download"))

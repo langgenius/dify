@@ -56,6 +56,7 @@ from machinery.context import RequestContext
 from models import DatasetPermissionEnum
 from models.account import TenantAccountRole
 from models.model import IconType
+from services.agent.errors import RosterAgentPackageExportFailedError
 from services.app.console_service import (
     AppExportAgentNotFoundError,
     AppExportPaidPlanRequiredError,
@@ -505,6 +506,8 @@ class AppCopyApi(AppResource):
 
 @console_ns.route("/apps/<uuid:app_id>/export")
 class AppExportApi(AppResource):
+    # Raised by the package exporter behind ``application_services()``; invisible to the error lint.
+    @error_responses(RosterAgentPackageExportFailedError)
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})

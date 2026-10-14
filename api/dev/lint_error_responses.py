@@ -15,10 +15,10 @@ with what those declarations document at runtime:
 - placeholder code (error): the handler raises a ``BaseHTTPException`` subclass that never
   declares an ``error_code``, so nothing can document it. Declare one; ``--fix`` never
   adds such a class.
-- unproduced status (review, ``--report-unproduced`` only): a declared error status that
-  no inferred raise, hand-built body or framework behavior produces. Errors raised from
-  instance calls (notably HTTP exceptions raised inside services) are invisible, so treat
-  each report as a lead to verify, not a finding.
+- unproduced status (warning): a declared error status that no inferred raise, hand-built
+  body, generic handler or framework behavior produces. Declare the business error that
+  produces it (a hand declaration for an error raised through dynamic dispatch is right even
+  though it is reported stale) or drop the bare ``@ns.response(status)``.
 - non-standard error body (error): the handler, or a ``controllers`` helper it calls,
   returns ``(body, 4xx/5xx)`` whose body lacks ``code``/``message``/``status`` for a
   status with no ``@ns.response(status, ..., Model)``, or calls ``flask_restx.abort``
@@ -400,8 +400,15 @@ class RaiseAnalyzer:
             return caught_by(enclosing_handler(node, target.id))
         return set()
 
-    def _returned_exceptions(self, factory: FunctionType) -> set[type]:
-        """Exception classes ``factory`` builds in its ``return`` statements (``raise factory(...)``)."""
+    def _returned_exceptions(self, factory: FunctionType, visited: set[object] | None = None) -> set[type]:
+        """Exception classes ``factory`` builds in its ``return`` statements (``raise factory(...)``).
+
+        A factory that returns another backend factory's result contributes that factory's classes too.
+        """
+        visited = set() if visited is None else visited
+        if factory.__code__ in visited:
+            return set()
+        visited.add(factory.__code__)
         node = self.parse_function(factory)
         if node is None:
             return set()
@@ -412,6 +419,8 @@ class RaiseAnalyzer:
                 built = self.resolve(child.value.func, env, None)
                 if _is_exception_class(built):
                     found.add(built)  # type: ignore[arg-type]
+                elif (delegate := self.backend_function(built)) is not None:
+                    found |= self._returned_exceptions(delegate, visited)
         return found
 
     def _raised_by_call(
@@ -663,7 +672,7 @@ class LintResult:
     body_violations: dict[BodySite, set[str]] = field(default_factory=lambda: defaultdict(set))
     # business error class that keeps the placeholder error_code -> the operations raising it
     placeholder_codes: dict[type, set[str]] = field(default_factory=lambda: defaultdict(set))
-    # operation -> declared error statuses nothing inferred can produce (only with --report-unproduced)
+    # operation -> declared error statuses nothing inferred, generic or framework-level can produce
     unproduced: dict[str, set[int]] = field(default_factory=lambda: defaultdict(set))
     skipped: list[str] = field(default_factory=list)
 
@@ -691,7 +700,7 @@ def _source_location(fn: Callable[..., object]) -> str:
         return _qualname(fn)
 
 
-def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer, *, collect_unproduced: bool = False) -> LintResult:
+def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
     from libs.exception import RelayedHTTPError
     from libs.external_api import is_business_error, keeps_placeholder_error_code
 
@@ -784,18 +793,23 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer, *, collect_unproduced
                             result.decorator_hits[label] += 1
                             result.decorator_sources[label] = _source_location(fn)
 
-                    if collect_unproduced:
-                        for exception in raised_by_handler.union(*(raised for _, _, raised in guards)):
-                            if exception is HTTPException or not issubclass(exception, Exception):
-                                continue
-                            try:
-                                produced.add(api.resolve_error(exception)[0])
-                            except ValueError:
-                                continue
-                        produced |= _framework_statuses(doc, route.urls)
-                        declared = {int(status) for status in doc.get("responses") or {} if str(status)[:1] in "45"}
-                        if unproduced := declared - produced:
-                            result.unproduced[f"{report.location} {method.upper()}"] |= unproduced
+                    for exception in raised_by_handler.union(*(raised for _, _, raised in guards)):
+                        if exception is HTTPException or not issubclass(exception, Exception):
+                            continue
+                        try:
+                            produced.add(api.resolve_error(exception)[0])
+                        except ValueError:
+                            continue
+                    for exception in documented:
+                        # A hand declaration for an error raised through dynamic dispatch still produces its status.
+                        try:
+                            produced.add(api.resolve_error(exception)[0])
+                        except ValueError:
+                            continue
+                    produced |= _framework_statuses(doc, route.urls) | api.generic_error_statuses()
+                    declared = {int(status) for status in doc.get("responses") or {} if str(status)[:1] in "45"}
+                    if unproduced := declared - produced:
+                        result.unproduced[f"{report.location} {method.upper()}"] |= unproduced
     return result
 
 
@@ -964,11 +978,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--fix", action="store_true", help="add missing errors to handlers' @error_responses")
     parser.add_argument("--prune", action="store_true", help="with --fix, also remove stale entries")
     parser.add_argument("--max-depth", type=int, default=DEFAULT_MAX_DEPTH, help="call depth to follow")
-    parser.add_argument(
-        "--report-unproduced",
-        action="store_true",
-        help="list declared error statuses nothing inferred produces (review aid; not run in CI)",
-    )
     return parser.parse_args(argv)
 
 
@@ -983,9 +992,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         and not Path(file).is_relative_to(API_ROOT / "tests")
         and not Path(file).is_relative_to(API_ROOT / ".venv")
     ]
-    result = lint(
-        apis, RaiseAnalyzer(max_depth=args.max_depth, modules=modules), collect_unproduced=args.report_unproduced
-    )
+    result = lint(apis, RaiseAnalyzer(max_depth=args.max_depth, modules=modules))
 
     failures = 0
     if args.fix:
@@ -1041,7 +1048,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         failures += 1
     for operation, statuses in sorted(result.unproduced.items()):
-        _emit(f"review: {operation}: declares {', '.join(map(str, sorted(statuses)))} that nothing inferred produces")
+        _emit(
+            f"warning: {operation}: declares {', '.join(map(str, sorted(statuses)))} that nothing produces; "
+            "declare the business error behind it or drop the bare @ns.response"
+        )
     for message in result.skipped:
         _emit(f"skipped: {message}")
     _emit(f"{len(result.handlers)} handlers checked, {failures} errors")

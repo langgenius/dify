@@ -18,6 +18,7 @@ from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import build_icon_url, dump_response
 from machinery.context import RequestContext
+from services.agent.errors import RosterAgentPackageExportFailedError
 from services.recommended_app_query_service import RecommendedAppNotFoundError as RecommendedAppQueryNotFoundError
 
 
@@ -155,7 +156,8 @@ class RecommendedAppApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/export")
 class RecommendedAgentExportApi(Resource):
-    @error_responses(RecommendedAppNotFoundError)
+    # The package exporter raises this behind ``application_services()``; invisible to the error lint.
+    @error_responses(RecommendedAppNotFoundError, RosterAgentPackageExportFailedError)
     @console_ns.doc(params=query_params_from_model(RecommendedAgentExportQuery))
     @console_ns.doc(
         produces=["application/json", "application/zip"],

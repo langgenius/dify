@@ -378,15 +378,30 @@ def test_inspector_not_found_preserves_error_code():
     Inspector's specific error code rather than collapsing to a generic
     ``not_found``."""
     err = NodeOutputInspectorError("node_not_in_workflow_run", "boom")
-    wrapped = ctrl._inspector_not_found(err)
+    wrapped = ctrl._node_not_found(err)
     assert isinstance(wrapped, ctrl.NodeNotInWorkflowRunError)
     assert wrapped.error_code == "node_not_in_workflow_run"
     assert wrapped.code == 404
     assert wrapped.description == "boom"
 
 
+def test_inspector_factories_name_only_the_codes_their_operation_raises():
+    # A whole-run lookup never reports a node or output problem; a node lookup never reports an output problem.
+    run_gone = NodeOutputInspectorError("workflow_run_not_found", "gone")
+    node_gone = NodeOutputInspectorError("node_not_in_workflow_run", "gone")
+    output_gone = NodeOutputInspectorError("node_output_not_declared", "gone")
+    assert isinstance(ctrl._run_not_found(run_gone), ctrl.WorkflowRunNotFoundError)
+    assert isinstance(ctrl._node_not_found(run_gone), ctrl.WorkflowRunNotFoundError)
+    assert isinstance(ctrl._output_not_found(node_gone), ctrl.NodeNotInWorkflowRunError)
+    assert isinstance(ctrl._output_not_found(output_gone), ctrl.NodeOutputNotDeclaredError)
+    # Codes outside an operation's documented set are still served, as relayed 404s.
+    for relayed in (ctrl._run_not_found(node_gone), ctrl._node_not_found(output_gone)):
+        assert type(relayed) is ctrl.RelayedHTTPError
+        assert relayed.data == {"code": relayed.error_code, "message": "gone", "status": 404}
+
+
 def test_inspector_not_found_relays_codes_the_contract_does_not_know():
-    relayed = ctrl._inspector_not_found(NodeOutputInspectorError("inspector_offline", "later"))
+    relayed = ctrl._output_not_found(NodeOutputInspectorError("inspector_offline", "later"))
     assert relayed.code == 404
     assert relayed.data == {"code": "inspector_offline", "message": "later", "status": 404}
 

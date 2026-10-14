@@ -72,6 +72,20 @@ def _validating_handler() -> None:
         raise _MissingError()
 
 
+def _missing_factory() -> BaseHTTPException:
+    return _MissingError()
+
+
+def _denied_or_missing_factory(denied: bool) -> BaseHTTPException:
+    if denied:
+        return _GuardError()
+    return _missing_factory()
+
+
+def _factory_handler() -> None:
+    raise _denied_or_missing_factory(False)
+
+
 @pytest.fixture
 def analyzer(monkeypatch: pytest.MonkeyPatch) -> lint.RaiseAnalyzer:
     monkeypatch.setattr(lint, "RECURSE_PREFIXES", (__name__,))
@@ -90,6 +104,10 @@ def test_infers_raises_translations_aborts_and_validation(analyzer: lint.RaiseAn
 
 def test_skips_translations_of_exceptions_nothing_raises(analyzer: lint.RaiseAnalyzer) -> None:
     assert _GuardError not in analyzer.raises_of_function(_handler, None, 0)
+
+
+def test_follows_factories_that_delegate_to_other_factories(analyzer: lint.RaiseAnalyzer) -> None:
+    assert {_GuardError, _MissingError} <= analyzer.raises_of_function(_factory_handler, None, 0)
 
 
 def test_keeps_translations_of_library_exceptions(analyzer: lint.RaiseAnalyzer) -> None:

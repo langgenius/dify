@@ -15,7 +15,13 @@ from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.agent.errors import InvalidRosterAgentPackageError
+from services.agent.errors import (
+    AgentNameConflictError,
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageImportFailedError,
+    RosterAgentPackageResourceUnavailableError,
+    RosterAgentPackageTooLargeError,
+)
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
 from services.errors.base import NoPermissionError
@@ -37,7 +43,16 @@ _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, Tenan
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
-    @error_responses(InvalidRosterAgentPackageError, RecommendedAppNotFoundHttpError)
+    # The package reader and importer raise these from behind ``application_services()``, which the
+    # error lint cannot follow; the contract tests check them on the paths they exercise.
+    @error_responses(
+        AgentNameConflictError,
+        InvalidRosterAgentPackageError,
+        RecommendedAppNotFoundHttpError,
+        RosterAgentPackageImportFailedError,
+        RosterAgentPackageResourceUnavailableError,
+        RosterAgentPackageTooLargeError,
+    )
     @console_ns.doc(
         params={
             "payload": {
