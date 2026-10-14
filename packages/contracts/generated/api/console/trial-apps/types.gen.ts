@@ -713,6 +713,11 @@ export type TextToSpeechRequest = {
 
 export type AudioBinaryResponse = Blob | File
 
+export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
+  code: 'provider_not_support_text_to_speech'
+  status: 400
+}
+
 export type TrialWorkflowResponse = {
   conversation_variables?: Array<WorkflowConversationVariableResponse>
   created_at?: number | null
@@ -1873,11 +1878,7 @@ export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
 
 export type PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors = {
   400: NotChatAppError | ErrorResponse
-  403:
-    | TrialAppFeatureDisabledError
-    | TrialAppLimitExceededError
-    | TrialAppNotAllowedError
-    | ErrorResponse
+  403: TrialAppFeatureDisabledError | TrialAppNotAllowedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2166,11 +2167,9 @@ export type PostTrialAppsByAppIdTextToAudioErrors = {
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
-    | NoAudioUploadedError
     | ProviderNotInitializeError
-    | ProviderNotSupportSpeechToTextError
+    | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
-    | SpeechToTextDisabledError
     | ErrorResponse
   403:
     | TrialAppFeatureDisabledError
@@ -2178,8 +2177,6 @@ export type PostTrialAppsByAppIdTextToAudioErrors = {
     | TrialAppNotAllowedError
     | ErrorResponse
   404: AgentVersionNotFoundError | ErrorResponse
-  413: AudioTooLargeError | ErrorResponse
-  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 

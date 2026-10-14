@@ -173,18 +173,6 @@ export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
 )
 
 /**
- * ProviderNotSupportTextToSpeechError
- *
- * Provider does not support text to speech.
- */
-export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
-  z.object({
-    code: z.literal('provider_not_support_text_to_speech'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ProviderQuotaExceededError
  *
  * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
@@ -314,18 +302,6 @@ export const zNotCompletionAppError = zErrorResponse.and(
 )
 
 /**
- * ConversationNameRequiredError
- *
- * A name is required when automatic naming is disabled.
- */
-export const zConversationNameRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('conversation_name_required'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ConversationCursorNotFoundError
  *
  * The conversation cursor is not in the current list. Refresh the list and try again.
@@ -333,18 +309,6 @@ export const zConversationNameRequiredError = zErrorResponse.and(
 export const zConversationCursorNotFoundError = zErrorResponse.and(
   z.object({
     code: z.literal('conversation_cursor_not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
- * ConversationFirstMessageNotFoundError
- *
- * The conversation has no message from which to generate a name.
- */
-export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('conversation_first_message_not_found'),
     status: z.literal(404),
   }),
 )
@@ -379,10 +343,55 @@ export const zConversationRenamePayload = z.intersection(
 )
 
 /**
+ * ConversationNameRequiredError
+ *
+ * A name is required when automatic naming is disabled.
+ */
+export const zConversationNameRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_name_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * ResultResponse
  */
 export const zResultResponse = z.object({
   result: z.string(),
+})
+
+/**
+ * MessageCursorNotFoundError
+ *
+ * The message cursor is not in this conversation. Refresh the list and try again.
+ */
+export const zMessageCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * MessageFeedbackPayload
+ */
+export const zMessageFeedbackPayload = z.object({
+  content: z.string().nullish(),
+  message_id: z.string(),
+  rating: z.enum(['dislike', 'like']).nullish(),
 })
 
 /**
@@ -394,42 +403,6 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
   z.object({
     code: z.literal('message_feedback_rating_required'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * AppMoreLikeThisDisabledError
- *
- * The 'More like this' feature is disabled. Please refresh your page.
- */
-export const zAppMoreLikeThisDisabledError = zErrorResponse.and(
-  z.object({
-    code: z.literal('app_more_like_this_disabled'),
-    status: z.literal(403),
-  }),
-)
-
-/**
- * AppSuggestedQuestionsAfterAnswerDisabledError
- *
- * Function Suggested questions after answer disabled.
- */
-export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
-  z.object({
-    code: z.literal('app_suggested_questions_after_answer_disabled'),
-    status: z.literal(403),
-  }),
-)
-
-/**
- * MessageCursorNotFoundError
- *
- * The message cursor is not in this conversation. Refresh the list and try again.
- */
-export const zMessageCursorNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('message_cursor_not_found'),
-    status: z.literal(404),
   }),
 )
 
@@ -446,13 +419,16 @@ export const zMessageNotFoundError = zErrorResponse.and(
 )
 
 /**
- * MessageFeedbackPayload
+ * AppMoreLikeThisDisabledError
+ *
+ * The 'More like this' feature is disabled. Please refresh your page.
  */
-export const zMessageFeedbackPayload = z.object({
-  content: z.string().nullish(),
-  message_id: z.string(),
-  rating: z.enum(['dislike', 'like']).nullish(),
-})
+export const zAppMoreLikeThisDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_more_like_this_disabled'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * SuggestedQuestionsResponse
@@ -460,6 +436,18 @@ export const zMessageFeedbackPayload = z.object({
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
 })
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * Function Suggested questions after answer disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * ExploreAppMetaResponse
@@ -496,6 +484,18 @@ export const zTextToAudioPayload = z.object({
  */
 export const zAudioBinaryResponse = z.custom<Blob | File>(
   (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
+ * ProviderNotSupportTextToSpeechError
+ *
+ * Provider does not support text to speech.
+ */
+export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_text_to_speech'),
+    status: z.literal(400),
+  }),
 )
 
 /**

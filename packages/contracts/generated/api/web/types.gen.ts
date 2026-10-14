@@ -1830,6 +1830,7 @@ export type PostHumanInputFormsFilesErrors = {
   401: UploadTokenRequiredError | ErrorResponse
   403: InvalidUploadTokenError | ErrorResponse
   404: RemoteFileNotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   413: FileTooLargeError | ErrorResponse
   415: UnsupportedFileTypeError | ErrorResponse
   502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse

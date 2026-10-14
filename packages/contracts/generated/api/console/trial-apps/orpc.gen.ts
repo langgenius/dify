@@ -23,6 +23,7 @@ import {
   zNotWorkflowAppError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
   zProviderQuotaExceededError,
   zRateLimitError,
   zRecommendedAppNotFoundError,
@@ -423,7 +424,6 @@ export const post2 = oc
   .errors({
     not_chat_app: { status: 400, data: zNotChatAppError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
-    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
     trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
   })
 
@@ -735,21 +735,17 @@ export const post7 = oc
   .errors({
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
-    audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_not_support_speech_to_text: {
+    provider_not_support_text_to_speech: {
       status: 400,
-      data: zProviderNotSupportSpeechToTextError,
+      data: zProviderNotSupportTextToSpeechError,
     },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
     trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
-    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
   })
 
 export const textToAudio = {

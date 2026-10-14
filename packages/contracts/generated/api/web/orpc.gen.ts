@@ -698,6 +698,8 @@ export const post15 = oc
     file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
     invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
     malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },

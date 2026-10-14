@@ -97,11 +97,6 @@ export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
   status: 400
 }
 
-export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
-  code: 'provider_not_support_text_to_speech'
-  status: 400
-}
-
 export type ProviderQuotaExceededError = ErrorResponse & {
   code: 'provider_quota_exceeded'
   status: 400
@@ -180,18 +175,8 @@ export type ConversationInfiniteScrollPagination = {
   limit: number
 }
 
-export type ConversationNameRequiredError = ErrorResponse & {
-  code: 'conversation_name_required'
-  status: 400
-}
-
 export type ConversationCursorNotFoundError = ErrorResponse & {
   code: 'conversation_cursor_not_found'
-  status: 404
-}
-
-export type ConversationFirstMessageNotFoundError = ErrorResponse & {
-  code: 'conversation_first_message_not_found'
   status: 404
 }
 
@@ -226,6 +211,16 @@ export type SimpleConversation = {
   updated_at?: number | null
 }
 
+export type ConversationNameRequiredError = ErrorResponse & {
+  code: 'conversation_name_required'
+  status: 400
+}
+
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
 export type ResultResponse = {
   result: string
 }
@@ -236,28 +231,8 @@ export type ExploreMessageInfiniteScrollPagination = {
   limit: number
 }
 
-export type MessageFeedbackRatingRequiredError = ErrorResponse & {
-  code: 'message_feedback_rating_required'
-  status: 400
-}
-
-export type AppMoreLikeThisDisabledError = ErrorResponse & {
-  code: 'app_more_like_this_disabled'
-  status: 403
-}
-
-export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
-  code: 'app_suggested_questions_after_answer_disabled'
-  status: 403
-}
-
 export type MessageCursorNotFoundError = ErrorResponse & {
   code: 'message_cursor_not_found'
-  status: 404
-}
-
-export type MessageNotFoundError = ErrorResponse & {
-  code: 'message_not_found'
   status: 404
 }
 
@@ -267,8 +242,28 @@ export type MessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
+export type MessageNotFoundError = ErrorResponse & {
+  code: 'message_not_found'
+  status: 404
+}
+
+export type AppMoreLikeThisDisabledError = ErrorResponse & {
+  code: 'app_more_like_this_disabled'
+  status: 403
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
 }
 
 export type ExploreAppMetaResponse = {
@@ -623,6 +618,11 @@ export type TextToAudioPayload = {
 }
 
 export type AudioBinaryResponse = Blob | File
+
+export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
+  code: 'provider_not_support_text_to_speech'
+  status: 400
+}
 
 export type WorkflowRunPayload = {
   files?: Array<
@@ -1067,7 +1067,6 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextErrors = {
     | NoAudioUploadedError
     | ProviderNotInitializeError
     | ProviderNotSupportSpeechToTextError
-    | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
     | ErrorResponse
@@ -1232,14 +1231,9 @@ export type GetInstalledAppsByInstalledAppIdConversationsData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdConversationsErrors = {
-  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  400: NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404:
-    | ConversationCursorNotFoundError
-    | ConversationFirstMessageNotFoundError
-    | ConversationNotFoundError
-    | InstalledAppNotFoundError
-    | ErrorResponse
+  404: ConversationCursorNotFoundError | InstalledAppNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1265,14 +1259,9 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors = {
-  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  400: NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404:
-    | ConversationCursorNotFoundError
-    | ConversationFirstMessageNotFoundError
-    | ConversationNotFoundError
-    | InstalledAppNotFoundError
-    | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1301,7 +1290,6 @@ export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors = {
   400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404:
-    | ConversationCursorNotFoundError
     | ConversationFirstMessageNotFoundError
     | ConversationNotFoundError
     | InstalledAppNotFoundError
@@ -1331,14 +1319,9 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors = {
-  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  400: NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404:
-    | ConversationCursorNotFoundError
-    | ConversationFirstMessageNotFoundError
-    | ConversationNotFoundError
-    | InstalledAppNotFoundError
-    | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1364,14 +1347,9 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors = {
-  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  400: NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404:
-    | ConversationCursorNotFoundError
-    | ConversationFirstMessageNotFoundError
-    | ConversationNotFoundError
-    | InstalledAppNotFoundError
-    | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1400,26 +1378,12 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
-  400:
-    | AppUnavailableError
-    | CompletionRequestError
-    | MessageFeedbackRatingRequiredError
-    | ModelCurrentlyNotSupportError
-    | NotChatAppError
-    | NotCompletionAppError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403:
-    | AccessDeniedError
-    | AppMoreLikeThisDisabledError
-    | AppSuggestedQuestionsAfterAnswerDisabledError
-    | ErrorResponse
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
   404:
     | ConversationNotFoundError
     | InstalledAppNotFoundError
     | MessageCursorNotFoundError
-    | MessageNotFoundError
     | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
@@ -1446,27 +1410,9 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
-  400:
-    | AppUnavailableError
-    | CompletionRequestError
-    | MessageFeedbackRatingRequiredError
-    | ModelCurrentlyNotSupportError
-    | NotChatAppError
-    | NotCompletionAppError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403:
-    | AccessDeniedError
-    | AppMoreLikeThisDisabledError
-    | AppSuggestedQuestionsAfterAnswerDisabledError
-    | ErrorResponse
-  404:
-    | ConversationNotFoundError
-    | InstalledAppNotFoundError
-    | MessageCursorNotFoundError
-    | MessageNotFoundError
-    | ErrorResponse
+  400: MessageFeedbackRatingRequiredError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1497,24 +1443,13 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisError
   400:
     | AppUnavailableError
     | CompletionRequestError
-    | MessageFeedbackRatingRequiredError
     | ModelCurrentlyNotSupportError
-    | NotChatAppError
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403:
-    | AccessDeniedError
-    | AppMoreLikeThisDisabledError
-    | AppSuggestedQuestionsAfterAnswerDisabledError
-    | ErrorResponse
-  404:
-    | ConversationNotFoundError
-    | InstalledAppNotFoundError
-    | MessageCursorNotFoundError
-    | MessageNotFoundError
-    | ErrorResponse
+  403: AccessDeniedError | AppMoreLikeThisDisabledError | ErrorResponse
+  404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1545,24 +1480,13 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
   400:
     | AppUnavailableError
     | CompletionRequestError
-    | MessageFeedbackRatingRequiredError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
-    | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403:
-    | AccessDeniedError
-    | AppMoreLikeThisDisabledError
-    | AppSuggestedQuestionsAfterAnswerDisabledError
-    | ErrorResponse
-  404:
-    | ConversationNotFoundError
-    | InstalledAppNotFoundError
-    | MessageCursorNotFoundError
-    | MessageNotFoundError
-    | ErrorResponse
+  403: AccessDeniedError | AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
+  404: ConversationNotFoundError | InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1730,17 +1654,12 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioErrors = {
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
-    | NoAudioUploadedError
     | ProviderNotInitializeError
-    | ProviderNotSupportSpeechToTextError
     | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
-    | SpeechToTextDisabledError
     | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404: AgentVersionNotFoundError | InstalledAppNotFoundError | ErrorResponse
-  413: AudioTooLargeError | ErrorResponse
-  415: UnsupportedAudioTypeError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }

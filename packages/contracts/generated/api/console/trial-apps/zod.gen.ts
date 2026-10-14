@@ -611,6 +611,18 @@ export const zAudioBinaryResponse = z.custom<Blob | File>(
 )
 
 /**
+ * ProviderNotSupportTextToSpeechError
+ *
+ * Provider does not support text to speech.
+ */
+export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_text_to_speech'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * WorkflowRunRequest
  */
 export const zWorkflowRunRequest = z.object({
