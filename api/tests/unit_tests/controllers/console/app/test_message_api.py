@@ -298,12 +298,6 @@ def test_message_feedback_payload_no_rating(app: Flask, monkeypatch: pytest.Monk
     assert payload.rating is None
 
 
-def test_annotation_count_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test AnnotationCountResponse creation."""
-    response = message_module.AnnotationCountResponse(count=10)
-    assert response.count == 10
-
-
 def test_suggested_questions_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test SuggestedQuestionsResponse creation."""
     response = message_module.SuggestedQuestionsResponse(data=["What is AI?", "How does ML work?"])

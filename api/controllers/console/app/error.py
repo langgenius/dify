@@ -1,4 +1,11 @@
+from http import HTTPStatus
+
 from libs.exception import BaseHTTPException
+
+
+class AnnotationImportRateLimitError(BaseHTTPException):
+    error_code = "too_many_requests"
+    code = HTTPStatus.TOO_MANY_REQUESTS
 
 
 class AppNotFoundError(BaseHTTPException):

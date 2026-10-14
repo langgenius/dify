@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import ConfigParamModal from '../config-param-modal'
@@ -459,6 +459,41 @@ describe('ConfigParamModal', () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalled()
     })
+  })
+
+  it('restores save controls and allows closing after saving fails', async () => {
+    const user = userEvent.setup()
+    let rejectSave: (error: Error) => void
+    const save = new Promise<void>((_resolve, reject) => {
+      rejectSave = reject
+    })
+    let hidden = false
+    render(
+      <ConfigParamModal
+        appId="test-app"
+        isShow={true}
+        onHide={() => {
+          hidden = true
+        }}
+        onSave={() => save}
+        annotationConfig={defaultAnnotationConfig}
+      />,
+    )
+
+    const saveButton = screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ })
+    const cancelButton = screen.getByRole('button', { name: /operation\.cancel/ })
+    await user.click(saveButton)
+    expect(saveButton).toHaveAttribute('aria-disabled', 'true')
+    await user.click(cancelButton)
+    expect(hidden).toBe(false)
+
+    await act(async () => {
+      rejectSave!(new Error('Vector index unavailable'))
+    })
+
+    expect(saveButton).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(cancelButton)
+    expect(hidden).toBe(true)
   })
 
   it('should save updated score after slider changes', async () => {

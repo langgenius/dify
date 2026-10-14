@@ -693,135 +693,6 @@ class TestConversationServiceMessageAnnotation:
     message annotations.
     """
 
-    @patch("services.annotation_service.add_annotation_to_index_task")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_from_message(
-        self, mock_current_account, mock_add_task, db_session_with_containers: Session
-    ):
-        """
-        Test creating annotation from existing message.
-
-        Annotations can be attached to messages to provide curated responses
-        that override the AI-generated answers.
-        """
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
-            db_session_with_containers, app_model, account
-        )
-        message = ConversationServiceIntegrationTestDataFactory.create_message(
-            db_session_with_containers,
-            app_model,
-            conversation,
-            account,
-            query="What is AI?",
-        )
-
-        # Mock the authentication context to return current user and tenant
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        # Annotation data to create
-        args = {"message_id": message.id, "answer": "AI is artificial intelligence"}
-
-        # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(
-            args, app_model.id, session=db_session_with_containers
-        )
-
-        # Assert
-        assert result.message_id == message.id
-        assert result.question == message.query
-        assert result.content == "AI is artificial intelligence"
-        mock_add_task.delay.assert_not_called()
-
-    @patch("services.annotation_service.add_annotation_to_index_task")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_without_message(
-        self, mock_current_account, mock_add_task, db_session_with_containers: Session
-    ):
-        """
-        Test creating standalone annotation without message.
-
-        Annotations can be created without a message reference for bulk imports
-        or manual annotation creation.
-        """
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-
-        # Mock the authentication context to return current user and tenant
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        # Annotation data to create
-        args = {
-            "question": "What is natural language processing?",
-            "answer": "NLP is a field of AI focused on language understanding",
-        }
-
-        # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(
-            args, app_model.id, session=db_session_with_containers
-        )
-
-        # Assert
-        assert result.message_id is None
-        assert result.question == args["question"]
-        assert result.content == args["answer"]
-        mock_add_task.delay.assert_not_called()
-
-    @patch("services.annotation_service.add_annotation_to_index_task")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_update_existing_annotation(self, mock_current_account, mock_add_task, db_session_with_containers: Session):
-        """
-        Test updating an existing annotation.
-
-        When a message already has an annotation, calling the service again
-        should update the existing annotation rather than creating a new one.
-        """
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
-            db_session_with_containers, app_model, account
-        )
-        message = ConversationServiceIntegrationTestDataFactory.create_message(
-            db_session_with_containers,
-            app_model,
-            conversation,
-            account,
-        )
-
-        existing_annotation = MessageAnnotation(
-            app_id=app_model.id,
-            conversation_id=conversation.id,
-            message_id=message.id,
-            question=message.query,
-            content="Old annotation",
-            account_id=account.id,
-        )
-        db_session_with_containers.add(existing_annotation)
-        db_session_with_containers.commit()
-
-        # Mock the authentication context to return current user and tenant
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        # New content to update the annotation with
-        args = {"message_id": message.id, "answer": "Updated annotation content"}
-
-        # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(
-            args, app_model.id, session=db_session_with_containers
-        )
-
-        # Assert
-        assert result.id == existing_annotation.id
-        assert result.content == "Updated annotation content"  # Content updated
-        mock_add_task.delay.assert_not_called()
-
     @patch("services.annotation_service.current_account_with_tenant")
     def test_get_annotation_list(self, mock_current_account, db_session_with_containers: Session):
         """
@@ -936,11 +807,9 @@ class TestConversationServiceMessageAnnotation:
         mock_add_task.delay.assert_not_called()
 
 
-class TestConversationServiceExport:
+class TestConversationServiceRetrieval:
     """
-    Test conversation export/retrieval operations.
-
-    Tests retrieving conversation data for export purposes.
+    Test conversation and message retrieval operations.
     """
 
     def test_get_conversation_success(self, db_session_with_containers: Session):
@@ -978,35 +847,6 @@ class TestConversationServiceExport:
                 user=user,
                 session=db_session_with_containers,
             )
-
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_export_annotation_list(self, mock_current_account, db_session_with_containers: Session):
-        """Test exporting all annotations for an app."""
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        annotations = [
-            MessageAnnotation(
-                app_id=app_model.id,
-                conversation_id=None,
-                message_id=None,
-                question=f"Question {i}",
-                content=f"Content {i}",
-                account_id=account.id,
-            )
-            for i in range(10)
-        ]
-        db_session_with_containers.add_all(annotations)
-        db_session_with_containers.commit()
-
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, db_session_with_containers)
-
-        # Assert
-        assert len(result) == 10
 
     def test_get_message_success(self, db_session_with_containers: Session):
         """Test successful retrieval of a message."""

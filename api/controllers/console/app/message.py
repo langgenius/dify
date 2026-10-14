@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
@@ -39,7 +39,6 @@ from controllers.console.wraps import (
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import (
     MessageDetail as BaseMessageDetailResponse,
@@ -52,7 +51,7 @@ from libs.login import login_required
 from machinery.context import RequestContext
 from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import App, AppMode, Conversation, Message, MessageFeedback
 from services.agent.errors import AgentNotFoundError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
@@ -95,10 +94,6 @@ class MessageFeedbackPayload(_MessageFeedbackPayloadBase):
         return uuid_value(value)
 
 
-class AnnotationCountResponse(ResponseModel):
-    count: int = Field(description="Number of annotations")
-
-
 class SuggestedQuestionsResponse(ResponseModel):
     data: list[str] = Field(description="Suggested question")
 
@@ -120,7 +115,6 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    AnnotationCountResponse,
     SuggestedQuestionsResponse,
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
@@ -251,29 +245,6 @@ class AgentMessageFeedbackApi(Resource):
             current_user=current_user,
             app_model=app_model,
         )
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotations/count")
-class MessageAnnotationCountApi(Resource):
-    @console_ns.doc("get_annotation_count")
-    @console_ns.doc(description="Get count of message annotations for the app")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(
-        200,
-        "Annotation count retrieved successfully",
-        console_ns.models[AnnotationCountResponse.__name__],
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model
-    def get(self, app_model: App):
-        count = db.session.scalar(
-            select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
-        )
-
-        return AnnotationCountResponse(count=count or 0).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")

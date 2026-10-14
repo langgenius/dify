@@ -168,7 +168,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 2
     }
   },
   "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
@@ -859,11 +859,6 @@
   "web/app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
