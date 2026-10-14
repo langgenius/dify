@@ -57,13 +57,10 @@
 
 # Backend - RAG (Retrieval Augmented Generation)
 /api/core/rag/ @JohnJyong
+/api/services/knowledge/ @JohnJyong
 /api/services/rag_pipeline/ @JohnJyong
-/api/services/dataset_service.py @JohnJyong
 /api/services/knowledge_service.py @JohnJyong
-/api/services/external_knowledge_service.py @JohnJyong
 /api/services/hit_testing_service.py @JohnJyong
-/api/services/metadata_service.py @JohnJyong
-/api/services/vector_service.py @JohnJyong
 /api/services/entities/knowledge_entities/ @JohnJyong
 /api/services/entities/external_knowledge_entities/ @JohnJyong
 /api/controllers/console/datasets/ @JohnJyong

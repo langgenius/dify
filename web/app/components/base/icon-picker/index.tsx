@@ -1,15 +1,15 @@
 'use client'
 
-import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
-import type { RefCallback } from 'react'
+import type { ComponentProps, ReactNode, RefCallback } from 'react'
 import type { ImageIconInputValue } from './image-input'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useMutation } from '@tanstack/react-query'
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { createContext, use, useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { resolveEmoji } from '@/utils/emoji'
@@ -33,62 +33,101 @@ export type ImageIcon = {
 
 export type IconPickerValue = EmojiIcon | ImageIcon
 
-export type IconPickerDefaultValue =
+/** The committed icon. A link is display-only: the picker shows it and never returns one. */
+export type IconPickerInputValue =
   | (Omit<EmojiIcon, 'background'> & { background?: EmojiIcon['background'] | null })
   | ImageIcon
+  | { type: 'link'; url: string }
 
-export type IconPickerDialogProps = Pick<DialogContentProps, 'initialFocus' | 'finalFocus'> & {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  /** Initial draft for each mounted dialog session; changes while open do not replace edits. */
-  defaultValue?: IconPickerDefaultValue
+type IconPickerProps = {
+  /** Committed icon; changes while open do not replace the popup draft. */
+  value?: IconPickerInputValue
   /** Receives the confirmed value after any image upload; does not await consumer persistence. */
-  onConfirm: (value: IconPickerValue) => void
-  enableImageUpload?: boolean
-  className?: string
+  onValueChange: (value: IconPickerValue) => void
+  children: ReactNode
 }
 
-export function IconPickerDialog({
-  open,
-  onOpenChange,
-  className,
-  initialFocus,
-  finalFocus,
-  ...props
-}: IconPickerDialogProps) {
+type IconPickerContextValue = Omit<IconPickerProps, 'children'> & {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+const IconPickerContext = createContext<IconPickerContextValue | null>(null)
+
+function useIconPicker(part: string) {
+  const context = use(IconPickerContext)
+  if (!context) throw new Error(`${part} must be used within IconPicker`)
+  return context
+}
+
+/** Owns the committed icon and the open state for `IconPickerTrigger`, `IconPickerIcon` and `IconPickerContent`. */
+export function IconPicker({ value, onValueChange, children }: IconPickerProps) {
+  const [open, setOpen] = useState(false)
+  return (
+    <IconPickerContext value={{ value, onValueChange, open, setOpen }}>
+      <Dialog open={open} onOpenChange={setOpen}>
+        {children}
+      </Dialog>
+    </IconPickerContext>
+  )
+}
+
+/** Opens the picker. The caller owns its appearance. */
+export const IconPickerTrigger = DialogTrigger
+
+type IconPickerIconProps = Pick<
+  ComponentProps<typeof AppIcon>,
+  'size' | 'rounded' | 'showEditIcon' | 'innerIcon' | 'className'
+>
+
+/** Shows the committed icon, usually inside `IconPickerTrigger`. */
+export function IconPickerIcon(props: IconPickerIconProps) {
+  const { value } = useIconPicker('IconPickerIcon')
+  return (
+    <AppIcon
+      decorative
+      {...props}
+      iconType={value?.type === 'emoji' ? 'emoji' : 'image'}
+      icon={value?.type === 'emoji' ? value.icon : undefined}
+      background={value?.type === 'emoji' ? value.background : undefined}
+      imageUrl={value && value.type !== 'emoji' ? value.url : undefined}
+    />
+  )
+}
+
+type IconPickerContentProps = {
+  enableImageUpload?: boolean
+}
+
+export function IconPickerContent({ enableImageUpload }: IconPickerContentProps) {
   const { t } = useTranslation(['app'])
+  const { value, onValueChange, open, setOpen } = useIconPicker('IconPickerContent')
   const popupRef = useRef<HTMLDivElement>(null)
   const focusTargetRef = useRef<HTMLElement | null>(null)
   const setFocusTarget = useCallback((element: HTMLElement | null) => {
     focusTargetRef.current = element
   }, [])
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        ref={popupRef}
-        backdropProps={{ forceRender: true }}
-        initialFocus={
-          initialFocus ??
-          ((interaction) =>
-            interaction === 'touch' ? popupRef.current : (focusTargetRef.current ?? true))
-        }
-        finalFocus={finalFocus}
-        className={cn(
-          'flex max-h-[calc(100dvh-2rem)] w-80.5 flex-col overflow-hidden p-0 text-left',
-          className,
-        )}
-      >
-        <DialogTitle className="sr-only">
-          {t(($) => $['iconPicker.title'], { ns: 'app' })}
-        </DialogTitle>
-        <IconPickerSession
-          {...props}
-          open={open}
-          onOpenChange={onOpenChange}
-          initialFocusRef={setFocusTarget}
-        />
-      </DialogContent>
-    </Dialog>
+    <DialogContent
+      ref={popupRef}
+      backdropProps={{ forceRender: true }}
+      initialFocus={(interaction) =>
+        interaction === 'touch' ? popupRef.current : (focusTargetRef.current ?? true)
+      }
+      className="flex max-h-[calc(100dvh-2rem)] w-80.5 flex-col overflow-hidden p-0 text-left"
+    >
+      <DialogTitle className="sr-only">
+        {t(($) => $['iconPicker.title'], { ns: 'app' })}
+      </DialogTitle>
+      <IconPickerSession
+        defaultValue={value?.type === 'link' ? undefined : value}
+        onConfirm={onValueChange}
+        enableImageUpload={enableImageUpload}
+        open={open}
+        onOpenChange={setOpen}
+        initialFocusRef={setFocusTarget}
+      />
+    </DialogContent>
   )
 }
 
@@ -99,10 +138,14 @@ function IconPickerSession({
   onOpenChange,
   enableImageUpload = true,
   initialFocusRef,
-}: Pick<
-  IconPickerDialogProps,
-  'open' | 'defaultValue' | 'onConfirm' | 'onOpenChange' | 'enableImageUpload'
-> & { initialFocusRef: RefCallback<HTMLElement> }) {
+}: IconPickerContentProps & {
+  /** Initial draft for each mounted dialog session; changes while open do not replace edits. */
+  defaultValue?: Exclude<IconPickerInputValue, { type: 'link' }>
+  onConfirm: (value: IconPickerValue) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  initialFocusRef: RefCallback<HTMLElement>
+}) {
   const { t } = useTranslation(['app', 'common'])
   const imageEnabled = enableImageUpload && !DISABLE_UPLOAD_IMAGE_AS_ICON
   const [activeTab, setActiveTab] = useState<IconPickerValue['type']>(

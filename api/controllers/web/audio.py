@@ -2,10 +2,12 @@ import logging
 
 from flask import request
 from pydantic import field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
+from controllers.common.session import with_session
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -22,7 +24,6 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response, uuid_value
@@ -75,7 +76,8 @@ class AudioApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session(write=False)
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Convert audio to text"""
         file = request.files.get("file")
 
@@ -83,7 +85,7 @@ class AudioApi(WebApiResource):
             response = AudioService.transcript_asr(
                 app_model=app_model,
                 file=file,
-                session=db.session(),
+                session=session,
                 end_user=end_user.external_user_id,
             )
 
@@ -132,8 +134,9 @@ class TextApi(WebApiResource):
     )
     # response-contract:ignore provider audio bytes; TODO: model binary audio response if shape is standardized.
     @web_ns.response(200, "Success")
+    @with_session(write=False)
     @model_validate(TextToAudioPayload)
-    def post(self, payload: TextToAudioPayload, app_model: App, end_user: EndUser):
+    def post(self, payload: TextToAudioPayload, session: Session, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:
             message_id = payload.message_id
@@ -149,7 +152,7 @@ class TextApi(WebApiResource):
                 )
             return AudioService.transcript_tts(
                 app_model=app_model,
-                session=db.session(),
+                session=session,
                 text=text,
                 voice=voice,
                 end_user=end_user.external_user_id,

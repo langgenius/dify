@@ -51,7 +51,6 @@ export default function AgentAppPreview({ appDetail, composer }: Props) {
                     <AppIcon
                       decorative
                       size="tiny"
-                      rounded
                       iconType={appDetail.site.icon_type}
                       icon={appDetail.site.icon ?? undefined}
                       background={appDetail.site.icon_background ?? undefined}

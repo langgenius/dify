@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Parol tələb olunur",
   "error.passwordInvalid": "Parolda hərflər və rəqəmlər olmalı, uzunluğu isə 8 simvoldan çox olmalıdır",
   "error.registrationNotAllowed": "Hesab tapılmadı. Qeydiyyatdan keçmək üçün sistem inzibatçısı ilə əlaqə saxlayın.",
+  "error.ssoFailed": "SSO ilə giriş uğursuz oldu. Yenidən cəhd edin və ya administratorla əlaqə saxlayın.",
   "explore": "Dify ilə tanış ol",
   "forget": "Parolunuzu unutmusunuz?",
   "forgotPassword": "Parolunuzu unutmusunuz?",

@@ -6,6 +6,7 @@ import type {
 } from '../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { PluginCategoryEnum } from '../../../types'
 import {
   convertRepoToUrl,
@@ -1122,9 +1123,9 @@ describe('InstallFromGitHub', () => {
   // ================================
   describe('Error Handling', () => {
     it('should handle API error with response message', async () => {
-      mockGetIconUrl.mockRejectedValue({
-        response: { message: 'API Error Message' },
-      })
+      mockGetIconUrl.mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { message: 'API Error Message' }),
+      )
 
       render(<InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />)
 
@@ -1147,9 +1148,7 @@ describe('InstallFromGitHub', () => {
       await waitFor(() => {
         expect(screen.getByTestId('installed-step')).toBeInTheDocument()
         expect(screen.getByTestId('is-failed')).toHaveTextContent('true')
-        expect(screen.getByTestId('error-msg')).toHaveTextContent(
-          'plugin.installModal.installFailedDesc',
-        )
+        expect(screen.getByTestId('error-msg')).toHaveTextContent('Generic error')
       })
     })
   })

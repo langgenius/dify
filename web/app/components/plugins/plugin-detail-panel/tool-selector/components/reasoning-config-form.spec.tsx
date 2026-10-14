@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import ReasoningConfigForm from './reasoning-config-form'
+import { ReasoningConfigForm } from './reasoning-config-form'
 
 function reasoningSchema(overrides: Partial<ToolFormSchema>): ToolFormSchema {
   return {

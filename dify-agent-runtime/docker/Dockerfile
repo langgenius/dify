@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 go build -o /bin/shellctl ./cmd/shellctl && \
     CGO_ENABLED=0 go build -o /bin/dify-agent ./cmd/dify-agent-cli
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS production
+FROM python:3.13-slim-bookworm AS production
 
 ARG NODE_VERSION=24.20.0
 ARG PNPM_VERSION=11.9.0

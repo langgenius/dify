@@ -1,1 +1,1 @@
-"""Knowledge base persistence and queries."""
+"""Knowledge-domain persistence adapters and queries."""

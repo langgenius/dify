@@ -86,6 +86,17 @@ def _create_workflow_run(
     return workflow_run
 
 
+def _unpersisted_pause(*, workflow_id: str, workflow_run_id: str) -> WorkflowPauseEntity:
+    return _PrivateWorkflowPauseEntity(
+        pause_model=WorkflowPause(
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
+            state_object_key="unpersisted-state",
+        ),
+        reason_models=[],
+    )
+
+
 def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
     """Remove test-created DB rows and storage objects for a test scope."""
 
@@ -736,8 +747,7 @@ class TestResumeWorkflowPause:
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
-        pause_entity = Mock(spec=WorkflowPauseEntity)
-        pause_entity.id = str(uuid4())
+        pause_entity = _unpersisted_pause(workflow_id=test_scope.workflow_id, workflow_run_id=workflow_run.id)
 
         with pytest.raises(_WorkflowRunError, match="WorkflowRun is not in PAUSED status"):
             repository.resume_workflow_pause(
@@ -769,8 +779,9 @@ class TestResumeWorkflowPause:
         assert pause_model is not None
         test_scope.state_keys.add(pause_model.state_object_key)
 
-        mismatched_pause_entity = Mock(spec=WorkflowPauseEntity)
-        mismatched_pause_entity.id = str(uuid4())
+        mismatched_pause_entity = _unpersisted_pause(
+            workflow_id=test_scope.workflow_id, workflow_run_id=workflow_run.id
+        )
 
         with pytest.raises(_WorkflowRunError, match="different id in WorkflowPause and WorkflowPauseEntity"):
             repository.resume_workflow_pause(
@@ -819,8 +830,7 @@ class TestDeleteWorkflowPause:
     ) -> None:
         """Raise _WorkflowRunError when deleting a non-existent pause."""
 
-        pause_entity = Mock(spec=WorkflowPauseEntity)
-        pause_entity.id = str(uuid4())
+        pause_entity = _unpersisted_pause(workflow_id=str(uuid4()), workflow_run_id=str(uuid4()))
 
         with pytest.raises(_WorkflowRunError, match="WorkflowPause not found"):
             repository.delete_workflow_pause(pause_entity=pause_entity)

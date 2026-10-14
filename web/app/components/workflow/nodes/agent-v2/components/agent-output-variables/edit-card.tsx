@@ -140,7 +140,7 @@ export function OutputEditCard({
           </Field>
           <OutputTypeSelect value={draft.type} onChange={(value) => updateDraft({ type: value })} />
           <Field name="required" className="contents">
-            <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
+            <FieldLabel className="flex h-6 cursor-pointer items-center gap-x-1 system-xs-regular text-text-tertiary">
               <Switch
                 size="xs"
                 checked={draft.required}
@@ -179,7 +179,7 @@ export function OutputEditCard({
       </div>
       {allowDefaultValue && (
         <Collapsible>
-          <CollapsibleTrigger className="group/collapsible flex h-8 min-h-8 w-full touch-manipulation items-center justify-start gap-2 gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 text-start system-xs-regular text-text-tertiary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset">
+          <CollapsibleTrigger className="group/collapsible flex h-8 min-h-8 w-full touch-manipulation items-center justify-start gap-2 gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 text-start system-xs-regular text-text-tertiary select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-inset">
             <span
               aria-hidden="true"
               className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open/collapsible:rotate-180 motion-reduce:transition-none"

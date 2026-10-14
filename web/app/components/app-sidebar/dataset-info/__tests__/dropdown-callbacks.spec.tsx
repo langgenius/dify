@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -269,9 +270,9 @@ describe('Dropdown callback coverage', () => {
 
   it('should surface the backend message when checking app usage fails', async () => {
     const user = userEvent.setup()
-    mockCheckIsUsedInApp.mockRejectedValueOnce({
-      json: vi.fn().mockResolvedValue({ message: 'check failed' }),
-    })
+    mockCheckIsUsedInApp.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'check failed' }),
+    )
 
     render(<Dropdown expand />)
 

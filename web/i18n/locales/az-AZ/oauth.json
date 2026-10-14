@@ -1,4 +1,8 @@
 {
+  "callback.error": "İcazə vermək mümkün olmadı",
+  "callback.errorHint": "Əvvəlki səhifəyə qayıdıb yenidən cəhd edin.",
+  "callback.success": "İcazə verildi",
+  "callback.successHint": "İndi bu vərəqi bağlayıb əvvəlki səhifəyə qayıda bilərsiniz.",
   "connect": "Qoşulma:",
   "continue": "Davam et",
   "error.authAppInfoFetchFailed": "İcazə vermək üçün tətbiq məlumatlarını əldə etmək mümkün olmadı",

@@ -755,7 +755,8 @@ class TestPluginFetchPermissionApi:
         ):
             result = method(api, "t1")
 
-        assert result["install_permission"] is not None
+        assert result["install_permission"] == TenantPluginInstallPermission.ADMINS
+        assert result["debug_permission"] == TenantPluginDebugPermission.EVERYONE
 
 
 class TestPluginFetchDynamicSelectOptionsApi:

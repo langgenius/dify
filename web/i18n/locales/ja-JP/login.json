@@ -31,6 +31,7 @@
   "error.passwordEmpty": "パスワードは必須です",
   "error.passwordInvalid": "パスワードは文字と数字を含み、長さは 8 以上である必要があります",
   "error.registrationNotAllowed": "アカウントが見つかりません。登録するためにシステム管理者に連絡してください。",
+  "error.ssoFailed": "SSO ログインに失敗しました。もう一度お試しいただくか、管理者にお問い合わせください。",
   "explore": "Dify を探索する",
   "forget": "パスワードをお忘れですか？",
   "forgotPassword": "パスワードを忘れましたか？",

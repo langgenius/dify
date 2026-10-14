@@ -18,7 +18,6 @@ import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
-import { toast } from '@/app/notifications'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -90,7 +89,6 @@ const ChangePasswordForm = () => {
           )
           Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
-          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
@@ -98,7 +96,7 @@ const ChangePasswordForm = () => {
         console.error(error)
       }
     },
-    [token, register, locale, queryClient, router, searchParams, t, isPending],
+    [token, register, locale, queryClient, router, searchParams, isPending],
   )
 
   return (

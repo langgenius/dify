@@ -58,5 +58,35 @@ describe('access-control normalizers', () => {
 
       expect(normalize(response).data[0]?.roles[0]?.role_tag).toBe('owner')
     })
+
+    it.each([
+      ['app', normalizeAppUserAccessPolicies],
+      ['dataset', normalizeDatasetUserAccessPolicies],
+    ] as const)('should preserve the workspace admin role tag for %s access', (_, normalize) => {
+      const response = createResourceUserAccessPoliciesResponse({
+        data: [
+          {
+            account: {
+              account_id: 'admin-account',
+              account_name: 'Workspace Admin',
+            },
+            roles: [
+              {
+                id: 'admin-role',
+                type: 'workspace',
+                category: 'global_system_default',
+                name: 'Admin',
+                is_builtin: true,
+                permission_keys: [],
+                role_tag: 'admin',
+              },
+            ],
+            access_policies: [],
+          },
+        ],
+      })
+
+      expect(normalize(response).data[0]?.roles[0]?.role_tag).toBe('admin')
+    })
   })
 })

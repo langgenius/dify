@@ -1233,20 +1233,19 @@ export const useMutationPluginAutoUpgradeSettings = ({
         queryClient.getQueryData<PluginAutoUpgradeSettingsResponse>(queryKey)
       const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
 
-      queryClient.setQueryData(pluginAutoUpgradeSettingsQueryKey(category), {
+      queryClient.setQueryData(queryKey, {
         category,
         auto_upgrade: payload,
       } satisfies PluginAutoUpgradeSettingsResponse)
 
-      return { previousAutoUpgrade, hadPreviousAutoUpgrade }
+      return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
     },
     onError: (_error, _payload, context) => {
-      if (context?.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(
-          pluginAutoUpgradeSettingsQueryKey(category),
-          context.previousAutoUpgrade,
-        )
-      else queryClient.removeQueries({ queryKey: pluginAutoUpgradeSettingsQueryKey(category) })
+      // Roll back the category this save started for; the caller may have moved to another one.
+      if (!context) return
+      if (context.hadPreviousAutoUpgrade)
+        queryClient.setQueryData(context.queryKey, context.previousAutoUpgrade)
+      else queryClient.removeQueries({ queryKey: context.queryKey })
     },
     onSuccess: () => {
       onSuccess?.()

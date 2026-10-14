@@ -7,7 +7,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useEffect, useMemo, useRef } from 'react'
 import { isToolSettingShowOnSatisfied } from '@/app/components/plugins/plugin-detail-panel/tool-selector/utils/show-on'
 import { resetToolSettingFieldValue } from '@/app/components/tools/utils/to-form-schema'
-import ToolFormItem from './item'
+import { ToolFormItem } from './item'
 
 type Props = Readonly<{
   staticSchema?: boolean

@@ -21,7 +21,7 @@ def get_credit_usage_metadata() -> Mapping[str, object] | None:
 
 
 @contextmanager
-def use_credit_usage_metadata(metadata: Mapping[str, object] | None) -> Generator[None, None, None]:
+def use_credit_usage_metadata(metadata: Mapping[str, object] | None) -> Generator[None]:
     if metadata is None:
         yield
         return

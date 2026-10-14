@@ -7,7 +7,7 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import ToolForm from './index'
 
 vi.mock('./item', () => ({
-  default: ({ schema }: { schema: { variable: string } }) => (
+  ToolFormItem: ({ schema }: { schema: { variable: string } }) => (
     <div data-testid={`tool-field-${schema.variable}`}>{schema.variable}</div>
   ),
 }))

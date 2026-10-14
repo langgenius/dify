@@ -9,7 +9,11 @@ import type {
   NewKnowledgeWebsiteSourceDraft,
 } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldItem } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -101,14 +105,11 @@ export function PendingWebsiteSetup({
           )}
         </button>
         {optionsExpanded && (
-          <fieldset className="grid grid-cols-1 gap-3 px-3 pb-3 sm:grid-cols-2">
-            <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
-              <input
-                type="checkbox"
+          <Fieldset className="grid grid-cols-1 gap-3 px-3 pb-3 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-center gap-2 system-xs-regular text-text-secondary">
+              <Checkbox
                 checked={draft.includeSubpages}
-                onChange={(event) =>
-                  updateDraft({ ...draft, includeSubpages: event.target.checked })
-                }
+                onCheckedChange={(checked) => updateDraft({ ...draft, includeSubpages: checked })}
               />
               {t(($) => $['newKnowledge.includeSubpages'])}
             </label>
@@ -125,7 +126,7 @@ export function PendingWebsiteSetup({
                 }
               />
             </label>
-          </fieldset>
+          </Fieldset>
         )}
       </div>
       <Button
@@ -180,35 +181,40 @@ export function UnavailableConnectedSourceSetup({
 
   return (
     <div className="space-y-4">
-      <fieldset>
-        <legend className="mb-1.5 system-xs-medium text-text-secondary">
-          {tCreation(($) => $['stepOne.website.chooseProvider'])}
-        </legend>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {providers.map((option) => (
-            <label
-              key={option.label}
-              className={cn(
-                'flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-                activeProvider === option.label
-                  ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
-                  : 'border-divider-subtle text-text-secondary hover:bg-state-base-hover',
-              )}
-            >
-              <input
-                type="radio"
-                name={`${sourceType}-provider`}
-                value={option.label}
-                checked={activeProvider === option.label}
-                onChange={() => selectProvider(option.label)}
-                className="sr-only"
-              />
-              <span aria-hidden className={`${option.icon} size-4 shrink-0`} />
-              <span className="truncate">{option.label}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <Field className="contents">
+        <Fieldset
+          render={
+            <RadioGroup
+              name={`${sourceType}-provider`}
+              value={activeProvider}
+              onValueChange={selectProvider}
+              className="block"
+            />
+          }
+        >
+          <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+            {tCreation(($) => $['stepOne.website.chooseProvider'])}
+          </FieldsetLegend>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {providers.map((option) => (
+              <FieldItem key={option.label} className="contents">
+                <label
+                  className={cn(
+                    'flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+                    activeProvider === option.label
+                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                      : 'border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+                  )}
+                >
+                  <Radio value={option.label} className="sr-only" />
+                  <span aria-hidden className={`${option.icon} size-4 shrink-0`} />
+                  <span className="truncate">{option.label}</span>
+                </label>
+              </FieldItem>
+            ))}
+          </div>
+        </Fieldset>
+      </Field>
 
       {sourceType === 'onlineDrive' && (
         <section

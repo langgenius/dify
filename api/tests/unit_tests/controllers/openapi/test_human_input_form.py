@@ -281,7 +281,7 @@ class TestFormHints:
         [out] = list(with_form_hints(iter([f"data: {json.dumps(event)}\n\n"]), app_id="a1"))
         body = json.loads(out[len("data: ") :])
         op = op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)
-        assert op == "run.form.submit"
+        assert op == "submit.run.form"
         assert body["hints"] == [
             {
                 "summary": "批准",

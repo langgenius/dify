@@ -43,7 +43,7 @@ const normalizeRoleType = (type?: string): Role['type'] => {
 }
 
 const normalizeRoleTag = (roleTag?: string): Role['role_tag'] => {
-  if (roleTag === 'owner') return 'owner'
+  if (roleTag === 'owner' || roleTag === 'admin') return roleTag
 
   return ''
 }

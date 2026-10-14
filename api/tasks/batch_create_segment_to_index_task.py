@@ -23,7 +23,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from models.model import UploadFile
-from services.vector_service import VectorService
+from services.knowledge.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 
@@ -61,11 +61,15 @@ def batch_create_segment_to_index_task(
 
     with session_factory.create_session() as session:
         try:
-            dataset = session.get(Dataset, dataset_id)
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id))
             if not dataset:
                 raise ValueError("Dataset not exist.")
 
-            dataset_document = session.get(Document, document_id)
+            dataset_document = session.scalar(
+                select(Document).where(
+                    Document.id == document_id, Document.dataset_id == dataset_id, Document.tenant_id == tenant_id
+                )
+            )
             if not dataset_document:
                 raise ValueError("Document not exist.")
 
@@ -76,7 +80,9 @@ def batch_create_segment_to_index_task(
             ):
                 raise ValueError("Document is not available.")
 
-            upload_file = session.get(UploadFile, upload_file_id)
+            upload_file = session.scalar(
+                select(UploadFile).where(UploadFile.id == upload_file_id, UploadFile.tenant_id == tenant_id)
+            )
             if not upload_file:
                 raise ValueError("UploadFile not found.")
 
@@ -123,7 +129,7 @@ def batch_create_segment_to_index_task(
         if len(content) == 0:
             raise ValueError("The CSV file is empty.")
 
-    document_segments = []
+    segment_ids: list[str] = []
     embedding_model = None
     if dataset_config["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
         model_manager = ModelManager.for_tenant(tenant_id=dataset_config["tenant_id"])
@@ -143,7 +149,11 @@ def batch_create_segment_to_index_task(
     with session_factory.create_session() as session, session.begin():
         max_position = (
             session.scalar(
-                select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document_config["id"])
+                select(func.max(DocumentSegment.position)).where(
+                    DocumentSegment.tenant_id == tenant_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.document_id == document_id,
+                )
             )
             or 0
         )
@@ -172,21 +182,28 @@ def batch_create_segment_to_index_task(
                 segment_document.word_count += len(segment["answer"])
             word_count_change += segment_document.word_count
             session.add(segment_document)
-            document_segments.append(segment_document)
+            segment_ids.append(segment_document.id)
 
-    with session_factory.create_session() as session, session.begin():
-        dataset_document = session.get(Document, document_id)
-        if dataset_document:
-            assert dataset_document.word_count is not None
-            dataset_document.word_count += word_count_change
-            session.add(dataset_document)
-
-    with session_factory.create_session() as session, session.begin():
-        dataset = session.get(Dataset, dataset_id)
-        if dataset:
-            VectorService.create_segments_vector(
-                None, document_segments, dataset, document_config["doc_form"], session=session
+        dataset_document = session.scalar(
+            select(Document).where(
+                Document.id == document_id, Document.dataset_id == dataset_id, Document.tenant_id == tenant_id
             )
+        )
+        if dataset_document is None:
+            raise ValueError("Document no longer exists.")
+        dataset_document.word_count = (dataset_document.word_count or 0) + word_count_change
+        session.add(dataset_document)
+
+    # The registry imports this task while assembling the batch dispatcher.
+    from extensions.ext_application_services import application_services
+
+    try:
+        application_services().knowledge.segments.mutations.index_segments(
+            DatasetRef(tenant_id, dataset_id).document(document_id), segment_ids=segment_ids
+        )
+    except Exception:
+        redis_client.setex(indexing_cache_key, 600, "error")
+        raise
 
     redis_client.setex(indexing_cache_key, 600, "completed")
     end_at = time.perf_counter()

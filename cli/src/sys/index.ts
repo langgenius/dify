@@ -10,6 +10,10 @@ export function env(): NodeJS.ProcessEnv {
   return process.env
 }
 
+export function argv(): readonly string[] {
+  return process.argv.slice(2)
+}
+
 export function processExit(code: number): never {
   return process.exit(code) as never
 }
@@ -66,9 +70,6 @@ function posixAtomicReplace(src: string, dst: string): void {
 }
 
 function win32AtomicReplace(src: string, dst: string): void {
-  try {
-    fs.unlinkSync(dst)
-  } catch {}
   fs.renameSync(src, dst)
 }
 

@@ -4,8 +4,8 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type React from 'react'
-import { QueryClient } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient, useQuery } from '@tanstack/react-query'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
@@ -23,6 +23,7 @@ import { WebAppAccessCard } from '../web-app-access-card'
 const mocks = vi.hoisted(() => ({
   getUserCanAccess:
     vi.fn<(appId: string, isInstalledApp: boolean) => Promise<{ result: boolean }>>(),
+  agentDetailQueryFn: vi.fn(),
   apiAccessQueryFn: vi.fn(),
   apiKeysQueryFn: vi.fn(),
   siteEnableMutation: vi.fn(),
@@ -176,7 +177,7 @@ vi.mock('@/service/console', () => ({
         get: {
           queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
             queryKey: ['agent-detail', input.params.agent_id],
-            queryFn: async () => createAgent(),
+            queryFn: () => mocks.agentDetailQueryFn(),
             staleTime: Infinity,
           }),
           queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
@@ -337,6 +338,15 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
   return queryClient
 }
 
+function QueryOwnedWebAppCard() {
+  const { data: agent, isPending } = useQuery(
+    consoleQuery.agent.byAgentId.get.queryOptions({
+      input: { params: { agent_id: 'agent-1' } },
+    }),
+  )
+  return <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={isPending} />
+}
+
 function createDeferredPromise<T>() {
   let resolve!: (value: T) => void
   let reject!: (reason?: unknown) => void
@@ -351,6 +361,7 @@ function createDeferredPromise<T>() {
 describe('Agent access surface cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.agentDetailQueryFn.mockResolvedValue(createAgent())
     mocks.getUserCanAccess.mockResolvedValue({ result: true })
     mocks.accessSubjectsQueryFn.mockResolvedValue({ groups: [], members: [] })
   })
@@ -671,6 +682,21 @@ describe('Agent access surface cards', () => {
           name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,
         }),
       ).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      const trigger = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.customFrontend',
+      })
+      await waitFor(() => expect(trigger).toHaveFocus())
+      await user.keyboard('{Enter}')
+      expect(
+        await screen.findByRole('dialog', {
+          name: 'appOverview.overview.appInfo.customize.title',
+        }),
+      ).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(trigger).toHaveFocus())
     })
 
     it('should open the embedded dialog with the Agent web app route', async () => {
@@ -694,7 +720,7 @@ describe('Agent access surface cards', () => {
       })
 
       await user.click(
-        within(dialog).getByRole('button', {
+        within(dialog).getByRole('tab', {
           name: 'appOverview.overview.appInfo.embedded.scripts',
         }),
       )
@@ -806,6 +832,72 @@ describe('Agent access surface cards', () => {
       await waitFor(() => {
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
       })
+    })
+
+    it('preserves the draft after POST failure and closes on retry before detail refresh completes', async () => {
+      const user = userEvent.setup()
+      const refreshed = createDeferredPromise<AgentAppDetailWithSite>()
+      mocks.siteMutation.mockResolvedValue({}).mockRejectedValueOnce(new Error('Save failed'))
+      const queryClient = renderWithQueryClient(<QueryOwnedWebAppCard />)
+      const trigger = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.settings',
+      })
+      await user.click(trigger)
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      const name = within(dialog).getByPlaceholderText('app.appNamePlaceholder')
+      await user.clear(name)
+      await user.type(name, 'Committed portal')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1))
+      expect(dialog).toBeInTheDocument()
+      expect(name).toHaveValue('Committed portal')
+      expect(mocks.agentDetailQueryFn).not.toHaveBeenCalled()
+
+      mocks.agentDetailQueryFn.mockReturnValueOnce(refreshed.promise)
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(toast.success).toHaveBeenCalledTimes(1)
+      expect(mocks.agentDetailQueryFn).toHaveBeenCalledTimes(1)
+      const updated = createAgent({
+        site: { ...createAgent().site!, title: 'Committed portal', chat_color_theme: '#123456' },
+      })
+      await act(async () => refreshed.resolve(updated))
+      await waitFor(() =>
+        expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual(updated),
+      )
+      await user.click(trigger)
+      const reopened = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(reopened).getByPlaceholderText('app.appNamePlaceholder')).toHaveValue(
+        'Committed portal',
+      )
+      expect(within(reopened).getByPlaceholderText('E.g #A020F0')).toHaveValue('#123456')
+    })
+
+    it('closes after a successful POST even when background agent refresh fails', async () => {
+      const user = userEvent.setup()
+      mocks.siteMutation.mockResolvedValue({})
+      mocks.agentDetailQueryFn.mockRejectedValueOnce(new Error('Refresh failed'))
+      const queryClient = renderWithQueryClient(<QueryOwnedWebAppCard />)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.settings',
+        }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() =>
+        expect(queryClient.getQueryState(['agent-detail', 'agent-1'])?.status).toBe('error'),
+      )
+      expect(toast.success).toHaveBeenCalledTimes(1)
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
     it('should fall back to the Agent icon tuple when WebApp site icon data is missing', async () => {
@@ -1110,7 +1202,21 @@ describe('Agent access surface cards', () => {
       )
 
       const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
-      expect(await within(dialog).findByText('app...ing-secret-key-token')).toBeInTheDocument()
+      const keyTable = within(dialog).getByRole('table', {
+        name: 'appApi.apiKeyModal.apiSecretKey',
+      })
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.secretKey' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.created' }),
+      ).toBeInTheDocument()
+      expect(
+        within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.lastUsed' }),
+      ).toBeInTheDocument()
+      expect(
+        await within(keyTable).findByRole('cell', { name: 'app...ing-secret-key-token' }),
+      ).toBeInTheDocument()
 
       await user.click(
         within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
