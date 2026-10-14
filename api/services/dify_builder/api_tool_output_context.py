@@ -36,6 +36,33 @@ _GUIDANCE = (
     "no body shape is established: do not guess fields from a label or capability description."
 )
 
+_CODE_SYSTEM_RULES = (
+    "# Native API Code generation rules\n\n"
+    "Use the direct response declarations supplied as user-context data when consuming a native API response. "
+    "If the user disables filtering, deduplication or sorting, do not silently drop or reorder records; "
+    "this does not waive declared required-field or type validation. "
+    "Validate consumed declared root/item fields and types on every record before applying the result bound. "
+    "Fail clearly on missing or ill-typed required values, including null when the declaration forbids null. "
+    "Do not use .get/defaults to turn a missing required value into successful null/default output. "
+    "Enforce any explicit maximum in the original user request at the result end, independently of API inputs: "
+    "a request count/limit parameter does not guarantee the returned count. "
+    "Preserve that original maximum even when a partial plan/purpose merely says to map every record. "
+    "Do not invent a maximum when the original request states none. "
+    "Valid empty or shorter results retain their actual count; never pad or fabricate records. "
+    "If no direct response declaration establishes a shape, do not invent fields or required/type constraints."
+)
+
+
+def format_api_tool_code_system_rules(*, node_type: str, api_context: str) -> str:
+    """Return fixed generation rules only for a Code consumer of relevant APIs.
+
+    The context is the existing bounded renderer's result, used only as a gate.
+    Its workspace schema/labels/descriptions stay user-message data and never
+    become system instructions. These rules guide generation, not validation
+    or execution of the model's generated Code.
+    """
+    return _CODE_SYSTEM_RULES if node_type == "code" and api_context else ""
+
 
 def _body_transport(contracts: dict[str, object]) -> str:
     schemas = contracts.get("schemas")

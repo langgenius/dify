@@ -85,13 +85,17 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from services.dify_builder.api_tool_output_context import format_api_tool_output_context
+from services.dify_builder.api_tool_output_context import (
+    format_api_tool_code_system_rules,
+    format_api_tool_output_context,
+)
 from services.dify_builder.native_api_output_contract import (
     collect_native_api_selector_refs,
     declares_native_api_output,
     is_native_api_tool,
     native_api_output_error_hint,
 )
+from services.dify_builder.native_api_string_input_binding import normalize_native_api_string_bindings
 from services.workflow_generator_response import parse_workflow_generator_response
 
 logger = logging.getLogger(__name__)
@@ -1353,11 +1357,16 @@ class WorkflowGenerator:
                 if selected_tool is not None
                 else format_node_tool_catalogue_section(tool_catalogue_text)
             )
-        tool_catalogue_section += format_api_tool_output_context(
+        api_context = format_api_tool_output_context(
             plan_json=plan_json,
             target_node_id=node_id,
             entries=tool_catalogue_entries,
         )
+        tool_catalogue_section += api_context
+        system_prompt = get_node_builder_system_prompt(node_type)
+        api_code_rules = format_api_tool_code_system_rules(node_type=node_type, api_context=api_context)
+        if api_code_rules:
+            system_prompt += "\n\n" + api_code_rules
         user_prompt = NODE_BUILDER_USER_PROMPT.format(
             node_id=node_id,
             node_type=node_type,
@@ -1389,7 +1398,7 @@ class WorkflowGenerator:
         parsed = cls._invoke_and_parse_json(
             model_instance=model_instance,
             messages=[
-                SystemPromptMessage(content=get_node_builder_system_prompt(node_type)),
+                SystemPromptMessage(content=system_prompt),
                 UserPromptMessage(content=user_prompt),
             ],
             model_parameters=model_parameters,
@@ -1471,6 +1480,12 @@ class WorkflowGenerator:
                 {name: value for name, value in raw_tool_parameters.items() if name in llm_parameter_names}
                 if isinstance(raw_tool_parameters, dict)
                 else {}
+            )
+            data["tool_parameters"] = normalize_native_api_string_bindings(
+                tool_data=data,
+                nodes=graph.get("nodes") or [],
+                parameters=parameters,
+                placeholder_pattern=WorkflowGenerator._VAR_REF_RE,
             )
             raw_configurations = data.get("tool_configurations")
             configurations = (
