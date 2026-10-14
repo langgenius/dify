@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, select
+from sqlalchemy.dialects import mysql, postgresql
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -176,6 +178,13 @@ class TestInstalledAppsListApi:
         assert "workflow_id" in compiled_filter
         assert "app_model_config_id" in compiled_filter
         assert "apps.mode != 'agent'" in compiled_filter
+
+    @pytest.mark.parametrize("dialect", [mysql.dialect(), postgresql.dialect()], ids=["mysql", "postgresql"])
+    def test_order_compiles_without_nulls_last_for_every_dialect(self, dialect: Dialect) -> None:
+        statement = select(InstalledApp).order_by(*service_module._installed_app_order_by())
+
+        # MySQL rejects NULLS LAST, so null dates must sort last through a portable key.
+        assert "NULLS" not in str(statement.compile(dialect=dialect)).upper()
 
     def test_get_filters_tenant_publication_mode_and_app_id(
         self,
