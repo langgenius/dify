@@ -231,7 +231,7 @@ node_modules
 plugins.jsonl
 
 # generated API OpenAPI specs
-packages/contracts/openapi/*
+packages/contracts/openapi/
 
 # mise
 mise.toml
