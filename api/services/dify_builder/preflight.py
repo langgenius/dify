@@ -9,14 +9,14 @@ have said up front. ``preflight_errors`` runs that pass over a graph dict.
 
 Three layers, each built on the one above:
 
-- ``preflight_errors`` -- every node ``Graph.init`` would reject;
+- ``preflight_errors`` -- native config and known HTTP comparison refusals;
 - ``new_preflight_problems`` -- only the ones an edit ADDED, so a draft the
   user already broke cannot veto an unrelated change. This is the rule
   ``dify_port.apply_repair`` refuses a write on, defined once so the dry run
   and the write chokepoint cannot answer it differently;
 - ``vet_intents`` -- the whole engine check a proposed batch must pass before
   it reaches the approval gate: the structural dry run plus that diff, with
-  every refusal quoted from the engine.
+  native config refusals and known producer semantics checked identically.
 
 Pure with respect to the Builder: no session, no DB, no engine state. It
 imports ``core.workflow.node_factory`` (the same validation ``create_node``
@@ -42,6 +42,7 @@ from services.dify_builder import credentials, graph_ops
 # this module is (it reaches no further than ``credentials`` and
 # ``graph_normalizers``).
 from services.dify_builder.agent import graph_prompt
+from services.dify_builder.native_http_output_contract import native_http_condition_problems
 from services.dify_builder.node_policy import proposal_policy_rejections
 
 # graphon's ``Graph._filter_canvas_only_nodes`` drops persisted note widgets
@@ -76,8 +77,9 @@ _CRASH_MESSAGE_CHARS = 200
 
 
 def preflight_errors(graph: Graph) -> list[str]:
-    """Every node of ``graph`` that ``Graph.init`` would reject, one message
-    each, in node order. Each message starts with ``node '<id>' (<type>):``
+    """Native config refusals and known numeric HTTP condition failures.
+
+    Each message starts with ``node '<id>' (<type>):``
     (see ``core.workflow.node_factory.validate_node_config``). Empty when the
     draft would start.
 
@@ -223,7 +225,11 @@ class _NodeProblem(NamedTuple):
 
 
 def _node_problems(graph: Graph) -> list[_NodeProblem]:
-    """One ``_NodeProblem`` per node ``Graph.init`` would reject, in node order."""
+    """Native config refusals plus known HTTP numeric comparison failures.
+
+    Semantic failures use the same stable condition path as DTO failures, so
+    touched-node validity and unchanged-draft exemptions apply to both.
+    """
     problems: list[_NodeProblem] = []
     for node in graph.get("nodes") or []:
         if not isinstance(node, Mapping) or node.get("type") == _CANVAS_ONLY_NODE_TYPE:
@@ -233,6 +239,14 @@ def _node_problems(graph: Graph) -> list[_NodeProblem]:
             continue
         locations = _error_locations(exc)
         problems.append(_NodeProblem(_node_key(node), locations, _withheld_message(node, exc, locations)))
+    problems.extend(
+        _NodeProblem(
+            (problem.node_id, "if-else"),
+            frozenset({problem.location}),
+            f"node {problem.node_id!r} (if-else): {problem.detail}",
+        )
+        for problem in native_http_condition_problems(graph.get("nodes") or [])
+    )
     return problems
 
 

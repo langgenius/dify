@@ -96,6 +96,15 @@ from services.dify_builder.native_api_output_contract import (
     native_api_output_error_hint,
 )
 from services.dify_builder.native_api_string_input_binding import normalize_native_api_string_bindings
+from services.dify_builder.native_http_output_contract import (
+    HttpPlanContext,
+    aliased_http_output,
+    declares_http_output,
+    format_http_output_context,
+    native_http_condition_problems,
+    native_http_variable_types,
+    snapshot_http_plan_context,
+)
 from services.workflow_generator_response import parse_workflow_generator_response
 
 logger = logging.getLogger(__name__)
@@ -1244,6 +1253,9 @@ class WorkflowGenerator:
         or permanent fragment failures abort the graph, preserving the
         generator's existing fail-closed contract.
         """
+        http_contract_context = snapshot_http_plan_context(
+            plan_nodes, plan_edges, (current_graph or {}).get("nodes") or []
+        )
         existing_by_id = {
             str(node.get("id")): node
             for node in ((current_graph or {}).get("nodes") or [])
@@ -1289,6 +1301,7 @@ class WorkflowGenerator:
                         node_outputs=node_outputs,
                         node_types=node_types,
                         existing_node=existing_by_id.get(str(node.get("id"))),
+                        http_contract_context=http_contract_context,
                     ): str(node.get("id"))
                     for node in nodes_to_build
                 }
@@ -1333,6 +1346,7 @@ class WorkflowGenerator:
         node_outputs: dict[str, list[str]],
         node_types: dict[str, str],
         existing_node: dict[str, Any] | None,
+        http_contract_context: HttpPlanContext | None = None,
     ) -> dict[str, Any]:
         """Generate only the semantic config for one normalized plan node."""
         node_id = str(target_node.get("id") or "")
@@ -1363,7 +1377,11 @@ class WorkflowGenerator:
             entries=tool_catalogue_entries,
         )
         tool_catalogue_section += api_context
+        http_system_rules, http_user_context = format_http_output_context(http_contract_context, node_id)
+        tool_catalogue_section += http_user_context
         system_prompt = get_node_builder_system_prompt(node_type)
+        if http_system_rules:
+            system_prompt += "\n\n" + http_system_rules
         api_code_rules = format_api_tool_code_system_rules(node_type=node_type, api_context=api_context)
         if api_code_rules:
             system_prompt += "\n\n" + api_code_rules
@@ -2002,6 +2020,7 @@ class WorkflowGenerator:
         references aren't validated here because we don't know each tool's
         schema — the run time validates those.
         """
+        http_producer_ids = frozenset(selector[0] for selector, _ in native_http_variable_types(nodes))
         nodes_by_id: dict[str, dict[str, Any]] = {n.get("id", ""): n for n in nodes if n.get("id")}
         start_node = next(
             (n for n in nodes if n.get("data", {}).get("type") == BuiltinNodeTypes.START),
@@ -2075,7 +2094,9 @@ class WorkflowGenerator:
             else:
                 # Prefer a known output-name alias (e.g. HTTP-request `response` -> `body`);
                 # otherwise fall back to a rewrite only when the source has a sole output.
-                replacement = cls._aliased_output(target, var) or cls._sole_declared_variable(target)
+                replacement = cls._aliased_output(
+                    target, var, http_producer_is_unique=node_id in http_producer_ids
+                ) or cls._sole_declared_variable(target)
             if replacement is None:
                 continue
             target_is_llm = (target.get("data") or {}).get("type") == BuiltinNodeTypes.LLM
@@ -2330,7 +2351,7 @@ class WorkflowGenerator:
         if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
             return any(isinstance(p, dict) and p.get("name") == root for p in (data.get("parameters") or []))
         if node_type == BuiltinNodeTypes.HTTP_REQUEST:
-            return root in {"body", "status_code", "headers", "files"}
+            return declares_http_output(var)
         if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
             return root == "output"
         if node_type == BuiltinNodeTypes.TOOL:
@@ -2412,7 +2433,6 @@ class WorkflowGenerator:
     # unambiguous aliases. HTTP-request nodes expose {body, status_code, headers,
     # files} and never `response`; the response body a workflow wants is `body`.
     _OUTPUT_ALIASES: dict[tuple[str, str], str] = {
-        (BuiltinNodeTypes.HTTP_REQUEST, "response"): "body",
         # `result` is the output name models reach for on a tool node; the
         # real one is `text`. Rewriting beats failing the build over it.
         (BuiltinNodeTypes.TOOL, "result"): "text",
@@ -2449,13 +2469,15 @@ class WorkflowGenerator:
         return not cls._llm_schema_properties(data)
 
     @classmethod
-    def _aliased_output(cls, node: dict[str, Any], var: str) -> str | None:
+    def _aliased_output(cls, node: dict[str, Any], var: str, *, http_producer_is_unique: bool = True) -> str | None:
         """Map a known-wrong output name to the correct one for this node type,
         but only when that correct output is actually declared (safety)."""
         data = node.get("data") or {}
         node_type = data.get("type")
         if is_native_api_tool(data) or not isinstance(node_type, str):
             return None
+        if node_type == BuiltinNodeTypes.HTTP_REQUEST:
+            return aliased_http_output(data, var, producer_is_unique=http_producer_is_unique)
         replacement = cls._OUTPUT_ALIASES.get((node_type, var))
         if replacement is None:
             return None
@@ -3057,6 +3079,8 @@ class WorkflowGenerator:
             parent chain;
           * variable references (``{{#node.var#}}`` / value selectors) that
             point at a node which does NOT declare the variable;
+          * direct native HTTP v1 numeric status comparisons using the known
+            incompatible string/boolean ``is`` / ``is not`` operators;
           * tool nodes naming a ``(provider, tool)`` pair the tenant hasn't
             installed.
 
@@ -3168,6 +3192,10 @@ class WorkflowGenerator:
         # earlier in postprocess, so anything that survives to here is
         # genuinely unresolvable.
         errors.extend(cls._collect_unresolved_refs(nodes=nodes, mode=mode))
+        errors.extend(
+            _err(WorkflowGenerateErrorCode.INVALID_SCHEMA, problem.detail, node_id=problem.node_id)
+            for problem in native_http_condition_problems(nodes)
+        )
 
         return errors
 
