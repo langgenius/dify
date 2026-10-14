@@ -515,7 +515,7 @@ def test_delete_archive_commits_request_before_dispatch_and_can_be_retried(caplo
 
     def dispatch(*, tenant_id: str, year: int, month: int) -> None:
         assert bundles.records[0].deletion_status == WorkflowRunArchiveDeletionStatus.PENDING
-        assert getattr(caplog.records[-1], "attributes", {})["event"] == "workflow_run_archive.deletion_requested"
+        assert caplog.records[-1].__dict__["attributes"]["event"] == "workflow_run_archive.deletion_requested"
         dispatches.append((tenant_id, year, month))
 
     service = _service(bundles=bundles, deletion_dispatcher=dispatch)
@@ -558,7 +558,7 @@ def test_failed_deletion_dispatch_preserves_request_and_disables_downloads(caplo
         _service(bundles=bundles).list_archives(_CONTEXT).months[0].deletion_status
         == WorkflowRunArchiveDeletionStatus.FAILED
     )
-    audit = [getattr(record, "attributes", {}) for record in caplog.records]
+    audit = [record.__dict__["attributes"] for record in caplog.records]
     assert [event["event"] for event in audit] == [
         "workflow_run_archive.deletion_requested",
         "workflow_run_archive.deletion_enqueue_failed",
@@ -571,4 +571,4 @@ def test_delete_archive_without_bundles_returns_completed(caplog: pytest.LogCapt
     caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_log_service")
     assert _service().delete_archive(_CONTEXT, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.COMPLETED
     assert len(caplog.records) == 1
-    assert getattr(caplog.records[0], "attributes", {})["event"] == "workflow_run_archive.deletion_noop"
+    assert caplog.records[0].__dict__["attributes"]["event"] == "workflow_run_archive.deletion_noop"

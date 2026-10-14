@@ -180,9 +180,9 @@ def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
             other_month.id,
         }
     completed = [
-        getattr(record, "attributes", {})
+        record.__dict__.get("attributes", {})
         for record in caplog.records
-        if getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+        if record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
     ]
     assert completed == [
         {
@@ -226,13 +226,13 @@ def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
         assert prefix + "manifest.json" in archive.objects
     assert download_key in downloads.objects
     assert not any(
-        getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+        record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
         for record in caplog.records
     )
     failed = next(
-        getattr(record, "attributes", {})
+        record.__dict__.get("attributes", {})
         for record in caplog.records
-        if getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_failed"
+        if record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_failed"
     )
     assert (failed["tenant_id"], failed["year"], failed["month"]) == (TENANT_ID, 2025, 3)
 
@@ -245,7 +245,7 @@ def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     assert deleter.delete(tenant_id=TENANT_ID, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.COMPLETED
     assert (
         sum(
-            getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+            record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
             for record in caplog.records
         )
         == 1
