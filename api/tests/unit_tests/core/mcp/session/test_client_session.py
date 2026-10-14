@@ -440,6 +440,68 @@ def test_list_tools(streams):
     t.join(timeout=1)
 
 
+@pytest.mark.parametrize(
+    ("method_name", "wire_method", "result_key"),
+    [
+        ("list_tools", "tools/list", "tools"),
+        ("list_resources", "resources/list", "resources"),
+        ("list_resource_templates", "resources/templates/list", "resourceTemplates"),
+        ("list_prompts", "prompts/list", "prompts"),
+    ],
+)
+@pytest.mark.parametrize("cursor", ["opaque-cursor-1", ""])
+def test_list_methods_send_cursor(streams, method_name, wire_method, result_key, cursor: str):
+    read_stream, write_stream = streams
+    session = ClientSession(read_stream, write_stream)
+
+    def mock_server():
+        msg = write_stream.get(timeout=2)
+        assert msg.message.root.method == wire_method
+        assert msg.message.root.params == {"cursor": cursor}
+        req_id = msg.message.root.id
+        resp = types.JSONRPCResponse(jsonrpc="2.0", id=req_id, result={result_key: [], "nextCursor": "cursor-2"})
+        read_stream.put(SessionMessage(message=types.JSONRPCMessage(resp)))
+
+    import threading
+
+    t = threading.Thread(target=mock_server, daemon=True)
+    t.start()
+
+    with session:
+        method = {
+            "list_tools": session.list_tools,
+            "list_resources": session.list_resources,
+            "list_resource_templates": session.list_resource_templates,
+            "list_prompts": session.list_prompts,
+        }[method_name]
+        result = method(cursor=cursor)
+        assert result.nextCursor == "cursor-2"
+    t.join(timeout=1)
+
+
+def test_list_tools_omits_params_without_cursor(streams):
+    read_stream, write_stream = streams
+    session = ClientSession(read_stream, write_stream)
+
+    def mock_server():
+        msg = write_stream.get(timeout=2)
+        assert msg.message.root.method == "tools/list"
+        assert msg.message.root.params is None
+        req_id = msg.message.root.id
+        resp = types.JSONRPCResponse(jsonrpc="2.0", id=req_id, result={"tools": []})
+        read_stream.put(SessionMessage(message=types.JSONRPCMessage(resp)))
+
+    import threading
+
+    t = threading.Thread(target=mock_server, daemon=True)
+    t.start()
+
+    with session:
+        result = session.list_tools()
+        assert result.tools == []
+    t.join(timeout=1)
+
+
 def test_send_roots_list_changed(streams):
     read_stream, write_stream = streams
     session = ClientSession(read_stream, write_stream)
