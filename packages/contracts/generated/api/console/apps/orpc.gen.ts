@@ -2544,7 +2544,6 @@ export const get42 = oc
   .output(zGetAppsByAppIdTextToAudioVoicesResponse)
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
-    app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },

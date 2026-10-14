@@ -6806,7 +6806,6 @@ export type GetAppsByAppIdTextToAudioVoicesData = {
 
 export type GetAppsByAppIdTextToAudioVoicesErrors = {
   400:
-    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError

@@ -3953,7 +3953,6 @@ export type GetAgentByAgentIdTextToAudioVoicesData = {
 
 export type GetAgentByAgentIdTextToAudioVoicesErrors = {
   400:
-    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError

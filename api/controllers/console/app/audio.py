@@ -433,8 +433,6 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
         )
 
         return dump_response(TextToSpeechVoiceListResponse, response)
-    except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
-        raise AppUnavailableError("Text to audio voices language parameter loss.")
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
     except QuotaExceededError:
@@ -453,7 +451,6 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str):
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
     @error_responses(
-        AppUnavailableError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
@@ -482,7 +479,6 @@ class TextModesApi(Resource):
 class AgentTextToSpeechVoicesApi(Resource):
     @error_responses(
         AgentNotFoundError,
-        AppUnavailableError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
