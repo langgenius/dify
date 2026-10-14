@@ -146,6 +146,11 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             config = load_app_parameter_config(app, session=session) if include_config else None
             return AppDescription(app_summary(app), bool(app.enable_api), config)
 
+    def list_workspace_app_ids(self, tenant_id: str) -> list[str]:
+        """List every App row in the workspace, ignoring console visibility and status."""
+        with self._session_factory() as session:
+            return list(session.scalars(select(App.id).where(App.tenant_id == tenant_id)).all())
+
     @override
     def find_visible_app(self, app_id: str, tenant_id: str) -> AppSummary | None:
         with self._session_factory() as session:

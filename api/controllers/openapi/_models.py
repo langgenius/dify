@@ -226,6 +226,24 @@ class WorkspaceDetailResponse(BaseModel):
     created_at: str | None = None
 
 
+class DeviceFlowErrorResponse(BaseModel):
+    """RFC 8628-style device-flow error. These routes keep the OAuth ``{"error": code}`` shape
+    instead of ``ErrorBody`` because device clients parse it."""
+
+    error: Literal[
+        "unsupported_client",
+        "slow_down",
+        "expired_token",
+        "authorization_pending",
+        "access_denied",
+        "expired_or_unknown",
+        "already_resolved",
+        "approve_in_progress",
+        "approval_outcome_unknown",
+        "state_lost",
+    ]
+
+
 class DeviceCodeResponse(BaseModel):
     device_code: str
     user_code: str

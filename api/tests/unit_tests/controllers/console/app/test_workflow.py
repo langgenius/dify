@@ -26,6 +26,7 @@ from models.workflow import Workflow, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.controllers.error_body import raised_error
 
 
 @pytest.fixture(autouse=True)
@@ -319,7 +320,7 @@ def test_sync_draft_workflow_invalid_json(app: Flask, monkeypatch: pytest.Monkey
         data="[]",
         content_type="application/json",
     ):
-        response, status = handler(api, _account(), app_model=_app())
+        response, status = raised_error(lambda: handler(api, _account(), app_model=_app()))
 
     assert status == 400
     assert response["message"] == "Invalid JSON data"
@@ -475,7 +476,7 @@ def test_sync_draft_workflow_rejects_non_boolean_force(
             with pytest.raises(ValidationError, match="Input should be a valid boolean"):
                 handler(api, _account(), app_model=_app())
         else:
-            response, status = handler(api, _account(), app_model=_app())
+            response, status = raised_error(lambda: handler(api, _account(), app_model=_app()))
             assert status == 400
             assert response["message"] == "Invalid JSON data"
 

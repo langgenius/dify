@@ -16,6 +16,7 @@ from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole
+from libs.external_api import error_responses
 from libs.helper import build_avatar_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from services.app.workflow_comment_service import (
@@ -235,6 +236,7 @@ def _translate_errors() -> Generator[None]:
 class WorkflowCommentListApi(Resource):
     """API for listing and creating workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("list_workflow_comments")
     @console_ns.doc(description="Get all comments for a workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -246,6 +248,7 @@ class WorkflowCommentListApi(Resource):
             comments = application_services().workflow_comments.list_comments(request_context, str(app_id))
         return dump_response(WorkflowCommentBasicList, {"data": comments})
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("create_workflow_comment")
     @console_ns.doc(description="Create a new workflow comment")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -273,6 +276,7 @@ class WorkflowCommentListApi(Resource):
 class WorkflowCommentDetailApi(Resource):
     """API for managing individual workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("get_workflow_comment")
     @console_ns.doc(description="Get a specific workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
@@ -284,6 +288,7 @@ class WorkflowCommentDetailApi(Resource):
             comment = application_services().workflow_comments.get_comment(request_context, str(app_id), comment_id)
         return dump_response(WorkflowCommentDetail, comment)
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("update_workflow_comment")
     @console_ns.doc(description="Update a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
@@ -314,6 +319,7 @@ class WorkflowCommentDetailApi(Resource):
             )
         return dump_response(WorkflowCommentUpdate, result)
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("delete_workflow_comment")
     @console_ns.doc(description="Delete a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
@@ -330,6 +336,7 @@ class WorkflowCommentDetailApi(Resource):
 class WorkflowCommentResolveApi(Resource):
     """API for resolving and reopening workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("resolve_workflow_comment")
     @console_ns.doc(description="Resolve a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
@@ -346,6 +353,7 @@ class WorkflowCommentResolveApi(Resource):
 class WorkflowCommentReplyApi(Resource):
     """API for managing comment replies."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("create_workflow_comment_reply")
     @console_ns.doc(description="Add a reply to a workflow comment")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID"})
@@ -378,6 +386,7 @@ class WorkflowCommentReplyApi(Resource):
 class WorkflowCommentReplyDetailApi(Resource):
     """API for managing individual comment replies."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("update_workflow_comment_reply")
     @console_ns.doc(description="Update a comment reply")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
@@ -407,6 +416,7 @@ class WorkflowCommentReplyDetailApi(Resource):
             )
         return dump_response(WorkflowCommentReplyUpdate, result)
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("delete_workflow_comment_reply")
     @console_ns.doc(description="Delete a comment reply")
     @console_ns.doc(params={"app_id": "Application ID", "comment_id": "Comment ID", "reply_id": "Reply ID"})
@@ -423,6 +433,7 @@ class WorkflowCommentReplyDetailApi(Resource):
 class WorkflowCommentMentionUsersApi(Resource):
     """API for getting mentionable users for workflow comments."""
 
+    @error_responses(AppNotFoundError, ForbiddenError)
     @console_ns.doc("workflow_comment_mention_users")
     @console_ns.doc(description="Get all users in current tenant for mentions")
     @console_ns.doc(params={"app_id": "Application ID"})

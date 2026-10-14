@@ -1,5 +1,7 @@
 """Unit coverage for ClickZetta configuration and path generation."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
@@ -62,3 +64,51 @@ def test_sql_prefix_generation() -> None:
     storage._config.volume_type = "external"
     storage._config.volume_name = "my_external_volume"
     assert storage._get_volume_sql_prefix() == "VOLUME my_external_volume"
+
+
+def test_scan_table_prefix_matches_file_storage_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    storage = _table_storage()
+    execute = MagicMock(return_value=[("app/trace.json",), ("another-app/trace.json",)])
+    monkeypatch.setattr(storage, "_execute_sql", execute)
+    assert storage.scan("ops_trace/app/") == ["ops_trace/app/trace.json"]
+    execute.assert_called_once_with("LIST TABLE VOLUME test_dataset_ops_trace SUBDIRECTORY 'app/'", fetch=True)
+
+
+def test_scan_special_table_prefix_restores_logical_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    storage = _table_storage()
+    execute = MagicMock(return_value=[("dify_km/tenant/file.txt",)])
+    monkeypatch.setattr(storage, "_execute_sql", execute)
+    assert storage.scan("upload_files/tenant/") == ["upload_files/tenant/file.txt"]
+    execute.assert_called_once_with("LIST USER VOLUME SUBDIRECTORY 'dify_km/tenant/'", fetch=True)
+
+
+def test_scan_preserves_bare_dataset_root_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    storage = _table_storage()
+    execute = MagicMock(return_value=[("file.txt",)])
+    monkeypatch.setattr(storage, "_execute_sql", execute)
+    assert storage.scan("12345") == ["file.txt"]
+    execute.assert_called_once_with("LIST TABLE VOLUME test_dataset_12345", fetch=True)
+
+
+def test_scan_propagates_backend_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    storage = _table_storage()
+    monkeypatch.setattr(storage, "_execute_sql", MagicMock(side_effect=RuntimeError("backend unavailable")))
+    with pytest.raises(RuntimeError, match="backend unavailable"):
+        storage.scan("ops_trace/app/")
+
+
+def test_delete_propagates_failed_existence_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    storage = _table_storage()
+    execute = MagicMock(side_effect=RuntimeError("backend unavailable"))
+    monkeypatch.setattr(storage, "_execute_sql", execute)
+    with pytest.raises(RuntimeError, match="backend unavailable"):
+        storage.delete("ops_trace/app/trace.json")
+    assert execute.call_count == 1
+
+
+def test_delete_absent_file_remains_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    storage = _table_storage()
+    execute = MagicMock(return_value=[])
+    monkeypatch.setattr(storage, "_execute_sql", execute)
+    storage.delete("ops_trace/app/trace.json")
+    assert execute.call_count == 1
