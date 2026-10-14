@@ -9,8 +9,16 @@ vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: app } = await import('@/i18n/locales/en-US/app.json')
   const { default: workflow } = await import('@/i18n/locales/en-US/workflow.json')
+  const { default: builder } = await import('@/i18n/locales/en-US/dify-builder.json')
   const { default: common } = await import('@/i18n/locales/en-US/common.json')
-  return createReactI18nextMock({ ...app, ...workflow, ...common })
+  return createReactI18nextMock({
+    ...app,
+    ...workflow,
+    ...common,
+    ...Object.fromEntries(
+      Object.entries(builder).map(([key, value]) => [`difyBuilder.${key}`, value]),
+    ),
+  })
 })
 
 const longPrompt = Array.from(

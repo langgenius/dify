@@ -17,7 +17,8 @@ _MAX_CONTEXT_CHARS = 12_000
 
 def _history_text(history: list[ConversationItem]) -> str:
     lines: list[str] = []
-    for item in history[-_MAX_HISTORY_ITEMS:]:
+    model_history = [item for item in history if item.kind != "notice"]
+    for item in model_history[-_MAX_HISTORY_ITEMS:]:
         if item.kind == "user":
             text = item.payload.get("text")
             if isinstance(text, str):
@@ -26,7 +27,9 @@ def _history_text(history: list[ConversationItem]) -> str:
             text = item.payload.get("reply_text")
             if isinstance(text, str) and text:
                 lines.append(f"assistant: {text}")
-        elif item.kind in {"notice", "decision", "summary", "error"}:
+            elif isinstance(text, dict):
+                lines.append(f"assistant-presentation: {json.dumps(text, ensure_ascii=False)}")
+        elif item.kind in {"decision", "summary", "error"}:
             lines.append(f"session-{item.kind}: {json.dumps(item.payload, ensure_ascii=False)}")
     return "\n".join(lines)[-_MAX_CONTEXT_CHARS:]
 

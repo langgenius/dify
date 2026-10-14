@@ -73,6 +73,7 @@ export type DifyBuilderSubmitActionPayload = {
   payload?: {
     [key: string]: unknown
   }
+  receipt_snapshot?: DifyBuilderReceiptSnapshot | null
 }
 
 export type DifyBuilderConversationPageResponse = {
@@ -331,7 +332,7 @@ export type BuilderErrorCode =
 export type DifyBuilderActionResponse = {
   id: string
   kind: ActionKind
-  label: string
+  label: string | BuilderCopy | BuilderTextParts
 }
 
 export type DifyBuilderActiveInteractionResponse = {
@@ -347,10 +348,10 @@ export type DifyBuilderAppRevisionResponse = {
 
 export type Decision = {
   default_option_id?: string
-  description?: string
+  description?: string | BuilderCopy | BuilderTextParts
   options?: Array<CardOption>
   submit?: Action | null
-  title: string
+  title: string | BuilderCopy | BuilderTextParts
 }
 
 export type SessionModel = {
@@ -376,7 +377,6 @@ export type Phase =
 export type RecoveryRef = {
   can_continue: boolean
   can_restart: boolean
-  message: string
   recovery_class: string
 }
 
@@ -387,6 +387,14 @@ export type RunStatus =
   | 'processing'
   | 'waiting_confirmation'
   | 'waiting_input'
+
+export type DifyBuilderReceiptSnapshot = {
+  answer?: string
+  fields?: Array<DifyBuilderReceiptFieldSnapshot>
+  interaction_kind: 'choice' | 'form' | 'resource'
+  question: string
+  reply_language: string
+}
 
 export type DifyBuilderUserConversationItemResponse = {
   at_version: number
@@ -645,6 +653,9 @@ export type DifyBuilderConversationItemAppendedEventData = {
         kind: 'preflight_context'
       } & DifyBuilderPreflightContextConversationItemResponse)
     | ({
+        kind: 'assistant_turn'
+      } & DifyBuilderAssistantTurnConversationItemResponse)
+    | ({
         kind: 'plan'
       } & DifyBuilderPlanConversationItemResponse)
     | ({
@@ -671,6 +682,7 @@ export type DifyBuilderProgressEventData = {
   activity: DifyBuilderExecutionActivityResponse | null
   at_version: number
   operation_id: string
+  reply_language?: string
   revision: number
   session_id: string
   status: 'completed' | 'error' | 'running' | 'stopped'
@@ -680,6 +692,7 @@ export type DifyBuilderProgressSnapshotEventData = {
   at_version: number
   execution: DifyBuilderExecutionProgressResponse
   operation_id: string
+  reply_language: string
   revision: number
   session_id: string
 }
@@ -712,13 +725,26 @@ export type DifyBuilderErrorEventData = {
 
 export type ActionKind = 'automatic' | 'destructive' | 'primary' | 'secondary'
 
+export type BuilderCopy = {
+  id: BuilderCopyId
+  params?: {
+    [key: string]: string | number | number
+  }
+  type?: 'copy'
+}
+
+export type BuilderTextParts = {
+  parts: Array<string | BuilderCopy>
+  type?: 'parts'
+}
+
 export type CardOption = {
   canvas_event?: string | null
-  description?: string
+  description?: string | BuilderCopy | BuilderTextParts
   id: string
   input?: OptionInput | null
   is_default?: boolean
-  label: string
+  label: string | BuilderCopy | BuilderTextParts
   next_state?: string | null
   tone?: string
 }
@@ -727,8 +753,14 @@ export type Action = {
   canvas_event?: string | null
   id: string
   kind: ActionKind
-  label: string
+  label: string | BuilderCopy | BuilderTextParts
   next_state?: string | null
+}
+
+export type DifyBuilderReceiptFieldSnapshot = {
+  display_value: string
+  key: string
+  label: string
 }
 
 export type UserItem = {
@@ -737,21 +769,24 @@ export type UserItem = {
 }
 
 export type DecisionItem = {
-  text: string
+  reply_language?: string
+  text: string | BuilderCopy | BuilderTextParts
 }
 
 export type InteractionResponseItem = {
-  answer?: string
+  answer?: string | BuilderCopy | BuilderTextParts
   fields?: Array<InteractionResponseField>
   interaction_kind: 'choice' | 'form' | 'resource'
-  question: string
+  question: string | BuilderCopy | BuilderTextParts
+  reply_language?: string
   submitted_data?: {
     [key: string]: unknown
   }
 }
 
 export type NoticeItem = {
-  text: string
+  reply_language?: string
+  text: string | BuilderCopy | BuilderTextParts
   tone?: string
 }
 
@@ -774,21 +809,25 @@ export type AssistantTurnItem = {
   cards?: Array<string>
   execution: ExecutionProgress
   reasoning_text?: string | null
-  reply_text?: string | null
+  reply_language?: string
+  reply_mode?: 'complete' | 'stream'
+  reply_text?: string | BuilderCopy | BuilderTextParts | null
   stage_id: string
   turn_id: string
 }
 
 export type PlanCard = {
   items?: Array<string>
-  title: string
+  reply_language?: string
+  title: string | BuilderCopy | BuilderTextParts
 }
 
 export type FormCard = {
-  description?: string
+  description?: string | BuilderCopy | BuilderTextParts
   fields?: Array<FormField>
   frozen?: boolean
-  title?: string
+  reply_language?: string
+  title?: string | BuilderCopy | BuilderTextParts
   values?: {
     [key: string]: unknown
   }
@@ -796,9 +835,10 @@ export type FormCard = {
 }
 
 export type ResourceSelectCard = {
-  description?: string
+  description?: string | BuilderCopy | BuilderTextParts
   recommended?: Array<ResourceOption>
-  title?: string
+  reply_language?: string
+  title?: string | BuilderCopy | BuilderTextParts
 }
 
 export type TestResultCard = {
@@ -809,7 +849,7 @@ export type TestResultCard = {
   dify_run_id?: string
   executed_node_ids?: Array<string>
   execution_mode?: 'confirmed_tool' | 'mock' | 'restricted' | null
-  failure_reason?: string | null
+  failure_reason?: string | BuilderCopy | BuilderTextParts | null
   outcome?:
     | 'execution_failed'
     | 'execution_succeeded_needs_review'
@@ -821,7 +861,8 @@ export type TestResultCard = {
     | 'builder-json-parse-v1'
     | 'builder-restricted-v1'
     | null
-  review_note?: string | null
+  reply_language?: string
+  review_note?: string | BuilderCopy | BuilderTextParts | null
   safety_outcome?:
     | 'confirmed_tool_completed'
     | 'execution_blocked'
@@ -1015,22 +1056,268 @@ export type DifyBuilderExecutionProgressResponse = {
 
 export type DifyBuilderExecutionActivityResponse = {
   id: string
-  label: string
+  label: string | BuilderCopy | BuilderTextParts
   parent_id?: string | null
   state: 'active' | 'done' | 'failed' | 'stopped'
 }
 
+export type BuilderCopyId =
+  | 'actions.applyTheFix'
+  | 'actions.approveChanges'
+  | 'actions.approveFix'
+  | 'actions.approvePlan'
+  | 'actions.confirmResources'
+  | 'actions.continue'
+  | 'actions.continueAdjusting'
+  | 'actions.discardThisChangePlan'
+  | 'actions.finish'
+  | 'actions.fixAgain'
+  | 'actions.keepDraft'
+  | 'actions.publish'
+  | 'actions.publishFix'
+  | 'actions.reCheck'
+  | 'actions.reject'
+  | 'actions.restartFromCurrentDraft'
+  | 'actions.retry'
+  | 'actions.revert'
+  | 'actions.reviewDraftChanges'
+  | 'actions.runAffectedPathTests'
+  | 'actions.runAffectedTests'
+  | 'actions.runTest'
+  | 'actions.runTests'
+  | 'actions.runValidation'
+  | 'actions.send'
+  | 'actions.submit'
+  | 'actions.submitRequirements'
+  | 'actions.submitRules'
+  | 'actions.tryAgain'
+  | 'build.applyFailed'
+  | 'build.completedDraft'
+  | 'build.generationFailed'
+  | 'build.graphApplied'
+  | 'build.graphCreated'
+  | 'build.invalidGraph'
+  | 'build.plan.ready'
+  | 'build.requirements.defaultsFilled'
+  | 'confirmed.completed'
+  | 'confirmed.completedNote'
+  | 'confirmed.failed'
+  | 'confirmed.notCompleted'
+  | 'confirmed.unknown'
+  | 'decision.howShouldBuilderContinue'
+  | 'decision.howShouldBuilderContinueAfterTheRevert'
+  | 'decision.howShouldBuilderProceedWithThisFix'
+  | 'decision.howShouldBuilderRecover'
+  | 'decision.isThisChangePlanReadyToApply'
+  | 'decision.isThisWorkflowPlanReadyToApply'
+  | 'decision.whatShouldBuilderDoNext'
+  | 'decision.whatShouldBuilderDoWithTheAppliedFix'
+  | 'decision.whatShouldBuilderDoWithTheBuiltWorkflow'
+  | 'decision.whatShouldBuilderDoWithTheProposedRepair'
+  | 'decision.whatShouldBuilderDoWithTheUpdatedWorkflow'
+  | 'decision.whatShouldHappenToTheseChanges'
+  | 'decision.whatShouldHappenToThisFix'
+  | 'decision.whatShouldHappenToThisWorkflow'
+  | 'diagnosis.checklistComplete'
+  | 'diagnosis.complete'
+  | 'edit.adjust'
+  | 'edit.adjustWithoutTargets'
+  | 'edit.applied'
+  | 'edit.completedDraft'
+  | 'edit.ineffectiveProposal'
+  | 'edit.inspected'
+  | 'edit.inspectedWithoutTargets'
+  | 'edit.noEffectiveChanges'
+  | 'edit.plan.ready'
+  | 'forms.editRules.description'
+  | 'forms.editRules.title'
+  | 'forms.goal'
+  | 'forms.requirements.description'
+  | 'forms.requirements.title'
+  | 'forms.testData.description'
+  | 'forms.testData.title'
+  | 'forms.userMessage'
+  | 'json.failed'
+  | 'labels.appliedTheFixReadyToRetest'
+  | 'labels.approvedTheChangePlan'
+  | 'labels.approvedThePlan'
+  | 'labels.buildPlan'
+  | 'labels.changePlan'
+  | 'labels.checklist'
+  | 'labels.checklistStillFailingReDiagnosing'
+  | 'labels.chooseOneOptionToContinue'
+  | 'labels.choseToPublish'
+  | 'labels.confirmedResources'
+  | 'labels.couldnTApplyTheFix'
+  | 'labels.couldnTApplyTheWorkflow'
+  | 'labels.executionFailed'
+  | 'labels.executionSucceededOutputNeedsReview'
+  | 'labels.finishedTheRepairAttempt'
+  | 'labels.keptTheDraft'
+  | 'labels.keptTheDraftDespiteTheFailure'
+  | 'labels.noChangesWereProposed'
+  | 'labels.noRepairAvailable'
+  | 'labels.nothingWasApplied'
+  | 'labels.reApproveToApplyTheChange'
+  | 'labels.recommendedResources'
+  | 'labels.rejectedTheProposedRepair'
+  | 'labels.requestedARevert'
+  | 'labels.restartingThePlan'
+  | 'labels.restorePoint'
+  | 'labels.retryingTheRepair'
+  | 'labels.revisedPlan'
+  | 'labels.submittedEditRules'
+  | 'labels.submittedRequirements'
+  | 'labels.theChangeWouldnTDoWhatYouAsked'
+  | 'labels.theWorkflowCanTStart'
+  | 'model.changed'
+  | 'model.configurationUnavailable'
+  | 'operation.failed'
+  | 'progress.analyzeTheRequestedChange'
+  | 'progress.applyTheApprovedRepair'
+  | 'progress.applyTheChangePlan'
+  | 'progress.applyTheRepairToTheCanvas'
+  | 'progress.applyTheWorkflowToTheCanvas'
+  | 'progress.assessRepairRisk'
+  | 'progress.bindSelectedResourcesToThePlan'
+  | 'progress.createANewPreEditCheckpoint'
+  | 'progress.createAPreBuildCheckpoint'
+  | 'progress.createAPreEditCheckpoint'
+  | 'progress.diagnoseTheConfigurationIssue'
+  | 'progress.diagnoseTheFailedPath'
+  | 'progress.diagnoseTheFailedWorkflow'
+  | 'progress.diagnoseTheRootCause'
+  | 'progress.draftTheChangePlan'
+  | 'progress.draftTheWorkflowPlan'
+  | 'progress.evaluateTheTestResult'
+  | 'progress.evaluateValidationResults'
+  | 'progress.findCompatibleResources'
+  | 'progress.generateAffectedPathTestInputs'
+  | 'progress.generateTestInputs'
+  | 'progress.generateTheWorkflowGraph'
+  | 'progress.generateValidationInputs'
+  | 'progress.highlightEditTargets'
+  | 'progress.inspectChecklistFindings'
+  | 'progress.inspectTheCurrentWorkflow'
+  | 'progress.inspectTheWorkflowAndNodeOutputs'
+  | 'progress.loadTheFailedRun'
+  | 'progress.prepareASafeRepair'
+  | 'progress.prepareAffectedPathTests'
+  | 'progress.prepareCanvasChanges'
+  | 'progress.prepareRepairContext'
+  | 'progress.prepareRequirementFields'
+  | 'progress.prepareResourceRecommendations'
+  | 'progress.prepareTheConfirmedToolTest'
+  | 'progress.prepareTheImpactSummary'
+  | 'progress.prepareTheWorkflowTest'
+  | 'progress.prepareToRetestAffectedPaths'
+  | 'progress.prepareToRetestTheWorkflow'
+  | 'progress.prepareValidationInputs'
+  | 'progress.proposeASafeRepair'
+  | 'progress.publishTheNewWorkflow'
+  | 'progress.publishTheRepairedWorkflow'
+  | 'progress.publishTheUpdatedWorkflow'
+  | 'progress.rebuildTheChangePlan'
+  | 'progress.rebuildTheWorkflowPlan'
+  | 'progress.recordTheConfirmedTestResult'
+  | 'progress.reviewConfirmedEditRules'
+  | 'progress.reviewConfirmedRequirements'
+  | 'progress.reviseTheWorkflowPlan'
+  | 'progress.runAffectedWorkflowPaths'
+  | 'progress.runConfirmedToolTest'
+  | 'progress.runTheRepairedWorkflow'
+  | 'progress.runTheWorkflow'
+  | 'progress.summarizeTheAppliedChanges'
+  | 'progress.understandTheRequestedWorkflow'
+  | 'progress.validateChangesAgainstTheCurrentCanvas'
+  | 'publish.buildComplete'
+  | 'publish.complete'
+  | 'publish.editComplete'
+  | 'publish.verificationRequired'
+  | 'receipts.noResourcesSelected'
+  | 'receipts.submittedForm'
+  | 'recovery.continuing'
+  | 'recovery.restarted'
+  | 'repair.applied'
+  | 'repair.appliedFallback'
+  | 'repair.changesApplied'
+  | 'repair.configurationUpdated'
+  | 'repair.invalidGraph'
+  | 'repair.noSafeFound'
+  | 'repair.proposed'
+  | 'repair.proposedFix'
+  | 'repair.reason'
+  | 'repair.riskNote'
+  | 'repair.staleProposal'
+  | 'replies.aRequiredOutputReferenceWasUnresolved'
+  | 'replies.bindJSONParseTextFromA'
+  | 'replies.builderCannotSafelyTestThisTool'
+  | 'replies.builderCannotSafelyTestThisTool2'
+  | 'replies.builderCouldnTProduceAUsable'
+  | 'replies.builderDoesNotYetHaveSafe'
+  | 'replies.editTemplateVariablesToUseUnique'
+  | 'replies.executionOutcomeIsUnknownRunAgainBeforePublishing'
+  | 'replies.executionSafetyRequiresReviewOrRevised'
+  | 'replies.iCouldnTApplyTheChange'
+  | 'replies.iCouldnTApplyTheWorkflow'
+  | 'replies.iCouldnTDetermineTheTestSOutcomeTwiceInARowSeeTheNotice'
+  | 'replies.iCouldnTGenerateAValid'
+  | 'replies.iCouldnTProduceAUsable'
+  | 'replies.iDidnTApplyAnythingThe'
+  | 'replies.iDidnTApplyTheChange'
+  | 'replies.iDidnTApplyTheChange2'
+  | 'replies.iDidnTApplyTheWorkflow'
+  | 'replies.iFilledInTestInputsEditThemIfYouLikeThenRunTheTest'
+  | 'replies.installTheQualifiedJSONProcessVersion'
+  | 'replies.noAutomaticFixFoundTryAgainOrFinishThisSession'
+  | 'replies.noChangesSinceYouLastLeftResumingWhereYouWere'
+  | 'replies.noEffectiveChangesWereNeededThe'
+  | 'replies.noFixIsStagedForThisFailureKeepTheDraftOrRevert'
+  | 'replies.noWorkspaceResourcesMatchedThisPlanContinuingWithoutAny'
+  | 'replies.notStatedInYourRequestAddItIfYouHaveOne'
+  | 'replies.onlyNodeSettingsChangedSinceYouLeftContinueOrRestart'
+  | 'replies.otherPathsAndGoalAcceptanceWere'
+  | 'replies.otherPathsAndGoalAcceptanceWereNotVerified'
+  | 'replies.provideTestInputsOrUseMockDataToRunTheAffectedPathTest'
+  | 'replies.provideTestInputsOrUseMockDataToRunValidation'
+  | 'replies.putThisJSONContentInA'
+  | 'replies.reduceJSONParseInputOrOutput'
+  | 'replies.reduceTemplateSizeOrSelectedText'
+  | 'replies.reviewTheRulesContinueAdjustingApprove'
+  | 'replies.setJSONParseContentAndFilter'
+  | 'replies.templateSupportsScalarTextIfElif'
+  | 'replies.theInstalledJSONProcessVersionChanged'
+  | 'replies.theNodesThisTaskWasWorking'
+  | 'replies.theRunFailedOnItsInputsProvideTestDataAndRetry'
+  | 'replies.theRunFinishedButReachedNo'
+  | 'replies.theTestFinishedWithoutProducingAnyOutputSeeTheNotice'
+  | 'replies.theTestSOutcomeCouldnT'
+  | 'replies.theTestSOutcomeCouldnT2'
+  | 'replies.theWorkflowStructureChangedButThe'
+  | 'replies.tryAgainToFindARepairOrFinishThisSession'
+  | 'replies.useASupportedJSONPathSelection'
+  | 'replies.useTemplateInputsFromStartScalars'
+  | 'resources.description'
+  | 'resources.title'
+  | 'test.failedFallback'
+  | 'test.invalidInputs'
+  | 'test.noDetailedError'
+  | 'test.policyReview'
+  | 'values.empty'
+  | 'values.no'
+  | 'values.yes'
+
 export type OptionInput = {
   max_length?: number
   min_length?: number
-  placeholder?: string
+  placeholder?: string | BuilderCopy | BuilderTextParts
   required?: boolean
 }
 
 export type InteractionResponseField = {
-  display_value: string
+  display_value: string | BuilderCopy | BuilderTextParts
   key: string
-  label: string
+  label: string | BuilderCopy | BuilderTextParts
   value: unknown
 }
 
@@ -1053,7 +1340,7 @@ export type FormField = {
   allowed_file_types?: Array<string>
   allowed_file_upload_methods?: Array<string>
   default?: string | number | number | boolean | null
-  hint?: string | null
+  hint?: string | BuilderCopy | BuilderTextParts | null
   json_schema?:
     | string
     | {
@@ -1061,11 +1348,11 @@ export type FormField = {
       }
     | null
   key: string
-  label: string
+  label: string | BuilderCopy | BuilderTextParts
   max_length?: number | null
   number_limits?: number | null
   options?: Array<string>
-  placeholder?: string | null
+  placeholder?: string | BuilderCopy | BuilderTextParts | null
   required?: boolean
   type: string
   unit?: string | null
@@ -1405,7 +1692,7 @@ export type CoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = {
 export type ExecutionActivity = {
   id: string
   kind?: 'node' | 'stage'
-  label: string
+  label: string | BuilderCopy | BuilderTextParts
   parent_id?: string | null
   state: 'active' | 'done' | 'failed' | 'stopped'
 }

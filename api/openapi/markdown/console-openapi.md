@@ -20052,7 +20052,7 @@ Account not link tenant.
 | canvas_event | string |  | No |
 | id | string |  | Yes |
 | kind | [ActionKind](#actionkind) |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | next_state | string |  | No |
 
 #### ActionKind
@@ -23732,7 +23732,15 @@ The archived document is not editable.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ArchivedDocumentImmutableError |  | The archived document is not editable. |  |
+| card_state | string |  | No |
+| cards | [ string ] |  | No |
+| execution | [ExecutionProgress](#executionprogress) |  | Yes |
+| reasoning_text | string |  | No |
+| reply_language | string |  | No |
+| reply_mode | string, <br>**Available values:** "complete", "stream", <br>**Default:** stream | *Enum:* `"complete"`, `"stream"` | No |
+| reply_text | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
+| stage_id | string |  | Yes |
+| turn_id | string |  | Yes |
 
 #### AudioBinaryResponse
 
@@ -24013,6 +24021,20 @@ Sandbox file download is unavailable.
 | login_page_logo | string |  | Yes |
 | workspace_logo | string |  | Yes |
 
+#### BuilderCopy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | [BuilderCopyId](#buildercopyid) |  | Yes |
+| params | object |  | No |
+| type | string, <br>**Default:** copy |  | No |
+
+#### BuilderCopyId
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BuilderCopyId | string |  |  |
+
 #### BuilderErrorCode
 
 Stable HTTP error codes returned by the Builder console routes.
@@ -24020,6 +24042,13 @@ Stable HTTP error codes returned by the Builder console routes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | BuilderErrorCode | string | Stable HTTP error codes returned by the Builder console routes. |  |
+
+#### BuilderTextParts
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| parts | [ string<br>[BuilderCopy](#buildercopy) ] |  | Yes |
+| type | string, <br>**Default:** parts |  | No |
 
 #### BuiltinCredentialListQuery
 
@@ -24091,11 +24120,11 @@ reconstruct the same canvas.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | canvas_event | string |  | No |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | id | string |  | Yes |
 | input | [OptionInput](#optioninput) |  | No |
 | is_default | boolean |  | No |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | next_state | string |  | No |
 | tone | string, <br>**Default:** neutral |  | No |
 
@@ -25836,23 +25865,17 @@ Enum class for datasource provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default_option_id | string |  | No |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | options | [ [CardOption](#cardoption) ] |  | No |
 | submit | [Action](#action) |  | No |
-| title | string |  | Yes |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### DecisionItem
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| DebugChannel | string | Delivery selection for editor debugging, resolved to current channel configuration. |  |
-
-#### DebugModeConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| channels | [ [DebugChannel](#debugchannel) ] |  | Yes |
-| enabled | boolean |  | No |
+| reply_language | string |  | No |
+| text | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### DeclaredArrayItem
 
@@ -26030,7 +26053,7 @@ Enum representing the deployment edition of the platform.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | kind | [ActionKind](#actionkind) |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### DifyBuilderActiveInteractionResponse
 
@@ -26159,7 +26182,7 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | command_id | string |  | Yes |
-| item | [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderInteractionResponseConversationItemResponse](#difybuilderinteractionresponseconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) |  | Yes |
+| item | [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderInteractionResponseConversationItemResponse](#difybuilderinteractionresponseconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) |  | Yes |
 | session_id | string |  | Yes |
 
 #### DifyBuilderConversationItemAppendedEventResponse
@@ -26270,7 +26293,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | parent_id | string |  | No |
 | state | string, <br>**Available values:** "active", "done", "failed", "stopped" | *Enum:* `"active"`, `"done"`, `"failed"`, `"stopped"` | Yes |
 
@@ -26333,6 +26356,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | activity | [DifyBuilderExecutionActivityResponse](#difybuilderexecutionactivityresponse) |  | Yes |
 | at_version | integer |  | Yes |
 | operation_id | string |  | Yes |
+| reply_language | string |  | No |
 | revision | integer |  | Yes |
 | session_id | string |  | Yes |
 | status | string, <br>**Available values:** "completed", "error", "running", "stopped" | *Enum:* `"completed"`, `"error"`, `"running"`, `"stopped"` | Yes |
@@ -26353,6 +26377,7 @@ Complete observed activity state before subsequent live progress deltas.
 | at_version | integer |  | Yes |
 | execution | [DifyBuilderExecutionProgressResponse](#difybuilderexecutionprogressresponse) |  | Yes |
 | operation_id | string |  | Yes |
+| reply_language | string |  | Yes |
 | revision | integer |  | Yes |
 | session_id | string |  | Yes |
 
@@ -26460,6 +26485,26 @@ Sanitized refusal of a real-call consent operation; carries fixed codes only.
 | data | [DifyBuilderReasoningEventData](#difybuilderreasoningeventdata) |  | Yes |
 | event | string |  | Yes |
 
+#### DifyBuilderReceiptFieldSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| display_value | string |  | Yes |
+| key | string |  | Yes |
+| label | string |  | Yes |
+
+#### DifyBuilderReceiptSnapshot
+
+Localized display only; submitted values remain in action.payload.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| fields | [ [DifyBuilderReceiptFieldSnapshot](#difybuilderreceiptfieldsnapshot) ] |  | No |
+| interaction_kind | string, <br>**Available values:** "choice", "form", "resource" | *Enum:* `"choice"`, `"form"`, `"resource"` | Yes |
+| question | string |  | Yes |
+| reply_language | string |  | Yes |
+
 #### DifyBuilderResourceSelectConversationItemResponse
 
 | Name | Type | Description | Required |
@@ -26514,6 +26559,7 @@ One JSON object carried by an SSE ``data:`` frame.
 | base_app_revision | string |  | Yes |
 | base_version | integer |  | Yes |
 | payload | object |  | No |
+| receipt_snapshot | [DifyBuilderReceiptSnapshot](#difybuilderreceiptsnapshot) |  | No |
 
 #### DifyBuilderSubmitMessagePayload
 
@@ -27754,6 +27800,16 @@ The type of the parameter
 | ---- | ---- | ----------- | -------- |
 | EventStreamResponse | string |  |  |
 
+#### ExecutionActivity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "node", "stage", <br>**Default:** stage | *Enum:* `"node"`, `"stage"` | No |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
+| parent_id | string |  | No |
+| state | string, <br>**Available values:** "active", "done", "failed", "stopped" | *Enum:* `"active"`, `"done"`, `"failed"`, `"stopped"` | Yes |
+
 #### ExecutionContentType
 
 | Name | Type | Description | Required |
@@ -28275,10 +28331,11 @@ You don't have the permission to access the requested resource.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | fields | [ [FormField](#formfield) ] |  | No |
 | frozen | boolean |  | No |
-| title | string |  | No |
+| reply_language | string |  | No |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | values | object |  | No |
 | variant | string |  | Yes |
 
@@ -28290,14 +28347,14 @@ You don't have the permission to access the requested resource.
 | allowed_file_types | [ string ] |  | No |
 | allowed_file_upload_methods | [ string ] |  | No |
 | default | string<br>integer<br>number<br>boolean |  | No |
-| hint | string |  | No |
+| hint | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | json_schema | string<br>object |  | No |
 | key | string |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | max_length | integer |  | No |
 | number_limits | integer |  | No |
 | options | [ string ] |  | No |
-| placeholder | string |  | No |
+| placeholder | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | required | boolean |  | No |
 | type | string |  | Yes |
 | unit | string |  | No |
@@ -29166,19 +29223,20 @@ The app is not available in this app library.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| display_value | string |  | Yes |
+| display_value | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | key | string |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | value |  |  | Yes |
 
 #### InteractionResponseItem
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string |  | No |
+| answer | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | fields | [ [InteractionResponseField](#interactionresponsefield) ] |  | No |
 | interaction_kind | string, <br>**Available values:** "choice", "form", "resource" | *Enum:* `"choice"`, `"form"`, `"resource"` | Yes |
-| question | string |  | Yes |
+| question | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
+| reply_language | string |  | No |
 | submitted_data | object |  | No |
 
 #### IterationNodeRunPayload
@@ -33375,55 +33433,9 @@ Coarse node-level status used by Inspector to pick a banner.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| NodeType | string |  |  |
-
-#### NormalizedEmailAlreadyInUseError
-
-An account with an equivalent email address already exists.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| NormalizedEmailAlreadyInUseError |  | An account with an equivalent email address already exists. |  |
-
-#### NotAllowedCreateWorkspaceError
-
-Workspace not found, please contact system admin to invite you to join in a workspace.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| NotAllowedCreateWorkspaceError |  | Workspace not found, please contact system admin to invite you to join in a workspace. |  |
-
-#### NotChatAppError
-
-App mode is invalid.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| NotChatAppError |  | App mode is invalid. |  |
-
-#### NotCompletionAppError
-
-Not Completion App
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| NotCompletionAppError |  | Not Completion App |  |
-
-#### NotOwnerError
-
-You are not the owner of the workspace.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| NotOwnerError |  | You are not the owner of the workspace. |  |
-
-#### NotWorkflowAppError
-
-Only support workflow app.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| NotWorkflowAppError |  | Only support workflow app. |  |
+| reply_language | string |  | No |
+| text | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
+| tone | string, <br>**Default:** neutral |  | No |
 
 #### NotificationItemResponse
 
@@ -33673,7 +33685,7 @@ OAuth schema
 | ---- | ---- | ----------- | -------- |
 | max_length | integer, <br>**Default:** 100 |  | No |
 | min_length | integer |  | No |
-| placeholder | string |  | No |
+| placeholder | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | required | boolean, <br>**Default:** true |  | No |
 
 #### OutputErrorStrategy
@@ -34466,7 +34478,8 @@ Plaintext secret values are not allowed in Agent config.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | items | [ string ] |  | No |
-| title | string |  | Yes |
+| reply_language | string |  | No |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### PluginAutoUpgradeChangeResponse
 
@@ -35593,15 +35606,9 @@ Recommended app not found.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| RecursiveJSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ [RecursiveJSONValue](#recursivejsonvalue) ] |  |  |
-
-#### Redacted
-
-A configured credential whose stored value is omitted.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| type | string, <br>**Default:** redacted |  | No |
+| can_continue | boolean |  | Yes |
+| can_restart | boolean |  | Yes |
+| recovery_class | string |  | Yes |
 
 #### RedirectResponse
 
@@ -35925,9 +35932,10 @@ Keep the existing resolved-form wire shape without exposing storage metadata.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | recommended | [ [ResourceOption](#resourceoption) ] |  | No |
-| title | string |  | No |
+| reply_language | string |  | No |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 
 #### ResourceUserAccessPolicies
 
@@ -37554,12 +37562,13 @@ Tag type
 | blocked_node_ids | [ string ] |  | No |
 | dify_run_id | string |  | No |
 | executed_node_ids | [ string ] |  | No |
-| execution_mode | string, <br>**Available values:** "mock", "restricted" |  | No |
-| failure_reason | string |  | No |
+| execution_mode | string, <br>**Available values:** "confirmed_tool", "mock", "restricted" |  | No |
+| failure_reason | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | outcome | string, <br>**Available values:** "execution_failed", "execution_succeeded_needs_review", "execution_unknown", "required_output_unresolved" |  | No |
 | policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-json-parse-v1", "builder-restricted-v1" |  | No |
-| review_note | string |  | No |
-| safety_outcome | string, <br>**Available values:** "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
+| reply_language | string |  | No |
+| review_note | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
+| safety_outcome | string, <br>**Available values:** "confirmed_tool_completed", "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
 | simulated_node_ids | [ string ] |  | No |
 | status | string, <br>**Available values:** "failed", "succeeded" | *Enum:* `"failed"`, `"succeeded"` | Yes |
 | terminal_outputs | object |  | No |

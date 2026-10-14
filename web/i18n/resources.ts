@@ -1,44 +1,5 @@
-import type Resources from './resources.generated.d.ts'
+import type GeneratedResources from './resources.generated'
 import { kebabCase } from 'string-ts'
-
-type RawResources = {
-  app: typeof app
-  appAnnotation: typeof appAnnotation
-  appApi: typeof appApi
-  appDebug: typeof appDebug
-  appLog: typeof appLog
-  appOverview: typeof appOverview
-  agentV2: typeof agentV2
-  billing: typeof billing
-  common: typeof common
-  custom: typeof custom
-  dataset: typeof dataset
-  datasetCreation: typeof datasetCreation
-  datasetDocuments: typeof datasetDocuments
-  datasetHitTesting: typeof datasetHitTesting
-  datasetPipeline: typeof datasetPipeline
-  datasetSettings: typeof datasetSettings
-  deployments: typeof deployments
-  deviceFlow: typeof deviceFlow
-  education: typeof education
-  explore: typeof explore
-  layout: typeof layout
-  login: typeof login
-  oauth: typeof oauth
-  permission: typeof permission
-  permissionKeys: typeof permissionKeys
-  pipeline: typeof pipeline
-  plugin: typeof plugin
-  pluginTags: typeof pluginTags
-  pluginTrigger: typeof pluginTrigger
-  register: typeof register
-  runLog: typeof runLog
-  share: typeof share
-  snippet: typeof snippet
-  time: typeof time
-  tools: typeof tools
-  workflow: typeof workflow
-}
 
 // This type-only bridge exposes runtime plural base keys; selector types cannot require callers to pass count.
 type PluralBaseResources = {
@@ -88,12 +49,17 @@ type PluralBaseResources = {
     'accessRule.summary': string
     'role.copyMembersDescription': string
   }
+  skill: {
+    'skillManagement.detail.uploadFilesFailedStatus': string
+  }
+  difyBuilder: {
+    checklistFixAction: string
+    checklistFixSummary: string
+    checklistUnfixableNote: string
+  }
   workflow: {
     'changeHistory.stepBackward': string
     'changeHistory.stepForward': string
-    'difyBuilder.checklistFixAction': string
-    'difyBuilder.checklistFixSummary': string
-    'difyBuilder.checklistUnfixableNote': string
     'nodes.iteration.error': string
     'nodes.iteration.iteration': string
     'nodes.loop.error': string
@@ -101,7 +67,7 @@ type PluralBaseResources = {
   }
 }
 
-export type Resources = RawResources & PluralBaseResources
+export type Resources = GeneratedResources & PluralBaseResources
 
 export const defaultNS = 'app' as const
 
@@ -153,6 +119,7 @@ export const namespaces = [
   'datasetPipeline',
   'datasetSettings',
   'deployments',
+  'difyBuilder',
   'deviceFlow',
   'education',
   'evaluation',

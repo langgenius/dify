@@ -37,7 +37,6 @@ from core.dify_builder.contract import (
     ExecutionProgress,
     FormCard,
     FormField,
-    NoticeItem,
     TestResultCard,
 )
 from core.dify_builder.errors import ConflictError, DraftWouldNotStartError, HashMismatchError, NotFoundError
@@ -74,6 +73,8 @@ from core.dify_builder.verification import (
     publication_decision,
     result_card,
 )
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import BuilderPresentation, BuilderText, copy_text, stored_text, text_parts
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +82,8 @@ __all__ = [
     "MAX_REPEATED_REPAIRS",
     "MAX_UNKNOWN_OUTCOMES",
     "NO_OUTPUT_BODY",
-    "NO_OUTPUT_REPLY",
     "UNKNOWN_OUTCOME_STUCK_BODY",
-    "UNKNOWN_OUTCOME_STUCK_REPLY",
-    "UNKNOWN_TEST_OUTCOME_NOTICE",
+    "UNKNOWN_TEST_OUTCOME_REPLY",
     "action_kind",
     "action_string",
     "append_assistant",
@@ -136,39 +135,26 @@ __all__ = [
 # which imports it): the "running"/unknown-outcome branch. A truncated stream
 # means the run's actual pass/fail is genuinely unknown -- not a failure to
 # diagnose or repair against.
-UNKNOWN_TEST_OUTCOME_NOTICE = (
-    "The test's outcome couldn't be determined — the run may still be in progress. You can re-run the test."
-)
+UNKNOWN_TEST_OUTCOME_REPLY = copy_text(BuilderCopyId.REPLIES_THE_TEST_S_OUTCOME_COULDN_T)
 
 # A run that reports ``succeeded`` after taking a branch node and reaching no
 # End node produced nothing (ESQ1-303: both if-else edges used undeclared
 # handles, so the engine skipped both arms and finished with outputs={}).
 # Shown instead of "All checks passed"; nothing is diagnosed or repaired
 # because the engine reported no error to diagnose.
-NO_OUTPUT_BODY = (
-    "The run finished but reached no End node, so it produced no output. Check the branch handles "
-    "and the edges after the last node that ran, then edit the canvas, keep the draft, or revert."
-)
-NO_OUTPUT_REPLY = "The test finished without producing any output — see the notice."
+NO_OUTPUT_BODY = copy_text(BuilderCopyId.REPLIES_THE_RUN_FINISHED_BUT_REACHED_NO)
 
 # How many CONSECUTIVE unknown outcomes a flow tolerates before it stops
 # offering a re-run. The first is genuinely re-runnable (a transient early end
 # of the stream); the second in a row means something structural and the user
 # must look at the run itself.
 MAX_UNKNOWN_OUTCOMES = 2
-UNKNOWN_OUTCOME_STUCK_BODY = (
-    "The test's outcome couldn't be determined twice in a row, so I've stopped re-running it. "
-    "Open the run in the app's logs to see how it ended, then edit the canvas, keep the draft, or revert."
-)
-UNKNOWN_OUTCOME_STUCK_REPLY = "I couldn't determine the test's outcome twice in a row — see the notice."
+UNKNOWN_OUTCOME_STUCK_BODY = copy_text(BuilderCopyId.REPLIES_THE_TEST_S_OUTCOME_COULDN_T2)
 
 # Deterministic, model-free copy for a confirmed Tool test outcome.
-CONFIRMED_COMPLETED_REPLY = "The confirmed tool test completed. Review the result before publishing."
+CONFIRMED_COMPLETED_REPLY = copy_text(BuilderCopyId.CONFIRMED_COMPLETED)
 _DUPLICATE_LAUNCH_REASONS = frozenset({"execution_already_launched", "execution_already_claimed"})
-CONFIRMED_NOT_COMPLETED_REPLY = (
-    "The confirmed tool test did not complete. It is never retried automatically; "
-    "prepare and confirm a new test to try again."
-)
+CONFIRMED_NOT_COMPLETED_REPLY = copy_text(BuilderCopyId.CONFIRMED_NOT_COMPLETED)
 
 
 def is_confirmed_tool_turn(turn: Turn, fc: DifyBuilderContext) -> bool:
@@ -201,11 +187,18 @@ def confirmed_tool_test(
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            (f"{step_prefix}-prepare-confirmed-test", "Prepare the confirmed tool test"),
-            (run_step, "Run the confirmed tool test"),
-            (f"{step_prefix}-record-confirmed-test", "Record the confirmed test result"),
+            (
+                f"{step_prefix}-prepare-confirmed-test",
+                copy_text(BuilderCopyId.PROGRESS_PREPARE_THE_CONFIRMED_TOOL_TEST),
+            ),
+            (run_step, copy_text(BuilderCopyId.PROGRESS_RUN_CONFIRMED_TOOL_TEST)),
+            (
+                f"{step_prefix}-record-confirmed-test",
+                copy_text(BuilderCopyId.PROGRESS_RECORD_THE_CONFIRMED_TEST_RESULT),
+            ),
         ],
     )
     progress.activate(f"{step_prefix}-prepare-confirmed-test")
@@ -446,6 +439,8 @@ def append_card(fc: DifyBuilderContext, card) -> list[ConversationItem]:
     """Stamp a typed card into the conversation at the next seq (mirrors
     append_item's seq authority). The runner stamps the winning CAS version.
     """
+    if isinstance(card, BuilderPresentation):
+        card.reply_language = fc.reply_language
     item = card.to_item(seq=fc.next_seq, at_version=0)
     fc.next_seq += 1
     return [item]
@@ -455,13 +450,13 @@ def append_assistant(
     env: Env,
     s: Session,
     fc: DifyBuilderContext,
-    reply_text: str,
+    reply_text: BuilderText,
     *,
     execution: ExecutionProgress | None = None,
     cards: list[str] | None = None,
     turn_id: str | None = None,
 ) -> list[ConversationItem]:
-    """Emit static handler copy as agent_message and persist the same text."""
+    """Prepare complete handler presentation for emission after commit."""
     return env.append_assistant_turn(
         s,
         fc,
@@ -472,14 +467,14 @@ def append_assistant(
     )
 
 
-def test_failure_reason(run: Run) -> str:
+def test_failure_reason(run: Run) -> BuilderText:
     """Return the most specific user-facing reason available for a failed run."""
     for output in run.per_node:
         if output.status == "failed" and output.error:
             return output.error
     if run.error:
         return run.error
-    return "The workflow run failed without a detailed error."
+    return copy_text(BuilderCopyId.TEST_NO_DETAILED_ERROR)
 
 
 _FORM_FIELD_TYPES = {"bool", "json", "json_object", "number", "select", "text", "textarea"}
@@ -498,12 +493,16 @@ def build_form_fields(specs: list[dict]) -> list[FormField]:
         fields.append(
             FormField(
                 key=str(spec["key"]),
-                label=str(spec.get("label", spec["key"])),
+                label=stored_text(spec.get("label_copy") or str(spec.get("label", spec["key"]))),
                 type=ftype,
                 options=[str(o) for o in options],
                 # A field left blank on purpose has to say why, or it reads as a
                 # box the user forgot to fill (PM report 2026-09-29).
-                hint=hint if isinstance(hint, str) and hint else None,
+                hint=stored_text(spec["hint_copy"])
+                if spec.get("hint_copy")
+                else hint
+                if isinstance(hint, str) and hint
+                else None,
             )
         )
     return fields
@@ -594,7 +593,7 @@ def perform_revert(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 
 
 def drop_unapplied_repair(
-    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter, *, title: str, body: str
+    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter, *, title: BuilderText, body: BuilderText
 ) -> list[ConversationItem]:
     """The staged repair was refused before anything was written: drop it
     (so the empty-repair guard stops a re-approve of the same intents), close
@@ -602,7 +601,9 @@ def drop_unapplied_repair(
     gate (Fix's apply, Build's and Edit's await_repair)."""
     fc.staged_repair = []
     execution = progress.finish(status="error")
-    return append_assistant(env, s, fc, f"{title}. {body}", execution=execution, turn_id=progress.operation_id)
+    return append_assistant(
+        env, s, fc, text_parts(title, ". ", body), execution=execution, turn_id=progress.operation_id
+    )
 
 
 def first_failed_node(nodes: list[NodeOutput]) -> str:
@@ -879,7 +880,9 @@ def testdata_form_fields(schema: StartSchema) -> list[FormField]:
         fields.append(
             FormField(
                 key=str(v["variable"]),
-                label=str(v.get("label") or v["variable"]),
+                label=copy_text(BuilderCopyId.FORMS_USER_MESSAGE)
+                if schema.get("system_query") == v["variable"]
+                else str(v.get("label") or v["variable"]),
                 type=variable_type,
                 options=_string_list(v.get("options")),
                 required=v.get("required") if isinstance(v.get("required"), bool) else False,
@@ -905,7 +908,7 @@ def input_gate_result(
     schema: StartSchema,
     inputs: dict[str, Any],
     state: PcState,
-    reason: str,
+    reason: BuilderText,
 ) -> StepResult:
     """Return invalid runtime test data for correction without losing uploads."""
     fc.test_input_ref = ""
@@ -914,14 +917,22 @@ def input_gate_result(
         fc,
         FormCard(
             variant="testdata",
-            title="Provide test data",
-            description="Review the inputs Builder will use for this run.",
+            title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
+            description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
             fields=testdata_form_fields(schema),
             values=inputs,
             frozen=False,
         ),
     )
-    items = append_assistant(env, s, fc, f"Provide test inputs and retry: {reason}", cards=["form"])
+    items = append_assistant(
+        env,
+        s,
+        fc,
+        copy_text(BuilderCopyId.TEST_INVALID_INPUTS, reason=reason)
+        if isinstance(reason, str)
+        else text_parts(copy_text(BuilderCopyId.TEST_INVALID_INPUTS, reason=""), reason),
+        cards=["form"],
+    )
     return StepResult(next=state, context=fc, items=[*form_items, *items])
 
 
@@ -939,11 +950,12 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("fix-load-failure", "Load the failed run"),
-            ("fix-inspect-workflow", "Inspect the workflow and node outputs"),
-            ("fix-diagnose-cause", "Diagnose the root cause"),
+            ("fix-load-failure", copy_text(BuilderCopyId.PROGRESS_LOAD_THE_FAILED_RUN)),
+            ("fix-inspect-workflow", copy_text(BuilderCopyId.PROGRESS_INSPECT_THE_WORKFLOW_AND_NODE_OUTPUTS)),
+            ("fix-diagnose-cause", copy_text(BuilderCopyId.PROGRESS_DIAGNOSE_THE_ROOT_CAUSE)),
         ],
     )
     progress.activate("fix-load-failure")
@@ -958,7 +970,7 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
             env,
             s,
             fc,
-            card.failure_reason or "Review execution policy and test inputs.",
+            card.failure_reason or copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
             execution=progress.finish(),
             cards=["test_result"],
         )
@@ -977,10 +989,12 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         env,
         s,
         fc,
-        "Diagnosis complete.\n"
-        f"- Root cause: {diagnosis.root_cause}\n"
-        f"- Culprit node: {diagnosis.culprit_node_id}\n"
-        f"- Severity: {diagnosis.severity}",
+        copy_text(
+            BuilderCopyId.DIAGNOSIS_COMPLETE,
+            cause=diagnosis.root_cause,
+            node=diagnosis.culprit_node_id,
+            severity=diagnosis.severity,
+        ),
         execution=execution,
     )
     return StepResult(
@@ -1015,19 +1029,22 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
         # would fail identically. Don't spend a run on it (ESQ1-291) --
         # hand the decision back instead. handle_propose reaches here with
         # an empty staged_repair whenever the agent found no safe fix.
-        items = append_card(
+        items = append_assistant(
+            env,
+            s,
             fc,
-            NoticeItem(text="No fix is staged for this failure -- keep the draft or revert."),
+            copy_text(BuilderCopyId.REPLIES_NO_FIX_IS_STAGED_FOR_THIS_FAILURE_KEEP_THE_DRAFT_OR_REVERT),
         )
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("fix-apply-repair", "Apply the repair to the canvas"),
-            ("fix-summarize-changes", "Summarize the applied changes"),
+            ("fix-apply-repair", copy_text(BuilderCopyId.PROGRESS_APPLY_THE_REPAIR_TO_THE_CANVAS)),
+            ("fix-summarize-changes", copy_text(BuilderCopyId.PROGRESS_SUMMARIZE_THE_APPLIED_CHANGES)),
         ],
     )
     progress.activate("fix-apply-repair")
@@ -1046,8 +1063,8 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
             s,
             fc,
             progress,
-            title="The workflow can't start",
-            body=f"The proposed fix would leave a workflow that fails before its first node: {exc}",
+            title=copy_text(BuilderCopyId.LABELS_THE_WORKFLOW_CAN_T_START),
+            body=copy_text(BuilderCopyId.REPAIR_INVALID_GRAPH, value=str(exc)),
         )
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     except ValueError as exc:
@@ -1060,8 +1077,8 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
             s,
             fc,
             progress,
-            title="Couldn't apply the fix",
-            body=f"The proposed fix no longer applies to the current draft: {exc}",
+            title=copy_text(BuilderCopyId.LABELS_COULDN_T_APPLY_THE_FIX),
+            body=copy_text(BuilderCopyId.REPAIR_STALE_PROPOSAL, value=str(exc)),
         )
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     fc.last_snapshot_hash = result.new_hash
@@ -1069,12 +1086,16 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     progress.activate("fix-summarize-changes")
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="config edit")
     execution = progress.finish()
-    change_lines = "\n".join(f"- {change}" for change in changes) or "- Configuration updated"
+    change_lines = "\n".join(f"- {change}" for change in changes) or text_parts(
+        "- ", copy_text(BuilderCopyId.REPAIR_CONFIGURATION_UPDATED)
+    )
     items = append_assistant(
         env,
         s,
         fc,
-        f"Applied {len(changes)} change(s) ({scope}).\n{change_lines}",
+        text_parts(
+            copy_text(BuilderCopyId.REPAIR_CHANGES_APPLIED, count=len(changes), scope=scope), "\n", change_lines
+        ),
         execution=execution,
     )
 
@@ -1089,7 +1110,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     ``handlers_fix.go:163``."""
     if turn.action is not None and turn.action.kind == "undo":
         perform_revert(env, turn, s, fc)
-        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     # run_verify: if we have prepared inputs, go verify; else prepare test data.
     fc.verify_run_id = ""
@@ -1099,8 +1120,8 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             fc,
             FormCard(
                 variant="testdata",
-                title="Provide test data",
-                description="Review the inputs Builder will use for this run.",
+                title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
+                description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
                 fields=testdata_form_fields(start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))),
                 values={},
                 frozen=False,
@@ -1110,7 +1131,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
             env,
             s,
             fc,
-            "Provide test inputs (or use mock data) to run validation.",
+            copy_text(BuilderCopyId.REPLIES_PROVIDE_TEST_INPUTS_OR_USE_MOCK_DATA_TO_RUN_VALIDATION),
             cards=["form"],
         )
         return StepResult(
@@ -1134,8 +1155,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             emit=env.emit_progress,
             operation_id=env.operation_id,
             session=s,
+            reply_language=fc.reply_language,
             stage_id=str(s.current_state),
-            steps=[("fix-generate-test-inputs", "Generate validation inputs")],
+            steps=[("fix-generate-test-inputs", copy_text(BuilderCopyId.PROGRESS_GENERATE_VALIDATION_INPUTS))],
         )
         progress.activate("fix-generate-test-inputs")
         inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(schema, {}))
@@ -1180,11 +1202,12 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("fix-prepare-validation", "Prepare validation inputs"),
-            ("fix-run-validation", "Run the repaired workflow"),
-            ("fix-evaluate-validation", "Evaluate validation results"),
+            ("fix-prepare-validation", copy_text(BuilderCopyId.PROGRESS_PREPARE_VALIDATION_INPUTS)),
+            ("fix-run-validation", copy_text(BuilderCopyId.PROGRESS_RUN_THE_REPAIRED_WORKFLOW)),
+            ("fix-evaluate-validation", copy_text(BuilderCopyId.PROGRESS_EVALUATE_VALIDATION_RESULTS)),
         ],
     )
     progress.activate("fix-prepare-validation")
@@ -1255,7 +1278,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             env,
             s,
             fc,
-            card.failure_reason or "Review execution policy and test inputs.",
+            card.failure_reason or copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -1266,7 +1289,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         # Stream truncated: the run's outcome is genuinely unknown, NOT a
         # failure. Advancing to fix.await_decision here would let the user
         # publish (or re-fix) against a run that may still be executing --
-        # surface a neutral notice instead and return to fix.await_testdata
+        # explain the unknown result and return to fix.await_testdata
         # (re-runnable), never diagnosing or staging a repair against an
         # unknown result. The second consecutive unknown outcome stops the
         # re-run loop at the decision gate instead.
@@ -1283,8 +1306,9 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
                 run=run,
                 run_id_sink=[run.id],
             )
-        items = append_card(fc, NoticeItem(text=UNKNOWN_TEST_OUTCOME_NOTICE, tone="neutral"))
-        progress.finish()
+        items = append_assistant(
+            env, s, fc, UNKNOWN_TEST_OUTCOME_REPLY, execution=progress.finish(), turn_id=progress.operation_id
+        )
         return StepResult(
             next=PcState.FIX_AWAIT_TESTDATA,
             context=fc,
@@ -1316,7 +1340,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             env,
             s,
             fc,
-            (result_card(run).failure_reason or NO_OUTPUT_REPLY),
+            (result_card(run).failure_reason or NO_OUTPUT_BODY),
             execution=execution,
             cards=["test_result"],
             turn_id=progress.operation_id,
@@ -1344,7 +1368,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     progress.finish()
     if run.status == "succeeded":
         items += append_assistant(
-            env, s, fc, SUCCESS_REPLY + " " + (result_card(run).review_note or ""), cards=["test_result"]
+            env, s, fc, text_parts(SUCCESS_REPLY, " ", result_card(run).review_note or ""), cards=["test_result"]
         )
     return StepResult(
         next=PcState.FIX_AWAIT_DECISION,
@@ -1368,19 +1392,16 @@ def publication_for_context(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     )
 
 
-def publication_denied(fc: DifyBuilderContext, state: PcState, reason: str) -> StepResult:
+def publication_denied(env: Env, s: Session, fc: DifyBuilderContext, state: PcState, reason: str) -> StepResult:
+    """Keep the publication gate and explain the refusal in a complete reply."""
     return StepResult(
         next=state,
         context=fc,
-        items=append_card(
+        items=append_assistant(
+            env,
+            s,
             fc,
-            NoticeItem(
-                text=(
-                    f"Publication requires a successful run of the current draft ({reason}). "
-                    "Run validation again, then review its outputs."
-                ),
-                tone="neutral",
-            ),
+            copy_text(BuilderCopyId.PUBLISH_VERIFICATION_REQUIRED, reason=str(reason)),
         ),
     )
 
@@ -1394,7 +1415,7 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     if kind == "publish":
         decision = publication_for_context(env, turn, s, fc)
         if not decision.allowed:
-            return publication_denied(fc, PcState.FIX_AWAIT_DECISION, decision.reason)
+            return publication_denied(env, s, fc, PcState.FIX_AWAIT_DECISION, decision.reason)
         return StepResult(next=PcState.FIX_PUBLISH, context=fc)
     if kind == "re_fix":
         fc.diagnosis = None
@@ -1407,10 +1428,10 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         return StepResult(next=PcState.FIX_DIAGNOSE, context=fc)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
-        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.SUCCESS, context=fc, items=items)
     # default: keep_draft
-    items = append_card(fc, DecisionItem(text="Kept the draft"))
+    items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT)))
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 
@@ -1419,7 +1440,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     ``handlers_fix.go:316``."""
     decision = publication_for_context(env, turn, s, fc)
     if not decision.allowed:
-        return publication_denied(fc, PcState.FIX_AWAIT_DECISION, decision.reason)
+        return publication_denied(env, s, fc, PcState.FIX_AWAIT_DECISION, decision.reason)
     verified_run = env.repo.get_run(fc.verify_run_id)
     evidence = verified_run.verification
     assert evidence is not None
@@ -1427,8 +1448,9 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
-        steps=[("fix-publish-workflow", "Publish the repaired workflow")],
+        steps=[("fix-publish-workflow", copy_text(BuilderCopyId.PROGRESS_PUBLISH_THE_REPAIRED_WORKFLOW))],
     )
     progress.activate("fix-publish-workflow")
     try:
@@ -1441,13 +1463,13 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     except HashMismatchError:
         progress.fail_step("fix-publish-workflow")
         progress.finish()
-        return publication_denied(fc, PcState.FIX_AWAIT_DECISION, "stale_revision")
+        return publication_denied(env, s, fc, PcState.FIX_AWAIT_DECISION, "stale_revision")
     execution = progress.finish()
     items = append_assistant(
         env,
         s,
         fc,
-        f"Published workflow version {published.version_name} ({published.status}).",
+        copy_text(BuilderCopyId.PUBLISH_COMPLETE, version=published.version_name, status=published.status),
         execution=execution,
     )
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
@@ -1465,10 +1487,11 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderC
         emit=env.emit_progress,
         operation_id=env.operation_id,
         session=s,
+        reply_language=fc.reply_language,
         stage_id=str(s.current_state),
         steps=[
-            ("checklist-inspect-workflow", "Inspect checklist findings"),
-            ("checklist-diagnose-cause", "Diagnose the configuration issue"),
+            ("checklist-inspect-workflow", copy_text(BuilderCopyId.PROGRESS_INSPECT_CHECKLIST_FINDINGS)),
+            ("checklist-diagnose-cause", copy_text(BuilderCopyId.PROGRESS_DIAGNOSE_THE_CONFIGURATION_ISSUE)),
         ],
     )
     progress.activate("checklist-inspect-workflow")
@@ -1485,9 +1508,9 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderC
         env,
         s,
         fc,
-        "Checklist diagnosis complete.\n"
-        f"- Root cause: {diagnosis.root_cause}\n"
-        f"- Culprit node: {diagnosis.culprit_node_id}",
+        copy_text(
+            BuilderCopyId.DIAGNOSIS_CHECKLIST_COMPLETE, cause=diagnosis.root_cause, node=diagnosis.culprit_node_id
+        ),
         execution=execution,
     )
     return StepResult(
@@ -1512,7 +1535,7 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     ``handlers_fix.go:272``."""
     if turn.action is not None and turn.action.kind == "undo":
         perform_revert(env, turn, s, fc)
-        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
     passed = False
@@ -1530,8 +1553,7 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         if isinstance(raw, list):
             fc.checklist_errors = decode_checklist_errors(raw)
     fc.diagnosis, fc.staged_repair, fc.risk, fc.change_set = None, [], None, None
-    items = append_card(fc, NoticeItem(text="Checklist still failing, re-diagnosing", tone="neutral"))
-    return StepResult(next=PcState.CHECKLIST_DIAGNOSE, context=fc, items=items)
+    return StepResult(next=PcState.CHECKLIST_DIAGNOSE, context=fc)
 
 
 def decode_checklist_errors(raw: list) -> list[ChecklistError]:

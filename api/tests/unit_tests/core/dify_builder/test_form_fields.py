@@ -9,6 +9,7 @@ from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMod
 from core.dify_builder.runner import Env
 from core.dify_builder.state import PcState
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 def test_build_form_fields_preserves_supported_scalar_and_json_types():
@@ -109,7 +110,7 @@ def test_chatflow_form_has_a_distinct_required_system_message(flow, variables):
     query = next(field for field in fields if field["key"] == "sys.query")
     assert query["required"] is True
     assert query["type"] == "paragraph"
-    assert query["label"] == "User message"
+    assert english_text(query["label"]) == "User message"
     assert len(fields) == len(variables) + 1
     assert env.dify.graph == before
 
@@ -229,3 +230,27 @@ def test_workflow_fix_input_failures_keep_the_existing_decision_route():
     env.dify.run_draft = lambda *_args, **_kwargs: Run(status="failed", error="missing input: custom field")
     result = handlers_fix.handle_verify(env, _query_turn(), session, fc)
     assert result.next == PcState.FIX_AWAIT_DECISION
+
+
+def test_system_message_label_uses_a_scene_without_changing_the_runtime_schema():
+    from core.dify_builder.input_schema import schema_hash, start_schema
+    from services.dify_builder.copy_ids import BuilderCopyId
+    from services.dify_builder.presentation import copy_text
+
+    graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "sys.query", "type": "text", "label": "User message"}],
+                },
+            }
+        ]
+    }
+    schema = start_schema(graph, "advanced-chat")
+    before, digest = copy.deepcopy(schema), schema_hash(schema)
+    assert handlers_fix.testdata_form_fields(schema)[0].label == copy_text(BuilderCopyId.FORMS_USER_MESSAGE)
+    assert schema == before
+    assert schema_hash(schema) == digest
+    assert handlers_fix.testdata_form_fields(start_schema(graph))[0].label == "User message"

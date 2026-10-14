@@ -1173,7 +1173,10 @@ def test_analyze_goal_explains_a_field_it_leaves_blank():
     """A blank box with no explanation reads as one the user forgot to fill.
     The hint must also be a CATALOG string, or it ships in English on a Chinese
     form -- the ESQ1-259 failure."""
-    from core.dify_builder import strings
+    from dataclasses import asdict
+
+    from services.dify_builder.copy_ids import BuilderCopyId
+    from services.dify_builder.presentation import copy_text
 
     m = _FakeInstance(
         [
@@ -1189,8 +1192,10 @@ def test_analyze_goal_explains_a_field_it_leaves_blank():
     out = build.analyze_goal(m, _PM_GOAL)
 
     assert out["values"]["bocha_api_key"] == ""
-    assert out["fields"][0]["hint"]
-    assert out["fields"][0]["hint"] in strings.PLAIN
+    assert out["fields"][0]["hint_copy"]
+    assert out["fields"][0]["hint_copy"] == asdict(
+        copy_text(BuilderCopyId.REPLIES_NOT_STATED_IN_YOUR_REQUEST_ADD_IT_IF_YOU_HAVE_ONE)
+    )
 
 
 def test_analyze_goal_does_not_explain_a_field_that_has_a_value():

@@ -23,6 +23,7 @@ class ProgressSnapshot:
     operation_id: str
     at_version: int
     revision: int
+    reply_language: str
     execution: ExecutionProgress
 
 

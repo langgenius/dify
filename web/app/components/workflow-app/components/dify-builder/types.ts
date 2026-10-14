@@ -8,6 +8,7 @@ import type {
   DifyBuilderCommandStartedEventData,
   DifyBuilderConversationPageResponse,
   DifyBuilderExecutionProgressResponse,
+  DifyBuilderReceiptSnapshot,
   DifyBuilderSessionViewResponse,
   FormField as GeneratedFormField,
   SessionModel as GeneratedSessionModel,
@@ -20,6 +21,8 @@ export type ChecklistErrorPayload = DifyBuilderChecklistErrorPayload
 type GeneratedConversationItem = DifyBuilderConversationPageResponse['data'][number]
 type GeneratedAssistantTurn = Extract<GeneratedConversationItem, { kind: 'assistant_turn' }>
 type ClientAssistantTurn = Omit<GeneratedAssistantTurn, 'payload'> & {
+  // Transient receive time; history hydration never adds it.
+  receivedAt?: number
   payload: Omit<GeneratedAssistantTurn['payload'], 'stage_id'> & { stage_id?: string }
 }
 export type ConversationItem =
@@ -68,6 +71,7 @@ export type DifyBuilderExecutionProgress = {
   operationId: string
   atVersion: number
   revision: number
+  replyLanguage?: string
   execution: DifyBuilderExecutionProgressResponse
 }
 
@@ -96,7 +100,11 @@ export type DifyBuilderSessionController = {
   loadOlderConversation: () => Promise<boolean>
   refresh: () => Promise<boolean>
   restore: (sessionId: string) => Promise<boolean>
-  runAction: (actionId: string, payload?: Record<string, unknown>) => Promise<boolean>
+  runAction: (
+    actionId: string,
+    payload?: Record<string, unknown>,
+    receiptSnapshot?: DifyBuilderReceiptSnapshot,
+  ) => Promise<boolean>
   sendMessage: (text: string, clientTurnId?: string) => Promise<boolean>
   updateModel: (modelConfig: SessionModel) => Promise<boolean>
   reset: () => void

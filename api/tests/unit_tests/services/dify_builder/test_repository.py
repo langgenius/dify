@@ -316,12 +316,16 @@ def test_list_conversation_empty_for_unknown_session(repo: SqlDifyBuilderReposit
 
 def test_list_recent_conversation_returns_only_the_bounded_tail(repo: SqlDifyBuilderRepository) -> None:
     domain_session = _make_domain_session()
-    items = [ConversationItem(seq=seq, kind="notice", payload={"text": str(seq)}) for seq in range(5)]
+    items = [ConversationItem(seq=seq, kind="user", payload={"text": str(seq)}) for seq in range(5)]
+    items += [ConversationItem(seq=seq, kind="notice", payload={"text": str(seq)}) for seq in range(5, 9)]
     repo.create_session(domain_session, DifyBuilderContext(), items)
 
     recent = repo.list_recent_conversation(domain_session.id, limit=2)
 
     assert [item.seq for item in recent] == [3, 4]
+    page = repo.list_conversation_page(domain_session.id, limit=20)
+    assert page.data == items
+    assert page.last_seq == 8
 
 
 def test_get_conversation_turn_kinds_filters_by_turn_id(repo: SqlDifyBuilderRepository) -> None:

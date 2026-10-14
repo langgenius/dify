@@ -26,6 +26,7 @@ const reduceExecutionProgress = (
       operationId: progress.operation_id,
       atVersion: progress.at_version,
       revision: progress.revision,
+      replyLanguage: progress.reply_language,
       execution: progress.execution,
     }
   }
@@ -49,6 +50,7 @@ const reduceExecutionProgress = (
     operationId: progress.operation_id,
     atVersion: progress.at_version,
     revision: progress.revision,
+    replyLanguage: progress.reply_language,
     execution: {
       status: progress.status,
       activities,

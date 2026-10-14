@@ -2,11 +2,13 @@
 
 from core.dify_builder.contract import TestResultCard
 from core.dify_builder.models import PublicationDecision, Run
+from services.dify_builder.copy_ids import BuilderCopyId
 from services.dify_builder.execution_messages import FALLBACK, execution_refusal_message
 from services.dify_builder.json_execution_presentation import json_execution_blocks_repair, json_failed_reason
+from services.dify_builder.presentation import copy_text
 
-REVIEW_NOTE = "Other paths and goal acceptance were not verified."
-SUCCESS_REPLY = "Execution succeeded; output needs review."
+REVIEW_NOTE = copy_text(BuilderCopyId.REPLIES_OTHER_PATHS_AND_GOAL_ACCEPTANCE_WERE_NOT_VERIFIED)
+SUCCESS_REPLY = copy_text(BuilderCopyId.LABELS_EXECUTION_SUCCEEDED_OUTPUT_NEEDS_REVIEW)
 
 
 def is_execution_policy_blocker(run: Run) -> bool:
@@ -82,12 +84,9 @@ def has_output_blocker(run: Run) -> bool:
     )
 
 
-CONFIRMED_COMPLETED_NOTE = "The confirmed read completed; its content stays in the authorized workflow run."
-CONFIRMED_FAILED_REASON = "The confirmed tool test failed. Prepare and confirm a new test to try again."
-CONFIRMED_UNKNOWN_REASON = (
-    "The confirmed tool test outcome is unknown; it is not retried automatically. "
-    "Prepare and confirm a new test to try again."
-)
+CONFIRMED_COMPLETED_NOTE = copy_text(BuilderCopyId.CONFIRMED_COMPLETED_NOTE)
+CONFIRMED_FAILED_REASON = copy_text(BuilderCopyId.CONFIRMED_FAILED)
+CONFIRMED_UNKNOWN_REASON = copy_text(BuilderCopyId.CONFIRMED_UNKNOWN)
 
 
 def _confirmed_result_card(run: Run) -> TestResultCard:
@@ -112,9 +111,7 @@ def _confirmed_result_card(run: Run) -> TestResultCard:
     if completed and has_output_blocker(run):
         card.status = "failed"
         card.outcome = "required_output_unresolved"
-        card.failure_reason = (
-            "A required output reference was unresolved or the executed branch produced no terminal output."
-        )
+        card.failure_reason = copy_text(BuilderCopyId.REPLIES_A_REQUIRED_OUTPUT_REFERENCE_WAS_UNRESOLVED)
     elif completed:
         card.outcome = "execution_succeeded_needs_review"
     elif summary.safety_outcome == "native_failed":
@@ -167,17 +164,19 @@ def result_card(run: Run) -> TestResultCard:
     if run.status == "succeeded" and has_output_blocker(run):
         card.status = "failed"
         card.outcome = "required_output_unresolved"
-        card.failure_reason = (
-            "A required output reference was unresolved or the executed branch produced no terminal output."
-        )
+        card.failure_reason = copy_text(BuilderCopyId.REPLIES_A_REQUIRED_OUTPUT_REFERENCE_WAS_UNRESOLVED)
     elif run.status == "succeeded":
         card.outcome = "execution_succeeded_needs_review"
         if evidence is None or not evidence.execution_revision:
-            card.review_note = REVIEW_NOTE + " Draft verification is stale or unavailable; run again before publishing."
+            card.review_note = copy_text(BuilderCopyId.REPLIES_OTHER_PATHS_AND_GOAL_ACCEPTANCE_WERE)
     elif run.status == "failed":
         card.outcome = "execution_failed"
-        card.failure_reason = run.error or next((n.error for n in run.per_node if n.error), "Execution failed.")
+        card.failure_reason = run.error or next(
+            (n.error for n in run.per_node if n.error), copy_text(BuilderCopyId.LABELS_EXECUTION_FAILED)
+        )
     else:
         card.outcome = "execution_unknown"
-        card.failure_reason = run.error or "Execution outcome is unknown; run again before publishing."
+        card.failure_reason = run.error or copy_text(
+            BuilderCopyId.REPLIES_EXECUTION_OUTCOME_IS_UNKNOWN_RUN_AGAIN_BEFORE_PUBLISHING
+        )
     return card

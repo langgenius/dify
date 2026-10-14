@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useState } from 'react'
+import { useBuilderText } from '../copy/use-builder-text'
 
 const ActivityIcon = ({ state }: { state: ExecutionActivity['state'] }) => (
   <span
@@ -19,7 +20,13 @@ const ActivityIcon = ({ state }: { state: ExecutionActivity['state'] }) => (
   />
 )
 
-const ActivityRow = ({ activity }: { activity: ExecutionActivity }) => (
+const ActivityRow = ({
+  activity,
+  renderText,
+}: {
+  activity: ExecutionActivity
+  renderText: ReturnType<typeof useBuilderText>['renderText']
+}) => (
   <div
     className={cn(
       'flex min-h-5 items-center gap-1.5 text-xs text-text-tertiary',
@@ -28,11 +35,17 @@ const ActivityRow = ({ activity }: { activity: ExecutionActivity }) => (
     )}
   >
     <ActivityIcon state={activity.state} />
-    <span>{activity.label}</span>
+    <span>{renderText(activity.label)}</span>
   </div>
 )
 
-const ActivityList = ({ activities }: { activities: ExecutionActivity[] }) => {
+const ActivityList = ({
+  activities,
+  renderText,
+}: {
+  activities: ExecutionActivity[]
+  renderText: ReturnType<typeof useBuilderText>['renderText']
+}) => {
   const activityIds = new Set(activities.map((activity) => activity.id))
   const childrenByParent = new Map<string, ExecutionActivity[]>()
   for (const activity of activities) {
@@ -51,12 +64,12 @@ const ActivityList = ({ activities }: { activities: ExecutionActivity[] }) => {
         const children = childrenByParent.get(activity.id) ?? []
         return (
           <li key={activity.id}>
-            <ActivityRow activity={activity} />
+            <ActivityRow renderText={renderText} activity={activity} />
             {children.length > 0 && (
               <ol className="mt-1 ml-[7px] space-y-1 border-l border-divider-subtle pl-[19px]">
                 {children.map((child) => (
                   <li key={child.id}>
-                    <ActivityRow activity={child} />
+                    <ActivityRow renderText={renderText} activity={child} />
                   </li>
                 ))}
               </ol>
@@ -69,7 +82,14 @@ const ActivityList = ({ activities }: { activities: ExecutionActivity[] }) => {
 }
 
 export const ExecutionProgress = memo(
-  ({ execution }: { execution?: ExecutionProgressData | null }) => {
+  ({
+    execution,
+    replyLanguage,
+  }: {
+    execution?: ExecutionProgressData | null
+    replyLanguage?: string
+  }) => {
+    const { renderText } = useBuilderText(replyLanguage)
     const [open, setOpen] = useState(false)
     const activities = execution?.activities ?? []
     if (!execution || activities.length === 0) return null
@@ -85,7 +105,7 @@ export const ExecutionProgress = memo(
 
     return (
       <details
-        aria-label={summaryActivity?.label}
+        aria-label={renderText(summaryActivity?.label)}
         className="group min-h-8"
         open={open}
         onToggle={(event) => setOpen(event.currentTarget.open)}
@@ -97,7 +117,7 @@ export const ExecutionProgress = memo(
             aria-live={execution.status === 'running' ? 'polite' : undefined}
             aria-atomic={execution.status === 'running' ? 'true' : undefined}
           >
-            {summaryActivity?.label}
+            {renderText(summaryActivity?.label)}
           </span>
           <span className="grow" />
           <span
@@ -105,7 +125,7 @@ export const ExecutionProgress = memo(
             className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-open:rotate-90"
           />
         </summary>
-        {open && <ActivityList activities={activities} />}
+        {open && <ActivityList renderText={renderText} activities={activities} />}
       </details>
     )
   },
