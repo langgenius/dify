@@ -64,9 +64,11 @@ def _installed_app_cursor_filter(cursor: InstalledAppCursor):
 
 
 def _installed_app_order_by():
+    # Sort null dates last with a boolean key: MySQL has no NULLS LAST.
     return (
         InstalledApp.is_pinned.desc(),
-        InstalledApp.last_used_at.desc().nulls_last(),
+        InstalledApp.last_used_at.is_(None).asc(),
+        InstalledApp.last_used_at.desc(),
         InstalledApp.id.asc(),
     )
 
