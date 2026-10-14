@@ -609,7 +609,10 @@ class TestMessageSuggestedApi:
         app_model = _app()
         end_user = _end_user()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(InternalServerError):
+        with (
+            app.test_request_context("/messages/m1/suggested", method="GET"),
+            pytest.raises(InternalServerError),
+        ):
             handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

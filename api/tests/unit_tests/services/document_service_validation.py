@@ -1075,6 +1075,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]),
             pytest.raises(ValueError, match="Data source type is invalid"),
         ):
+            # Act & Assert
             DocumentService.data_source_args_validate(knowledge_config)
 
     def test_data_source_args_validate_missing_info_list_error(self):
@@ -1120,6 +1121,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]),
             pytest.raises(ValueError, match="File source info is required"),
         ):
+            # Act & Assert
             DocumentService.data_source_args_validate(knowledge_config)
 
     def test_data_source_args_validate_missing_notion_info_error(self):
@@ -1146,6 +1148,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]),
             pytest.raises(ValueError, match="Notion source info is required"),
         ):
+            # Act & Assert
             DocumentService.data_source_args_validate(knowledge_config)
 
     def test_data_source_args_validate_missing_website_info_error(self):
@@ -1172,6 +1175,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]),
             pytest.raises(ValueError, match="Website source info is required"),
         ):
+            # Act & Assert
             DocumentService.data_source_args_validate(knowledge_config)
 
 
@@ -1351,6 +1355,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule mode is invalid"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_missing_rules_error(self):
@@ -1375,6 +1380,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule rules is required"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_missing_pre_processing_rules_error(self):
@@ -1399,6 +1405,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule pre_processing_rules is required"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_missing_pre_processing_rule_id_error(self):
@@ -1427,6 +1434,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule pre_processing_rules id is required"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_invalid_pre_processing_rule_enabled_error(self):
@@ -1455,6 +1463,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule pre_processing_rules enabled is invalid"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_missing_segmentation_error(self):
@@ -1478,6 +1487,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule segmentation is required"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_missing_segmentation_separator_error(self):
@@ -1502,6 +1512,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule segmentation separator is required"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_invalid_segmentation_separator_error(self):
@@ -1526,6 +1537,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule segmentation separator is invalid"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_missing_max_tokens_error(self):
@@ -1550,6 +1562,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule segmentation max_tokens is required"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_invalid_max_tokens_error(self):
@@ -1574,6 +1587,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]),
             pytest.raises(ValueError, match="Process rule segmentation max_tokens is invalid"),
         ):
+            # Act & Assert
             DocumentService.process_rule_args_validate(knowledge_config)
 
     def test_process_rule_args_validate_hierarchical_full_doc_skips_max_tokens(self):

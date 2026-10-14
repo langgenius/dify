@@ -118,7 +118,10 @@ def test_download_request_returns_origin_free_metadata() -> None:
         "config": {"kind": "skill", "name": "alpha"},
     }
 
-    with app.test_request_context("/", method="POST", json=payload), patch(f"{MODULE}.AgentConfigService") as service:
+    with (
+        app.test_request_context("/", method="POST", json=payload),
+        patch(f"{MODULE}.AgentConfigService") as service,
+    ):
         service.return_value.request_download.return_value.filename = "alpha.zip"
         service.return_value.request_download.return_value.mime_type = "application/zip"
         service.return_value.request_download.return_value.size = 123
@@ -172,7 +175,10 @@ def test_push_happy_path_validates_body_and_preserves_execution_user() -> None:
         "note": "hello",
     }
 
-    with app.test_request_context("/", method="POST", json=payload), patch(f"{MODULE}.AgentConfigService") as service:
+    with (
+        app.test_request_context("/", method="POST", json=payload),
+        patch(f"{MODULE}.AgentConfigService") as service,
+    ):
         service.return_value.push.return_value = {
             "agent_id": "agent-1",
             "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
@@ -205,7 +211,10 @@ def test_env_happy_path_calls_service() -> None:
         "env_text": "KEY=value\n",
     }
 
-    with app.test_request_context("/", method="PATCH", json=payload), patch(f"{MODULE}.AgentConfigService") as service:
+    with (
+        app.test_request_context("/", method="PATCH", json=payload),
+        patch(f"{MODULE}.AgentConfigService") as service,
+    ):
         service.return_value.update_env.return_value = {"env_keys": ["KEY"]}
         body = raw(AgentConfigEnvApi(), "agent-1")
 
@@ -224,7 +233,10 @@ def test_note_happy_path_calls_service() -> None:
         "note": "hello",
     }
 
-    with app.test_request_context("/", method="PUT", json=payload), patch(f"{MODULE}.AgentConfigService") as service:
+    with (
+        app.test_request_context("/", method="PUT", json=payload),
+        patch(f"{MODULE}.AgentConfigService") as service,
+    ):
         service.return_value.update_note.return_value = {"note": "hello"}
         body = raw(AgentConfigNoteApi(), "agent-1")
 
@@ -298,7 +310,10 @@ def test_push_maps_service_errors() -> None:
         "skills": [],
     }
 
-    with app.test_request_context("/", method="POST", json=payload), patch(f"{MODULE}.AgentConfigService") as service:
+    with (
+        app.test_request_context("/", method="POST", json=payload),
+        patch(f"{MODULE}.AgentConfigService") as service,
+    ):
         service.return_value.push.side_effect = AgentConfigServiceError(
             "config_not_writable",
             "denied",

@@ -41,8 +41,7 @@ def test_translate_maps_trigger_workflow_to_stable_unavailable_error():
 def test_translate_maps_value_error_to_a_fixed_bad_request():
     # Regression guard: an unpublished workflow used to surface as a detail-less 500.
     # The service message names internals, so the client gets a fixed text.
-    with pytest.raises(BadRequest) as exc:
-        with _translate_service_errors():
-            raise ValueError("variable 'secret_key' of node 42 is missing")
+    with pytest.raises(BadRequest) as exc, _translate_service_errors():
+        raise ValueError("variable 'secret_key' of node 42 is missing")
     assert exc.value.code == 400
     assert exc.value.description == "invalid run input"

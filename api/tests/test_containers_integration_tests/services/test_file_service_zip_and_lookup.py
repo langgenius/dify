@@ -59,7 +59,10 @@ def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch
 
     monkeypatch.setattr(file_service_module.storage, "load", _load)
 
-    with FileService.build_upload_files_zip_tempfile(upload_files=upload_files) as tmp, ZipFile(tmp, mode="r") as zf:
+    with (
+        FileService.build_upload_files_zip_tempfile(upload_files=upload_files) as tmp,
+        ZipFile(tmp, mode="r") as zf,
+    ):
         assert zf.namelist() == ["b.txt", "b (1).txt", "b (2).txt"]
         assert zf.read("b.txt") == b"one"
         assert zf.read("b (1).txt") == b"two"

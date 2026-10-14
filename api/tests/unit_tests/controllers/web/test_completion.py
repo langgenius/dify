@@ -48,7 +48,10 @@ def _end_user() -> EndUser:
 # ---------------------------------------------------------------------------
 class TestCompletionApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context("/completion-messages", method="POST"), pytest.raises(NotCompletionAppError):
+        with (
+            app.test_request_context("/completion-messages", method="POST"),
+            pytest.raises(NotCompletionAppError),
+        ):
             CompletionApi().post(_chat_app(), _end_user())
 
     @patch("controllers.web.completion.helper.compact_generate_response", return_value={"answer": "hi"})
@@ -71,7 +74,10 @@ class TestCompletionApi:
     def test_provider_not_init_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}}
 
-        with app.test_request_context("/completion-messages", method="POST"), pytest.raises(ProviderNotInitializeError):
+        with (
+            app.test_request_context("/completion-messages", method="POST"),
+            pytest.raises(ProviderNotInitializeError),
+        ):
             CompletionApi().post(_completion_app(), _end_user())
 
     @patch(
@@ -82,7 +88,10 @@ class TestCompletionApi:
     def test_quota_exceeded_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}}
 
-        with app.test_request_context("/completion-messages", method="POST"), pytest.raises(ProviderQuotaExceededError):
+        with (
+            app.test_request_context("/completion-messages", method="POST"),
+            pytest.raises(ProviderQuotaExceededError),
+        ):
             CompletionApi().post(_completion_app(), _end_user())
 
     @patch(
@@ -188,7 +197,10 @@ class TestChatApi:
 # ---------------------------------------------------------------------------
 class TestChatStopApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context("/chat-messages/task-1/stop", method="POST"), pytest.raises(NotChatAppError):
+        with (
+            app.test_request_context("/chat-messages/task-1/stop", method="POST"),
+            pytest.raises(NotChatAppError),
+        ):
             ChatStopApi().post(_completion_app(), _end_user(), "task-1")
 
     @patch("controllers.web.completion.AppTaskService.stop_task")

@@ -478,9 +478,8 @@ def test_get_form_raises_forbidden_when_tenant_archived(
     service_mock.get_form_by_token.return_value = form
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
-    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
-        with pytest.raises(Forbidden):
-            HumanInputFormApi().get("token-1")
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"), pytest.raises(Forbidden):
+        HumanInputFormApi().get("token-1")
 
 
 def test_submit_form_accepts_backstage_token(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):

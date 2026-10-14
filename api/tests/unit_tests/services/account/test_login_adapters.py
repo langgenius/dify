@@ -408,13 +408,12 @@ def test_turnstile_gateway_maps_provider_failures(
 
     monkeypatch.setattr(adapters.TurnstileService, "verify", verify)
 
-    with caplog.at_level(level, logger=adapters.__name__):
-        with pytest.raises(application_error):
-            adapters.TurnstileHumanVerificationGateway().verify(
-                token="challenge",
-                remote_ip="127.0.0.1",
-                action="signin_code_verify",
-            )
+    with caplog.at_level(level, logger=adapters.__name__), pytest.raises(application_error):
+        adapters.TurnstileHumanVerificationGateway().verify(
+            token="challenge",
+            remote_ip="127.0.0.1",
+            action="signin_code_verify",
+        )
 
     record = caplog.records[-1]
     assert record.getMessage() == message
@@ -523,15 +522,17 @@ def test_email_code_gateway_maps_challenge_store_outage(
     monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "create", create)
     gateway = adapters.RedisEmailCodeGateway(rate_limiter=FakeRateLimiter())
 
-    with caplog.at_level(logging.WARNING, logger=adapters.__name__):
-        with pytest.raises(account_errors.EmailCodeLoginUnavailableError):
-            gateway.send(
-                account_id=None,
-                normalized_email="user@example.com",
-                recipient_email="user@example.com",
-                language="en-US",
-                registration_allowed=False,
-            )
+    with (
+        caplog.at_level(logging.WARNING, logger=adapters.__name__),
+        pytest.raises(account_errors.EmailCodeLoginUnavailableError),
+    ):
+        gateway.send(
+            account_id=None,
+            normalized_email="user@example.com",
+            recipient_email="user@example.com",
+            language="en-US",
+            registration_allowed=False,
+        )
 
     record = caplog.records[-1]
     assert record.getMessage() == "Email-code challenge creation is unavailable"
@@ -547,9 +548,11 @@ def test_email_code_gateway_logs_challenge_verification_outage(
     monkeypatch.setattr(adapters.EmailCodeLoginChallengeStore, "verify", verify)
     gateway = adapters.RedisEmailCodeGateway(rate_limiter=FakeRateLimiter())
 
-    with caplog.at_level(logging.WARNING, logger=adapters.__name__):
-        with pytest.raises(account_errors.EmailCodeLoginUnavailableError):
-            gateway.verify(normalized_email="user@example.com", code="123456", token="challenge-token")
+    with (
+        caplog.at_level(logging.WARNING, logger=adapters.__name__),
+        pytest.raises(account_errors.EmailCodeLoginUnavailableError),
+    ):
+        gateway.verify(normalized_email="user@example.com", code="123456", token="challenge-token")
 
     record = caplog.records[-1]
     assert record.getMessage() == "Email-code challenge verification is unavailable"

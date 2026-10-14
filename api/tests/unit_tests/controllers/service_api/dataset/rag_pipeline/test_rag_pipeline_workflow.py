@@ -825,9 +825,9 @@ class TestFileUploadApiPost:
                 content_type="multipart/form-data",
                 data={"file": file_data},
             ),
+            pytest.raises(UnsupportedFileTypeHTTPError) as exc_info,
         ):
-            with pytest.raises(UnsupportedFileTypeHTTPError) as exc_info:
-                KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
+            KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
 
         assert exc_info.value.code == 415
         assert exc_info.value.error_code == "unsupported_file_type"

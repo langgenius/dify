@@ -259,7 +259,10 @@ class IndexProcessor:
             def generate_summary_for_chunk(preview_item: PreviewItem) -> None:
                 """Generate summary for a single chunk."""
                 if flask_app:
-                    with flask_app.app_context(), session_factory.create_session() as worker_session:
+                    with (
+                        flask_app.app_context(),
+                        session_factory.create_session() as worker_session,
+                    ):
                         summary, _ = ParagraphIndexProcessor.generate_summary(
                             tenant_id=tenant_id,
                             text=preview_item.content if preview_item.content is not None else "",

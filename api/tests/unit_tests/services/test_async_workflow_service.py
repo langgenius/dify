@@ -291,12 +291,12 @@ class TestAsyncWorkflowService:
         # Arrange
         trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data(app_id="missing-app")
 
-        # Act / Assert
         with (
             patch.object(async_workflow_service_module, "QueueDispatcherManager"),
             patch.object(async_workflow_service_module, "WorkflowService"),
             pytest.raises(WorkflowNotFoundError, match="App not found: missing-app"),
         ):
+            # Act / Assert
             AsyncWorkflowService.trigger_workflow_async(
                 session=sqlite_session,
                 user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),

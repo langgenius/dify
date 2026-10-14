@@ -619,6 +619,7 @@ class TestKnowledgeRetrievalIntegration:
             ),
             pytest.raises(Exception, match="Rate limit exceeded"),
         ):
+            # Act & Assert
             dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
 

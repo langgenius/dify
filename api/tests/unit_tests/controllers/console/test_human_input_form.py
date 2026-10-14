@@ -131,7 +131,10 @@ def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPat
     api = ConsoleHumanInputFormApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/console/api/form/human_input/token", method="GET"), pytest.raises(NotFoundError):
+    with (
+        app.test_request_context("/console/api/form/human_input/token", method="GET"),
+        pytest.raises(NotFoundError),
+    ):
         handler(api, "tenant-1", form_token="token")
 
 

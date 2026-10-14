@@ -62,7 +62,10 @@ class TestWorkflowRunApi:
     def test_provider_not_init(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}}
 
-        with app.test_request_context("/workflows/run", method="POST"), pytest.raises(ProviderNotInitializeError):
+        with (
+            app.test_request_context("/workflows/run", method="POST"),
+            pytest.raises(ProviderNotInitializeError),
+        ):
             WorkflowRunApi().post(_workflow_app(), _end_user())
 
     @patch(
@@ -95,7 +98,10 @@ class TestWorkflowRunApi:
     def test_quota_exceeded(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}}
 
-        with app.test_request_context("/workflows/run", method="POST"), pytest.raises(ProviderQuotaExceededError):
+        with (
+            app.test_request_context("/workflows/run", method="POST"),
+            pytest.raises(ProviderQuotaExceededError),
+        ):
             WorkflowRunApi().post(_workflow_app(), _end_user())
 
 

@@ -142,7 +142,10 @@ class TestConversationPinApi:
         return flask_app_with_containers
 
     def test_non_chat_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context(f"/conversations/{uuid4()}/pin", method="PATCH"), pytest.raises(NotChatAppError):
+        with (
+            app.test_request_context(f"/conversations/{uuid4()}/pin", method="PATCH"),
+            pytest.raises(NotChatAppError),
+        ):
             ConversationPinApi().patch(_completion_app(), _end_user(), uuid4())
 
     @patch("controllers.web.conversation.WebConversationService.pin")

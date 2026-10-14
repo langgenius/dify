@@ -139,9 +139,11 @@ class TestToolFileApi:
 
     def test_missing_signature_is_rejected_before_the_service_call(self, app: Flask) -> None:
         """`timestamp`, `nonce` and `sign` are required, so this covers the decorator's rejection path."""
-        with patch.object(module, "application_services") as application_services:
-            with app.test_request_context("/files/tools/file-id.txt"):
-                with pytest.raises(UnprocessableEntity):
-                    module.ToolFileApi().get("file-id", "txt")
+        with (
+            patch.object(module, "application_services") as application_services,
+            app.test_request_context("/files/tools/file-id.txt"),
+            pytest.raises(UnprocessableEntity),
+        ):
+            module.ToolFileApi().get("file-id", "txt")
 
         application_services.assert_not_called()

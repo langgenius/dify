@@ -282,9 +282,9 @@ class TestEndpointItemApi:
                 "controllers.console.workspace.endpoint.EndpointService.delete_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, "t1", "u1", "e1")
+            method(api, "t1", "u1", "e1")
 
     def test_update_success(self, app: Flask):
         api = EndpointItemApi()
@@ -339,9 +339,9 @@ class TestEndpointItemApi:
                 "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1", "e1")
+            method(api, req_data, "t1", "u1", "e1")
 
 
 class TestDeprecatedEndpointDeleteApi:
@@ -380,9 +380,9 @@ class TestDeprecatedEndpointDeleteApi:
                 "controllers.console.workspace.endpoint.EndpointService.delete_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1")
+            method(api, req_data, "t1", "u1")
 
 
 class TestDeprecatedEndpointUpdateApi:
@@ -431,9 +431,9 @@ class TestDeprecatedEndpointUpdateApi:
                 "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1")
+            method(api, req_data, "t1", "u1")
 
 
 class TestEndpointRouteMetadata:
@@ -508,9 +508,9 @@ class TestEndpointEnableApi:
                 "controllers.console.workspace.endpoint.EndpointService.enable_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1")
+            method(api, req_data, "t1", "u1")
 
 
 class TestEndpointDisableApi:

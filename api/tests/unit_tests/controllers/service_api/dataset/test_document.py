@@ -997,7 +997,10 @@ class TestDocumentApiGet:
             method="GET",
         ):
             api = DocumentApi()
-            with patch.object(api, "get_dataset", return_value=mock_dataset), pytest.raises(InvalidMetadataError):
+            with (
+                patch.object(api, "get_dataset", return_value=mock_dataset),
+                pytest.raises(InvalidMetadataError),
+            ):
                 inspect.unwrap(type(api).get)(
                     api,
                     session,

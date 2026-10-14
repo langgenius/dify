@@ -797,7 +797,10 @@ def test_trace_dispatch(trace_instance):
 
 
 def test_trace_exception(trace_instance):
-    with patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("fail")), pytest.raises(RuntimeError):
+    with (
+        patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("fail")),
+        pytest.raises(RuntimeError),
+    ):
         trace_instance.trace(_make_workflow_info())
 
 

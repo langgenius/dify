@@ -335,7 +335,10 @@ class TestFrontendBackendIntegration(unittest.TestCase):
         ]
 
         for expr in invalid_expressions:
-            with self.subTest(expr=repr(expr)), pytest.raises((CroniterBadCronError, ValueError, Exception)):
+            with (
+                self.subTest(expr=repr(expr)),
+                pytest.raises((CroniterBadCronError, ValueError, Exception)),
+            ):
                 calculate_next_run_at(expr, "UTC", self.base_time)
 
         # Note: Empty/whitespace expressions are not tested here as they are

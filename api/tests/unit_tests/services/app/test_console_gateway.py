@@ -670,13 +670,12 @@ def test_console_package_export_preserves_icons_without_holding_database_connect
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", dependencies)
     exported = app_services.console.export(context, app_id, AppExportOptions())
     assert not isinstance(exported, str)
-    with exported:
-        with ZipFile(exported.archive) as archive:
-            manifest = yaml.safe_load(archive.read("manifest.yaml"))
-            data = yaml.safe_load(archive.read("app.yaml"))
-            icon = manifest["icons"][0]
-            assert data["app"]["icon"] == icon["id"]
-            assert archive.read(icon["path"]) == payload
+    with exported, ZipFile(exported.archive) as archive:
+        manifest = yaml.safe_load(archive.read("manifest.yaml"))
+        data = yaml.safe_load(archive.read("app.yaml"))
+        icon = manifest["icons"][0]
+        assert data["app"]["icon"] == icon["id"]
+        assert archive.read(icon["path"]) == payload
     assert calls == ["plugins", "storage"]
     with sqlite_session_factory() as session:
         source = session.get(App, app_id)

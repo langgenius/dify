@@ -226,9 +226,9 @@ class TestFetchTokenWithSingleFlight:
                 "query_token_from_db",
                 side_effect=Unauthorized("Access token is invalid"),
             ),
+            pytest.raises(Unauthorized, match="Access token is invalid"),
         ):
-            with pytest.raises(Unauthorized, match="Access token is invalid"):
-                api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
+            api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
 
         _assert_lock_released(commands)
 

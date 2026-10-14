@@ -411,11 +411,11 @@ class TestCompletionControllerLogic:
         mock_service_api_ns.payload = payload_dict
         mock_generate_service.generate.return_value = {"text": "response"}
 
-        # Helper for compact_generate_response logic check
         with (
             app.test_request_context(),
             patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact,
         ):
+            # Helper for compact_generate_response logic check
             mock_compact.return_value = {"text": "compacted"}
 
             api = CompletionApi()
@@ -542,7 +542,10 @@ class TestCompletionStopApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
-        with app.test_request_context("/completion-messages/1/stop", method="POST"), pytest.raises(AppUnavailableError):
+        with (
+            app.test_request_context("/completion-messages/1/stop", method="POST"),
+            pytest.raises(AppUnavailableError),
+        ):
             handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
@@ -587,11 +590,13 @@ class TestChatApiController:
         api = ChatApi()
         handler = unwrap(api.post)
 
-        with app.test_request_context(
-            "/chat-messages", method="POST", json={"inputs": {}, "query": "hi", "response_mode": "blocking"}
+        with (
+            app.test_request_context(
+                "/chat-messages", method="POST", json={"inputs": {}, "query": "hi", "response_mode": "blocking"}
+            ),
+            pytest.raises(http_error) as exc_info,
         ):
-            with pytest.raises(http_error) as exc_info:
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
         generate.assert_called_once()
         assert exc_info.value.code == status_code

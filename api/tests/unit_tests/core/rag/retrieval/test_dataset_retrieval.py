@@ -2576,11 +2576,11 @@ class TestDatasetRetrievalKnowledgeRetrieval:
             # Mock _get_available_datasets
             mock_dataset1 = create_mock_dataset_methods(dataset_id=dataset_id1, tenant_id=tenant_id)
             mock_dataset2 = create_mock_dataset_methods(dataset_id=dataset_id2, tenant_id=tenant_id)
-            # Mock get_metadata_filter_condition
             with (
                 patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset1, mock_dataset2]),
                 patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)),
             ):
+                # Mock get_metadata_filter_condition
                 # Mock multiple_retrieve to return documents
                 doc1 = create_mock_document_methods(
                     "Python is great",
@@ -2638,7 +2638,6 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         # Mock dependencies
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset_methods(dataset_id=dataset_id, tenant_id=tenant_id)
-            # Mock get_metadata_filter_condition - should NOT be called when disabled
             with (
                 patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]),
                 patch.object(
@@ -2648,6 +2647,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                 ) as mock_get_metadata,
                 patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]),
             ):
+                # Mock get_metadata_filter_condition - should NOT be called when disabled
                 # Act
                 result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
@@ -2747,12 +2747,12 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         # Mock dependencies
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset_methods(dataset_id=dataset_id, tenant_id=tenant_id)
-            # Mock multiple_retrieve to return empty list
             with (
                 patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]),
                 patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)),
                 patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]),
             ):
+                # Mock multiple_retrieve to return empty list
                 # Act
                 result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
@@ -2787,7 +2787,6 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock _check_knowledge_rate_limit to raise exception
-        # Act & Assert
         with (
             patch.object(
                 dataset_retrieval,
@@ -2796,6 +2795,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
             ),
             pytest.raises(exc.RateLimitExceededError),
         ):
+            # Act & Assert
             dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 
     def test_knowledge_retrieval_no_available_datasets(self, sqlite_session: Session):
@@ -2826,11 +2826,11 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock dependencies
-        # Mock _get_available_datasets to return empty list
         with (
             patch.object(dataset_retrieval, "_check_knowledge_rate_limit"),
             patch.object(dataset_retrieval, "_get_available_datasets", return_value=[]),
         ):
+            # Mock _get_available_datasets to return empty list
             # Act
             result = dataset_retrieval.knowledge_retrieval(sqlite_session, request)
 

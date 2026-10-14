@@ -667,7 +667,10 @@ class TestConversationVariablesApiController:
         app_model = _app(mode=AppMode.COMPLETION)
         end_user = _end_user()
 
-        with app.test_request_context("/conversations/1/variables", method="GET"), pytest.raises(NotChatAppError):
+        with (
+            app.test_request_context("/conversations/1/variables", method="GET"),
+            pytest.raises(NotChatAppError),
+        ):
             handler(
                 api,
                 ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),

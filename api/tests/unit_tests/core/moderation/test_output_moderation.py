@@ -110,16 +110,15 @@ class TestOutputModeration:
 
     def test_start_thread(self, output_moderation: OutputModeration) -> None:
         app = Flask(__name__)
-        with app.app_context():
-            with patch("threading.Thread") as mock_thread_class:
-                mock_thread_instance = MagicMock()
-                mock_thread_class.return_value = mock_thread_instance
+        with app.app_context(), patch("threading.Thread") as mock_thread_class:
+            mock_thread_instance = MagicMock()
+            mock_thread_class.return_value = mock_thread_instance
 
-                thread = output_moderation.start_thread()
+            thread = output_moderation.start_thread()
 
-                assert thread == mock_thread_instance
-                mock_thread_class.assert_called_once()
-                mock_thread_instance.start.assert_called_once()
+            assert thread == mock_thread_instance
+            mock_thread_class.assert_called_once()
+            mock_thread_instance.start.assert_called_once()
 
     def test_stop_thread(self, output_moderation: OutputModeration) -> None:
         mock_thread = MagicMock()

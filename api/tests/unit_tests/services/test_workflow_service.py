@@ -2425,6 +2425,7 @@ class TestWorkflowServiceCredentialValidation:
             patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly),
             pytest.raises(ValueError, match="Failed to validate LLM model configuration"),
         ):
+            # Act + Assert
             service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
 
     def test_validate_llm_model_config_success(self, service: WorkflowService) -> None:
@@ -2462,6 +2463,7 @@ class TestWorkflowServiceCredentialValidation:
             patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly),
             pytest.raises(ValueError, match="Model gpt-4 not found for provider openai"),
         ):
+            # Act + Assert
             service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
 
     # --- _check_default_tool_credential ---

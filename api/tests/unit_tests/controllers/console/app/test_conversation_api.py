@@ -323,15 +323,18 @@ def _captured_where_clauses(
     method = unwrap(api.get)
     account = _make_account()
 
-    with Session() as session, app.test_request_context("/", method="GET"):
-        with patch.object(sa.sql.selectable.Select, "where", spy_where):
-            method(
-                api,
-                query_instance,
-                session,
-                account,
-                app_model=_app(mode=app_mode),
-            )
+    with (
+        Session() as session,
+        app.test_request_context("/", method="GET"),
+        patch.object(sa.sql.selectable.Select, "where", spy_where),
+    ):
+        method(
+            api,
+            query_instance,
+            session,
+            account,
+            app_model=_app(mode=app_mode),
+        )
 
     return captured
 
