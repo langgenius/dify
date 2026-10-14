@@ -1117,6 +1117,168 @@ class TestBoundedFragmentRecovery:
         assert "private-parser-response-body" not in correction + result["error"] + caplog.text
 
 
+class _ReasoningEnvelopeModel(_ParallelBuilderModel):
+    """Wrap one external model stage in the provider's inline reasoning envelope."""
+
+    def __init__(
+        self,
+        planner,
+        configs,
+        *,
+        stage,
+        answers=None,
+        prefix='<think><!--dify-deepseek-reasoning-->{"config": {}}</think>\n',
+    ):
+        super().__init__(planner, configs, barrier_parties=0)
+        self._stage = stage
+        self._answers = answers
+        self._prefix = prefix
+
+    @override
+    def invoke_llm(self, *, prompt_messages, model_parameters, stream):
+        result = super().invoke_llm(prompt_messages=prompt_messages, model_parameters=model_parameters, stream=stream)
+        is_planner = "workflow planner" in str(prompt_messages[0].content).lower()
+        prompt = "\n".join(str(message.content) for message in prompt_messages)
+        is_target = is_planner if self._stage == "Planner" else not is_planner and "id=end, type=end" in prompt
+        if not is_target:
+            return result
+
+        answer = result.message.get_text_content()
+        if self._answers is not None:
+            attempt = self.planner_calls if is_planner else self.calls_for("end")
+            answer = self._answers[min(attempt - 1, len(self._answers) - 1)]
+        # Synthetic JSON inside the envelope must never become part of the
+        # answer object. This contains no captured provider reasoning.
+        return _llm_result(self._prefix + answer)
+
+
+class TestReasoningEnvelopeParsing:
+    _PLAN: ClassVar[dict[str, Any]] = {
+        "title": "Team announcement",
+        "description": "Return the announcement unchanged.",
+        "nodes": [
+            {"id": "start", "label": "Start", "node_type": "start", "purpose": "Receive announcement."},
+            {"id": "end", "label": "End", "node_type": "end", "purpose": "Return announcement as result."},
+        ],
+        "edges": [{"source": "start", "target": "end"}],
+        "start_inputs": [{"variable": "announcement", "label": "Announcement", "type": "text-input"}],
+    }
+    _CONFIGS: ClassVar[dict[str, dict[str, Any]]] = {
+        "start": {
+            "variables": [
+                {
+                    "variable": "announcement",
+                    "label": "Announcement",
+                    "type": "text-input",
+                    "required": True,
+                    "max_length": 4096,
+                    "options": [],
+                }
+            ]
+        },
+        "end": {"outputs": [{"variable": "result", "value_selector": ["start", "announcement"]}]},
+    }
+
+    @staticmethod
+    def _generate(model):
+        return WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="langgenius/deepseek/deepseek",
+            model_name="deepseek-v4-pro",
+            model_mode="chat",
+            mode="workflow",
+            instruction=(
+                "Start accepts required text announcement; End returns it unchanged as result. Use only Start and End."
+            ),
+        )
+
+    @staticmethod
+    def _assert_announcement_graph(result):
+        assert result["error"] == ""
+        assert result["errors"] == []
+        nodes = {node["id"]: node["data"] for node in result["graph"]["nodes"]}
+        assert set(nodes) == {"start", "end"}
+        assert nodes["start"]["type"] == "start"
+        assert nodes["start"]["variables"] == [
+            {
+                "variable": "announcement",
+                "label": "Announcement",
+                "type": "text-input",
+                "required": True,
+                "max_length": 4096,
+                "options": [],
+            }
+        ]
+        assert nodes["end"]["type"] == "end"
+        assert nodes["end"]["outputs"] == [{"variable": "result", "value_selector": ["start", "announcement"]}]
+        assert [(edge["source"], edge["target"]) for edge in result["graph"]["edges"]] == [("start", "end")]
+
+    @pytest.mark.parametrize("stage", ["Planner", "Builder end"])
+    def test_provider_reasoning_json_does_not_contaminate_valid_answer(self, stage):
+        model = _ReasoningEnvelopeModel(self._PLAN, self._CONFIGS, stage=stage)
+
+        result = self._generate(model)
+
+        self._assert_announcement_graph(result)
+        # Clean answers succeed on their first parse, without spending the
+        # stage's corrective model call on the provider-owned envelope.
+        assert model.planner_calls == model.calls_for("start") == model.calls_for("end") == 1
+
+    def test_inline_reasoning_envelope_preserves_think_tags_in_answer_strings(self):
+        planner = deepcopy(self._PLAN)
+        planner["nodes"][0]["label"] = "<think>Announcement label</think>"
+        model = _ReasoningEnvelopeModel(planner, self._CONFIGS, stage="Planner")
+
+        result = self._generate(model)
+
+        self._assert_announcement_graph(result)
+        start = next(node for node in result["graph"]["nodes"] if node["id"] == "start")
+        assert start["data"]["title"] == "<think>Announcement label</think>"
+        assert model.planner_calls == 1
+
+    @pytest.mark.parametrize("stage", ["Planner", "Builder end"])
+    def test_unclosed_reasoning_envelope_does_not_extract_reasoning_json(self, stage):
+        model = _ReasoningEnvelopeModel(
+            self._PLAN,
+            self._CONFIGS,
+            stage=stage,
+            # The otherwise valid object is still inside an unclosed envelope;
+            # it is not an answer and must not be repaired into a usable graph.
+            prefix="<think><!--dify-deepseek-reasoning-->",
+        )
+
+        result = self._generate(model)
+
+        assert [error["code"] for error in result["errors"]] == ["INVALID_JSON"]
+        assert stage in result["errors"][0]["detail"]
+        assert result["graph"]["nodes"] == result["graph"]["edges"] == []
+        assert (model.planner_calls if stage == "Planner" else model.calls_for("end")) == 2
+        if stage == "Planner":
+            assert model.builder_calls == 0
+
+    @pytest.mark.parametrize("stage", ["Planner", "Builder end"])
+    @pytest.mark.parametrize("recover", [False, True])
+    def test_genuine_answer_array_keeps_two_attempt_correction_budget(self, stage, recover):
+        valid_answer = self._PLAN if stage == "Planner" else {"config": self._CONFIGS["end"]}
+        answers = [json.dumps([valid_answer])]
+        if recover:
+            answers.append(json.dumps(valid_answer))
+        model = _ReasoningEnvelopeModel(self._PLAN, self._CONFIGS, stage=stage, answers=answers)
+
+        result = self._generate(model)
+
+        if recover:
+            self._assert_announcement_graph(result)
+        else:
+            assert [error["code"] for error in result["errors"]] == ["INVALID_JSON"]
+            assert stage in result["errors"][0]["detail"]
+            assert result["graph"]["nodes"] == result["graph"]["edges"] == []
+        assert (model.planner_calls if stage == "Planner" else model.calls_for("end")) == 2
+        if stage == "Planner" and not recover:
+            assert model.builder_calls == 0
+
+
 class TestPlanDeclaredNodeOutputs:
     """B1: the planner declares each producer's output names so the isolated
     parallel builders stop inventing them.
