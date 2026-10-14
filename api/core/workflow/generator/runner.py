@@ -85,6 +85,13 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from services.dify_builder.api_tool_output_context import format_api_tool_output_context
+from services.dify_builder.native_api_output_contract import (
+    collect_native_api_selector_refs,
+    declares_native_api_output,
+    is_native_api_tool,
+    native_api_output_error_hint,
+)
 from services.workflow_generator_response import parse_workflow_generator_response
 
 logger = logging.getLogger(__name__)
@@ -1346,6 +1353,11 @@ class WorkflowGenerator:
                 if selected_tool is not None
                 else format_node_tool_catalogue_section(tool_catalogue_text)
             )
+        tool_catalogue_section += format_api_tool_output_context(
+            plan_json=plan_json,
+            target_node_id=node_id,
+            entries=tool_catalogue_entries,
+        )
         user_prompt = NODE_BUILDER_USER_PROMPT.format(
             node_id=node_id,
             node_type=node_type,
@@ -2264,6 +2276,7 @@ class WorkflowGenerator:
         (``VariablePool.get``), so we validate the ROOT and leave the depth to
         the run time. Start and llm are stricter about object outputs, and the
         audited code/simple_code tool rejects traversal through scalar text.
+        Native API envelope declarations are owned by the output-contract policy.
         """
         data = node.get("data") or {}
         node_type = data.get("type")
@@ -2306,6 +2319,8 @@ class WorkflowGenerator:
         if node_type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
             return root == "output"
         if node_type == BuiltinNodeTypes.TOOL:
+            if is_native_api_tool(data):
+                return declares_native_api_output(var)
             if cls._is_builtin_simple_code(data):
                 # simple_code.py yields create_text_message(result), never
                 # named VARIABLE messages. Printed JSON is still scalar text;
@@ -2424,6 +2439,8 @@ class WorkflowGenerator:
         but only when that correct output is actually declared (safety)."""
         data = node.get("data") or {}
         node_type = data.get("type")
+        if is_native_api_tool(data) or not isinstance(node_type, str):
+            return None
         replacement = cls._OUTPUT_ALIASES.get((node_type, var))
         if replacement is None:
             return None
@@ -3350,7 +3367,13 @@ class WorkflowGenerator:
 
         # Ordered, so the same graph always produces the same error list —
         # a set's order would shuffle the user-visible errors per process.
-        for node_id, var in cls._ordered_refs(nodes):
+        # Native API policy distinguishes real bindings from literal data.
+        # Its refs are authoritative only for known native API identities;
+        # unknown providers retain the existing generic reference protocol.
+        native_api_ids = {node_id for node_id, node in by_id.items() if is_native_api_tool(node.get("data") or {})}
+        references = {(node_id, var) for node_id, var in cls._ordered_refs(nodes) if node_id not in native_api_ids}
+        references.update(collect_native_api_selector_refs(nodes, placeholder_pattern=cls._VAR_REF_RE))
+        for node_id, var in sorted(references):
             if mode == "advanced-chat" and node_id == "sys":
                 continue
             target = by_id.get(node_id)
@@ -3366,7 +3389,9 @@ class WorkflowGenerator:
             if cls._declares_variable(target, var):
                 continue
             detail = f"Reference {{#{node_id}.{var}#}} not declared on node {node_id!r}"
-            if cls._is_builtin_simple_code(target.get("data") or {}):
+            if is_native_api_tool(target.get("data") or {}):
+                detail += native_api_output_error_hint()
+            elif cls._is_builtin_simple_code(target.get("data") or {}):
                 detail += (
                     "; builtin/code/simple_code exposes only the standard roots text, files, json. "
                     "Printed JSON remains scalar text and does not declare named fields. "
