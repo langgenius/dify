@@ -30,21 +30,6 @@ EXPECTED_ENTERPRISE_OPERATION_IDS = {
     "send_enterprise_mail",
 }
 
-BODY_VALIDATED_OPERATION_IDS = {
-    "create_enterprise_workspace",
-    "create_enterprise_workspace_ownerless",
-    "enterprise_app_dsl_import",
-    "enterprise_runtime_credentials_resolve",
-    "join_enterprise_workspace_member",
-    "send_enterprise_mail",
-}
-
-NON_BODY_VALIDATED_OPERATION_IDS = {
-    "delete_enterprise_workspace_resources",
-    "enterprise_app_dsl_export",
-    "enterprise_mint_file_grant",
-}
-
 
 def _obj(value: object) -> Json:
     return cast(Json, value)
@@ -233,35 +218,75 @@ def test_credentials_sample_accepts_arbitrary_values(inner_spec: Json) -> None:
     )
 
 
-def test_inner_error_response_allows_optional_central_fields(inner_spec: Json) -> None:
-    validator = _validator(inner_spec, "InnerApiErrorResponse")
+ERROR_RESPONSE_REF = {"$ref": "#/components/schemas/ErrorResponse"}
+LEGACY_SIMPLE_MESSAGE_RESPONSES = {
+    "create_enterprise_workspace": ("404",),
+    "enterprise_app_dsl_import": ("404",),
+    "enterprise_runtime_credentials_resolve": ("400", "404"),
+    "join_enterprise_workspace_member": ("400", "404"),
+}
+FILE_GRANT_BUSINESS_COMPONENTS = {
+    "400": {"InvalidRequestError", "GrantTtlTooLongError", "InvalidSubjectError"},
+    "404": {"AppNotFoundError", "FileNotFoundError"},
+}
 
-    validator.validate({"message": "legacy"})
-    validator.validate({"message": "central", "code": "c", "status": 401})
+
+def _response_schema(operation: Json, code: str) -> Json:
+    return _obj(_obj(_obj(_obj(operation["responses"])[code])["content"])["application/json"])["schema"]
 
 
-def test_enterprise_operations_document_auth_and_not_found_errors(inner_spec: Json) -> None:
+def _alternatives(schema: Json) -> list[Json]:
+    return [_obj(item) for item in cast(list[object], schema["anyOf"])] if "anyOf" in schema else [schema]
+
+
+def _operations_by_id(spec: Json) -> dict[str, Json]:
+    return {operation["operationId"]: _obj(operation) for _, _, _, operation in _enterprise_operations(spec)}
+
+
+def test_enterprise_operations_document_default_error_response(inner_spec: Json) -> None:
     for path, method, _, operation in _enterprise_operations(inner_spec):
-        for code in ("401", "404"):
-            media = _obj(_obj(_obj(_obj(operation["responses"])[code])["content"])["application/json"])
-            assert "schema" in media, f"{method} {path} {code} has no JSON schema"
+        assert _response_schema(operation, "default") == ERROR_RESPONSE_REF, f"{method} {path}"
 
 
-def test_body_validation_422_is_documented_only_for_body_validated_operations(inner_spec: Json) -> None:
-    validation_error = {"$ref": "#/components/schemas/InnerApiErrorResponse"}
-    documented = {
-        operation["operationId"]: _obj(_obj(operation["responses"]).get("422"))
-        for _, _, _, operation in _enterprise_operations(inner_spec)
+def test_enterprise_documented_errors_include_standard_error_body(inner_spec: Json) -> None:
+    for path, method, _, operation in _enterprise_operations(inner_spec):
+        for code in _obj(operation["responses"]):
+            if code == "default" or not code.startswith(("4", "5")):
+                continue
+            assert ERROR_RESPONSE_REF in _alternatives(_response_schema(operation, code)), f"{method} {path} {code}"
+
+
+def test_legacy_message_statuses_document_simple_message(inner_spec: Json) -> None:
+    operations = _operations_by_id(inner_spec)
+    for operation_id, codes in LEGACY_SIMPLE_MESSAGE_RESPONSES.items():
+        for code in codes:
+            assert {"$ref": "#/components/schemas/SimpleMessageResponse"} in _alternatives(
+                _response_schema(operations[operation_id], code)
+            ), f"{operation_id} {code}"
+
+
+def test_dsl_export_not_found_union_documents_simple_message(inner_spec: Json) -> None:
+    operation = _operations_by_id(inner_spec)["enterprise_app_dsl_export"]
+    assert _alternatives(_response_schema(operation, "404"))[0] == {
+        "$ref": "#/components/schemas/EnterpriseAppDSLExportNotFoundResponse"
     }
-
-    for operation_id in BODY_VALIDATED_OPERATION_IDS:
-        content = _obj(documented[operation_id]["content"])
-        assert _obj(content["application/json"])["schema"] == validation_error, operation_id
-    for operation_id in NON_BODY_VALIDATED_OPERATION_IDS:
-        assert not documented[operation_id], operation_id
+    union = _alternatives(_schema(inner_spec, "EnterpriseAppDSLExportNotFoundResponse"))
+    assert {"$ref": "#/components/schemas/SimpleMessageResponse"} in union
 
 
-def test_werkzeug_validation_body_validates_as_inner_api_error(inner_spec: Json) -> None:
-    _validator(inner_spec, "InnerApiErrorResponse").validate(
-        {"code": "unprocessable_entity", "message": "[]", "status": 422}
-    )
+def test_file_grants_document_business_error_components(inner_spec: Json) -> None:
+    operation = _operations_by_id(inner_spec)["enterprise_mint_file_grant"]
+    for code, expected in FILE_GRANT_BUSINESS_COMPONENTS.items():
+        refs = {
+            item["$ref"].rsplit("/", 1)[-1]
+            for item in _alternatives(_response_schema(operation, code))
+            if "$ref" in item
+        }
+        assert expected <= refs, (code, refs)
+        for name in expected:
+            error_body = cast(list[object], _schema(inner_spec, name)["allOf"])[1]
+            assert _obj(_obj(_obj(error_body)["properties"])["status"])["const"] == int(code), name
+
+
+def test_inner_api_error_response_component_is_gone(inner_spec: Json) -> None:
+    assert "InnerApiErrorResponse" not in inner_spec["components"]["schemas"]

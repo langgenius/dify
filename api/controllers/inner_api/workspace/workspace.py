@@ -14,7 +14,6 @@ from controllers.inner_api.wraps import inner_api_only
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from fields.inner_api_fields import InnerApiErrorResponse
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
@@ -92,7 +91,6 @@ register_response_schema_models(
     WorkspaceOwnerlessCreateResponse,
     WorkspaceMemberResponse,
     SimpleMessageResponse,
-    InnerApiErrorResponse,
 )
 
 
@@ -104,14 +102,7 @@ class EnterpriseWorkspace(Resource):
     @inner_api_ns.doc(description="Create a new enterprise workspace with owner assignment")
     @inner_api_ns.expect(inner_api_ns.models[WorkspaceCreatePayload.__name__])
     @inner_api_ns.response(200, "Workspace created successfully", inner_api_ns.models[WorkspaceCreateResponse.__name__])
-    @inner_api_ns.response(400, "Invalid workspace request", inner_api_ns.models[InnerApiErrorResponse.__name__])
-    @inner_api_ns.response(
-        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
-    )
-    @inner_api_ns.response(
-        404, "Owner account not found or inner API disabled", inner_api_ns.models[InnerApiErrorResponse.__name__]
-    )
-    @inner_api_ns.response(422, "Request body validation failed", inner_api_ns.models[InnerApiErrorResponse.__name__])
+    @inner_api_ns.response(404, "Owner account not found", inner_api_ns.models[SimpleMessageResponse.__name__])
     def post(self):
         args = validate_request(WorkspaceCreatePayload)
         try:
@@ -143,11 +134,6 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     @inner_api_ns.response(
         200, "Workspace created successfully", inner_api_ns.models[WorkspaceOwnerlessCreateResponse.__name__]
     )
-    @inner_api_ns.response(
-        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
-    )
-    @inner_api_ns.response(404, "Inner API disabled", inner_api_ns.models[InnerApiErrorResponse.__name__])
-    @inner_api_ns.response(422, "Request body validation failed", inner_api_ns.models[InnerApiErrorResponse.__name__])
     def post(self):
         args = validate_request(WorkspaceOwnerlessPayload)
         tenant = application_services().workspaces.provisioning.create(name=args.name)
@@ -176,16 +162,8 @@ class EnterpriseWorkspaceMember(Resource):
     @inner_api_ns.response(
         200, "Workspace member joined successfully", inner_api_ns.models[WorkspaceMemberResponse.__name__]
     )
-    @inner_api_ns.response(400, "Invalid workspace member role", inner_api_ns.models[InnerApiErrorResponse.__name__])
-    @inner_api_ns.response(
-        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
-    )
-    @inner_api_ns.response(
-        404,
-        "Workspace or account not found, or inner API disabled",
-        inner_api_ns.models[InnerApiErrorResponse.__name__],
-    )
-    @inner_api_ns.response(422, "Request body validation failed", inner_api_ns.models[InnerApiErrorResponse.__name__])
+    @inner_api_ns.response(400, "Invalid workspace member role", inner_api_ns.models[SimpleMessageResponse.__name__])
+    @inner_api_ns.response(404, "Workspace or account not found", inner_api_ns.models[SimpleMessageResponse.__name__])
     def post(self):
         args = validate_request(WorkspaceMemberPayload)
         try:
@@ -219,10 +197,6 @@ class EnterpriseWorkspaceResourceDeletion(Resource):
     @inner_api_ns.doc("delete_enterprise_workspace_resources")
     @inner_api_ns.doc(description="Schedule App, Dataset and Agent cleanup; retain the workspace and memberships")
     @inner_api_ns.response(202, "Cleanup accepted", inner_api_ns.models[SimpleMessageResponse.__name__])
-    @inner_api_ns.response(
-        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
-    )
-    @inner_api_ns.response(404, "Inner API disabled", inner_api_ns.models[InnerApiErrorResponse.__name__])
     def delete(self, workspace_id: UUID):
         application_services().workspaces.resource_cleanup.cleanup(str(workspace_id))
         return SimpleMessageResponse(message="workspace resource cleanup accepted.").model_dump(mode="json"), 202

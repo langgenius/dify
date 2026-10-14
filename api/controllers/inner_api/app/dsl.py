@@ -26,7 +26,6 @@ from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
 from fields.app_export_fields import AppExportResponse
 from fields.base import ResponseModel
-from fields.inner_api_fields import InnerApiErrorResponse
 from libs.helper import dump_response
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
@@ -63,9 +62,7 @@ class EnterpriseAppDSLExportNotFoundResponse(RootModel[SimpleMessageResponse | E
 
 
 register_schema_model(inner_api_ns, InnerAppDSLImportPayload)
-register_response_schema_models(
-    inner_api_ns, Import, AppExportResponse, EnterpriseAppDSLWorkflowErrorResponse, InnerApiErrorResponse
-)
+register_response_schema_models(inner_api_ns, Import, AppExportResponse, EnterpriseAppDSLWorkflowErrorResponse)
 register_response_schema_model(inner_api_ns, SimpleMessageResponse)
 register_response_schema_model(inner_api_ns, EnterpriseAppDSLExportNotFoundResponse)
 
@@ -87,13 +84,9 @@ class EnterpriseAppDSLImport(Resource):
     )
     @inner_api_ns.response(
         HTTPStatus.NOT_FOUND,
-        "Creator account not found or inactive, or inner API disabled",
+        "Creator account not found or inactive",
         inner_api_ns.models[SimpleMessageResponse.__name__],
     )
-    @inner_api_ns.response(
-        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
-    )
-    @inner_api_ns.response(422, "Request body validation failed", inner_api_ns.models[InnerApiErrorResponse.__name__])
     def post(self, workspace_id: str):
         """Import a DSL into a workspace on behalf of a specified creator."""
         args = validate_request(InnerAppDSLImportPayload)
@@ -131,16 +124,13 @@ class EnterpriseAppDSLExport(Resource):
     )
     @inner_api_ns.response(200, "Export successful", inner_api_ns.models[AppExportResponse.__name__])
     @inner_api_ns.response(
-        401, "Invalid inner API key or setup not completed", inner_api_ns.models[InnerApiErrorResponse.__name__]
-    )
-    @inner_api_ns.response(
         400,
         "Invalid workflow ID or unpublished workflow version",
         inner_api_ns.models[EnterpriseAppDSLWorkflowErrorResponse.__name__],
     )
     @inner_api_ns.response(
         404,
-        "App or workflow version not found, or inner API disabled",
+        "App or workflow version not found",
         inner_api_ns.models[EnterpriseAppDSLExportNotFoundResponse.__name__],
     )
     def get(self, app_id: str):
