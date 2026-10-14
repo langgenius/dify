@@ -75,9 +75,11 @@ class DifyModelWrapper(BaseRagasLLM):
         generations: list[list[Generation | ChatGeneration | GenerationChunk | ChatGenerationChunk]] = [[]]
         completions = max(1, n)
         for _ in range(completions):
+            # Ragas uses 1e-8 for deterministic calls, while plugin model schemas
+            # accept temperature values with at most two decimal places.
             result = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
-                model_parameters={"temperature": temperature},
+                model_parameters={"temperature": round(temperature, 2)},
                 stop=stop,
                 stream=False,
             )

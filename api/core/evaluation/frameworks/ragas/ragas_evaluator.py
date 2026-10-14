@@ -22,6 +22,11 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetric,
     EvaluationMetricName,
 )
+from graphon.model_runtime.errors.invoke import (
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 
 if TYPE_CHECKING:
     from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
@@ -55,6 +60,14 @@ _RAGAS_REFERENCE_METRICS = {
 }
 
 _NATIVE_AGENT_METRICS = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
+_RAGAS_METRIC_TIMEOUT_SECONDS = 120
+# Retry only provider failures known to be transient. Client-side validation
+# failures such as PluginInvokeError must surface immediately.
+_RAGAS_RETRYABLE_EXCEPTIONS = (
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 
 
 class RagasEvaluator(BaseEvaluationInstance):
@@ -250,6 +263,7 @@ class RagasEvaluator(BaseEvaluationInstance):
         """
         from ragas import evaluate as ragas_evaluate
         from ragas.dataset_schema import EvaluationDataset
+        from ragas.run_config import RunConfig
 
         samples: list[Any] = []
         for item in items:
@@ -267,6 +281,10 @@ class RagasEvaluator(BaseEvaluationInstance):
             dataset=dataset,
             metrics=ragas_metrics,
             llm=model_wrapper,
+            run_config=RunConfig(
+                timeout=_RAGAS_METRIC_TIMEOUT_SECONDS,
+                exception_types=_RAGAS_RETRYABLE_EXCEPTIONS,
+            ),
             raise_exceptions=True,
             show_progress=False,
         )
