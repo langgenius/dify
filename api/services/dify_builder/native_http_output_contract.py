@@ -34,6 +34,15 @@ _SYSTEM_RULES = (
     'Numeric literal values retain wire text: variable_selector=[<bound producer ID>,"status_code"], '
     'comparison_operator="=", value="200". A text literal does not make the actual status a string. '
     "Preserve the original user goal, including exact equality and requested status handling. "
+    "Native HTTP v1 uses timeout.connect, timeout.read and timeout.write as actual request durations in seconds. "
+    "max_connect_timeout, max_read_timeout and max_write_timeout are editor ceilings/metadata; "
+    "they do not configure the actual request duration. "
+    "For a NEW HTTP node with one confirmed N-second timeout, set all three actual axes to N: "
+    "timeout.connect=N, timeout.read=N "
+    "and timeout.write=N unless the original instruction distinguishes the durations. "
+    "Preserve existing/authored canonical timeouts and configured inheritance unless the original instruction "
+    "requests a change. Do not infer request durations from max_* metadata, migrate retained timeout blocks "
+    "or invent a timeout. "
     "Native HTTP reports non-2xx failure when retry or an error strategy is enabled. "
     "For a NEW HTTP node, if the original goal treats every response status as data and did not request "
     "retry/error behavior, explicitly choose retry_enabled=false and no error strategy. "
