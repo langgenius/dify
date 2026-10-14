@@ -2,14 +2,13 @@
 
 import json
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import WorkflowTraceInfo
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder, RepositoryWorkflowExecutionLoader
+from extensions.ext_database import db
 from models import Account
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -79,38 +78,48 @@ def test_external_workflow_trace_omits_source_internals(
         start_time=started_at,
         end_time=started_at,
     )
-    database = SimpleNamespace(engine=sqlite_session.get_bind(), session=sqlite_session)
+    monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_session.get_bind()))
+    monkeypatch.setattr(db, "session", sqlite_session)
     if exporter == "canonical":
-        monkeypatch.setattr("core.ops.unified_trace.trace_builder.db", database)
         account = Account(name="Caller maintainer", email="caller@example.com")
         account.id = "account-1"
         trace = CanonicalTraceBuilder(RepositoryWorkflowExecutionLoader(lambda _: account)).build(info)
         assert trace is not None
+        assert len(trace.spans) == 2
         payload = trace.model_dump_json()
         tool = next(span for span in trace.spans if span.id == "outer-tool")
         assert tool.inputs == public_inputs
         assert tool.outputs == public_outputs
     else:
+        from dify_trace_mlflow.config import MLflowConfig
         from dify_trace_mlflow.mlflow_trace import MLflowDataTrace
+        from mlflow.entities import Span
+        from mlflow.tracing import provider
+        from mlflow.tracing.processor.mlflow_v3 import MlflowV3SpanProcessor
+        from mlflow.tracing.trace_manager import InMemoryTraceManager
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-        monkeypatch.setattr("dify_trace_mlflow.mlflow_trace.db", database)
-        spans: dict[str, MagicMock] = {}
-
-        def create_span(**kwargs: object) -> MagicMock:
-            span = MagicMock()
-            spans[str(kwargs["name"])] = span
-            return span
-
-        start_span = MagicMock(side_effect=create_span)
-        monkeypatch.setattr("dify_trace_mlflow.mlflow_trace._start_span_no_context", start_span)
-        exporter_instance = object.__new__(MLflowDataTrace)
-        monkeypatch.setattr(exporter_instance, "_set_trace_metadata", MagicMock())
-        exporter_instance.workflow_trace(info)
-        payload = str(start_span.call_args_list)
-        tool_call = next(call for call in start_span.call_args_list if call.kwargs["name"] == "outer-tool")
-        assert tool_call.kwargs["inputs"] == public_inputs
-        assert spans["outer-tool"].end.call_args.kwargs["outputs"] == public_outputs
-        assert start_span.call_count == 2
+        monkeypatch.setattr("dify_trace_mlflow.mlflow_trace.mlflow.set_tracking_uri", lambda _uri: None)
+        monkeypatch.setattr("dify_trace_mlflow.mlflow_trace.mlflow.set_experiment", lambda **_kwargs: None)
+        monkeypatch.setattr("mlflow.tracking.fluent._active_experiment_id", "0")
+        monkeypatch.setattr(InMemoryTraceManager, "_instance", InMemoryTraceManager())
+        monkeypatch.setenv("MLFLOW_ENABLE_ASYNC_TRACE_LOGGING", "true")
+        span_exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(MlflowV3SpanProcessor(span_exporter, export_metrics=False))
+        monkeypatch.setattr(provider, "_get_tracer", tracer_provider.get_tracer)
+        try:
+            MLflowDataTrace(MLflowConfig()).workflow_trace(info)
+            spans = [Span(span) for span in span_exporter.get_finished_spans()]
+            assert len(spans) == 2
+            payload = json.dumps([span.to_dict() for span in spans])
+            tool = next(span for span in spans if span.name == "outer-tool")
+            assert tool.inputs == public_inputs
+            assert tool.outputs == public_outputs
+        finally:
+            tracer_provider.shutdown()
     assert "private source" not in payload
     assert "source-llm" not in payload
     assert "recursive-llm" not in payload
+    assert "workflow_tool_root_app_id" not in payload
