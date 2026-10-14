@@ -90,6 +90,7 @@ def active_worker_lock(monkeypatch: pytest.MonkeyPatch) -> None:
     # The worker releases exactly the owner value its activation returned; these
     # engine-wiring tests use the dispatch token as that value.
     monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, token: token)
+    monkeypatch.setattr(mod.progress_snapshot, "save", lambda *_args, **_kwargs: None)
 
 
 @pytest.fixture
@@ -904,3 +905,48 @@ def test_advance_builds_the_agent_for_the_acting_account(
     assert seen
     assert seen[0]["tenant_id"] == TENANT_ID
     assert seen[0].get("account_id") == ACCOUNT_ID
+
+
+def test_progress_snapshot_is_cumulative_and_saved_before_broadcast(repo, wired, monkeypatch):
+    events, _released = wired
+    saved: list[mod.progress_snapshot.ProgressSnapshot] = []
+    session = _seed_fix_session(repo)
+
+    def save(snapshot, *, tenant_id, owner):
+        assert tenant_id == TENANT_ID
+        assert owner == "active-owner"
+        assert snapshot.session_id == session.id
+        assert not any(
+            event["kind"] == "progress"
+            and event["operation_id"] == snapshot.operation_id
+            and event["revision"] == snapshot.revision
+            for _sid, event in events
+        )
+        saved.append(snapshot)
+
+    monkeypatch.setattr(mod.progress_snapshot, "save", save)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
+
+    assert saved
+    assert any(
+        snapshot.execution.activities[0].state == "done" and snapshot.execution.activities[-1].state == "active"
+        for snapshot in saved
+    )
+    assert saved[-1].execution.status == "completed"
+    assert all(activity.state == "done" for activity in saved[-1].execution.activities)
+    assert len({activity.id for activity in saved[-1].execution.activities}) == len(saved[-1].execution.activities)
+
+
+def test_progress_snapshot_failure_does_not_block_command_completion(repo, wired, monkeypatch):
+    events, released = wired
+    session = _seed_fix_session(repo)
+
+    def fail_save(*_args, **_kwargs):
+        raise RuntimeError("snapshot store unavailable")
+
+    monkeypatch.setattr(mod.progress_snapshot, "save", fail_save)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
+
+    assert repo.get_session(session.id)[0].current_state == PcState.FIX_AWAIT_VERIFY
+    assert events[-1][1]["kind"] == "command_finished"
+    assert released == [(session.id, "active-owner")]

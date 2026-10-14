@@ -19497,6 +19497,25 @@ Builder is not enabled for the workspace (the shared ``dify_builder_required`` g
 | data | [DifyBuilderProgressEventData](#difybuilderprogresseventdata) |  | Yes |
 | event | string |  | Yes |
 
+#### DifyBuilderProgressSnapshotEventData
+
+Complete observed activity state before subsequent live progress deltas.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| at_version | integer |  | Yes |
+| execution | [DifyBuilderExecutionProgressResponse](#difybuilderexecutionprogressresponse) |  | Yes |
+| operation_id | string |  | Yes |
+| revision | integer |  | Yes |
+| session_id | string |  | Yes |
+
+#### DifyBuilderProgressSnapshotEventResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DifyBuilderProgressSnapshotEventData](#difybuilderprogresssnapshoteventdata) |  | Yes |
+| event | string |  | Yes |
+
 #### DifyBuilderRealCallConsentResponse
 
 Current or saved receipt of one real-call consent.
@@ -19638,7 +19657,7 @@ One JSON object carried by an SSE ``data:`` frame.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
+| DifyBuilderStreamEventResponse | [DifyBuilderCommandStartedEventResponse](#difybuildercommandstartedeventresponse)<br>[DifyBuilderWorkflowEventResponse](#difybuilderworkfloweventresponse)<br>[DifyBuilderCanvasEventResponse](#difybuildercanvaseventresponse)<br>[DifyBuilderAgentMessageEventResponse](#difybuilderagentmessageeventresponse)<br>[DifyBuilderConversationItemAppendedEventResponse](#difybuilderconversationitemappendedeventresponse)<br>[DifyBuilderReasoningEventResponse](#difybuilderreasoningeventresponse)<br>[DifyBuilderProgressEventResponse](#difybuilderprogresseventresponse)<br>[DifyBuilderProgressSnapshotEventResponse](#difybuilderprogresssnapshoteventresponse)<br>[DifyBuilderCommandFinishedEventResponse](#difybuildercommandfinishedeventresponse)<br>[DifyBuilderErrorEventResponse](#difybuildererroreventresponse) | One JSON object carried by an SSE ``data:`` frame. |  |
 
 #### DifyBuilderSubmitActionPayload
 

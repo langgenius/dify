@@ -15,7 +15,7 @@ from typing import Annotated, NamedTuple, TypedDict, cast, get_args, override
 from unittest.mock import MagicMock, call
 
 import pytest
-from flask import Flask, Response, g
+from flask import Flask, Response, current_app, g, has_request_context
 from flask.testing import FlaskClient
 from flask_restx.model import SchemaModel
 from pydantic import Field, TypeAdapter, ValidationError
@@ -468,6 +468,10 @@ def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
     service.authorize_session.side_effect = lambda *_args: calls.append("authorize")
     service.get_session_view.side_effect = lambda *_args: (calls.append("view"), _session_view())[1]
 
+    def read_snapshot(*, tenant_id: str, session_id: str):
+        assert (tenant_id, session_id) == ("ten-1", "s1")
+        calls.append("snapshot")
+
     def subscribe(_session_id: str):
         calls.append("subscribe")
         return subscription
@@ -475,12 +479,14 @@ def test_stream_authorizes_then_subscribes_before_reading_state(monkeypatch):
     stream = MagicMock(return_value=iter(["data: {}\n\n"]))
     monkeypatch.setattr(mod, "build_service", lambda: service)
     monkeypatch.setattr(mod.progress_bus, "subscribe", subscribe)
+    monkeypatch.setattr(mod.progress_snapshot, "read", read_snapshot)
     monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
-    response = mod._stream("s1", _actor())
+    with Flask(__name__).app_context():
+        response = mod._stream("s1", _actor())
 
     _assert_event_stream(response)
-    assert calls == ["authorize", "subscribe", "view"]
+    assert calls == ["authorize", "subscribe", "view", "snapshot"]
     assert stream.call_args.kwargs["expect_advance"] is True
     assert stream.call_args.kwargs["emit_command_started"] is False
     assert stream.call_args.kwargs["emit_command_finished_when_settled"] is True
@@ -496,7 +502,8 @@ def test_stream_settled_state_does_not_watch_for_progress(monkeypatch):
     monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
     monkeypatch.setattr(mod, "stream_advance_frames", stream)
 
-    response = mod._stream("s1", _actor())
+    with Flask(__name__).app_context():
+        response = mod._stream("s1", _actor())
 
     _assert_event_stream(response)
     assert stream.call_args.kwargs["expect_advance"] is False
@@ -2155,3 +2162,37 @@ def test_another_owners_request_write_is_preserved_and_refused(
     assert world.enqueued == []
     # Captured at request teardown, before the extension's own removal: neither ended nor committed.
     assert world.teardown == [(True, True, False)]
+
+
+def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(monkeypatch):
+    app = Flask(__name__)
+    processing = _session_view()
+    settled = _session_view(run_status=RunStatus.WAITING_INPUT)
+    settled.last_command_id = "command-1"
+    service = MagicMock()
+    subscription = MagicMock()
+    subscription.receive.return_value = None
+
+    def read_view(_session_id: str, actor: Actor) -> SessionView:
+        assert current_app == app
+        assert actor == _actor()
+        if service.get_session_view.call_count == 1:
+            return processing
+        assert not has_request_context()
+        return settled
+
+    service.get_session_view.side_effect = read_view
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+    monkeypatch.setattr(mod.progress_bus, "subscribe", lambda _session_id: subscription)
+    monkeypatch.setattr(mod.progress_snapshot, "read", lambda **_kwargs: None)
+
+    with app.test_request_context():
+        response = _assert_event_stream(mod._stream("s1", _actor()))
+
+    body = response.get_data(as_text=True)
+    event = json.loads(body.splitlines()[1].removeprefix("data: "))
+    assert event["event"] == "command_finished"
+    assert event["data"]["run_status"] == "waiting_input"
+    assert event["data"]["command_id"] == "command-1"
+    assert service.get_session_view.call_count == 2
+    subscription.close.assert_called_once_with()

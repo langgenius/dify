@@ -366,7 +366,7 @@ export function useDifyBuilderSessionController(
           return false
         }
 
-        if (event.event === 'progress') {
+        if (event.event === 'progress' || event.event === 'progress_snapshot') {
           outcome.sessionId = event.data.session_id
           executionProgress.enqueue(event.data)
           return false
@@ -526,6 +526,12 @@ export function useDifyBuilderSessionController(
         try {
           const view = await getSession(sessionId, controller.signal)
           if (controller.signal.aborted) return latestOutcome
+          traceRef.current.append({
+            dir: 'in',
+            kind: 'session_snapshot',
+            payload: view,
+            version: view.version,
+          })
           const stateApplied = applySessionView(view)
           if (isActiveView(view)) {
             setActiveCommand({
@@ -557,6 +563,11 @@ export function useDifyBuilderSessionController(
           }
           if (!isActiveView(view)) return latestOutcome
 
+          traceRef.current.append({
+            dir: 'out',
+            kind: 'session_reconnect',
+            payload: { session_id: sessionId },
+          })
           const events = await getSessionStream(sessionId, controller.signal)
           latestOutcome = await consumeStream(events, controller, sessionId)
           if (latestOutcome.terminalEvent === 'command_finished') return latestOutcome
@@ -883,6 +894,11 @@ export function useDifyBuilderSessionController(
         await preparation
         if (controller.signal.aborted) return false
         setActiveSessionId(normalizedSessionId)
+        traceRef.current.append({
+          dir: 'out',
+          kind: 'session_restore',
+          payload: { session_id: normalizedSessionId },
+        })
         if (store.get(difyBuilderSessionViewAtom)?.session_id !== normalizedSessionId)
           runEvents?.reset()
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
