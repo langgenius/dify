@@ -96,6 +96,12 @@ from services.dify_builder.native_api_output_contract import (
     native_api_output_error_hint,
 )
 from services.dify_builder.native_api_string_input_binding import normalize_native_api_string_bindings
+from services.dify_builder.native_constant_output_contract import (
+    ConstantPlanContext,
+    format_native_constant_output_context,
+    native_constant_output_system_rules,
+    snapshot_native_constant_plan_context,
+)
 from services.dify_builder.native_http_output_contract import (
     HttpPlanContext,
     aliased_http_output,
@@ -1162,7 +1168,7 @@ class WorkflowGenerator:
             tool_catalogue_section=format_tool_catalogue_section(tool_catalogue_text),
         )
         messages = [
-            SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT),
+            SystemPromptMessage(content=PLANNER_SYSTEM_PROMPT + "\n\n" + native_constant_output_system_rules()),
             UserPromptMessage(content=user_prompt),
         ]
         clamped_parameters = _clamp_for_planner(model_parameters)
@@ -1256,6 +1262,9 @@ class WorkflowGenerator:
         http_contract_context = snapshot_http_plan_context(
             plan_nodes, plan_edges, (current_graph or {}).get("nodes") or []
         )
+        constant_contract_context = snapshot_native_constant_plan_context(
+            plan_nodes, plan_edges, (current_graph or {}).get("nodes") or []
+        )
         existing_by_id = {
             str(node.get("id")): node
             for node in ((current_graph or {}).get("nodes") or [])
@@ -1302,6 +1311,7 @@ class WorkflowGenerator:
                         node_types=node_types,
                         existing_node=existing_by_id.get(str(node.get("id"))),
                         http_contract_context=http_contract_context,
+                        constant_contract_context=constant_contract_context,
                     ): str(node.get("id"))
                     for node in nodes_to_build
                 }
@@ -1347,6 +1357,7 @@ class WorkflowGenerator:
         node_types: dict[str, str],
         existing_node: dict[str, Any] | None,
         http_contract_context: HttpPlanContext | None = None,
+        constant_contract_context: ConstantPlanContext | None = None,
     ) -> dict[str, Any]:
         """Generate only the semantic config for one normalized plan node."""
         node_id = str(target_node.get("id") or "")
@@ -1379,7 +1390,13 @@ class WorkflowGenerator:
         tool_catalogue_section += api_context
         http_system_rules, http_user_context = format_http_output_context(http_contract_context, node_id)
         tool_catalogue_section += http_user_context
+        constant_system_rules, constant_user_context = format_native_constant_output_context(
+            constant_contract_context, node_id
+        )
+        tool_catalogue_section += constant_user_context
         system_prompt = get_node_builder_system_prompt(node_type)
+        if constant_system_rules:
+            system_prompt += "\n\n" + constant_system_rules
         if http_system_rules:
             system_prompt += "\n\n" + http_system_rules
         api_code_rules = format_api_tool_code_system_rules(node_type=node_type, api_context=api_context)
