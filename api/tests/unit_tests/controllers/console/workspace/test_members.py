@@ -354,6 +354,11 @@ def test_invite_maps_capacity_error(app: Flask, services: Mock, seats: bool, exp
         unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"))
 
 
+def _owner_transfer_step(services: Mock, step: str) -> Mock:
+    transfer = services.workspaces.owner_transfer
+    return {"send_code": transfer.send_code, "verify_code": transfer.verify_code, "transfer": transfer.transfer}[step]
+
+
 _OWNER_TRANSFER_STEPS = {
     "send_code": (SendOwnerTransferEmailApi, {"language": "en-US"}, ()),
     "verify_code": (OwnerTransferCheckApi, {"token": "token", "code": "123456"}, ()),
@@ -388,7 +393,7 @@ def test_owner_transfer_steps_map_their_own_errors(
     app: Flask, services: Mock, step: str, error: Exception, expected: type[Exception]
 ) -> None:
     resource, payload, args = _OWNER_TRANSFER_STEPS[step]
-    getattr(services.workspaces.owner_transfer, step).side_effect = error
+    _owner_transfer_step(services, step).side_effect = error
     api = resource()
     with app.test_request_context("/", method="POST", json=payload), pytest.raises(expected) as raised:
         unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"), *args)
@@ -411,7 +416,7 @@ def test_owner_transfer_steps_do_not_translate_other_steps_errors(
     app: Flask, services: Mock, step: str, error: Exception
 ) -> None:
     resource, payload, args = _OWNER_TRANSFER_STEPS[step]
-    getattr(services.workspaces.owner_transfer, step).side_effect = error
+    _owner_transfer_step(services, step).side_effect = error
     api = resource()
     with app.test_request_context("/", method="POST", json=payload), pytest.raises(type(error)):
         unwrap(api.post)(api, RequestContext("request", None, "owner", "workspace"), *args)
