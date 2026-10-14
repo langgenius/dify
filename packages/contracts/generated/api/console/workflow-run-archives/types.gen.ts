@@ -146,6 +146,13 @@ export type DeleteWorkflowRunArchivesByYearByMonthData = {
   url: '/workflow-run-archives/{year}/{month}'
 }
 
+export type DeleteWorkflowRunArchivesByYearByMonthErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkflowRunArchivesByYearByMonthError =
+  DeleteWorkflowRunArchivesByYearByMonthErrors[keyof DeleteWorkflowRunArchivesByYearByMonthErrors]
+
 export type DeleteWorkflowRunArchivesByYearByMonthResponses = {
   202: WorkflowRunArchiveDeletionTaskResponse
 }

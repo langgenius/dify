@@ -101,7 +101,22 @@ def _remote_upload_file() -> RemoteFileUploadResult:
     )
 
 
-def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: MagicMock) -> None:
+class _FormStateRejectingUploads:
+    """An upload service whose token check fails with one form-state error; counts the uploads that follow."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+        self.uploads = 0
+
+    def validate_upload_token(self, _upload_token: str) -> HumanInputUploadContext:
+        raise self.error
+
+    def upload_local_file(self, **_: object) -> UploadFile:
+        self.uploads += 1
+        raise AssertionError("upload must not run after the token check failed")
+
+
+def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: object) -> None:
     monkeypatch.setattr(
         upload_module,
         "application_services",
@@ -173,8 +188,7 @@ def test_upload_reports_the_form_state_before_touching_files(
     monkeypatch: pytest.MonkeyPatch, app: Flask, error: Exception, code: str
 ) -> None:
     # The token service re-checks the form on every upload; a submitted or expired form answers 412.
-    service = MagicMock()
-    service.validate_upload_token.side_effect = error
+    service = _FormStateRejectingUploads(error)
     _patch_upload_service(monkeypatch, service)
 
     with app.test_request_context(
@@ -188,7 +202,7 @@ def test_upload_reports_the_form_state_before_touching_files(
 
     assert status == 412
     assert body["code"] == code
-    service.upload_local_file.assert_not_called()
+    assert service.uploads == 0
 
 
 def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:

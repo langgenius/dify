@@ -10968,6 +10968,7 @@ Permanently delete this workspace's monthly archive files and archive index
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Archive deletion accepted | **application/json**: [WorkflowRunArchiveDeletionTaskResponse](#workflowrunarchivedeletiontaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/events
 **Get workflow execution events stream after resume**
