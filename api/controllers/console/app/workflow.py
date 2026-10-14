@@ -220,7 +220,7 @@ class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload)
 class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
     language: str | None = None
     voice: str | None = None
-    autoPlay: Literal["enabled", "disabled"] | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None  # noqa: N815  # Public field name.
 
 
 class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
@@ -253,7 +253,7 @@ class WorkflowFileUploadPayload(WorkflowFeatureTogglePayload):
     video: WorkflowFileUploadTransferPayload | None = None
     custom: WorkflowFileUploadTransferPayload | None = None
     preview_config: WorkflowFileUploadPreviewConfigPayload | None = None
-    fileUploadConfig: dict[str, Any] | None = None
+    fileUploadConfig: dict[str, Any] | None = None  # noqa: N815  # Public field name.
 
 
 class WorkflowFeaturesConfigPayload(BaseModel):
