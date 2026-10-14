@@ -1,13 +1,13 @@
 """Configured history backends retain synchronous, monotonic task control."""
 
-from unittest.mock import Mock
-
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
     LogstoreAPIWorkflowNodeExecutionRepository,
 )
@@ -26,24 +26,26 @@ from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchem
 from tasks.workflow_execution_tasks import _update_workflow_run_from_execution
 
 
+@pytest.fixture
+def logstore(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> AliyunLogStore:
+    monkeypatch.setattr(AliyunLogStore, "_instance", None)
+    monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+    monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "https://example.com")
+    mocker.patch.object(AliyunLogStore, "_check_endpoint_connectivity")
+    store = AliyunLogStore()
+    store._use_pg_protocol = True
+    mocker.patch.object(store, "put_log")
+    return store
+
+
 @pytest.mark.parametrize("backend", ["sql", "celery", "logstore"])
 def test_task_owner_is_durable_before_start_and_delayed_writes_cannot_revive_stop(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, backend: str
+    sqlite_session_factory: sessionmaker[Session], logstore: AliyunLogStore, mocker: MockerFixture, backend: str
 ) -> None:
-    logstore = Mock()
-    # Keep the static logstore name available to the writer.
-    monkeypatch.setattr(
-        "extensions.logstore.repositories.logstore_workflow_execution_repository.AliyunLogStore",
-        Mock(return_value=logstore, workflow_execution_logstore="executions"),
+    queued_save = mocker.patch(
+        "core.repositories.celery_workflow_execution_repository.save_workflow_execution_task.delay"
     )
-    monkeypatch.setattr(
-        "extensions.logstore.repositories.logstore_api_workflow_run_repository.AliyunLogStore",
-        Mock(return_value=logstore),
-    )
-    queued_save = Mock()
-    monkeypatch.setattr(
-        "core.repositories.celery_workflow_execution_repository.save_workflow_execution_task.delay", queued_save
-    )
+    get_logs = mocker.patch.object(logstore, "get_logs")
     repository_class = {
         "sql": SQLAlchemyWorkflowExecutionRepository,
         "celery": CeleryWorkflowExecutionRepository,
@@ -106,15 +108,15 @@ def test_task_owner_is_durable_before_start_and_delayed_writes_cannot_revive_sto
         unscoped = api.get_workflow_run_by_id_without_tenant("run-1")
         assert unscoped is not None
         assert unscoped.status == WorkflowExecutionStatus.STOPPED
-        logstore.get_logs.assert_not_called()
+        get_logs.assert_not_called()
 
 
+@pytest.mark.usefixtures("logstore")
 def test_logstore_pause_lifecycle_uses_sql_control_with_dual_write_disabled(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture
 ) -> None:
-    monkeypatch.setattr("extensions.logstore.repositories.logstore_api_workflow_run_repository.AliyunLogStore", Mock())
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", Mock())
+    mocker.patch("repositories.sqlalchemy_api_workflow_run_repository.storage.save")
+    mocker.patch("repositories.sqlalchemy_api_workflow_run_repository.storage.delete")
     user = Account(name="Test", email="test@example.com")
     user.id = "account-1"
     sql = SQLAlchemyWorkflowExecutionRepository(
@@ -141,27 +143,17 @@ def test_logstore_pause_lifecycle_uses_sql_control_with_dual_write_disabled(
     persisted_pause = api.get_workflow_pause("run-1")
     assert persisted_pause is not None
     assert persisted_pause.id == pause.id
-    before_resume = Mock()
-    resumed = api.resume_workflow_pause("run-1", pause, before_resume=before_resume)
-    before_resume.assert_called_once_with()
+    resume_callbacks: list[None] = []
+    resumed = api.resume_workflow_pause("run-1", pause, before_resume=lambda: resume_callbacks.append(None))
+    assert resume_callbacks == [None]
     api.delete_workflow_pause(resumed)
     assert api.get_workflow_pause("run-1") is None
 
 
 @pytest.mark.parametrize("record_type", ["workflow", "node"])
 def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
-    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, record_type: str
+    sqlite_session_factory: sessionmaker[Session], logstore: AliyunLogStore, mocker: MockerFixture, record_type: str
 ) -> None:
-    logstore = Mock()
-    for module in (
-        "logstore_workflow_execution_repository",
-        "logstore_workflow_node_execution_repository",
-        "logstore_api_workflow_node_execution_repository",
-    ):
-        monkeypatch.setattr(
-            f"extensions.logstore.repositories.{module}.AliyunLogStore",
-            Mock(return_value=logstore, workflow_execution_logstore="runs", workflow_node_execution_logstore="nodes"),
-        )
     user = Account(name="Test", email="test@example.com")
     user.id = "account-1"
     run = WorkflowExecution.new(
@@ -235,7 +227,7 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
                 )
         records.append(dict(fields))
 
-    logstore.put_log.side_effect = append_after_concurrent_stop
+    mocker.patch.object(logstore, "put_log", side_effect=append_after_concurrent_stop)
     run_writer = LogstoreWorkflowExecutionRepository(
         session_factory=sqlite_session_factory,
         tenant_id="tenant-1",
@@ -261,7 +253,7 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
         expected_status = "failed"
         assert max(records, key=lambda row: int(row["log_version"]))["status"] == expected_status
         stale_paused = next(row for row in records if row["status"] == "paused")
-        logstore.execute_sql.return_value = [stale_paused]
+        mocker.patch.object(logstore, "execute_sql", return_value=[stale_paused])
         api = LogstoreAPIWorkflowNodeExecutionRepository(sqlite_session_factory)  # pyrefly: ignore[bad-instantiation]
         assert api.get_executions_by_workflow_run("tenant-1", "app-1", "run-1")[0].status == expected_status
         by_id = api.get_execution_by_id("node-1", "tenant-1")

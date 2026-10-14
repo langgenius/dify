@@ -5,7 +5,6 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
@@ -35,8 +34,7 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
-from graphon.engine import Engine
+from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from graphon.engine.layer import Layer
 from graphon.engine_events import (
     GraphRunAbortedEvent,
@@ -74,6 +72,21 @@ def _workflow(graph: dict[str, object] | None = None) -> Workflow:
         graph=json.dumps(graph or {}, default=str),
         created_by="account",
     )
+
+
+def _workflow_entry(runner: WorkflowBasedAppRunner, state: RuntimeState | None = None) -> WorkflowEntry:
+    state = state or RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
+    graph = runner._init_graph(
+        graph_config={
+            "nodes": [{"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}],
+            "edges": [],
+        },
+        graph_runtime_state=state,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+    return WorkflowEntry(graph_config=graph.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
 
 
 def _nested_container_graph(ownership: str) -> dict:
@@ -166,7 +179,7 @@ class TestWorkflowBasedAppRunner:
             task_id="metadata-contract", user_id="account", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
         )
         runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
-        entry = MagicMock()
+        entry = _workflow_entry(runner)
         event = event_class(
             id="container-execution",
             node_id="container",
@@ -582,7 +595,7 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
+        workflow_entry = _workflow_entry(runner, graph_runtime_state)
 
         emails: list[dict] = []
 
@@ -628,7 +641,7 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        workflow_entry = SimpleNamespace()
+        workflow_entry = _workflow_entry(runner)
 
         runner.handle_event(workflow_entry, GraphRunAbortedEvent(reason="User requested stop", outputs={}))
 
@@ -649,7 +662,7 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
+        workflow_entry = _workflow_entry(runner, graph_runtime_state)
 
         runner.handle_event(
             workflow_entry,
@@ -769,14 +782,15 @@ class TestWorkflowBasedAppRunner:
             invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
         )
-        engine = Engine(graph=graph, runtime_state=state, workers=1)
+        entry = WorkflowEntry(graph_config=graph.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
+        engine = entry.graph_engine
         index = WorkflowRunIndex(())
         layer.set_node_run_indices(index.indices)
         engine.add_layer(index)
         engine.add_layer(layer)
         engine.add_layer(_StartMetadataLayer())
         for event in iter_dify_graph_engine_events(engine):
-            runner.handle_event(SimpleNamespace(graph_engine=engine), event)
+            runner.handle_event(entry, event)
 
         expected = {
             "outer": (None, None),
@@ -808,11 +822,7 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        workflow_entry = SimpleNamespace(
-            graph_engine=SimpleNamespace(
-                graph=SimpleNamespace(graph_config={"nodes": [{"id": "iteration", "data": {"type": "iteration"}}]})
-            )
-        )
+        workflow_entry = _workflow_entry(runner)
 
         runner.handle_event(
             workflow_entry,
@@ -844,7 +854,7 @@ class TestWorkflowBasedAppRunner:
                 published.append(event)
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace())
+        workflow_entry = _workflow_entry(runner)
 
         runner.handle_event(
             workflow_entry,
@@ -928,7 +938,7 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=graph_runtime_state))
+        workflow_entry = _workflow_entry(runner, graph_runtime_state)
         started_at = datetime.now(UTC)
         finished_at = datetime.now(UTC)
         result = NodeRunResult(

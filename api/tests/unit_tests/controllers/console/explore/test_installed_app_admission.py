@@ -2,7 +2,6 @@ import json
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass, field
 from operator import itemgetter
-from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -581,7 +580,7 @@ def running_workflow(
     )
     with sqlite_session_factory.begin() as session:
         session.add(run)
-    monkeypatch.setattr(app_task_module, "db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"]))
+    monkeypatch.setattr(type(app_task_module.db), "engine", property(lambda _: sqlite_session_factory.kw["bind"]))
     return run
 
 

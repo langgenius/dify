@@ -5,11 +5,13 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_module
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueuePingEvent,
     QueueTextChunkEvent,
@@ -25,6 +27,22 @@ from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser, Message
 from models.workflow import WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+
+
+def _build_generate_entity() -> AdvancedChatAppGenerateEntity:
+    return AdvancedChatAppGenerateEntity(
+        task_id="task-1",
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-1", tenant_id="tenant-1", app_mode=AppMode.ADVANCED_CHAT, workflow_id="workflow-1"
+        ),
+        inputs={},
+        files=[],
+        user_id="user-1",
+        stream=True,
+        invoke_from=InvokeFrom.WEB_APP,
+        query="hello",
+        workflow_run_id="run-1",
+    )
 
 
 def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
@@ -93,6 +111,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     stop_after_pause: bool,
+    mocker: MockerFixture,
 ) -> None:
     run = WorkflowRun(
         id="run-1",
@@ -110,9 +129,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
     sqlite_session.add(run)
     sqlite_session.commit()
     pipeline = _build_pipeline()
-    pipeline._application_generate_entity = SimpleNamespace(
-        task_id="task-1", app_config=SimpleNamespace(app_id="app-1")
-    )
+    pipeline._application_generate_entity = _build_generate_entity()
     pipeline._workflow_response_converter = mock.Mock()
     pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = ["pause"]
     pipeline._ensure_graph_runtime_initialized = mock.Mock(
@@ -124,7 +141,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
     pipeline._save_message = mock.Mock()
     message = _message(status=MessageStatus.NORMAL)
     pipeline._get_message = mock.Mock(return_value=message)
-    pipeline._persist_human_input_extra_content = mock.Mock()
+    persist_content = mocker.patch.object(pipeline, "_persist_human_input_extra_content")
     pipeline._base_task_pipeline = mock.Mock()
     pipeline._base_task_pipeline.queue_manager = mock.Mock()
     pipeline._message_saved_on_pause = False
@@ -147,7 +164,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
         repository.stop_paused_workflow_task(tenant_id="tenant-1", app_id="app-1", task_id="task-1", owner=None)
     assert list(events) == []
 
-    pipeline._persist_human_input_extra_content.assert_called_once_with(form_id="form-1")
+    persist_content.assert_called_once_with(form_id="form-1")
     assert message.status == (MessageStatus.NORMAL if stop_after_pause else MessageStatus.PAUSED)
 
 

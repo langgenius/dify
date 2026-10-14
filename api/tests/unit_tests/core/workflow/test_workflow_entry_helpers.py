@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -710,8 +711,10 @@ class TestWorkflowEntryNodeLayers:
         )
         observability_layer.on_graph_end.assert_called_once_with(error if completion == "throw" else None)
 
-    def test_run_node_with_layers_reports_success(self):
-        observability_layer = MagicMock()
+    def test_run_node_with_layers_reports_success(self, mocker: MockerFixture):
+        observability_layer = workflow_entry.ObservabilityLayer()
+        for method in ("initialize", "on_graph_start", "on_node_run_start", "on_node_run_end", "on_graph_end"):
+            mocker.spy(observability_layer, method)
         result_event = NodeRunSucceededEvent(
             id="execution-id",
             node_id="node-id",
@@ -750,8 +753,10 @@ class TestWorkflowEntryNodeLayers:
             layer.on_node_run_end.assert_called_once_with(node, None, result_event)
             layer.on_graph_end.assert_called_once_with(None)
 
-    def test_run_node_with_layers_reports_errors(self):
-        observability_layer = MagicMock()
+    def test_run_node_with_layers_reports_errors(self, mocker: MockerFixture):
+        observability_layer = workflow_entry.ObservabilityLayer()
+        for method in ("initialize", "on_graph_start", "on_node_run_start", "on_node_run_end", "on_graph_end"):
+            mocker.spy(observability_layer, method)
 
         class FakeNode:
             runtime_state = sentinel.graph_runtime_state

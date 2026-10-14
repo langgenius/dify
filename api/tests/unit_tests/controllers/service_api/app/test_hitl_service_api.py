@@ -376,7 +376,12 @@ class TestHitlServiceApi:
             sqlite_engine=sqlite_engine,
         )
         msg_generator = Mock()
-        snapshot_builder = Mock(return_value=[{"event": "snapshot"}])
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
@@ -393,16 +398,18 @@ class TestHitlServiceApi:
 
         assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
         msg_generator.retrieve_events.assert_not_called()
-        snapshot_builder.assert_called_once_with(
-            app_mode=AppMode.WORKFLOW,
-            workflow_run=workflow_run,
-            tenant_id="tenant-1",
-            app_id="app-1",
-            session_maker=ANY,
-            human_input_surface=HumanInputSurface.SERVICE_API,
-            close_on_pause=False,
-        )
-        snapshot_session_maker = snapshot_builder.call_args.kwargs["session_maker"]
+        assert snapshot_calls == [
+            {
+                "app_mode": AppMode.WORKFLOW,
+                "workflow_run": workflow_run,
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "session_maker": ANY,
+                "human_input_surface": HumanInputSurface.SERVICE_API,
+                "close_on_pause": False,
+            }
+        ]
+        snapshot_session_maker = snapshot_calls[0]["session_maker"]
         assert isinstance(snapshot_session_maker, sessionmaker)
         assert snapshot_session_maker.kw["bind"] is sqlite_engine
 

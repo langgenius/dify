@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -436,10 +436,12 @@ def test_stop_paused_task_is_scoped_and_invalidates_pause_and_forms(
         assert message.status == MessageStatus.NORMAL
         assert repository.get_workflow_pause(run.id) is None
         delete_state.assert_called_once_with("state")
-        reset_cancellation = Mock()
+        cancellation_resets: list[None] = []
         with pytest.raises(WorkflowRunNotPausedError):
-            repository.resume_workflow_pause(run.id, prior_pause, before_resume=reset_cancellation)
-        reset_cancellation.assert_not_called()
+            repository.resume_workflow_pause(
+                run.id, prior_pause, before_resume=lambda: cancellation_resets.append(None)
+            )
+        assert cancellation_resets == []
         retried = repository.stop_paused_workflow_task(
             tenant_id=tenant_id, app_id=app_id, task_id="task-1", owner=owner
         )
@@ -482,11 +484,11 @@ def test_stop_after_resume_leaves_running_task_to_the_engine(
     repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
     entity = repository.get_workflow_pause(run.id)
     assert entity is not None
-    reset_cancellation = Mock()
-    repository.resume_workflow_pause(run.id, entity, before_resume=reset_cancellation)
+    cancellation_resets: list[None] = []
+    repository.resume_workflow_pause(run.id, entity, before_resume=lambda: cancellation_resets.append(None))
     with pytest.raises(WorkflowRunNotPausedError):
-        repository.resume_workflow_pause(run.id, entity, before_resume=reset_cancellation)
-    reset_cancellation.assert_called_once_with()
+        repository.resume_workflow_pause(run.id, entity, before_resume=lambda: cancellation_resets.append(None))
+    assert cancellation_resets == [None]
     admitted = repository.stop_paused_workflow_task(tenant_id="tenant-1", app_id="app-1", task_id="task-1", owner=None)
     assert admitted is not None
     assert admitted.status == WorkflowExecutionStatus.RUNNING

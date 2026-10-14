@@ -4,6 +4,8 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from docx import Document
+from odfdo import Document as OdfDocument
+from odfdo import Paragraph
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
@@ -460,25 +462,22 @@ def test_extract_text_from_file_routes_odt_inputs_to_graphon_odt_extractor(
 ):
     file = make_file(extension, mime_type)
 
-    document = Mock()
-    document.get_formatted_text.return_value = f"extracted through {route_label}"
+    document = OdfDocument()
+    document.body.append(Paragraph(f"extracted through {route_label}"))
+    content = io.BytesIO()
+    document.save(content)
 
-    with (
-        patch(
-            "graphon.nodes.document_extractor.node._download_file_content",
-            return_value=b"odt content",
-        ) as mock_download,
-        patch("graphon.nodes.document_extractor.node.OdfDocument", return_value=document) as mock_odf_document,
-    ):
+    with patch(
+        "graphon.nodes.document_extractor.node._download_file_content", return_value=content.getvalue()
+    ) as mock_download:
         text = _extract_text_from_file(
             document_extractor_node.http_client,
             file,
             unstructured_api_config=document_extractor_node._unstructured_api_config,
         )
 
-    assert text == f"extracted through {route_label}"
+    assert text.strip() == f"extracted through {route_label}"
     mock_download.assert_called_once_with(document_extractor_node.http_client, file)
-    assert isinstance(mock_odf_document.call_args.args[0], io.BytesIO)
 
 
 @pytest.mark.parametrize(

@@ -27,9 +27,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
+from extensions.ext_database import db
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
@@ -44,8 +46,7 @@ from graphon.errors import WorkflowNodeRunFailedError
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from graphon.runtime import VariablePool
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import StringVariable
 from graphon.variables.input_entities import VariableEntityType
 from libs.datetime_utils import naive_utc_now
@@ -77,6 +78,7 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -3436,7 +3438,22 @@ class TestWorkflowServiceDraftExecution:
         workspace_binding_id = str(uuid.uuid4())
         workflow_binding_id = str(uuid.uuid4())
         started_at = naive_utc_now()
-        node = MagicMock(node_type=BuiltinNodeTypes.AGENT, title="Agent", error_strategy=None)
+        config_overrides(AGENT_BACKEND_USE_FAKE=True)
+        node = DifyNodeFactory(
+            init_params=build_test_graph_init_params(
+                workflow_id=workflow.id,
+                graph_config=workflow.graph_dict,
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                user_id=account.id,
+            ),
+            runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+        ).create_node(
+            {
+                "id": node_id,
+                "data": {"type": "agent", "version": "2", "title": "Agent", "agent_node_kind": "dify_agent"},
+            }
+        )
         config_overrides(LOGSTORE_DUAL_WRITE_ENABLED=False)
         logstore_records: list[dict[str, str]] = []
         logstore = MagicMock()
@@ -3745,7 +3762,7 @@ class TestWorkflowServiceHumanInputOperations:
         assert result == []
 
     def test_form_preview_resolves_nested_inputs_without_loading_email_dependencies(
-        self, service: WorkflowService, sqlite_engine: Engine, sqlite_session: Session
+        self, service: WorkflowService, sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         workflow = TestWorkflowAssociatedDataFactory.create_workflow(
             graph={
@@ -3780,19 +3797,15 @@ class TestWorkflowServiceHumanInputOperations:
                 "edges": [],
             }
         )
-        service.get_draft_workflow = MagicMock(return_value=workflow)
-        with (
-            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
-            patch("services.workflow_service.WorkflowDraftVariableService"),
-            patch("services.workflow_service.DraftVarLoader", return_value=DUMMY_VARIABLE_LOADER),
-        ):
-            result = service.get_human_input_form_preview(
-                app_model=TestWorkflowAssociatedDataFactory.create_app(),
-                account=TestWorkflowAssociatedDataFactory.create_account(),
-                node_id="human",
-                inputs={"#source.object.name#": "Alice", "#source.object.default#": "Approved"},
-                session=sqlite_session,
-            )
+        monkeypatch.setattr(service, "get_draft_workflow", lambda **_: workflow)
+        monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
+        result = service.get_human_input_form_preview(
+            app_model=TestWorkflowAssociatedDataFactory.create_app(),
+            account=TestWorkflowAssociatedDataFactory.create_account(),
+            node_id="human",
+            inputs={"#source.object.name#": "Alice", "#source.object.default#": "Approved"},
+            session=sqlite_session,
+        )
 
         assert result["form_content"] == "Hello Alice"
         assert result["resolved_default_values"] == {"comment": "Approved"}

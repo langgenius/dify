@@ -4,12 +4,11 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
-from types import SimpleNamespace
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
+from sqlalchemy.orm import Session
 
 import core.app.apps.base_app_queue_manager as queue_module
 import core.app.apps.execution_coordinator as coordinator_module
@@ -17,8 +16,9 @@ import services.app_task_service as task_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
+from models.workflow import WorkflowRun
 from services.app_task_service import AppTaskControlService, AppTaskService
 
 _TASK_ID = "task-with-non-uuid-id"
@@ -278,32 +278,65 @@ def test_legacy_static_entry_point_passes_global_client_through_the_same_impleme
 
 @pytest.mark.parametrize("cached_owner", [None, b"end-user-other", b"account-user-1"])
 def test_live_chatflow_stop_does_not_send_either_signal_for_another_owner(
-    monkeypatch: pytest.MonkeyPatch, cached_owner: bytes | None
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, cached_owner: bytes | None
 ) -> None:
     task_id = "11111111-1111-1111-1111-111111111111"
     redis = _StopRedis(values={_OWNER_KEY: cached_owner} if cached_owner else {})
-    repository = MagicMock()
-    repository.stop_paused_workflow_task.return_value = None
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=None))
-    monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", lambda _: repository)
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
+    admissions: list[dict[str, object]] = []
+    repository_type = task_module.DifyAPISQLAlchemyWorkflowRunRepository
+    original_stop = repository_type.stop_paused_workflow_task
+
+    def stop(
+        repository: task_module.DifyAPISQLAlchemyWorkflowRunRepository,
+        *,
+        tenant_id: str,
+        app_id: str,
+        task_id: str,
+        owner: tuple[CreatorUserRole, str] | None,
+    ) -> WorkflowRun | None:
+        admissions.append({"tenant_id": tenant_id, "app_id": app_id, "task_id": task_id, "owner": owner})
+        return original_stop(repository, tenant_id=tenant_id, app_id=app_id, task_id=task_id, owner=owner)
+
+    monkeypatch.setattr(repository_type, "stop_paused_workflow_task", stop)
     monkeypatch.setattr(task_module, "redis_client", redis)
     AppTaskService.stop_task(
         task_id, InvokeFrom.SERVICE_API, _USER_ID, AppMode.ADVANCED_CHAT, tenant_id="tenant-1", app_id="app-1"
     )
-    repository.stop_paused_workflow_task.assert_called_once_with(
-        tenant_id="tenant-1", app_id="app-1", task_id=task_id, owner=(CreatorUserRole.END_USER, _USER_ID)
-    )
+    assert admissions == [
+        {
+            "tenant_id": "tenant-1",
+            "app_id": "app-1",
+            "task_id": task_id,
+            "owner": (CreatorUserRole.END_USER, _USER_ID),
+        }
+    ]
+    assert redis.reads == []
     assert redis.operations == []
     assert redis.commands == {}
 
 
-def test_live_chatflow_stop_sends_signals_for_its_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_chatflow_stop_sends_signals_for_its_owner(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     task_id = "11111111-1111-1111-1111-111111111111"
     redis = _StopRedis(values={_OWNER_KEY: b"end-user-user-1"})
-    repository = MagicMock()
-    repository.stop_paused_workflow_task.return_value = SimpleNamespace(status=WorkflowExecutionStatus.RUNNING)
-    monkeypatch.setattr(task_module, "db", SimpleNamespace(engine=None))
-    monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", lambda _: repository)
+    run = WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        task_id=task_id,
+        type="workflow",
+        version="1",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        status=WorkflowExecutionStatus.RUNNING,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=_USER_ID,
+    )
+    sqlite_session.add(run)
+    sqlite_session.commit()
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
     monkeypatch.setattr(task_module, "redis_client", redis)
     AppTaskService.stop_task(
         task_id, InvokeFrom.SERVICE_API, _USER_ID, AppMode.ADVANCED_CHAT, tenant_id="tenant-1", app_id="app-1"
@@ -313,10 +346,11 @@ def test_live_chatflow_stop_sends_signals_for_its_owner(monkeypatch: pytest.Monk
 
 
 def test_invalid_workflow_task_id_is_rejected_before_database_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
-    repository_factory = MagicMock()
-    monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", repository_factory)
+    def reject_lookup(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("Invalid task IDs must be rejected before database lookup")
+
+    monkeypatch.setattr(task_module, "DifyAPISQLAlchemyWorkflowRunRepository", reject_lookup)
     with pytest.raises(ValueError, match="Invalid task ID"):
         AppTaskService.stop_workflow_task(
             tenant_id="tenant-1", app_id="app-1", task_id="not-a-uuid", app_mode=AppMode.WORKFLOW, owner=None
         )
-    repository_factory.assert_not_called()

@@ -3,8 +3,6 @@
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -41,8 +39,9 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models import Account
-from models.enums import WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import AppMode
+from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionModel,
@@ -50,7 +49,10 @@ from models.workflow import (
     WorkflowPause,
     WorkflowRun,
 )
+from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow_run_agg import WorkflowRunAgg
+from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
+from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 
 
 def make_workflow_runner(
@@ -155,7 +157,7 @@ def _local_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
     from core.app.apps import workflow_app_runner
 
-    monkeypatch.setattr(workflow_app_runner, "dispatch_human_input_email_task", MagicMock())
+    monkeypatch.setattr(workflow_app_runner, "dispatch_human_input_email_task", lambda *_args, **_kwargs: None)
 
 
 @pytest.mark.usefixtures("_local_storage")
@@ -194,32 +196,57 @@ def test_pause_publication_persists_summary_and_optional_snapshot(
 def test_pause_database_failure_publishes_failure_instead_of_resume_ready(
     sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    def fail_pause(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("pause-write-failed")
+
     monkeypatch.setattr(
         "repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository.create_workflow_pause",
-        MagicMock(side_effect=RuntimeError("pause-write-failed")),
+        fail_pause,
     )
-    trigger_log = SimpleNamespace(elapsed_time=5.0)
-    trigger_repository = MagicMock()
-    trigger_repository.get_by_id.return_value = trigger_log
-    monkeypatch.setattr(
-        "core.app.layers.trigger_post_layer.SQLAlchemyWorkflowTriggerLogRepository",
-        MagicMock(return_value=trigger_repository),
-    )
-    retire = MagicMock(return_value=["workspace-1"])
-    enqueue = MagicMock()
+    retirements: list[dict[str, object]] = []
+    collections: list[dict[str, object]] = []
+
+    def retire(_store: object, **kwargs: object) -> list[str]:
+        retirements.append(kwargs)
+        return ["workspace-1"]
+
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.workspace_retirement_layer.WorkflowAgentWorkspaceStore.retire_workflow_run",
         retire,
     )
     monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.workspace_retirement_layer.enqueue_agent_resource_collection", enqueue
+        "core.workflow.nodes.agent_v2.workspace_retirement_layer.enqueue_agent_resource_collection",
+        lambda **kwargs: collections.append(kwargs),
     )
-    start_time = datetime(2026, 2, 20, tzinfo=UTC)
-    trigger_clock = MagicMock()
-    trigger_clock.now.return_value = start_time + timedelta(seconds=10)
-    monkeypatch.setattr("core.app.layers.trigger_post_layer.datetime", trigger_clock)
     runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
-    runner._graph_engine_layers = (TriggerPostLayer(MagicMock(), start_time, "trigger-log"),)
+    trigger_log = WorkflowTriggerLog(
+        tenant_id=runner.application_generate_entity.app_config.tenant_id,
+        app_id=runner.application_generate_entity.app_config.app_id,
+        workflow_id=runner._workflow.id,
+        workflow_run_id=None,
+        root_node_id=None,
+        trigger_metadata="{}",
+        trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
+        trigger_data="{}",
+        inputs="{}",
+        outputs=None,
+        status=WorkflowTriggerStatus.RUNNING,
+        error=None,
+        queue_name="workflow",
+        celery_task_id=None,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=runner.application_generate_entity.user_id,
+        elapsed_time=5.0,
+    )
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        session.add(trigger_log)
+        session.commit()
+    start_time = datetime.now(UTC) - timedelta(seconds=10)
+    plan = AsyncWorkflowCFSPlanEntity(
+        schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.Nop,
+        queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
+    )
+    runner._graph_engine_layers = (TriggerPostLayer(plan, start_time, trigger_log.id),)
     WorkflowRunAgg.run(
         runner,
         PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id),
@@ -230,17 +257,27 @@ def test_pause_database_failure_publishes_failure_instead_of_resume_ready(
     assert isinstance(events[-1], QueueWorkflowFailedEvent), events
     assert "pause-write-failed" in events[-1].error
     assert not any(isinstance(event, QueueWorkflowPausedEvent) for event in events)
-    assert trigger_log.status == WorkflowTriggerStatus.FAILED
-    assert trigger_log.elapsed_time == 15.0
-    retire.assert_called_once_with(
-        tenant_id=runner.application_generate_entity.app_config.tenant_id,
-        app_id=runner.application_generate_entity.app_config.app_id,
-        workflow_run_id=runner.application_generate_entity.workflow_execution_id,
-    )
-    enqueue.assert_called_once_with(
-        tenant_id=runner.application_generate_entity.app_config.tenant_id, workspace_ids=["workspace-1"]
-    )
+    assert retirements == [
+        {
+            "tenant_id": runner.application_generate_entity.app_config.tenant_id,
+            "app_id": runner.application_generate_entity.app_config.app_id,
+            "workflow_run_id": runner.application_generate_entity.workflow_execution_id,
+        }
+    ]
+    assert collections == [
+        {
+            "tenant_id": runner.application_generate_entity.app_config.tenant_id,
+            "workspace_ids": ["workspace-1"],
+        }
+    ]
     with Session(sqlite_engine) as session:
+        persisted_trigger = session.get(WorkflowTriggerLog, trigger_log.id)
+        assert persisted_trigger is not None
+        assert persisted_trigger.status == WorkflowTriggerStatus.FAILED
+        assert persisted_trigger.finished_at is not None
+        assert persisted_trigger.elapsed_time == pytest.approx(
+            5.0 + (persisted_trigger.finished_at.replace(tzinfo=UTC) - start_time).total_seconds()
+        )
         run = session.get(WorkflowRun, runner.application_generate_entity.workflow_execution_id)
         assert run is not None
         assert run.status == "failed"
