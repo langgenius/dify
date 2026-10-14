@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "این عمل قابل بازگشت نیست.",
   "actionMsg.deleteConfirmTitle": "این کلید مخفی حذف شود؟",
-  "actionMsg.ok": "تایید",
   "apiKeyModal.actions": "عملیات",
   "apiKeyModal.addKnowledgeBase": "افزودن پایگاه دانش",
   "apiKeyModal.addSubtitle": "برای دسترسی به API پایگاه دانش، یک کلید API جدید ایجاد کنید.",

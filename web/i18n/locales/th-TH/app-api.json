@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "การดําเนินการนี้ไม่สามารถยกเลิกได้",
   "actionMsg.deleteConfirmTitle": "ลบคีย์ลับนี้?",
-  "actionMsg.ok": "ตกลง, ได้",
   "apiKeyModal.actions": "การดำเนินการ",
   "apiKeyModal.addKnowledgeBase": "เพิ่มฐานความรู้",
   "apiKeyModal.addSubtitle": "สร้างกุญแจ API ใหม่เพื่อเข้าถึง API ของฐานความรู้",

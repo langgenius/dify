@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Tindakan ini tidak dapat dibatalkan.",
   "actionMsg.deleteConfirmTitle": "Hapus kunci rahasia ini?",
-  "actionMsg.ok": "OKE",
   "apiKeyModal.actions": "Tindakan",
   "apiKeyModal.addKnowledgeBase": "Tambah basis pengetahuan",
   "apiKeyModal.addSubtitle": "Buat API Key baru untuk mengakses API basis pengetahuan.",

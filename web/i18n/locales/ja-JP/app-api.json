@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "この操作は元に戻すことはできません。",
   "actionMsg.deleteConfirmTitle": "このシークレットキーを削除しますか？",
-  "actionMsg.ok": "OK",
   "apiKeyModal.actions": "操作",
   "apiKeyModal.addKnowledgeBase": "ナレッジベースを追加",
   "apiKeyModal.addSubtitle": "ナレッジベースAPIにアクセスするための新しいAPIキーを作成します。",

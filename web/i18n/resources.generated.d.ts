@@ -902,7 +902,6 @@ export default interface Resources {
   appApi: {
     'actionMsg.deleteConfirmTips': 'This action cannot be undone.'
     'actionMsg.deleteConfirmTitle': 'Delete this secret key?'
-    'actionMsg.ok': 'OK'
     'apiKeyModal.actions': 'Actions'
     'apiKeyModal.addKnowledgeBase': 'Add'
     'apiKeyModal.addSubtitle': 'Create a new API key for your workspace.'

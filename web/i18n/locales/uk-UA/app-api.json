@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Цю дію не можна скасувати.",
   "actionMsg.deleteConfirmTitle": "Видалити цей секретний ключ?",
-  "actionMsg.ok": "Гаразд",
   "apiKeyModal.actions": "Дії",
   "apiKeyModal.addKnowledgeBase": "Додати базу знань",
   "apiKeyModal.addSubtitle": "Створіть новий ключ API для доступу до API бази знань.",

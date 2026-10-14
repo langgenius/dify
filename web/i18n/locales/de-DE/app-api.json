@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Diese Aktion kann nicht rückgängig gemacht werden.",
   "actionMsg.deleteConfirmTitle": "Diesen Geheimschlüssel löschen?",
-  "actionMsg.ok": "OK",
   "apiKeyModal.actions": "Aktionen",
   "apiKeyModal.addKnowledgeBase": "Wissensdatenbank hinzufügen",
   "apiKeyModal.addSubtitle": "Erstellen Sie einen neuen API-Schlüssel für den Zugriff auf die Wissensdatenbank-API.",

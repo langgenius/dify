@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "This action cannot be undone.",
   "actionMsg.deleteConfirmTitle": "Delete this secret key?",
-  "actionMsg.ok": "OK",
   "apiKeyModal.actions": "Acties",
   "apiKeyModal.addKnowledgeBase": "Kennisbank toevoegen",
   "apiKeyModal.addSubtitle": "Maak een nieuwe API Key om toegang te krijgen tot de kennisbank-API.",

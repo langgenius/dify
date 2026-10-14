@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "删除密钥无法撤销，正在使用中的应用会受影响。",
   "actionMsg.deleteConfirmTitle": "删除此密钥？",
-  "actionMsg.ok": "好的",
   "apiKeyModal.actions": "操作",
   "apiKeyModal.addKnowledgeBase": "添加知识库",
   "apiKeyModal.addSubtitle": "创建一个新的 API 密钥以访问知识库 API。",

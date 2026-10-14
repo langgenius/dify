@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Это действие необратимо.",
   "actionMsg.deleteConfirmTitle": "Удалить этот секретный ключ?",
-  "actionMsg.ok": "ОК",
   "apiKeyModal.actions": "Действия",
   "apiKeyModal.addKnowledgeBase": "Добавить базу знаний",
   "apiKeyModal.addSubtitle": "Создайте новый API ключ для доступа к API базы знаний.",

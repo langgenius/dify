@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "ການດຳເນີນການນີ້ບໍ່ສາມາດກັບຄືນມາໄດ້.",
   "actionMsg.deleteConfirmTitle": "ລຶບລະຫັດລັບນີ້ບໍ?",
-  "actionMsg.ok": "ຕົກລົງ",
   "apiKeyModal.actions": "ການດຳເນີນການ",
   "apiKeyModal.addKnowledgeBase": "ເພີ່ມ",
   "apiKeyModal.addSubtitle": "ສ້າງ API Key ໃໝ່ສຳລັບພື້ນທີ່ເຮັດວຽກຂອງທ່ານ.",

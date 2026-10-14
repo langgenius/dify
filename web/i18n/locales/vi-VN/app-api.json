@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Hành động này không thể hoàn tác.",
   "actionMsg.deleteConfirmTitle": "Xóa khóa bí mật này?",
-  "actionMsg.ok": "OK",
   "apiKeyModal.actions": "Thao tác",
   "apiKeyModal.addKnowledgeBase": "Thêm cơ sở tri thức",
   "apiKeyModal.addSubtitle": "Tạo khóa API mới để truy cập API cơ sở tri thức.",

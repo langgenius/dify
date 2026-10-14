@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Tej akcji nie można cofnąć.",
   "actionMsg.deleteConfirmTitle": "Usunąć ten tajny klucz?",
-  "actionMsg.ok": "OK",
   "apiKeyModal.actions": "Działania",
   "apiKeyModal.addKnowledgeBase": "Dodaj bazę wiedzy",
   "apiKeyModal.addSubtitle": "Utwórz nowy Klucz API, aby uzyskać dostęp do API baz wiedzy.",

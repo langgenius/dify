@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "이 작업은 취소할 수 없습니다.",
   "actionMsg.deleteConfirmTitle": "이 비밀 키를 삭제하시겠습니까?",
-  "actionMsg.ok": "확인",
   "apiKeyModal.actions": "작업",
   "apiKeyModal.addKnowledgeBase": "지식 베이스 추가",
   "apiKeyModal.addSubtitle": "지식 베이스 API에 접근할 새 API 키를 생성합니다.",

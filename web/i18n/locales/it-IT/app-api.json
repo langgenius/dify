@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Questa azione non può essere annullata.",
   "actionMsg.deleteConfirmTitle": "Eliminare questa chiave segreta?",
-  "actionMsg.ok": "OK",
   "apiKeyModal.actions": "Azioni",
   "apiKeyModal.addKnowledgeBase": "Aggiungi base di conoscenza",
   "apiKeyModal.addSubtitle": "Crea una nuova Chiave API per accedere all'API delle basi di conoscenza.",

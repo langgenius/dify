@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Bu əməliyyatı geri qaytarmaq mümkün deyil.",
   "actionMsg.deleteConfirmTitle": "Məxfi açarın silinməsi",
-  "actionMsg.ok": "Təsdiqlə",
   "apiKeyModal.actions": "Əməliyyatlar",
   "apiKeyModal.addKnowledgeBase": "Əlavə et",
   "apiKeyModal.addSubtitle": "İş sahəniz üçün yeni API açarı yaradın.",

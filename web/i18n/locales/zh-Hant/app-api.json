@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "刪除金鑰無法撤銷，正在使用中的應用會受影響。",
   "actionMsg.deleteConfirmTitle": "刪除此金鑰？",
-  "actionMsg.ok": "好的",
   "apiKeyModal.actions": "操作",
   "apiKeyModal.addKnowledgeBase": "新增知識庫",
   "apiKeyModal.addSubtitle": "建立新的 API 金鑰以存取知識庫 API。",

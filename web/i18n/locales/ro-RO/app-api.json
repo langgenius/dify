@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Această acțiune nu poate fi anulată.",
   "actionMsg.deleteConfirmTitle": "Ștergeți această cheie secretă?",
-  "actionMsg.ok": "OK",
   "apiKeyModal.actions": "Acțiuni",
   "apiKeyModal.addKnowledgeBase": "Adaugă bază de cunoștințe",
   "apiKeyModal.addSubtitle": "Creează o nouă cheie API pentru a accesa API-ul bazei de cunoștințe.",

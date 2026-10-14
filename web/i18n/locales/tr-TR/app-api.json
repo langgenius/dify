@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "Bu işlem geri alınamaz.",
   "actionMsg.deleteConfirmTitle": "Bu gizli anahtarı silmek istiyor musunuz?",
-  "actionMsg.ok": "Tamam",
   "apiKeyModal.actions": "İşlemler",
   "apiKeyModal.addKnowledgeBase": "Bilgi tabanı ekle",
   "apiKeyModal.addSubtitle": "Bilgi tabanı API'sine erişmek için yeni bir API anahtarı oluşturun.",

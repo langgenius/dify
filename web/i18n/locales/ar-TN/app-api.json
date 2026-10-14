@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "لا يمكن التراجع عن هذا الإجراء.",
   "actionMsg.deleteConfirmTitle": "حذف هذا المفتاح السري؟",
-  "actionMsg.ok": "موافق",
   "apiKeyModal.actions": "الإجراءات",
   "apiKeyModal.addKnowledgeBase": "إضافة قاعدة معرفة",
   "apiKeyModal.addSubtitle": "أنشئ مفتاح API جديدًا للوصول إلى واجهة برمجة قاعدة المعرفة.",

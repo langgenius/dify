@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "To dejanje ni mogoče razveljaviti.",
   "actionMsg.deleteConfirmTitle": "Izbrisati ta skrivni ključ?",
-  "actionMsg.ok": "V redu",
   "apiKeyModal.actions": "Dejanja",
   "apiKeyModal.addKnowledgeBase": "Dodaj bazo znanja",
   "apiKeyModal.addSubtitle": "Ustvarite nov API ključ za dostop do API-ja baze znanja.",

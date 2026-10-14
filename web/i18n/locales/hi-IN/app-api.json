@@ -1,7 +1,6 @@
 {
   "actionMsg.deleteConfirmTips": "यह क्रिया पूर्ववत नहीं की जा सकती।",
   "actionMsg.deleteConfirmTitle": "इस गुप्त कुंजी को हटाएं?",
-  "actionMsg.ok": "ठीक",
   "apiKeyModal.actions": "कार्रवाइयाँ",
   "apiKeyModal.addKnowledgeBase": "नॉलेज बेस जोड़ें",
   "apiKeyModal.addSubtitle": "नॉलेज बेस API तक पहुंचने के लिए एक नई एपीआई कुंजी बनाएं।",
