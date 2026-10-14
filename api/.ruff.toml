@@ -62,7 +62,6 @@ ignore = [
     "E711",    # none-comparison
     "E712",    # true-false-comparison
     "E721",    # type-comparison
-    "E722",    # bare-except
     "F821",    # undefined-name
     "F841",    # unused-variable
     "FURB113", # repeated-append
