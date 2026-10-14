@@ -180,15 +180,26 @@ class TestStructuredOutput:
         text = '<think>\n\n</think>\n{"content": "<think>x</think>"}\n{"extra": 1}'
         assert _parse_structured_output(text) == {"content": "<think>x</think>"}
 
-    def test_parse_structured_output_unclosed_reasoning_block(self):
+    @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
+    def test_parse_structured_output_unclosed_reasoning_block(self, reasoning: str):
         # A truncated answer keeps whatever the repair fallback made of it before.
-        text = '<think>{"key": "value"}'
+        text = f"<think>{reasoning}"
         assert _parse_structured_output(text) == {"key": "value"}
 
-    def test_parse_structured_output_reasoning_only_output(self):
+    @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
+    def test_parse_structured_output_reasoning_only_output(self, reasoning: str):
         # Nothing but reasoning: there is no answer to prefer, so the old result stands.
-        text = '<think>{"key": "value"}</think>'
+        text = f"<think>{reasoning}</think>"
         assert _parse_structured_output(text) == {"key": "value"}
+
+    def test_parse_structured_output_keeps_candidates_when_answer_cannot_be_repaired(self):
+        # Repairing the answer produces a scalar, so retain the original object candidates.
+        text = '<think>{"key": "value"}\n{"other": 1}</think>not json'
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    def test_parse_structured_output_skips_consecutive_reasoning_blocks(self):
+        text = ' \n<Think>{"draft": 1}</THINK>\n<think>{"draft": 2}</think>\n{"answer": "final"}'
+        assert _parse_structured_output(text) == {"answer": "final"}
 
     def test_set_response_format(self):
         # Test JSON
