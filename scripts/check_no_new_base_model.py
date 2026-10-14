@@ -37,25 +37,40 @@ def working_file_versions() -> dict[str, tuple[str, str]]:
         if merge_base:
             baseline = merge_base
             break
-    paths = set(
+    fields = iter(
         git_output(
-            "diff", "--name-only", "-z", "--diff-filter=AMR", baseline, "--", "api"
+            "diff",
+            "--name-status",
+            "-z",
+            "--find-renames",
+            "--diff-filter=AMR",
+            baseline,
+            "--",
+            "api",
         )
         .rstrip("\0")
         .split("\0")
     )
-    paths.update(
+    paths: dict[str, str] = {}
+    for status in fields:
+        if not status:
+            continue
+        old_path = next(fields)
+        path = next(fields) if status.startswith("R") else old_path
+        paths[path] = old_path
+    for path in (
         git_output("ls-files", "--others", "--exclude-standard", "-z", "api")
         .rstrip("\0")
         .split("\0")
-    )
+    ):
+        paths[path] = path
     versions = {}
     for path in sorted(paths):
         source = Path(path)
         if source.suffix not in {".py", ".pyi"} or not source.is_file():
             continue
         versions[path] = (
-            git_output("show", f"{baseline}:{path}", allow_missing=True),
+            git_output("show", f"{baseline}:{paths[path]}", allow_missing=True),
             source.read_text(),
         )
     return versions

@@ -53,6 +53,7 @@ def run_guard(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
         ("from .base import Base as Legacy", "Legacy"),
         ("import models.base as model_base", "model_base.Base"),
         ("from models import base as model_base", "model_base.Base"),
+        ("from models import base", "base.Base"),
         ("import models.base", "models.base.Base"),
         ("import api.models.base", "api.models.base.Base"),
     ],

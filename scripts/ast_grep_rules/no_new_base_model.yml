@@ -64,6 +64,23 @@ utils:
                           has:
                             field: module_name
                             regex: '^(api\.)?models$'
+      - all:
+          - pattern: base.Base
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - kind: import_from_statement
+                  - has:
+                      field: module_name
+                      regex: '^(api\.)?models$'
+                  - has:
+                      stopBy: neighbor
+                      all:
+                        - kind: dotted_name
+                        - regex: '^base$'
 rule:
   all:
     - kind: class_definition
