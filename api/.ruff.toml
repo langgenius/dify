@@ -82,7 +82,6 @@ ignore = [
     "SIM108",  # if-else-block-instead-of-if-exp
     "SIM113",  # enumerate-for-loop
     "SIM117",  # multiple-with-statements
-    "TID252",  # allow relative imports from parent modules
 ]
 
 [lint.per-file-ignores]
