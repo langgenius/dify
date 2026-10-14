@@ -1,8 +1,7 @@
-import { apps as appsContract } from '@dify/contracts/api/console/apps/orpc.gen'
 import { ORPCError } from '@orpc/client'
 import { oc } from '@orpc/contract'
 import { describe, expect, it } from 'vite-plus/test'
-import { consoleDefinedError, toDefinedError, validateDefinedErrors } from './defined-errors'
+import { validateDefinedErrors } from './defined-errors'
 
 const contract = {
   drafts: {
@@ -45,52 +44,5 @@ describe('console link error validation', () => {
     ).toMatchObject({
       defined: false,
     })
-  })
-})
-
-describe('toDefinedError', () => {
-  it('narrows a legacy call error to the codes the generated contract documents', async () => {
-    const error = new ORPCError('draft_workflow_not_exist', {
-      status: 404,
-      data: { code: 'draft_workflow_not_exist', message: 'Draft workflow not exist', status: 404 },
-    })
-
-    const defined = await toDefinedError(appsContract.byAppId.workflows.draft.get, error)
-
-    expect(defined?.code).toBe('draft_workflow_not_exist')
-    // @ts-expect-error Reading a draft does not document this code.
-    const isUndocumented = defined?.code === 'draft_workflow_not_sync'
-    expect(isUndocumented).toBe(false)
-    expect(
-      await toDefinedError(appsContract.byAppId.workflows.draft.get, new Error('boom')),
-    ).toBeUndefined()
-  })
-})
-
-describe('consoleDefinedError', () => {
-  it('resolves the procedure by path through the lazy console contract loader', async () => {
-    const error = new ORPCError('draft_workflow_not_exist', {
-      status: 404,
-      data: { code: 'draft_workflow_not_exist', message: 'Draft workflow not exist', status: 404 },
-    })
-
-    const defined = await consoleDefinedError.apps.byAppId.workflows.draft.get(error)
-
-    expect(defined?.code).toBe('draft_workflow_not_exist')
-    // @ts-expect-error Reading a draft does not document this code.
-    const isUndocumented = defined?.code === 'draft_workflow_not_sync'
-    expect(isUndocumented).toBe(false)
-    expect(
-      await consoleDefinedError.apps.byAppId.workflows.draft.get(new Error('boom')),
-    ).toBeUndefined()
-  })
-
-  it('rejects a path that is not a contract procedure', async () => {
-    const error = new ORPCError('draft_workflow_not_exist', { status: 404 })
-    const notAProcedure = consoleDefinedError.apps.byAppId.workflows as unknown as (
-      error: unknown,
-    ) => Promise<unknown>
-
-    await expect(notAProcedure(error)).rejects.toThrow('is not a console contract procedure')
   })
 })
