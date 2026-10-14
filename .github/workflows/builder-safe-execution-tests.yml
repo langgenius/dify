@@ -326,6 +326,7 @@ jobs:
               "api/tests/unit_tests/services/dify_builder/test_native_api_string_input_binding.py",
               "api/tests/unit_tests/services/dify_builder/test_native_api_output_contract.py",
               "api/tests/unit_tests/services/dify_builder/test_native_http_output_contract.py",
+              "api/tests/unit_tests/services/dify_builder/test_condition_evidence.py",
               "api/tests/unit_tests/services/dify_builder/test_native_constant_output_contract.py",
               "api/tests/unit_tests/services/dify_builder/test_dify_port_preflight.py",
               "api/tests/unit_tests/core/workflow/generator/test_runner.py",

@@ -81,6 +81,21 @@ class LlmBuilderAgent:
             self._reasoning_for("diagnose"),
         )
 
+    def diagnose_with_evidence(self, failed_run, graph, node_outputs, evidence):
+        return fix.diagnose(
+            self.model_or_none(), failed_run, graph, node_outputs, self._reasoning_for("diagnose"), evidence=evidence
+        )
+
+    def propose_with_evidence(self, diagnosis, graph, prompt_graph, redact_text):
+        return fix.propose_repair(
+            self.model_or_none(),
+            diagnosis,
+            graph,
+            self._reasoning_for("propose-repair"),
+            prompt_graph=prompt_graph,
+            redact_text=redact_text,
+        )
+
     def diagnose_checklist(self, errors, graph):
         return fix.diagnose_checklist(
             self.model_or_none(),

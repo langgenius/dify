@@ -344,8 +344,10 @@ class FakeDifyPort:
         on_canvas: Callable[[dict], None] | None = None,
         *,
         expected_revision: str = "",
+        failed_run_id: str | None = None,
     ) -> ApplyResult:
         self.expected_revision = expected_revision
+        self.last_repair_run_id = failed_run_id
         self.applied = copy.deepcopy(intents)
         self.hash = "h1"
         changed = [intent.args["node_id"] for intent in intents if isinstance(intent.args.get("node_id"), str)]
@@ -576,8 +578,10 @@ class FakeBuildDifyPort:
         on_canvas: Callable[[dict], None] | None = None,
         *,
         expected_revision: str = "",
+        failed_run_id: str | None = None,
     ) -> ApplyResult:
         self.expected_revision = expected_revision
+        self.last_repair_run_id = failed_run_id
         self.applied.extend(copy.deepcopy(intents))
         before = copy.deepcopy(self.graph)
         graph = self.graph

@@ -481,6 +481,80 @@ class WorkflowServiceDifyPort:
             for node_exec in node_execs
         ]
 
+    def failed_run_context(self, app_id: str, actor: Actor, run_id: str) -> tuple[Graph | None, list[NodeOutput], str]:
+        """Read native graph and rows only after complete owner/Run validation.
+
+        Missing graph/Run is unavailable. A mismatched owner or execution is a
+        denial, never an unknown that permits handling another tenant's data.
+        Offloaded content is not fetched and iteration/retry evidence remains
+        unknown even if only one successful row happens to be present.
+        """
+        from core.dify_builder.errors import NotFoundError
+
+        with _session_factory()() as session:
+            app = load_app(session, app_id, actor)
+            tenant_id = app.tenant_id
+        if not run_id:
+            return None, [], ""
+        run_row = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+            sessionmaker(bind=db.engine)
+        ).get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=run_id)
+        if run_row is None:
+            return None, [], ""
+        if (run_row.tenant_id, run_row.app_id, run_row.id) != (tenant_id, app_id, run_id):
+            raise NotFoundError("failed Run not found")
+        if _unwrap_status(run_row.status) != "failed":
+            return None, [], run_row.error or ""
+        rows = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            sessionmaker(bind=db.engine)
+        ).get_executions_by_workflow_run(tenant_id, app_id, run_id)
+        # Validate every row before reading even one inputs/outputs property.
+        for row in rows:
+            if (row.tenant_id, row.app_id, row.workflow_run_id, row.workflow_id) != (
+                tenant_id,
+                app_id,
+                run_id,
+                run_row.workflow_id,
+            ):
+                raise NotFoundError("failed Run execution not found")
+        try:
+            graph = run_row.graph_dict
+        except (TypeError, ValueError):
+            graph = None
+        historical = dict(graph) if isinstance(graph, Mapping) and isinstance(graph.get("nodes"), list) else None
+        metadata_ambiguous = False
+        for row in rows:
+            try:
+                metadata = row.execution_metadata_dict
+            except (TypeError, ValueError):
+                metadata = None
+            if not isinstance(metadata, Mapping) or any(
+                value is not None
+                for key, value in metadata.items()
+                if any(token in str(key).lower() for token in ("iteration", "loop", "retry"))
+            ):
+                metadata_ambiguous = True
+        outputs = []
+        for row in rows:
+            raw_outputs = row.outputs_dict
+            outputs.append(
+                NodeOutput(
+                    node_id=row.node_id,
+                    title=row.title,
+                    status=_unwrap_status(row.status),
+                    error=row.error or "",
+                    inputs=row.inputs_dict or {},
+                    outputs=raw_outputs or {},
+                    outputs_available=isinstance(raw_outputs, Mapping)
+                    and row.outputs_truncated is False
+                    and not metadata_ambiguous
+                    and row.finished_at is not None
+                    and bool(row.node_execution_id)
+                    and _unwrap_status(run_row.status) == "failed",
+                )
+            )
+        return historical, outputs, run_row.error or ""
+
     def apply_repair(
         self,
         app_id: str,
@@ -489,6 +563,7 @@ class WorkflowServiceDifyPort:
         on_canvas: Callable[[dict], None] | None = None,
         *,
         expected_revision: str,
+        failed_run_id: str | None = None,
     ) -> ApplyResult:
         # Build and validate against a snapshot outside the write transaction.
         # The final row lock rechecks this revision before replacing the graph.
@@ -588,6 +663,16 @@ class WorkflowServiceDifyPort:
         # passes. The same function the Edit/Fix dry run predicts this
         # refusal with (``preflight.vet_intents``), on the same ``touched``
         # set, so the two cannot answer differently.
+        if failed_run_id is not None:
+            from services.dify_builder.condition_evidence import build_evidence, repair_evidence_rejections
+
+            historical, outputs, native_error = self.failed_run_context(app_id, actor, failed_run_id)
+            _, _, _, evidence = build_evidence(
+                Run(dify_run_id=failed_run_id, error=native_error), before_graph, historical, outputs
+            )
+            evidence_problems = repair_evidence_rejections(before_graph, graph, written_nodes, evidence)
+            if evidence_problems:
+                raise PreflightError("; ".join(evidence_problems))
         new_problems = new_preflight_problems(before_graph, graph, written_nodes)
         if new_problems:
             raise PreflightError("the draft would not start: " + "; ".join(new_problems))
