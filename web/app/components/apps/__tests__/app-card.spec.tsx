@@ -54,7 +54,10 @@ vi.mock('@/service/console', async (importOriginal) => {
     new Proxy(operation, {
       get(target, property, receiver) {
         if (property === 'mutationOptions')
-          return () => ({ mutationFn: (variables: unknown) => mutationFn(variables) })
+          return (options?: object) => ({
+            ...options,
+            mutationFn: (variables: unknown) => mutationFn(variables),
+          })
         return Reflect.get(target, property, receiver)
       },
     })
@@ -1093,7 +1096,7 @@ describe('AppCard', () => {
       })
     })
 
-    it('should handle delete failure', async () => {
+    it('should name the failed deletion', async () => {
       mockDeleteAppMutation.mockRejectedValueOnce(new Error('Delete failed'))
 
       render(<AppCard app={mockApp} />)
@@ -1110,10 +1113,9 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(mockDeleteAppMutation).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.stringContaining('Delete failed'),
-        })
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.appDeleteFailed' }),
+        )
       })
     })
 
@@ -1131,10 +1133,9 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(mockDeleteAppMutation).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.appDeleteFailed',
-        })
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.appDeleteFailed' }),
+        )
       })
     })
 
@@ -1206,10 +1207,9 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(mockCopyApp).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.newApp.appCreateFailed',
-        })
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.newApp.appCreateFailed' }),
+        )
       })
     })
 
@@ -1416,7 +1416,7 @@ describe('AppCard', () => {
   })
 
   describe('Edit mutation', () => {
-    it('should handle edit failure', async () => {
+    it('should name the failed edit', async () => {
       mockUpdateAppMutation.mockRejectedValueOnce(new Error('Edit failed'))
 
       render(<AppCard app={mockApp} />)
@@ -1434,10 +1434,9 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(mockUpdateAppMutation).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: expect.stringContaining('Edit failed'),
-        })
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.editFailed' }),
+        )
       })
     })
 
@@ -1459,7 +1458,9 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(mockUpdateAppMutation).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
+        expect(toastMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.editFailed' }),
+        )
       })
     })
   })
@@ -1507,10 +1508,9 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
       fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
       expect(installedRequest).not.toHaveBeenCalled()
-      expect(toastMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Failed to open new window',
-      })
+      expect(toastMocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', message: 'Failed to open new window' }),
+      )
     })
   })
 
@@ -1560,10 +1560,9 @@ describe('AppCard', () => {
 
       expect(openWindow).not.toHaveBeenCalled()
       expect(installedRequest).not.toHaveBeenCalled()
-      expect(toastMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'app.notPublishedYet',
-      })
+      expect(toastMocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', message: 'app.notPublishedYet' }),
+      )
     })
 
     it('closes the popup and reports an empty installed list', async () => {
@@ -1575,10 +1574,9 @@ describe('AppCard', () => {
       fireEvent.click(await screen.findByRole('menuitem', { name: 'app.openInExplore' }))
       await waitFor(() => expect(popup.close).toHaveBeenCalledOnce())
       expect(popup.location.href).toBe('')
-      expect(toastMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'app.notPublishedYet',
-      })
+      expect(toastMocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', message: 'app.notPublishedYet' }),
+      )
     })
 
     it('closes the popup and reports a failed lookup without retrying', async () => {
@@ -1716,10 +1714,9 @@ describe('AppCard', () => {
 
       expect(openWindow).not.toHaveBeenCalled()
       expect(installedRequest).not.toHaveBeenCalled()
-      expect(toastMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'app.notPublishedYet',
-      })
+      expect(toastMocks.record).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', message: 'app.notPublishedYet' }),
+      )
     })
   })
 })
