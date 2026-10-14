@@ -8,7 +8,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from constants.oauth_bearer import Scope
-from controllers.common.errors import ForbiddenError
+from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -24,16 +24,20 @@ from controllers.openapi._models import (
     DslIssueRow,
     Hint,
 )
-from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import EDITOR_ROLES, account_app_guards, workspace_write_guards
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext, RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
-from services.app_dsl_service import AppDslService
+from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportMode, ImportStatus
-from services.errors.app import DraftChangedError, IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.app import (
+    AppDiscoveryNotFoundError,
+    DraftChangedError,
+    IsDraftWorkflowError,
+    WorkflowNotFoundError,
+)
 from services.errors.base import NoPermissionError
 from services.workflow.dsl_import import (
     DslNotCheckableError,
@@ -43,8 +47,7 @@ from services.workflow.dsl_import import (
     prepare_import,
 )
 from services.workflow.graph_check import IssueSeverity
-from services.workflow.graph_diff import draft_token
-from services.workflow_service import WorkflowService
+from services.workflow.graph_diff import current_draft_token
 
 _DSL_READ_GUARDS: Final = account_app_guards(
     RBACPermission.APP_IMPORT_EXPORT_DSL, scope=Scope.APPS_READ, roles=EDITOR_ROLES
@@ -243,6 +246,7 @@ class AppDslExportApi(Resource):
     """
 
     @endpoint(
+        context="app",
         op="export.console_app.dsl",
         kind=Kind.OBJECT,
         summary="Export app DSL as YAML text inside a JSON object",
@@ -257,20 +261,20 @@ class AppDslExportApi(Resource):
         query=AppDslExportQuery,
         returns=(200, AppDslExportResponse, "Export successful"),
     )
-    def get(self, ctx: Context, app_id: str, *, query: AppDslExportQuery):
-        draft = WorkflowService().get_draft_workflow(app_model=ctx.app, session=ctx.session)
+    def get(self, ctx: AppRequestContext, app_id: str, *, query: AppDslExportQuery):
+        # Read the hash first: a draft edited in between then refuses the import instead of losing the edit.
+        draft_hash = current_draft_token(ctx.tenant_id, ctx.app_id)
         try:
-            data = AppDslService.export_dsl(
-                app_model=ctx.app,
-                session=ctx.session,
-                include_secret=query.include_secret,
-                workflow_id=query.workflow_id,
+            data = application_services().apps.exports.export_app(
+                ctx, AppExportOptions(include_secret=query.include_secret, workflow_id=query.workflow_id)
             )
+        except AppDiscoveryNotFoundError as exc:
+            raise NotFoundError(str(exc)) from exc
         except WorkflowNotFoundError as exc:
             raise (VersionNotFound() if query.workflow_id else DraftNotFound()) from exc
         except IsDraftWorkflowError as exc:
             raise VersionNotFound() from exc
-        return AppDslExportResponse(data=data, draft_hash=draft_token(draft) if draft else None), 200
+        return AppDslExportResponse(data=data, draft_hash=draft_hash), 200
 
 
 @openapi_ns.route("/apps/<string:app_id>/dependencies:check")

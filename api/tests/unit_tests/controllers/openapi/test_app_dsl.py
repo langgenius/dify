@@ -1,18 +1,19 @@
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import Protocol, cast
 from uuid import uuid4
 
 import pytest
 import yaml
-from flask import Flask
-from sqlalchemy.orm import Session
+from flask import Flask, request
+from flask_restx import Resource
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
-from constants.oauth_bearer import TokenType
-from controllers.common.errors import ForbiddenError
+from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
-from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, OpenApiError, VersionNotFound
+from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, OpenApiErrorFormatter, VersionNotFound
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
@@ -23,20 +24,26 @@ from controllers.openapi._models import (
     Hint,
 )
 from controllers.openapi.app_dsl import AppDslCheckApi, AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
-from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import AccountSubject
-from libs.oauth_bearer import AuthContext
-from machinery.context import RequestContext
+from libs.external_api import ExternalApi
+from machinery.context import AppRequestContext, RequestContext
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from repositories.app.export_repository import AppExportRepository
+from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
+from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportStatus
-from services.errors.app import DraftChangedError, IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.app import (
+    AppDiscoveryNotFoundError,
+    DraftChangedError,
+    IsDraftWorkflowError,
+    WorkflowNotFoundError,
+)
 from services.errors.base import NoPermissionError
 from services.workflow import graph_check
 from services.workflow.graph_check import IssueCode, IssueSeverity
-from services.workflow.graph_diff import draft_token
+from services.workflow.graph_diff import current_draft_token, draft_token
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 
@@ -132,39 +139,23 @@ def test_import_hints_a_confirm_only_while_pending(
     assert (code, response.hints) == (status, hints)
 
 
-class _DraftReader:
-    """The one `WorkflowService` read the export handler makes, recording when it happens."""
-
-    def __init__(self, draft: Workflow | None, call_order: list[str]) -> None:
-        self._draft = draft
-        self._call_order = call_order
-
-    def get_draft_workflow(self, **_kwargs: object) -> Workflow | None:
-        self._call_order.append("draft_hash")
-        return self._draft
+_EXPORT_CONTEXT = AppRequestContext(tenant_id="tenant-1", app_id="app-1")
 
 
-def _export_context(session: Session) -> Context:
-    auth = AuthContext(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        subject_email="caller@example.com",
-        subject_issuer="dify:account",
-        account_id=uuid4(),
-        client_id="difyctl",
-        token_id=uuid4(),
-        expires_at=None,
-    )
-    ctx = Context(AccountSubject(auth), session, {"app_id": "app-1"})
-    ctx._app = App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
-    return ctx
+def _export(app: Flask, query: AppDslExportQuery) -> tuple[AppDslExportResponse, int]:
+    api = AppDslExportApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/dsl"):
+        return cast(_ExportView, api.get).__handler__(api, _EXPORT_CONTEXT, "app-1", query=query)
 
 
 def test_export_reads_draft_hash_before_building_dsl(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     """The hash must describe the draft as of before the export, not after: an edit that
     commits in between would otherwise make a later import silently overwrite it."""
-    call_order: list[str] = []
+    sqlite_session.add(
+        App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    )
     draft = Workflow(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -174,19 +165,23 @@ def test_export_reads_draft_hash_before_building_dsl(
         features="{}",
         created_by="account-1",
     )
+    sqlite_session.add(draft)
+    sqlite_session.commit()
+    call_order: list[str] = []
 
-    def fake_export_dsl(**_kwargs: object) -> str:
+    def read_token(tenant_id: str, app_id: str) -> str | None:
+        call_order.append("draft_hash")
+        return current_draft_token(tenant_id, app_id)
+
+    def export_app(context: AppRequestContext, _options: AppExportOptions) -> str:
         call_order.append("export")
+        assert context == _EXPORT_CONTEXT
         return "app: {}"
 
-    monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
-    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: _DraftReader(draft, call_order))
+    monkeypatch.setattr(app_dsl, "current_draft_token", read_token)
+    monkeypatch.setattr(app_query_services.apps.exports, "export_app", export_app)
 
-    api = AppDslExportApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/dsl"):
-        response, status = cast(_ExportView, api.get).__handler__(
-            api, _export_context(sqlite_session), "app-1", query=AppDslExportQuery()
-        )
+    response, status = _export(app, AppDslExportQuery())
 
     assert call_order == ["draft_hash", "export"]
     assert response.draft_hash == draft_token(draft)
@@ -354,26 +349,24 @@ def test_check_refuses_dsls_it_cannot_read(app: Flask, yaml_content: str) -> Non
         ("6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b", WorkflowNotFoundError("gone"), VersionNotFound),
         ("6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b", IsDraftWorkflowError("draft"), VersionNotFound),
         (None, WorkflowNotFoundError("no draft"), DraftNotFound),
+        (None, AppDiscoveryNotFoundError("app not found"), NotFoundError),
     ],
 )
 def test_export_answers_a_missing_workflow_with_the_openapi_error(
     app: Flask,
+    app_query_services: ControllerTestServices,
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
     workflow_id: str | None,
     raised: Exception,
-    expected: type[OpenApiError],
+    expected: type[Exception],
 ) -> None:
-    def fake_export_dsl(**_kwargs: object) -> str:
+    def export_app(*_args: object) -> str:
         raise raised
 
-    monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
-    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: _DraftReader(None, []))
-    ctx = _export_context(sqlite_session)
+    monkeypatch.setattr(app_query_services.apps.exports, "export_app", export_app)
 
-    api = AppDslExportApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/dsl"), pytest.raises(expected):
-        cast(_ExportView, api.get).__handler__(api, ctx, "app-1", query=AppDslExportQuery(workflow_id=workflow_id))
+    with pytest.raises(expected):
+        _export(app, AppDslExportQuery(workflow_id=workflow_id))
 
 
 def test_import_hands_the_draft_hash_to_the_save(
@@ -488,3 +481,89 @@ def test_check_refuses_malformed_environment_variables(app: Flask, environment_v
 
     with pytest.raises(BadRequest, match="environment_variables"):
         _check(app, DslCheckPayload(yaml_content=yaml_content))
+
+
+@dataclass(frozen=True)
+class ExportAppServices:
+    exports: AppExportService
+
+
+@dataclass(frozen=True)
+class ExportServices:
+    apps: ExportAppServices
+
+
+@pytest.mark.parametrize(
+    ("missing", "status", "error_code"),
+    [
+        ("app", 404, "not_found"),
+        ("draft", 404, "draft_not_found"),
+        ("version", 404, "version_not_found"),
+        ("draft_version", 404, "version_not_found"),
+    ],
+)
+def test_export_errors_have_canonical_http_responses(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    missing: str,
+    status: int,
+    error_code: str,
+) -> None:
+    """Exercise the admitted handler, real export reads and HTTP error formatter."""
+    app_id, tenant_id, workflow_id = str(uuid4()), str(uuid4()), str(uuid4())
+    if missing != "app":
+        sqlite_session.add(
+            App(
+                id=app_id,
+                tenant_id=tenant_id,
+                name="Exported workflow",
+                mode=AppMode.WORKFLOW,
+                enable_api=True,
+                enable_site=False,
+            )
+        )
+    if missing in {"version", "draft_version"}:
+        # A draft exists, but an explicitly requested version must not fall back to it.
+        sqlite_session.add(
+            Workflow(
+                id=workflow_id if missing == "draft_version" else str(uuid4()),
+                tenant_id=tenant_id,
+                app_id=app_id,
+                type=WorkflowType.WORKFLOW,
+                version=Workflow.VERSION_DRAFT,
+                graph='{"nodes": [], "edges": []}',
+                features="{}",
+                created_by="account-id",
+            )
+        )
+    sqlite_session.commit()
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.extensions["application_services"] = ExportServices(
+        apps=ExportAppServices(
+            exports=AppExportService(
+                apps=AppExportRepository(session_factory=sqlite_session_factory),
+                serialize=AppDslService.serialize_export_data,
+            )
+        )
+    )
+    api = ExternalApi(app, error_body_formatter=OpenApiErrorFormatter())
+
+    class AdmittedExport(Resource):
+        def get(self, app_id: str) -> tuple[AppDslExportResponse, int]:
+            return cast(_ExportView, AppDslExportApi.get).__handler__(
+                AppDslExportApi(),
+                AppRequestContext(tenant_id=tenant_id, app_id=app_id),
+                app_id,
+                query=AppDslExportQuery.model_validate(request.args.to_dict(flat=True)),
+            )
+
+    api.add_resource(AdmittedExport, "/apps/<string:app_id>/dsl")
+    response = app.test_client().get(
+        f"/apps/{app_id}/dsl",
+        query_string={"workflow_id": workflow_id} if missing in {"version", "draft_version"} else {},
+    )
+
+    assert response.status_code == status
+    assert (response.get_json()["code"], response.get_json()["status"]) == (error_code, status)

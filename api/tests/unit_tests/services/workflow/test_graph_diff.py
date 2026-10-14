@@ -1,6 +1,11 @@
 from collections.abc import Mapping, Sequence
 
-from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows
+import pytest
+from sqlalchemy.orm import Session
+
+from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
+from services.workflow.graph_diff import WorkflowSnapshot, current_draft_token, diff_workflows, draft_token
 from services.workflow.node_defaults import fill_graph
 
 
@@ -58,3 +63,41 @@ def test_defaults_filled_by_import_are_not_changes() -> None:
     draft = WorkflowSnapshot(graph=fill_graph(published.graph), features={}, environment_variable_names=frozenset())
     assert diff_workflows(published, draft) == diff_workflows(published, published)
     assert diff_workflows(draft, published) == diff_workflows(draft, draft)
+
+
+def _workflow(version: str) -> Workflow:
+    return Workflow(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=version,
+        graph='{"nodes": [], "edges": []}',
+        features="{}",
+        created_by="account-1",
+    )
+
+
+def test_current_draft_token_hashes_the_stored_draft(sqlite_session: Session) -> None:
+    sqlite_session.add(
+        App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    )
+    draft = _workflow(Workflow.VERSION_DRAFT)
+    sqlite_session.add_all([draft, _workflow("2026-10-14 00:00:00")])
+    sqlite_session.commit()
+
+    assert current_draft_token("tenant-1", "app-1") == draft_token(draft)
+
+
+@pytest.mark.parametrize(("tenant_id", "with_draft"), [("tenant-1", False), ("tenant-2", True)])
+def test_current_draft_token_is_none_without_a_draft_in_the_workspace(
+    sqlite_session: Session, tenant_id: str, with_draft: bool
+) -> None:
+    sqlite_session.add(
+        App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    )
+    if with_draft:
+        sqlite_session.add(_workflow(Workflow.VERSION_DRAFT))
+    sqlite_session.commit()
+
+    assert current_draft_token(tenant_id, "app-1") is None
+    assert current_draft_token(tenant_id, "missing-app") is None
