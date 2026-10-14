@@ -3,7 +3,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from constants.languages import supported_language
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
@@ -77,7 +77,7 @@ register_schema_models(
 class ActivateCheckApi(Resource):
     @console_ns.doc("check_activation_token")
     @console_ns.doc(description="Check if activation token is valid")
-    @console_ns.doc(params=query_params_from_model(ActivateCheckQuery))
+    @console_ns.doc_query(ActivateCheckQuery)
     @console_ns.response(
         200,
         "Success",
@@ -102,7 +102,7 @@ class ActivateCheckApi(Resource):
 class ActivateApi(Resource):
     @console_ns.doc("activate_account")
     @console_ns.doc(description="Activate account with invitation token")
-    @console_ns.expect(console_ns.models[ActivatePayload.__name__])
+    @console_ns.expect_model(ActivatePayload)
     @console_ns.response(
         200,
         "Account activated successfully",

@@ -2,7 +2,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
@@ -43,7 +43,7 @@ register_response_schema_models(console_ns, SimpleResultResponse, NotificationRe
 @console_ns.route("/notification")
 class NotificationApi(Resource):
     @console_ns.doc("get_notification")
-    @console_ns.doc(params=query_params_from_model(NotificationQuery))
+    @console_ns.doc_query(NotificationQuery)
     @console_ns.doc(
         description=(
             "Return the active in-product notification for the current user "
@@ -73,7 +73,7 @@ class NotificationDismissApi(Resource):
         responses={200: "Success", 401: "Unauthorized"},
     )
     @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
-    @console_ns.expect(console_ns.models[DismissNotificationPayload.__name__])
+    @console_ns.expect_model(DismissNotificationPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @model_validate(DismissNotificationPayload)
     def post(self, payload: DismissNotificationPayload, request_context: RequestContext):

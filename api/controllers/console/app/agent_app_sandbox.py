@@ -206,7 +206,7 @@ class AgentAppSandboxReadResource(Resource):
 class AgentAppSandboxDownloadResource(Resource):
     @console_ns.doc("download_agent_app_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one Agent App Binding file and return its download URL")
-    @console_ns.expect(console_ns.models[AgentSandboxDownloadPayload.__name__])
+    @console_ns.expect_model(AgentSandboxDownloadPayload)
     @console_ns.response(200, "Download URL returned", console_ns.models[SandboxDownloadResponse.__name__])
     @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()),))
     def post(self, context: RequestContext, agent_id: UUID):
@@ -282,7 +282,7 @@ class WorkflowAgentSandboxReadResource(Resource):
 class WorkflowAgentSandboxDownloadResource(Resource):
     @console_ns.doc("download_workflow_agent_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one workflow Agent Binding file and return its download URL")
-    @console_ns.expect(console_ns.models[WorkflowAgentSandboxDownloadPayload.__name__])
+    @console_ns.expect_model(WorkflowAgentSandboxDownloadPayload)
     @console_ns.response(200, "Download URL returned", console_ns.models[SandboxDownloadResponse.__name__])
     @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),))
     def post(self, context: RequestContext, app_id: UUID, workflow_run_id: UUID, node_id: str):

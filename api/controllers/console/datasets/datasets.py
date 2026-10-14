@@ -11,7 +11,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
@@ -377,7 +377,7 @@ register_response_schema_models(
 class DatasetListApi(Resource):
     @console_ns.doc("get_datasets")
     @console_ns.doc(description="Get list of datasets")
-    @console_ns.doc(params=query_params_from_model(ConsoleDatasetListQuery))
+    @console_ns.doc_query(ConsoleDatasetListQuery)
     @console_ns.response(
         HTTPStatus.OK, "Datasets retrieved successfully", console_ns.models[DatasetListResponse.__name__]
     )
@@ -395,7 +395,7 @@ class DatasetListApi(Resource):
 
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
-    @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
+    @console_ns.expect_model(DatasetCreatePayload)
     @console_ns.response(
         201, "Dataset created successfully", console_ns.models[DatasetDetailWithPartialMembersResponse.__name__]
     )
@@ -438,7 +438,7 @@ class DatasetApi(Resource):
 
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
-    @console_ns.expect(console_ns.models[DatasetUpdatePayload.__name__])
+    @console_ns.expect_model(DatasetUpdatePayload)
     @console_ns.response(
         200,
         "Dataset updated successfully",
@@ -525,7 +525,7 @@ class DatasetIndexingEstimateApi(Resource):
         "Indexing estimate calculated successfully",
         console_ns.models[IndexingEstimateResponse.__name__],
     )
-    @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
+    @console_ns.expect_model(IndexingEstimatePayload)
     @console_account_admission()
     @model_validate(IndexingEstimatePayload)
     def post(self, req_data: IndexingEstimatePayload, request_context: RequestContext):
@@ -636,7 +636,7 @@ class DatasetApiKeyApi(Resource):
             keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
-    @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
+    @console_ns.expect_model(DatasetApiKeyCreatePayload)
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @console_account_admission(

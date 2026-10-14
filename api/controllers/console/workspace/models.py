@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, field_validator
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
-    query_params_from_model,
     register_enum_models,
     register_response_schema_models,
     register_schema_models,
@@ -206,7 +205,7 @@ register_enum_models(console_ns, ModelType)
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserGetDefault))
+    @console_ns.doc_query(ParserGetDefault)
     @console_ns.response(
         200, "Default model retrieved successfully", console_ns.models[DefaultModelDataResponse.__name__]
     )
@@ -224,7 +223,7 @@ class DefaultModelApi(Resource):
 
         return DefaultModelDataResponse(data=default_model_entity).model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserPostDefault.__name__])
+    @console_ns.expect_model(ParserPostDefault)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -264,7 +263,7 @@ class ModelProviderModelApi(Resource):
 
         return ProviderModelListResponse(data=models).model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserPostModels.__name__])
+    @console_ns.expect_model(ParserPostModels)
     @console_ns.response(200, "Model updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -313,7 +312,7 @@ class ModelProviderModelApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
-    @console_ns.doc(params=query_params_from_model(ParserDeleteModels))
+    @console_ns.doc_query(ParserDeleteModels)
     @console_ns.response(204, "Model deleted successfully")
     @setup_required
     @login_required
@@ -334,7 +333,7 @@ class ModelProviderModelApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserGetCredentials))
+    @console_ns.doc_query(ParserGetCredentials)
     @console_ns.response(
         200,
         "Model credentials retrieved successfully",
@@ -402,7 +401,7 @@ class ModelProviderModelCredentialApi(Resource):
             available_credentials=available_credentials,
         ).model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[ParserCreateCredential.__name__])
+    @console_ns.expect_model(ParserCreateCredential)
     @console_ns.response(201, "Model credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -435,7 +434,7 @@ class ModelProviderModelCredentialApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
-    @console_ns.expect(console_ns.models[ParserUpdateCredential.__name__])
+    @console_ns.expect_model(ParserUpdateCredential)
     @console_ns.response(200, "Model credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -463,7 +462,7 @@ class ModelProviderModelCredentialApi(Resource):
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
-    @console_ns.doc(params=query_params_from_model(ParserDeleteCredential))
+    @console_ns.doc_query(ParserDeleteCredential)
     @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
@@ -488,7 +487,7 @@ class ModelProviderModelCredentialApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
-    @console_ns.expect(console_ns.models[ParserSwitch.__name__])
+    @console_ns.expect_model(ParserSwitch)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -514,7 +513,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
 )
 class ModelProviderModelEnableApi(Resource):
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.expect_model(ParserDeleteModels)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -536,7 +535,7 @@ class ModelProviderModelEnableApi(Resource):
     "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
 )
 class ModelProviderModelDisableApi(Resource):
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.expect_model(ParserDeleteModels)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -565,7 +564,7 @@ register_schema_models(console_ns, ParserSwitch, ParserValidate)
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
-    @console_ns.expect(console_ns.models[ParserValidate.__name__])
+    @console_ns.expect_model(ParserValidate)
     @console_ns.response(
         200,
         "Model credentials validated successfully",
@@ -603,7 +602,7 @@ class ModelProviderModelValidateApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserParameter))
+    @console_ns.doc_query(ParserParameter)
     @console_ns.response(
         200,
         "Model parameter rules retrieved successfully",

@@ -5,8 +5,10 @@ from typing import cast
 
 from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
+from pydantic import BaseModel
 
 from controllers.common.errors import register_permission_error_handler
+from controllers.common.schema import query_params_from_model
 from libs.external_api import ExternalApi
 from machinery.errors import ActiveWorkspaceRequiredError
 
@@ -38,7 +40,24 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
 cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(ActiveWorkspaceRequiredError, last=False)
 
 
-console_ns = Namespace("console", description="Console management API operations", path="/")
+class ConsoleNamespace(Namespace):
+    """Console namespace with helpers for the Pydantic schema decorator pattern.
+
+    `controllers.common.schema` registers every Pydantic model under its class
+    name; these helpers collapse the repeated `ns.models[Model.__name__]`
+    lookups at decorator sites.
+    """
+
+    def expect_model(self, model: type[BaseModel], **kwargs: object):
+        """Equivalent to ``@ns.expect(ns.models[model.__name__], **kwargs)``."""
+        return self.expect(self.models[model.__name__], **kwargs)
+
+    def doc_query(self, model: type[BaseModel]):
+        """Document GET query parameters derived from a flat Pydantic model."""
+        return self.doc(params=query_params_from_model(model))
+
+
+console_ns = ConsoleNamespace("console", description="Console management API operations", path="/")
 
 RESOURCE_MODULES = (
     "controllers.console.app.app_import",

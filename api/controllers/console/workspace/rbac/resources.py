@@ -8,7 +8,6 @@ from pydantic import BaseModel
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import rbac_language
-from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.rbac.schemas import (
@@ -88,7 +87,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
 
     class MatrixApi(Resource):
         @console_account_admission()
-        @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+        @console_ns.doc_query(_AccessControlLanguageQuery)
         @console_ns.response(200, "Success", console_ns.models[spec.matrix_model.__name__])
         def get(self, context: RequestContext, **path_params):
             result = application_services().rbac.resources.matrix(
@@ -108,7 +107,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
             )
 
         @console_account_admission()
-        @console_ns.expect(console_ns.models[_ResourceAccessScopeRequest.__name__])
+        @console_ns.expect_model(_ResourceAccessScopeRequest)
         @console_ns.response(200, "Success", console_ns.models[dto.ResourceWhitelist.__name__])
         def put(self, context: RequestContext, **path_params):
             target_id = resource_id(path_params)
@@ -137,7 +136,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
 
     class UserAccessPoliciesApi(Resource):
         @console_account_admission()
-        @console_ns.doc(params=query_params_from_model(_ResourceUserAccessPoliciesQuery))
+        @console_ns.doc_query(_ResourceUserAccessPoliciesQuery)
         @console_ns.response(200, "Success", console_ns.models[dto.ResourceUserAccessPoliciesResponse.__name__])
         def get(self, context: RequestContext, **path_params):
             target_id = resource_id(path_params)
@@ -149,7 +148,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
 
     class UserAccessPolicyAssignmentApi(Resource):
         @console_account_admission()
-        @console_ns.expect(console_ns.models[dto.ReplaceUserAccessPolicies.__name__])
+        @console_ns.expect_model(dto.ReplaceUserAccessPolicies)
         @console_ns.response(200, "Success", console_ns.models[dto.ReplaceUserAccessPoliciesResponse.__name__])
         def put(self, context: RequestContext, target_account_id, **path_params):
             payload = dto.ReplaceUserAccessPolicies.model_validate(console_ns.payload or {})
@@ -188,7 +187,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
             )
 
         @console_account_admission()
-        @console_ns.expect(console_ns.models[_DeleteMemberBindingsRequest.__name__])
+        @console_ns.expect_model(_DeleteMemberBindingsRequest)
         @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
         def delete(self, context: RequestContext, policy_id, **path_params):
             body = _DeleteMemberBindingsRequest.model_validate(console_ns.payload or {})
@@ -224,7 +223,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
 
     class WorkspaceBindingsApi(Resource):
         @console_account_admission()
-        @console_ns.expect(console_ns.models[_ReplaceBindingsRequest.__name__])
+        @console_ns.expect_model(_ReplaceBindingsRequest)
         @console_ns.response(200, "Success", console_ns.models[dto.AccessMatrixItem.__name__])
         def put(self, context: RequestContext, policy_id):
             body = _ReplaceBindingsRequest.model_validate(console_ns.payload or {})

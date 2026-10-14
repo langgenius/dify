@@ -109,7 +109,7 @@ class WorkflowRunArchivesApi(Resource):
 class WorkflowRunArchiveDownloadsApi(Resource):
     @console_ns.doc("create_workflow_run_archive_download")
     @console_ns.doc(description="Create or return a temporary workflow-run archive download task")
-    @console_ns.expect(console_ns.models[WorkflowRunArchiveDownloadPayload.__name__])
+    @console_ns.expect_model(WorkflowRunArchiveDownloadPayload)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
         "Download task accepted",

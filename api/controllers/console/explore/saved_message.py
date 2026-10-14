@@ -5,7 +5,7 @@ from flask_restx import Resource
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.common.errors import NotFoundError
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.installed_app_admission import get_installed_app
@@ -32,7 +32,7 @@ def _require_completion_app(installed_app: InstalledAppRef) -> str:
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
 class SavedMessageListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
+    @console_ns.doc_query(SavedMessageListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
@@ -52,7 +52,7 @@ class SavedMessageListApi(Resource):
         )
         return dump_response(SavedMessageInfiniteScrollPagination, pagination)
 
-    @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
+    @console_ns.expect_model(SavedMessageCreatePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app

@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.rbac import DatasetByPipeline, RBACCheck
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -95,7 +95,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables")
 class RagPipelineVariableCollectionApi(Resource):
-    @console_ns.doc(params=query_params_from_model(PaginationQuery))
+    @console_ns.doc_query(PaginationQuery)
     @console_ns.response(
         200,
         "Workflow variables retrieved successfully",
@@ -215,7 +215,7 @@ class RagPipelineVariableApi(Resource):
         console_ns.models[WorkflowDraftVariableResponse.__name__],
     )
     @_api_prerequisite
-    @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__])
+    @console_ns.expect_model(WorkflowDraftVariablePatchPayload)
     @model_validate(WorkflowDraftVariablePatchPayload)
     def patch(
         self,

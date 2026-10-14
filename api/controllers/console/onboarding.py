@@ -67,7 +67,7 @@ class StepByStepTourStateApi(Resource):
 
     @console_ns.doc("patch_step_by_step_tour_state")
     @console_ns.doc(description="Update account-level Step-by-step Tour state")
-    @console_ns.expect(console_ns.models[StepByStepTourStatePatchPayload.__name__])
+    @console_ns.expect_model(StepByStepTourStatePatchPayload)
     @console_ns.response(200, "Success", console_ns.models[StepByStepTourStateResponse.__name__])
     @console_account_admission()
     @model_validate(StepByStepTourStatePatchPayload)

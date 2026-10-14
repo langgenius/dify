@@ -319,7 +319,7 @@ class ChatMessageTextApi(Resource):
     @console_ns.doc("chat_message_text_to_speech")
     @console_ns.doc(description="Convert text to speech for chat messages")
     @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
+    @console_ns.expect_model(TextToSpeechPayload)
     # TTS returns provider audio bytes, so the success response is intentionally schema-less.
     @console_ns.response(200, "Text to speech conversion successful")
     @console_ns.response(400, "Bad request - Invalid parameters")
@@ -347,7 +347,7 @@ class AgentChatMessageTextApi(Resource):
         produces=list(SUPPORTED_TTS_AUDIO_MIME_TYPES),
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: list(SUPPORTED_TTS_AUDIO_MIME_TYPES)},
     )
-    @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
+    @console_ns.expect_model(TextToSpeechPayload)
     @console_ns.response(200, "Generated audio bytes in the provider audio format")
     @console_ns.response(400, "Invalid text or voice")
     @console_ns.response(403, "Insufficient permissions")

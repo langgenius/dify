@@ -168,7 +168,7 @@ class MemberListApi(Resource):
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
-    @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
+    @console_ns.expect_model(MemberInvitePayload)
     @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
     @console_ns.response(
         HTTPStatus.BAD_REQUEST,
@@ -244,7 +244,7 @@ class MemberCancelInviteApi(Resource):
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
-    @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
+    @console_ns.expect_model(MemberRoleUpdatePayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     def put(self, request_context: RequestContext, member_id: UUID):
@@ -277,7 +277,7 @@ class DatasetOperatorMemberListApi(Resource):
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
-    @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
+    @console_ns.expect_model(OwnerTransferEmailPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
     def post(self, request_context: RequestContext):
@@ -295,7 +295,7 @@ class SendOwnerTransferEmailApi(Resource):
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
-    @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
+    @console_ns.expect_model(OwnerTransferCheckPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
     def post(self, request_context: RequestContext):
@@ -311,7 +311,7 @@ class OwnerTransferCheckApi(Resource):
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
-    @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
+    @console_ns.expect_model(OwnerTransferPayload)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
     def post(self, request_context: RequestContext, member_id: UUID):

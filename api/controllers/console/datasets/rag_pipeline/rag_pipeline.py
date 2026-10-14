@@ -11,7 +11,6 @@ from controllers.common.fields import SimpleDataResponse
 from controllers.common.rbac import DatasetByPipeline, RBACCheck
 from controllers.common.schema import (
     JsonResponseWithStatus,
-    query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
@@ -104,7 +103,7 @@ register_response_schema_models(
 
 @console_ns.route("/rag/pipeline/templates")
 class PipelineTemplateListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(PipelineTemplateListQuery))
+    @console_ns.doc_query(PipelineTemplateListQuery)
     @console_ns.response(200, "Pipeline templates", console_ns.models[PipelineTemplateListResponse.__name__])
     @setup_required
     @login_required
@@ -131,7 +130,7 @@ class PipelineTemplateListApi(Resource):
 
 @console_ns.route("/rag/pipeline/templates/<string:template_id>")
 class PipelineTemplateDetailApi(Resource):
-    @console_ns.doc(params=query_params_from_model(PipelineTemplateDetailQuery))
+    @console_ns.doc_query(PipelineTemplateDetailQuery)
     @console_ns.response(200, "Pipeline template", console_ns.models[PipelineTemplateDetailResponse.__name__])
     @console_ns.response(404, "Pipeline template not found")
     @setup_required
@@ -161,7 +160,7 @@ class PipelineTemplateDetailApi(Resource):
 
 @console_ns.route("/rag/pipeline/customized/templates/<string:template_id>")
 class CustomizedPipelineTemplateApi(Resource):
-    @console_ns.expect(console_ns.models[CustomizedPipelineTemplatePayload.__name__])
+    @console_ns.expect_model(CustomizedPipelineTemplatePayload)
     @console_ns.response(204, "Pipeline template updated")
     @setup_required
     @login_required
@@ -214,7 +213,7 @@ class CustomizedPipelineTemplateApi(Resource):
 
 @console_ns.route("/rag/pipelines/<string:pipeline_id>/customized/publish")
 class PublishCustomizedPipelineTemplateApi(Resource):
-    @console_ns.expect(console_ns.models[CustomizedPipelineTemplatePayload.__name__])
+    @console_ns.expect_model(CustomizedPipelineTemplatePayload)
     @console_ns.response(204, "Pipeline template published")
     @console_ns.response(404, "Pipeline, workflow, or dataset not found")
     @setup_required

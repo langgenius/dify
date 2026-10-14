@@ -19,7 +19,6 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
-from controllers.common.schema import query_params_from_model
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
@@ -98,7 +97,7 @@ def _snippet_draft_var_prerequisite[T, **P, R](
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables")
 class SnippetWorkflowVariableCollectionApi(Resource):
-    @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
+    @console_ns.doc_query(WorkflowDraftVariableListQuery)
     @console_ns.doc("get_snippet_workflow_variables")
     @console_ns.doc(description="List draft workflow variables without values (paginated, snippet scope)")
     @console_ns.response(
@@ -199,7 +198,7 @@ class SnippetVariableApi(Resource):
 
     @console_ns.doc("update_snippet_workflow_variable")
     @console_ns.doc(description="Update a draft workflow variable (snippet scope)")
-    @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
+    @console_ns.expect_model(WorkflowDraftVariableUpdatePayload)
     @console_ns.response(
         200,
         "Variable updated successfully",

@@ -102,7 +102,7 @@ class ApiKeyAuthDataSource(Resource):
 @console_ns.route("/api-key-auth/data-source/binding")
 class ApiKeyAuthDataSourceBinding(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
+    @console_ns.expect_model(ApiKeyAuthBindingPayload)
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
         rbac_checks=[RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace())],

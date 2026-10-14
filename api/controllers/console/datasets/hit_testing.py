@@ -33,7 +33,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @console_ns.doc("test_dataset_retrieval")
     @console_ns.doc(description="Test dataset knowledge retrieval")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.expect(console_ns.models[HitTestingPayload.__name__])
+    @console_ns.expect_model(HitTestingPayload)
     @console_ns.response(
         200,
         "Hit testing completed successfully",

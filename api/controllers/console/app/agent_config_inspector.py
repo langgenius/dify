@@ -881,7 +881,7 @@ class AgentConfigFilesByAgentApi(Resource):
 
     @console_ns.doc("upload_agent_config_file_by_agent")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
-    @console_ns.expect(console_ns.models[AgentConfigFileUploadPayload.__name__])
+    @console_ns.expect_model(AgentConfigFileUploadPayload)
     @console_ns.response(201, "Uploaded config file", console_ns.models[AgentConfigFileUploadResponse.__name__])
     @setup_required
     @login_required
@@ -926,7 +926,7 @@ class AgentConfigFilesApi(Resource):
 
     @console_ns.doc("upload_agent_config_file")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
-    @console_ns.expect(console_ns.models[AgentConfigFileUploadPayload.__name__])
+    @console_ns.expect_model(AgentConfigFileUploadPayload)
     @console_ns.response(201, "Uploaded config file", console_ns.models[AgentConfigFileUploadResponse.__name__])
     @setup_required
     @login_required
@@ -1422,7 +1422,7 @@ class AgentConfigFileApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/skills")
 class TrialAgentConfigSkillsApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentConfigQuery))
+    @console_ns.doc_query(TrialAgentConfigQuery)
     @console_ns.response(200, "Published template resource", console_ns.models[AgentConfigSkillListResponse.__name__])
     @get_preview_app
     @model_validate(TrialAgentConfigQuery)
@@ -1433,7 +1433,7 @@ class TrialAgentConfigSkillsApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/files")
 class TrialAgentConfigFilesApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentConfigQuery))
+    @console_ns.doc_query(TrialAgentConfigQuery)
     @console_ns.response(200, "Published template resource", console_ns.models[AgentConfigFileListResponse.__name__])
     @get_preview_app
     @model_validate(TrialAgentConfigQuery)
@@ -1444,7 +1444,7 @@ class TrialAgentConfigFilesApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/skills/<string:name>/inspect")
 class TrialAgentConfigSkillInspectApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentConfigQuery))
+    @console_ns.doc_query(TrialAgentConfigQuery)
     @console_ns.response(
         200, "Published template resource", console_ns.models[AgentConfigSkillInspectResponse.__name__]
     )
@@ -1457,7 +1457,7 @@ class TrialAgentConfigSkillInspectApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/skills/<string:name>/download")
 class TrialAgentConfigSkillDownloadApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentConfigQuery))
+    @console_ns.doc_query(TrialAgentConfigQuery)
     @console_ns.response(200, "Published template resource", console_ns.models[AgentConfigDownloadResponse.__name__])
     @get_preview_app
     @model_validate(TrialAgentConfigQuery)
@@ -1468,7 +1468,7 @@ class TrialAgentConfigSkillDownloadApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/skills/<string:name>/files/preview")
 class TrialAgentConfigSkillFilePreviewApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentSkillFileQuery))
+    @console_ns.doc_query(TrialAgentSkillFileQuery)
     @console_ns.response(
         200, "Published template resource", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__]
     )
@@ -1483,7 +1483,7 @@ class TrialAgentConfigSkillFilePreviewApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/skills/<string:name>/files/download")
 class TrialAgentConfigSkillFileDownloadApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentSkillFileQuery))
+    @console_ns.doc_query(TrialAgentSkillFileQuery)
     @console_ns.response(200, "Published template resource", console_ns.models[AgentConfigDownloadResponse.__name__])
     @get_preview_app
     @model_validate(TrialAgentSkillFileQuery)
@@ -1504,7 +1504,7 @@ class TrialAgentConfigSkillFileDownloadApi(Resource):
     endpoint="trial_agent_config_skill_file_content",
 )
 class TrialAgentConfigSkillFileContentApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentSkillFileQuery))
+    @console_ns.doc_query(TrialAgentSkillFileQuery)
     @console_ns.doc(
         produces=["application/octet-stream"],
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: ["application/octet-stream"]},
@@ -1519,7 +1519,7 @@ class TrialAgentConfigSkillFileContentApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/files/<string:name>/preview")
 class TrialAgentConfigFilePreviewApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentConfigQuery))
+    @console_ns.doc_query(TrialAgentConfigQuery)
     @console_ns.response(200, "Published template resource", console_ns.models[AgentConfigFilePreviewResponse.__name__])
     @get_preview_app
     @model_validate(TrialAgentConfigQuery)
@@ -1530,7 +1530,7 @@ class TrialAgentConfigFilePreviewApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent/config/files/<string:name>/download")
 class TrialAgentConfigFileDownloadApi(Resource):
-    @console_ns.doc(params=query_params_from_model(TrialAgentConfigQuery))
+    @console_ns.doc_query(TrialAgentConfigQuery)
     @console_ns.response(200, "Published template resource", console_ns.models[AgentConfigDownloadResponse.__name__])
     @get_preview_app
     @model_validate(TrialAgentConfigQuery)

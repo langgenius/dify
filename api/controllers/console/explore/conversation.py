@@ -9,7 +9,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import (
     ConversationCursorNotFoundHTTPError,
@@ -84,7 +84,7 @@ def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations")
 class ConversationListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ConversationListQuery))
+    @console_ns.doc_query(ConversationListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
@@ -123,7 +123,7 @@ class ConversationApi(Resource):
     endpoint="installed_app_conversation_rename",
 )
 class ConversationRenameApi(Resource):
-    @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
+    @console_ns.expect_model(ConversationRenamePayload)
     @console_ns.response(
         HTTPStatus.OK, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__]
     )

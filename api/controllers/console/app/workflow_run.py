@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -140,7 +140,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_ns.doc("get_advanced_chat_workflow_runs")
     @console_ns.doc(description="Get advanced chat workflow run list")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @console_ns.doc_query(WorkflowRunListQuery)
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",
@@ -174,7 +174,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @console_ns.doc("get_advanced_chat_workflow_runs_count")
     @console_ns.doc(description="Get advanced chat workflow runs count statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @console_ns.doc_query(WorkflowRunCountQuery)
     @console_ns.response(
         200,
         "Workflow runs count retrieved successfully",
@@ -205,7 +205,7 @@ class WorkflowRunListApi(Resource):
     @console_ns.doc("get_workflow_runs")
     @console_ns.doc(description="Get workflow run list")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @console_ns.doc_query(WorkflowRunListQuery)
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",
@@ -238,7 +238,7 @@ class WorkflowRunCountApi(Resource):
     @console_ns.doc("get_workflow_runs_count")
     @console_ns.doc(description="Get workflow runs count statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @console_ns.doc_query(WorkflowRunCountQuery)
     @console_ns.response(
         200,
         "Workflow runs count retrieved successfully",

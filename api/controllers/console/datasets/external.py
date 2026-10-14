@@ -11,7 +11,6 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 from controllers.common.fields import UsageCountResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
-    query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
@@ -141,7 +140,7 @@ register_response_schema_models(
 class ExternalApiTemplateListApi(Resource):
     @console_ns.doc("get_external_api_templates")
     @console_ns.doc(description="Get external knowledge API templates")
-    @console_ns.doc(params=query_params_from_model(ExternalApiTemplateListQuery))
+    @console_ns.doc_query(ExternalApiTemplateListQuery)
     @console_ns.response(
         200,
         "External API templates retrieved successfully",
@@ -157,7 +156,7 @@ class ExternalApiTemplateListApi(Resource):
 
     @console_ns.doc("create_external_api_template")
     @console_ns.doc(description="Create external knowledge API template")
-    @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
+    @console_ns.expect_model(ExternalKnowledgeApiPayload)
     @console_ns.response(
         201,
         "External API template created successfully",
@@ -200,7 +199,7 @@ class ExternalApiTemplateApi(Resource):
     @console_ns.doc("update_external_api_template")
     @console_ns.doc(description="Update external knowledge API template")
     @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
-    @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
+    @console_ns.expect_model(ExternalKnowledgeApiPayload)
     @console_ns.response(
         200,
         "External API template updated successfully",
@@ -253,7 +252,7 @@ class ExternalApiUseCheckApi(Resource):
 class ExternalDatasetCreateApi(Resource):
     @console_ns.doc("create_external_dataset")
     @console_ns.doc(description="Create external knowledge dataset")
-    @console_ns.expect(console_ns.models[ExternalDatasetCreatePayload.__name__])
+    @console_ns.expect_model(ExternalDatasetCreatePayload)
     @console_ns.response(
         201, "External dataset created successfully", console_ns.models[DatasetDetailResponse.__name__]
     )
@@ -277,7 +276,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @console_ns.doc("test_external_knowledge_retrieval")
     @console_ns.doc(description="Test external knowledge retrieval for dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.expect(console_ns.models[ExternalHitTestingPayload.__name__])
+    @console_ns.expect_model(ExternalHitTestingPayload)
     @console_ns.response(
         200,
         "External hit testing completed successfully",

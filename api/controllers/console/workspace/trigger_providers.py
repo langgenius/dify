@@ -228,7 +228,7 @@ class TriggerSubscriptionListApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/create",
 )
 class TriggerSubscriptionBuilderCreateApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderCreatePayload.__name__])
+    @console_ns.expect_model(TriggerSubscriptionBuilderCreatePayload)
     @console_ns.response(
         200,
         "Trigger subscription builder created successfully",
@@ -292,7 +292,7 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/verify-and-update/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderVerifyApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.expect_model(TriggerSubscriptionBuilderVerifyPayload)
     @console_ns.response(
         200,
         "Trigger subscription builder verified successfully",
@@ -337,7 +337,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/update/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderUpdateApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.expect_model(TriggerSubscriptionBuilderUpdatePayload)
     @console_ns.response(
         200,
         "Trigger subscription builder updated successfully",
@@ -415,7 +415,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/build/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderBuildApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.expect_model(TriggerSubscriptionBuilderUpdatePayload)
     @console_ns.response(
         200, "Trigger subscription builder built successfully", console_ns.models[SimpleResultResponse.__name__]
     )
@@ -459,7 +459,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
 )
 class TriggerSubscriptionUpdateApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.expect_model(TriggerSubscriptionBuilderUpdatePayload)
     @console_ns.response(
         200, "Trigger subscription updated successfully", console_ns.models[SimpleResultResponse.__name__]
     )
@@ -758,7 +758,7 @@ class TriggerOAuthClientManageApi(Resource):
             logger.exception("Error getting OAuth client", exc_info=e)
             raise
 
-    @console_ns.expect(console_ns.models[TriggerOAuthClientPayload.__name__])
+    @console_ns.expect_model(TriggerOAuthClientPayload)
     @console_ns.response(
         200, "Trigger OAuth client saved successfully", console_ns.models[SimpleResultResponse.__name__]
     )
@@ -819,7 +819,7 @@ class TriggerOAuthClientManageApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
 )
 class TriggerSubscriptionVerifyApi(Resource):
-    @console_ns.expect(console_ns.models[TriggerSubscriptionVerifyPayload.__name__])
+    @console_ns.expect_model(TriggerSubscriptionVerifyPayload)
     @console_ns.response(
         200,
         "Trigger subscription verified successfully",

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.errors import InternalServerError, UnauthorizedError
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
@@ -124,7 +124,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="installed_app_messages",
 )
 class MessageListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(MessageListQuery))
+    @console_ns.doc_query(MessageListQuery)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
@@ -148,7 +148,7 @@ class MessageListApi(Resource):
     endpoint="installed_app_message_feedback",
 )
 class MessageFeedbackApi(Resource):
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.expect_model(MessageFeedbackPayload)
     @console_ns.response(HTTPStatus.OK, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
@@ -176,7 +176,7 @@ class MessageFeedbackApi(Resource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(Resource):
-    @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
+    @console_ns.doc_query(MoreLikeThisQuery)
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app

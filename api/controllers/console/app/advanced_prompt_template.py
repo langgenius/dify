@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 
 from controllers.common.schema import (
     DEFAULT_REF_TEMPLATE_OPENAPI_3_0,
-    query_params_from_model,
     register_response_schema_models,
 )
 from controllers.console import console_ns
@@ -39,7 +38,7 @@ register_response_schema_models(console_ns, AdvancedPromptTemplateResponse)
 class AdvancedPromptTemplateList(Resource):
     @console_ns.doc("get_advanced_prompt_templates")
     @console_ns.doc(description="Get advanced prompt templates based on app mode and model configuration")
-    @console_ns.doc(params=query_params_from_model(AdvancedPromptTemplateQuery))
+    @console_ns.doc_query(AdvancedPromptTemplateQuery)
     @console_ns.response(
         200,
         "Prompt templates retrieved successfully",

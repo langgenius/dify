@@ -66,7 +66,7 @@ class AgentAppFeatureConfigResource(Resource):
     @console_ns.doc("update_agent_app_features")
     @console_ns.doc(description="Update an Agent App's presentation features (opener, follow-up, citations, ...)")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.expect(console_ns.models[AgentAppFeaturesPayload.__name__])
+    @console_ns.expect_model(AgentAppFeaturesPayload)
     @console_ns.response(200, "Features updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(400, "Invalid configuration")
     @console_ns.response(404, "Agent not found")

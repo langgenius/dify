@@ -157,7 +157,7 @@ class RemoteFileUpload(Resource):
             500: "Internal server error",
         }
     )
-    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
+    @console_ns.expect_model(RemoteFileUploadPayload)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
     @login_required
     @with_current_user

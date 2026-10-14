@@ -107,7 +107,7 @@ class ConsoleHumanInputFormApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @model_validate(HumanInputFormSubmitPayload)
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect_model(HumanInputFormSubmitPayload)
     @console_ns.response(200, "Success", console_ns.models[ConsoleHumanInputFormSubmitResponse.__name__])
     def post(
         self,

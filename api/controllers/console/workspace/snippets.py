@@ -11,7 +11,6 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.common.fields import TextFileResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
-    query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
@@ -116,7 +115,7 @@ register_response_schema_models(
 @console_ns.route("/workspaces/current/customized-snippets")
 class CustomizedSnippetsApi(Resource):
     @console_ns.doc("list_customized_snippets")
-    @console_ns.doc(params=query_params_from_model(SnippetListQuery))
+    @console_ns.doc_query(SnippetListQuery)
     @console_ns.response(
         HTTPStatus.OK, "Snippets retrieved successfully", console_ns.models[SnippetPaginationResponse.__name__]
     )
@@ -316,7 +315,7 @@ class CustomizedSnippetExportApi(Resource):
     @console_ns.doc("export_customized_snippet")
     @console_ns.doc(description="Export snippet configuration as DSL")
     @console_ns.doc(params={"snippet_id": "Snippet ID to export"})
-    @console_ns.doc(params=query_params_from_model(SnippetExportQuery))
+    @console_ns.doc_query(SnippetExportQuery)
     @console_ns.response(200, "Snippet exported successfully", console_ns.models[TextFileResponse.__name__])
     @console_ns.response(404, "Snippet not found")
     @setup_required

@@ -8,7 +8,7 @@ from werkzeug.wrappers import Response
 from configs import dify_config
 from constants.languages import languages
 from controllers.common.fields import RedirectResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from controllers.console.wraps import model_validate, setup_required, social_oauth_login_enabled
 from extensions.ext_application_services import application_services
@@ -146,7 +146,7 @@ class OAuthLogin(Resource):
     @console_ns.doc("oauth_login")
     @console_ns.doc(description="Initiate OAuth login process")
     @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
-    @console_ns.doc(params=query_params_from_model(OAuthLoginQuery))
+    @console_ns.doc_query(OAuthLoginQuery)
     @console_ns.response(302, "Redirect to OAuth authorization URL", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "Invalid provider", console_ns.models[OAuthErrorResponse.__name__])
     @setup_required
@@ -173,7 +173,7 @@ class OAuthCallback(Resource):
     @console_ns.doc("oauth_callback")
     @console_ns.doc(description="Handle OAuth callback and complete login process")
     @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
-    @console_ns.doc(params=query_params_from_model(OAuthCallbackQuery))
+    @console_ns.doc_query(OAuthCallbackQuery)
     @console_ns.response(302, "Redirect to console with access token", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "OAuth process failed", console_ns.models[OAuthErrorResponse.__name__])
     @setup_required

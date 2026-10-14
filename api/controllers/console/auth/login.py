@@ -119,7 +119,7 @@ class LoginApi(Resource):
 
     @setup_required
     @email_password_login_enabled
-    @console_ns.expect(console_ns.models[LoginPayload.__name__])
+    @console_ns.expect_model(LoginPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultOptionalDataResponse.__name__])
     @decrypt_password_field
     @model_validate(LoginPayload)
@@ -169,7 +169,7 @@ class LogoutApi(Resource):
 class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
-    @console_ns.expect(console_ns.models[EmailPayload.__name__])
+    @console_ns.expect_model(EmailPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @model_validate(EmailPayload)
     def post(self, req_data: EmailPayload):
@@ -187,7 +187,7 @@ class ResetPasswordSendEmailApi(Resource):
 @console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
-    @console_ns.expect(console_ns.models[EmailCodeSendPayload.__name__])
+    @console_ns.expect_model(EmailCodeSendPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @model_validate(EmailCodeSendPayload)
     def post(self, req_data: EmailCodeSendPayload):
@@ -208,7 +208,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 @console_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
     @setup_required
-    @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
+    @console_ns.expect_model(EmailCodeLoginPayload)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @decrypt_code_field
     @model_validate(EmailCodeLoginPayload)

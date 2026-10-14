@@ -8,7 +8,7 @@ from pydantic import Field, field_validator
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from controllers.common.resource_access_token_errors import resource_access_token_errors
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
@@ -107,7 +107,7 @@ def _dump_rows(rows: tuple[ResourceAccessTokenRow, ...]) -> list[dict[str, objec
 @console_ns.route("/resource-access-tokens")
 class ResourceAccessTokenListApi(Resource):
     @console_ns.doc("list_resource_access_tokens")
-    @console_ns.doc(params=query_params_from_model(ResourceAccessTokenListQuery))
+    @console_ns.doc_query(ResourceAccessTokenListQuery)
     @console_ns.response(200, "Resource access tokens", console_ns.models[ResourceAccessTokenListResponse.__name__])
     @console_account_admission(allowed_roles=_OWNER_ROLES)
     @model_validate(ResourceAccessTokenListQuery)
@@ -136,7 +136,7 @@ class ResourceAccessTokenListApi(Resource):
         )
 
     @console_ns.doc("create_resource_access_token")
-    @console_ns.expect(console_ns.models[ResourceAccessTokenCreatePayload.__name__])
+    @console_ns.expect_model(ResourceAccessTokenCreatePayload)
     @console_ns.response(
         201,
         "Resource access token created",
@@ -166,7 +166,7 @@ class ResourceAccessTokenListApi(Resource):
 @console_ns.route("/resource-access-tokens/<uuid:token_id>")
 class ResourceAccessTokenApi(Resource):
     @console_ns.doc("update_resource_access_token")
-    @console_ns.expect(console_ns.models[ResourceAccessTokenUpdatePayload.__name__])
+    @console_ns.expect_model(ResourceAccessTokenUpdatePayload)
     @console_ns.response(
         200,
         "Resource access token updated",

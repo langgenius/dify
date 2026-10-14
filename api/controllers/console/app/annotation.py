@@ -10,7 +10,7 @@ from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
@@ -173,7 +173,7 @@ class AnnotationReplyActionApi(Resource):
     @console_ns.doc("annotation_reply_action")
     @console_ns.doc(description="Enable or disable annotation reply for an app")
     @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
-    @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
+    @console_ns.expect_model(AnnotationReplyPayload)
     @console_ns.response(200, "Action completed successfully", console_ns.models[AnnotationJobStatusResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -224,7 +224,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @console_ns.doc("update_annotation_setting")
     @console_ns.doc(description="Update annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
-    @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
+    @console_ns.expect_model(AnnotationSettingUpdatePayload)
     @console_ns.response(200, "Settings updated successfully", console_ns.models[AnnotationSettingResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -288,7 +288,7 @@ class AnnotationApi(Resource):
     @console_ns.doc("list_annotations")
     @console_ns.doc(description="Get annotations for an app with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(AnnotationListQuery))
+    @console_ns.doc_query(AnnotationListQuery)
     @console_ns.response(200, "Annotations retrieved successfully", console_ns.models[AnnotationList.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -319,7 +319,7 @@ class AnnotationApi(Resource):
     @console_ns.doc("create_annotation")
     @console_ns.doc(description="Create a new annotation for an app")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[CreateAnnotationPayload.__name__])
+    @console_ns.expect_model(CreateAnnotationPayload)
     @console_ns.response(201, "Annotation created successfully", console_ns.models[Annotation.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -411,7 +411,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @console_ns.response(200, "Annotation updated successfully", console_ns.models[Annotation.__name__])
     @console_ns.response(204, "Annotation deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
-    @console_ns.expect(console_ns.models[UpdateAnnotationPayload.__name__])
+    @console_ns.expect_model(UpdateAnnotationPayload)
     @setup_required
     @login_required
     @account_initialization_required
@@ -541,7 +541,7 @@ class AnnotationHitHistoryListApi(Resource):
     @console_ns.doc("list_annotation_hit_histories")
     @console_ns.doc(description="Get hit histories for an annotation")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.doc(params=query_params_from_model(AnnotationHitHistoryListQuery))
+    @console_ns.doc_query(AnnotationHitHistoryListQuery)
     @console_ns.response(
         200,
         "Hit histories retrieved successfully",

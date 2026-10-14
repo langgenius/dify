@@ -54,7 +54,7 @@ class RBACMemberRolesApi(Resource):
         )
 
     @console_account_admission()
-    @console_ns.expect(console_ns.models[_ReplaceMemberRolesRequest.__name__])
+    @console_ns.expect_model(_ReplaceMemberRolesRequest)
     @console_ns.response(200, "Success", console_ns.models[dto.MemberRolesResponse.__name__])
     def put(self, context: RequestContext, member_id):
         request = _ReplaceMemberRolesRequest.model_validate(console_ns.payload or {})
