@@ -81,6 +81,7 @@ def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: P
         "web-openapi.json",
         "service-openapi.json",
         "openapi-openapi.json",
+        "inner-openapi.json",
     ]
 
     for path in written_paths:
@@ -127,11 +128,12 @@ import sys
 from pathlib import Path
 
 from controllers.console import api as console_api
+from controllers.inner_api import api as inner_api
 from controllers.openapi import api as openapi_api
 from controllers.service_api import api as service_api
 from controllers.web import api as web_api
 
-apis = (console_api, web_api, service_api, openapi_api)
+apis = (console_api, web_api, service_api, openapi_api, inner_api)
 assert all(api._add_specs is False for api in apis)
 
 from dev.generate_swagger_specs import generate_specs
@@ -142,6 +144,7 @@ assert [path.name for path in written_paths] == [
     "web-openapi.json",
     "service-openapi.json",
     "openapi-openapi.json",
+    "inner-openapi.json",
 ]
 """
     env = os.environ.copy()
