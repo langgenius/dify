@@ -3205,9 +3205,6 @@ class DocumentService:
 
             unique_pre_processing_rule_dicts = {}
             for pre_processing_rule in knowledge_config.process_rule.rules.pre_processing_rules:
-                if not pre_processing_rule.id:
-                    raise ValueError("Process rule pre_processing_rules id is required")
-
                 if not isinstance(pre_processing_rule.enabled, bool):
                     raise ValueError("Process rule pre_processing_rules enabled is invalid")
 
