@@ -813,7 +813,7 @@ class TestAppService:
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="'' is not a valid IconType"):
                 app_service.update_app(
                     app,
                     {

@@ -430,7 +430,14 @@ def test_pending_import_owner_access(
     ],
 )
 def test_pending_import_owner_is_required(payload: str) -> None:
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "(?:1 validation error for PendingData\\\naccount_id|1 validation "
+            "error for PendingData\\\ntenant_id|2 validation errors for "
+            "PendingData\\\ntenant_id)"
+        ),
+    ) as exc_info:
         PendingData.model_validate_json(payload)
 
     assert "secret-token-123" not in str(exc_info.value)

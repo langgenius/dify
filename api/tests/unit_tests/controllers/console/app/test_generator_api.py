@@ -291,7 +291,7 @@ def test_instruction_template_invalid_type(app: Flask) -> None:
         method="POST",
         json={"type": "unknown"},
     ):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Invalid type: unknown"):
             method(api, InstructionTemplatePayload.model_validate(request.get_json()))
 
 

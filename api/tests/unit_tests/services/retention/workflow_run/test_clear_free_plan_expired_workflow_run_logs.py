@@ -75,7 +75,7 @@ class TestWorkflowRunCleanupInit:
 
     def test_equal_start_end_raises(self, mock_repo):
         dt = datetime.datetime(2024, 1, 1)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="end_before must be greater than start_from\\."):
             WorkflowRunCleanup(
                 days=30,
                 batch_size=10,
@@ -89,7 +89,7 @@ class TestWorkflowRunCleanupInit:
             WorkflowRunCleanup(days=30, batch_size=0, workflow_run_repo=mock_repo)
 
     def test_negative_batch_size_raises(self, mock_repo):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="batch_size must be greater than 0\\."):
             WorkflowRunCleanup(days=30, batch_size=-1, workflow_run_repo=mock_repo)
 
     def test_valid_window_init(self, mock_repo, config_overrides):

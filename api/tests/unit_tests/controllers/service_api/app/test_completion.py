@@ -196,7 +196,9 @@ class TestChatRequestPayload:
 
     def test_payload_rejects_invalid_uuid_conversation_id(self):
         """Test that invalid UUID format raises ValueError."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="1 validation error for ChatRequestPayload\\\nconversation_id"
+        ) as exc_info:
             ChatRequestPayload(inputs={}, query="test", conversation_id="not-a-uuid")
         assert "valid UUID" in str(exc_info.value)
 

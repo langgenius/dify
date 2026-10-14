@@ -22,25 +22,40 @@ class TestValidPassword:
     def test_should_reject_invalid_passwords(self):
         """Test rejecting invalid password formats"""
         # Too short
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match=("Password must contain letters and numbers, and the length must be at least 8 characters\\."),
+        ) as exc_info:
             valid_password("abc123")
         assert "Password must contain letters and numbers" in str(exc_info.value)
 
         # No numbers
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("Password must contain letters and numbers, and the length must be at least 8 characters\\."),
+        ):
             valid_password("abcdefgh")
 
         # No letters
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("Password must contain letters and numbers, and the length must be at least 8 characters\\."),
+        ):
             valid_password("12345678")
 
         # Empty
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("Password must contain letters and numbers, and the length must be at least 8 characters\\."),
+        ):
             valid_password("")
 
     def test_should_reject_password_shorter_than_minimum_length(self):
         """A 7-character password with letters and numbers is rejected for length."""
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match=("Password must contain letters and numbers, and the length must be at least 8 characters\\."),
+        ) as exc_info:
             valid_password("abc1234")
 
         assert "at least 8" in str(exc_info.value)

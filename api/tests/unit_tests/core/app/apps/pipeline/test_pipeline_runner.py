@@ -187,19 +187,19 @@ def test_get_workflow_returns_workflow(runner, sqlite_session: Session):
 def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
     workflow = _workflow(graph={})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="nodes or edges not found in workflow graph"):
         runner._init_rag_pipeline_graph(
             workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
 
     workflow.graph = json.dumps({"nodes": "bad", "edges": []})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="nodes in workflow graph must be a list"):
         runner._init_rag_pipeline_graph(
             workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
 
     workflow.graph = json.dumps({"nodes": [], "edges": "bad"})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="edges in workflow graph must be a list"):
         runner._init_rag_pipeline_graph(
             workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
@@ -209,7 +209,7 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
     workflow = _workflow()
     mocker.patch.object(module.Graph, "init", return_value=None)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unable to determine default root node ID from workflow graph"):
         runner._init_rag_pipeline_graph(
             workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
@@ -277,7 +277,7 @@ def test_run_pipeline_not_found(sqlite_engine: Engine):
 
     runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Pipeline not found"):
         runner.run()
 
 
@@ -357,7 +357,7 @@ def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: En
     sqlite_session.commit()
 
     runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Workflow not initialized"):
         runner.run()
 
 

@@ -745,7 +745,7 @@ class TestCreateSegmentToIndexTask:
         # Mock Redis to raise exception in finally block
         with patch.object(redis_client, "delete", side_effect=Exception("Redis connection failed"), autospec=True):
             # Act: Execute the task - Redis failure should not prevent completion
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(Exception, match="Redis connection failed") as exc_info:
                 create_segment_to_index_task(segment.id)
 
             # Verify the exception contains the expected Redis error message

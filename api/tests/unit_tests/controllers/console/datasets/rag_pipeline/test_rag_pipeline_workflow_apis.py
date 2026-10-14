@@ -490,7 +490,7 @@ class TestDraftNodeRun:
                 return_value=service,
             ),
         ):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Workflow node execution not found"):
                 method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
@@ -596,7 +596,7 @@ class TestDefaultBlockConfigApi:
         pipeline = make_pipeline()
 
         with app.test_request_context("/?q=bad-json"):
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="Invalid filters"):
                 method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 

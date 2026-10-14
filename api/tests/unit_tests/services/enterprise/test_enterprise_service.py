@@ -262,7 +262,7 @@ class TestJoinDefaultWorkspace:
                 EnterpriseService.join_default_workspace(account_id=account_id)
 
     def test_join_default_workspace_invalid_account_id_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="account_id must be a valid UUID: not\\-a\\-uuid"):
             EnterpriseService.join_default_workspace(account_id="not-a-uuid")
 
     def test_join_default_workspace_missing_required_fields_raises(self) -> None:
