@@ -73,7 +73,6 @@ ignore = [
     "B007",    # unused-loop-control-variable
     "B026",    # star-arg-unpacking-after-keyword-arg
     "B901",    # allow return in yield
-    "B903",    # class-as-data-structure
     "B904",    # raise-without-from-inside-except
     "B905",    # zip-without-explicit-strict
     "N806",    # non-lowercase-variable-in-function
