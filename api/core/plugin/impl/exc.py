@@ -45,6 +45,30 @@ class PluginDaemonNotFoundError(PluginDaemonInternalError):
     description: str = "Not Found"
 
 
+class PluginDaemonUnavailableError(PluginDaemonInternalError):
+    """Plugin daemon or plugin runtime is temporarily unavailable and the request is retryable."""
+
+    description: str = "Plugin daemon unavailable"
+
+
+_PLUGIN_RUNTIME_UNAVAILABLE_MARKERS = (
+    "plugin runtime not found",
+    "no available node",
+    "request to plugin daemon service failed",
+)
+
+
+def is_plugin_runtime_unavailable(message: str) -> bool:
+    """Return True when a plugin-daemon error describes a transient runtime outage.
+
+    Matches restart/recovery windows such as empty Redis plugin state and
+    ``no available node, plugin runtime not found``. Does not treat a missing
+    plugin installation (``plugin not found``) as unavailable.
+    """
+    lowered = message.lower()
+    return any(marker in lowered for marker in _PLUGIN_RUNTIME_UNAVAILABLE_MARKERS)
+
+
 class PluginDaemonBadRequestError(PluginDaemonClientSideError):
     description: str = "Bad Request"
 

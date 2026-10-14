@@ -2,13 +2,21 @@ import json
 from collections.abc import Callable
 from urllib.parse import quote
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginListResponse
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
-from core.plugin.impl.exc import PluginLLMPollingUnsupportedError, PluginRuntimeError
+from core.plugin.impl.exc import (
+    PluginDaemonBadRequestError,
+    PluginDaemonClientSideError,
+    PluginDaemonUnavailableError,
+    PluginLLMPollingUnsupportedError,
+    PluginNotFoundError,
+    PluginRuntimeError,
+)
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -218,3 +226,117 @@ class TestBasePluginClientImpl:
             "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1"
         )
         assert exc_info.value.lambda_request_id == lambda_request_id
+
+    def test_handle_plugin_daemon_error_maps_runtime_not_found_to_unavailable(self):
+        client = BasePluginClient()
+
+        with pytest.raises(PluginDaemonUnavailableError) as exc_info:
+            client._handle_plugin_daemon_error(
+                "PluginDaemonInternalServerError",
+                "no available node, plugin runtime not found",
+            )
+
+        assert "plugin runtime not found" in exc_info.value.description
+
+    def test_handle_plugin_daemon_error_keeps_genuine_bad_request(self):
+        client = BasePluginClient()
+
+        with pytest.raises(PluginDaemonBadRequestError):
+            client._handle_plugin_daemon_error("PluginDaemonBadRequestError", "Missing required parameter")
+
+    def test_handle_plugin_daemon_error_keeps_plugin_not_installed(self):
+        client = BasePluginClient()
+
+        with pytest.raises(PluginNotFoundError):
+            client._handle_plugin_daemon_error("PluginNotFoundError", "plugin not found")
+
+    def test_stream_maps_runtime_not_found_inner_error_to_unavailable(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        payload = json.dumps(
+            {
+                "code": -500,
+                "message": json.dumps(
+                    {
+                        "error_type": "PluginDaemonInternalServerError",
+                        "message": "no available node, plugin runtime not found",
+                        "args": None,
+                    }
+                ),
+                "data": None,
+            }
+        )
+        mocker.patch.object(client, "_stream_request", return_value=iter([payload]))
+
+        with pytest.raises(PluginDaemonUnavailableError):
+            list(client._request_with_plugin_daemon_response_stream("POST", "plugin/tenant/dispatch/llm/invoke", bool))
+
+    def test_stream_unparseable_runtime_not_found_is_unavailable(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        mocker.patch.object(
+            client,
+            "_stream_request",
+            return_value=iter(['{"code":-500,"message":"no available node, plugin runtime not found","data":null}']),
+        )
+
+        with pytest.raises(PluginDaemonUnavailableError):
+            list(client._request_with_plugin_daemon_response_stream("POST", "plugin/tenant/dispatch/llm/invoke", bool))
+
+    def test_http_404_runtime_not_found_is_unavailable(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        request = httpx.Request("POST", "http://plugin-daemon/plugin/tenant/dispatch/llm/invoke")
+        response = httpx.Response(
+            404,
+            json={
+                "code": -500,
+                "message": json.dumps(
+                    {
+                        "error_type": "PluginDaemonInternalServerError",
+                        "message": "no available node, plugin runtime not found",
+                        "args": None,
+                    }
+                ),
+                "data": None,
+            },
+            request=request,
+        )
+        mocker.patch.object(client, "_request", return_value=response)
+
+        with pytest.raises(PluginDaemonUnavailableError):
+            client._request_with_plugin_daemon_response("POST", "plugin/tenant/dispatch/llm/invoke", bool)
+
+    def test_http_404_plugin_not_installed_stays_not_found(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        request = httpx.Request("POST", "http://plugin-daemon/plugin/tenant/dispatch/llm/invoke")
+        response = httpx.Response(
+            404,
+            json={
+                "code": -404,
+                "message": json.dumps({"error_type": "PluginNotFoundError", "message": "plugin not found"}),
+                "data": None,
+            },
+            request=request,
+        )
+        mocker.patch.object(client, "_request", return_value=response)
+
+        with pytest.raises(PluginNotFoundError):
+            client._request_with_plugin_daemon_response("POST", "plugin/tenant/dispatch/llm/invoke", bool)
+
+    def test_http_404_without_daemon_body_stays_client_side(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        request = httpx.Request("POST", "http://plugin-daemon/plugin/tenant/dispatch/llm/invoke")
+        response = httpx.Response(404, text="not found", request=request)
+        mocker.patch.object(client, "_request", return_value=response)
+
+        with pytest.raises(PluginDaemonClientSideError):
+            client._request_with_plugin_daemon_response("POST", "plugin/tenant/dispatch/llm/invoke", bool)
+
+    def test_unavailable_error_is_not_wrapped_as_value_error(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        mocker.patch.object(
+            client,
+            "_request",
+            side_effect=PluginDaemonUnavailableError("Request to Plugin Daemon Service failed"),
+        )
+
+        with pytest.raises(PluginDaemonUnavailableError, match="Request to Plugin Daemon Service failed"):
+            client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool)

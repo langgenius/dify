@@ -8,7 +8,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
-from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
+from core.plugin.impl.exc import PluginDaemonUnavailableError, PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
@@ -208,6 +208,28 @@ class TestPluginModelClient:
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=_boom())
 
         with pytest.raises(ValueError, match="invoke failed-500"):
+            list(
+                client.invoke_llm(
+                    tenant_id="tenant-1",
+                    user_id="user-1",
+                    plugin_id="org/plugin:1",
+                    provider="provider-a",
+                    model="gpt-test",
+                    credentials={},
+                    prompt_messages=[],
+                )
+            )
+
+    def test_invoke_llm_maps_runtime_not_found_to_unavailable(self, mocker: MockerFixture):
+        client = PluginModelClient()
+
+        def _boom():
+            raise PluginDaemonInnerError(code=-500, message="no available node, plugin runtime not found")
+            yield  # pragma: no cover
+
+        mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=_boom())
+
+        with pytest.raises(PluginDaemonUnavailableError, match="plugin runtime not found"):
             list(
                 client.invoke_llm(
                     tenant_id="tenant-1",
