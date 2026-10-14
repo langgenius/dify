@@ -10,6 +10,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -63,7 +64,10 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,
   })
-  const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
+  const loadFailureMeta = useLoadFailureMeta()
+  const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth({
+    meta: loadFailureMeta,
+  })
   const { data: installedPluginList } = useInstalledPluginList({
     category: PluginCategoryEnum.datasource,
   })

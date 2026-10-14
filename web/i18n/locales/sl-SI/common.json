@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "Določite, kako vaš AI Agent razmišlja in sprejema odločitve — vključno z izbiro orodij, obdelavo rezultatov in samostojnim reševanjem težav.",
   "api.actionFailed": "Dejanje ni uspelo",
   "api.actionSuccess": "Dejanje je uspelo",
+  "api.loadFailed": "Nalaganje ni uspelo. Poskusite znova kasneje.",
   "api.remove": "Odstranjeno",
   "api.saved": "Shranjeno",
   "api.success": "Uspeh",

@@ -7,6 +7,7 @@ import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answe
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { getFormattedAgentDebugChatTree } from './chat-history'
 import { AgentPreviewChatSession } from './chat-session'
@@ -72,8 +73,10 @@ export function AgentChatRuntime({
     },
     [onClearChatListChange],
   )
+  const loadFailureMeta = useLoadFailureMeta()
   const historyQuery = useQuery(
     consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
+      meta: loadFailureMeta,
       input: conversationId
         ? {
             params: {

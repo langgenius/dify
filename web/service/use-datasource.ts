@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type {
   DataSourceAuth,
   DataSourceCredential,
@@ -8,8 +9,9 @@ import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'data-source-auth'
 
-export const useGetDataSourceListAuth = () => {
+export const useGetDataSourceListAuth = ({ meta }: { meta?: QueryMeta } = {}) => {
   return useQuery({
+    meta,
     queryKey: [NAME_SPACE, 'list'],
     queryFn: () => get<{ result: DataSourceAuth[] }>('/auth/plugin/datasource/list'),
     retry: 0,

@@ -14,6 +14,7 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { renderI18nObject } from '@/i18n/metadata'
 import {
   normalizePluginCategoryListLanguage,
@@ -110,6 +111,7 @@ const PluginsPanel = ({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,
   })
+  const loadFailureMeta = useLoadFailureMeta()
   const {
     data: pluginList,
     isLoading: isPluginListLoading,
@@ -117,6 +119,7 @@ const PluginsPanel = ({
     isLastPage,
     loadNextPage,
   } = useInstalledPluginList({
+    meta: loadFailureMeta,
     category: fixedCategory,
     filters: installedPluginFilters,
     gcTime: isIntegrationCategoryPage ? INTEGRATION_PLUGIN_GC_TIME : undefined,

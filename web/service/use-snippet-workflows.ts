@@ -1,4 +1,4 @@
-import type { MutationMeta } from '@tanstack/react-query'
+import type { MutationMeta, QueryMeta } from '@tanstack/react-query'
 import type { PublishSnippetWorkflowResponse, SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -53,6 +53,7 @@ const invalidateSnippetWorkflowQueries = async (
 export const useSnippetPublishedWorkflow = (
   snippetId: string,
   onSuccess?: (publishedWorkflow: SnippetWorkflow) => void,
+  { meta }: { meta?: QueryMeta } = {},
 ) => {
   const queryOptions = snippetWorkflowContract.workflows.publish.get.queryOptions({
     input: {
@@ -62,6 +63,7 @@ export const useSnippetPublishedWorkflow = (
   })
 
   return useQuery({
+    meta,
     ...queryOptions,
     queryFn: async (context) => {
       try {

@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "مشخص کنید AI Agent شما چگونه استدلال و تصمیم‌گیری می‌کند — از جمله نحوه انتخاب ابزارها، پردازش نتایج و حل خودکار مسائل.",
   "api.actionFailed": "عمل شکست خورد",
   "api.actionSuccess": "عملیات موفق",
+  "api.loadFailed": "بارگذاری ناموفق بود. بعداً دوباره تلاش کنید.",
   "api.remove": "حذف شد",
   "api.saved": "ذخیره شد",
   "api.success": "موفقیت",

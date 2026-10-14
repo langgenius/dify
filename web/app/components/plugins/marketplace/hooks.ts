@@ -8,6 +8,7 @@ import type { Plugin } from '../types'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { postMarketplace } from '@/service/base'
 import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
@@ -92,7 +93,9 @@ export const useMarketplacePlugins = (enabled = true) => {
     }
   }, [])
 
+  const loadFailureMeta = useLoadFailureMeta()
   const marketplacePluginsQuery = useInfiniteQuery({
+    meta: loadFailureMeta,
     queryKey: ['marketplacePlugins', queryParams],
     queryFn: async ({ pageParam = 1, signal }) => {
       if (!queryParams) {

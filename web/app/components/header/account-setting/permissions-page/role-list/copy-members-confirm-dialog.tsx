@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useGetMembersOfRole } from '@/service/access-control/use-workspace-roles'
 
 type CopyMembersConfirmDialogProps = {
@@ -26,11 +27,15 @@ export function CopyMembersConfirmDialog({
   onDuplicate,
 }: CopyMembersConfirmDialogProps) {
   const { t } = useTranslation(['common', 'permission'])
-  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useGetMembersOfRole({
-    roleId: role.id,
-    page: 1,
-    limit: 9999,
-  })
+  const loadFailureMeta = useLoadFailureMeta()
+  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useGetMembersOfRole(
+    {
+      roleId: role.id,
+      page: 1,
+      limit: 9999,
+    },
+    { meta: loadFailureMeta },
+  )
   const memberCount = membersOfRole?.pagination.total_count ?? 0
   const isLoadingMemberCount = isLoadingMembersOfRole && !membersOfRole
   const isActionDisabled = isCopyingRole || isLoadingMemberCount

@@ -703,11 +703,16 @@ export function AddSourcePage({
       input: {},
       enabled: websiteSourceSelected,
       retry: false,
+      // The page renders a failed load with a retry, so it is not refreshed in the background.
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     }),
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
       enabled: websiteSourceSelected,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
         query: {

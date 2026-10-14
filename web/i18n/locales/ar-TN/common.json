@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "حدّد كيف يفكر AI Agent ويتخذ القرارات — بما في ذلك كيفية اختيار الأدوات ومعالجة النتائج وحل المشكلات ذاتيًا.",
   "api.actionFailed": "فشل الإجراء",
   "api.actionSuccess": "نجح الإجراء",
+  "api.loadFailed": "فشل التحميل. حاول مرة أخرى لاحقًا.",
   "api.remove": "تمت الإزالة",
   "api.saved": "تم الحفظ",
   "api.success": "نجاح",

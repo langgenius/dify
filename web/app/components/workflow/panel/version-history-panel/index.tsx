@@ -15,6 +15,7 @@ import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import {
   useDeleteWorkflow,
@@ -98,18 +99,22 @@ export const VersionHistoryPanel = ({
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation(['billing', 'common', 'workflow', 'workflowHistory'])
 
+  const loadFailureMeta = useLoadFailureMeta()
   const {
     data: versionHistory,
     fetchNextPage,
     hasNextPage,
     isFetching,
-  } = useWorkflowVersionHistory({
-    url: getVersionListUrl || '',
-    initialPage: INITIAL_PAGE,
-    limit: HISTORY_PER_PAGE,
-    userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
-    namedOnly: isOnlyShowNamedVersions,
-  })
+  } = useWorkflowVersionHistory(
+    {
+      url: getVersionListUrl || '',
+      initialPage: INITIAL_PAGE,
+      limit: HISTORY_PER_PAGE,
+      userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
+      namedOnly: isOnlyShowNamedVersions,
+    },
+    { meta: loadFailureMeta },
+  )
 
   const handleVersionClick = useCallback(
     (item: VersionHistory) => {

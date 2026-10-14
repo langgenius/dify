@@ -87,16 +87,22 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       workspaces: {
         current: {
           plugin: {
+            // Readmes and assets are passive content: a failed refresh keeps what is shown.
             readme: {
               get: {
                 queryOptions: {
                   retry: false,
+                  refetchOnWindowFocus: false,
+                  refetchOnReconnect: false,
                 },
               },
             },
             asset: {
               get: {
-                queryOptions: {},
+                queryOptions: {
+                  refetchOnWindowFocus: false,
+                  refetchOnReconnect: false,
+                },
               },
             },
           },
@@ -340,8 +346,11 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         education: {
           get: {
             queryOptions: {
-              // Passive probe: every callsite degrades to "not a student", so no toast.
+              // Passive probe: every callsite degrades to "not a student", so it is not refreshed
+              // in the background where a failure would toast.
               retry: false,
+              refetchOnWindowFocus: false,
+              refetchOnReconnect: false,
             },
           },
           post: {

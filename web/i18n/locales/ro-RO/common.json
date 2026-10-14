@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "Definește cum raționează și ia decizii AI Agent — inclusiv cum selectează instrumente, gestionează rezultate și rezolvă autonom probleme.",
   "api.actionFailed": "Acțiunea a eșuat",
   "api.actionSuccess": "Acțiune reușită",
+  "api.loadFailed": "Încărcare eșuată. Încearcă din nou mai târziu.",
   "api.remove": "Eliminat",
   "api.saved": "Salvat",
   "api.success": "Succes",

@@ -28,6 +28,7 @@ import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
@@ -258,14 +259,17 @@ export function WorkspaceCard() {
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
+  const loadFailureMeta = useLoadFailureMeta()
   const currentWorkspaceQuery = useQuery(
     consoleQuery.workspaces.current.summary.get.queryOptions({
+      meta: loadFailureMeta,
       select: selectCurrentWorkspaceCardData,
     }),
   )
   const [open, setOpen] = useState(false)
   const workspacesQueryOptions = consoleQuery.workspaces.get.queryOptions()
   const workspacesQuery = useQuery({
+    meta: loadFailureMeta,
     ...workspacesQueryOptions,
     enabled: open,
   })

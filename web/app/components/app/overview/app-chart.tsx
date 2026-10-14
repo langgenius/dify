@@ -11,6 +11,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { echarts } from '@/app/components/base/line-chart/echarts'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,
@@ -204,8 +205,12 @@ const createBizChartComponent = <TData extends ChartResponse>({
   className,
 }: BizChartConfig<TData>): FC<IBizChartProps> => {
   const BizChart: FC<IBizChartProps> = ({ id, period }) => {
+    const loadFailureMeta = useLoadFailureMeta()
     const { t } = useTranslation(['appOverview'])
-    const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
+    const { data: response, isLoading } = useQuery({
+      ...queryOptions(id, period.query),
+      meta: loadFailureMeta,
+    })
 
     if (isLoading || !response) return <LoadingPlaceholder />
 

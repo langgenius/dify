@@ -10,7 +10,7 @@ import type {
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
@@ -595,15 +595,26 @@ export function CrawlSelectionForm({
   workflowUncertain?: boolean
 }) {
   const { t } = useTranslation(['dataset'])
-  const policyQuery = useQuery(
+  const policyQueryOptions =
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.queryOptions({
       input: { params: { id: knowledgeSpaceId, sourceId: source.id } },
       retry: false,
+    })
+  const policyQuery = useQuery(
+    queryOptions({
+      ...policyQueryOptions,
+      queryFn: async (context) => {
+        try {
+          return await policyQueryOptions.queryFn(context)
+        } catch (error) {
+          // A source without a saved policy starts from its initial one; that is not a failure.
+          if (getHttpErrorStatus(error) === 404) return null
+          throw error
+        }
+      },
     }),
   )
-  const policy =
-    policyQuery.data ??
-    (getHttpErrorStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
+  const policy = policyQuery.data === null ? initialSyncPolicy(source) : policyQuery.data
 
   if (policyQuery.isPending) {
     return (

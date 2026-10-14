@@ -5,11 +5,14 @@ import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 
 export function useAgentConfigureData(agentId: string, requestedVersionId: string | null) {
+  const loadFailureMeta = useLoadFailureMeta()
   const agentQuery = useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({
+      meta: loadFailureMeta,
       input: {
         params: {
           agent_id: agentId,
@@ -19,6 +22,7 @@ export function useAgentConfigureData(agentId: string, requestedVersionId: strin
   )
   const composerQuery = useQuery(
     consoleQuery.agent.byAgentId.composer.get.queryOptions({
+      meta: loadFailureMeta,
       input: {
         params: {
           agent_id: agentId,
@@ -36,6 +40,7 @@ export function useAgentConfigureData(agentId: string, requestedVersionId: strin
   const shouldLoadVersion = !!versionIdToLoad
   const versionQuery = useQuery(
     consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
+      meta: loadFailureMeta,
       input: versionIdToLoad
         ? {
             params: {

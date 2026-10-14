@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   RemoveDatasetAccessPolicyMemberBindingsRequest,
@@ -13,6 +14,7 @@ const datasetRbacClient = consoleClient.workspaces.current.rbac.datasets.byDatas
 
 type DatasetAccessConfigQueryOptions = {
   enabled?: boolean
+  meta?: QueryMeta
 }
 
 export const useDatasetAccessRules = (
@@ -21,6 +23,7 @@ export const useDatasetAccessRules = (
   options?: DatasetAccessConfigQueryOptions,
 ) => {
   return useQuery({
+    meta: options?.meta,
     ...datasetRbacContract.accessPolicy.get.queryOptions({
       input: {
         params: {
@@ -44,6 +47,7 @@ export const useDatasetUserAccessSettings = (
   options?: DatasetAccessConfigQueryOptions,
 ) => {
   return useQuery({
+    meta: options?.meta,
     ...datasetRbacContract.userAccessPolicies.get.queryOptions({
       input: {
         params: {

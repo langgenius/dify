@@ -192,7 +192,7 @@ describe('DatasetAccessConfigPage', () => {
       expect.any(String),
       1,
       10,
-      { enabled: true },
+      { enabled: true, meta: { errorMessage: 'common.api.loadFailed' } },
     )
     expect(useDatasetResourceWhitelist).toHaveBeenCalledWith('dataset-1', { enabled: true })
     expect(useDatasetResourceWhitelistConfig).toHaveBeenCalledWith('dataset-1', {
@@ -217,7 +217,7 @@ describe('DatasetAccessConfigPage', () => {
       expect.any(String),
       2,
       10,
-      { enabled: true },
+      { enabled: true, meta: { errorMessage: 'common.api.loadFailed' } },
     )
   })
 
@@ -232,7 +232,7 @@ describe('DatasetAccessConfigPage', () => {
       expect.any(String),
       1,
       25,
-      { enabled: true },
+      { enabled: true, meta: { errorMessage: 'common.api.loadFailed' } },
     )
     expect(mockAccessRulesEditor.props?.pageSize).toBe(25)
   })
@@ -251,7 +251,7 @@ describe('DatasetAccessConfigPage', () => {
       expect.any(String),
       1,
       10,
-      { enabled: true },
+      { enabled: true, meta: { errorMessage: 'common.api.loadFailed' } },
     )
   })
 
@@ -279,7 +279,7 @@ describe('DatasetAccessConfigPage', () => {
       expect.any(String),
       2,
       10,
-      { enabled: true },
+      { enabled: true, meta: { errorMessage: 'common.api.loadFailed' } },
     )
   })
 
@@ -316,7 +316,7 @@ describe('DatasetAccessConfigPage', () => {
       expect.any(String),
       1,
       10,
-      { enabled: true },
+      { enabled: true, meta: { errorMessage: 'common.api.loadFailed' } },
     )
     expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
   })
@@ -332,13 +332,14 @@ describe('DatasetAccessConfigPage', () => {
     expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
     expect(useDatasetAccessRules).toHaveBeenCalledWith('dataset-1', expect.any(String), {
       enabled: false,
+      meta: { errorMessage: 'common.api.loadFailed' },
     })
     expect(useDatasetUserAccessSettings).toHaveBeenCalledWith(
       'dataset-1',
       expect.any(String),
       1,
       10,
-      { enabled: false },
+      { enabled: false, meta: { errorMessage: 'common.api.loadFailed' } },
     )
     expect(useDatasetResourceWhitelist).toHaveBeenCalledWith('dataset-1', { enabled: false })
     expect(useDatasetResourceWhitelistConfig).toHaveBeenCalledWith('dataset-1', {
@@ -357,7 +358,7 @@ describe('DatasetAccessConfigPage', () => {
       expect.any(String),
       1,
       10,
-      { enabled: false },
+      { enabled: false, meta: { errorMessage: 'common.api.loadFailed' } },
     )
     expect(useDatasetResourceWhitelist).toHaveBeenCalledWith('dataset-1', { enabled: false })
     expect(useDatasetResourceWhitelistConfig).toHaveBeenCalledWith('dataset-1', {

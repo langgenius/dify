@@ -14,6 +14,7 @@ import {
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { deploymentEditionAtom } from '@/features/system-features/state'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { AgentVersionRestore } from '../../version-restore'
 import { CurrentDraftItem } from './current-draft-item'
@@ -70,8 +71,10 @@ export function AgentPreviewVersionsPanel({
     void exportAppDsl({ appId: agent.app_id, appName: agent.name, versionId })
   }
   const [filterValue, setFilterValue] = useState<AgentVersionFilter>('all')
+  const loadFailureMeta = useLoadFailureMeta()
   const versionsQuery = useQuery(
     consoleQuery.agent.byAgentId.versions.get.queryOptions({
+      meta: loadFailureMeta,
       input: {
         params: {
           agent_id: agentId,

@@ -91,8 +91,7 @@ describe('build draft refresh errors', () => {
     })
 
     expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed', {
-      id: 'request-error:common.api.actionFailed:HTTP 500',
-      description: 'HTTP 500',
+      id: 'request-error:common.api.actionFailed',
     })
     expect(setSoulSourceOverride).not.toHaveBeenCalled()
   })

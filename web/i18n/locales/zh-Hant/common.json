@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "定義 AI Agent 的推理與決策方式，包括如何選擇工具、處理結果並自主解決問題。",
   "api.actionFailed": "操作失敗",
   "api.actionSuccess": "操作成功",
+  "api.loadFailed": "載入失敗，請稍後再試。",
   "api.remove": "已移除",
   "api.saved": "已儲存",
   "api.success": "成功",

@@ -11,6 +11,7 @@ import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import {
@@ -41,15 +42,17 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(RESOURCE_ACCESS_SETTINGS_PAGE_SIZE)
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(
     appId,
     language,
+    { meta: loadFailureMeta },
   )
   const {
     data: appUserAccessSettingsResponse,
     isLoading: isLoadingAppUserAccessSettings,
     isPlaceholderData: isChangingAppUserAccessSettingsPage,
-  } = useAppUserAccessSettings(appId, language, currentPage, pageSize)
+  } = useAppUserAccessSettings(appId, language, currentPage, pageSize, { meta: loadFailureMeta })
   const { data: appResourceWhitelist } = useAppResourceWhitelist(appId)
   const { data: appResourceWhitelistConfig } = useAppResourceWhitelistConfig(appId)
   const {

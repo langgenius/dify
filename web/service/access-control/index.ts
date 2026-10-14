@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type { AccessControlGroup } from '@/models/access-control'
 import {
   useAppWhiteListSubjects as useAppWhiteListSubjectsBase,
@@ -24,8 +25,9 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
 export const useSearchForWhiteListCandidates = (
   query: SearchForWhiteListCandidatesQuery,
   enabled: boolean,
+  options?: { meta?: QueryMeta },
 ) => {
-  return useSearchForWhiteListCandidatesBase(query, enabled)
+  return useSearchForWhiteListCandidatesBase(query, enabled, options)
 }
 
 export const useGetUserCanAccessApp = (params: UserCanAccessAppParams) => {

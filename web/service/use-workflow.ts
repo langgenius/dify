@@ -14,6 +14,7 @@ import type {
   MutationMeta,
   MutationOptions,
   QueryClient,
+  QueryMeta,
   UseQueryOptions,
 } from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
@@ -95,9 +96,13 @@ export const useWorkflowConfig = <T = WorkflowConfigResponse>(
 
 const WorkflowVersionHistoryKey = [NAME_SPACE, 'versionHistory']
 
-export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) => {
+export const useWorkflowVersionHistory = (
+  params: FetchWorkflowDraftPageParams,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   const { url, initialPage, limit, userId, namedOnly } = params
   return useInfiniteQuery({
+    meta,
     enabled: !!url,
     queryKey: [...WorkflowVersionHistoryKey, url, initialPage, limit, userId, namedOnly],
     queryFn: ({ pageParam = 1 }) =>

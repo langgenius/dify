@@ -11,7 +11,7 @@ vi.mock('@/app/notifications', () => ({
 const { toast } = await import('@/app/notifications')
 
 const requestError = (message: string, status = 400) =>
-  new ORPCError('request_failed', { status, message })
+  new ORPCError('request_failed', { status, message, data: { message } })
 
 describe('getQueryClient', () => {
   beforeEach(() => {

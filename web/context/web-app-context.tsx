@@ -13,6 +13,7 @@ import {
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
@@ -106,7 +107,10 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     }
   }, [searchParamsString, updateEmbeddedUserId, updateEmbeddedConversationId])
 
-  const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+  const loadFailureMeta = useLoadFailureMeta()
+  const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode, {
+    meta: loadFailureMeta,
+  })
 
   useEffect(() => {
     if (accessModeResult?.accessMode) updateWebAppAccessMode(accessModeResult.accessMode)

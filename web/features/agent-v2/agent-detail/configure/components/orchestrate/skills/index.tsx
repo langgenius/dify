@@ -39,6 +39,7 @@ import {
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
@@ -230,7 +231,9 @@ function WorkspaceSkillSelector({
     () => selectedTagIds.flatMap((tagId) => tagNameById.get(tagId) ?? []),
     [selectedTagIds, tagNameById],
   )
+  const loadFailureMeta = useLoadFailureMeta()
   const skillsQuery = useInfiniteQuery({
+    meta: loadFailureMeta,
     ...consoleQuery.workspaces.current.skills.get.infiniteOptions({
       input: (pageParam) => ({
         query: {

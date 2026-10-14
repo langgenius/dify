@@ -138,6 +138,9 @@ export function AgentConfigurePublishBar({
         },
       },
       enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
+      // A prefetch for the publish confirmation; publishing reads it again when needed.
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     })
   useQuery(workflowReferencesQueryOptions)
   const canPublish = publishIsAvailable && !isPublishing

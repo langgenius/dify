@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type { RolesOfMemberResponse, UpdateRolesOfMemberRequest } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,8 +7,13 @@ import { commonQueryKeys } from '../use-common'
 
 const NAME_SPACE = 'rbac-member-roles'
 
-export const useRolesOfMember = (memberId: string, language: AccessControlTemplateLanguage) => {
+export const useRolesOfMember = (
+  memberId: string,
+  language: AccessControlTemplateLanguage,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   return useQuery({
+    meta,
     queryKey: [NAME_SPACE, 'member-roles', memberId, language],
     queryFn: () =>
       get<RolesOfMemberResponse>(`/workspaces/current/rbac/members/${memberId}/rbac-roles`, {

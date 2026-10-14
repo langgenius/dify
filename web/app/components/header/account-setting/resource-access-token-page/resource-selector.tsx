@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { candidateKey } from './resource-key'
 
@@ -28,8 +29,10 @@ export default function ResourceSelector({
   const [resourceTab, setResourceTab] = useState<ResourceTab>('all')
   const [resourceSearchText, setResourceSearchText] = useState('')
   const debouncedResourceSearch = useDebounce(resourceSearchText.trim(), { wait: 300 })
+  const loadFailureMeta = useLoadFailureMeta()
   const appsQuery = useInfiniteQuery(
     consoleQuery.apps.get.infiniteOptions({
+      meta: loadFailureMeta,
       input: (page) => ({
         query: {
           limit: 100,
@@ -44,6 +47,7 @@ export default function ResourceSelector({
   )
   const datasetsQuery = useInfiniteQuery(
     consoleQuery.datasets.get.infiniteOptions({
+      meta: loadFailureMeta,
       input: (page) => ({
         query: {
           include_all: true,

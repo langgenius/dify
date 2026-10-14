@@ -15,11 +15,23 @@ const isExpectedRequestError = (error: unknown) =>
  * that handle a failure imperatively decide here whether it deserves a toast.
  *
  * `title` names the failed action; the server message then explains it underneath. Without a
- * title only request failures that carry a server message are shown.
+ * title only failures whose response body carries a message are shown.
  */
+// Only a message from the response body explains a failure; the status text an empty body falls
+// back to (such as `HTTP 500`) does not.
+const getServerMessage = (error: unknown) => {
+  if (!(error instanceof ORPCError)) return undefined
+  const data: unknown = error.data
+  if (typeof data !== 'object' || data === null) return undefined
+  const { message, error: legacyMessage } = data as { message?: unknown; error?: unknown }
+  return [message, legacyMessage].find(
+    (value): value is string => typeof value === 'string' && !!value.trim(),
+  )
+}
+
 export function toastRequestError(error: unknown, title?: string) {
   if (isExpectedRequestError(error)) return
-  const serverMessage = error instanceof ORPCError ? error.message || undefined : undefined
+  const serverMessage = getServerMessage(error)
   const text = title ?? serverMessage
   if (!text) return
   const description = title && serverMessage !== title ? serverMessage : undefined

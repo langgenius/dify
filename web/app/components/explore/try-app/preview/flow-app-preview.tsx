@@ -8,6 +8,7 @@ import * as React from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 
 type Props = {
@@ -154,8 +155,10 @@ const normalizeWorkflowPreviewGraph = (graph: JsonObject) => {
 }
 
 const FlowAppPreview: FC<Props> = ({ appId, className }) => {
+  const loadFailureMeta = useLoadFailureMeta()
   const { data, isLoading } = useQuery(
     consoleQuery.trialApps.byAppId.workflows.get.queryOptions({
+      meta: loadFailureMeta,
       input: { params: { app_id: appId } },
     }),
   )

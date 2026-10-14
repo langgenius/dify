@@ -2,6 +2,7 @@
 
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import { useQuery } from '@tanstack/react-query'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { redirect } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import EducationApplyPage from './application-form'
@@ -12,8 +13,12 @@ const selectEducationPlan = ({ billing, education }: GetFeaturesResponse) => ({
 })
 
 export default function EducationApplyRoute({ token }: { token: string }) {
+  const loadFailureMeta = useLoadFailureMeta()
   const featuresQuery = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectEducationPlan }),
+    consoleQuery.features.get.queryOptions({
+      meta: loadFailureMeta,
+      select: selectEducationPlan,
+    }),
   )
 
   if (featuresQuery.isPending) return null

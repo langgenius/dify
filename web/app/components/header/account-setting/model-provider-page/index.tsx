@@ -13,6 +13,7 @@ import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 import { ModelTypeEnum } from './declarations'
@@ -71,8 +72,11 @@ const ModelProviderPage = ({
     ModelTypeEnum.tts,
     defaultModelQueryOptions,
   )
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: providerSummary, isLoading: isLoadingModelProviders } = useQuery(
-    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      meta: loadFailureMeta,
+    }),
   )
   const providers = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
   const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS

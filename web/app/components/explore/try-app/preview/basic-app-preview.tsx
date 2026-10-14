@@ -25,6 +25,7 @@ import {
 } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { PromptMode } from '@/models/debug'
 import { useAllToolProviders } from '@/service/use-tools'
 import { useGetTryAppDataSets } from '@/service/use-try-app'
@@ -354,9 +355,11 @@ const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
 
     return []
   })()
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(
     appId,
     datasetIds,
+    { meta: loadFailureMeta },
   )
   const dataSets = dataSetData?.data || []
   const isLoading = isLoadingDatasets || isLoadingToolProviders

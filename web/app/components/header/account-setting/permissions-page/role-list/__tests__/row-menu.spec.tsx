@@ -227,11 +227,14 @@ describe('RowMenu', () => {
       expect(dialog).toHaveTextContent(
         'permission.role.copyMembersDescription:{"name":"Editor","count":3}',
       )
-      expect(membersOfRoleQueryMock.useGetMembersOfRole).toHaveBeenCalledWith({
-        roleId: role.id,
-        page: 1,
-        limit: 9999,
-      })
+      expect(membersOfRoleQueryMock.useGetMembersOfRole).toHaveBeenCalledWith(
+        {
+          roleId: role.id,
+          page: 1,
+          limit: 9999,
+        },
+        { meta: { errorMessage: 'common.api.loadFailed' } },
+      )
 
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.skip' }))
 

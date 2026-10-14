@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "AI Agent가 어떻게 추론하고 의사결정하는지 정의하세요. 도구 선택, 결과 처리, 자율적인 문제 해결을 포함합니다.",
   "api.actionFailed": "작업 실패",
   "api.actionSuccess": "동작이 성공적으로 수행되었습니다",
+  "api.loadFailed": "로드에 실패했습니다. 나중에 다시 시도해 주세요.",
   "api.remove": "삭제됨",
   "api.saved": "저장됨",
   "api.success": "성공",

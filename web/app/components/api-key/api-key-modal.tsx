@@ -25,6 +25,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { ApiKeyTable } from './api-key-table'
 import { CreatedApiKeyDialog } from './created-api-key-dialog'
@@ -52,17 +53,21 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
   // Bumped on each open so the scope dialog remounts with fresh selection state.
   const [scopeDialogKey, setScopeDialogKey] = useState(0)
 
+  const loadFailureMeta = useLoadFailureMeta()
   const appApiKeysQuery = useQuery(
     consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
+      meta: loadFailureMeta,
       input: open && scope.type === 'app' ? { params: { resource_id: scope.appId } } : skipToken,
     }),
   )
   const datasetApiKeysQuery = useQuery({
+    meta: loadFailureMeta,
     ...consoleQuery.datasets.apiKeys.get.queryOptions(),
     enabled: open && scope.type === 'dataset',
   })
   const environmentApiKeysQuery = useQuery(
     consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
+      meta: loadFailureMeta,
       input:
         open && scope.type === 'environment'
           ? { params: { app_id: scope.appId, environment_id: scope.environmentId } }

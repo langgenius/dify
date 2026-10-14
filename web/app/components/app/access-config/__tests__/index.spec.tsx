@@ -180,7 +180,9 @@ describe('AppAccessConfigPage', () => {
       screen.getByRole('heading', { name: 'navigation.settings.resourceAccess' }),
     ).toBeInTheDocument()
     expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
-    expect(useAppUserAccessSettings).toHaveBeenCalledWith('app-1', expect.any(String), 1, 10)
+    expect(useAppUserAccessSettings).toHaveBeenCalledWith('app-1', expect.any(String), 1, 10, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
     expect(useAppResourceWhitelist).toHaveBeenCalledWith('app-1')
     expect(useAppResourceWhitelistConfig).toHaveBeenCalledWith('app-1')
     expect(mockAccessRulesEditor.props?.automaticIncludeWorkspaceMembers).toBe(true)
@@ -209,7 +211,9 @@ describe('AppAccessConfigPage', () => {
 
     act(() => mockAccessRulesEditor.props?.onPageChange?.(2))
 
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 2, 10)
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 2, 10, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
   })
 
   it('should request the selected page size from the first page', () => {
@@ -218,7 +222,9 @@ describe('AppAccessConfigPage', () => {
     act(() => mockAccessRulesEditor.props?.onPageChange?.(3))
     act(() => mockAccessRulesEditor.props?.onPageSizeChange?.(50))
 
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 50)
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 50, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
     expect(mockAccessRulesEditor.props?.pageSize).toBe(50)
   })
 
@@ -231,7 +237,9 @@ describe('AppAccessConfigPage', () => {
 
     act(() => mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(false))
 
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 10)
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 10, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
   })
 
   it('should jump to the new last page after adding a member', () => {
@@ -257,7 +265,9 @@ describe('AppAccessConfigPage', () => {
       onSuccess: () => void
     }
     act(() => callbacks.onSuccess())
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
   })
 
   it('should load the previous page after removing the only member on the last page', () => {
@@ -287,7 +297,9 @@ describe('AppAccessConfigPage', () => {
     mockAppUserAccessSettings.isPlaceholderData = true
     act(() => callbacks.onSuccess())
 
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 10)
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 10, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
     expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
   })
 
@@ -408,12 +420,16 @@ describe('AppAccessConfigPage', () => {
       input: { params: { app_id: 'app-1' } },
     })
     act(() => mockAccessRulesEditor.props?.onPageChange?.(3))
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
     act(() => {
       queryClient.setQueryData(queryKey, { ...appDetail, maintainer: 'new-maintainer' })
     })
     await waitFor(() => expect(mockAccessRulesEditor.props?.maintainerId).toBe('new-maintainer'))
-    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
     act(() => {
       queryClient.setQueryData(queryKey, { ...appDetail, permission_keys: [] })
     })

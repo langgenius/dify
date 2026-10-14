@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/constants'
 import { PluginSource } from '../../types'
@@ -61,7 +62,8 @@ const ToolPicker: FC<Props> = ({
   const effectivePluginType = integrationCategory ?? pluginType
   const [query, setQuery] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const { data, isLoading } = useInstalledPluginList()
+  const loadFailureMeta = useLoadFailureMeta()
+  const { data, isLoading } = useInstalledPluginList({ meta: loadFailureMeta })
   const filteredList = useMemo(() => {
     const list = data ? data.plugins : []
     return list.filter((plugin) => {

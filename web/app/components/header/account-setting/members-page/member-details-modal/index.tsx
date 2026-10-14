@@ -9,6 +9,7 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { useRolesOfMember } from '@/service/access-control/use-member-roles'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -35,9 +36,11 @@ const MemberDetailsModal = ({
   const [assignOpen, setAssignOpen] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useRolesOfMember(
     member.id,
     language,
+    { meta: loadFailureMeta },
   )
   const [pendingRoles, setPendingRoles] = useState<Role[]>()
 

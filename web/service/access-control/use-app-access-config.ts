@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   RemoveAppAccessPolicyMemberBindingsRequest,
@@ -11,8 +12,13 @@ const NAME_SPACE = 'app-access-config'
 const appRbacContract = consoleQuery.workspaces.current.rbac.apps.byAppId
 const appRbacClient = consoleClient.workspaces.current.rbac.apps.byAppId
 
-export const useAppAccessRules = (appId: string, language: AccessControlTemplateLanguage) => {
+export const useAppAccessRules = (
+  appId: string,
+  language: AccessControlTemplateLanguage,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   return useQuery({
+    meta,
     ...appRbacContract.accessPolicy.get.queryOptions({
       input: {
         params: {
@@ -32,8 +38,10 @@ export const useAppUserAccessSettings = (
   language: AccessControlTemplateLanguage,
   page: number,
   pageSize: number,
+  { meta }: { meta?: QueryMeta } = {},
 ) => {
   return useQuery({
+    meta,
     ...appRbacContract.userAccessPolicies.get.queryOptions({
       input: {
         params: {

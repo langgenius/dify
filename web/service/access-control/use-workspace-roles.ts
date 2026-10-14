@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type {
   CopyWorkspaceRoleRequest,
   CreateRoleRequest,
@@ -104,9 +105,13 @@ export const useCopyWorkspaceRole = () => {
   })
 }
 
-export const useGetMembersOfRole = (params: GetMembersOfRoleRequest) => {
+export const useGetMembersOfRole = (
+  params: GetMembersOfRoleRequest,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   const { roleId, ...paginationParams } = params
   return useQuery({
+    meta,
     queryKey: [NAME_SPACE, 'members-of-role', roleId, paginationParams],
     queryFn: () =>
       get<GetMembersOfRoleResponse>(`/workspaces/current/rbac/roles/${roleId}/members`, {

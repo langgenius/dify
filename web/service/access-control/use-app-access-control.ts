@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type { AccessControlGroup, Subject } from '@/models/access-control'
 import { useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -52,10 +53,12 @@ type SearchForWhiteListCandidatesQuery = {
 export const useSearchForWhiteListCandidates = (
   query: SearchForWhiteListCandidatesQuery,
   enabled: boolean,
+  { meta }: { meta?: QueryMeta } = {},
 ) => {
   const { keyword, groupId, resultsPerPage } = query
 
   return useInfiniteQuery({
+    meta,
     queryKey: [NAME_SPACE, 'app-whitelist-candidates', keyword, groupId, resultsPerPage],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams()

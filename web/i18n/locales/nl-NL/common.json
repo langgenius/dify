@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "Bepaal hoe je AI Agent redeneert en beslissingen neemt — inclusief hoe tools worden gekozen, resultaten worden verwerkt en problemen zelfstandig worden opgelost.",
   "api.actionFailed": "Action failed",
   "api.actionSuccess": "Action succeeded",
+  "api.loadFailed": "Laden mislukt. Probeer het later opnieuw.",
   "api.remove": "Removed",
   "api.saved": "Saved",
   "api.success": "Success",

@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type { WebAppAddress } from './webapp-address'
 import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { AppConversationData, ConversationItem } from '@/models/share'
@@ -42,6 +43,7 @@ type ShareConversationNameParams = {
 
 type ShareQueryOptions = {
   enabled?: boolean
+  meta?: QueryMeta
   refetchOnWindowFocus?: boolean
   refetchOnReconnect?: boolean
 }
@@ -69,9 +71,13 @@ export const shareQueryKeys = {
   humanInputForm: (token: string) => [NAME_SPACE, 'humanInputForm', token] as const,
 }
 
-export const useGetWebAppAccessModeByCode = (code: string | null) => {
+export const useGetWebAppAccessModeByCode = (
+  code: string | null,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   const address = resolveWebAppAddress()
   return useQuery({
+    meta,
     queryKey: shareQueryKeys.appAccessMode(address, code),
     queryFn: () => getAppAccessModeByAppCode(code!),
     enabled: !!code,
@@ -115,12 +121,13 @@ export const useShareConversations = (
   options: ShareQueryOptions = {},
 ) => {
   const address = resolveWebAppAddress()
-  const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
+  const { enabled = true, meta, refetchOnReconnect, refetchOnWindowFocus } = options
   const isEnabled =
     enabled &&
     params.appSourceType !== AppSourceType.tryApp &&
     (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
   return useQuery<AppConversationData>({
+    meta,
     queryKey: shareQueryKeys.conversationList(address, params),
     queryFn: () =>
       fetchConversations(
@@ -138,13 +145,14 @@ export const useShareConversations = (
 
 export const useShareChatList = (params: ShareChatListParams, options: ShareQueryOptions = {}) => {
   const address = resolveWebAppAddress()
-  const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
+  const { enabled = true, meta, refetchOnReconnect, refetchOnWindowFocus } = options
   const isEnabled =
     enabled &&
     params.appSourceType !== AppSourceType.tryApp &&
     (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
     !!params.conversationId
   return useQuery({
+    meta,
     queryKey: shareQueryKeys.chatList(address, params),
     queryFn: async () => {
       try {

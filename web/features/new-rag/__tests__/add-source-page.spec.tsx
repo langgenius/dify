@@ -234,6 +234,8 @@ describe('AddSourcePage', () => {
       enabled: true,
       input: {},
       retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     })
     const options = connectionInfiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()

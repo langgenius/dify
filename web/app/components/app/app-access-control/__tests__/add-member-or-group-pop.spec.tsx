@@ -148,6 +148,7 @@ describe('AddMemberOrGroupDialog', () => {
     expect(mockUseSearchForWhiteListCandidates).toHaveBeenLastCalledWith(
       expect.objectContaining({ groupId: baseGroup.id }),
       true,
+      { meta: { errorMessage: 'common.api.loadFailed' } },
     )
 
     const memberToggle = screen.getByRole('button', { name: /Member One/ })
@@ -174,6 +175,7 @@ describe('AddMemberOrGroupDialog', () => {
     expect(mockUseSearchForWhiteListCandidates).toHaveBeenLastCalledWith(
       expect.objectContaining({ groupId: baseGroup.id }),
       true,
+      { meta: { errorMessage: 'common.api.loadFailed' } },
     )
   })
 
@@ -256,6 +258,7 @@ describe('AddMemberOrGroupDialog', () => {
     expect(mockUseSearchForWhiteListCandidates).toHaveBeenLastCalledWith(
       expect.objectContaining({ groupId: undefined }),
       true,
+      { meta: { errorMessage: 'common.api.loadFailed' } },
     )
   })
 })

@@ -1,5 +1,6 @@
 import { ORPCError } from '@orpc/client'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
+import { createHttpError } from '@/service/http-error'
 import { toastRequestError, toastStreamError, withRequestErrorToast } from '../request-error'
 
 vi.mock('..', () => ({
@@ -17,6 +18,7 @@ const requestError = (
   new ORPCError('request_failed', {
     status,
     message,
+    data: { message },
     cause: { headers: new Headers(), url },
   })
 
@@ -45,6 +47,18 @@ describe('toastRequestError', () => {
   it('should show the caller message alone for failures without a server message', () => {
     toastRequestError(new TypeError('Failed to fetch'), 'Failed to save')
 
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('Failed to save', {
+      id: 'request-error:Failed to save',
+    })
+  })
+
+  it('should not present the status text of an empty response as the explanation', () => {
+    const emptyBody = createHttpError(new Response(null, { status: 500 }))
+
+    toastRequestError(emptyBody)
+    expect(toast.error).not.toHaveBeenCalled()
+
+    toastRequestError(emptyBody, 'Failed to save')
     expect(toast.error).toHaveBeenCalledExactlyOnceWith('Failed to save', {
       id: 'request-error:Failed to save',
     })

@@ -2,6 +2,7 @@ import type { SnippetWorkflow } from '@/types/snippet'
 import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { isNotFoundError } from '@/service/http-error'
 import {
   fetchSnippetDraftWorkflow,
@@ -58,9 +59,14 @@ export const useSnippetInit = (snippetId: string) => {
       nodesDefaultConfigs: normalizeNodesDefaultConfigs(nodesDefaultConfigs),
     })
   })
-  const publishedWorkflowQuery = useSnippetPublishedWorkflow(snippetId, (publishedWorkflow) => {
-    workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-  })
+  const loadFailureMeta = useLoadFailureMeta()
+  const publishedWorkflowQuery = useSnippetPublishedWorkflow(
+    snippetId,
+    (publishedWorkflow) => {
+      workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
+    },
+    { meta: loadFailureMeta },
+  )
 
   useEffect(() => {
     if (publishedWorkflowQuery.isLoading) return

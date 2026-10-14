@@ -13,6 +13,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { changeLanguage } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
 import { AppSourceType, updateFeedback } from '@/service/share'
@@ -152,11 +153,15 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       pinned: false,
       limit: 100,
     })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
-    conversationId: chatShouldReloadKey,
-    appSourceType,
-    appId,
-  })
+  const loadFailureMeta = useLoadFailureMeta()
+  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
+    {
+      conversationId: chatShouldReloadKey,
+      appSourceType,
+      appId,
+    },
+    { meta: loadFailureMeta },
+  )
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
@@ -26,7 +27,11 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   const queryClient = useQueryClient()
   const externalKnowledgeApiQueryOptions =
     consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
-  const { data, isLoading } = useQuery(externalKnowledgeApiQueryOptions)
+  const loadFailureMeta = useLoadFailureMeta()
+  const { data, isLoading } = useQuery({
+    ...externalKnowledgeApiQueryOptions,
+    meta: loadFailureMeta,
+  })
   const externalKnowledgeApiList = data?.data ?? []
 
   const handleOpenExternalAPIModal = () => {

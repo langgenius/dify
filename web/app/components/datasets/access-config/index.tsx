@@ -12,6 +12,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import {
@@ -51,14 +52,16 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
     workspacePermissionKeys,
     isRbacEnabled,
   }).canAccessConfig
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } =
-    useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
+    useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig, meta: loadFailureMeta })
   const {
     data: datasetUserAccessSettingsResponse,
     isLoading: isLoadingDatasetUserAccessSettings,
     isPlaceholderData: isChangingDatasetUserAccessSettingsPage,
   } = useDatasetUserAccessSettings(datasetId, language, currentPage, pageSize, {
     enabled: canAccessConfig,
+    meta: loadFailureMeta,
   })
   const { data: datasetResourceWhitelist } = useDatasetResourceWhitelist(datasetId, {
     enabled: canAccessConfig,

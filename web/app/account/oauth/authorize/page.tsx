@@ -86,6 +86,9 @@ export default function OAuthAuthorize() {
       input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
+      // The page renders a failed lookup itself, so it is not refreshed in the background.
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     }),
   )
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(

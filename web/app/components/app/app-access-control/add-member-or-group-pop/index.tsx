@@ -21,6 +21,7 @@ import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { SelectedGroupsBreadcrumb } from './breadcrumb'
@@ -45,9 +46,11 @@ export default function AddMemberOrGroupDialog({
   const anchorRef = useRef<HTMLDivElement>(null)
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
   const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
+  const loadFailureMeta = useLoadFailureMeta()
   const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates(
     { keyword: debouncedKeyword, groupId: lastAvailableGroup?.id, resultsPerPage: 10 },
     open,
+    { meta: loadFailureMeta },
   )
   const pages = data?.pages ?? []
   const candidates = pages.flatMap((page) => page.subjects ?? [])

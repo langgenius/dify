@@ -11,7 +11,13 @@ import type {
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
 } from '@dify/contracts/marketplace'
-import type { InfiniteData, MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
+import type {
+  InfiniteData,
+  MutateOptions,
+  QueryClient,
+  QueryMeta,
+  QueryOptions,
+} from '@tanstack/react-query'
 import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
@@ -609,6 +615,7 @@ export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15)
 }
 
 type UseInstalledPluginListOptions = {
+  meta?: QueryMeta
   category?: PluginCategoryEnum
   enabled?: boolean
   filters?: InstalledPluginListFilters
@@ -677,7 +684,7 @@ const getInstalledPluginCategoryListQueryKey = (
 }
 
 export const useInstalledPluginList = (options: UseInstalledPluginListOptions = {}) => {
-  const { category, enabled = true, filters, gcTime, pageSize = 100, staleTime } = options
+  const { category, enabled = true, filters, gcTime, meta, pageSize = 100, staleTime } = options
   const categoryQuery = useInfiniteQuery({
     ...getInstalledPluginCategoryListInfiniteOptions({
       category: category ?? PluginCategoryEnum.tool,
@@ -686,6 +693,7 @@ export const useInstalledPluginList = (options: UseInstalledPluginListOptions = 
     }),
     enabled: enabled && !!category,
     gcTime,
+    meta,
     staleTime,
   })
   const legacyQuery = useInfiniteQuery({
@@ -702,6 +710,7 @@ export const useInstalledPluginList = (options: UseInstalledPluginListOptions = 
     }),
     enabled: enabled && !category,
     gcTime,
+    meta,
     staleTime,
   })
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =

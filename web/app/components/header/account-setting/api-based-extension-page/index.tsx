@@ -9,6 +9,7 @@ import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
@@ -59,8 +60,9 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
   const { t } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(
-    consoleQuery.apiBasedExtension.get.queryOptions(),
+    consoleQuery.apiBasedExtension.get.queryOptions({ meta: loadFailureMeta }),
   )
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
   const [keywords, setKeywords] = useState('')

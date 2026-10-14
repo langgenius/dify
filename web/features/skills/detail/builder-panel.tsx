@@ -21,6 +21,7 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
@@ -340,9 +341,11 @@ export function SkillBuilderPanel({
   const selectedFileRef = useRef(selectedFile)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
   const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: textGenerationModelList = [], isPending: isTextGenerationModelListLoading } =
     useQuery(
       consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+        meta: loadFailureMeta,
         input: { params: { model_type: ModelTypeEnum.textGeneration } },
         select: (response) => response.data,
       }),

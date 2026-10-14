@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "Xác định cách AI Agent suy luận và ra quyết định — bao gồm cách chọn công cụ, xử lý kết quả và tự động giải quyết vấn đề.",
   "api.actionFailed": "Thao tác thất bại",
   "api.actionSuccess": "Thành công",
+  "api.loadFailed": "Không thể tải. Vui lòng thử lại sau.",
   "api.remove": "Xóa",
   "api.saved": "Đã lưu",
   "api.success": "Thành công",

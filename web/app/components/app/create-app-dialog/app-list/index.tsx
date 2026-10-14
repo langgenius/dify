@@ -22,6 +22,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useCanImportAgents } from '@/features/agent-v2/permissions'
 import { useImportDSL } from '@/hooks/use-import-dsl'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -65,8 +66,10 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
   const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
+  const loadFailureMeta = useLoadFailureMeta()
   const { data, isLoading } = useQuery(
     consoleQuery.explore.apps.get.queryOptions({
+      meta: loadFailureMeta,
       input: { query: { language: locale } },
     }),
   )

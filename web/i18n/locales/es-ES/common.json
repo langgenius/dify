@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "Define cómo razona y toma decisiones tu AI Agent, incluido cómo selecciona herramientas, procesa resultados y resuelve problemas de forma autónoma.",
   "api.actionFailed": "Acción fallida",
   "api.actionSuccess": "Acción exitosa",
+  "api.loadFailed": "Error al cargar. Inténtalo de nuevo más tarde.",
   "api.remove": "Eliminado",
   "api.saved": "Guardado",
   "api.success": "Éxito",

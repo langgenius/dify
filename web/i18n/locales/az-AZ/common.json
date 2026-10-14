@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "Süni intellekt agentinizin necə mühakimə yürüdüb qərar verdiyini, o cümlədən alətləri necə seçdiyini, nəticələri necə emal etdiyini və problemləri müstəqil şəkildə necə həll etdiyini müəyyənləşdirin.",
   "api.actionFailed": "Əməliyyat alınmadı",
   "api.actionSuccess": "Əməliyyat uğurla tamamlandı",
+  "api.loadFailed": "Yükləmək mümkün olmadı. Daha sonra yenidən cəhd edin.",
   "api.remove": "Çıxarıldı",
   "api.saved": "Yadda saxlanıldı",
   "api.success": "Uğurludur",

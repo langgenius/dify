@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "AI Agent’ın nasıl akıl yürüttüğünü ve karar verdiğini tanımlayın — araç seçimi, sonuçları işleme ve sorunları otonom çözme dahil.",
   "api.actionFailed": "İşlem başarısız",
   "api.actionSuccess": "İşlem başarılı",
+  "api.loadFailed": "Yüklenemedi. Daha sonra tekrar deneyin.",
   "api.remove": "Kaldırıldı",
   "api.saved": "Kaydedildi",
   "api.success": "Başarılı",

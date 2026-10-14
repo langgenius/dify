@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import LearnDifyItem from './item'
 import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from './storage'
@@ -48,9 +49,11 @@ const LearnDifyContent = ({
   const [isClosing, setIsClosing] = useState(false)
   const [collapseTransform, setCollapseTransform] = useState<string>()
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loadFailureMeta = useLoadFailureMeta()
   const sectionRef = useRef<HTMLElement>(null)
   const { data: learnDifyItems = [], isLoading } = useQuery(
     consoleQuery.explore.apps.learnDify.get.queryOptions({
+      meta: loadFailureMeta,
       input: { query: { language: locale } },
       select: (response) =>
         [...response.recommended_apps].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),

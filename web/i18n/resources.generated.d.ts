@@ -1613,6 +1613,7 @@ export default interface Resources {
     'agentStrategyPage.description': 'Define how your AI agent reasons and makes decisions — including how it selects tools, handles results, and solves problems autonomously.'
     'api.actionFailed': 'Action failed'
     'api.actionSuccess': 'Action succeeded'
+    'api.loadFailed': 'Failed to load. Try again later.'
     'api.remove': 'Removed'
     'api.saved': 'Saved'
     'api.success': 'Success'

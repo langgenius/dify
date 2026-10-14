@@ -15,6 +15,7 @@
   "agentStrategyPage.description": "Tentukan cara AI Agent Anda bernalar dan mengambil keputusan — termasuk memilih alat, menangani hasil, dan menyelesaikan masalah secara mandiri.",
   "api.actionFailed": "Tindakan gagal",
   "api.actionSuccess": "Aksi berhasil",
+  "api.loadFailed": "Gagal memuat. Coba lagi nanti.",
   "api.remove": "Dihapus",
   "api.saved": "Disimpan",
   "api.success": "Keberhasilan",

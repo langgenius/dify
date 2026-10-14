@@ -10,6 +10,7 @@ import * as React from 'react'
 import { Suspense, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import AppInfo from './app-info'
 import Preview from './preview'
@@ -41,6 +42,7 @@ function TryApp({
   onCreate,
 }: Props) {
   const { t } = useTranslation(['common', 'explore'])
+  const loadFailureMeta = useLoadFailureMeta()
   const {
     data: appDetail,
     isLoading,
@@ -50,6 +52,7 @@ function TryApp({
     refetch,
   } = useQuery(
     consoleQuery.trialApps.byAppId.get.queryOptions({
+      meta: loadFailureMeta,
       input: { params: { app_id: appId } },
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
