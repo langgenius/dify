@@ -516,6 +516,7 @@
   "panel.runThisStep": "Exécuter cette étape",
   "panel.scrollToSelectedNode": "Faites défiler jusqu’au nœud sélectionné",
   "panel.selectNextStep": "Sélectionner la prochaine étape",
+  "panel.selectReuseNode": "Sélectionnez le nœud dont vous souhaitez réutiliser l’autorisation avant d’exécuter ce nœud.",
   "panel.startNode": "Nœud de départ",
   "panel.userInputField": "Champ de saisie de l'utilisateur",
   "publishLimit.startNodeDesc": "Vous avez atteint la limite de 2 déclencheurs par flux de travail pour ce plan. Passez à une version supérieure pour publier ce flux de travail.",

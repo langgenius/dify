@@ -516,6 +516,7 @@
   "panel.runThisStep": "Bu addımı icra et",
   "panel.scrollToSelectedNode": "Seçilmiş düyünə sürüşdür",
   "panel.selectNextStep": "Növbəti addımı seç",
+  "panel.selectReuseNode": "Bu düyünü işə salmazdan əvvəl icazələrini təkrar istifadə etmək istədiyiniz düyünü seçin.",
   "panel.startNode": "Başlanğıc düyünü",
   "panel.userInputField": "İstifadəçinin məlumat daxil etməsi üçün sahə",
   "publishLimit.startNodeDesc": "Bu planda hər iş axını üçün 2 tətikləyici limitinə çatmısınız. Bu iş axınını dərc etmək üçün planınızı yüksəldin.",

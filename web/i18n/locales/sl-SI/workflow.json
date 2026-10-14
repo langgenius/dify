@@ -516,6 +516,7 @@
   "panel.runThisStep": "Izvedi ta korak",
   "panel.scrollToSelectedNode": "Pomaknite se do izbranega vozlišča",
   "panel.selectNextStep": "Izberi naslednji korak",
+  "panel.selectReuseNode": "Pred zagonom tega vozlišča izberite vozlišče, katerega avtorizacijo želite ponovno uporabiti.",
   "panel.startNode": "Začetni vozel",
   "panel.userInputField": "Uporabniško vhodno polje",
   "publishLimit.startNodeDesc": "Dosegli ste omejitev 2 sprožilcev na delovni tok za ta načrt. Nadgradite, da lahko objavite ta delovni tok.",

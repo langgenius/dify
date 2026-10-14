@@ -516,6 +516,7 @@
   "panel.runThisStep": "Executar este passo",
   "panel.scrollToSelectedNode": "Role até o nó selecionado",
   "panel.selectNextStep": "Selecione o próximo passo",
+  "panel.selectReuseNode": "Selecione um nó do qual reutilizar a autorização antes de executar este nó.",
   "panel.startNode": "Iniciar Nó",
   "panel.userInputField": "Campo de entrada do usuário",
   "publishLimit.startNodeDesc": "Você atingiu o limite de 2 gatilhos por fluxo de trabalho para este plano. Faça um upgrade para publicar este fluxo de trabalho.",

@@ -516,6 +516,7 @@
   "panel.runThisStep": "เรียกใช้ขั้นตอนนี้",
   "panel.scrollToSelectedNode": "เลื่อนไปยังโหนดที่เลือก",
   "panel.selectNextStep": "เลือกขั้นตอนถัดไป",
+  "panel.selectReuseNode": "เลือกโหนดที่ต้องการนำการอนุญาตมาใช้ซ้ำก่อนเรียกใช้โหนดนี้",
   "panel.startNode": "เริ่มต้นโหนด",
   "panel.userInputField": "ฟิลด์ป้อนข้อมูลของผู้ใช้",
   "publishLimit.startNodeDesc": "คุณได้ถึงขีดจำกัดของทริกเกอร์ 2 ครั้งต่อเวิร์กโฟลว์สำหรับแผนนี้แล้ว อัปเกรดเพื่อเผยแพร่เวิร์กโฟลว์นี้",

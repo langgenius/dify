@@ -516,6 +516,7 @@
   "panel.runThisStep": "Diesen Schritt ausführen",
   "panel.scrollToSelectedNode": "Zum ausgewählten Knoten scrollen",
   "panel.selectNextStep": "Nächsten Schritt auswählen",
+  "panel.selectReuseNode": "Wählen Sie vor dem Ausführen dieses Knotens einen Knoten aus, dessen Autorisierung wiederverwendet werden soll.",
   "panel.startNode": "Startknoten",
   "panel.userInputField": "Benutzereingabefeld",
   "publishLimit.startNodeDesc": "Sie haben das Limit von 2 Auslösern pro Workflow für diesen Plan erreicht. Upgraden Sie, um diesen Workflow zu veröffentlichen.",

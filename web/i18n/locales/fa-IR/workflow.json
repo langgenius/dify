@@ -516,6 +516,7 @@
   "panel.runThisStep": "اجرای این مرحله",
   "panel.scrollToSelectedNode": "رفتن به گره انتخاب‌شده",
   "panel.selectNextStep": "انتخاب مرحله بعدی",
+  "panel.selectReuseNode": "پیش از اجرای این گره، گره‌ای را انتخاب کنید که می‌خواهید از مجوزدهی آن دوباره استفاده کنید.",
   "panel.startNode": "گره شروع",
   "panel.userInputField": "فیلد ورودی کاربر",
   "publishLimit.startNodeDesc": "شما به محدودیت ۲ تریگر در هر گردش کار برای این پلن رسیده‌اید. برای انتشار این گردش کار ارتقا دهید.",

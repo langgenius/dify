@@ -516,6 +516,7 @@
   "panel.runThisStep": "Uruchom ten krok",
   "panel.scrollToSelectedNode": "Przewiń do wybranego węzła",
   "panel.selectNextStep": "Wybierz następny krok",
+  "panel.selectReuseNode": "Przed uruchomieniem tego węzła wybierz węzeł, z którego chcesz ponownie wykorzystać autoryzację.",
   "panel.startNode": "Węzeł początkowy",
   "panel.userInputField": "Pole wprowadzania użytkownika",
   "publishLimit.startNodeDesc": "Osiągnąłeś limit 2 wyzwalaczy na przepływ pracy w tym planie. Zaktualizuj plan, aby opublikować ten przepływ pracy.",

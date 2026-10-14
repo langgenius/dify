@@ -516,6 +516,7 @@
   "panel.runThisStep": "Ejecutar este paso",
   "panel.scrollToSelectedNode": "Desplácese hasta el nodo seleccionado",
   "panel.selectNextStep": "Seleccionar siguiente paso",
+  "panel.selectReuseNode": "Selecciona un nodo del que reutilizar la autorización antes de ejecutar este nodo.",
   "panel.startNode": "Nodo de inicio",
   "panel.userInputField": "Campo de entrada del usuario",
   "publishLimit.startNodeDesc": "Has alcanzado el límite de 2 desencadenadores por flujo de trabajo para este plan. Actualiza para publicar este flujo de trabajo.",

@@ -33,6 +33,9 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
     // empty list remains empty, including after the last connection is removed.
     if (draft.draft?.testConnection?.connections.length === 0)
       disabledReason = t(($) => $['panel.configureTestRunConnection'], { ns: 'workflow' })
+  } else if (draft?.authorizationTab === 'reuse-from-node') {
+    if (!draft.reuseFromNode?.source.id)
+      disabledReason = t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })
   } else if (
     (!draft || draft.authorizationTab === 'workspace-auth') &&
     isBuiltInTool &&

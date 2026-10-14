@@ -516,6 +516,7 @@
   "panel.runThisStep": "Chạy bước này",
   "panel.scrollToSelectedNode": "Cuộn đến nút đã chọn",
   "panel.selectNextStep": "Chọn bước tiếp theo",
+  "panel.selectReuseNode": "Chọn nút có quyền ủy quyền mà bạn muốn sử dụng lại trước khi chạy nút này.",
   "panel.startNode": "Nút Bắt đầu",
   "panel.userInputField": "Trường đầu vào của người dùng",
   "publishLimit.startNodeDesc": "Bạn đã đạt giới hạn 2 trình kích hoạt cho mỗi quy trình làm việc trong gói này. Nâng cấp để xuất bản quy trình làm việc này.",

@@ -516,6 +516,7 @@
   "panel.runThisStep": "Jalankan langkah ini",
   "panel.scrollToSelectedNode": "Gulir ke node yang dipilih",
   "panel.selectNextStep": "Pilih Langkah Berikutnya",
+  "panel.selectReuseNode": "Pilih node yang otorisasinya ingin digunakan kembali sebelum menjalankan node ini.",
   "panel.startNode": "Mulai Node",
   "panel.userInputField": "Bidang Input Pengguna",
   "publishLimit.startNodeDesc": "Anda telah mencapai batas 2 pemicu per alur kerja untuk paket ini. Tingkatkan paket untuk mempublikasikan alur kerja ini.",

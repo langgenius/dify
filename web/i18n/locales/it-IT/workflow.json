@@ -516,6 +516,7 @@
   "panel.runThisStep": "Esegui questo passo",
   "panel.scrollToSelectedNode": "Scorri fino al nodo selezionato",
   "panel.selectNextStep": "Seleziona il prossimo passo",
+  "panel.selectReuseNode": "Seleziona un nodo da cui riutilizzare l’autorizzazione prima di eseguire questo nodo.",
   "panel.startNode": "Nodo iniziale",
   "panel.userInputField": "Campo di Input Utente",
   "publishLimit.startNodeDesc": "Hai raggiunto il limite di 2 trigger per flusso di lavoro per questo piano. Effettua l'upgrade per pubblicare questo flusso di lavoro.",

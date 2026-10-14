@@ -516,6 +516,7 @@
   "panel.runThisStep": "이 단계 실행",
   "panel.scrollToSelectedNode": "선택한 노드로 스크롤",
   "panel.selectNextStep": "다음 단계 선택",
+  "panel.selectReuseNode": "이 노드를 실행하기 전에 인증을 재사용할 원본 노드를 선택하세요.",
   "panel.startNode": "시작 노드",
   "panel.userInputField": "사용자 입력 필드",
   "publishLimit.startNodeDesc": "이 요금제에서는 워크플로당 2개의 트리거 제한에 도달했습니다. 이 워크플로를 게시하려면 업그레이드하세요.",

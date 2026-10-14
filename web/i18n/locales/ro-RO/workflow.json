@@ -516,6 +516,7 @@
   "panel.runThisStep": "Rulează acest pas",
   "panel.scrollToSelectedNode": "Derulați la nodul selectat",
   "panel.selectNextStep": "Selectați Pasul Următor",
+  "panel.selectReuseNode": "Selectează un nod de la care să reutilizezi autorizarea înainte de a executa acest nod.",
   "panel.startNode": "Nod de start",
   "panel.userInputField": "Câmp de introducere utilizator",
   "publishLimit.startNodeDesc": "Ați atins limita de 2 declanșatoare pe flux de lucru pentru acest plan. Faceți upgrade pentru a publica acest flux de lucru.",

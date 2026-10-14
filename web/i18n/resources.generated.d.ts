@@ -5352,6 +5352,7 @@ export default interface Resources {
     'panel.runThisStep': 'Run this step'
     'panel.scrollToSelectedNode': 'Scroll to selected node'
     'panel.selectNextStep': 'Select Next Step'
+    'panel.selectReuseNode': 'Select a node to reuse authorization from before running this node.'
     'panel.startNode': 'Start Node'
     'panel.userInputField': 'User Input Field'
     'publishLimit.startNodeDesc': 'You’ve reached the limit of 2 triggers per workflow for this plan. Upgrade to publish this workflow.'

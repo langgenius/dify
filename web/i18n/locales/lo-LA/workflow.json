@@ -516,6 +516,7 @@
   "panel.runThisStep": "ລັນຂັ້ນຕອນນີ້",
   "panel.scrollToSelectedNode": "ເລື່ອນໄປຫາໂນດທີ່ເລືອກ",
   "panel.selectNextStep": "ເລືອກຂັ້ນຕອນຖັດໄປ",
+  "panel.selectReuseNode": "ກະລຸນາເລືອກໂນດທີ່ຕ້ອງການນຳການອະນຸຍາດມາໃຊ້ຄືນກ່ອນແລ່ນໂນດນີ້.",
   "panel.startNode": "ໂນດເລີ່ມຕົ້ນ",
   "panel.userInputField": "ຟິວນຳເຂົ້າຜູ້ໃຊ້",
   "publishLimit.startNodeDesc": "ທ່ານຮອດຈຳນວນຈຳກັດ 2 ຕົວເລີ່ມຕົ້ນຕໍ່ Workflow ສຳລັບແພັກເກດນີ້ແລ້ວ. ອັບເກຣດເພື່ອເຜີຍແຜ່ Workflow ນີ້.",

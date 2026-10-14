@@ -516,6 +516,7 @@
   "panel.runThisStep": "このステップ実行",
   "panel.scrollToSelectedNode": "選択したノードまでスクロール",
   "panel.selectNextStep": "次ノード選択",
+  "panel.selectReuseNode": "このノードを実行する前に、認証を再利用する元のノードを選択してください。",
   "panel.startNode": "開始ノード",
   "panel.userInputField": "ユーザー入力欄",
   "publishLimit.startNodeDesc": "このプランでは、各ワークフローのトリガー数は最大 2 個まで設定できます。公開するにはアップグレードが必要です。",

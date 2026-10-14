@@ -516,6 +516,7 @@
   "panel.runThisStep": "इस कदम को चलाएं",
   "panel.scrollToSelectedNode": "चुने गए नोड पर स्क्रॉल करें",
   "panel.selectNextStep": "अगला कदम चुनें",
+  "panel.selectReuseNode": "इस नोड को चलाने से पहले वह नोड चुनें जिसका प्राधिकरण आप फिर से इस्तेमाल करना चाहते हैं।",
   "panel.startNode": "प्रारंभ नोड",
   "panel.userInputField": "उपयोगकर्ता इनपुट फ़ील्ड",
   "publishLimit.startNodeDesc": "इस योजना के लिए आप प्रति वर्कफ़्लो 2 ट्रिगर्स की सीमा तक पहुँच चुके हैं। इस वर्कफ़्लो को प्रकाशित करने के लिए अपग्रेड करें।",

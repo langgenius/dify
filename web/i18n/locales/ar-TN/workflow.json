@@ -516,6 +516,7 @@
   "panel.runThisStep": "تشغيل هذه الخطوة",
   "panel.scrollToSelectedNode": "تمرير إلى العقدة المحددة",
   "panel.selectNextStep": "تحديد الخطوة التالية",
+  "panel.selectReuseNode": "اختر عقدة لإعادة استخدام تفويضها قبل تشغيل هذه العقدة.",
   "panel.startNode": "عقدة البداية",
   "panel.userInputField": "حقل إدخال المستخدم",
   "publishLimit.startNodeDesc": "لقد وصلت إلى الحد المسموح به وهو 2 مشغلات لكل سير عمل لهذه الخطة. قم بالترقية لنشر سير العمل هذا.",

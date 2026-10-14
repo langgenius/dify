@@ -148,7 +148,10 @@ describe('useLastRun', () => {
     description: 'Connect app users',
     testConnection: { connections: [] },
   }
-  const renderTool = (authorizationTab: 'workspace-auth' | 'app-user-auth', draft = appUserDraft) =>
+  const renderTool = (
+    authorizationTab: 'workspace-auth' | 'app-user-auth' | 'reuse-from-node',
+    draft = appUserDraft,
+  ) =>
     renderWorkflowHook(
       () =>
         useLastRun({
@@ -176,6 +179,7 @@ describe('useLastRun', () => {
   it.each([
     { mode: 'workspace-auth' as const, reason: 'workflow.panel.configureWorkspaceAuthorization' },
     { mode: 'app-user-auth' as const, reason: 'workflow.panel.configureTestRunConnection' },
+    { mode: 'reuse-from-node' as const, reason: 'workflow.panel.selectReuseNode' },
   ])(
     'silently blocks direct run handlers in $mode without syncing or sending a request',
     async ({ mode, reason }) => {

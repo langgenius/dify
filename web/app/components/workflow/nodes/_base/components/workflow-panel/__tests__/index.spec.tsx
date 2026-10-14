@@ -613,6 +613,7 @@ describe('workflow-panel index', () => {
   it.each([
     { mode: 'app-user-auth' as const, reason: 'workflow.panel.configureTestRunConnection' },
     { mode: 'workspace-auth' as const, reason: 'workflow.panel.configureWorkspaceAuthorization' },
+    { mode: 'reuse-from-node' as const, reason: 'workflow.panel.selectReuseNode' },
   ])(
     'explains why $mode cannot run and enables the header action after configuration',
     async ({ mode, reason }) => {
@@ -669,6 +670,13 @@ describe('workflow-panel index', () => {
             },
           }),
         )
+      } else if (mode === 'reuse-from-node') {
+        act(() =>
+          store.getState().setNodeReuseFromNode('node-1', 'Tool', 'provider/tool', {
+            id: 'source-node',
+            title: 'Source tool',
+          }),
+        )
       } else {
         mockBuiltInTools = mockBuiltInTools.map((tool) => ({
           ...tool,
@@ -684,46 +692,49 @@ describe('workflow-panel index', () => {
     },
   )
 
-  it('keeps Stop available when App user test connections are removed during a run', async () => {
-    const user = userEvent.setup()
-    renderPanelComponent(
-      <BasePanel
-        id="node-1"
-        data={
-          createData({
-            provider_type: CollectionType.builtIn,
-            _singleRunningStatus: NodeRunningStatus.Running,
-          }) as never
-        }
-      >
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodeAuthDrafts: {
-            'node-1': {
-              provider: 'Tool',
-              providerId: 'provider/tool',
-              authorizationTab: 'app-user-auth',
-              draft: {
-                oauthEnabled: false,
-                apiKeyEnabled: true,
-                description: 'Connect app users',
-                testConnection: { connections: [] },
+  it.each(['app-user-auth', 'reuse-from-node'] as const)(
+    'keeps Stop available when %s is unconfigured during a run',
+    async (authorizationTab) => {
+      const user = userEvent.setup()
+      renderPanelComponent(
+        <BasePanel
+          id="node-1"
+          data={
+            createData({
+              provider_type: CollectionType.builtIn,
+              _singleRunningStatus: NodeRunningStatus.Running,
+            }) as never
+          }
+        >
+          <div>panel-child</div>
+        </BasePanel>,
+        {
+          initialStoreState: {
+            nodeAuthDrafts: {
+              'node-1': {
+                provider: 'Tool',
+                providerId: 'provider/tool',
+                authorizationTab,
+                draft: {
+                  oauthEnabled: false,
+                  apiKeyEnabled: true,
+                  description: 'Connect app users',
+                  testConnection: { connections: [] },
+                },
               },
             },
           },
         },
-      },
-    )
-    const stop = screen.getByRole('button', {
-      name: 'workflowDebug.debug.variableInspect.trigger.stop',
-    })
-    expect(stop).not.toHaveAttribute('aria-disabled', 'true')
-    await user.click(stop)
-    expect(mockHandleStop).toHaveBeenCalledOnce()
-    expect(mockHandleSingleRun).not.toHaveBeenCalled()
-  })
+      )
+      const stop = screen.getByRole('button', {
+        name: 'workflowDebug.debug.variableInspect.trigger.stop',
+      })
+      expect(stop).not.toHaveAttribute('aria-disabled', 'true')
+      await user.click(stop)
+      expect(mockHandleStop).toHaveBeenCalledOnce()
+      expect(mockHandleSingleRun).not.toHaveBeenCalled()
+    },
+  )
 
   it('keeps Settings and Last Run navigable without Workspace authorization', async () => {
     const user = userEvent.setup()

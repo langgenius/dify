@@ -516,6 +516,7 @@
   "panel.runThisStep": "Bu adımı çalıştır",
   "panel.scrollToSelectedNode": "Seçili düğüme kaydırma",
   "panel.selectNextStep": "Sonraki Adımı Seç",
+  "panel.selectReuseNode": "Bu düğümü çalıştırmadan önce yetkilendirmesini yeniden kullanmak istediğiniz düğümü seçin.",
   "panel.startNode": "Başlangıç Düğümü",
   "panel.userInputField": "Kullanıcı Giriş Alanı",
   "publishLimit.startNodeDesc": "Bu plan için bir iş akışında 2 tetikleyici sınırına ulaştınız. Bu iş akışını yayınlamak için yükseltme yapın.",
