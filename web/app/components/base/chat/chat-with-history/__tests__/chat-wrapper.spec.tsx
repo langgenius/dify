@@ -5,6 +5,8 @@ import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   fetchChatList,
   fetchSuggestedQuestions,
@@ -1000,6 +1002,71 @@ describe('ChatWrapper', () => {
     await waitFor(() => {
       expect(submitWorkflowForm).toHaveBeenCalled()
     })
+  })
+
+  it('should explain a failed human input submission for installed app', async () => {
+    const { submitHumanInputForm: submitWorkflowForm } = await import('@/service/workflow')
+    vi.mocked(submitWorkflowForm).mockRejectedValue(
+      await httpErrorFromResponse(Response.json({ message: 'Form has expired' }, { status: 400 })),
+    )
+    const toastError = vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
+    const prepareHumanInputSubmission = vi.fn(async () => true)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      isInstalledApp: true,
+    })
+
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      prepareHumanInputSubmission,
+      chatList: [
+        { id: 'q1', content: 'Question' },
+        {
+          id: 'a1',
+          isAnswer: true,
+          content: '',
+          humanInputFormDataList: [
+            {
+              id: 'node1',
+              form_id: 'form1',
+              form_token: 'token1',
+              node_id: 'node1',
+              node_title: 'Node 1',
+              display_in_ui: true,
+              form_content: '{{#$output.test#}}',
+              inputs: [
+                {
+                  variable: 'test',
+                  label: 'Test',
+                  type: 'paragraph',
+                  required: true,
+                  output_variable_name: 'test',
+                  default: { type: 'text', value: '' },
+                },
+              ],
+              actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
+            },
+          ] as unknown as HumanInputFormData[],
+        },
+      ],
+    } as unknown as ChatHookReturn)
+
+    render(<ChatWrapper />)
+    expect(await screen.findByText('Node 1'))!.toBeInTheDocument()
+
+    const input =
+      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
+      screen.getAllByRole('textbox')[0]
+    fireEvent.change(input!, { target: { value: 'test' } })
+
+    const runButton = screen.getByText('Run')
+    fireEvent.click(runButton)
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Form has expired', expect.anything())
+    })
+    toastError.mockRestore()
   })
 
   it('should handle human input form submission for web app', async () => {

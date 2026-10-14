@@ -88,7 +88,7 @@ const Annotation: FC<Props> = (props) => {
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   const fetchAnnotationConfig = async () => {
-    const res = await doFetchAnnotationConfig(appDetail.id)
+    const res = await withRequestErrorToast(doFetchAnnotationConfig(appDetail.id))
     setAnnotationConfig(res as AnnotationReplyConfig)
     return (res as AnnotationReplyConfig).id
   }

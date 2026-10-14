@@ -192,7 +192,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (appSourceType === AppSourceType.installedApp)
-        await submitHumanInputFormService(formToken, formData)
+        await withRequestErrorToast(submitHumanInputFormService(formToken, formData))
       else await withRequestErrorToast(submitHumanInputForm(formToken, formData))
     },
     [appSourceType],

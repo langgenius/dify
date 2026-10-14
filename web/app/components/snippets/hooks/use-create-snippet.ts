@@ -1,6 +1,7 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
@@ -45,18 +46,20 @@ export const useCreateSnippet = () => {
       const snippet = await createSnippetMutation.mutateAsync({
         body: createPayload,
       })
-      await consoleClient.snippets.bySnippetId.workflows.draft.post({
-        params: { snippet_id: snippet.id },
-        body: {
-          graph: createPayload.graph,
-          input_fields: createPayload.input_fields,
-        },
-      })
+      await withRequestErrorToast(
+        consoleClient.snippets.bySnippetId.workflows.draft.post({
+          params: { snippet_id: snippet.id },
+          body: {
+            graph: createPayload.graph,
+            input_fields: createPayload.input_fields,
+          },
+        }),
+      )
 
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
     } catch {
-      // The API client surfaces the response message. Avoid showing a second generic create-failed toast here.
+      // The create mutation and the draft request each report their own failure.
     } finally {
       setIsCreatingSnippet(false)
     }

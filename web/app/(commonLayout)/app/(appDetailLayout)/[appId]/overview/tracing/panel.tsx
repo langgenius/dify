@@ -23,7 +23,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
-import { withRequestErrorToast } from '@/app/notifications/request-error'
+import { toastRequestError, withRequestErrorToast } from '@/app/notifications/request-error'
 import {
   fetchTracingConfig as doFetchTracingConfig,
   fetchTracingStatus,
@@ -172,12 +172,14 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
       getMLflowConfig(),
       getDatabricksConfig(),
       getTencentConfig(),
-    ])
+    ]).catch(toastRequestError)
   }
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
     // call api to hide secret key value
-    const { tracing_config } = await doFetchTracingConfig({ appId, provider })
+    const { tracing_config } = await withRequestErrorToast(
+      doFetchTracingConfig({ appId, provider }),
+    )
     if (provider === TracingProvider.arize) setArizeConfig(tracing_config as ArizeConfig)
     else if (provider === TracingProvider.phoenix) setPhoenixConfig(tracing_config as PhoenixConfig)
     else if (provider === TracingProvider.langSmith)

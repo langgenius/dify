@@ -456,7 +456,7 @@ export function AgentWorkingDirectoryPanel({
           downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
         } catch {
-          // The generated client reports the mutation failure through its shared error handler.
+          // The global mutation handler reports the download failure.
         } finally {
           setDownloadActionLoadingTarget(null)
         }
@@ -479,7 +479,7 @@ export function AgentWorkingDirectoryPanel({
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
       } catch {
-        // The generated client reports the mutation failure through its shared error handler.
+        // The global mutation handler reports the download failure.
       } finally {
         setDownloadActionLoadingTarget(null)
       }

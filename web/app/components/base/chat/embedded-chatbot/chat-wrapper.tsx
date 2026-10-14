@@ -351,7 +351,8 @@ const ChatWrapper = () => {
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!(await prepareHumanInputSubmission())) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
+      if (isInstalledApp)
+        await withRequestErrorToast(submitHumanInputFormService(formToken, formData))
       else await withRequestErrorToast(submitHumanInputForm(formToken, formData))
     },
     [isInstalledApp, prepareHumanInputSubmission],

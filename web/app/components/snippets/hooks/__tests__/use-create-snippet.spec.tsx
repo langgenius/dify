@@ -1,5 +1,6 @@
 import { act } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderHook } from '@/test/console/render'
 import { useCreateSnippet } from '../use-create-snippet'
 
@@ -169,6 +170,36 @@ describe('useCreateSnippet', () => {
       })
 
       expect(mockToastError).not.toHaveBeenCalled()
+      expect(result.current.isCreatingSnippet).toBe(false)
+    })
+
+    it('should explain a failed draft save after the snippet was created', async () => {
+      mockMutateAsync.mockResolvedValue({ id: 'snippet-1' })
+      mockSyncDraftWorkflow.mockRejectedValue(
+        await httpErrorFromResponse(
+          Response.json({ message: 'Draft graph is invalid' }, { status: 400 }),
+        ),
+      )
+
+      const { result } = renderHook(() => useCreateSnippet())
+
+      await act(async () => {
+        await result.current.handleCreateSnippet({
+          name: 'My snippet',
+          description: '',
+          input_fields: [],
+          graph: {
+            nodes: [],
+            edges: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+          },
+        })
+      })
+
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('Draft graph is invalid', {
+        id: 'request-error:Draft graph is invalid',
+      })
+      expect(mockPush).not.toHaveBeenCalled()
       expect(result.current.isCreatingSnippet).toBe(false)
     })
   })
