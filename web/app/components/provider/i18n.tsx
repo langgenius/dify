@@ -6,6 +6,7 @@ import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import { useId, useState } from 'react'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
+import { setClientI18n } from '@/i18n/client-instance'
 import { loadI18nResource } from '@/i18n/load-resource'
 import { supportedLocales } from '@/i18n/locale'
 import { getInitOptions } from '@/i18n/settings'
@@ -42,6 +43,8 @@ export function I18nClientProvider({
         fallbackNS: false,
         react: { useSuspense: true },
       })
+    // SSR renders this too; a module-level instance there would be shared across requests.
+    if (typeof window !== 'undefined') setClientI18n(i18n)
     return { i18n, resources }
   })
   return (

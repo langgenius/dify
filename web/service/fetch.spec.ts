@@ -16,9 +16,6 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-const translation = vi.hoisted(() => ({ current: undefined as string | undefined }))
-vi.mock('./api-error-message', () => ({ translateApiError: async () => translation.current }))
-
 const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
@@ -168,8 +165,17 @@ describe('base', () => {
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
     })
 
-    it('should display the viewer translation of an error code', async () => {
-      translation.current = '此处最多只能创建 10 个 API 密钥。'
+    it('should toast the viewer translation and keep the served message on the error', async () => {
+      const { createInstance } = await import('i18next')
+      const { getInitOptions } = await import('@/i18n/settings')
+      const i18n = createInstance()
+      await i18n.init({
+        ...getInitOptions(['apiError']),
+        lng: 'zh-Hans',
+        resources: { 'zh-Hans': { apiError: { max_keys_exceeded: '最多 {{max_keys}} 个' } } },
+      })
+      const { setClientI18n } = await import('@/i18n/client-instance')
+      setClientI18n(i18n)
       const body = {
         code: 'max_keys_exceeded',
         message: 'Cannot create more than 10 API keys for this resource type.',
@@ -183,15 +189,11 @@ describe('base', () => {
         }),
       )
 
-      try {
-        await expect(base('/apps/1/api-keys', { method: 'POST' })).rejects.toMatchObject({
-          message: translation.current,
-          data: body,
-        })
-        expect(toast.error).toHaveBeenCalledWith(translation.current)
-      } finally {
-        translation.current = undefined
-      }
+      await expect(base('/apps/1/api-keys', { method: 'POST' })).rejects.toMatchObject({
+        message: body.message,
+        data: body,
+      })
+      expect(toast.error).toHaveBeenCalledWith('最多 10 个')
     })
 
     it('should not display an empty error toast when message and error are absent', async () => {

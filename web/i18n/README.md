@@ -107,11 +107,13 @@ not load Vite plugins.
 The `apiError` namespace translates errors the backend serves, keyed by the error `code`. The
 copy is ours: write what the user should read rather than the backend's English `message`, and
 interpolate the error's `details` fields (for example `{{max_keys}}`); the generated contract
-types show each code's `details` model. `service/http-error.ts` uses the translation as the
-error's `message`, so toasts and `getErrorMessage` show it; `error.data` keeps the body as served
-and unlisted codes keep the served message. Only list codes whose raise sites send values the
-user needs through `details` rather than inside `message`. A unit test checks that every key is a
-code the Console or Web contracts document.
+types show each code's `details` model. `error.message` stays the served English; the global
+request-error toast in `service/fetch.ts` shows `translateRequestError(body)` instead, falling
+back to the served message for unlisted codes. The request layer is also loaded on the
+server, where react-i18next cannot be imported, so it reaches the browser's i18n instance through
+`getClientI18n()` (`i18n/client-instance.ts`), which the client provider registers. Only list codes whose raise sites send values the user
+needs through `details` rather than inside `message`. A unit test checks that every key is a code
+the Console or Web contracts document.
 
 ## Automated translation
 
