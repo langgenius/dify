@@ -58,7 +58,7 @@ class _FakeRetrievalRecord:
         self._content = content
         self._score = score
 
-    def model_dump(self) -> dict:
+    def model_dump(self) -> dict[str, str | float]:
         return {"content": self._content, "score": self._score}
 
 
