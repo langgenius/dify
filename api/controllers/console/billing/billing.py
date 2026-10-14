@@ -11,7 +11,6 @@ from controllers.console.billing.error import (
     BillingUnavailableError,
     BillingUnavailableErrorResponse,
     BillingUnprocessableEntityErrorResponse,
-    ComplianceRateLimitError,
     to_billing_request_error,
 )
 from controllers.console.flask_admission import console_account_admission
@@ -54,8 +53,7 @@ register_response_schema_models(
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
-    # The shared billing error mapper can return the compliance rate limit, which only compliance downloads raise.
-    @error_responses(BillingOperationFailedError, BillingUnavailableError, unreachable=(ComplianceRateLimitError,))
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
     @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
     @console_ns.response(200, "Success", console_ns.models[BillingSubscriptionResponse.__name__])
     @console_ns.response(403, "Forbidden")
@@ -93,8 +91,7 @@ class Subscription(Resource):
 
 @console_ns.route("/billing/invoices")
 class Invoices(Resource):
-    # The shared billing error mapper can return the compliance rate limit, which only compliance downloads raise.
-    @error_responses(BillingOperationFailedError, BillingUnavailableError, unreachable=(ComplianceRateLimitError,))
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
     @console_ns.response(200, "Success", console_ns.models[BillingInvoiceResponse.__name__])
     @console_ns.response(403, "Forbidden")
     @console_ns.response(

@@ -13,11 +13,10 @@ from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, 
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_errors
+from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_errors, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
-    DatasetInUseError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
@@ -42,8 +41,6 @@ from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.enums import PermissionEnum as DatasetPermissionEnum
-from services.agent.errors import AgentAccessNotReadyError
-from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
@@ -69,15 +66,18 @@ _DATASET_EDIT_ROLES = frozenset(
 
 
 def _raise_dataset_error(error: Exception) -> Never:
+    """Translate the scope errors every dataset operation can raise."""
     if isinstance(error, DatasetNotFoundError):
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
+    raise error
+
+
+def _raise_dataset_create_error(error: Exception) -> Never:
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
-    if isinstance(error, DatasetInUseFailure):
-        raise DatasetInUseError() from error
-    raise error
+    _raise_dataset_error(error)
 
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
@@ -396,7 +396,7 @@ class DatasetListApi(Resource):
         )
         return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
     @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
@@ -416,13 +416,12 @@ class DatasetListApi(Resource):
                 request_context, values=req_data.model_dump()
             )
         except Exception as error:
-            _raise_dataset_error(error)
+            _raise_dataset_create_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
 class DatasetApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset")
     @console_ns.doc(description="Get dataset details")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -441,7 +440,6 @@ class DatasetApi(Resource):
             _raise_dataset_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
 
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
     @console_ns.expect(console_ns.models[DatasetUpdatePayload.__name__])
@@ -466,7 +464,6 @@ class DatasetApi(Resource):
             _raise_dataset_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
 
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.response(204, "Dataset deleted successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE, DatasetId()),)
@@ -482,7 +479,6 @@ class DatasetApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")
 class DatasetUseCheckApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("check_dataset_use")
     @console_ns.doc(description="Check if dataset is in use")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -502,7 +498,6 @@ class DatasetUseCheckApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -594,7 +589,6 @@ class DatasetIndexingEstimateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
 class DatasetRelatedAppListApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_related_apps")
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -614,7 +608,6 @@ class DatasetRelatedAppListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
 class DatasetIndexingStatusApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_indexing_status")
     @console_ns.doc(description="Get dataset indexing status")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -636,7 +629,6 @@ class DatasetIndexingStatusApi(Resource):
 
 @console_ns.route("/datasets/api-keys")
 class DatasetApiKeyApi(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
@@ -649,7 +641,7 @@ class DatasetApiKeyApi(Resource):
             keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
+    @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -663,14 +655,13 @@ class DatasetApiKeyApi(Resource):
         dataset_ids = payload.get("dataset_ids") or []
         if not isinstance(dataset_ids, list) or any(not isinstance(item, str) for item in dataset_ids):
             raise BadRequest("dataset_ids must be a list of strings.")
-        with api_key_errors():
+        with api_key_create_errors():
             key = application_services().dataset_api_keys.create_workspace_key(request_context, tuple(dataset_ids))
         return dump_response(ApiKeyItem, key), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
 class DatasetApiDeleteApi(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete dataset API key")
     @console_ns.doc(params={"api_key_id": "API key ID"})
@@ -687,7 +678,6 @@ class DatasetApiDeleteApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")
 class DatasetEnableApiApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -748,7 +738,6 @@ class DatasetRetrievalSettingMockApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
 class DatasetErrorDocs(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_error_docs")
     @console_ns.doc(description="Get dataset error documents")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -767,7 +756,6 @@ class DatasetErrorDocs(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/permission-part-users")
 class DatasetPermissionUserListApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_permission_users")
     @console_ns.doc(description="Get dataset permission user list")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -791,7 +779,6 @@ class DatasetPermissionUserListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/auto-disable-logs")
 class DatasetAutoDisableLogApi(Resource):
-    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_auto_disable_logs")
     @console_ns.doc(description="Get dataset auto disable logs")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})

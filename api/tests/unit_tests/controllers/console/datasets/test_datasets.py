@@ -16,6 +16,7 @@ from controllers.console.datasets.datasets import (
     DatasetApiBaseUrlApi,
     DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
+    DatasetCreatePayload,
     DatasetEnableApiApi,
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
@@ -33,7 +34,6 @@ from controllers.console.datasets.datasets import (
 )
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
-    DatasetInUseError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
@@ -119,17 +119,10 @@ def test_patch_does_not_turn_omitted_fields_into_updates(datasets):
     datasets.update_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), values={"name": "Changed"})
 
 
-@pytest.mark.parametrize(
-    ("error", "http_error"),
-    [
-        (services.errors.dataset.DatasetNameDuplicateError(), DatasetNameDuplicateError),
-        (services.errors.dataset.DatasetInUseError(), DatasetInUseError),
-    ],
-)
-def test_domain_errors_are_mapped_at_transport(datasets, error, http_error):
-    datasets.delete_dataset.side_effect = error
-    with pytest.raises(http_error):
-        unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID)
+def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
+    datasets.create_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
+    with pytest.raises(DatasetNameDuplicateError):
+        unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Duplicate"), CONTEXT)
 
 
 def test_delete_success_returns_empty_204(datasets):

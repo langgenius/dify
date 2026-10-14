@@ -37,24 +37,39 @@ register_response_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 @contextmanager
 def api_key_errors() -> Generator[None]:
-    """Translate application failures without changing the Console error contract."""
+    """Translate the errors every API key operation can raise."""
     try:
         yield
     except (ApiKeyResourceNotFoundError, ApiKeyNotFoundError) as error:
         raise NotFound(str(error)) from error
-    except ApiKeyLimitExceededError as error:
-        raise ApiKeyLimitExceededHTTPError(str(error)) from error
     except UnknownDatasetIdsError as error:
         raise BadRequest(str(error)) from error
     except NoPermissionError as error:
         raise Forbidden(str(error)) from error
+
+
+@contextmanager
+def api_key_create_errors() -> Generator[None]:
+    """Creating a key can also hit the per-resource key limit."""
+    try:
+        with api_key_errors():
+            yield
+    except ApiKeyLimitExceededError as error:
+        raise ApiKeyLimitExceededHTTPError(str(error)) from error
+
+
+@contextmanager
+def app_api_key_create_errors() -> Generator[None]:
+    """Creating an app key also requires an agent app to have a published snapshot."""
+    try:
+        with api_key_create_errors():
+            yield
     except AppApiKeyNotReadyError as error:
         raise AgentAccessNotReadyError from error
 
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys")
 class AppApiKeyListResource(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("get_app_api_keys")
     @console_ns.doc(description="Get all API keys for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
@@ -85,14 +100,13 @@ class AppApiKeyListResource(Resource):
         ],
     )
     def post(self, request_context: RequestContext, resource_id: UUID) -> tuple[dict[str, object], int]:
-        with api_key_errors():
+        with app_api_key_create_errors():
             key = application_services().app_api_keys.create_key(request_context, str(resource_id))
         return dump_response(ApiKeyItem, key), 201
 
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class AppApiKeyResource(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("delete_app_api_key")
     @console_ns.doc(description="Delete an API key for an app")
     @console_ns.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
@@ -112,7 +126,6 @@ class AppApiKeyResource(Resource):
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys")
 class DatasetApiKeyListResource(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get all API keys for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
@@ -126,7 +139,7 @@ class DatasetApiKeyListResource(Resource):
             keys = application_services().dataset_api_keys.list_keys(request_context, str(resource_id))
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
+    @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.doc("create_dataset_api_key")
     @console_ns.doc(description="Create a new API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
@@ -137,14 +150,13 @@ class DatasetApiKeyListResource(Resource):
         rbac_checks=[RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, DatasetId("resource_id"))],
     )
     def post(self, request_context: RequestContext, resource_id: UUID) -> tuple[dict[str, object], int]:
-        with api_key_errors():
+        with api_key_create_errors():
             key = application_services().dataset_api_keys.create_key(request_context, str(resource_id))
         return dump_response(ApiKeyItem, key), 201
 
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class DatasetApiKeyResource(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete an API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})

@@ -26,7 +26,7 @@ from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip
 from machinery.context import RequestContext
-from services.errors.billing import BillingError
+from services.errors.billing import BillingError, ComplianceRateLimitExceededError
 
 
 class ComplianceDownloadQuery(BaseModel):
@@ -87,6 +87,8 @@ class ComplianceApi(Resource):
                 ip_address=ip_address,
                 device_info=device_info,
             )
+        except ComplianceRateLimitExceededError as error:
+            raise ComplianceRateLimitError() from error
         except BillingError as error:
             raise to_billing_request_error(error) from error
         return dump_response(ComplianceDownloadResponse, data)

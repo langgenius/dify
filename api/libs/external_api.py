@@ -181,12 +181,22 @@ def document_errors[T](target: T, *exceptions: type[Exception]) -> T:
 
     names = _documented_names(exceptions)
     existing = _class_attribute(target, "__apidoc__") if isinstance(target, type) else vars(target).get("__apidoc__")
+    if existing is False:
+        # ``@ns.hide`` hides the view or resource from the document; there is nothing to document.
+        return target
     doc: Mapping[str, Any] = existing if isinstance(existing, Mapping) else {}
     if isinstance(target, type):
-        # Class-level docs only reach operations through their per-method entries.
+        # Class-level docs only reach operations through their per-method entries. A method
+        # hidden with ``@ns.doc(<method>=False)`` stays hidden.
         doc = {
             **doc,
-            **{method: _with_documented_errors(doc.get(method, {}), names) for method in _HTTP_METHOD_DOC_KEYS},
+            **{
+                method: entry
+                if entry is False
+                else _with_documented_errors(entry if isinstance(entry, Mapping) else {}, names)
+                for method in _HTTP_METHOD_DOC_KEYS
+                for entry in (doc.get(method),)
+            },
         }
     else:
         doc = _with_documented_errors(doc, names)

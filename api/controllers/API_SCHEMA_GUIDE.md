@@ -255,10 +255,12 @@ what each Console, Web and Service API operation statically raises and fails on 
 `ERROR_LINT_ARGS=--fix` adds the missing entries, and `--fix --prune` also removes entries it cannot infer, so review
 a prune before keeping it. Inference cannot see instance calls, signals or other dynamic dispatch, so hand-declared
 entries it reports as stale may be right. It also cannot tell which branch of a shared translator (`_raise_*_error`
-helpers that dispatch on `isinstance`) a given operation reaches, so `--fix` suggests the translator's whole union:
-check each suggestion against what the called service raises and record the branches that cannot occur with
-`unreachable=(...)`, as `controllers/console/auth/login.py` does. `--report-unproduced` lists declared error statuses
-nothing inferred produces.
+helpers that dispatch on `isinstance`) a given operation reaches, so `--fix` suggests the translator's whole union.
+Give each operation a translator that maps only what its service call raises: a base translator for the scope errors
+every operation shares, and narrow ones that add their own branches before delegating to it (see
+`controllers/console/datasets/datasets_document.py` and `controllers/console/auth/login.py`). The inferred set is then
+the documented set. Fall back to `unreachable=(...)` only for a branch that cannot be split out. `--report-unproduced`
+lists declared error statuses nothing inferred produces.
 
 Controller unit tests cover the paths inference cannot follow: every 4xx/5xx JSON response an `ExternalApi` serves
 is checked against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be

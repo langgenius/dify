@@ -50,7 +50,6 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
-    DocumentIndexingError,
     InvalidMetadataError,
 )
 from controllers.service_api.schema import binary_response
@@ -1482,8 +1481,7 @@ class DocumentApi(DatasetApiResource):
         )
         return _document_and_batch_response(document, batch, session=session), 200
 
-    # DocumentService.delete_document does not enforce indexing state; the except below is defensive.
-    @error_responses(ArchivedDocumentImmutableError, unreachable=(DocumentIndexingError,))
+    @error_responses(ArchivedDocumentImmutableError)
     @service_api_ns.doc(
         summary="Delete Document",
         description="Permanently delete a document and all its chunks from the knowledge base.",
@@ -1531,10 +1529,6 @@ class DocumentApi(DatasetApiResource):
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
 
-        try:
-            # delete document
-            DocumentService.delete_document(document, session)
-        except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+        DocumentService.delete_document(document, session)
 
         return "", 204

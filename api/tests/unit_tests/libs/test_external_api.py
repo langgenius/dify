@@ -13,6 +13,7 @@ from core.errors.error import AppInvokeQuotaExceededError
 from core.plugin.impl.exc import PluginRuntimeError
 from libs.exception import BaseHTTPException
 from libs.external_api import (
+    ERROR_CODES_VENDOR_KEY,
     ErrorResponse,
     ExternalApi,
     attach_error_response_schema,
@@ -386,6 +387,29 @@ def _resolve_by_class(exception: type[Exception]) -> tuple[int, str]:
     assert issubclass(exception, BaseHTTPException)
     assert exception.code is not None
     return exception.code, exception.error_code
+
+
+def test_document_errors_keeps_hidden_views_and_methods_hidden():
+    class Partly(Resource):
+        __apidoc__ = {"get": False, "post": {"description": "create"}}
+
+    document_errors(Partly, _GuardDeniedError)
+
+    assert Partly.__apidoc__["get"] is False
+    assert Partly.__apidoc__["post"]["description"] == "create"
+    assert Partly.__apidoc__["post"]["vendor"][ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
+    assert Partly.__apidoc__["delete"]["vendor"][ERROR_CODES_VENDOR_KEY] == _documented_names_for(_GuardDeniedError)
+
+    class Hidden(Resource):
+        __apidoc__ = False
+
+    def hidden_view():
+        return {}
+
+    hidden_view.__apidoc__ = False  # type: ignore[attr-defined]
+
+    assert document_errors(Hidden, _GuardDeniedError).__apidoc__ is False
+    assert document_errors(hidden_view, _GuardDeniedError).__apidoc__ is False  # type: ignore[attr-defined]
 
 
 def test_error_responses_document_handler_wrapper_and_class_errors_by_code():

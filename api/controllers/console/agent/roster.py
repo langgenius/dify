@@ -18,7 +18,12 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.apikey import API_KEY_DELETE_ROLES, API_KEY_EDIT_ROLES, api_key_errors
+from controllers.console.apikey import (
+    API_KEY_DELETE_ROLES,
+    API_KEY_EDIT_ROLES,
+    api_key_errors,
+    app_api_key_create_errors,
+)
 from controllers.console.app.app import (
     APP_LIST_QUERY_ARRAY_FIELDS,
     AppListQuery,
@@ -1081,7 +1086,6 @@ class AgentApiStatusApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
 class AgentApiKeyListApi(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
     @console_account_admission(
         allowed_roles=API_KEY_EDIT_ROLES,
@@ -1100,14 +1104,13 @@ class AgentApiKeyListApi(Resource):
         rbac_checks=[RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId())],
     )
     def post(self, request_context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], int]:
-        with api_key_errors():
+        with app_api_key_create_errors():
             key = application_services().app_api_keys.create_agent_key(request_context, str(agent_id))
         return dump_response(ApiKeyItem, key), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>")
 class AgentApiKeyApi(Resource):
-    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.response(204, "Agent service API key deleted")
     @console_account_admission(
         allowed_roles=API_KEY_DELETE_ROLES,

@@ -128,19 +128,6 @@ class LoginApi(Resource):
         InvalidAccountPasswordRequestError,
         InvalidEmailError,
         WorkspacesLimitExceeded,
-        unreachable=(
-            EmailCodeError,
-            EmailCodeLoginRateLimitExceededError,
-            EmailCodeLoginServiceUnavailableError,
-            EmailSendIpLimitError,
-            InvalidTokenError,
-            NormalizedEmailAlreadyInUseError,
-            NotAllowedCreateWorkspace,
-            PasswordResetRateLimitExceededError,
-            SeatsLimitExceeded,
-            TurnstileServiceUnavailableError,
-            TurnstileVerificationFailedError,
-        ),
     )
     @setup_required
     @email_password_login_enabled
@@ -160,7 +147,7 @@ class LoginApi(Resource):
                 )
             )
         except account_errors.AccountApplicationError as error:
-            _raise_request_error(error)
+            _raise_password_login_error(error)
 
         if not result.workspace_found or result.tokens is None:
             return dump_response(
@@ -193,28 +180,7 @@ class LogoutApi(Resource):
 @console_ns.route("/reset-password")
 class ResetPasswordSendEmailApi(Resource):
     @error_responses(
-        AccountBannedError,
-        AccountInFreezeError,
-        EmailDomainSuspendedError,
-        PasswordResetRateLimitExceededError,
-        unreachable=(
-            AccountNotFound,
-            AuthenticationFailedError,
-            EmailCodeError,
-            EmailCodeLoginRateLimitExceededError,
-            EmailCodeLoginServiceUnavailableError,
-            EmailPasswordLoginLimitError,
-            EmailSendIpLimitError,
-            InvalidAccountPasswordRequestError,
-            InvalidEmailError,
-            InvalidTokenError,
-            NormalizedEmailAlreadyInUseError,
-            NotAllowedCreateWorkspace,
-            SeatsLimitExceeded,
-            TurnstileServiceUnavailableError,
-            TurnstileVerificationFailedError,
-            WorkspacesLimitExceeded,
-        ),
+        AccountBannedError, AccountInFreezeError, EmailDomainSuspendedError, PasswordResetRateLimitExceededError
     )
     @setup_required
     @email_password_login_enabled
@@ -229,7 +195,7 @@ class ResetPasswordSendEmailApi(Resource):
                 ip_address=extract_remote_ip(request),
             )
         except account_errors.AccountApplicationError as error:
-            _raise_request_error(error)
+            _raise_reset_password_email_error(error)
         return dump_response(SimpleResultDataResponse, {"result": "success", "data": token})
 
 
@@ -244,20 +210,6 @@ class EmailCodeLoginSendEmailApi(Resource):
         EmailSendIpLimitError,
         TurnstileServiceUnavailableError,
         TurnstileVerificationFailedError,
-        unreachable=(
-            AccountNotFound,
-            AuthenticationFailedError,
-            EmailCodeError,
-            EmailPasswordLoginLimitError,
-            InvalidAccountPasswordRequestError,
-            InvalidEmailError,
-            InvalidTokenError,
-            NormalizedEmailAlreadyInUseError,
-            NotAllowedCreateWorkspace,
-            PasswordResetRateLimitExceededError,
-            SeatsLimitExceeded,
-            WorkspacesLimitExceeded,
-        ),
     )
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeSendPayload.__name__])
@@ -274,7 +226,7 @@ class EmailCodeLoginSendEmailApi(Resource):
                 )
             )
         except account_errors.AccountApplicationError as error:
-            _raise_request_error(error)
+            _raise_email_code_send_error(error)
         return dump_response(SimpleResultDataResponse, {"result": "success", "data": token})
 
 
@@ -295,14 +247,6 @@ class EmailCodeLoginApi(Resource):
         TurnstileServiceUnavailableError,
         TurnstileVerificationFailedError,
         WorkspacesLimitExceeded,
-        unreachable=(
-            AuthenticationFailedError,
-            EmailCodeLoginRateLimitExceededError,
-            EmailPasswordLoginLimitError,
-            EmailSendIpLimitError,
-            InvalidAccountPasswordRequestError,
-            PasswordResetRateLimitExceededError,
-        ),
     )
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
@@ -323,7 +267,7 @@ class EmailCodeLoginApi(Resource):
                 )
             )
         except account_errors.AccountApplicationError as error:
-            _raise_request_error(error)
+            _raise_email_code_login_error(error)
         return _token_response(tokens, SimpleResultResponse, {"result": "success"})
 
 
@@ -358,29 +302,40 @@ def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel
     return response
 
 
-def _raise_request_error(error: account_errors.AccountApplicationError) -> Never:
+def _raise_account_state_error(error: account_errors.AccountApplicationError) -> Never:
+    """Translate the account-state errors every login flow checks first."""
     if isinstance(error, account_errors.AccountEmailDomainSuspendedError):
         raise EmailDomainSuspendedError() from error
     if isinstance(error, account_errors.AccountEmailFrozenError):
         raise AccountInFreezeError() from error
+    if isinstance(error, account_errors.LoginAccountBannedError):
+        raise AccountBannedError() from error
+    raise error
+
+
+def _raise_password_login_error(error: account_errors.AccountApplicationError) -> Never:
     if isinstance(error, account_errors.LoginRateLimitError):
         raise EmailPasswordLoginLimitError() from error
     if isinstance(error, account_errors.InvalidLoginCredentialsError):
         raise AuthenticationFailedError() from error
     if isinstance(error, account_errors.InvalidAccountPasswordError):
         raise InvalidAccountPasswordRequestError(description=str(error)) from error
-    if isinstance(error, account_errors.LoginAccountBannedError):
-        raise AccountBannedError() from error
     if isinstance(error, account_errors.InvalidLoginInvitationEmailError):
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.LoginWorkspaceLimitError):
         raise WorkspacesLimitExceeded() from error
-    if isinstance(error, account_errors.LoginWorkspaceCreationNotAllowedError):
-        raise NotAllowedCreateWorkspace() from error
-    if isinstance(error, account_errors.LoginSeatLimitError):
-        raise SeatsLimitExceeded() from error
-    if isinstance(error, account_errors.AccountNormalizedEmailAlreadyInUseError):
-        raise NormalizedEmailAlreadyInUseError() from error
+    if isinstance(error, account_errors.AccountNotFoundError):
+        raise AccountNotFound() from error
+    _raise_account_state_error(error)
+
+
+def _raise_reset_password_email_error(error: account_errors.AccountApplicationError) -> Never:
+    if isinstance(error, account_errors.ResetPasswordEmailRateLimitError):
+        raise PasswordResetRateLimitExceededError(error.retry_after_minutes) from error
+    _raise_account_state_error(error)
+
+
+def _raise_email_code_send_error(error: account_errors.AccountApplicationError) -> Never:
     if isinstance(error, account_errors.EmailCodeSendIPLimitedError):
         raise EmailSendIpLimitError() from error
     if isinstance(error, account_errors.EmailCodeSendRateLimitError):
@@ -391,14 +346,30 @@ def _raise_request_error(error: account_errors.AccountApplicationError) -> Never
         raise TurnstileServiceUnavailableError() from error
     if isinstance(error, account_errors.EmailCodeLoginUnavailableError):
         raise EmailCodeLoginServiceUnavailableError() from error
+    _raise_account_state_error(error)
+
+
+def _raise_email_code_login_error(error: account_errors.AccountApplicationError) -> Never:
     if isinstance(error, account_errors.InvalidEmailCodeTokenError):
         raise InvalidTokenError() from error
     if isinstance(error, account_errors.EmailCodeEmailMismatchError):
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.InvalidEmailCodeError):
         raise EmailCodeError() from error
+    if isinstance(error, account_errors.HumanVerificationRejectedError):
+        raise TurnstileVerificationFailedError() from error
+    if isinstance(error, account_errors.HumanVerificationUnavailableError):
+        raise TurnstileServiceUnavailableError() from error
+    if isinstance(error, account_errors.EmailCodeLoginUnavailableError):
+        raise EmailCodeLoginServiceUnavailableError() from error
     if isinstance(error, account_errors.AccountNotFoundError):
         raise AccountNotFound() from error
-    if isinstance(error, account_errors.ResetPasswordEmailRateLimitError):
-        raise PasswordResetRateLimitExceededError(error.retry_after_minutes) from error
-    raise error
+    if isinstance(error, account_errors.LoginWorkspaceLimitError):
+        raise WorkspacesLimitExceeded() from error
+    if isinstance(error, account_errors.LoginWorkspaceCreationNotAllowedError):
+        raise NotAllowedCreateWorkspace() from error
+    if isinstance(error, account_errors.LoginSeatLimitError):
+        raise SeatsLimitExceeded() from error
+    if isinstance(error, account_errors.AccountNormalizedEmailAlreadyInUseError):
+        raise NormalizedEmailAlreadyInUseError() from error
+    _raise_account_state_error(error)
