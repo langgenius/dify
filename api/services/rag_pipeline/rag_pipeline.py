@@ -1595,10 +1595,7 @@ class RagPipelineService:
                     continue
 
                 variables = workflow.rag_pipeline_variables
-                if variables:
-                    variables_map = {item["variable"]: item for item in variables}
-                else:
-                    variables_map = {}
+                variables_map = {item["variable"]: item for item in variables} if variables else {}
 
                 datasource_parameters = datasource_node_data.get("datasource_parameters", {})
                 user_input_variables_keys = []

@@ -2521,10 +2521,7 @@ class DocumentService:
                         "only_main_content": website_info.only_main_content,
                         "mode": "crawl",
                     }
-                    if len(url) > 255:
-                        document_name = url[:200] + "..."
-                    else:
-                        document_name = url
+                    document_name = url[:200] + "..." if len(url) > 255 else url
                     document = DocumentService.build_document(
                         dataset,
                         dataset_process_rule.id,
