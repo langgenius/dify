@@ -453,7 +453,7 @@ class DatasourceProviderService:
                     DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
                     DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
                     DatasourceOauthTenantParamConfig.plugin_id == datasource_provider_id.plugin_id,
-                    DatasourceOauthTenantParamConfig.enabled == True,
+                    DatasourceOauthTenantParamConfig.enabled.is_(True),
                 )
             )
             or 0

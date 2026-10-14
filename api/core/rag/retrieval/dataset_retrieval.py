@@ -597,8 +597,8 @@ class DatasetRetrieval:
                     document_ids = [record.segment.document_id for record in authorized_records]
                     dataset_document_stmt = select(DatasetDocument).where(
                         DatasetDocument.id.in_(document_ids),
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
+                        DatasetDocument.enabled.is_(True),
+                        DatasetDocument.archived.is_(False),
                     )
                     documents = session.execute(dataset_document_stmt).scalars().all()  # type: ignore
                     dataset_stmt = select(Dataset).where(
@@ -1523,8 +1523,8 @@ class DatasetRetrieval:
         document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
-            DatasetDocument.enabled == True,
-            DatasetDocument.archived == False,
+            DatasetDocument.enabled.is_(True),
+            DatasetDocument.archived.is_(False),
         )
         filters = []  # type: ignore
         metadata_condition = None
@@ -2077,8 +2077,8 @@ class DatasetRetrieval:
                 select(DocumentModel.dataset_id, func.count(DocumentModel.id).label("available_document_count"))
                 .where(
                     DocumentModel.indexing_status == "completed",
-                    DocumentModel.enabled == True,
-                    DocumentModel.archived == False,
+                    DocumentModel.enabled.is_(True),
+                    DocumentModel.archived.is_(False),
                     DocumentModel.dataset_id.in_(dataset_ids),
                 )
                 .group_by(DocumentModel.dataset_id)

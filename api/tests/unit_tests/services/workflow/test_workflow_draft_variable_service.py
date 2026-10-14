@@ -63,8 +63,8 @@ class TestDraftVariableSaver:
             node_execution_id="test_execution_id",
             user=mock_user,
         )
-        assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") == False
-        assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") == True
+        assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") is False
+        assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") is True
 
     def test__normalize_variable_for_start_node(self, sqlite_session: Session):
         @dataclasses.dataclass(frozen=True)
@@ -614,13 +614,13 @@ class TestWorkflowDraftVariableService:
     def test_system_variable_editability_check(self):
         """Test the system variable editability function directly"""
         # Test editable system variables
-        assert is_system_variable_editable("files") == True
-        assert is_system_variable_editable("query") == True
+        assert is_system_variable_editable("files") is True
+        assert is_system_variable_editable("query") is True
 
         # Test non-editable system variables
-        assert is_system_variable_editable("workflow_id") == False
-        assert is_system_variable_editable("conversation_id") == False
-        assert is_system_variable_editable("user_id") == False
+        assert is_system_variable_editable("workflow_id") is False
+        assert is_system_variable_editable("conversation_id") is False
+        assert is_system_variable_editable("user_id") is False
 
     def test_workflow_draft_variable_factory_methods(self):
         """Test that factory methods create proper instances"""
@@ -632,7 +632,7 @@ class TestWorkflowDraftVariableService:
             app_id=test_app_id, name="conv_var", value=test_value, description="Test conversation variable"
         )
         assert conv_var.get_variable_type() == DraftVariableType.CONVERSATION
-        assert conv_var.editable == True
+        assert conv_var.editable is True
         assert conv_var.node_execution_id is None
 
         # Test system variable factory
@@ -640,7 +640,7 @@ class TestWorkflowDraftVariableService:
             app_id=test_app_id, name="workflow_id", value=test_value, node_execution_id="exec-id", editable=False
         )
         assert sys_var.get_variable_type() == DraftVariableType.SYS
-        assert sys_var.editable == False
+        assert sys_var.editable is False
         assert sys_var.node_execution_id == "exec-id"
 
         # Test node variable factory
@@ -654,8 +654,8 @@ class TestWorkflowDraftVariableService:
             editable=True,
         )
         assert node_var.get_variable_type() == DraftVariableType.NODE
-        assert node_var.visible == True
-        assert node_var.editable == True
+        assert node_var.visible is True
+        assert node_var.editable is True
         assert node_var.node_execution_id == "exec-id"
 
 
