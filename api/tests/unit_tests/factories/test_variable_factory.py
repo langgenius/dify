@@ -1,7 +1,6 @@
 import math
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -197,7 +196,7 @@ def test_array_number_variable() -> None:
 def test_build_segment_scalar_values() -> None:
     @dataclass
     class TestCase:
-        value: Any
+        value: object
         expected: Segment
         description: str
 
@@ -821,7 +820,7 @@ class TestBuildSegmentValueErrors:
 
         name: str
         description: str
-        test_value: Any
+        test_value: object
 
     def _get_test_cases(self) -> list[ValueErrorTestCase]:
         """Get all test cases for ValueError scenarios."""
