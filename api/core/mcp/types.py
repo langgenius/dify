@@ -23,7 +23,8 @@ for reference.
   not separate types in the schema.
 """
 # Latest protocol version the Dify MCP client negotiates with upstream MCP servers.
-LATEST_PROTOCOL_VERSION = "2025-06-18"
+# Easy Redmine answers initialize with 2025-11-25. Older revisions stay accepted.
+LATEST_PROTOCOL_VERSION = "2025-11-25"
 # Latest protocol version the Dify MCP server advertises to connecting clients.
 SERVER_LATEST_PROTOCOL_VERSION = "2025-06-18"
 # Protocol versions the Dify MCP server can negotiate down to (e.g. Claude on 2024-11-05).

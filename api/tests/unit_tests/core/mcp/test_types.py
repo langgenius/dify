@@ -60,7 +60,7 @@ class TestConstants:
 
     def test_protocol_versions(self):
         """Test protocol version constants."""
-        assert LATEST_PROTOCOL_VERSION == "2025-06-18"
+        assert LATEST_PROTOCOL_VERSION == "2025-11-25"
         assert SERVER_LATEST_PROTOCOL_VERSION == "2025-06-18"
         assert DEFAULT_NEGOTIATED_VERSION == "2025-03-26"
         assert sorted(SERVER_SUPPORTED_PROTOCOL_VERSIONS) == ["2024-11-05", "2025-03-26", "2025-06-18"]

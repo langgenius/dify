@@ -28,6 +28,7 @@ from core.mcp.types import (
     JSONRPCNotification,
     JSONRPCRequest,
     JSONRPCResponse,
+    LATEST_PROTOCOL_VERSION,
     RequestId,
     SessionMessage,
 )
@@ -103,6 +104,7 @@ class StreamableHTTPTransport:
         self.request_headers = {
             ACCEPT: f"{JSON}, {SSE}",
             CONTENT_TYPE: JSON,
+            "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
             **self.headers,
         }
         self.stop_event = threading.Event()

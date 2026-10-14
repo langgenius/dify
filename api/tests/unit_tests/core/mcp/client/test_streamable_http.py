@@ -525,6 +525,7 @@ class TestStreamableHTTPTransportInit:
     def test_custom_headers_merged_into_request_headers(self):
         t = _new_transport(headers={"Authorization": "Bearer tok"})
         assert t.request_headers["Authorization"] == "Bearer tok"
+        assert t.request_headers["MCP-Protocol-Version"] == "2025-11-25"
         assert "Accept" in t.request_headers
         assert "content-type" in t.request_headers
 

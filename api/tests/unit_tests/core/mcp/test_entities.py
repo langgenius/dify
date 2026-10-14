@@ -28,6 +28,7 @@ class TestProtocolVersions:
         assert len(SUPPORTED_PROTOCOL_VERSIONS) >= 3
         assert "2024-11-05" in SUPPORTED_PROTOCOL_VERSIONS
         assert "2025-03-26" in SUPPORTED_PROTOCOL_VERSIONS
+        assert "2025-06-18" in SUPPORTED_PROTOCOL_VERSIONS
         assert LATEST_PROTOCOL_VERSION in SUPPORTED_PROTOCOL_VERSIONS
 
     def test_latest_protocol_version_is_supported(self):
