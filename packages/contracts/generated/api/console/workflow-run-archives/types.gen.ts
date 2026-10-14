@@ -31,9 +31,17 @@ export type WorkflowRunArchiveDownloadTaskResponse = {
   year: number
 }
 
+export type WorkflowRunArchiveDeletionTaskResponse = {
+  error?: string | null
+  month: number
+  status: WorkflowRunArchiveDeletionStatus
+  year: number
+}
+
 export type WorkflowRunArchiveMonthResponse = {
   archive_bytes: number
   bundle_count: number
+  deletion_status?: 'failed' | 'pending' | 'processing' | null
   download_task?: WorkflowRunArchiveDownloadTaskResponse | null
   latest_archived_at: string
   month: number
@@ -50,6 +58,8 @@ export type WorkflowRunArchiveSummaryResponse = {
 }
 
 export type WorkflowRunArchiveDownloadStatus = 'failed' | 'pending' | 'processing' | 'ready'
+
+export type WorkflowRunArchiveDeletionStatus = 'completed' | 'failed' | 'pending' | 'processing'
 
 export type GetWorkflowRunArchivesData = {
   body?: never
@@ -94,3 +104,20 @@ export type GetWorkflowRunArchivesDownloadsByDownloadIdResponses = {
 
 export type GetWorkflowRunArchivesDownloadsByDownloadIdResponse =
   GetWorkflowRunArchivesDownloadsByDownloadIdResponses[keyof GetWorkflowRunArchivesDownloadsByDownloadIdResponses]
+
+export type DeleteWorkflowRunArchivesByYearByMonthData = {
+  body?: never
+  path: {
+    month: number
+    year: number
+  }
+  query?: never
+  url: '/workflow-run-archives/{year}/{month}'
+}
+
+export type DeleteWorkflowRunArchivesByYearByMonthResponses = {
+  202: WorkflowRunArchiveDeletionTaskResponse
+}
+
+export type DeleteWorkflowRunArchivesByYearByMonthResponse =
+  DeleteWorkflowRunArchivesByYearByMonthResponses[keyof DeleteWorkflowRunArchivesByYearByMonthResponses]
