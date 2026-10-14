@@ -30,6 +30,12 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.SQLiteBusyTimeoutMs != DefaultSQLiteBusyTimeoutMs {
 		t.Errorf("expected busy_timeout=%d, got %d", DefaultSQLiteBusyTimeoutMs, cfg.SQLiteBusyTimeoutMs)
 	}
+	if cfg.OutputPollInterval != DefaultOutputPollInterval {
+		t.Errorf("expected output poll interval=%s, got %s", DefaultOutputPollInterval, cfg.OutputPollInterval)
+	}
+	if cfg.MaxPollInterval != DefaultMaxPollInterval {
+		t.Errorf("expected max poll interval=%s, got %s", DefaultMaxPollInterval, cfg.MaxPollInterval)
+	}
 }
 
 func TestConfigPaths(t *testing.T) {
