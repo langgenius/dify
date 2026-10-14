@@ -12,7 +12,7 @@ import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -71,8 +71,11 @@ function TriggerAccessPointItem({
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },
       onSuccess: () => invalidateTriggers(appId),
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )

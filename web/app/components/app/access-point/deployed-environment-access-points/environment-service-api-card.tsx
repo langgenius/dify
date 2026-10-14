@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 
@@ -41,8 +41,11 @@ export function EnvironmentServiceApiCard({
       scope: {
         id: `environment-service-api-toggle:${appId}:${environmentId}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )

@@ -11,6 +11,8 @@ const STALE_TIME = 1000 * 60 * 5
 
 /** Global failure notifications, shared with test clients so they behave like the app. */
 export function createRequestErrorCaches() {
+  // Server prefetches render no UI, and toasts exist only in the browser.
+  if (environmentManager.isServer()) return {}
   return {
     // Global cache callbacks run once per failed request and cannot be overridden per call site.
     queryCache: new QueryCache({

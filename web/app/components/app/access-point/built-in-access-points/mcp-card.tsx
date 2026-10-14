@@ -19,7 +19,7 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { consoleQuery } from '@/service/console'
 import {
   useInvalidateMCPServerDetail,
@@ -66,8 +66,11 @@ export function MCPAccessPointCard({
         id: `app-mcp-toggle:${appInfo.id}`,
       },
       onSuccess: () => invalidateServerDetail(appInfo.id),
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )

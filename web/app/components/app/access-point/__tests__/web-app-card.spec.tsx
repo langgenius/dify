@@ -461,7 +461,10 @@ describe('WebAppAccessPointCard', () => {
     await user.click(screen.getByRole('switch'))
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.error).toHaveBeenCalledWith(
+        'common.actionMsg.modifiedUnsuccessfully',
+        expect.anything(),
+      )
     })
   })
 

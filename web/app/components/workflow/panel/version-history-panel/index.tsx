@@ -13,6 +13,7 @@ import VersionInfoModal from '@/app/components/app/app-publisher/version-info-mo
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
@@ -269,8 +270,11 @@ export const VersionHistoryPanel = ({
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow({
-    onError: () => {
-      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
+    onError: (error) => {
+      toastRequestError(
+        error,
+        t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }),
+      )
     },
   })
 

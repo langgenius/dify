@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import useTheme from '@/hooks/use-theme'
@@ -53,8 +54,11 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const { handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow({
-    onError: () => {
-      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
+    onError: (error) => {
+      toastRequestError(
+        error,
+        t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }),
+      )
     },
   })
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()

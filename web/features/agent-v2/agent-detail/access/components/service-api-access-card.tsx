@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useDocLink } from '@/context/i18n'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/console'
@@ -48,8 +49,11 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
               : agentDetail,
         )
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          tCommon(($) => $['actionMsg.modifiedUnsuccessfully']),
+        )
       },
     }),
   )

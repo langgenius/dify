@@ -20,7 +20,7 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { consoleQuery } from '@/service/console'
 import EndpointModal from './endpoint-modal'
 
@@ -40,8 +40,11 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
     isShowEndpointModal,
     { setTrue: showEndpointModalConfirm, setFalse: hideEndpointModalConfirm },
   ] = useBoolean(false)
-  const showSaveError = () => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  const showSaveError = (error: unknown) => {
+    toastRequestError(
+      error,
+      t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+    )
   }
   const { mutate: enableEndpoint, isPending: isEnabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.enable.post.mutationOptions({

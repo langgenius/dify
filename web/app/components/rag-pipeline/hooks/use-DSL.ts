@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleClient } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -42,8 +43,11 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
       return true
     },
-    onError: () => {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+    onError: (error) => {
+      toastRequestError(
+        error,
+        t(($) => $.exportFailed, { ns: 'app' }),
+      )
     },
   })
   const handleExportDSL = useCallback(

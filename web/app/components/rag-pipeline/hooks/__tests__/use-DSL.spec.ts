@@ -220,10 +220,9 @@ describe('useDSLByCanEdit', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.exportFailed',
-        })
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.exportFailed' }),
+        )
       })
     })
 
@@ -303,10 +302,9 @@ describe('useDSLByCanEdit', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.exportFailed',
-        })
+        expect(toastMocks.call).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.exportFailed' }),
+        )
       })
     })
   })

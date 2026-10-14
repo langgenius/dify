@@ -30,7 +30,7 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { AccessMode } from '@/models/access-control'
 import {
   useAppWhiteListSubjects,
@@ -98,16 +98,22 @@ export function WebAppAccessPointCard({
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
   const resetSiteAccessToken = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
       onSuccess: () => setShowRegenerate(false),
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }),
+        )
         setShowRegenerate(false)
       },
     }),

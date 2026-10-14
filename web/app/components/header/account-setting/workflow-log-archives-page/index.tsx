@@ -29,6 +29,7 @@ import {
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { API_PREFIX } from '@/config'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -375,8 +376,11 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   )
   const createDownloadMutation = useMutation(
     consoleQuery.workflowRunArchives.downloads.post.mutationOptions({
-      onError: () => {
-        toast.error(t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }),
+        )
       },
     }),
   )

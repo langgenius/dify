@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
@@ -81,8 +82,11 @@ export function AgentVersionRestore({
         setStage('closed')
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       },
-      onError: () => {
-        toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          t(($) => $['api.actionFailed'], { ns: 'common' }),
+        )
       },
     }),
   )

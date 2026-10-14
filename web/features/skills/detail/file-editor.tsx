@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { toast } from '@/app/notifications'
-import { withRequestErrorToast } from '@/app/notifications/request-error'
+import { toastRequestError, withRequestErrorToast } from '@/app/notifications/request-error'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
@@ -320,8 +320,11 @@ export function FileEditor({
       if (!file) return
       downloadBlob({ data: blob, fileName: getPathBaseName(file.path) })
     },
-    onError: () => {
-      toast.error(t(($) => $['skillManagement.detail.loadFailed']))
+    onError: (error) => {
+      toastRequestError(
+        error,
+        t(($) => $['skillManagement.detail.loadFailed']),
+      )
     },
   })
 

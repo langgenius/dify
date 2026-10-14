@@ -21,6 +21,7 @@ import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
@@ -98,8 +99,11 @@ export function WebAppAccessCard({
               : agentDetail,
         )
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          tCommon(($) => $['actionMsg.modifiedUnsuccessfully']),
+        )
       },
     }),
   )
@@ -122,8 +126,11 @@ export function WebAppAccessCard({
           },
         )
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.generatedUnsuccessfully']))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          tCommon(($) => $['actionMsg.generatedUnsuccessfully']),
+        )
       },
     }),
   )

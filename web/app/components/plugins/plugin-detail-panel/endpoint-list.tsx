@@ -7,7 +7,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import EndpointCard from './endpoint-card'
@@ -34,8 +34,11 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   )
   const [isShowEndpointModal, { setTrue: showEndpointModal, setFalse: hideEndpointModal }] =
     useBoolean(false)
-  const showSaveError = () => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  const showSaveError = (error: unknown) => {
+    toastRequestError(
+      error,
+      t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+    )
   }
   const { mutate: createEndpoint, isPending } = useMutation(
     consoleQuery.workspaces.current.endpoints.post.mutationOptions({

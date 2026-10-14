@@ -627,7 +627,10 @@ describe('Agent access surface cards', () => {
         expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
       })
       expect(openButton).toBeDisabled()
-      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.error).toHaveBeenCalledWith(
+        'common.actionMsg.modifiedUnsuccessfully',
+        expect.anything(),
+      )
     })
 
     it('should replace the Web App URL token without discarding the cached site settings', async () => {
@@ -1141,7 +1144,10 @@ describe('Agent access surface cards', () => {
       await waitFor(() => {
         expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
       })
-      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.error).toHaveBeenCalledWith(
+        'common.actionMsg.modifiedUnsuccessfully',
+        expect.anything(),
+      )
       expect(toast.success).not.toHaveBeenCalled()
     })
 

@@ -23,6 +23,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
@@ -216,8 +217,11 @@ export function SkillDetailSidebarActions({
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${detail.name}.zip` })
     },
-    onError: () => {
-      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    onError: (error) => {
+      toastRequestError(
+        error,
+        tCommon(($) => $['operation.downloadFailed']),
+      )
     },
   })
 

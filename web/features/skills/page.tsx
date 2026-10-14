@@ -47,6 +47,7 @@ import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { SkillCardTags } from '@/features/tag-management/components/skill-card-tags'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -428,8 +429,11 @@ function SkillCard({
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
     },
-    onError: () => {
-      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    onError: (error) => {
+      toastRequestError(
+        error,
+        tCommon(($) => $['operation.downloadFailed']),
+      )
     },
   })
   const isDraft = !skill.latest_published_version_id

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import {
   datasetDefaultPermissionKeysAtom,
   refreshWorkspacePermissionKeysAfterMutationDenialAtom,
@@ -206,7 +207,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [reindexing, setReindexing] = useState(false)
   // A revoked write permission is shown by the page itself instead of a toast.
   const notifyWriteFailure = (message: string) => (error: Error) => {
-    if (getHttpErrorStatus(error) !== 403) toast.error(message)
+    if (getHttpErrorStatus(error) !== 403) toastRequestError(error, message)
   }
   const { mutateAsync: uploadDocument } = useMutation(
     consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocuments.mutationOptions({

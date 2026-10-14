@@ -5,6 +5,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
@@ -48,9 +49,15 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   const handleSuccess = useCallback(() => {
     toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }, [t])
-  const handleError = useCallback(() => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-  }, [t])
+  const handleError = useCallback(
+    (error: Error) => {
+      toastRequestError(
+        error,
+        t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
+    },
+    [t],
+  )
   const pauseMutation = usePauseIndexing({
     datasetId,
     documentId,

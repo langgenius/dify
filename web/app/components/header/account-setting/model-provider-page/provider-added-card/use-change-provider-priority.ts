@@ -2,7 +2,7 @@ import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/w
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
@@ -38,8 +38,11 @@ export function useChangeProviderPriority(
               provider?.supported_model_types.forEach((modelType) => updateModelList(modelType))
           })
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toastRequestError(
+            error,
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),

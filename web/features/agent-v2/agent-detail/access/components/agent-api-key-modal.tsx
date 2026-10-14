@@ -23,6 +23,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 
@@ -68,8 +69,11 @@ export function AgentApiKeyModal({
         })
         toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          tCommon(($) => $['actionMsg.modifiedUnsuccessfully']),
+        )
       },
     }),
   )
@@ -89,8 +93,11 @@ export function AgentApiKeyModal({
         })
         toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
-      onError: () => {
-        toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      onError: (error) => {
+        toastRequestError(
+          error,
+          tCommon(($) => $['actionMsg.modifiedUnsuccessfully']),
+        )
       },
     }),
   )
