@@ -83,15 +83,21 @@ const render = (
 const ControlledHarness = ({
   initialDraft,
   onChange,
+  canOAuth,
+  canApiKey,
 }: {
   initialDraft: AppUserAuthDraft
   onChange: (draft: AppUserAuthDraft) => void
+  canOAuth?: boolean
+  canApiKey?: boolean
 }) => {
   const [draft, setDraft] = useState(initialDraft)
 
   return (
     <AppUserAuth
       pluginPayload={pluginPayload}
+      canOAuth={canOAuth}
+      canApiKey={canApiKey}
       value={draft}
       onChange={(nextDraft) => {
         setDraft(nextDraft)
@@ -166,24 +172,73 @@ describe('AppUserAuth', () => {
   })
 
   it.each([
-    { canOAuth: false, canApiKey: true },
-    { canOAuth: true, canApiKey: false },
-    { canOAuth: false, canApiKey: false },
-  ])('offers only supported methods for $canOAuth OAuth and $canApiKey API key', (props) => {
-    render(<AppUserAuth pluginPayload={pluginPayload} {...props} />)
+    { mode: 'API key only', canOAuth: false, canApiKey: true },
+    { mode: 'OAuth only', canOAuth: true, canApiKey: false },
+    { mode: 'unsupported methods', canOAuth: false, canApiKey: false },
+  ])(
+    'normalizes old method flags for $mode while keeping configuration and description editable',
+    async ({ canOAuth, canApiKey }) => {
+      const user = userEvent.setup()
+      const initialDraft = {
+        ...createAppUserAuthDraft(),
+        oauthEnabled: !canOAuth,
+        apiKeyEnabled: !canApiKey,
+      }
+      const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
+      render(
+        <ControlledHarness
+          initialDraft={initialDraft}
+          onChange={onChange}
+          canOAuth={canOAuth}
+          canApiKey={canApiKey}
+        />,
+      )
 
-    for (const { available, name } of [
-      { available: props.canOAuth, name: 'plugin.auth.appUser.oauth' },
-      { available: props.canApiKey, name: 'plugin.auth.connection.apiKey' },
-    ]) {
-      const method = screen.queryByRole('checkbox', { name })
-      if (available) expect(method).toBeChecked()
-      else expect(method).not.toBeInTheDocument()
-    }
-    expect(
-      screen.getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
-    ).toBeVisible()
-  })
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            oauthEnabled: canOAuth,
+            apiKeyEnabled: canApiKey,
+          }),
+        ),
+      )
+      if (canOAuth) {
+        expect(screen.getByRole('heading', { name: 'plugin.auth.oauthClient' })).toBeVisible()
+        expect(screen.getByText('plugin.auth.appUser.oauthClientDescription')).toBeVisible()
+        expect(screen.queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }),
+        ).not.toHaveAccessibleDescription()
+        expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ client: undefined }))
+        await saveCustomClient(user)
+        expect(
+          screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' }),
+        ).toBeVisible()
+      } else if (canApiKey) {
+        expect(
+          screen.getByRole('heading', { name: 'plugin.auth.appUser.userAuthentication' }),
+        ).toBeVisible()
+        expect(screen.getByText('plugin.auth.connection.apiKey')).toBeVisible()
+        expect(screen.getByText('plugin.auth.common.required')).toBeVisible()
+        expect(screen.getByText('plugin.auth.appUser.apiKeyRequiredDescription')).toBeVisible()
+        expect(screen.queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
+      }
+      const description = screen.getByRole('textbox', {
+        name: 'plugin.auth.appUser.connectionDescription',
+      })
+      await user.type(description, 'Use your account')
+      expect(description).toHaveValue('Use your account')
+      expect(description).not.toHaveAttribute('aria-invalid', 'true')
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          oauthEnabled: canOAuth,
+          apiKeyEnabled: canApiKey,
+          description: 'Use your account',
+        }),
+      )
+    },
+  )
 
   it('saves the shared custom client and retains its server configuration while OAuth is disabled', async () => {
     const user = userEvent.setup()

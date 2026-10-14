@@ -14,14 +14,20 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import ToolAuthorization from '../tool-authorization'
 
+const mocks = vi.hoisted(() => ({ canOAuth: false, consoleCall: vi.fn() }))
+
 vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
   usePluginAuth: () => ({
     isLoading: false,
     isAuthorized: true,
-    canOAuth: false,
+    canOAuth: mocks.canOAuth,
     canApiKey: true,
     credentials: [],
   }),
+}))
+
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: (...args: unknown[]) => mocks.consoleCall(...args) },
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth/workspace-auth', () => ({
@@ -128,6 +134,22 @@ const seedReuseReference = (
 }
 
 describe('Workflow tool authorization bridge', () => {
+  beforeEach(() => {
+    mocks.canOAuth = false
+    mocks.consoleCall.mockImplementation(async (path: string[]) => {
+      if (path.includes('clientSchema')) {
+        return {
+          schema: [],
+          is_oauth_custom_client_enabled: false,
+          is_system_oauth_params_exists: true,
+          client_params: {},
+          redirect_uri: 'https://example.com/oauth/callback',
+        }
+      }
+      throw new Error(`Unexpected console request: ${path.join('.')}`)
+    })
+  })
+
   it('preserves separate node drafts through tab changes and node panel remounts', async () => {
     const user = userEvent.setup()
     const { store, content, rerender } = setup()
@@ -162,7 +184,7 @@ describe('Workflow tool authorization bridge', () => {
     'starts a fresh local configuration when identity changes to $provider / $providerId',
     async ({ provider, providerId }) => {
       const user = userEvent.setup()
-      const { content, rerender } = setup()
+      const { store, content, rerender } = setup()
       await user.click(screen.getByRole('tab', { name: appUserTab }))
       await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'Provider A only')
 
@@ -174,12 +196,22 @@ describe('Workflow tool authorization bridge', () => {
       )
       await user.click(screen.getByRole('tab', { name: appUserTab }))
       expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue('')
-      expect(screen.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' })).toBeChecked()
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'plugin.auth.appUser.userAuthentication' }),
+      ).toBeVisible()
+      expect(screen.getByText('plugin.auth.common.required')).toBeVisible()
+      expect(store.getState().nodeAuthDrafts['node-1']?.draft).toMatchObject({
+        oauthEnabled: false,
+        apiKeyEnabled: true,
+        description: '',
+      })
     },
   )
 
   it('updates errors while editing and revalidates when returning to App user Auth', async () => {
     const user = userEvent.setup()
+    mocks.canOAuth = true
     const { store } = setup()
     await user.click(screen.getByRole('tab', { name: appUserTab }))
     const description = screen.getByRole('textbox', { name: descriptionLabel })
@@ -193,6 +225,9 @@ describe('Workflow tool authorization bridge', () => {
     expect(description).toHaveAttribute('aria-invalid', 'true')
     expect(store.getState().nodeAuthDrafts['node-1']?.errors?.description).toBe(true)
 
+    const oauth = screen.getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' })
+    await user.click(oauth)
+    expect(oauth).not.toHaveAttribute('aria-invalid', 'true')
     const apiKey = screen.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' })
     await user.click(apiKey)
     expect(apiKey).toHaveAttribute('aria-invalid', 'true')

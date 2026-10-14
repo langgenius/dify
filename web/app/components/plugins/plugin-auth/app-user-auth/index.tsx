@@ -49,35 +49,55 @@ const AppUserAuth = ({
   const methodsErrorId = useId()
   const oauthClientErrorId = useId()
   const testConnectionLabelId = useId()
+  const methodSectionLabelId = useId()
   // Standalone previews own their draft; workflow callers share it with the canvas.
   const [localDraft, setLocalDraft] = useState(() =>
     createAppUserAuthDraft({ canOAuth, canApiKey }),
   )
   const draft = value ?? localDraft
   const client = oauthClient.clientType ? { type: oauthClient.clientType } : undefined
-  const errors = validateAppUserAuth({ ...draft, client })
-  const { oauthEnabled, apiKeyEnabled, description } = draft
+  const oauthOnly = canOAuth && !canApiKey
+  const apiKeyOnly = canApiKey && !canOAuth
+  const oauthEnabled = canOAuth && (oauthOnly || draft.oauthEnabled)
+  const apiKeyEnabled = canApiKey && (apiKeyOnly || draft.apiKeyEnabled)
+  const errors = validateAppUserAuth({ ...draft, oauthEnabled, apiKeyEnabled, client })
+  const showOAuthClientError = !oauthOnly && oauthEnabled && errors.oauthClient
+  const { description } = draft
   const oauthDisabled =
     !canManageCredential ||
     !!notAllowCustomCredential ||
     oauthClient.query.isPending ||
     oauthClient.query.isError
-  // The canvas validates the UI draft. Mirror only the provider's configured
-  // client type; its parameters and secrets remain in the shared query/form.
+  // A sole supported method is required. Keep shared validation in sync with the
+  // effective methods and mirror client type only after its query succeeds.
   useEffect(() => {
+    if (!value) return
+    const syncClient = canOAuth && oauthClient.query.isSuccess
     if (
-      !value ||
-      !canOAuth ||
-      !oauthClient.query.isSuccess ||
-      draft.client?.type === oauthClient.clientType
+      draft.oauthEnabled === oauthEnabled &&
+      draft.apiKeyEnabled === apiKeyEnabled &&
+      (!syncClient || draft.client?.type === oauthClient.clientType)
     )
       return
     const nextDraft = {
       ...draft,
-      client: oauthClient.clientType ? { type: oauthClient.clientType } : undefined,
+      oauthEnabled,
+      apiKeyEnabled,
+      ...(syncClient
+        ? { client: oauthClient.clientType ? { type: oauthClient.clientType } : undefined }
+        : {}),
     }
     onChange?.(nextDraft)
-  }, [canOAuth, oauthClient.query.isSuccess, oauthClient.clientType, draft, value, onChange])
+  }, [
+    canOAuth,
+    oauthEnabled,
+    apiKeyEnabled,
+    oauthClient.query.isSuccess,
+    oauthClient.clientType,
+    draft,
+    value,
+    onChange,
+  ])
   const testConnection =
     draft.testConnection ??
     createMockTestConnectionDraft({
@@ -85,7 +105,7 @@ const AppUserAuth = ({
       canApiKey,
     })
   const updateDraft = (updates: Partial<AppUserAuthDraft>) => {
-    const nextDraft = { ...draft, client, ...updates }
+    const nextDraft = { ...draft, oauthEnabled, apiKeyEnabled, client, ...updates }
     if (!value) setLocalDraft(nextDraft)
     onChange?.(nextDraft)
   }
@@ -108,110 +128,151 @@ const AppUserAuth = ({
     oauthDisabled,
   })
 
+  const oauthClientControl =
+    oauthEnabled &&
+    (client ? (
+      <Button
+        type="button"
+        variant="ghost"
+        className="h-8 w-full justify-between gap-0 rounded-lg bg-components-input-bg-normal p-0 system-sm-regular text-text-primary hover:bg-components-input-bg-hover"
+        onClick={openClientDialog}
+        disabled={oauthDisabled}
+        aria-describedby={showOAuthClientError ? oauthClientErrorId : undefined}
+      >
+        <span className="min-w-0 px-2 wrap-anywhere">
+          {client.type === 'default'
+            ? t(($) => $['auth.appUser.defaultClient'], { ns: 'plugin' })
+            : t(($) => $['auth.appUser.customClient'], { ns: 'plugin' })}
+        </span>
+        <span className="flex h-full shrink-0 items-center border-l border-components-panel-bg px-2">
+          <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+        </span>
+      </Button>
+    ) : (
+      <Button
+        type="button"
+        variant="primary"
+        className="h-8 w-full"
+        onClick={openClientDialog}
+        disabled={oauthDisabled}
+        aria-describedby={showOAuthClientError ? oauthClientErrorId : undefined}
+      >
+        {t(($) => $['auth.common.configureClient'], { ns: 'plugin' })}
+      </Button>
+    ))
+  const oauthClientError = showOAuthClientError && (
+    <p
+      id={oauthClientErrorId}
+      role="alert"
+      className="py-0.5 body-xs-regular text-text-destructive"
+    >
+      {t(($) => $['auth.appUser.setupClient'], { ns: 'plugin' })}
+    </p>
+  )
+
   return (
     <div className="flex flex-col gap-4">
-      <Fieldset
-        aria-label={t(($) => $['auth.authorization'], { ns: 'plugin' })}
-        aria-describedby={errors.methods ? methodsErrorId : undefined}
-        className="space-y-3"
-      >
-        {canOAuth && (
-          <Field className="gap-1">
-            <FieldLabel className="flex min-h-6 items-center gap-3 system-sm-medium text-text-secondary">
-              <Checkbox
-                checked={oauthEnabled}
-                onCheckedChange={(checked) => updateDraft({ oauthEnabled: checked })}
-                aria-invalid={errors.methods || undefined}
-                aria-describedby={[oauthDescriptionId, errors.methods && methodsErrorId]
-                  .filter(Boolean)
-                  .join(' ')}
-              />
-              {t(($) => $['auth.appUser.oauth'], { ns: 'plugin' })}
-            </FieldLabel>
-            <div className="space-y-2 pl-7">
-              <p id={oauthDescriptionId} className="body-xs-regular text-text-tertiary">
-                {client && providerName
-                  ? t(($) => $['auth.appUser.oauthDescriptionWithProvider'], {
-                      ns: 'plugin',
-                      provider: providerName,
-                    })
-                  : t(($) => $['auth.appUser.oauthDescription'], { ns: 'plugin' })}
-              </p>
-              {oauthEnabled &&
-                (client ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-8 w-full justify-between gap-0 rounded-lg bg-components-input-bg-normal p-0 system-sm-regular text-text-primary hover:bg-components-input-bg-hover"
-                    onClick={openClientDialog}
-                    disabled={oauthDisabled}
-                    aria-describedby={errors.oauthClient ? oauthClientErrorId : undefined}
-                  >
-                    <span className="min-w-0 px-2 wrap-anywhere">
-                      {client.type === 'default'
-                        ? t(($) => $['auth.appUser.defaultClient'], { ns: 'plugin' })
-                        : t(($) => $['auth.appUser.customClient'], { ns: 'plugin' })}
-                    </span>
-                    <span className="flex h-full shrink-0 items-center border-l border-components-panel-bg px-2">
-                      <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-                    </span>
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    className="h-8 w-full"
-                    onClick={openClientDialog}
-                    disabled={oauthDisabled}
-                    aria-describedby={errors.oauthClient ? oauthClientErrorId : undefined}
-                  >
-                    {t(($) => $['auth.common.configureClient'], { ns: 'plugin' })}
-                  </Button>
-                ))}
-              {oauthEnabled && errors.oauthClient && (
-                <p
-                  id={oauthClientErrorId}
-                  role="alert"
-                  className="py-0.5 body-xs-regular text-text-destructive"
-                >
-                  {t(($) => $['auth.appUser.setupClient'], { ns: 'plugin' })}
+      {oauthOnly ? (
+        <section aria-labelledby={methodSectionLabelId} className="flex flex-col gap-1">
+          <h4
+            id={methodSectionLabelId}
+            className="flex min-h-6 items-center system-xs-medium-uppercase text-text-secondary"
+          >
+            {t(($) => $['auth.oauthClient'], { ns: 'plugin' })}
+          </h4>
+          {oauthClientControl}
+          <p className="py-0.5 body-xs-regular text-text-tertiary">
+            {t(($) => $['auth.appUser.oauthClientDescription'], { ns: 'plugin' })}
+          </p>
+        </section>
+      ) : apiKeyOnly ? (
+        <section aria-labelledby={methodSectionLabelId} className="flex flex-col gap-1">
+          <h4
+            id={methodSectionLabelId}
+            className="flex min-h-6 items-center system-xs-medium-uppercase text-text-secondary"
+          >
+            {t(($) => $['auth.appUser.userAuthentication'], { ns: 'plugin' })}
+          </h4>
+          <div className="flex flex-col gap-1 rounded-lg bg-components-input-bg-normal p-3">
+            <div className="flex min-h-6 items-center gap-1">
+              <span className="system-sm-medium text-text-secondary">
+                {t(($) => $['auth.connection.apiKey'], { ns: 'plugin' })}
+              </span>
+              <span className="system-xs-regular text-text-warning-secondary">
+                {t(($) => $['auth.common.required'], { ns: 'plugin' })}
+              </span>
+            </div>
+            <p className="body-xs-regular text-text-tertiary">
+              {t(($) => $['auth.appUser.apiKeyRequiredDescription'], { ns: 'plugin' })}
+            </p>
+          </div>
+        </section>
+      ) : (
+        <Fieldset
+          aria-label={t(($) => $['auth.authorization'], { ns: 'plugin' })}
+          aria-describedby={errors.methods ? methodsErrorId : undefined}
+          className="space-y-3"
+        >
+          {canOAuth && (
+            <Field className="gap-1">
+              <FieldLabel className="flex min-h-6 items-center gap-3 system-sm-medium text-text-secondary">
+                <Checkbox
+                  checked={oauthEnabled}
+                  onCheckedChange={(checked) => updateDraft({ oauthEnabled: checked })}
+                  aria-invalid={errors.methods || undefined}
+                  aria-describedby={[oauthDescriptionId, errors.methods && methodsErrorId]
+                    .filter(Boolean)
+                    .join(' ')}
+                />
+                {t(($) => $['auth.appUser.oauth'], { ns: 'plugin' })}
+              </FieldLabel>
+              <div className="space-y-2 pl-7">
+                <p id={oauthDescriptionId} className="body-xs-regular text-text-tertiary">
+                  {client && providerName
+                    ? t(($) => $['auth.appUser.oauthDescriptionWithProvider'], {
+                        ns: 'plugin',
+                        provider: providerName,
+                      })
+                    : t(($) => $['auth.appUser.oauthDescription'], { ns: 'plugin' })}
+                </p>
+                {oauthClientControl}
+                {oauthClientError}
+              </div>
+            </Field>
+          )}
+          {canApiKey && (
+            <Field className="gap-1">
+              <FieldLabel className="flex min-h-6 items-center gap-3 system-sm-medium text-text-secondary">
+                <Checkbox
+                  checked={apiKeyEnabled}
+                  onCheckedChange={(checked) => updateDraft({ apiKeyEnabled: checked })}
+                  aria-invalid={errors.methods || undefined}
+                  aria-describedby={
+                    [apiKeyEnabled && apiKeyDescriptionId, errors.methods && methodsErrorId]
+                      .filter(Boolean)
+                      .join(' ') || undefined
+                  }
+                />
+                {t(($) => $['auth.connection.apiKey'], { ns: 'plugin' })}
+              </FieldLabel>
+              {apiKeyEnabled && (
+                <p id={apiKeyDescriptionId} className="pl-7 body-xs-regular text-text-tertiary">
+                  {t(($) => $['auth.appUser.apiKeyDescription'], { ns: 'plugin' })}
                 </p>
               )}
-            </div>
-          </Field>
-        )}
-        {canApiKey && (
-          <Field className="gap-1">
-            <FieldLabel className="flex min-h-6 items-center gap-3 system-sm-medium text-text-secondary">
-              <Checkbox
-                checked={apiKeyEnabled}
-                onCheckedChange={(checked) => updateDraft({ apiKeyEnabled: checked })}
-                aria-invalid={errors.methods || undefined}
-                aria-describedby={
-                  [apiKeyEnabled && apiKeyDescriptionId, errors.methods && methodsErrorId]
-                    .filter(Boolean)
-                    .join(' ') || undefined
-                }
-              />
-              {t(($) => $['auth.connection.apiKey'], { ns: 'plugin' })}
-            </FieldLabel>
-            {apiKeyEnabled && (
-              <p id={apiKeyDescriptionId} className="pl-7 body-xs-regular text-text-tertiary">
-                {t(($) => $['auth.appUser.apiKeyDescription'], { ns: 'plugin' })}
-              </p>
-            )}
-          </Field>
-        )}
-        {errors.methods && (
-          <p
-            id={methodsErrorId}
-            role="alert"
-            className="py-0.5 body-xs-regular text-text-destructive"
-          >
-            {t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' })}
-          </p>
-        )}
-      </Fieldset>
+            </Field>
+          )}
+          {errors.methods && (
+            <p
+              id={methodsErrorId}
+              role="alert"
+              className="py-0.5 body-xs-regular text-text-destructive"
+            >
+              {t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' })}
+            </p>
+          )}
+        </Fieldset>
+      )}
       <section aria-labelledby={testConnectionLabelId} className="flex flex-col gap-2">
         <div className="space-y-1">
           <h4

@@ -319,12 +319,10 @@ describe('PluginAuth', () => {
     await user.click(appUserTab)
 
     const appUserPanel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
+    expect(within(appUserPanel).queryByRole('checkbox')).not.toBeInTheDocument()
     expect(
-      within(appUserPanel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
-    ).toBeChecked()
-    expect(
-      within(appUserPanel).queryByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
-    ).not.toBeInTheDocument()
+      within(appUserPanel).getByRole('heading', { name: 'plugin.auth.appUser.userAuthentication' }),
+    ).toBeVisible()
     expect(
       within(appUserPanel).getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
     ).toBeVisible()
@@ -394,9 +392,10 @@ describe('PluginAuth', () => {
       expect(tab).toHaveAttribute('aria-selected', 'true')
       const panel = screen.getByRole('tabpanel', { name: label })
       if (label === 'plugin.auth.appUserAuth') {
+        expect(within(panel).queryByRole('checkbox')).not.toBeInTheDocument()
         expect(
-          within(panel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
-        ).toBeChecked()
+          within(panel).getByRole('heading', { name: 'plugin.auth.appUser.userAuthentication' }),
+        ).toBeVisible()
         const testConnection = within(
           within(panel).getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
         )
@@ -670,10 +669,13 @@ describe('PluginAuth', () => {
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
     await user.click(appUserTab)
     let panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
-    expect(
-      within(panel).queryByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
-    ).not.toBeInTheDocument()
-    expect(await within(panel).findByText('plugin.auth.appUser.setupClient')).toBeVisible()
+    expect(within(panel).queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(within(panel).getByRole('heading', { name: 'plugin.auth.oauthClient' })).toBeVisible()
+    expect(within(panel).queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
+    const configureClient = within(panel).getByRole('button', {
+      name: 'plugin.auth.common.configureClient',
+    })
+    expect(configureClient).not.toHaveAccessibleDescription()
     expect(within(panel).getByText('plugin.auth.appUser.enterDescription')).toBeVisible()
     await user.type(
       within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
@@ -682,9 +684,8 @@ describe('PluginAuth', () => {
     expect(
       within(panel).queryByText('plugin.auth.appUser.enterDescription'),
     ).not.toBeInTheDocument()
-    await user.click(
-      within(panel).getByRole('button', { name: 'plugin.auth.common.configureClient' }),
-    )
+    await waitFor(() => expect(configureClient).toBeEnabled())
+    await user.click(configureClient)
     const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
     expect(within(dialog).getByText('https://example.com/oauth/callback')).toBeVisible()
     await user.type(within(dialog).getByRole('textbox', { name: 'Client ID' }), 'drive-client')
@@ -702,12 +703,7 @@ describe('PluginAuth', () => {
       await within(panel).findByRole('button', { name: 'plugin.auth.appUser.customClient' }),
     ).toBeVisible()
     expect(within(panel).queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
-    expect(
-      within(panel).getByText(
-        'plugin.auth.appUser.oauthDescriptionWithProvider:{"provider":"Google Drive"}',
-      ),
-    ).toBeVisible()
-    await user.click(within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }))
+    expect(within(panel).getByText('plugin.auth.appUser.oauthClientDescription')).toBeVisible()
 
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
     const openWorkspaceClientSettings = async () => {
@@ -740,9 +736,7 @@ describe('PluginAuth', () => {
     expect(
       within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
     ).toHaveValue('Choose a Drive connection')
-    const oauth = within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' })
-    expect(oauth).not.toBeChecked()
-    await user.click(oauth)
+    expect(within(panel).queryByRole('checkbox')).not.toBeInTheDocument()
     await user.click(
       within(panel).getByRole('button', { name: 'plugin.auth.appUser.customClient' }),
     )
@@ -755,10 +749,12 @@ describe('PluginAuth', () => {
     await user.click(within(reopened).getByRole('button', { name: 'common.operation.remove' }))
     await waitFor(() => expect(reopened).not.toBeInTheDocument())
     expect(mockOAuthClientMutations.remove).toHaveBeenCalledExactlyOnceWith()
-    expect(
-      await within(panel).findByRole('button', { name: 'plugin.auth.common.configureClient' }),
-    ).toBeVisible()
-    expect(within(panel).getByText('plugin.auth.appUser.setupClient')).toBeVisible()
+    const configureAfterRemove = await within(panel).findByRole('button', {
+      name: 'plugin.auth.common.configureClient',
+    })
+    expect(configureAfterRemove).toBeVisible()
+    expect(configureAfterRemove).not.toHaveAccessibleDescription()
+    expect(within(panel).queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
     expect(
       within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
     ).toHaveValue('Choose a Drive connection')
@@ -836,12 +832,10 @@ describe('PluginAuth', () => {
       client: undefined,
     })
     const panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
+    expect(within(panel).queryByRole('checkbox')).not.toBeInTheDocument()
     expect(
-      within(panel).getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
-    ).toBeChecked()
-    expect(
-      within(panel).queryByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
-    ).not.toBeInTheDocument()
+      within(panel).getByRole('heading', { name: 'plugin.auth.appUser.userAuthentication' }),
+    ).toBeVisible()
     expect(within(panel).getByText('plugin.auth.appUser.enterDescription')).toBeVisible()
     expect(within(panel).queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
     await user.type(
