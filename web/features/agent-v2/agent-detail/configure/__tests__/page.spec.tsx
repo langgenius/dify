@@ -1,4 +1,6 @@
+import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode, Ref } from 'react'
+import type { AgentChatRuntimeProps } from '../components/preview/chat-runtime'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -31,7 +33,8 @@ const mocks = vi.hoisted(() => ({
         debug_conversation_message_count: 1,
         icon: 'agent',
         icon_background: '#E0F2FE',
-        icon_type: 'emoji',
+        icon_type: 'emoji' as AgentIconType,
+        icon_url: null as string | null,
         name: 'Research Agent',
       },
       isFetching: false,
@@ -438,16 +441,17 @@ vi.mock('../components/preview/build-chat', async () => {
   }
 })
 
-vi.mock('../components/preview/preview-chat', () => ({
-  AgentPreviewChat: (props: {
-    clearChatList?: boolean
-    conversationId?: string | null
-    draftType?: 'debug_build'
-    onSaveDraftBeforeRun?: () => Promise<unknown>
-    onConversationIdChange?: (conversationId: string) => void
-  }) => {
+vi.mock('../components/preview/chat-runtime', () => ({
+  AgentChatRuntime: (props: AgentChatRuntimeProps) => {
     return (
       <div role="region" aria-label="preview-chat">
+        {props.renderEmptyState({
+          agentIcon: props.agentIcon,
+          agentIconBackground: props.agentIconBackground,
+          agentIconType: props.agentIconType,
+          agentName: props.agentName,
+          showUnconfiguredNotice: false,
+        })}
         <span>{`preview:${props.conversationId ?? 'none'}`}</span>
         <span>{`clear:${props.clearChatList ? 'yes' : 'no'}`}</span>
         <span>{`draftType:${props.draftType ?? 'draft'}`}</span>
@@ -603,6 +607,7 @@ describe('AgentConfigurePage', () => {
         icon: 'agent',
         icon_background: '#E0F2FE',
         icon_type: 'emoji',
+        icon_url: null,
         name: 'Research Agent',
       },
       isFetching: false,
@@ -811,6 +816,62 @@ describe('AgentConfigurePage', () => {
   })
 
   describe('Right panel mode', () => {
+    it.each([
+      {
+        icon_type: 'image' as const,
+        icon: 'uploaded-file-id',
+        icon_url: 'https://upload-platform.dify.dev/files/uploaded-file-id/file-preview?sign=test',
+        expectedUrl:
+          'https://upload-platform.dify.dev/files/uploaded-file-id/file-preview?sign=test',
+      },
+      {
+        icon_type: 'link' as const,
+        icon: 'https://example.com/agent.png',
+        icon_url: 'https://example.com/unused.png',
+        expectedUrl: 'https://example.com/agent.png',
+      },
+      {
+        icon_type: 'image' as const,
+        icon: 'uploaded-file-id',
+        icon_url: null,
+        expectedUrl: null,
+      },
+      {
+        icon_type: 'emoji' as const,
+        icon: '🧪',
+        icon_url: null,
+        expectedUrl: null,
+      },
+    ])(
+      'displays the preview icon for $icon_type with URL $icon_url',
+      ({ expectedUrl, ...agentIcon }) => {
+        Object.assign(mocks.queryState.agent.data, agentIcon)
+        mocks.queryState.composer = {
+          ...mocks.queryState.composer,
+          data: {},
+          isFetching: false,
+          isPending: false,
+          isSuccess: true,
+        }
+
+        render(
+          <QueryClientProvider client={createQueryClient()}>
+            <AgentConfigurePage agentId="agent-1" />
+          </QueryClientProvider>,
+          { searchParams: '?mode=preview' },
+        )
+
+        if (expectedUrl) {
+          expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute('src', expectedUrl)
+        } else {
+          expect(screen.queryByRole('img', { name: 'app icon' })).not.toBeInTheDocument()
+        }
+        if (agentIcon.icon_type === 'emoji') {
+          expect(screen.getByText('🧪')).toHaveStyle({ background: '#E0F2FE' })
+        }
+      },
+    )
+
     it('should restore preview mode from the page URL', () => {
       mocks.queryState.composer = {
         data: {},

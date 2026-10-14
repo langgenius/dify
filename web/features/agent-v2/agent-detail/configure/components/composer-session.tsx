@@ -554,7 +554,9 @@ function AgentConfigurePageComposerContent({
               <AgentConfigureRightPanelChat
                 agentId={agentId}
                 answerActionPosition="below"
-                agentIcon={agentQuery.data?.icon}
+                agentIcon={
+                  agentIconType === 'image' ? agentQuery.data?.icon_url : agentQuery.data?.icon
+                }
                 agentIconBackground={agentQuery.data?.icon_background}
                 agentIconType={agentIconType}
                 agentName={agentQuery.data?.name}

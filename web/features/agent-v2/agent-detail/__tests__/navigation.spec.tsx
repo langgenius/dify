@@ -132,7 +132,35 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
     expect(agentAvatar).toHaveTextContent('🧪')
+    expect(agentAvatar).toHaveStyle({ background: '#E0F2FE' })
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
+  })
+
+  it.each([
+    {
+      icon_type: 'image' as const,
+      icon: 'uploaded-file-id',
+      icon_url: 'https://upload-platform.dify.dev/files/uploaded-file-id/file-preview?sign=test',
+      expectedUrl: 'https://upload-platform.dify.dev/files/uploaded-file-id/file-preview?sign=test',
+    },
+    {
+      icon_type: 'link' as const,
+      icon: 'https://example.com/agent.png',
+      icon_url: 'https://example.com/unused.png',
+      expectedUrl: 'https://example.com/agent.png',
+    },
+  ])('renders the $icon_type icon from its display URL', ({ expectedUrl, ...agentIcon }) => {
+    mocks.queryData = createAgent(agentIcon)
+    renderAgentDetailSection()
+
+    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('src', expectedUrl)
+  })
+
+  it('does not request an uploaded file ID when its signed URL is missing', () => {
+    mocks.queryData = createAgent({ icon_type: 'image', icon: 'uploaded-file-id', icon_url: null })
+    renderAgentDetailSection()
+
+    expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument()
   })
 
   it.each([null, '', '   '])(

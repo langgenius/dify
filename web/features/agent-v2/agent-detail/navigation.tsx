@@ -198,7 +198,11 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
   const imageUrl =
-    agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
+    agent?.icon_type === 'image'
+      ? agent.icon_url
+      : agent?.icon_type === 'link'
+        ? agent.icon
+        : undefined
   const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
 
   return (
