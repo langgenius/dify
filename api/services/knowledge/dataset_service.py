@@ -331,17 +331,20 @@ class DatasetService:
                 embedding_model = model_manager.get_default_model_instance(
                     tenant_id=tenant_id, model_type=ModelType.TEXT_EMBEDDING
                 )
-            if retrieval_model and retrieval_model.reranking_model:
-                if (
+            if (
+                retrieval_model
+                and retrieval_model.reranking_model
+                and (
                     retrieval_model.reranking_model.reranking_provider_name
                     and retrieval_model.reranking_model.reranking_model_name
-                ):
-                    # check if reranking model setting is valid
-                    DatasetService.check_reranking_model_setting(
-                        tenant_id,
-                        retrieval_model.reranking_model.reranking_provider_name,
-                        retrieval_model.reranking_model.reranking_model_name,
-                    )
+                )
+            ):
+                # check if reranking model setting is valid
+                DatasetService.check_reranking_model_setting(
+                    tenant_id,
+                    retrieval_model.reranking_model.reranking_provider_name,
+                    retrieval_model.reranking_model.reranking_model_name,
+                )
         dataset = Dataset(
             name=name,
             indexing_technique=IndexTechniqueType(indexing_technique) if indexing_technique else None,
@@ -559,14 +562,17 @@ class DatasetService:
         if not dataset:
             raise ValueError("Dataset not found")
             #  check if dataset name is exists
-        if data.get("name") and data.get("name") != dataset.name:
-            if DatasetService._has_dataset_same_name(
+        if (
+            data.get("name")
+            and data.get("name") != dataset.name
+            and DatasetService._has_dataset_same_name(
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset_id,
                 name=data.get("name", dataset.name),
                 session=session,
-            ):
-                raise ValueError("Dataset name already exists")
+            )
+        ):
+            raise ValueError("Dataset name already exists")
 
         # Verify user has permission to update this dataset
         DatasetService.check_dataset_permission(dataset, user, session)
@@ -1213,25 +1219,24 @@ class DatasetService:
                                 # and keep the existing settings if available
                                 # Skip the rest of the embedding model update
                                 skip_embedding_update = True
-                            if not skip_embedding_update:
-                                if embedding_model:
-                                    embedding_model_name = embedding_model.model_name
-                                    dataset.embedding_model = embedding_model_name
-                                    dataset.embedding_model_provider = embedding_model.provider
-                                    dataset_collection_binding = (
-                                        DatasetCollectionBindingService.get_dataset_collection_binding(
-                                            embedding_model.provider,
-                                            embedding_model_name,
-                                            session,
-                                        )
+                            if not skip_embedding_update and embedding_model:
+                                embedding_model_name = embedding_model.model_name
+                                dataset.embedding_model = embedding_model_name
+                                dataset.embedding_model_provider = embedding_model.provider
+                                dataset_collection_binding = (
+                                    DatasetCollectionBindingService.get_dataset_collection_binding(
+                                        embedding_model.provider,
+                                        embedding_model_name,
+                                        session,
                                     )
-                                    dataset.collection_binding_id = dataset_collection_binding.id
-                                    is_multimodal = DatasetService.check_is_multimodal_model(
-                                        current_user.current_tenant_id,
-                                        knowledge_configuration.embedding_model_provider,
-                                        knowledge_configuration.embedding_model,
-                                    )
-                                    dataset.is_multimodal = is_multimodal
+                                )
+                                dataset.collection_binding_id = dataset_collection_binding.id
+                                is_multimodal = DatasetService.check_is_multimodal_model(
+                                    current_user.current_tenant_id,
+                                    knowledge_configuration.embedding_model_provider,
+                                    knowledge_configuration.embedding_model,
+                                )
+                                dataset.is_multimodal = is_multimodal
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "
@@ -1943,11 +1948,10 @@ class DocumentService:
     def delete_document(document, session: Session):
         # trigger document_was_deleted signal
         file_id = None
-        if document.data_source_type == DataSourceType.UPLOAD_FILE:
-            if document.data_source_info:
-                data_source_info = document.data_source_info_dict
-                if data_source_info and "upload_file_id" in data_source_info:
-                    file_id = data_source_info["upload_file_id"]
+        if document.data_source_type == DataSourceType.UPLOAD_FILE and document.data_source_info:
+            data_source_info = document.data_source_info_dict
+            if data_source_info and "upload_file_id" in data_source_info:
+                file_id = data_source_info["upload_file_id"]
         document_was_deleted.send(
             document.id,
             dataset_id=document.dataset_id,
@@ -2014,11 +2018,10 @@ class DocumentService:
         if document.tenant_id != current_user.current_tenant_id:
             raise ValueError("No permission.")
 
-        if dataset.built_in_field_enabled:
-            if document.doc_metadata:
-                doc_metadata = copy.deepcopy(document.doc_metadata)
-                doc_metadata[BuiltInField.document_name] = name
-                document.doc_metadata = doc_metadata
+        if dataset.built_in_field_enabled and document.doc_metadata:
+            doc_metadata = copy.deepcopy(document.doc_metadata)
+            doc_metadata[BuiltInField.document_name] = name
+            document.doc_metadata = doc_metadata
 
         document.name = name
         session.add(document)
@@ -2222,14 +2225,15 @@ class DocumentService:
         if not dataset.indexing_technique:
             if config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
                 raise ValueError("Indexing technique is invalid")
-            if config.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                if not config.embedding_model or not config.embedding_model_provider:
-                    model = ModelManager.for_tenant(tenant_id=dataset.tenant_id).get_default_model_instance(
-                        tenant_id=dataset.tenant_id, model_type=ModelType.TEXT_EMBEDDING
-                    )
-                    config = config.model_copy(
-                        update={"embedding_model": model.model_name, "embedding_model_provider": model.provider}
-                    )
+            if (config.indexing_technique == IndexTechniqueType.HIGH_QUALITY) and (
+                not config.embedding_model or not config.embedding_model_provider
+            ):
+                model = ModelManager.for_tenant(tenant_id=dataset.tenant_id).get_default_model_instance(
+                    tenant_id=dataset.tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                )
+                config = config.model_copy(
+                    update={"embedding_model": model.model_name, "embedding_model_provider": model.provider}
+                )
             effective_dataset = replace(
                 dataset,
                 indexing_technique=config.indexing_technique,
@@ -3181,15 +3185,18 @@ class DocumentService:
         if not knowledge_config.data_source.info_list:
             raise ValueError("Data source info is required")
 
-        if knowledge_config.data_source.info_list.data_source_type == "upload_file":
-            if not knowledge_config.data_source.info_list.file_info_list:
-                raise ValueError("File source info is required")
-        if knowledge_config.data_source.info_list.data_source_type == "notion_import":
-            if not knowledge_config.data_source.info_list.notion_info_list:
-                raise ValueError("Notion source info is required")
-        if knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-            if not knowledge_config.data_source.info_list.website_info_list:
-                raise ValueError("Website source info is required")
+        if (knowledge_config.data_source.info_list.data_source_type == "upload_file") and (
+            not knowledge_config.data_source.info_list.file_info_list
+        ):
+            raise ValueError("File source info is required")
+        if (knowledge_config.data_source.info_list.data_source_type == "notion_import") and (
+            not knowledge_config.data_source.info_list.notion_info_list
+        ):
+            raise ValueError("Notion source info is required")
+        if (knowledge_config.data_source.info_list.data_source_type == "website_crawl") and (
+            not knowledge_config.data_source.info_list.website_info_list
+        ):
+            raise ValueError("Website source info is required")
 
     @classmethod
     def process_rule_args_validate(cls, knowledge_config: KnowledgeConfig):
@@ -3223,9 +3230,10 @@ class DocumentService:
 
             knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
 
-            if knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
-                if not knowledge_config.process_rule.rules.parent_mode:
-                    knowledge_config.process_rule.rules.parent_mode = "paragraph"
+            if (knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL) and (
+                not knowledge_config.process_rule.rules.parent_mode
+            ):
+                knowledge_config.process_rule.rules.parent_mode = "paragraph"
 
             if not knowledge_config.process_rule.rules.segmentation:
                 raise ValueError("Process rule segmentation is required")

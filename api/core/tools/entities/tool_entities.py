@@ -188,9 +188,8 @@ class ToolInvokeMessage(BaseModel):
                 raise ValueError("Only basic types, lists, and None are allowed.")
 
             # if stream is true, the value must be a string
-            if values.get("stream"):
-                if not isinstance(value, str):
-                    raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
+            if values.get("stream") and not isinstance(value, str):
+                raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
 
             return values
 

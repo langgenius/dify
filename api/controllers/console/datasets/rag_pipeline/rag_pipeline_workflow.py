@@ -707,9 +707,8 @@ class PublishedAllRagPipelineApi(Resource):
         user_id = req_data.user_id
         named_only = req_data.named_only
 
-        if user_id:
-            if user_id != current_user.id:
-                raise Forbidden()
+        if user_id and user_id != current_user.id:
+            raise Forbidden()
 
         rag_pipeline_service = RagPipelineService(db.session())
         with sessionmaker(db.engine).begin() as session:

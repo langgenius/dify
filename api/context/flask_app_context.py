@@ -75,10 +75,9 @@ def capture_flask_context(user: Any = None) -> IExecutionContext:
 
     # Save current user if available
     saved_user = user
-    if saved_user is None:
-        # Check for user in g (flask-login)
-        if hasattr(g, "_login_user"):
-            saved_user = g._login_user
+    # Check for user in g (flask-login)
+    if (saved_user is None) and (hasattr(g, "_login_user")):
+        saved_user = g._login_user
 
     # Capture contextvars
     context_vars = contextvars.copy_context()

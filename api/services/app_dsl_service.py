@@ -1191,16 +1191,15 @@ class AppDslService:
                                 elif (
                                     knowledge_retrieval_entity.multiple_retrieval_config.reranking_mode
                                     == "weighted_score"
-                                ):
-                                    if knowledge_retrieval_entity.multiple_retrieval_config.weights:
-                                        vector_setting = (
-                                            knowledge_retrieval_entity.multiple_retrieval_config.weights.vector_setting
-                                        )
-                                        dependencies.append(
-                                            DependenciesAnalysisService.analyze_model_provider_dependency(
-                                                vector_setting.embedding_provider_name
-                                            ),
-                                        )
+                                ) and knowledge_retrieval_entity.multiple_retrieval_config.weights:
+                                    vector_setting = (
+                                        knowledge_retrieval_entity.multiple_retrieval_config.weights.vector_setting
+                                    )
+                                    dependencies.append(
+                                        DependenciesAnalysisService.analyze_model_provider_dependency(
+                                            vector_setting.embedding_provider_name
+                                        ),
+                                    )
                         elif knowledge_retrieval_entity.retrieval_mode == "single":
                             model_config = knowledge_retrieval_entity.single_retrieval_config
                             if model_config:

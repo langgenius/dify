@@ -127,13 +127,16 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 document_id=document_id,
             ):
                 raise ValueError("Pipeline document not found")
-            if original_document_id and original_document_id != document_id:
-                if not self._documents.exists(
+            if (
+                original_document_id
+                and original_document_id != document_id
+                and not self._documents.exists(
                     workspace_id=dataset_workspace_id,
                     dataset_id=dataset_id,
                     document_id=original_document_id,
-                ):
-                    raise ValueError("Pipeline original document not found")
+                )
+            ):
+                raise ValueError("Pipeline original document not found")
 
             workflow = self.get_workflow(session=session, pipeline=pipeline, workflow_id=app_config.workflow_id)
             if not workflow:

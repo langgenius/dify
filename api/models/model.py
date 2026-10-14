@@ -655,15 +655,14 @@ class App(Base):
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
 
-                if provider_type == ToolProviderType.API:
-                    if provider_id not in existing_api_providers:
-                        deleted_tools.append(
-                            {
-                                "type": ToolProviderType.API,
-                                "tool_name": tool["tool_name"],
-                                "provider_id": provider_id,
-                            }
-                        )
+                if provider_type == ToolProviderType.API and provider_id not in existing_api_providers:
+                    deleted_tools.append(
+                        {
+                            "type": ToolProviderType.API,
+                            "tool_name": tool["tool_name"],
+                            "provider_id": provider_id,
+                        }
+                    )
 
                 if provider_type == ToolProviderType.BUILT_IN:
                     generic_provider_id = GenericProviderID(provider_id)

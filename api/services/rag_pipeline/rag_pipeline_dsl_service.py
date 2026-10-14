@@ -817,25 +817,29 @@ class RagPipelineDslService:
                         )
                     case _ if typ == KNOWLEDGE_INDEX_NODE_TYPE:
                         knowledge_index_entity = KnowledgeConfiguration.model_validate(node["data"])
-                        if knowledge_index_entity.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                            if knowledge_index_entity.embedding_model_provider:
-                                dependencies.append(
-                                    DependenciesAnalysisService.analyze_model_provider_dependency(
-                                        knowledge_index_entity.embedding_model_provider
-                                    ),
-                                )
-                        if knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model":
-                            if knowledge_index_entity.retrieval_model.reranking_enable:
-                                if (
+                        if (knowledge_index_entity.indexing_technique == IndexTechniqueType.HIGH_QUALITY) and (
+                            knowledge_index_entity.embedding_model_provider
+                        ):
+                            dependencies.append(
+                                DependenciesAnalysisService.analyze_model_provider_dependency(
+                                    knowledge_index_entity.embedding_model_provider
+                                ),
+                            )
+                        if (knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model") and (
+                            (knowledge_index_entity.retrieval_model.reranking_enable)
+                            and (
+                                (
                                     knowledge_index_entity.retrieval_model.reranking_model
                                     and knowledge_index_entity.retrieval_model.reranking_mode == "reranking_model"
-                                ):
-                                    if knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name:
-                                        dependencies.append(
-                                            DependenciesAnalysisService.analyze_model_provider_dependency(
-                                                knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name
-                                            ),
-                                        )
+                                )
+                                and (knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name)
+                            )
+                        ):
+                            dependencies.append(
+                                DependenciesAnalysisService.analyze_model_provider_dependency(
+                                    knowledge_index_entity.retrieval_model.reranking_model.reranking_provider_name
+                                ),
+                            )
                     case BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
@@ -853,16 +857,15 @@ class RagPipelineDslService:
                                 elif (
                                     knowledge_retrieval_entity.multiple_retrieval_config.reranking_mode
                                     == "weighted_score"
-                                ):
-                                    if knowledge_retrieval_entity.multiple_retrieval_config.weights:
-                                        vector_setting = (
-                                            knowledge_retrieval_entity.multiple_retrieval_config.weights.vector_setting
-                                        )
-                                        dependencies.append(
-                                            DependenciesAnalysisService.analyze_model_provider_dependency(
-                                                vector_setting.embedding_provider_name
-                                            ),
-                                        )
+                                ) and knowledge_retrieval_entity.multiple_retrieval_config.weights:
+                                    vector_setting = (
+                                        knowledge_retrieval_entity.multiple_retrieval_config.weights.vector_setting
+                                    )
+                                    dependencies.append(
+                                        DependenciesAnalysisService.analyze_model_provider_dependency(
+                                            vector_setting.embedding_provider_name
+                                        ),
+                                    )
                         elif knowledge_retrieval_entity.retrieval_mode == "single":
                             model_config = knowledge_retrieval_entity.single_retrieval_config
                             if model_config:

@@ -63,9 +63,8 @@ class ConversationService:
                 return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
             stmt = stmt.where(Conversation.id.in_(include_ids))
         # Check if exclude_ids is not None to apply filter
-        if exclude_ids is not None:
-            if len(exclude_ids) > 0:
-                stmt = stmt.where(~Conversation.id.in_(exclude_ids))
+        if exclude_ids is not None and len(exclude_ids) > 0:
+            stmt = stmt.where(~Conversation.id.in_(exclude_ids))
 
         # define sort fields and directions
         sort_field, sort_direction = cls._get_sort_params(sort_by)

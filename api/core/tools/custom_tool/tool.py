@@ -213,51 +213,50 @@ class ApiTool(Tool):
                 headers[parameter["name"]] = str(value)
 
         # check if there is a request body and handle it
-        if "requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None:
-            # handle json request body
-            if "content" in self.api_bundle.openapi["requestBody"]:
-                for content_type in self.api_bundle.openapi["requestBody"]["content"]:
-                    headers["Content-Type"] = content_type
-                    body_schema = self.api_bundle.openapi["requestBody"]["content"][content_type]["schema"]
+        # handle json request body
+        if ("requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None) and (
+            "content" in self.api_bundle.openapi["requestBody"]
+        ):
+            for content_type in self.api_bundle.openapi["requestBody"]["content"]:
+                headers["Content-Type"] = content_type
+                body_schema = self.api_bundle.openapi["requestBody"]["content"][content_type]["schema"]
 
-                    # handle ref schema
-                    if "$ref" in body_schema:
-                        ref_path = body_schema["$ref"].split("/")
-                        ref_name = ref_path[-1]
-                        if (
-                            "components" in self.api_bundle.openapi
-                            and "schemas" in self.api_bundle.openapi["components"]
-                        ):
-                            if ref_name in self.api_bundle.openapi["components"]["schemas"]:
-                                body_schema = self.api_bundle.openapi["components"]["schemas"][ref_name]
+                # handle ref schema
+                if "$ref" in body_schema:
+                    ref_path = body_schema["$ref"].split("/")
+                    ref_name = ref_path[-1]
+                    if (
+                        "components" in self.api_bundle.openapi and "schemas" in self.api_bundle.openapi["components"]
+                    ) and ref_name in self.api_bundle.openapi["components"]["schemas"]:
+                        body_schema = self.api_bundle.openapi["components"]["schemas"][ref_name]
 
-                    required = body_schema.get("required", [])
-                    properties = body_schema.get("properties", {})
-                    for name, property in properties.items():
-                        if name in parameters:
-                            # multiple file upload: if the type is array and the items have format as binary
-                            if property.get("type") == "array" and property.get("items", {}).get("format") == "binary":
-                                # parameters[name] should be a list of file objects.
-                                for f in parameters[name]:
-                                    files.append((name, (f.filename, download(f), f.mime_type)))
-                            elif property.get("format") == "binary":
-                                f = parameters[name]
+                required = body_schema.get("required", [])
+                properties = body_schema.get("properties", {})
+                for name, property in properties.items():
+                    if name in parameters:
+                        # multiple file upload: if the type is array and the items have format as binary
+                        if property.get("type") == "array" and property.get("items", {}).get("format") == "binary":
+                            # parameters[name] should be a list of file objects.
+                            for f in parameters[name]:
                                 files.append((name, (f.filename, download(f), f.mime_type)))
-                            elif "$ref" in property:
-                                body[name] = parameters[name]
-                            else:
-                                # convert type
-                                body[name] = self._convert_body_property_type(property, parameters[name])
-                        elif name in required:
-                            raise ToolParameterValidationError(
-                                f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
-                            )
-                        elif "default" in property:
-                            body[name] = property["default"]
+                        elif property.get("format") == "binary":
+                            f = parameters[name]
+                            files.append((name, (f.filename, download(f), f.mime_type)))
+                        elif "$ref" in property:
+                            body[name] = parameters[name]
                         else:
-                            # omit optional parameters that weren't provided, instead of setting them to None
-                            pass
-                    break
+                            # convert type
+                            body[name] = self._convert_body_property_type(property, parameters[name])
+                    elif name in required:
+                        raise ToolParameterValidationError(
+                            f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
+                        )
+                    elif "default" in property:
+                        body[name] = property["default"]
+                    else:
+                        # omit optional parameters that weren't provided, instead of setting them to None
+                        pass
+                break
 
         # replace path parameters
         for name, value in path_params.items():

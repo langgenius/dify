@@ -548,11 +548,10 @@ class MLflowDataTrace(BaseTraceInstance):
         for msg in messages:
             if tool_calls := msg.get("tool_calls"):
                 tool_call_ids = [t["id"] for t in tool_calls]
-            if msg["role"] == "tool":
-                # Get the tool call id in the order of the tool call messages
-                # assuming Dify runs tools sequentially
-                if tool_call_ids:
-                    msg["tool_call_id"] = tool_call_ids.pop(0)
+            # Get the tool call id in the order of the tool call messages
+            # assuming Dify runs tools sequentially
+            if (msg["role"] == "tool") and (tool_call_ids):
+                msg["tool_call_id"] = tool_call_ids.pop(0)
         return messages
 
     def api_check(self):

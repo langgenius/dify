@@ -161,9 +161,10 @@ class WorkspaceInvitationGateway:
         and uses the billing-reported member count.
         """
         features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            if 0 < features.members.limit <= features.members.size:
-                raise WorkspaceInvitationQuotaError()
+        if (dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD) and (
+            0 < features.members.limit <= features.members.size
+        ):
+            raise WorkspaceInvitationQuotaError()
         if features.workspace_members.enabled and not features.workspace_members.is_available(1):
             raise WorkspaceMemberLicenseQuotaError()
 

@@ -1050,40 +1050,39 @@ class RagPipelineService:
             # update document status
             variable_pool = node_instance.graph_runtime_state.variable_pool
             invoke_from = get_system_segment(variable_pool, SystemVariableKey.INVOKE_FROM)
-            if invoke_from:
-                if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
-                    document_id = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
-                    dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
-                    pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
-                    if document_id and dataset_id and pipeline_id:
-                        dataset = self._session.scalar(
-                            select(Dataset)
-                            .where(
-                                Dataset.id == dataset_id.value,
-                                Dataset.tenant_id == tenant_id,
-                                Dataset.pipeline_id == pipeline_id.value,
-                            )
-                            .limit(1)
+            if invoke_from and invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
+                document_id = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
+                dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
+                pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
+                if document_id and dataset_id and pipeline_id:
+                    dataset = self._session.scalar(
+                        select(Dataset)
+                        .where(
+                            Dataset.id == dataset_id.value,
+                            Dataset.tenant_id == tenant_id,
+                            Dataset.pipeline_id == pipeline_id.value,
                         )
-                        if dataset:
-                            dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
-                            document_ref = dataset_ref.document(document_id.value)
-                            # dataset_service imports RagPipelineService; importing here avoids the cycle.
-                            from services.knowledge.dataset_service import DocumentService
+                        .limit(1)
+                    )
+                    if dataset:
+                        dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+                        document_ref = dataset_ref.document(document_id.value)
+                        # dataset_service imports RagPipelineService; importing here avoids the cycle.
+                        from services.knowledge.dataset_service import DocumentService
 
-                            document = next(
-                                iter(
-                                    DocumentService.get_documents_by_ids(
-                                        document_ref.dataset, [document_ref.document_id], self._session
-                                    )
-                                ),
-                                None,
-                            )
-                            if document:
-                                document.indexing_status = IndexingStatus.ERROR
-                                document.error = error
-                                self._session.add(document)
-                                self._session.commit()
+                        document = next(
+                            iter(
+                                DocumentService.get_documents_by_ids(
+                                    document_ref.dataset, [document_ref.document_id], self._session
+                                )
+                            ),
+                            None,
+                        )
+                        if document:
+                            document.indexing_status = IndexingStatus.ERROR
+                            document.error = error
+                            self._session.add(document)
+                            self._session.commit()
 
         return workflow_node_execution
 

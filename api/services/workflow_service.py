@@ -1807,9 +1807,8 @@ class WorkflowService:
                 node_types.add(node_type)
 
         # start node and trigger node cannot coexist
-        if BuiltinNodeTypes.START in node_types:
-            if any(is_trigger_node_type(nt) for nt in node_types):
-                raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
+        if BuiltinNodeTypes.START in node_types and any(is_trigger_node_type(nt) for nt in node_types):
+            raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
 
         for node in node_configs:
             node_data = node.get("data", {})

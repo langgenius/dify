@@ -79,7 +79,6 @@ ignore = [
     "N806",    # non-lowercase-variable-in-function
     "N815",    # mixed-case-variable-in-class-scope
     "PT011",   # pytest-raises-too-broad
-    "SIM102",  # collapsible-if
     "SIM103",  # needless-bool
     "SIM105",  # suppressible-exception
     "SIM108",  # if-else-block-instead-of-if-exp
