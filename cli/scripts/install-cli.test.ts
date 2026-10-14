@@ -436,9 +436,12 @@ describe('install-cli.sh install_binary', () => {
         'bin-difyctl',
         'new',
       ])
-      expect(
-        execFileSync('sh', ['-c', `test -x "${dest}" && echo yes`], { encoding: 'utf8' }),
-      ).toBe('yes\n')
+      // Windows filesystems have no executable bit to check.
+      if (process.platform !== 'win32') {
+        expect(
+          execFileSync('sh', ['-c', `test -x "${dest}" && echo yes`], { encoding: 'utf8' }),
+        ).toBe('yes\n')
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
