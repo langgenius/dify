@@ -99,7 +99,6 @@ register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultRespon
 @web_ns.route("/completion-messages")
 class CompletionApi(WebApiResource):
     @error_responses(
-        AgentNotPublishedError,
         AppUnavailableError,
         CompletionRequestError,
         NotCompletionAppError,

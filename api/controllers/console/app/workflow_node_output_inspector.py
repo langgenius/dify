@@ -98,7 +98,7 @@ def _serve_snapshot(app_model: App, run_id: UUID) -> dict:
             app_model=app_model, workflow_run_id=str(run_id), session=db.session()
         )
     except NodeOutputInspectorError as error:
-        raise _run_not_found(error) from error
+        raise _inspector_not_found(error) from error
     return snapshot.model_dump(mode="json")
 
 
@@ -112,7 +112,7 @@ def _serve_node_detail(app_model: App, run_id: UUID, node_id: str) -> dict:
             session=db.session(),
         )
     except NodeOutputInspectorError as error:
-        raise _node_not_found(error) from error
+        raise _inspector_not_found(error) from error
     return view.model_dump(mode="json")
 
 
@@ -127,7 +127,7 @@ def _serve_output_preview(app_model: App, run_id: UUID, node_id: str, output_nam
             session=db.session(),
         )
     except NodeOutputInspectorError as error:
-        raise _output_not_found(error) from error
+        raise _inspector_not_found(error) from error
     return preview.model_dump(mode="json")
 
 
@@ -160,25 +160,15 @@ class NodeOutputNotDeclaredError(_InspectorNotFound):
     description = "The node does not declare this output."
 
 
-def _run_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
-    """The 404 for a whole-run lookup; a code the service adds later is relayed as is."""
+def _inspector_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
+    """The 404 for an inspector error; a code the service adds later is relayed as is."""
     if error.code == WorkflowRunNotFoundError.error_code:
         return WorkflowRunNotFoundError(error)
-    return RelayedHTTPError(status=404, error_code=error.code, message=str(error))
-
-
-def _node_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
-    """Node lookups also fail when the node is not part of the run."""
     if error.code == NodeNotInWorkflowRunError.error_code:
         return NodeNotInWorkflowRunError(error)
-    return _run_not_found(error)
-
-
-def _output_not_found(error: NodeOutputInspectorError) -> BaseHTTPException:
-    """Output lookups also fail when the node does not declare the output."""
     if error.code == NodeOutputNotDeclaredError.error_code:
         return NodeOutputNotDeclaredError(error)
-    return _node_not_found(error)
+    return RelayedHTTPError(status=404, error_code=error.code, message=str(error))
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/runs/<uuid:run_id>/node-outputs")
@@ -278,7 +268,7 @@ def _initial_snapshot(app_model: App, run_id: UUID) -> WorkflowRunSnapshotView:
     try:
         return _service().snapshot_workflow_run(app_model=app_model, workflow_run_id=str(run_id), session=db.session())
     except NodeOutputInspectorError as error:
-        raise _run_not_found(error) from error
+        raise _inspector_not_found(error) from error
 
 
 def _stream_inspector_events(app_model: App, run_id: UUID, snapshot: WorkflowRunSnapshotView) -> Iterator[str]:

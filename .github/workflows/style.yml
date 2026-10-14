@@ -81,13 +81,6 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
-      # Fails on a business error a handler statically raises but does not declare. Errors raised
-      # behind dynamic dispatch are declared by hand and left alone; the controller error contract
-      # tests gate those paths.
-      - name: Run API Error Linter
-        if: inputs.run-python-style
-        run: uv run --project api --dev python api/dev/lint_error_responses.py
-
       - name: Run No New Getattr Guard
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
@@ -99,10 +92,6 @@ jobs:
       - name: Run No New Session Mock Guard
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_session_mock.py --base-rev "${{ inputs.base-rev }}"
-
-      - name: Run No New Service HTTP Error Guard
-        if: inputs.run-python-style
-        run: uv run --project api python scripts/check_no_new_service_http_errors.py --base-rev "${{ inputs.base-rev }}"
 
       - name: Run No Spec Mock Guard
         if: inputs.run-python-style

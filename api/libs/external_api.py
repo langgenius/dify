@@ -219,9 +219,9 @@ def error_responses(*exceptions: type[Exception]) -> ViewDecorator:
     own handlers when it builds the document, and documents each code once as a shared
     ``{Code}Error`` component, so a business error must declare an ``error_code``.
 
-    ``dev/lint_error_responses.py`` reports what a handler statically raises but does not
-    list here. An error raised through dispatch it cannot follow (``application_services()``)
-    is listed by hand and left alone by the lint.
+    Nothing infers this list from the code: list what the operation's own call chain can
+    answer with, not everything a shared translator knows how to map. The controller unit
+    tests check every served error response against the document.
     """
 
     _documented_names(exceptions)
@@ -667,12 +667,6 @@ class ExternalApi(Api):
     def error_code_for(self, spec: ErrorSpec) -> str:
         """The ``code`` this surface emits for a documented exception."""
         return spec["default_code"]
-
-    def generic_error_statuses(self) -> set[int]:
-        """Statuses any operation may answer with: those of the shared handlers and the generic errors."""
-        statuses = {status for status, _ in self._handled_errors.values()}
-        statuses.update(self.resolve_error(exception)[0] for exception in self._generic_errors)
-        return statuses
 
     def implicit_error_codes(self, status: int) -> set[str]:
         """Generic codes any operation may emit at ``status`` without listing them.

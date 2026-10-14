@@ -688,7 +688,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AgentHomeSnapshotTooLargeError](#agenthomesnapshottoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Bad Gateway | **application/json**: [AgentHomeSnapshotCreateFailedError](#agenthomesnapshotcreatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -1299,7 +1299,7 @@ Get Agent App message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent draft published | **application/json**: [AgentPublishResponse](#agentpublishresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |

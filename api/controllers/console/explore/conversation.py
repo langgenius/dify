@@ -24,7 +24,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.conversation_fields import ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation
-from libs.external_api import document_errors
+from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty, dump_response
 from machinery.context import RequestContext
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
@@ -61,7 +61,7 @@ register_response_schema_models(console_ns, ConversationInfiniteScrollPagination
 
 
 def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Translate the errors every conversation operation shares: the app must exist and be a chat app."""
+    """Translate the shared conversation use-case errors at the Console boundary."""
 
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -71,61 +71,27 @@ def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise InstalledAppNotFoundHTTPError() from error
         except ConversationNotChatAppError as error:
             raise NotChatAppError() from error
-
-    return document_errors(decorated, InstalledAppNotFoundHTTPError, NotChatAppError)
-
-
-def _conversation_page_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Paging by cursor fails when the cursor conversation is gone."""
-
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return view(*args, **kwargs)
-        except LastConversationNotExistsError as error:
-            raise ConversationCursorNotFoundHTTPError() from error
-
-    return _conversation_errors(document_errors(decorated, ConversationCursorNotFoundHTTPError))
-
-
-def _conversation_lookup_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Operations on one conversation fail when it does not exist."""
-
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return view(*args, **kwargs)
         except ConversationNotExistsError as error:
             raise ConversationNotFoundHTTPError() from error
-
-    return _conversation_errors(document_errors(decorated, ConversationNotFoundHTTPError))
-
-
-def _conversation_rename_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Renaming also needs a name, or a first message to generate one from."""
-
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return view(*args, **kwargs)
+        except LastConversationNotExistsError as error:
+            raise ConversationCursorNotFoundHTTPError() from error
         except MessageNotExistsError as error:
             raise ConversationFirstMessageNotFoundHTTPError() from error
         except ConversationNameRequiredError as error:
             raise ConversationNameRequiredHTTPError() from error
 
-    return _conversation_lookup_errors(
-        document_errors(decorated, ConversationFirstMessageNotFoundHTTPError, ConversationNameRequiredHTTPError)
-    )
+    return decorated
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations")
 class ConversationListApi(Resource):
+    @error_responses(ConversationCursorNotFoundHTTPError, NotChatAppError)
     @console_ns.doc(params=query_params_from_model(ConversationListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(ConversationListQuery)
-    @_conversation_page_errors
+    @_conversation_errors
     def get(
         self, query: ConversationListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
@@ -143,10 +109,11 @@ class ConversationListApi(Resource):
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>", endpoint="installed_app_conversation"
 )
 class ConversationApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
     @console_ns.response(HTTPStatus.NO_CONTENT, "Conversation deleted successfully")
     @console_account_admission()
     @get_installed_app
-    @_conversation_lookup_errors
+    @_conversation_errors
     def delete(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> tuple[str, int]:
         application_services().installed_apps.conversations.delete(
             installed_app=installed_app, account_id=request_context.account_id, conversation_id=str(c_id)
@@ -159,6 +126,12 @@ class ConversationApi(Resource):
     endpoint="installed_app_conversation_rename",
 )
 class ConversationRenameApi(Resource):
+    @error_responses(
+        ConversationFirstMessageNotFoundHTTPError,
+        ConversationNameRequiredHTTPError,
+        ConversationNotFoundHTTPError,
+        NotChatAppError,
+    )
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__]
@@ -166,7 +139,7 @@ class ConversationRenameApi(Resource):
     @console_account_admission()
     @get_installed_app
     @model_validate(ConversationRenamePayload)
-    @_conversation_rename_errors
+    @_conversation_errors
     def post(
         self,
         payload: ConversationRenamePayload,
@@ -188,10 +161,11 @@ class ConversationRenameApi(Resource):
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin", endpoint="installed_app_conversation_pin"
 )
 class ConversationPinApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
-    @_conversation_lookup_errors
+    @_conversation_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
         application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,
@@ -207,10 +181,11 @@ class ConversationPinApi(Resource):
     endpoint="installed_app_conversation_unpin",
 )
 class ConversationUnPinApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
-    @_conversation_lookup_errors
+    @_conversation_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
         application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,

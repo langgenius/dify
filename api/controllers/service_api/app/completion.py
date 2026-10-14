@@ -176,7 +176,6 @@ register_response_schema_models(
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
     @error_responses(
-        AgentNotPublishedError,
         AppUnavailableError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,

@@ -1,7 +1,7 @@
 """Check error responses served in controller tests against the API's own OpenAPI document.
 
-Static checks (``dev/lint_error_responses.py``) cannot follow instance calls, signals or
-other dynamic dispatch. This catches what they miss on every path a test exercises: each
+Declarations are written by hand, so nothing checks them against the code. This check
+compares them with what is actually served, on every path a test exercises: each
 4xx/5xx JSON response served by an ``ExternalApi`` must carry the standard error body,
 and its ``code`` must be one the operation documents for that status or one of the
 surface's generic codes (``ExternalApi.implicit_error_codes``). The body must also satisfy

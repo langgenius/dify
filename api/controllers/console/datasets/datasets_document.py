@@ -93,8 +93,10 @@ def _raise_document_error(error: Exception) -> Never:
     raise error
 
 
-def _raise_document_provider_error(error: Exception) -> Never:
-    """Creating documents resolves the dataset's embedding model synchronously."""
+def _raise_document_indexing_error(error: Exception) -> Never:
+    """Operations that (re)index documents also depend on the indexing state and the model provider."""
+    if isinstance(error, DocumentIndexingStateError):
+        raise DocumentIndexingError(str(error)) from error
     if isinstance(error, DocumentProviderError):
         if error.kind == "quota":
             raise ProviderQuotaExceededError() from error
@@ -105,24 +107,22 @@ def _raise_document_provider_error(error: Exception) -> Never:
 
 
 def _raise_document_action_error(error: Exception) -> Never:
-    """Processing and status changes validate the requested action against the document state."""
     if isinstance(error, DocumentInvalidActionError):
         raise InvalidActionError(str(error)) from error
     _raise_document_error(error)
 
 
+def _raise_document_status_error(error: Exception) -> Never:
+    if isinstance(error, DocumentInvalidActionError):
+        raise InvalidActionError(str(error)) from error
+    _raise_document_indexing_error(error)
+
+
 def _raise_document_archive_error(error: Exception) -> Never:
-    """Syncing refuses archived documents."""
+    """Pausing, resuming and syncing refuse archived documents before touching the index."""
     if isinstance(error, DocumentArchivedError):
         raise ArchivedDocumentImmutableError() from error
-    _raise_document_error(error)
-
-
-def _raise_document_state_error(error: Exception) -> Never:
-    """Pausing and resuming also need a pausable, respectively paused, indexing state."""
-    if isinstance(error, DocumentIndexingStateError):
-        raise DocumentIndexingError(str(error)) from error
-    _raise_document_archive_error(error)
+    _raise_document_indexing_error(error)
 
 
 class DatasetResponse(ResponseModel):
@@ -403,7 +403,7 @@ class DatasetDocumentListApi(Resource):
                 request_context, dataset_id=str(dataset_id), settings=config.model_dump()
             )
         except Exception as error:
-            _raise_document_provider_error(error)
+            _raise_document_indexing_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
     @console_ns.response(204, "Documents deleted successfully")
@@ -418,7 +418,7 @@ class DatasetDocumentListApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_ids=request.args.getlist("document_id")
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return "", 204
 
 
@@ -442,7 +442,7 @@ class DatasetInitApi(Resource):
                 request_context, settings=config.model_dump()
             )
         except Exception as error:
-            _raise_document_provider_error(error)
+            _raise_document_indexing_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
 
@@ -619,7 +619,7 @@ class DocumentApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return "", 204
 
 
@@ -638,7 +638,7 @@ class DocumentDownloadApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return UrlResponse(url=result).model_dump(mode="json")
 
 
@@ -673,7 +673,7 @@ class DocumentBatchDownloadZipApi(Resource):
                 cleanup = stack.pop_all()
                 response.call_on_close(cleanup.close)
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         # response-contract:ignore binary ZIP download response
         return response
 
@@ -771,7 +771,7 @@ class DocumentStatusApi(Resource):
                 action=action,
             )
         except Exception as error:
-            _raise_document_action_error(error)
+            _raise_document_status_error(error)
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
@@ -790,7 +790,7 @@ class DocumentPauseApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_state_error(error)
+            _raise_document_archive_error(error)
         return "", 204
 
 
@@ -809,7 +809,7 @@ class DocumentRecoverApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_state_error(error)
+            _raise_document_archive_error(error)
         return "", 204
 
 
@@ -829,7 +829,7 @@ class DocumentRetryApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_ids=req_data.document_ids
             )
         except Exception as error:
-            _raise_document_error(error)
+            _raise_document_indexing_error(error)
         return "", 204
 
 

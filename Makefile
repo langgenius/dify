@@ -90,11 +90,6 @@ api-contract-lint:
 	@uv run --project api --dev python api/dev/lint_response_contracts.py
 	@echo "✅ Response contract lint complete"
 
-api-error-lint:
-	@echo "🔎 Checking documented API errors against what handlers statically raise..."
-	@uv run --project api --dev python api/dev/lint_error_responses.py $(ERROR_LINT_ARGS)
-	@echo "✅ API error lint complete"
-
 type-check:
 	@echo "📝 Running type checks (pyrefly)..."
 	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
@@ -218,7 +213,6 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
-	@echo "  make api-error-lint  - Check documented business errors against what views raise (ERROR_LINT_ARGS='--fix' adds missing ones)"
 	@echo "  make type-check     - Run type checks (pyrefly)"
 	@echo "  make type-check-core - Run core type checks (pyrefly)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
@@ -233,4 +227,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint api-error-lint type-check test test-all
+.PHONY: build-web build-api build-sandbox-runtime push-web push-api push-sandbox-runtime build-all push-all build-push-all build-push-sandbox-runtime dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all

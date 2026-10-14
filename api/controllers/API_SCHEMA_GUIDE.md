@@ -242,32 +242,26 @@ Errors come in two kinds, told apart by how the client handles them, not by thei
 - **Business** errors name an outcome the caller branches on for that operation: `HTTPException` subclasses that
   declare an `error_code`. They are listed per operation so clients can narrow on `code`.
 
-A handler lists what it and its callees raise with `@error_responses(SomeError, ...)` from `libs.external_api`. A
+A handler lists the business errors its own call chain can answer with, using `@error_responses(SomeError, ...)` from
+`libs.external_api`. A
 view decorator documents its own errors on the wrapper it returns: `return document_errors(decorated, SomeError)`.
 Guards in a Resource's `method_decorators` are documented on the class with `document_errors(ResourceClass, ...)`.
 Listing a Werkzeug exception, a handled exception, or a `BaseHTTPException` subclass that keeps the placeholder
 `error_code` is an error. View decorators must keep `__apidoc__` from
 the view they wrap (`functools.wraps` does, unless `updated=()`; then add `"__apidoc__"` to `assigned`).
 
-Two gates keep declarations honest. `make api-error-lint` (`api/dev/lint_error_responses.py`, run in CI) infers
-what each Console, Web and Service API operation statically raises and fails on a business error nothing documents;
-`ERROR_LINT_ARGS=--fix` adds the missing entries. Inference cannot see instance calls, `application_services()`,
-signals or other dynamic dispatch, so an error raised behind them is declared by hand; the lint leaves such entries
-alone (it never reports an entry it cannot infer), and `--fix --prune`, which removes them, is a cleanup to review
-rather than a routine run. The lint also cannot tell which branch of a shared translator (`_raise_*_error` helpers that
-dispatch on `isinstance`) a given operation reaches, so `--fix` suggests the translator's whole union. Give each
-operation a translator that maps only what its service call raises: a base translator for the scope errors every
-operation shares, and narrow ones that add their own branches before delegating to it (see
-`controllers/console/datasets/datasets_document.py` and `controllers/console/auth/login.py`). The inferred set is then
-the documented set. A declared 4xx/5xx status that no declared or inferred error, generic handler or framework
-behavior produces is reported as a warning: declare the business error behind it or drop the bare
-`@ns.response(status)`.
+Declarations are written and reviewed by hand; nothing infers them from the code. Declare what the operation's
+own call chain can answer with, not everything a shared translator knows how to map: a `_raise_*_error` helper that
+dispatches on `isinstance` may serve several operations, and only the branches the operation's service call can
+reach belong on it. An earlier revision of this contract shipped a static linter for this; it could neither see
+through `application_services()` nor tell which branch of a shared translator an operation reaches, so its output
+had to be corrected by hand anyway and it was dropped.
 
-Controller unit tests cover the paths inference cannot follow: every 4xx/5xx JSON response an `ExternalApi` serves
-is checked against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be
+One gate checks served responses. Every 4xx/5xx JSON response an `ExternalApi` serves in a controller unit test is
+checked against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be
 the standard error body, unless the status declares its own model, and its `code` must be one the operation documents
 for that status or one of the surface's generic codes (`ExternalApi.implicit_error_codes`). A new business error
-without a declaration fails there on every path a test exercises.
+without a declaration fails there on every path a test exercises, so give a new error path a test that serves it.
 
 Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
 `DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a
@@ -280,8 +274,8 @@ Signal errors by raising, not by returning `(body, status)`:
 
 - Raise a `BaseHTTPException` subclass so the body carries `code`, `message` and `status` and the code can be
   documented. Do not call `flask_restx.abort` with a message or extra fields; it replaces the standard body.
-- Services and core raise domain exceptions; controllers translate them. `scripts/check_no_new_service_http_errors.py`
-  (CI) blocks new HTTP exceptions raised or defined there; existing ones are legacy.
+- Services and core raise domain exceptions; controllers translate them. An HTTP exception raised inside a service
+  reaches the wire with whatever code its class declares and no operation documents it; the existing ones are legacy.
 - Raise `libs.exception.RelayedHTTPError` for a code and status relayed from a downstream service at runtime. It emits
   the standard body; the operation's open `default` error already documents it, since its codes are not known per
   class, so listing it in `error_responses` adds nothing to the document.

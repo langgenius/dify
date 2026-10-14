@@ -34,6 +34,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -369,6 +370,13 @@ def test_transcription_errors_keep_specific_codes_without_recording_usage(
     body = _assert_error(harness.post(_ASR), status, code)
     if code == "audio_too_large":
         assert str(error) in str(body["message"])
+    assert harness.usage() is None
+
+
+def test_unsupported_tts_provider_has_specific_error(harness: _Harness) -> None:
+    harness.runtime.error = ProviderNotSupportTextToSpeechServiceError()
+
+    _assert_error(harness.post(_TTS), 400, "provider_not_support_text_to_speech")
     assert harness.usage() is None
 
 

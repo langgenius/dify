@@ -241,7 +241,7 @@ class MemberCancelInviteApi(Resource):
                 request_context.active_workspace_id, str(member_id), request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_member_error(error)
+            _raise_member_mutation_error(error)
 
         return MemberActionResponse(
             result="success",
@@ -271,7 +271,7 @@ class MemberUpdateRoleApi(Resource):
                 request_context.active_workspace_id, str(member_id), args.role, request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_member_role_error(error)
+            _raise_member_mutation_error(error)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -306,7 +306,7 @@ class SendOwnerTransferEmailApi(Resource):
                 language=args.language,
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_owner_transfer_send_error(error)
+            _raise_owner_transfer_error(error)
         return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
@@ -323,7 +323,7 @@ class OwnerTransferCheckApi(Resource):
                 request_context, token=args.token, code=args.code
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_owner_transfer_check_error(error)
+            _raise_owner_transfer_error(error)
         return VerificationTokenResponse(is_valid=True, email=email, token=token).model_dump(mode="json")
 
 
@@ -346,79 +346,45 @@ class OwnerTransfer(Resource):
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
-def _raise_member_error(
+def _raise_member_mutation_error(
     error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
 ) -> NoReturn:
-    """Translate the errors every member mutation can raise."""
     if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
         raise NotFound() from error
+    if isinstance(error, InvalidWorkspaceMemberRoleError):
+        raise InvalidMemberRoleError() from error
     if isinstance(error, workspace_errors.CannotOperateSelfError):
         raise MemberCannotOperateSelfError(str(error)) from error
     if isinstance(error, NoPermissionError):
         raise ForbiddenError(str(error)) from error
     if isinstance(error, workspace_errors.MemberNotInTenantError):
         raise MemberNotFoundError(str(error)) from error
-    raise error
-
-
-def _raise_member_role_error(
-    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
-) -> NoReturn:
-    """Changing a role also validates the role itself."""
-    if isinstance(error, InvalidWorkspaceMemberRoleError):
-        raise InvalidMemberRoleError() from error
     if isinstance(error, workspace_errors.RoleAlreadyAssignedError):
         raise MemberRoleAlreadyAssignedError(str(error)) from error
-    _raise_member_error(error)
-
-
-def _raise_owner_transfer_step_error(
-    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
-) -> NoReturn:
-    """Translate the errors every owner-transfer step checks first: the caller must be the owner."""
-    if isinstance(error, NoPermissionError):
-        raise NotOwnerError() from error
-    if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
-        raise NotFound() from error
     raise error
-
-
-def _raise_owner_transfer_challenge_error(
-    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
-) -> NoReturn:
-    """Verifying a code and transferring both read the challenge token."""
-    if isinstance(error, workspace_errors.InvalidOwnerTransferTokenError):
-        raise InvalidTokenError() from error
-    if isinstance(error, workspace_errors.InvalidOwnerTransferEmailError):
-        raise InvalidEmailError() from error
-    _raise_owner_transfer_step_error(error)
-
-
-def _raise_owner_transfer_send_error(
-    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
-) -> NoReturn:
-    if isinstance(error, workspace_errors.OwnerTransferSendIPLimitedError):
-        raise EmailSendIpLimitError() from error
-    if isinstance(error, workspace_errors.OwnerTransferSendRateLimitError):
-        raise OwnerTransferRateLimitExceededError(error.retry_after_minutes) from error
-    _raise_owner_transfer_step_error(error)
-
-
-def _raise_owner_transfer_check_error(
-    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
-) -> NoReturn:
-    if isinstance(error, workspace_errors.OwnerTransferVerificationLimitError):
-        raise OwnerTransferLimitError() from error
-    if isinstance(error, workspace_errors.InvalidOwnerTransferCodeError):
-        raise EmailCodeError() from error
-    _raise_owner_transfer_challenge_error(error)
 
 
 def _raise_owner_transfer_error(
     error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
 ) -> NoReturn:
+    if isinstance(error, NoPermissionError):
+        raise NotOwnerError() from error
+    if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
+        raise NotFound() from error
+    if isinstance(error, workspace_errors.OwnerTransferSendIPLimitedError):
+        raise EmailSendIpLimitError() from error
+    if isinstance(error, workspace_errors.OwnerTransferSendRateLimitError):
+        raise OwnerTransferRateLimitExceededError(error.retry_after_minutes) from error
+    if isinstance(error, workspace_errors.OwnerTransferVerificationLimitError):
+        raise OwnerTransferLimitError() from error
+    if isinstance(error, workspace_errors.InvalidOwnerTransferTokenError):
+        raise InvalidTokenError() from error
+    if isinstance(error, workspace_errors.InvalidOwnerTransferEmailError):
+        raise InvalidEmailError() from error
+    if isinstance(error, workspace_errors.InvalidOwnerTransferCodeError):
+        raise EmailCodeError() from error
     if isinstance(error, workspace_errors.CannotOperateSelfError):
         raise CannotTransferOwnerToSelfError() from error
     if isinstance(error, workspace_errors.MemberNotInTenantError):
         raise MemberNotInTenantError() from error
-    _raise_owner_transfer_challenge_error(error)
+    raise error

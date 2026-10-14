@@ -851,7 +851,6 @@ class AgentPublishApi(Resource):
     @error_responses(
         AgentModelNotConfiguredError,
         AgentNotFoundError,
-        AgentSoulLockedError,
         AgentVersionNotFoundError,
         InvalidComposerConfigError,
         PlaintextSecretNotAllowedError,
@@ -991,7 +990,6 @@ class AgentBuildDraftApplyApi(Resource):
         AgentHomeSnapshotCreateFailedError,
         AgentHomeSnapshotTooLargeError,
         AgentNotFoundError,
-        AgentSoulLockedError,
         AgentVersionNotFoundError,
         InvalidComposerConfigError,
         PlaintextSecretNotAllowedError,
