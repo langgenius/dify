@@ -19,7 +19,7 @@ class _FakeConfigurations:
 
 
 @pytest.fixture
-def service_with_fake_configurations():
+def service_with_fake_configurations(monkeypatch: pytest.MonkeyPatch) -> ModelProviderService:
     # Build a fake provider schema with minimal fields used by ProviderResponse
     fake_provider = types.SimpleNamespace(
         provider="langgenius/openai_api_compatible/openai_api_compatible",
@@ -67,15 +67,15 @@ def service_with_fake_configurations():
     )
 
     class _FakeProviderManager:
-        def get_configurations(self, tenant_id: str) -> _FakeConfigurations:
+        def get_configurations(self, _tenant_id: str) -> _FakeConfigurations:
             return _FakeConfigurations(fake_provider_configuration)
 
     svc = ModelProviderService()
-    svc._get_provider_manager = lambda tenant_id: _FakeProviderManager()
+    monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: _FakeProviderManager())
     return svc
 
 
-def test_get_provider_list_strips_credentials(service_with_fake_configurations: ModelProviderService):
+def test_get_provider_list_strips_credentials(service_with_fake_configurations: ModelProviderService) -> None:
     providers = service_with_fake_configurations.get_provider_list(tenant_id="tenant-1", model_type=None)
 
     assert len(providers) == 1

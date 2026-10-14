@@ -384,7 +384,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </Field>
       )}
 
-      <label className="mt-5! flex h-6 items-center space-x-2">
+      <label className="mt-5! flex h-6 cursor-pointer items-center space-x-2 has-data-disabled:cursor-not-allowed">
         <Checkbox
           checked={tempPayload.required}
           disabled={!isFileInput && tempPayload.hide}
@@ -397,7 +397,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       {showHiddenField && !isFileInput && (
         <div className="mt-5! flex h-6 items-center gap-2">
-          <label className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2 has-data-disabled:cursor-not-allowed">
             <Checkbox
               checked={tempPayload.hide}
               disabled={tempPayload.required}

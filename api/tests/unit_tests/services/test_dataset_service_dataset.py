@@ -28,6 +28,7 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
 )
+from services.enterprise import rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     RagPipelineDatasetCreateEntity,
@@ -1167,3 +1168,67 @@ class TestDatasetPermissions:
             event.remove(sqlite_session, "do_orm_execute", fail_execute)
 
         assert transaction_events == []
+
+
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+@pytest.mark.parametrize("commit_fails", [False, True])
+@pytest.mark.parametrize("expire_on_commit", [False, True])
+def test_empty_pipeline_syncs_creator_after_commit(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    rbac_enabled: bool,
+    commit_fails: bool,
+    expire_on_commit: bool,
+) -> None:
+    config_overrides(RBAC_ENABLED=rbac_enabled)
+    sqlite_session.expire_on_commit = expire_on_commit
+    account = _account()
+    entity = RagPipelineDatasetCreateEntity(
+        name="New pipeline",
+        description="",
+        permission=DatasetPermissionEnum.ONLY_ME,
+        icon_info=IconInfo(icon_type="emoji", icon="📚", icon_background="#FFFFFF", icon_url=None),
+    )
+    commit = sqlite_session.commit
+    observed: list[tuple[str, str, object]] = []
+    transactions_at_sync: list[bool] = []
+
+    def commit_session() -> None:
+        if commit_fails:
+            raise RuntimeError("commit failed")
+        commit()
+
+    def sync_binding(_tenant_id: str, _account_id: str, *, resource_type: object, resource_id: str) -> list[object]:
+        transactions_at_sync.append(sqlite_session.in_transaction())
+        with sqlite_session_factory() as observer:
+            stored = observer.get(Dataset, resource_id)
+            if stored is not None:
+                observed.append((stored.tenant_id, stored.created_by, resource_type))
+        return []
+
+    with (
+        patch("services.knowledge.dataset_service.current_user", account),
+        patch.object(sqlite_session, "commit", side_effect=commit_session),
+        patch.object(
+            rbac_service.RBACService.AccessPolicies,
+            "sync_creator_access_policy_member_bindings",
+            side_effect=sync_binding,
+        ) as sync,
+    ):
+        if commit_fails:
+            with pytest.raises(RuntimeError, match="commit failed"):
+                DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, sqlite_session)
+        else:
+            dataset = DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, sqlite_session)
+            if rbac_enabled:
+                assert transactions_at_sync == [False]
+                assert observed == [("tenant-1", account.id, rbac_service.RBACResourceType.DATASET)]
+                sync.assert_called_once_with(
+                    "tenant-1",
+                    account.id,
+                    resource_type=rbac_service.RBACResourceType.DATASET,
+                    resource_id=dataset.id,
+                )
+        if commit_fails or not rbac_enabled:
+            sync.assert_not_called()

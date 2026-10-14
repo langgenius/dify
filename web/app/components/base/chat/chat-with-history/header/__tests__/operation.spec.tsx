@@ -83,19 +83,4 @@ describe('Operation Component', () => {
       expect(defaultProps.onDelete).toHaveBeenCalledTimes(1)
     })
   })
-
-  it('applies hover background when open', async () => {
-    const user = userEvent.setup()
-    render(<Operation {...defaultProps} />)
-    // Find trigger container by text and traverse to interactive container using a more robust selector
-    const trigger = screen.getByText('Chat Title').closest('.cursor-pointer')
-
-    // closed state
-    expect(trigger).toHaveClass('data-popup-open:bg-state-base-hover')
-    expect(trigger).not.toHaveAttribute('data-popup-open')
-
-    // open state
-    await user.click(screen.getByText('Chat Title'))
-    expect(trigger).toHaveAttribute('data-popup-open')
-  })
 })

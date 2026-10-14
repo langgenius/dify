@@ -108,7 +108,8 @@ vi.mock('@/service/console', () => ({
         relations: {
           byRelationId: {
             delete: {
-              mutationOptions: () => ({
+              mutationOptions: (options?: object) => ({
+                ...options,
                 mutationFn: mocks.deleteResourceAccessTokenRelation,
               }),
             },
@@ -919,6 +920,34 @@ describe('ResourceAccessTokenPage', () => {
         },
         expect.anything(),
       )
+    })
+  })
+
+  it('keeps the delete confirmation open until the request settles', async () => {
+    const user = userEvent.setup()
+    let settleDelete: () => void = () => {}
+    mocks.deleteResourceAccessTokenRelation.mockReturnValue(
+      new Promise<void>((resolve) => {
+        settleDelete = resolve
+      }),
+    )
+    renderWithQueryClient(<ResourceAccessTokenPage />)
+
+    await screen.findByText('Production clients')
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
+    const dialog = screen.getByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    })
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+    settleDelete()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
   })
 })

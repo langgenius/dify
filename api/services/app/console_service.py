@@ -157,7 +157,7 @@ class AppTransfers(Protocol):
 class CreatorsPlatform(Protocol):
     def require_enabled(self) -> None: ...
 
-    def upload(self, dsl: str) -> str: ...
+    def upload(self, source: BinaryIO, *, filename: str) -> str: ...
 
     def authorize(self, account_id: str) -> str | None: ...
 
@@ -269,7 +269,7 @@ class ConsoleAppService:
     ) -> Import:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
-        self._set_import_permissions(context, result, created=params.app_id is None)
+        self._set_import_permissions(context, result, created=result.app_created)
         if result.app_id:
             self._access.initialize_import_access(result.app_id)
         return result
@@ -296,16 +296,15 @@ class ConsoleAppService:
         return self._transfers.check_dependencies(context, app_id)
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
-        permissions = None
+        permissions = self._access.permissions(context)
         if isinstance(params, AppListParams):
-            permissions = self._access.permissions(context)
             params = permissions.filter_list(params)
         page = self._apps.list_apps(context, params)
         if not page.data:
             return page
         app_ids = [app.id for app in page.data]
         modes = self._access.access_modes(app_ids)
-        keys = permissions.keys_for(app_ids) if permissions is not None else {}
+        keys = permissions.keys_for(app_ids)
         return replace(
             page,
             data=[
@@ -396,6 +395,11 @@ class ConsoleAppService:
                 raise AppExportPaidPlanRequiredError("This feature requires a paid plan.")
         if options.format == "yaml":
             return self._transfers.export_dsl(context, app.id, options)
+        return self._export_package(context, app, options)
+
+    def _export_package(
+        self, context: RequestContext, app: AppReference, options: AppExportOptions
+    ) -> RosterAgentPackageExport:
         if app.mode == "agent":
             if app.bound_agent_id is None:
                 raise AppExportAgentNotFoundError("Agent not found")
@@ -408,10 +412,10 @@ class ConsoleAppService:
 
     def publish(self, context: RequestContext, app_id: str) -> str:
         # Validate ownership before producing external effects, including feature rejection.
-        self._apps.get_reference(context, app_id)
+        app = self._apps.get_reference(context, app_id)
         self._creators.require_enabled()
-        dsl = self._transfers.export_dsl(context, app_id, AppExportOptions(include_secret=False))
-        claim_code = self._creators.upload(dsl)
+        with self._export_package(context, app, AppExportOptions(format="ifpkg", include_secret=False)) as package:
+            claim_code = self._creators.upload(package.archive, filename=package.filename)
         code = self._creators.authorize(context.account_id)
         return self._creators.redirect_url(claim_code, code)
 

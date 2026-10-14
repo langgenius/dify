@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -421,10 +422,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-        bodyUsed: false,
-      }
+      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+        code: 'draft_workflow_not_sync',
+      })
       mockSyncWorkflowDraft.mockRejectedValue(mockJsonError)
 
       const { result } = renderHook(() => useNodesSyncDraft())
@@ -444,10 +444,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-        bodyUsed: false,
-      }
+      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+        code: 'draft_workflow_not_sync',
+      })
       mockSyncWorkflowDraft.mockRejectedValue(mockJsonError)
 
       const { result } = renderHook(() => useNodesSyncDraft())
