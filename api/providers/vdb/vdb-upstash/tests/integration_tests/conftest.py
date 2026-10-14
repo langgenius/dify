@@ -1,73 +1,81 @@
 import os
-from collections import UserDict
+import re
+from typing import Any
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from upstash_vector import Index
 
 
-class MockIndex:
-    def __init__(self, url="", token=""):
-        self.url = url
-        self.token = token
-        self.vectors = []
+class InMemoryUpstashTransport:
+    """Handle serialized Upstash requests below IndexOperations."""
 
-    def upsert(self, vectors):
-        for vector in vectors:
-            vector.score = 0.5
-            self.vectors.append(vector)
-        return {"code": 0, "msg": "operation success", "affectedCount": len(vectors)}
+    def __init__(self) -> None:
+        self.vectors: dict[str, dict[str, Any]] = {}
 
-    def fetch(self, ids):
-        return [vector for vector in self.vectors if vector.id in ids]
+    def execute(self, payload: Any = "", path: str = ""):
+        if path == "/upsert":
+            for vector in payload:
+                self.vectors[str(vector["id"])] = vector
+            return "Success"
 
-    def delete(self, ids):
-        self.vectors = [vector for vector in self.vectors if vector.id not in ids]
-        return {"code": 0, "msg": "Success"}
+        if path == "/query":
+            vectors = list(self.vectors.values())
+            if value_match := re.fullmatch(r"([A-Za-z0-9_.]+) = '([^']*)'", payload.get("filter", "")):
+                key, value = value_match.groups()
+                vectors = [vector for vector in vectors if (vector.get("metadata") or {}).get(key) == value]
+            return [
+                {
+                    "id": str(vector["id"]),
+                    "score": 0.9,
+                    "vector": vector.get("vector") if payload.get("includeVectors") else None,
+                    "metadata": vector.get("metadata") if payload.get("includeMetadata") else None,
+                    "data": vector.get("data") if payload.get("includeData") else None,
+                }
+                for vector in vectors[: payload["topK"]]
+            ]
 
-    def query(
-        self,
-        vector: None,
-        top_k: int = 10,
-        include_vectors: bool = False,
-        include_metadata: bool = False,
-        filter: str = "",
-        data: str | None = None,
-        namespace: str = "",
-        include_data: bool = False,
-    ):
-        mock_result = []
-        for vector_data in self.vectors:
-            mock_result.append(vector_data)
-        return mock_result[:top_k]
+        if path == "/delete":
+            deleted = 0
+            for vector_id in payload.get("ids", []):
+                if self.vectors.pop(str(vector_id), None) is not None:
+                    deleted += 1
+            return {"deleted": deleted}
 
-    def reset(self):
-        self.vectors = []
+        if path == "/fetch":
+            return [self.vectors.get(str(vector_id)) for vector_id in payload.get("ids", [])]
 
-    def info(self):
-        return AttrDict({"dimension": 1024})
+        if path == "/reset":
+            self.vectors.clear()
+            return "Success"
 
+        if path == "/info":
+            return {
+                "vectorCount": len(self.vectors),
+                "pendingVectorCount": 0,
+                "indexSize": 0,
+                "dimension": 1024,
+                "similarityFunction": "COSINE",
+                "namespaces": {
+                    "": {
+                        "vectorCount": len(self.vectors),
+                        "pendingVectorCount": 0,
+                    }
+                },
+            }
 
-class AttrDict(UserDict):
-    def __getattr__(self, item):
-        return self.get(item)
+        raise AssertionError(f"Unhandled Upstash request: path={path} payload={payload}")
 
 
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_upstashvector_mock(request, monkeypatch: MonkeyPatch):
+def setup_upstashvector_mock(monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(Index, "__init__", MockIndex.__init__)
-        monkeypatch.setattr(Index, "upsert", MockIndex.upsert)
-        monkeypatch.setattr(Index, "fetch", MockIndex.fetch)
-        monkeypatch.setattr(Index, "delete", MockIndex.delete)
-        monkeypatch.setattr(Index, "query", MockIndex.query)
-        monkeypatch.setattr(Index, "reset", MockIndex.reset)
-        monkeypatch.setattr(Index, "info", MockIndex.info)
+        transport = InMemoryUpstashTransport()
 
-    yield
+        def execute_request(client, payload="", path=""):
+            return transport.execute(payload=payload, path=path)
 
-    if MOCK:
-        monkeypatch.undo()
+        monkeypatch.setattr(Index, "_execute_request", execute_request)
