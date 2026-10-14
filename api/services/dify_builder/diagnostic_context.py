@@ -114,6 +114,8 @@ def _structured(value: Any, known: set[str]) -> Any:
         return result
     if isinstance(value, (list, tuple)):
         return [_structured(item, known) for item in value]
+    if isinstance(value, str):
+        _collect_text_credentials(value, known)
     return value
 
 
@@ -140,11 +142,27 @@ def _replace_known(value: Any, known: list[str]) -> Any:
     return value
 
 
+def _collect_text_credentials(text: str, known: set[str]) -> None:
+    """Collect explicit credential assignments in arbitrary source strings."""
+    # Match only the key prefix. A non-sensitive outer assignment must not
+    # consume a value containing another explicit credential assignment.
+    for match in re.finditer(r"(?i)\b([a-z][a-z0-9_-]{0,63})[\"']?\s*[=:]\s*", text):
+        if _field_name(match.group(1)) not in _SENSITIVE_FIELDS:
+            continue
+        value = re.match(r"(?:\"([^\"]+)\"|'([^']+)'|([^\s\"',;}]+))", text[match.end() :])
+        if value:
+            _hide(next(group for group in value.groups() if group is not None), known)
+    for match in re.finditer(r"(?i)\b(?:bearer|basic)\s+([^\s\"',;]+)", text):
+        _hide(match.group(1), known)
+
+
 def _known_credentials(failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> set[str]:
     """Collect from raw provenance before any projection discards values."""
     known: set[str] = set()
     _structured(graph, known)
+    _collect_text_credentials(failed_run.error, known)
     for output in [*failed_run.per_node, *node_outputs]:
+        _collect_text_credentials(output.error, known)
         _structured(output.inputs, known)
         _structured(output.outputs, known)
     return known
@@ -168,8 +186,16 @@ def redact_run_context(failed_run: Run, graph: Graph, node_outputs: list[NodeOut
     secrets = sorted(known, key=len, reverse=True)
     safe_run.error = _replace_text(safe_run.error, secrets)
     for output in [*safe_run.per_node, *safe_outputs]:
+        output.node_id = _replace_text(output.node_id, secrets)
         output.title = _replace_text(output.title, secrets)
         output.error = _replace_text(output.error, secrets)
         output.inputs = _replace_known(output.inputs, secrets)
         output.outputs = _replace_known(output.outputs, secrets)
     return safe_run, safe_outputs
+
+
+def redact_diagnostic_value(value: Any, failed_run: Run, graph: Graph, node_outputs: list[NodeOutput]) -> Any:
+    """Sanitize graph projection from the full provenance before truncation."""
+    known = _known_credentials(failed_run, graph, node_outputs)
+    structured = _structured(deepcopy(value), known)
+    return _replace_known(structured, sorted(known, key=len, reverse=True))

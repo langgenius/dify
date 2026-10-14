@@ -52,7 +52,14 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     graph, _ = env.dify.read_graph(s.app_id, turn.actor)
     progress.activate("fix-propose-repair")
     # Both proposal states are entered after their diagnosis has committed.
-    intents, risk = env.agent.propose_repair(cast(Diagnosis, fc.diagnosis), graph)
+    if fc.source != "checklist" and fc.failed_run_id:
+        from services.dify_builder.condition_evidence import propose_failure
+
+        intents, risk = propose_failure(
+            env, s.app_id, turn.actor, env.repo.get_run(fc.failed_run_id), cast(Diagnosis, fc.diagnosis), graph
+        )
+    else:
+        intents, risk = env.agent.propose_repair(cast(Diagnosis, fc.diagnosis), graph)
     fc.staged_repair = intents
     fc.risk = risk
 

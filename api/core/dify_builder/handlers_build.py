@@ -1028,7 +1028,9 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         ]
     )
     progress.activate("build-diagnose-failure")
-    diagnosis = env.agent.diagnose(run, graph, per_node)
+    from services.dify_builder.condition_evidence import diagnose_failure, propose_failure
+
+    diagnosis = diagnose_failure(env, s.app_id, turn.actor, run, graph)
     _note_repair_error(fc, run)
     if _repair_is_repeating(fc):
         # The same failure has now survived _MAX_REPEATED_REPAIRS repairs, so
@@ -1062,7 +1064,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             run_id_sink=[run.id],
         )
     progress.activate("build-prepare-repair")
-    intents, risk = env.agent.propose_repair(diagnosis, graph)
+    intents, risk = propose_failure(env, s.app_id, turn.actor, run, diagnosis, graph)
     fc.diagnosis = diagnosis
     fc.staged_repair = list(intents)
     fc.risk = risk
@@ -1145,6 +1147,7 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 list(fc.staged_repair),
                 on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
+                failed_run_id=env.repo.get_run(fc.verify_run_id).dify_run_id if fc.verify_run_id else "",
             )
         except DraftWouldNotStartError as exc:
             # The fix applied, but apply_repair's preflight found the result

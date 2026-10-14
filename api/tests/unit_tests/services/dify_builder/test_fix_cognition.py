@@ -45,6 +45,21 @@ _GRAPH = {
 _OUTPUTS = [NodeOutput(node_id="code1", title="Code", status="failed", error="NameError: x", inputs={}, outputs={})]
 
 
+def _bind_failed_native_fixture(monkeypatch, port, graph, node_id):
+    """Explicit owned native identity for non-IF risk/approval tests only."""
+    native_run_id = "risk-native-run"
+
+    def read_failed_context(app_id, actor, run_id):
+        assert app_id == "app"
+        assert actor.tenant_id == "tenant-1"
+        assert actor.account_id == "acc-1"
+        assert run_id == native_run_id
+        return deepcopy(graph), [NodeOutput(node_id=node_id, status="failed", error="bad config")], ""
+
+    monkeypatch.setattr(port, "failed_run_context", read_failed_context, raising=False)
+    return native_run_id
+
+
 def test_diagnose_valid():
     m = _FakeInstance(['{"culprit_node_id": "code1", "root_cause": "x is undefined", "severity": "high"}'])
     d = fix.diagnose(m, Run(), _GRAPH, _OUTPUTS)
@@ -175,6 +190,7 @@ def test_real_fix_cognition_routes_repairs_through_core_approval(monkeypatch, sw
     repo = InMemoryRepository()
     port = FakeBuildDifyPort()
     port.graph = deepcopy(graph)
+    native_run_id = _bind_failed_native_fixture(monkeypatch, port, graph, "llm")
     env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
     actor = Actor(account_id="acc-1", tenant_id="tenant-1")
     session = Session(
@@ -184,7 +200,7 @@ def test_real_fix_cognition_routes_repairs_through_core_approval(monkeypatch, sw
         entry_mode=EntryMode.FIX,
         current_state=PcState.FIX_DIAGNOSE,
     )
-    original = Run(id="failed-run", kind="original-failed", status="failed", immutable=True)
+    original = Run(id="failed-run", dify_run_id=native_run_id, kind="original-failed", status="failed", immutable=True)
     repo.create_session(session, DifyBuilderContext(failed_run_id=original.id), [])
     repo.save_run(session.id, original)
     runner = Runner(env, fix_registry())
@@ -287,6 +303,7 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
     repo = InMemoryRepository()
     port = FakeBuildDifyPort()
     port.graph = deepcopy(graph)
+    native_run_id = _bind_failed_native_fixture(monkeypatch, port, graph, "aggregator")
     env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
     actor = Actor(account_id="acc-1", tenant_id="tenant-1")
     session = Session(
@@ -297,7 +314,10 @@ def test_real_fix_aggregator_source_switch_waits_for_explicit_approval(monkeypat
         current_state=PcState.FIX_DIAGNOSE,
     )
     repo.create_session(session, DifyBuilderContext(failed_run_id="failed-run"), [])
-    repo.save_run(session.id, Run(id="failed-run", kind="original-failed", status="failed", immutable=True))
+    repo.save_run(
+        session.id,
+        Run(id="failed-run", dify_run_id=native_run_id, kind="original-failed", status="failed", immutable=True),
+    )
     runner = Runner(env, fix_registry())
 
     out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))
@@ -689,6 +709,7 @@ def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypa
     repo = InMemoryRepository()
     port = FakeBuildDifyPort()
     port.graph = deepcopy(graph)
+    native_run_id = _bind_failed_native_fixture(monkeypatch, port, graph, "n")
     env = Env(dify=port, agent=llm_agent.LlmBuilderAgent("tenant-1"), repo=repo, now=lambda: datetime.min)
     actor = Actor(account_id="acc-1", tenant_id="tenant-1")
     session = Session(
@@ -699,7 +720,10 @@ def test_real_fix_native_data_access_changes_wait_for_explicit_approval(monkeypa
         current_state=PcState.FIX_DIAGNOSE,
     )
     repo.create_session(session, DifyBuilderContext(failed_run_id="failed-run"), [])
-    repo.save_run(session.id, Run(id="failed-run", kind="original-failed", status="failed", immutable=True))
+    repo.save_run(
+        session.id,
+        Run(id="failed-run", dify_run_id=native_run_id, kind="original-failed", status="failed", immutable=True),
+    )
     runner = Runner(env, fix_registry())
 
     out = runner.advance(session.id, Turn(action=Action(kind="request_fix", base_version=1), actor=actor))

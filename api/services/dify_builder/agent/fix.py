@@ -6,6 +6,7 @@ valid repair) they DEGRADE to an honest, surface-to-human result rather than
 crashing the advance or applying a canned guess.
 """
 
+import json
 from collections.abc import Callable
 from typing import Any
 
@@ -20,7 +21,14 @@ from core.dify_builder.models import (
 )
 from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
-from services.dify_builder import credentials, diagnostic_context, graph_ops, mutation_policy, preflight
+from services.dify_builder import (
+    condition_evidence,
+    credentials,
+    diagnostic_context,
+    graph_ops,
+    mutation_policy,
+    preflight,
+)
 from services.dify_builder.agent import graph_prompt, llm
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
@@ -78,7 +86,7 @@ def _coerce_severity(value: Any) -> str:
 
 
 def _failed_nodes(node_outputs: list[NodeOutput]) -> list[NodeOutput]:
-    return [o for o in node_outputs if o.status in ("failed", "exception")]
+    return [o for o in node_outputs if o.status == "failed"] + [o for o in node_outputs if o.status == "exception"]
 
 
 def _diagnosis_from_json(
@@ -125,17 +133,25 @@ def diagnose(
     graph: Graph,
     node_outputs: list[NodeOutput],
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    evidence: dict[str, Any] | None = None,
 ) -> Diagnosis:
+    if evidence is None:
+        _, _, _, evidence = condition_evidence.build_evidence(failed_run, graph, None, node_outputs)
     safe_run, safe_outputs = diagnostic_context.redact_run_context(failed_run, graph, node_outputs)
     failed = _failed_nodes(safe_outputs)
     if model is None:
         return _degraded_diagnosis(failed, safe_run.error)
     system = (
-        "You are a Dify workflow debugging assistant. Given a failed workflow run, identify the "
-        "single node that caused the failure and the root cause. Reply with ONLY a JSON object: "
-        '{"culprit_node_id": "<an existing node id>", "root_cause": "<concise explanation>", '
-        '"severity": "low|medium|high"}.'
-    ) + llm.json_language_instruction("root_cause")
+        (
+            "You are a Dify workflow debugging assistant. Given a failed workflow run, identify the "
+            "single node that caused the failure and the root cause. Reply with ONLY a JSON object: "
+            '{"culprit_node_id": "<an existing node id>", "root_cause": "<concise explanation>", '
+            '"severity": "low|medium|high"}.'
+        )
+        + condition_evidence.SYSTEM_RULES
+        + llm.json_language_instruction("root_cause")
+    )
     failed_desc = "\n".join(
         f"- {o.node_id} ({o.title}) status={o.status} error={o.error!r} "
         f"inputs={_truncate(o.inputs)} outputs={_truncate(o.outputs)}"
@@ -146,14 +162,20 @@ def diagnose(
         else "(no per-node failure recorded)"
     )
     user = diagnostic_context.redact_diagnostic_text(
-        f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{_graph_context(graph)}", failed_run, graph, node_outputs
+        f"FAILED NODES:\n{failed_desc}\n\nGRAPH:\n{_graph_context(graph)}"
+        f"\nCONDITION EVIDENCE:\n{json.dumps(evidence, separators=(',', ':'))}",
+        failed_run,
+        graph,
+        node_outputs,
     )
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
     except Exception:  # any LLM/provider failure degrades to a surfaced result, never crashes the advance
         return _degraded_diagnosis(failed, safe_run.error)
     fallback = failed[0].node_id if failed else ""
-    return _diagnosis_from_json(data, graph, fallback_node=fallback)
+    diagnosis = _diagnosis_from_json(data, graph, fallback_node=fallback)
+    diagnosis.condition_evidence = evidence
+    return diagnosis
 
 
 def diagnose_checklist(
@@ -322,25 +344,37 @@ def propose_repair(
     diagnosis: Diagnosis,
     graph: Graph,
     on_reasoning: Callable[[str], None] | None = None,
+    *,
+    prompt_graph: Graph | None = None,
+    redact_text: Callable[[str], str] | None = None,
 ) -> tuple[list[MutationIntent], Risk]:
     if model is None:
         return _no_fix()
     system = (
-        "You are a Dify workflow repair assistant. Propose the minimal set of mutations that fix "
-        "the diagnosed problem. Reference only node ids that exist in the graph, and use only the "
-        "listed node types. Reply with ONLY a JSON object: "
-        '{"intents": [{"op": ..., "args": {...}}], '
-        '"risk": {"level": "low|high", "reason": "...", "has_external_side_effect": true|false}}.\n'
-        + _OP_SCHEMA
-        + "Allowed node types: "
-        + ", ".join(sorted(_ALLOWED_NODE_TYPES))
-        + ".\n"
-    ) + llm.json_language_instruction("risk.reason")
+        (
+            "You are a Dify workflow repair assistant. Propose the minimal set of mutations that fix "
+            "the diagnosed problem. Reference only node ids that exist in the graph, and use only the "
+            "listed node types. Reply with ONLY a JSON object: "
+            '{"intents": [{"op": ..., "args": {...}}], '
+            '"risk": {"level": "low|high", "reason": "...", "has_external_side_effect": true|false}}.\n'
+            + _OP_SCHEMA
+            + "Allowed node types: "
+            + ", ".join(sorted(_ALLOWED_NODE_TYPES))
+            + ".\n"
+        )
+        + condition_evidence.SYSTEM_RULES
+        + llm.json_language_instruction("risk.reason")
+    )
+    visible_graph = prompt_graph if prompt_graph is not None else graph
     user = (
         f"DIAGNOSIS:\n culprit={diagnosis.culprit_node_id}\n root_cause={diagnosis.root_cause}\n"
-        f" severity={diagnosis.severity}\n\nCULPRIT NODE CONFIG:\n{_culprit_config(diagnosis.culprit_node_id, graph)}"
-        f"\n\nGRAPH:\n{_graph_context(graph)}"
+        f" severity={diagnosis.severity}\n\nCULPRIT NODE CONFIG:\n"
+        f"{_culprit_config(diagnosis.culprit_node_id, visible_graph)}"
+        f"\n\nGRAPH:\n{_graph_context(visible_graph)}"
     )
+    user += "\nCONDITION EVIDENCE:\n" + json.dumps(diagnosis.condition_evidence, separators=(",", ":"))
+    if redact_text is not None:
+        user = redact_text(user)
     intents, risk = _invoke_repair(model, system, user, on_reasoning)
     if intents is None:
         return _no_fix()
@@ -349,10 +383,12 @@ def propose_repair(
     # worst outcome there is here -- it reaches the approval gate as a real fix,
     # the human approves it, and the write dies. One corrective re-prompt, then
     # surface to the human; a proposal the engine still refuses is not a fix.
-    vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+    vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES, evidence=diagnosis.condition_evidence)
     if vetted.rejections:
         reasons = "\n".join(vetted.rejections)
         retry_user = f"{user}\n\nYour previous intents were invalid:\n{reasons}\nReturn corrected intents."
+        if redact_text is not None:
+            retry_user = redact_text(retry_user)
         retried, retried_risk = _invoke_repair(model, system, retry_user, on_reasoning)
         if retried is None:
             # Nothing usable came back, so the verdict that stands is the one on
@@ -360,7 +396,7 @@ def propose_repair(
             # been asked about. Say what was wrong with it.
             return _no_fix(_judged_wrong_reason(vetted))
         intents, risk = retried, retried_risk
-        vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES)
+        vetted = preflight.vet_intents(graph, intents, _ALLOWED_NODE_TYPES, evidence=diagnosis.condition_evidence)
     # Parity with Edit (``agent.edit._refuse_a_batch_already_judged_wrong``), and
     # written as its own check rather than left to the broader one below.
     # ``would_run_wrong`` is the one refusal the ENGINE DOES NOT MAKE: the draft

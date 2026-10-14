@@ -190,6 +190,7 @@ class DifyPort(Protocol):
         on_canvas: Callable[[dict], None] | None = None,
         *,
         expected_revision: str,
+        failed_run_id: str | None = None,
     ) -> ApplyResult: ...
 
     def run_draft(
