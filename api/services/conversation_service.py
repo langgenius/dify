@@ -8,7 +8,6 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import use_credit_usage_metadata
 from models import Account
 from models.model import App, Conversation, EndUser
-from repositories.conversation_lifecycle import retire_conversation
 from services.errors.conversation import ConversationNotExistsError
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data
@@ -44,31 +43,6 @@ class ConversationService:
             raise ConversationNotExistsError()
 
         return conversation
-
-    @classmethod
-    def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session) -> None:
-        """
-        Delete a conversation only if it belongs to the given user and app context.
-
-        Conversation deletion is the product lifecycle boundary for its
-        Workspace. Physical collection happens only after the retire commit.
-
-        Raises:
-            ConversationNotExistsError: When the conversation is not visible to the current user.
-        """
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
-        tenant_id = app_model.tenant_id
-        try:
-            retired_workspace_ids = retire_conversation(app_model=app_model, conversation=conversation, session=session)
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        cls.enqueue_delete_cleanup(
-            tenant_id=tenant_id,
-            conversation_id=conversation_id,
-            retired_workspace_ids=retired_workspace_ids,
-        )
 
     @staticmethod
     def enqueue_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:

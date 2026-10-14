@@ -1,12 +1,15 @@
 """Read owned conversations and restore their inputs outside the query transaction."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from typing import Protocol
 
 from machinery.context import RequestContext
 from services.entities.conversation_entities import (
+    ConsoleChatConversationDetail,
+    ConsoleCompletionConversationDetail,
     ConsoleCompletionConversationRecord,
+    ConsoleConversationDetailSource,
     ConsoleConversationFilters,
     ConsoleConversationKind,
     ConsoleConversationPage,
@@ -17,9 +20,14 @@ from services.entities.conversation_entities import (
     ConversationScope,
     ConversationSort,
 )
+from services.entities.message_entities import MessageFileProjection, MessageFileReference
 
 
 class ConversationQueryStore(Protocol):
+    def get_console_detail(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleConversationDetailSource: ...
+
     def get_console_scope(
         self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationScope: ...
@@ -46,10 +54,40 @@ class ConversationInputRestorer(Protocol):
     ) -> dict[str, ConversationInputValue]: ...
 
 
+class MessageFiles(Protocol):
+    def resolve(
+        self,
+        *,
+        tenant_id: str,
+        inputs: dict[str, ConversationInputValue],
+        answer: str,
+        files: Sequence[MessageFileReference],
+    ) -> MessageFileProjection: ...
+
+
 class ConversationQueryService:
-    def __init__(self, *, conversations: ConversationQueryStore, restore_inputs: ConversationInputRestorer) -> None:
+    def __init__(
+        self, *, conversations: ConversationQueryStore, restore_inputs: ConversationInputRestorer, files: MessageFiles
+    ) -> None:
         self._conversations = conversations
         self._restore_inputs = restore_inputs
+        self._files = files
+
+    def get_console_detail(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleCompletionConversationDetail | ConsoleChatConversationDetail:
+        source = self._conversations.get_console_detail(context, app_id, conversation_id, kind=kind)
+        record = source.record
+        if isinstance(record, ConsoleCompletionConversationDetail) and record.first_message is not None:
+            message = record.first_message
+            files = self._files.resolve(
+                tenant_id=source.tenant_id, inputs=message.inputs, answer=message.answer, files=source.files
+            )
+            record = replace(
+                record,
+                first_message=replace(message, inputs=files.inputs, answer=files.answer, message_files=files.files),
+            )
+        return record
 
     def get_console_scope(
         self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind

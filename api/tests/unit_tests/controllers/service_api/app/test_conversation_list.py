@@ -23,6 +23,7 @@ from repositories.conversation_repository import ConversationRepository
 from services.auth.resource_access_token_contracts import ResourceAccessTokenResource
 from services.conversation_query_service import ConversationQueryService
 from services.entities.conversation_entities import ConversationSort
+from services.message_query_adapters import MessageFileResolver
 from tests.unit_tests.controllers.service_api.app import test_conversation_rename as rename_tests
 from tests.unit_tests.controllers.service_api.app.test_conversation_rename import _Harness as RenameHarness
 from tests.unit_tests.controllers.service_api.app.test_conversation_rename import _Services as RenameServices
@@ -67,6 +68,7 @@ def harness(rename_harness: RenameHarness) -> _Harness:
         conversation_names=original.conversation_names,
         resource_access_tokens=original.resource_access_tokens,
         conversation_queries=ConversationQueryService(
+            files=MessageFileResolver(),
             conversations=ConversationRepository(session_factory=rename_harness.repository_factory),
             restore_inputs=restore_input_files,
         ),

@@ -23,6 +23,7 @@ from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_service import ConversationNameService
 from services.conversation_query_service import ConversationQueryService
 from services.installed_app_conversation_service import InstalledAppConversationService
+from services.message_query_adapters import MessageFileResolver
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -121,7 +122,9 @@ def conversations(
         installed_apps=_InstalledAppServices(
             conversations=InstalledAppConversationService(
                 queries=ConversationQueryService(
-                    conversations=ConversationRepository(session_factory=factory), restore_inputs=restore_input_files
+                    files=MessageFileResolver(),
+                    conversations=ConversationRepository(session_factory=factory),
+                    restore_inputs=restore_input_files,
                 ),
                 names=ConversationNameService(
                     conversations=ConversationRepository(session_factory=factory), generate_name=state.generate_name

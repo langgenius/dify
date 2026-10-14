@@ -2466,8 +2466,9 @@ Delete a chat conversation
 | Code | Description |
 | ---- | ----------- |
 | 204 | Conversation deleted successfully |
+| 401 | Authentication required |
 | 403 | Insufficient permissions |
-| 404 | Conversation not found |
+| 404 | App or conversation not found |
 
 ### [GET] /apps/{app_id}/chat-conversations/{conversation_id}
 Get chat conversation details
@@ -2484,8 +2485,9 @@ Get chat conversation details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationDetail](#conversationdetail)<br> |
+| 401 | Authentication required |  |
 | 403 | Insufficient permissions |  |
-| 404 | Conversation not found |  |
+| 404 | App or conversation not found |  |
 
 ### [GET] /apps/{app_id}/chat-messages
 Get chat messages for a conversation with pagination
@@ -2584,8 +2586,9 @@ Delete a completion conversation
 | Code | Description |
 | ---- | ----------- |
 | 204 | Conversation deleted successfully |
+| 401 | Authentication required |
 | 403 | Insufficient permissions |
-| 404 | Conversation not found |
+| 404 | App or conversation not found |
 
 ### [GET] /apps/{app_id}/completion-conversations/{conversation_id}
 Get completion conversation details with messages
@@ -2602,8 +2605,9 @@ Get completion conversation details with messages
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationMessageDetail](#conversationmessagedetail)<br> |
+| 401 | Authentication required |  |
 | 403 | Insufficient permissions |  |
-| 404 | Conversation not found |  |
+| 404 | App or conversation not found |  |
 
 ### [POST] /apps/{app_id}/completion-messages
 Generate completion message for debugging

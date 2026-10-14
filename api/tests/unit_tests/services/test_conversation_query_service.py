@@ -29,6 +29,7 @@ from services.entities.conversation_entities import (
     InstalledAppConversationScope,
 )
 from services.installed_app_access_service import InstalledAppRef
+from services.message_query_adapters import MessageFileResolver
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
 
 
@@ -151,7 +152,9 @@ def test_query_restores_real_file_inputs_after_returning_database_connection(
         return restore_input_files(inputs=inputs, tenant_resolver=tenant_resolver)
 
     service = ConversationQueryService(
-        conversations=ConversationRepository(session_factory=sqlite_session_factory), restore_inputs=restore
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore,
     )
     result = service.get_page(
         scope=query_context.scope,
@@ -232,7 +235,9 @@ def test_invalid_file_input_error_propagates_after_repository_connection_is_clos
         conversation.inputs = {"file": {"dify_model_identity": FILE_MODEL_IDENTITY, "transfer_method": "invalid"}}
     connection_events = _record_connections(sqlite_engine)
     service = ConversationQueryService(
-        conversations=ConversationRepository(session_factory=sqlite_session_factory), restore_inputs=restore_input_files
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore_input_files,
     )
     with pytest.raises(ValueError):
         service.get_page(
@@ -315,7 +320,9 @@ def test_console_message_file_inputs_restore_after_all_database_projections_comp
         return restore_input_files(inputs=inputs, tenant_resolver=tenant_resolver)
 
     service = ConversationQueryService(
-        conversations=ConversationRepository(session_factory=sqlite_session_factory), restore_inputs=restore
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore,
     )
     page = service.get_console_page(scope=console_scope, filters=_console_filters())
 
@@ -343,7 +350,9 @@ def test_console_invalid_file_metadata_fails_after_connection_release(
         message.inputs = {"file": {"dify_model_identity": FILE_MODEL_IDENTITY, "transfer_method": "invalid"}}
     connection_events = _record_connections(sqlite_engine)
     service = ConversationQueryService(
-        conversations=ConversationRepository(session_factory=sqlite_session_factory), restore_inputs=restore_input_files
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore_input_files,
     )
 
     with pytest.raises(ValueError):

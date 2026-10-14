@@ -34,6 +34,7 @@ from models.model import App, AppMode, Conversation, Message, MessageAnnotation,
 from models.utils.file_input_compat import restore_input_files
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_query_service import ConversationQueryService
+from services.message_query_adapters import MessageFileResolver
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
 
 type _Kind = Literal["chat", "completion"]
@@ -147,7 +148,9 @@ def harness(
 
     app.extensions["application_services"] = _Services(
         ConversationQueryService(
-            conversations=ConversationRepository(session_factory=factory), restore_inputs=restore_input_files
+            files=MessageFileResolver(),
+            conversations=ConversationRepository(session_factory=factory),
+            restore_inputs=restore_input_files,
         )
     )
     api = ExternalApi(app)

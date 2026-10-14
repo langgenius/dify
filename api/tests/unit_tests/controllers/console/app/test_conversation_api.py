@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from inspect import unwrap
 
-import pytest
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
-from controllers.console.app import conversation as conversation_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.conversation_fields import ConversationResponseSource
 from graphon.enums import WorkflowExecutionStatus
-from models import Account, App, EndUser, Message, MessageAnnotation, MessageFeedback
+from models import Account, EndUser, Message, MessageAnnotation, MessageFeedback
 from models.enums import (
     ConversationFromSource,
     CreatorUserRole,
@@ -21,18 +18,13 @@ from models.enums import (
 )
 from models.model import AppMode, Conversation
 from models.workflow import WorkflowRun, WorkflowType
-from services.errors.conversation import ConversationNotExistsError
-from tests.unit_tests.model_factories import make_app, make_conversation
+from tests.unit_tests.model_factories import make_conversation
 
 
 def _make_account() -> Account:
     account = Account(name="Account", email="account@example.com", timezone="UTC")
     account.id = "u1"
     return account
-
-
-def _app(*, mode: AppMode = AppMode.CHAT) -> App:
-    return make_app(name="Conversation app", mode=mode)
 
 
 def _conversation(*, conversation_id: str = "c1", app_id: str = "app-1") -> Conversation:
@@ -48,23 +40,6 @@ def _conversation(*, conversation_id: str = "c1", app_id: str = "app-1") -> Conv
         from_source=ConversationFromSource.CONSOLE,
         from_account_id="u1",
     )
-
-
-def test_get_conversation_updates_read_at(sqlite_session: Session) -> None:
-    conversation = _conversation()
-    sqlite_session.add(conversation)
-    sqlite_session.flush()
-    session = sqlite_session
-    result = conversation_module._get_conversation(session, _make_account(), _app(), "c1")
-    assert result is conversation
-    assert conversation.read_at is not None
-    assert conversation.read_account_id == "u1"
-
-
-def test_get_conversation_missing_raises_not_found(sqlite_session: Session) -> None:
-    session = sqlite_session
-    with pytest.raises(NotFound):
-        conversation_module._get_conversation(session, _make_account(), _app(), "missing")
 
 
 def test_conversation_response_source_uses_caller_session(sqlite_session: Session) -> None:
@@ -162,7 +137,7 @@ def test_conversation_response_source_uses_caller_session(sqlite_session: Sessio
     sqlite_session.add_all([account, end_user, conversation, message, annotation, workflow_run, *feedbacks])
     sqlite_session.commit()
 
-    source = conversation_module.ConversationResponseSource(conversation, session=sqlite_session)
+    source = ConversationResponseSource(conversation, session=sqlite_session)
 
     assert source.inputs == {"topic": "support"}
     assert source.model_config == {"model_id": None, "provider": None}
@@ -178,18 +153,3 @@ def test_conversation_response_source_uses_caller_session(sqlite_session: Sessio
     assert source.first_message is not None
     assert source.from_end_user_session_id == "end-user-session"
     assert source.from_account_name == "Account"
-
-
-def test_completion_conversation_delete_maps_not_found(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
-    api = conversation_module.CompletionConversationDetailApi()
-    method = unwrap(api.delete)
-    monkeypatch.setattr(
-        conversation_module.ConversationService,
-        "delete",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-    )
-    session = unbound_session
-    with pytest.raises(NotFound):
-        method(api, session, _make_account(), app_model=_app(), conversation_id="c1")

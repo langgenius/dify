@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import JsonValue
 
 from graphon.file import File
+from services.entities.message_entities import ConsoleMessageRecord, MessageFileReference
 from services.installed_app_access_service import InstalledAppRef
 
 type ConversationInputValue = JsonValue | File | list[File]
@@ -166,3 +167,36 @@ class ConsoleConversationPage:
     total: int
     has_next: bool
     items: tuple[ConsoleCompletionConversationRecord | ConsoleChatConversationRecord, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleConversationDetail:
+    id: str
+    status: str
+    from_source: str
+    from_end_user_id: str | None
+    from_account_id: str | None
+    created_at: datetime | None
+    model_config: dict[str, JsonValue]
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleChatConversationDetail(ConsoleConversationDetail):
+    updated_at: datetime | None
+    annotated: bool
+    introduction: str | None
+    message_count: int
+    user_feedback_stats: dict[str, int]
+    admin_feedback_stats: dict[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleCompletionConversationDetail(ConsoleConversationDetail):
+    first_message: ConsoleMessageRecord | None
+
+
+@dataclass(frozen=True, slots=True)
+class ConsoleConversationDetailSource:
+    tenant_id: str
+    record: ConsoleChatConversationDetail | ConsoleCompletionConversationDetail
+    files: tuple[MessageFileReference, ...]

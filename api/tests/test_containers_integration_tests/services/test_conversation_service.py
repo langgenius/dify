@@ -6,15 +6,18 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from machinery.context import RequestContext
 from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
+from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
 from models.enums import ConversationFromSource, EndUserType
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation
+from repositories.conversation_repository import ConversationRepository
 from services.annotation_service import AppAnnotationService
+from services.conversation_command_service import ConversationCommandService
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError
@@ -761,111 +764,50 @@ class TestConversationServiceExport:
         # Assert
         assert result == conversation
 
-    @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_conversation(self, mock_delete_task, db_session_with_containers: Session):
-        """
-        Test conversation deletion with async cleanup.
-
-        Deletion is a two-step process:
-        1. Immediately hide the conversation with a durable soft-delete marker
-        2. Trigger async background task to clean up related data
-           (messages, annotations, vector embeddings, file uploads)
-        """
-        # Arrange - Set up test data
-        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
+    def test_console_delete_commits_conversation_and_workspace_before_cleanup(
+        self, db_session_with_containers: Session
+    ) -> None:
+        """Execute deletion and its workspace row-lock path against PostgreSQL."""
+        app, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(db_session_with_containers)
         conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
-            db_session_with_containers,
-            app_model,
-            user,
+            db_session_with_containers, app, account
         )
-        conversation_id = conversation.id
-
-        # Act - Delete the conversation
-        ConversationService.delete(
-            app_model=app_model, conversation_id=conversation_id, user=user, session=db_session_with_containers
+        context = RequestContext(
+            request_id="console-delete", trace_id=None, account_id=account.id, active_workspace_id=app.tenant_id
         )
-
-        # Assert - Verify two-step deletion process
-        # Step 1: Immediate logical deletion
-        deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
-        assert deleted is not None
-        assert deleted.is_deleted is True
-
-        # Step 2: Async cleanup task triggered
-        # The Celery task will handle cleanup of messages, annotations, etc.
-        mock_delete_task.delay.assert_called_once_with(conversation_id)
-
-    @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_conversation_not_owned_by_account(
-        self,
-        mock_delete_task,
-        db_session_with_containers: Session,
-    ):
-        """
-        Test deletion is denied when conversation belongs to a different account.
-        """
-        # Arrange
-        app_model, owner_account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        _, other_account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
-            db_session_with_containers,
-            app_model,
-            owner_account,
-        )
-
-        # Act & Assert
-        with pytest.raises(ConversationNotExistsError):
-            ConversationService.delete(
-                app_model=app_model,
-                conversation_id=conversation.id,
-                user=other_account,
-                session=db_session_with_containers,
+        app_id, conversation_id = app.id, conversation.id
+        sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        db_session_with_containers.rollback()
+        with sessions.begin() as session:
+            workspace = AgentWorkspace(
+                tenant_id=context.active_workspace_id,
+                app_id=app_id,
+                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                owner_id=conversation_id,
+                owner_scope_key="root",
+                backend_workspace_ref="postgres-delete-test",
+                status=AgentWorkingResourceStatus.ACTIVE,
+                active_guard=1,
             )
+            session.add(workspace)
+        cleaned: list[str] = []
 
-        # Verify no deletion and no async cleanup trigger
-        not_deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation.id))
-        assert not_deleted is not None
-        mock_delete_task.delay.assert_not_called()
+        def cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
+            assert tenant_id == context.active_workspace_id
+            assert retired_workspace_ids == (workspace.id,)
+            with sessions() as session:
+                assert session.get_one(Conversation, conversation_id).is_deleted is True
+                retired = session.get_one(AgentWorkspace, workspace.id)
+                assert retired.status == AgentWorkingResourceStatus.RETIRED
+                assert retired.active_guard is None
+                assert retired.retired_at is not None
+            cleaned.append(conversation_id)
 
-    @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_handles_exception_and_rollback(
-        self,
-        mock_delete_task,
-        db_session_with_containers: Session,
-    ):
-        """
-        Test that delete propagates exceptions and does not trigger the cleanup task.
-
-        When a DB error occurs during deletion, the conversation row stays in place.
-        """
-        # Arrange
-        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
+        service = ConversationCommandService(
+            conversations=ConversationRepository(session_factory=sessions), enqueue_delete_cleanup=cleanup
         )
-        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
-            db_session_with_containers, app_model, user
-        )
-        conversation_id = conversation.id
-
-        # Act — force an error during the soft-delete commit to exercise rollback
-        with patch.object(db_session_with_containers, "commit", side_effect=Exception("DB error")):
-            with pytest.raises(Exception, match="DB error"):
-                ConversationService.delete(
-                    app_model=app_model,
-                    conversation_id=conversation_id,
-                    user=user,
-                    session=db_session_with_containers,
-                )
-
-        # Assert — related-data deletion is not scheduled.
-        mock_delete_task.delay.assert_not_called()
-
-        # Conversation is still present because the deletion was never committed
-        still_there = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
-        assert still_there is not None
+        service.delete_console(context, app_id, conversation_id, kind="chat")
+        assert cleaned == [conversation_id]
+        with pytest.raises(ConversationNotExistsError):
+            service.delete_console(context, app_id, conversation_id, kind="chat")
+        assert cleaned == [conversation_id]

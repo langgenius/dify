@@ -5234,6 +5234,7 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }
@@ -5256,6 +5257,7 @@ export type GetAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdChatConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }
@@ -5375,6 +5377,7 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }
@@ -5397,6 +5400,7 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }

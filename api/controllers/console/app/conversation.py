@@ -2,29 +2,16 @@ from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
-import sqlalchemy as sa
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
-from controllers.common.errors import InvalidArgumentError, UnauthorizedError
+from controllers.common.errors import ConversationNotFoundHTTPError, InvalidArgumentError, UnauthorizedError
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
-from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    rbac_permission_required,
-    setup_required,
-    validate_request,
-    with_current_user,
-)
+from controllers.console.wraps import RBACPermission, validate_request
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.conversation_fields import (
@@ -39,19 +26,13 @@ from fields.conversation_fields import (
 from fields.conversation_fields import (
     ConversationPagination as ConversationPaginationResponse,
 )
-from fields.conversation_fields import ConversationResponseSource
 from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
-from libs.datetime_utils import naive_utc_now, parse_time_range
+from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
-from libs.login import login_required
 from machinery.context import RequestContext
-from models import Conversation
-from models.account import Account
-from models.model import App, AppMode
 from services.app.console_service import ConsoleAppNotFoundError
-from services.conversation_service import ConversationService
 from services.entities.conversation_entities import ConsoleConversationFilters
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
@@ -151,49 +132,52 @@ class CompletionConversationDetailApi(Resource):
     @console_ns.doc("get_completion_conversation")
     @console_ns.doc(description="Get completion conversation details with messages")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(200, "Success", console_ns.models[ConversationMessageDetailResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session
-    @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
-        return dump_response(
-            ConversationMessageDetailResponse,
-            ConversationResponseSource(
-                _get_conversation(session, current_user, app_model, conversation_id_str), session=session
-            ),
-        )
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationMessageDetailResponse.__name__])
+    @console_ns.response(HTTPStatus.UNAUTHORIZED, "Authentication required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App or conversation not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, request_context: RequestContext, app_id: UUID, conversation_id: UUID) -> dict[str, object]:
+        services = application_services()
+        try:
+            detail = services.conversation_queries.get_console_detail(
+                request_context, str(app_id), str(conversation_id), kind="completion"
+            )
+            response = dump_response(ConversationMessageDetailResponse, detail)
+            # Preserve the Console read receipt only after rendering succeeds.
+            services.conversation_commands.mark_console_read(
+                request_context, str(app_id), str(conversation_id), kind="completion"
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        except ConversationNotExistsError as exc:
+            raise ConversationNotFoundHTTPError() from exc
+        return response
 
     @console_ns.doc("delete_completion_conversation")
     @console_ns.doc(description="Delete a completion conversation")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(204, "Conversation deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_user
-    @with_session
-    @get_app_model(mode=AppMode.COMPLETION)
-    def delete(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
-
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Conversation deleted successfully")
+    @console_ns.response(HTTPStatus.UNAUTHORIZED, "Authentication required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App or conversation not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_EDIT, PlainApp()),),
+    )
+    def delete(self, request_context: RequestContext, app_id: UUID, conversation_id: UUID) -> tuple[str, HTTPStatus]:
         try:
-            ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-
-        return "", 204
+            application_services().conversation_commands.delete_console(
+                request_context, str(app_id), str(conversation_id), kind="completion"
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        except ConversationNotExistsError as exc:
+            raise ConversationNotFoundHTTPError() from exc
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
@@ -249,72 +233,49 @@ class ChatConversationDetailApi(Resource):
     @console_ns.doc("get_chat_conversation")
     @console_ns.doc(description="Get chat conversation details")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(200, "Success", console_ns.models[ConversationDetailResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
-        return dump_response(
-            ConversationDetailResponse,
-            ConversationResponseSource(
-                _get_conversation(session, current_user, app_model, conversation_id_str), session=session
-            ),
-        )
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationDetailResponse.__name__])
+    @console_ns.response(HTTPStatus.UNAUTHORIZED, "Authentication required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App or conversation not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, request_context: RequestContext, app_id: UUID, conversation_id: UUID) -> dict[str, object]:
+        services = application_services()
+        try:
+            detail = services.conversation_queries.get_console_detail(
+                request_context, str(app_id), str(conversation_id), kind="chat"
+            )
+            response = dump_response(ConversationDetailResponse, detail)
+            # Preserve the Console read receipt only after rendering succeeds.
+            services.conversation_commands.mark_console_read(
+                request_context, str(app_id), str(conversation_id), kind="chat"
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        except ConversationNotExistsError as exc:
+            raise ConversationNotFoundHTTPError() from exc
+        return response
 
     @console_ns.doc("delete_chat_conversation")
     @console_ns.doc(description="Delete a chat conversation")
     @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @console_ns.response(204, "Conversation deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Conversation not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_user
-    @with_session
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def delete(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
-        conversation_id_str = str(conversation_id)
-
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Conversation deleted successfully")
+    @console_ns.response(HTTPStatus.UNAUTHORIZED, "Authentication required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App or conversation not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_EDIT, PlainApp()),),
+    )
+    def delete(self, request_context: RequestContext, app_id: UUID, conversation_id: UUID) -> tuple[str, HTTPStatus]:
         try:
-            ConversationService.delete(app_model, conversation_id_str, current_user, session=session)
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-
-        return "", 204
-
-
-def _get_conversation(session: Session, current_user: Account, app_model, conversation_id):
-    conversation = session.scalar(
-        sa.select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
-    )
-
-    if not conversation:
-        raise NotFound("Conversation Not Exists.")
-
-    session.execute(
-        sa.update(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
-        # Keep updated_at unchanged when only marking a conversation as read.
-        .values(
-            {
-                Conversation.read_at: naive_utc_now(),
-                Conversation.read_account_id: current_user.id,
-                Conversation.updated_at: Conversation.updated_at,
-            }
-        )
-    )
-    session.flush()
-    session.refresh(conversation)
-
-    return conversation
+            application_services().conversation_commands.delete_console(
+                request_context, str(app_id), str(conversation_id), kind="chat"
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        except ConversationNotExistsError as exc:
+            raise ConversationNotFoundHTTPError() from exc
+        return "", HTTPStatus.NO_CONTENT
