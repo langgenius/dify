@@ -41,6 +41,7 @@ export const syncWorkflowDraft = ({
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'conversation_variables'> &
     Partial<Pick<FetchWorkflowDraftResponse, 'environment_variables'>> & {
       environment_variable_patch?: EnvironmentVariablePatchPayload
+      force?: boolean
     }
 }) => {
   return post<CommonResponse & { updated_at: number; hash: string }>(

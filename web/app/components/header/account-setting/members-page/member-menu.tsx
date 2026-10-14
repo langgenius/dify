@@ -3,11 +3,11 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -44,7 +44,6 @@ const MemberMenu = ({
 }: MemberMenuProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -61,7 +60,6 @@ const MemberMenu = ({
     : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
-    setOpen(false)
     setAssignModalOpen(true)
   }, [])
 
@@ -89,7 +87,6 @@ const MemberMenu = ({
   )
 
   const handleOpenRemoveConfirm = useCallback(() => {
-    setOpen(false)
     setRemoveConfirmOpen(true)
   }, [])
 
@@ -98,16 +95,14 @@ const MemberMenu = ({
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setRemoveConfirmOpen(false)
     } catch {
     } finally {
       setRemoving(false)
     }
-  }, [member.id, queryClient, t])
+  }, [member.id, queryClient])
 
   const handleTransferOwnership = useCallback(() => {
-    setOpen(false)
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
@@ -115,7 +110,7 @@ const MemberMenu = ({
 
   return (
     <div>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -175,14 +170,14 @@ const MemberMenu = ({
               {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'workspaceMembers' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={removing} onClick={handleRemove}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {assignModalOpen && (

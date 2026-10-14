@@ -263,6 +263,44 @@ class TestTimezoneHandlingEnhanced(unittest.TestCase):
         assert local_time.hour in [2, 3]
 
 
+class TestDstTransitionRegression(unittest.TestCase):
+    """Regression tests for DST transitions crashing next-run calculation.
+
+    See https://github.com/langgenius/dify/issues/42955 - localizing the
+    candidate local time with pytz (which raises AmbiguousTimeError /
+    NonExistentTimeError around clock changes) crashed the schedule poller
+    for zones such as Europe/Dublin, Africa/Casablanca and Africa/El_Aaiun.
+    """
+
+    def test_fall_back_ambiguous_times_do_not_crash(self):
+        """Zones with a fall-back clock change must not raise."""
+        # Europe/Dublin falls back on 2026-10-25: 01:00 local occurs twice.
+        # Africa/Casablanca and Africa/El_Aaiun change clocks on 2026-03-29.
+        test_cases = [
+            ("*/10 * * * *", "Europe/Dublin", datetime(2026, 10, 24, 23, 50, 5, tzinfo=UTC)),
+            ("30 1 * * *", "Europe/Dublin", datetime(2026, 10, 24, 0, 30, 5, tzinfo=UTC)),
+            ("30 1 * * *", "Africa/Casablanca", datetime(2026, 3, 26, 0, 30, 5, tzinfo=UTC)),
+            ("30 1 * * *", "Africa/El_Aaiun", datetime(2026, 3, 26, 0, 30, 5, tzinfo=UTC)),
+        ]
+
+        for expr, timezone, base_time in test_cases:
+            with self.subTest(timezone=timezone, expr=expr):
+                result = calculate_next_run_at(expr, timezone, base_time)
+                assert result is not None
+                assert result.tzinfo is not None
+                assert result > base_time
+
+    def test_spring_forward_nonexistent_times_do_not_crash(self):
+        """A cron time that does not exist locally must be skipped, not raise."""
+        # Europe/Dublin springs forward on 2026-03-29: 01:30 local does not
+        # exist. The next run is shifted to the first existing time (02:00).
+        result = calculate_next_run_at("30 1 * * *", "Europe/Dublin", datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC))
+        assert result is not None
+        assert result > datetime(2026, 3, 28, 23, 0, 5, tzinfo=UTC)
+        local_time = result.astimezone(pytz.timezone("Europe/Dublin"))
+        assert (local_time.hour, local_time.minute) == (2, 0)
+
+
 class TestErrorHandlingEnhanced(unittest.TestCase):
     """Test error handling for enhanced syntax."""
 

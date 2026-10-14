@@ -160,7 +160,7 @@ class RedisSubscriptionBase(Subscription):
                     continue
         return
 
-    def _message_iterator(self) -> Generator[bytes, None, None]:
+    def _message_iterator(self) -> Generator[bytes]:
         """Iterator for consuming messages from the subscription."""
         while not self._closed.is_set():
             try:
@@ -196,6 +196,8 @@ class RedisSubscriptionBase(Subscription):
         except queue.Empty:
             return None
 
+        if item == SIG_CLOSE:
+            raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")
         return item
 
     @override

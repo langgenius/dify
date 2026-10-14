@@ -5,11 +5,11 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { DragEvent, UIEvent } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -58,7 +58,7 @@ import { downloadBlob } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
-import { getSkillErrorCode, getSkillErrorDetailString, normalizeSkillError } from './error'
+import { getSkillErrorCode, getSkillErrorDetailString } from './error'
 import { useSkillPermissions } from './permissions'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 import { SkillListTagManagementModal } from './skill-list-tag-management-modal'
@@ -304,7 +304,6 @@ function DeleteSkillDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.deleteSuccess']))
           invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
@@ -382,7 +381,7 @@ function DeleteSkillDialog({
             </Field>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -394,7 +393,7 @@ function DeleteSkillDialog({
           >
             {tCommon(($) => $['operation.delete'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -450,7 +449,6 @@ function SkillCard({
       },
       {
         onSuccess: (copiedSkill) => {
-          toast.success(t(($) => $['skillManagement.duplicateSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
@@ -1055,14 +1053,12 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
-          toast.success(t(($) => $['skillManagement.createSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: async (error) => {
-          const normalizedError = await normalizeSkillError(error)
+        onError: (error) => {
           toast.error(
-            getSkillErrorCode(normalizedError) === 'skill_limit_exceeded'
+            getSkillErrorCode(error) === 'skill_limit_exceeded'
               ? t(($) => $['skillManagement.errors.workspaceLimit'])
               : t(($) => $['skillManagement.createFailed']),
           )
@@ -1083,17 +1079,15 @@ export default function SkillsPage() {
       {
         onSuccess: (skill) => {
           setImportOpen(false)
-          toast.success(t(($) => $['skillManagement.importSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: async (error) => {
-          const normalizedError = await normalizeSkillError(error)
-          const errorCode = getSkillErrorCode(normalizedError)
+        onError: (error) => {
+          const errorCode = getSkillErrorCode(error)
           if (errorCode === 'skill_name_conflict') {
             toast.error(
               t(($) => $['skillManagement.errors.nameConflict'], {
-                name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                name: getSkillErrorDetailString(error, 'name') ?? '',
               }),
             )
             return

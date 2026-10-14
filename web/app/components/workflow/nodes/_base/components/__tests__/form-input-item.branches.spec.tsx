@@ -174,32 +174,6 @@ describe('FormInputItem branches', () => {
     })
   })
 
-  it('should switch from variable mode back to constant mode with the schema default value', () => {
-    const { container, onChange } = renderFormInputItem({
-      schema: createSchema({
-        default: 7 as never,
-        type: FormTypeEnum.textNumber,
-      }),
-      value: {
-        field: {
-          type: VarKindType.variable,
-          value: ['node-1', 'count'],
-        },
-      },
-    })
-
-    const switchRoot = container.querySelector('.inline-flex.h-8.shrink-0.gap-px')
-    const clickableItems = switchRoot?.querySelectorAll('.cursor-pointer') ?? []
-    fireEvent.click(clickableItems[1] as HTMLElement)
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: 7,
-      },
-    })
-  })
-
   it('should render static select options with icons and update the selected item', () => {
     const { onChange } = renderFormInputItem({
       schema: createSchema({

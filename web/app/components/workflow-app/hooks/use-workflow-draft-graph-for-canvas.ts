@@ -5,6 +5,7 @@ import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
+import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { AppModeEnum } from '@/types/app'
 
 type HydrateWorkflowDraftGraphOptions = {
@@ -61,7 +62,7 @@ export const useWorkflowDraftGraphForCanvas = (appMode?: AppModeEnum | string) =
       options?: HydrateWorkflowDraftGraphOptions,
     ): WorkflowDataUpdater => {
       const nodes = getNodesWithLocalStartPlaceholder(
-        graph?.nodes || [],
+        normalizeWorkflowNodes(graph?.nodes || [], appMode),
         options?.localStartPlaceholderNodes,
       )
 
@@ -71,7 +72,7 @@ export const useWorkflowDraftGraphForCanvas = (appMode?: AppModeEnum | string) =
         viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
       }
     },
-    [getNodesWithLocalStartPlaceholder],
+    [appMode, getNodesWithLocalStartPlaceholder],
   )
 
   return {

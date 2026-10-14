@@ -7,7 +7,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
 import { applyResetOnChange } from '@/app/components/tools/utils/reset-on-change'
 import { resetToolSettingFieldValue } from '@/app/components/tools/utils/to-form-schema'
-import ToolFormItem from './item'
+import { ToolFormItem } from './item'
 
 type Props = Readonly<{
   staticSchema?: boolean

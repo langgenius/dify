@@ -16,9 +16,8 @@ class TestWorkflowEntryRedisChannel:
         # Mock dependencies
         mock_graph = MagicMock()
         mock_graph_config = {"nodes": [], "edges": []}
-        mock_variable_pool = MagicMock(spec=VariablePool)
-        mock_graph_runtime_state = MagicMock(spec=GraphRuntimeState)
-        mock_graph_runtime_state.variable_pool = mock_variable_pool
+        variable_pool = VariablePool()
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0)
 
         # Create a mock Redis channel
         mock_redis_client = MagicMock()
@@ -37,8 +36,8 @@ class TestWorkflowEntryRedisChannel:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
-                variable_pool=mock_variable_pool,
-                graph_runtime_state=mock_graph_runtime_state,
+                variable_pool=variable_pool,
+                graph_runtime_state=graph_runtime_state,
                 command_channel=redis_channel,  # Provide Redis channel
             )
 
@@ -53,9 +52,8 @@ class TestWorkflowEntryRedisChannel:
         # Mock dependencies
         mock_graph = MagicMock()
         mock_graph_config = {"nodes": [], "edges": []}
-        mock_variable_pool = MagicMock(spec=VariablePool)
-        mock_graph_runtime_state = MagicMock(spec=GraphRuntimeState)
-        mock_graph_runtime_state.variable_pool = mock_variable_pool
+        variable_pool = VariablePool()
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0)
 
         # Patch GraphEngine and InMemoryChannel
         with (
@@ -74,8 +72,8 @@ class TestWorkflowEntryRedisChannel:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
-                variable_pool=mock_variable_pool,
-                graph_runtime_state=mock_graph_runtime_state,
+                variable_pool=variable_pool,
+                graph_runtime_state=graph_runtime_state,
                 command_channel=None,  # No channel provided
             )
 
@@ -93,9 +91,8 @@ class TestWorkflowEntryRedisChannel:
         # Mock dependencies
         mock_graph = MagicMock()
         mock_graph_config = {"nodes": [], "edges": []}
-        mock_variable_pool = MagicMock(spec=VariablePool)
-        mock_graph_runtime_state = MagicMock(spec=GraphRuntimeState)
-        mock_graph_runtime_state.variable_pool = mock_variable_pool
+        variable_pool = VariablePool()
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0)
 
         # Create a mock Redis channel
         mock_redis_client = MagicMock()
@@ -122,8 +119,8 @@ class TestWorkflowEntryRedisChannel:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
-                variable_pool=mock_variable_pool,
-                graph_runtime_state=mock_graph_runtime_state,
+                variable_pool=variable_pool,
+                graph_runtime_state=graph_runtime_state,
                 command_channel=redis_channel,
             )
 

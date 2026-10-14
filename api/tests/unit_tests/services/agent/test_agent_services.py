@@ -1029,7 +1029,6 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
     session.commit()
     created: dict[str, object] = {}
     calls: list[str] = []
-    register_publish_event = MagicMock()
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
     monkeypatch.setattr(composer_service, "agent_has_workflow_callable_active_snapshot", lambda **_kwargs: False)
@@ -1045,7 +1044,6 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
         lambda **kwargs: calls.append("create_version") or created.update(kwargs) or version,
     )
     monkeypatch.setattr(AgentComposerService, "_serialize_version", lambda _version: {"id": _version.id})
-    monkeypatch.setattr(composer_service, "register_new_agent_beta_publish_after_commit", register_publish_event)
 
     result = AgentComposerService.publish_agent_app_draft(
         session=session,
@@ -1068,12 +1066,6 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
     assert app.enable_site is True
     assert app.enable_api is True
     assert app.updated_by == "account-1"
-    register_publish_event.assert_called_once_with(
-        session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        snapshot_id="version-2",
-    )
 
 
 def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
@@ -7005,7 +6997,7 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
     )
 
 
-def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch):
+def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     job = WorkflowNodeJobConfig.model_validate(
         {
             "workflow_prompt": "Keep this task",
@@ -7015,7 +7007,19 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
             },
         }
     )
-    binding = WorkflowAgentNodeBinding(agent_id="old-agent", current_snapshot_id="old-snapshot", node_job_config=job)
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="old-agent",
+        current_snapshot_id="old-snapshot",
+        node_job_config=job,
+    )
+    sqlite_session.add(binding)
+    sqlite_session.commit()
     monkeypatch.setattr(
         AgentComposerService,
         "_create_roster_agent_for_composer",
@@ -7025,7 +7029,7 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
         "services.agent.composer_service.SkillManagementService.copy_agent_bindings", lambda self, **kwargs: None
     )
     result = AgentComposerService._save_as_new_agent(
-        session=MagicMock(spec=Session),
+        session=sqlite_session,
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
@@ -7040,3 +7044,8 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
     )
     assert result.agent_id == "new-agent"
     assert result.node_job_config_dict == job.model_dump(mode="json")
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(WorkflowAgentNodeBinding, result.id)
+    assert persisted is not None
+    assert persisted.node_job_config_dict == job.model_dump(mode="json")

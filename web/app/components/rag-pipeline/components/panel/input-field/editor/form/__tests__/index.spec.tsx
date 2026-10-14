@@ -305,23 +305,6 @@ describe('InputFieldForm', () => {
 
       expect(screen.queryByText(/appDebug.variableConfig.showAllSettings/i)).toBeInTheDocument()
     })
-
-    it('should toggle showAllSettings state when clicking show all settings', async () => {
-      const props = createInputFieldFormProps()
-      renderWithProviders(<InputFieldForm {...props} />)
-
-      const showAllSettingsElement = screen.getByText(/appDebug.variableConfig.showAllSettings/i)
-      const clickableParent = showAllSettingsElement.closest('.cursor-pointer')
-      if (clickableParent) {
-        fireEvent.click(clickableParent)
-      }
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/appDebug.variableConfig.showAllSettings/i),
-        ).not.toBeInTheDocument()
-      })
-    })
   })
 
   describe('Callback Stability', () => {

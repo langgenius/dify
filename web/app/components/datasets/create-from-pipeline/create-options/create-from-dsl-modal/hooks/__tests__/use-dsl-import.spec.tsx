@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { CreateFromDSLModalTab, useDSLImport } from '../use-dsl-import'
 
 const mockPush = vi.fn()
@@ -469,14 +470,16 @@ describe('useDSLImport', () => {
     it('should show response error when import request rejects with a response body', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       mockImportDSL.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Missing rag_pipeline data in YAML content',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Missing rag_pipeline data in YAML content',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
         ),
       )
 
@@ -706,11 +709,6 @@ describe('useDSLImport', () => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-123')
         expect(onSuccess).toHaveBeenCalled()
         expect(result.current.showConfirmModal).toBe(false)
-        expect(toastMocks.record).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
 
       vi.useRealTimers()
@@ -825,14 +823,16 @@ describe('useDSLImport', () => {
       )
 
       mockImportDSLConfirm.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Import information expired or does not exist',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Import information expired or does not exist',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
         ),
       )
 

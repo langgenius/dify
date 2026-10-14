@@ -38,7 +38,6 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from services import app_dsl_service
-from services.account_service import AccountService, TenantService
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, make_portable_agent_package
 from services.agent.dsl_service import AgentDslService
 from services.app_creation_records import create_site_record
@@ -57,6 +56,7 @@ from services.app_dsl_service import (
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
 from services.errors.app import WorkflowNotFoundError
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -125,6 +125,8 @@ class TestAppDslService:
             patch("services.app_service.SystemFeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
         ):
+            mock_workflow_service.get_draft_workflow.return_value = None
+            mock_workflow_service.get_published_workflow_by_id.return_value = None
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
             mock_workflow_service.return_value.sync_draft_workflow.return_value = MagicMock()
             mock_dependencies_service.generate_latest_dependencies.return_value = []
@@ -153,18 +155,16 @@ class TestAppDslService:
 
     def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
         fake = Faker()
-        with patch("services.account_service.SystemFeatureService") as mock_account_feature_service:
+        with patch("services.account.login_adapters.SystemFeatureService") as mock_account_feature_service:
             mock_account_feature_service.is_registration_allowed.return_value = True
-            account = AccountService.create_account(
+            account = account_fixtures.create_account(
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
                 session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(
-                account, name=fake.company(), session=db_session_with_containers
-            )
+            account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
             tenant = account.current_tenant
             app_args = CreateAppParams(
                 name=fake.company(),
@@ -1274,9 +1274,7 @@ class TestAppDslService:
             "environment_variables": [],
             "conversation_variables": [],
         }
-        mock_external_service_dependencies[
-            "workflow_service"
-        ].return_value.get_draft_workflow.return_value = mock_workflow
+        mock_external_service_dependencies["workflow_service"].get_draft_workflow.return_value = mock_workflow
 
         exported_dsl = AppDslService.export_dsl(app, include_secret=False, session=db_session_with_containers)
         exported_data = yaml.safe_load(exported_dsl)
@@ -1312,20 +1310,17 @@ class TestAppDslService:
 
         workflow_id = str(uuid4())
 
-        def mock_get_draft_workflow(app_model, wf_id=None, **_kwargs):
-            if wf_id == workflow_id:
-                return mock_workflow
-            return None
-
-        mock_external_service_dependencies[
-            "workflow_service"
-        ].return_value.get_draft_workflow.side_effect = mock_get_draft_workflow
+        workflow_service = mock_external_service_dependencies["workflow_service"]
+        workflow_service.get_published_workflow_by_id.return_value = mock_workflow
 
         exported_dsl = AppDslService.export_dsl(
             app, include_secret=False, workflow_id=workflow_id, session=db_session_with_containers
         )
         exported_data = yaml.safe_load(exported_dsl)
 
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(
+            app, workflow_id, session=db_session_with_containers
+        )
         assert exported_data["kind"] == "app"
         assert "workflow" in exported_data
 
@@ -1336,7 +1331,7 @@ class TestAppDslService:
         app.mode = "workflow"
         db_session_with_containers.commit()
 
-        mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.return_value = None
+        mock_external_service_dependencies["workflow_service"].get_published_workflow_by_id.return_value = None
 
         with pytest.raises(
             WorkflowNotFoundError,
@@ -1396,9 +1391,7 @@ class TestAppDslService:
         }
 
         workflow = SimpleNamespace(to_dict=lambda *, include_secret: workflow_dict)
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = workflow
-        monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
+        monkeypatch.setattr(app_dsl_service.WorkflowService, "get_draft_workflow", MagicMock(return_value=workflow))
 
         monkeypatch.setattr(
             AppDslService,
@@ -1437,13 +1430,7 @@ class TestAppDslService:
         assert nodes[5]["data"]["subscription_id"] == ""
         assert dependencies == ["dep-1"]
 
-    def test_append_workflow_export_data_missing_workflow_raises(
-        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
-    ):
-        workflow_service = MagicMock()
-        workflow_service.get_draft_workflow.return_value = None
-        monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
-
+    def test_append_workflow_export_data_missing_workflow_raises(self, db_session_with_containers: Session):
         with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
             AppDslService._append_workflow_export_data(
                 export_data={},

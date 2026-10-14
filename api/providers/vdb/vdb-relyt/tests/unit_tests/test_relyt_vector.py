@@ -312,8 +312,8 @@ def test_relyt_factory_existing_and_generated_collection(relyt_module, monkeypat
     monkeypatch.setattr(relyt_module.dify_config, "RELYT_DATABASE", "relyt")
 
     with patch.object(relyt_module, "RelytVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

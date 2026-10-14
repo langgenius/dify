@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider, queryOptions, useQuery } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
 
 const mocks = vi.hoisted(() => ({
   queryClient: undefined as QueryClient | undefined,
@@ -265,7 +266,9 @@ describe('CommonLayoutHydrationBoundary', () => {
   it('should redirect unauthorized users to the refresh route with the current path', async () => {
     mocks.basePath = '/workflow'
     mocks.profileQueryFn.mockRejectedValue(
-      new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+      ),
     )
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
@@ -280,7 +283,9 @@ describe('CommonLayoutHydrationBoundary', () => {
     mocks.basePath = '/workflow'
     mocks.headers.mockResolvedValue(new Headers())
     mocks.profileQueryFn.mockRejectedValue(
-      new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }),
+      ),
     )
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
@@ -294,7 +299,9 @@ describe('CommonLayoutHydrationBoundary', () => {
     ['not_init_validated', '/init'],
   ])('should use an internal destination for %s errors', async (code, destination) => {
     mocks.basePath = '/workflow'
-    mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code }), { status: 401 }))
+    mocks.profileQueryFn.mockRejectedValue(
+      await httpErrorFromResponse(new Response(JSON.stringify({ code }), { status: 401 })),
+    )
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')

@@ -46,6 +46,7 @@
     "優先メール＆チャットサポート"
   ],
   "plans.premium.includesTitle": "コミュニティ版機能に加えて：",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "プレミアム",
   "plans.premium.price": "従量制",
   "plans.premium.priceTip": "クラウドマーケットプレイス基準",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "プランと機能を比較する",
   "plansCommon.currentPlan": "現在のプラン",
   "plansCommon.days": "日間",
+  "plansCommon.discountedAnnualPrice": "割引後の年間料金：",
   "plansCommon.documentProcessingPriority": "文書処理",
   "plansCommon.documentProcessingPriorityTip": "より高い文書処理優先度が必要な場合は、プランをアップグレードしてください。",
   "plansCommon.documentProcessingPriorityUpgrade": "より高い精度と高速な速度でデータを処理します。",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicateをサポート",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "人気",
+  "plansCommon.originalAnnualPrice": "通常の年間料金：",
   "plansCommon.priceTip": "ワークスペース/",
   "plansCommon.priority.priority": "優先",
   "plansCommon.priority.standard": "標準",

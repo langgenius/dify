@@ -12,11 +12,11 @@ import type {
 import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -143,10 +143,10 @@ const RecoveryDialog = ({
           {description}
         </AlertDialogDescription>
       </div>
-      <AlertDialogActions>
+      <AlertDialogFooter>
         <AlertDialogCancelButton>{cancelLabel}</AlertDialogCancelButton>
         <AlertDialogConfirmButton onClick={onConfirm}>{confirmLabel}</AlertDialogConfirmButton>
-      </AlertDialogActions>
+      </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
 )
@@ -517,8 +517,11 @@ function WorkflowGeneratorModal() {
     hideConfirmOverwrite()
     setApplyingTrue()
     try {
-      await applyToCurrentApp({ appId: currentAppId, graph: current.graph as GeneratedGraph })
-      toast.success(t(($) => $['workflowGenerator.applied'], { ns: 'workflowGenerator' }))
+      await applyToCurrentApp({
+        appId: currentAppId,
+        appMode: currentAppMode ?? undefined,
+        graph: current.graph as GeneratedGraph,
+      })
       closeGenerator()
       // Hard reload the workflow page so the canvas picks up the new draft —
       // ``router.refresh()`` only revalidates server-rendered route data, and
@@ -544,6 +547,7 @@ function WorkflowGeneratorModal() {
   }, [
     current,
     currentAppId,
+    currentAppMode,
     hideConfirmOverwrite,
     closeGenerator,
     t,

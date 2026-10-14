@@ -1,4 +1,4 @@
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { Field } from '@/app/components/workflow/nodes/llm/types'
 
 export type FormValue = Record<string, any>
 
@@ -127,7 +127,7 @@ export type CredentialFormSchemaBase = {
   reset_on_change?: string[]
   url?: string
   scope?: string
-  input_schema?: SchemaRoot
+  input_schema?: Field | null
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {

@@ -1118,7 +1118,7 @@ class PluginFetchPermissionApi(Resource):
         if not permission:
             return jsonable_encoder(
                 {
-                    "install_permission": TenantPluginInstallPermission.EVERYONE,
+                    "install_permission": TenantPluginInstallPermission.ADMINS,
                     "debug_permission": TenantPluginDebugPermission.EVERYONE,
                 }
             )

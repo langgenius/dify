@@ -1,4 +1,7 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import build_file_reference
@@ -7,24 +10,10 @@ from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadResult
 
 
-def _tool_file() -> ToolFile:
-    file = ToolFile(
-        user_id="user-id",
-        tenant_id="tenant-id",
-        conversation_id="conversation-id",
-        file_key="tools/tenant-id/generated.pdf",
-        mimetype="application/pdf",
-        original_url=None,
-        name="report.pdf",
-        size=7,
-    )
-    file.id = "file-id"
-    return file
-
-
-def test_store_adapts_tool_file_to_transport_neutral_result() -> None:
-    tool_files = MagicMock(spec=ToolFileManager)
-    tool_files.create_file_by_raw.return_value = _tool_file()
+def test_store_adapts_tool_file_to_transport_neutral_result(sqlite_session: Session, mocker: MockerFixture) -> None:
+    tool_files = ToolFileManager()
+    create_file = mocker.spy(tool_files, "create_file_by_raw")
+    save = mocker.patch("core.tools.tool_file_manager.storage.save")
     gateway = ToolFilePluginUploadGateway(tool_files=tool_files)
 
     with patch("services.plugin_file_upload_gateway.sign_tool_file", return_value="signed-url") as sign_file:
@@ -37,9 +26,11 @@ def test_store_adapts_tool_file_to_transport_neutral_result() -> None:
             filename="report.pdf",
         )
 
+    persisted = sqlite_session.get(ToolFile, result.id)
+    assert persisted is not None
     assert result == PluginFileUploadResult(
-        id="file-id",
-        reference=build_file_reference(record_id="file-id"),
+        id=persisted.id,
+        reference=build_file_reference(record_id=persisted.id),
         name="report.pdf",
         size=7,
         extension=".pdf",
@@ -50,9 +41,12 @@ def test_store_adapts_tool_file_to_transport_neutral_result() -> None:
         user_id="user-id",
         tenant_id="tenant-id",
         conversation_id="conversation-id",
-        file_key="tools/tenant-id/generated.pdf",
+        file_key=persisted.file_key,
     )
-    tool_files.create_file_by_raw.assert_called_once_with(
+    assert persisted.file_key.startswith("tools/tenant-id/")
+    assert persisted.file_key.endswith(".pdf")
+    save.assert_called_once_with(persisted.file_key, b"content")
+    create_file.assert_called_once_with(
         user_id="user-id",
         tenant_id="tenant-id",
         conversation_id="conversation-id",
@@ -60,20 +54,12 @@ def test_store_adapts_tool_file_to_transport_neutral_result() -> None:
         mimetype="application/pdf",
         filename="report.pdf",
     )
-    sign_file.assert_called_once_with(
-        tool_file_id="file-id",
-        extension=".pdf",
-        for_external=True,
-    )
+    sign_file.assert_called_once_with(tool_file_id=persisted.id, extension=".pdf", for_external=True)
 
 
-def test_filename_extension_wins_over_generic_mimetype() -> None:
-    tool_files = MagicMock(spec=ToolFileManager)
-    file = _tool_file()
-    file.name = "report.docx"
-    file.mimetype = "application/octet-stream"
-    tool_files.create_file_by_raw.return_value = file
-    gateway = ToolFilePluginUploadGateway(tool_files=tool_files)
+def test_filename_extension_wins_over_generic_mimetype(sqlite_session: Session, mocker: MockerFixture) -> None:
+    save = mocker.patch("core.tools.tool_file_manager.storage.save")
+    gateway = ToolFilePluginUploadGateway(tool_files=ToolFileManager())
 
     with patch("services.plugin_file_upload_gateway.sign_tool_file", return_value="signed-url"):
         result = gateway.store(
@@ -87,3 +73,8 @@ def test_filename_extension_wins_over_generic_mimetype() -> None:
 
     assert result.extension == ".docx"
     assert result.mime_type == "application/octet-stream"
+    persisted = sqlite_session.get(ToolFile, result.id)
+    assert persisted is not None
+    assert persisted.name == "report.docx"
+    assert persisted.file_key.endswith(".docx")
+    save.assert_called_once_with(persisted.file_key, b"content")

@@ -7,6 +7,7 @@ import type {
 } from './services/processing-task-events'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -22,8 +23,8 @@ import {
   workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
 import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
@@ -109,19 +110,8 @@ function recoveryQueryMaskForPermissionDenials(permissionDenialMask: number) {
   return recoveryQueryMask & ~permissionDenialMask
 }
 
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
-}
-
 function taskSnapshotErrorIsTransient(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === undefined || status === 408 || status === 429 || status >= 500
 }
 
@@ -237,7 +227,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       initialPageParam: null as string | null,
     }),
   )
-  const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
+  const documentPermissionDenied = getHttpErrorStatus(documentsQuery.error) === 403
   const refetchDocumentsQuery = documentsQuery.refetch
   const {
     deny: denyAuxiliaryTaskRead,
@@ -290,8 +280,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const permissionDenialMask =
     (documentPermissionDenied || auxiliaryReadPermissionDenied ? DOCUMENT_PERMISSION_DENIED : 0) |
-    (responseStatus(tasksQuery.error) === 403 ? TASK_PERMISSION_DENIED : 0) |
-    (responseStatus(sourcesQuery.error) === 403 ? SOURCE_PERMISSION_DENIED : 0)
+    (getHttpErrorStatus(tasksQuery.error) === 403 ? TASK_PERMISSION_DENIED : 0) |
+    (getHttpErrorStatus(sourcesQuery.error) === 403 ? SOURCE_PERMISSION_DENIED : 0)
   const permissionDenied = permissionDenialMask !== 0
   const previousPermissionDenialMaskRef = useRef(permissionDenialMask)
   const permissionRecoveryQueryMaskRef = useRef(
@@ -832,7 +822,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     const shouldRestoreFocus =
       tasksOpen || documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current
     if (tasksOpen) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
       setTasksOpen(false)
     }
     if (shouldRestoreFocus) documentPermissionAlertRef.current?.focus()
@@ -866,9 +855,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     )
       return
     writePermissionRecoveryFetchSeenRef.current = false
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A post-denial permission request is the authoritative event that retires the local mutation lock.
     setWritePermissionRevoked(false)
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The completed recovery generation is retired with its write lock.
     setWritePermissionRecoveryGeneration(undefined)
   }, [
     canEdit,
@@ -1115,7 +1102,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       } catch (error) {
         if (terminalReconciliationControllersRef.current.get(taskId) !== controller) return
         terminalReconciliationControllersRef.current.delete(taskId)
-        if (responseStatus(error) === 403) {
+        if (getHttpErrorStatus(error) === 403) {
           const currentTaskVersion = currentTaskVersionRef.current.get(taskId)
           const deniedVersion =
             currentTaskVersion && taskVersionIsAfter(currentTaskVersion, terminalVersion)
@@ -1510,7 +1497,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
         refreshDocumentsAndTasks()
       } catch (error) {
-        if (responseStatus(error) === 403) {
+        if (getHttpErrorStatus(error) === 403) {
           writePermissionDenied = true
           handleWritePermissionDenied()
         } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
@@ -1576,7 +1563,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
       refreshDocumentsAndTasks()
     } catch (error) {
-      if (responseStatus(error) === 403) handleWritePermissionDenied()
+      if (getHttpErrorStatus(error) === 403) handleWritePermissionDenied()
       else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
     } finally {
       reindexPendingRef.current = false
@@ -1852,7 +1839,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
               )
                 return
-              if (responseStatus(error) === 403) {
+              if (getHttpErrorStatus(error) === 403) {
                 const currentTaskVersion = currentTaskVersionRef.current.get(task.id)
                 const deniedVersion =
                   currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)
@@ -2085,12 +2072,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             >
               <span className="system-xs-regular text-text-tertiary">
                 {t(($) =>
-                  responseStatus(documentsQuery.error) === 403
+                  getHttpErrorStatus(documentsQuery.error) === 403
                     ? $['newKnowledge.documentsPermissionDescription']
                     : $['newKnowledge.documentsErrorDescription'],
                 )}
               </span>
-              {responseStatus(documentsQuery.error) !== 403 && (
+              {getHttpErrorStatus(documentsQuery.error) !== 403 && (
                 <Button
                   ref={documentsRetryButtonRef}
                   aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}

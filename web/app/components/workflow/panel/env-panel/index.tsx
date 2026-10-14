@@ -5,6 +5,7 @@ import type {
   LLMEnvironmentVariableValue,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { RiCloseLine } from '@remixicon/react'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
@@ -24,7 +25,6 @@ import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { Resolution } from '@/types/app'
 import {
   fetchModelParameterRulesForModel,

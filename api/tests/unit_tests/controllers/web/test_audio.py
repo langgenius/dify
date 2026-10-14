@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import inspect
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
-from controllers.web.audio import AudioApi, TextApi
+from controllers.web.audio import AudioApi, TextApi, TextToAudioPayload
 from controllers.web.error import (
     AudioTooLargeError,
     CompletionRequestError,
@@ -54,6 +56,13 @@ def _end_user() -> EndUser:
     return make_end_user(end_user_id="eu-1", app_id="app-1", external_user_id="ext-1", name="Web User")
 
 
+# The @with_session decorator opens a request-scoped session and injects it as
+# the first argument after self; these undecorated handlers let tests pass a
+# session explicitly and assert it is forwarded to AudioService.
+_audio_post = inspect.unwrap(AudioApi.post)
+_text_post = inspect.unwrap(TextApi.post)
+
+
 # ---------------------------------------------------------------------------
 # AudioApi (audio-to-text)
 # ---------------------------------------------------------------------------
@@ -66,6 +75,16 @@ class TestAudioApi:
             result = AudioApi().post(_app_model(), _end_user())
 
         assert result == {"text": "hello"}
+        assert isinstance(mock_asr.call_args.kwargs["session"], Session)
+
+    @patch("controllers.web.audio.AudioService.transcript_asr", return_value={"text": "hello"})
+    def test_forwards_injected_session(self, mock_asr: MagicMock, app: Flask, sqlite_session: Session) -> None:
+        data = {"file": (BytesIO(b"fake-audio"), "test.mp3")}
+        with app.test_request_context("/audio-to-text", method="POST", data=data, content_type="multipart/form-data"):
+            result = _audio_post(AudioApi(), sqlite_session, _app_model(), _end_user())
+
+        assert result == {"text": "hello"}
+        assert mock_asr.call_args.kwargs["session"] is sqlite_session
 
     @patch("controllers.web.audio.AudioService.transcript_asr", side_effect=NoAudioUploadedServiceError())
     def test_no_audio_uploaded(self, mock_asr: MagicMock, app: Flask) -> None:
@@ -144,6 +163,16 @@ class TestTextApi:
 
         assert result == "audio-bytes"
         mock_tts.assert_called_once()
+        assert isinstance(mock_tts.call_args.kwargs["session"], Session)
+
+    @patch("controllers.web.audio.AudioService.transcript_tts", return_value="audio-bytes")
+    def test_forwards_injected_session(self, mock_tts: MagicMock, app: Flask, sqlite_session: Session) -> None:
+        payload = TextToAudioPayload.model_validate({"text": "hello", "voice": "alloy"})
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = _text_post(TextApi(), payload, sqlite_session, _app_model(), _end_user())
+
+        assert result == "audio-bytes"
+        assert mock_tts.call_args.kwargs["session"] is sqlite_session
 
     @patch("controllers.web.audio.AudioService.transcript_tts", return_value="audio-bytes")
     def test_happy_path_with_message_ref(self, mock_tts: MagicMock, app: Flask) -> None:

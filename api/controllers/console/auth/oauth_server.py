@@ -1,9 +1,10 @@
+from datetime import datetime
 from http import HTTPStatus
 from typing import Any, Never
 
 from flask import Response, jsonify, request
 from flask_restx import Resource
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -11,7 +12,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import setup_required
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.helper import dump_response
+from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from services.oauth_server_service import (
     OAuthServerClientNotFoundError,
@@ -65,6 +66,12 @@ class OAuthProviderAccountResponse(ResponseModel):
     avatar: str | None = None
     interface_language: str | None
     timezone: str | None
+    created_at: int
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int) -> int:
+        return to_timestamp(value)
 
 
 register_schema_models(console_ns, OAuthClientPayload, OAuthProviderRequest, OAuthTokenRequest)
