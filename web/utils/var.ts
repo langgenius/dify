@@ -103,12 +103,16 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean): CheckKeysResult
 }
 
 export const hasDuplicateStr = (strArr: string[]) => {
-  const strObj: Record<string, number> = {}
-  strArr.forEach((str) => {
-    if (strObj[str]) strObj[str] += 1
-    else strObj[str] = 1
+  // A plain object literal inherits Object.prototype, so keys such as
+  // `constructor` or `toString` look present before they are ever recorded and
+  // `__proto__` is never recorded at all. Track the seen names in a Set so a
+  // duplicate is detected no matter what Object.prototype happens to define.
+  const seen = new Set<string>()
+  return strArr.some((str) => {
+    if (seen.has(str)) return true
+    seen.add(str)
+    return false
   })
-  return !!Object.keys(strObj).find((key) => strObj[key]! > 1)
 }
 
 const varRegex = /\{\{([a-z_]\w*)\}\}/gi
@@ -130,13 +134,13 @@ export const getVars = (value: string) => {
         return item.replace('{{', '').replace('}}', '')
       })
       .filter((key) => key.length <= MAX_VAR_KEY_LENGTH) || []
-  const keyObj: Record<string, boolean> = {}
+  const keyObj = new Set<string>()
   // remove duplicate keys
   const res: string[] = []
   keys.forEach((key) => {
-    if (keyObj[key]) return
+    if (keyObj.has(key)) return
 
-    keyObj[key] = true
+    keyObj.add(key)
     res.push(key)
   })
   return res

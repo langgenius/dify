@@ -99,6 +99,13 @@ describe('Variable Utilities', () => {
     it('should handle multiple duplicates', () => {
       expect(hasDuplicateStr(['a', 'b', 'a', 'b', 'c'])).toBe(true)
     })
+
+    it('should detect duplicates of keys inherited from Object.prototype', () => {
+      expect(hasDuplicateStr(['constructor', 'constructor'])).toBe(true)
+      expect(hasDuplicateStr(['toString', 'toString'])).toBe(true)
+      expect(hasDuplicateStr(['__proto__', '__proto__'])).toBe(true)
+      expect(hasDuplicateStr(['constructor', 'toString'])).toBe(false)
+    })
   })
 
   describe('getVars', () => {
@@ -144,6 +151,11 @@ describe('Variable Utilities', () => {
       const longVar = 'a'.repeat(101)
       const result = getVars(`{{${longVar}}} {{valid}}`)
       expect(result).toEqual(['valid'])
+    })
+
+    it('should keep variables named after Object.prototype members', () => {
+      const result = getVars('{{constructor}} {{toString}} {{name}}')
+      expect(result).toEqual(['constructor', 'toString', 'name'])
     })
   })
 
