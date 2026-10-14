@@ -160,16 +160,16 @@ def test_invalid_force_cannot_mutate_existing_empty_draft(
                 confirmation={"force": force},
             )
     else:
-        response, status = post_empty_draft(
-            app,
-            monkeypatch,
-            sqlite_session,
-            owner,
-            content_type=content_type,
-            unique_hash=owner.draft.unique_hash,
-            confirmation={"force": force},
-        )
-        assert status == 400
-        assert response["message"] == "Invalid JSON data"
+        with pytest.raises(InvalidArgumentError, match="Invalid JSON data") as exc:
+            post_empty_draft(
+                app,
+                monkeypatch,
+                sqlite_session,
+                owner,
+                content_type=content_type,
+                unique_hash=owner.draft.unique_hash,
+                confirmation={"force": force},
+            )
+        assert exc.value.code == 400
     sqlite_session.rollback()
     assert workflow_rows(sqlite_session_factory) == before
