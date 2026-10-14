@@ -120,9 +120,8 @@ class NotionDataSourceGateway(DataSourceProviderGateway):
             page_id = page_result["id"]
             page_name = "Untitled"
             for prop in page_result["properties"].values():
-                if title_list := prop.get("title"):
-                    if title_list and "plain_text" in title_list[0]:
-                        page_name = title_list[0]["plain_text"]
+                if (title_list := prop.get("title")) and title_list and "plain_text" in title_list[0]:
+                    page_name = title_list[0]["plain_text"]
             page_icon = page_result["icon"]
             if page_icon:
                 icon_type = page_icon["type"]

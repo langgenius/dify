@@ -103,10 +103,9 @@ class RerankModelRunner(BaseRerankRunner):
                     doc_ids.add(document.metadata["doc_id"])
                     docs.append(document.page_content)
                     unique_documents.append(document)
-            elif document.provider == "external":
-                if document not in unique_documents:
-                    docs.append(document.page_content)
-                    unique_documents.append(document)
+            elif document.provider == "external" and document not in unique_documents:
+                docs.append(document.page_content)
+                unique_documents.append(document)
 
         rerank_result = self.rerank_model_instance.invoke_rerank(
             query=query, docs=docs, score_threshold=score_threshold, top_n=top_n

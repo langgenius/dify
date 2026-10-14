@@ -26,13 +26,12 @@ class TextToSpeechConfigManager:
         """
         text_to_speech = None
         text_to_speech_dict = config.get("text_to_speech")
-        if text_to_speech_dict:
-            if text_to_speech_dict.get("enabled"):
-                text_to_speech = TextToSpeechEntity(
-                    enabled=text_to_speech_dict.get("enabled"),
-                    voice=text_to_speech_dict.get("voice"),
-                    language=text_to_speech_dict.get("language"),
-                )
+        if text_to_speech_dict and text_to_speech_dict.get("enabled"):
+            text_to_speech = TextToSpeechEntity(
+                enabled=text_to_speech_dict.get("enabled"),
+                voice=text_to_speech_dict.get("voice"),
+                language=text_to_speech_dict.get("language"),
+            )
 
         return text_to_speech
 
