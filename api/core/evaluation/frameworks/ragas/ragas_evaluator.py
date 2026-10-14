@@ -60,7 +60,7 @@ _RAGAS_REFERENCE_METRICS = {
 }
 
 _NATIVE_AGENT_METRICS = {metric.value for metric in NATIVE_AGENT_METRIC_NAMES}
-_RAGAS_METRIC_TIMEOUT_SECONDS = 120
+_RAGAS_METRIC_TIMEOUT_SECONDS = 180
 # Retry only provider failures known to be transient. Client-side validation
 # failures such as PluginInvokeError must surface immediately.
 _RAGAS_RETRYABLE_EXCEPTIONS = (
