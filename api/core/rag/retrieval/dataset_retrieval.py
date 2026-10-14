@@ -1485,7 +1485,7 @@ class DatasetRetrieval:
             similarity = cosine_similarity(query_tfidf, document_tfidf)
             similarities.append(similarity)
 
-        for document, score in zip(documents, similarities):
+        for document, score in zip(documents, similarities, strict=False):
             # format document
             if document.metadata is not None:
                 document.metadata["score"] = score

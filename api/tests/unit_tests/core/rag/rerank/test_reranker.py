@@ -781,7 +781,9 @@ class TestWeightRerankRunner:
         )
         expected_scores = {
             doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
-            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+            for doc, query_score, vector_score in zip(
+                sample_documents_with_vectors, query_scores, vector_scores, strict=False
+            )
         }
 
         result = runner.run(query="python programming", documents=sample_documents_with_vectors)
@@ -833,7 +835,9 @@ class TestWeightRerankRunner:
         )
         expected_scores = {
             doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
-            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+            for doc, query_score, vector_score in zip(
+                sample_documents_with_vectors, query_scores, vector_scores, strict=False
+            )
         }
 
         result = runner.run(query="test query", documents=sample_documents_with_vectors)
@@ -1029,7 +1033,9 @@ class TestWeightRerankRunner:
         )
         expected_scores = {
             doc.metadata["doc_id"]: (0.6 * vector_score + 0.4 * query_score)
-            for doc, query_score, vector_score in zip(sample_documents_with_vectors, query_scores, vector_scores)
+            for doc, query_score, vector_score in zip(
+                sample_documents_with_vectors, query_scores, vector_scores, strict=False
+            )
         }
 
         result = runner.run(query="test", documents=sample_documents_with_vectors)
