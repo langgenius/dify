@@ -9,6 +9,7 @@ from unittest.mock import ANY, Mock
 
 import pytest
 from flask import Flask, Response, has_request_context
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 
 from controllers.common.errors import NotFoundError
@@ -407,20 +408,20 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
     is_maintainer: bool,
     agent_backed: bool,
     include_node_details: bool,
+    mocker: MockerFixture,
 ) -> None:
     workflow_run = _workflow_run()
     app_model = _app()
     apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
-    check_access = Mock(return_value=has_permission)
-    monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
+    check_access = mocker.patch.object(RBACService.CheckAccess, "check", return_value=has_permission)
     monkeypatch.setattr(rbac_locators, "application_services", lambda: rbac_domain)
     monkeypatch.setattr(
         rbac_domain.rbac.queries,
         "get_app_agent_binding",
-        Mock(return_value=AppAgentBinding(id="agent-1", workflow_only=False) if agent_backed else None),
+        lambda *_args, **_kwargs: AppAgentBinding(id="agent-1", workflow_only=False) if agent_backed else None,
     )
     monkeypatch.setattr(
-        rbac_domain.rbac.queries, "get_app_maintainer", Mock(return_value="user-1" if is_maintainer else None)
+        rbac_domain.rbac.queries, "get_app_maintainer", lambda *_args, **_kwargs: "user-1" if is_maintainer else None
     )
 
     class _RepoStub:

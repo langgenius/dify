@@ -207,10 +207,10 @@ def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope() -> None:
 
 
 @pytest.mark.parametrize("requested_id", ["parent-row", "parent-engine"])
-def test_workflow_tool_children_only_fetch_matching_latest_payloads(requested_id: str) -> None:
-    with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
-    repository.logstore_client = MagicMock()
+def test_workflow_tool_children_only_fetch_matching_latest_payloads(
+    requested_id: str, sql_repository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository, database = sql_repository
     rows = [
         {
             "id": "parent-row",
@@ -293,32 +293,32 @@ def test_workflow_tool_children_only_fetch_matching_latest_payloads(requested_id
     }
     rows = [{**defaults, **row} for row in rows]
     fetched_payload_ids: list[str] = []
-    with closing(sqlite3.connect(":memory:")) as database:
-        database.row_factory = sqlite3.Row
-        database.execute(
-            "CREATE TABLE workflow_node_execution (id TEXT, tenant_id TEXT, app_id TEXT, workflow_run_id TEXT, "
-            "node_execution_id TEXT, workflow_id TEXT, triggered_from_workflow_id TEXT, "
-            "triggered_from_node_execution_id TEXT, node_type TEXT, triggered_from TEXT, "
-            "process_data TEXT, outputs TEXT, "
-            'status TEXT, "index" INTEGER, created_at INTEGER, log_version INTEGER, __time__ INTEGER)'
-        )
-        database.executemany(
-            "INSERT INTO workflow_node_execution VALUES "
-            "(:id, :tenant_id, :app_id, :workflow_run_id, :node_execution_id, :workflow_id, "
-            ":triggered_from_workflow_id, :triggered_from_node_execution_id, :node_type, :triggered_from, "
-            ":process_data, :outputs, :status, :index, :created_at, :log_version, :__time__)",
-            rows,
-        )
+    database.execute(
+        "CREATE TABLE workflow_node_execution (id TEXT, tenant_id TEXT, app_id TEXT, workflow_run_id TEXT, "
+        "node_execution_id TEXT, workflow_id TEXT, triggered_from_workflow_id TEXT, "
+        "triggered_from_node_execution_id TEXT, node_type TEXT, triggered_from TEXT, "
+        "process_data TEXT, outputs TEXT, "
+        'status TEXT, "index" INTEGER, created_at INTEGER, log_version INTEGER, __time__ INTEGER)'
+    )
+    database.executemany(
+        "INSERT INTO workflow_node_execution VALUES "
+        "(:id, :tenant_id, :app_id, :workflow_run_id, :node_execution_id, :workflow_id, "
+        ":triggered_from_workflow_id, :triggered_from_node_execution_id, :node_type, :triggered_from, "
+        ":process_data, :outputs, :status, :index, :created_at, :log_version, :__time__)",
+        rows,
+    )
 
-        def execute_query(*, sql: str, **_kwargs: object) -> list[dict[str, object]]:
-            result = [dict(row) for row in database.execute(sql)]
-            fetched_payload_ids.extend(str(row["id"]) for row in result if "outputs" in row)
-            return result
+    execute_sql = repository.logstore_client.execute_sql
 
-        repository.logstore_client.execute_sql.side_effect = execute_query
-        children = repository.get_workflow_tool_executions("tenant", "run", requested_id)
-        assert repository.get_workflow_tool_executions("tenant", "run", "unknown") == []
-        assert repository.get_workflow_tool_executions("tenant", "run", "child") == []
+    def execute_query(*, sql: str, **kwargs: object) -> list[dict[str, object]]:
+        result = execute_sql(sql=sql, **kwargs)
+        fetched_payload_ids.extend(str(row["id"]) for row in result if "outputs" in row)
+        return result
+
+    monkeypatch.setattr(repository.logstore_client, "execute_sql", execute_query)
+    children = repository.get_workflow_tool_executions("tenant", "run", requested_id)
+    assert repository.get_workflow_tool_executions("tenant", "run", "unknown") == []
+    assert repository.get_workflow_tool_executions("tenant", "run", "child") == []
 
     assert [child.id for child in children] == ["earlier-child", "child"]
     assert children[1].status.value == "paused"

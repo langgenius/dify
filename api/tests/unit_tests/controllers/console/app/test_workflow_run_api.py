@@ -11,7 +11,8 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask, request
 from flask_restx import marshal
-from sqlalchemy.orm import Session
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import NotFoundError
@@ -30,8 +31,13 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.enterprise.rbac_service import RBACService
 from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace
+from services.workflow_run_service import WorkflowRunService
 from tests.unit_tests.model_factories import make_account, make_app
 from tests.unit_tests.rbac_fakes import RBACDomain
 
@@ -67,7 +73,7 @@ def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
     )
 
 
-def _mock_application_services(monkeypatch: pytest.MonkeyPatch, workflow_runs: Mock) -> None:
+def _mock_application_services(monkeypatch: pytest.MonkeyPatch, workflow_runs: Mock | WorkflowRunService) -> None:
     monkeypatch.setattr(
         workflow_run_module,
         "application_services",
@@ -394,6 +400,14 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
     )
 
 
+@pytest.fixture
+def workflow_run_service(sqlite_session_factory: sessionmaker[Session]) -> WorkflowRunService:
+    return WorkflowRunService(
+        workflow_runs=DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory),
+        node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory),
+    )
+
+
 @pytest.mark.parametrize("source_access", ["granted", "maintainer", "rbac-disabled"])
 def test_workflow_tool_children_preserve_source_identity(
     app: Flask,
@@ -402,16 +416,17 @@ def test_workflow_tool_children_preserve_source_identity(
     rbac_domain: RBACDomain,
     config_overrides: Callable[..., None],
     source_access: str,
+    workflow_run_service: WorkflowRunService,
+    mocker: MockerFixture,
 ) -> None:
     config_overrides(RBAC_ENABLED=source_access != "rbac-disabled")
     monkeypatch.setattr(rbac_locators, "application_services", lambda: rbac_domain)
     sqlite_session.add(make_app(app_id="source-app", maintainer="account-1" if source_access == "maintainer" else None))
     sqlite_session.commit()
     monkeypatch.setattr(db, "session", sqlite_session)
-    check_access = Mock(return_value=source_access == "granted")
-    monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
-    workflow_runs = Mock()
-    workflow_runs.get_workflow_tool_node_executions.return_value = [
+    check_access = mocker.patch.object(RBACService.CheckAccess, "check", return_value=source_access == "granted")
+    workflow_runs = workflow_run_service
+    child_traces = [
         WorkflowNodeExecutionTrace(
             id="child-row",
             tenant_id="tenant-1",
@@ -423,13 +438,14 @@ def test_workflow_tool_children_preserve_source_identity(
             outputs={"answer": "world"},
         )
     ]
+    get_children = mocker.patch.object(workflow_runs, "get_workflow_tool_node_executions", return_value=child_traces)
     _mock_application_services(monkeypatch, workflow_runs)
     context = _request_context()
     api = workflow_run_module.WorkflowToolNodeExecutionListApi()
     handler = unwrap(api.get)
     with app.test_request_context("/apps/app-1/workflow-runs/run-1/node-executions/parent/children"):
         response = handler(api, context, app_model=_app(), run_id="run-1", node_execution_id="parent")
-        workflow_runs.get_workflow_tool_node_executions.return_value = None
+        get_children.return_value = None
         with pytest.raises(NotFoundError, match="Workflow run not found"):
             handler(api, context, app_model=_app(), run_id="run-1", node_execution_id="parent")
     assert response["data"][0]["node_execution_id"] == "source-execution"
@@ -444,9 +460,7 @@ def test_workflow_tool_children_preserve_source_identity(
         )
     else:
         check_access.assert_not_called()
-    workflow_runs.get_workflow_tool_node_executions.assert_called_with(
-        context, app_id="app-1", run_id="run-1", node_execution_id="parent"
-    )
+    get_children.assert_called_with(context, app_id="app-1", run_id="run-1", node_execution_id="parent")
 
 
 @pytest.mark.parametrize("source_app_ids", [("source-app",), ("allowed-source", "source-app")])
@@ -457,16 +471,19 @@ def test_workflow_tool_children_deny_any_unauthorized_source(
     rbac_domain: RBACDomain,
     config_overrides: Callable[..., None],
     source_app_ids: tuple[str, ...],
+    workflow_run_service: WorkflowRunService,
+    mocker: MockerFixture,
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
     monkeypatch.setattr(rbac_locators, "application_services", lambda: rbac_domain)
     sqlite_session.add_all(make_app(app_id=app_id) for app_id in ("app-1", "allowed-source", "source-app"))
     sqlite_session.commit()
     monkeypatch.setattr(db, "session", sqlite_session)
-    check_access = Mock(side_effect=lambda *_args, resource_id, **_kwargs: resource_id != "source-app")
-    monkeypatch.setattr(RBACService.CheckAccess, "check", check_access)
-    workflow_runs = Mock()
-    workflow_runs.get_workflow_tool_node_executions.return_value = [
+    check_access = mocker.patch.object(
+        RBACService.CheckAccess, "check", side_effect=lambda *_args, resource_id, **_kwargs: resource_id != "source-app"
+    )
+    workflow_runs = workflow_run_service
+    child_traces = [
         WorkflowNodeExecutionTrace(
             id=f"{app_id}-row",
             tenant_id="tenant-1",
@@ -480,6 +497,7 @@ def test_workflow_tool_children_deny_any_unauthorized_source(
         )
         for app_id in source_app_ids
     ]
+    get_children = mocker.patch.object(workflow_runs, "get_workflow_tool_node_executions", return_value=child_traces)
     _mock_application_services(monkeypatch, workflow_runs)
     context = _request_context()
     api = workflow_run_module.WorkflowToolNodeExecutionListApi()
@@ -492,6 +510,4 @@ def test_workflow_tool_children_deny_any_unauthorized_source(
 
     assert error.value.code == 403
     assert check_access.call_args.kwargs["resource_id"] == "source-app"
-    workflow_runs.get_workflow_tool_node_executions.assert_called_once_with(
-        context, app_id="app-1", run_id="run-1", node_execution_id="parent"
-    )
+    get_children.assert_called_once_with(context, app_id="app-1", run_id="run-1", node_execution_id="parent")
