@@ -155,7 +155,7 @@ def test_evaluate_with_ragas_uses_bounded_transient_retry_config(monkeypatch: py
     )
 
     run_config = cast(SimpleNamespace, captured["run_config"])
-    assert run_config.timeout == 120
+    assert run_config.timeout == 180
     assert run_config.exception_types == (
         InvokeConnectionError,
         InvokeRateLimitError,
