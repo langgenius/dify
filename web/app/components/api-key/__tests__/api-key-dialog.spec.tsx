@@ -227,22 +227,31 @@ describe('ApiKeyDialog', () => {
     ).toHaveAccessibleDescription('appApi.apiKeyModal.generateTips')
   })
 
-  it('creates a workspace dataset API key scoped to all knowledge bases', async () => {
+  it('creates an all-knowledge key and requires acknowledgement of its secret', async () => {
     const user = userEvent.setup()
     await renderDialog(datasetScope)
-
-    await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
-
-    // Dataset creation first opens the scope dialog; the default "all" scope creates a
-    // key with an empty dataset_ids list.
-    await user.click(await screen.findByRole('button', { name: 'common.operation.create' }))
-
-    await waitFor(() => {
-      expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })
+    const create = screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' })
+    await user.click(create)
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    const result = await screen.findByRole('alertdialog', {
+      name: 'appApi.apiKeyModal.createdTitle',
     })
+    expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })
+    expect(result).toHaveAccessibleDescription('appApi.apiKeyModal.revealOnceTips')
+    const secret = within(result).getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })
+    expect(secret).toHaveValue('new-dataset-token-123')
+    const copy = within(result).getByRole('button', { name: 'common.operation.copy' })
+    await waitFor(() => expect(copy).toHaveFocus())
+    await user.keyboard('{Enter}')
+    expect(await navigator.clipboard.readText()).toBe('new-dataset-token-123')
     expect(
-      await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
-    ).toHaveValue('new-dataset-token-123')
+      within(result).queryByRole('button', { name: 'common.operation.close' }),
+    ).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    expect(result).toBeInTheDocument()
+    await user.click(within(result).getByRole('button', { name: 'appApi.apiKeyModal.saved' }))
+    await waitFor(() => expect(result).not.toBeInTheDocument())
+    expect(create).toHaveFocus()
   })
 
   it('searches for a knowledge base and creates a key scoped to the selection', async () => {
@@ -491,32 +500,6 @@ describe('ApiKeyDialog', () => {
       await waitFor(() => expect(create).not.toHaveAttribute('aria-disabled', 'true'))
     },
   )
-
-  it('requires acknowledgement before dismissing a newly created knowledge secret and returns focus', async () => {
-    const user = userEvent.setup()
-    await renderDialog(datasetScope)
-    const create = screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' })
-    await user.click(create)
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-    const result = await screen.findByRole('alertdialog', {
-      name: 'appApi.apiKeyModal.createdTitle',
-    })
-    expect(result).toHaveAccessibleDescription('appApi.apiKeyModal.revealOnceTips')
-    const secret = within(result).getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })
-    expect(secret).toHaveValue('new-dataset-token-123')
-    const copy = within(result).getByRole('button', { name: 'common.operation.copy' })
-    await waitFor(() => expect(copy).toHaveFocus())
-    await user.keyboard('{Enter}')
-    expect(await navigator.clipboard.readText()).toBe('new-dataset-token-123')
-    expect(
-      within(result).queryByRole('button', { name: 'common.operation.close' }),
-    ).not.toBeInTheDocument()
-    await user.keyboard('{Escape}')
-    expect(result).toBeInTheDocument()
-    await user.click(within(result).getByRole('button', { name: 'appApi.apiKeyModal.saved' }))
-    await waitFor(() => expect(result).not.toBeInTheDocument())
-    expect(create).toHaveFocus()
-  })
 
   it('does not dismiss management while creating a secret', async () => {
     const user = userEvent.setup()
