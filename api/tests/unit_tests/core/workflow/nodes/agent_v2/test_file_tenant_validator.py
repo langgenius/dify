@@ -31,7 +31,7 @@ USER_ID = "33333333-3333-3333-3333-333333333333"
 def executed_statements(sqlite_engine: Engine) -> Iterator[list[str]]:
     statements: list[str] = []
 
-    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def record_statement(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         statements.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
@@ -41,7 +41,7 @@ def executed_statements(sqlite_engine: Engine) -> Iterator[list[str]]:
         event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
 
-def test_empty_inputs_return_false_without_db_hit(executed_statements: list[str]):
+def test_empty_inputs_return_false_without_db_hit(executed_statements: list[str]) -> None:
     validator = UploadFileTenantValidator()
     assert (
         validator.is_accessible_file_mapping(
@@ -73,7 +73,7 @@ def test_empty_inputs_return_false_without_db_hit(executed_statements: list[str]
         "550e8400-e29b-41d4-a716-446655440000-trailing",
     ],
 )
-def test_non_uuid_file_ids_return_false_without_db_hit(bad_file_id: str, executed_statements: list[str]):
+def test_non_uuid_file_ids_return_false_without_db_hit(bad_file_id: str, executed_statements: list[str]) -> None:
     validator = UploadFileTenantValidator()
     assert (
         validator.is_accessible_file_mapping(
@@ -86,7 +86,7 @@ def test_non_uuid_file_ids_return_false_without_db_hit(bad_file_id: str, execute
     assert executed_statements == []
 
 
-def test_db_error_swallowed_and_returns_false(sqlite_engine: Engine):
+def test_db_error_swallowed_and_returns_false(sqlite_engine: Engine) -> None:
     """Any DB-level fault (timeout, dialect quirk, connection drop) must reject
     the file rather than crash the workflow node."""
     validator = UploadFileTenantValidator()
@@ -118,7 +118,7 @@ def test_db_error_swallowed_and_returns_false(sqlite_engine: Engine):
 
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
-def test_accessible_file_mapping_checks_transfer_method_family(sqlite_session: Session):
+def test_accessible_file_mapping_checks_transfer_method_family(sqlite_session: Session) -> None:
     validator = UploadFileTenantValidator()
     upload_file = UploadFile(
         tenant_id=TENANT_ID,
