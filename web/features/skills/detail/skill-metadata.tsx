@@ -230,11 +230,10 @@ export function SkillTagsEditor({
             }
           >
             <ComboboxTrigger
-              icon={false}
               disabled={!detail || isSavingTags}
               aria-label={t(($) => $['skillManagement.detail.addTag'])}
               className={cn(
-                'h-4.5 w-auto min-w-4.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm p-0 text-text-tertiary hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover',
+                'flex h-4.5 min-w-4.5 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm text-start whitespace-nowrap text-text-tertiary transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover motion-reduce:transition-none',
                 visibleTags.length === 0 && 'border-dashed px-1.25',
               )}
             >
@@ -248,8 +247,6 @@ export function SkillTagsEditor({
                 <ComboboxPopup className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]">
                   <TagSearchContentView
                     type="skill"
-                    inputValue={tagSearch}
-                    onInputValueChange={setTagSearch}
                     canBindOrUnbindTags
                     canManageTags
                     onOpenTagManagement={() => setShowTagManagement(true)}

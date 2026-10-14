@@ -13,7 +13,7 @@ def test_slow_subscriber_is_bounded_and_detach_drains_without_aborting() -> None
     finished = Event()
     failures: list[Exception] = []
 
-    def source() -> Generator[int, None, None]:
+    def source() -> Generator[int]:
         for value in range(1000):
             produced[0] += 1
             if produced[0] == EXECUTION_OUTPUT_BUFFER_SIZE + 1:
@@ -34,7 +34,7 @@ def test_delivery_preserves_order_and_reports_real_execution_errors() -> None:
     completed = Event()
     errors: list[Exception] = []
 
-    def source() -> Generator[str, None, None]:
+    def source() -> Generator[str]:
         yield "first"
         yield "second"
         raise ValueError("fixture-failure")

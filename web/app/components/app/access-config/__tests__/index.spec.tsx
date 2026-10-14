@@ -1,13 +1,15 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
-import { act, screen } from '@testing-library/react'
-import { useStore } from '@/app/components/app/store'
+import { act, screen, waitFor } from '@testing-library/react'
+import ErrorBoundary from '@/app/components/base/error-boundary'
 import {
   useAppAccessRules,
   useAppResourceWhitelist,
   useAppResourceWhitelistConfig,
   useAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppAccessConfigPage from '../index'
@@ -18,12 +20,20 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 
 let mockIsRbacEnabled = true
+let appDetail = createAppDetailFixture()
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appDetail.id } } }),
+    appDetail,
+  )
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     accountProfile: mockConsoleState.userProfile,
     systemFeatures: { rbac_enabled: mockIsRbacEnabled },
   })
+}
 
 const mockAppAccessRules = vi.hoisted(() => ({
   items: [] as AccessRulesEditorProps['rules'],
@@ -143,12 +153,10 @@ describe('AppAccessConfigPage', () => {
     mockMutations.isUpdatingAutomaticIncludeWorkspaceMembers = false
     mockMutations.removeMemberBindingsAsync.mockResolvedValue(undefined)
     mockAccessRulesEditor.props = null
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        maintainer: 'account-1',
-        permission_keys: [AppACLPermission.AccessConfig],
-      } as unknown as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      maintainer: 'account-1',
+      permission_keys: [AppACLPermission.AccessConfig],
     })
   })
 
@@ -341,12 +349,10 @@ describe('AppAccessConfigPage', () => {
   })
 
   it('should not mount access config data hooks when access permission is missing', () => {
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        maintainer: 'account-1',
-        permission_keys: [AppACLPermission.ViewLayout],
-      } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      maintainer: 'account-1',
+      permission_keys: [AppACLPermission.ViewLayout],
     })
 
     render(<AppAccessConfigPage appId="app-1" />)
@@ -367,13 +373,11 @@ describe('AppAccessConfigPage', () => {
   })
 
   it('should not mount access config data hooks for Agent apps', () => {
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        mode: AppModeEnum.AGENT,
-        maintainer: 'account-1',
-        permission_keys: [AppACLPermission.AccessConfig],
-      } as unknown as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      mode: AppModeEnum.AGENT,
+      maintainer: 'account-1',
+      permission_keys: [AppACLPermission.AccessConfig],
     })
 
     render(<AppAccessConfigPage appId="app-1" />)
@@ -386,16 +390,59 @@ describe('AppAccessConfigPage', () => {
   it('should allow the maintainer with app management workspace permission', () => {
     mockConsoleState.userProfile = { id: 'account-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
-    useStore.setState({
-      appDetail: {
-        id: 'app-1',
-        maintainer: 'account-1',
-        permission_keys: [],
-      } as unknown as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      maintainer: 'account-1',
+      permission_keys: [],
     })
 
     render(<AppAccessConfigPage appId="app-1" />)
 
     expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
+  })
+
+  it('keeps the current member page on metadata refresh and stops rendering after permission revocation', async () => {
+    appDetail = createAppDetailFixture({ permission_keys: [AppACLPermission.AccessConfig] })
+    const { queryClient } = render(<AppAccessConfigPage appId="app-1" />)
+    const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
+    act(() => mockAccessRulesEditor.props?.onPageChange?.(3))
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
+    act(() => {
+      queryClient.setQueryData(queryKey, { ...appDetail, maintainer: 'new-maintainer' })
+    })
+    await waitFor(() => expect(mockAccessRulesEditor.props?.maintainerId).toBe('new-maintainer'))
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 3, 10)
+    act(() => {
+      queryClient.setQueryData(queryKey, { ...appDetail, permission_keys: [] })
+    })
+    await waitFor(() => expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument())
+  })
+
+  it('surfaces an initial detail failure without mounting member queries', async () => {
+    const queryClient = createConsoleQueryClient()
+    const queryKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'unavailable-app' } },
+    })
+    queryClient.setQueryDefaults(queryKey, { retryOnMount: false })
+    await queryClient
+      .query({ queryKey, queryFn: () => Promise.reject(new Error('Detail unavailable')) })
+      .catch(() => {})
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      renderWithConsoleQuery(
+        <ErrorBoundary>
+          <AppAccessConfigPage appId="unavailable-app" />
+        </ErrorBoundary>,
+        { queryClient },
+      )
+      expect(
+        await screen.findByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+      ).toBeInTheDocument()
+      expect(useAppAccessRules).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 })

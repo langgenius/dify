@@ -108,8 +108,8 @@ def test_factory_initializes_lower_case_collection_name(myscale_module, monkeypa
     monkeypatch.setattr(myscale_module.dify_config, "MYSCALE_FTS_PARAMS", "")
 
     with patch.object(myscale_module, "MyScaleVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

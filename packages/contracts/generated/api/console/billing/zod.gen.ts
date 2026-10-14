@@ -28,18 +28,6 @@ export const zBillingUnavailableErrorResponse = z.object({
 })
 
 /**
- * PartnerTenantsPayload
- */
-export const zPartnerTenantsPayload = z.object({
-  click_id: z.string(),
-})
-
-/**
- * BillingResponse
- */
-export const zBillingResponse = z.record(z.string(), z.unknown())
-
-/**
  * BillingSubscriptionResponse
  */
 export const zBillingSubscriptionResponse = z.object({
@@ -68,17 +56,6 @@ export const zBillingUnprocessableEntityErrorResponse = z.object({
  * Success
  */
 export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
-
-export const zPutBillingPartnersByPartnerKeyTenantsBody = zPartnerTenantsPayload
-
-export const zPutBillingPartnersByPartnerKeyTenantsPath = z.object({
-  partner_key: z.string(),
-})
-
-/**
- * Tenants synced to partner successfully
- */
-export const zPutBillingPartnersByPartnerKeyTenantsResponse = zBillingResponse
 
 export const zGetBillingSubscriptionQuery = z.object({
   interval: z.enum(['month', 'year']),

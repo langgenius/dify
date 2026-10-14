@@ -1,13 +1,13 @@
-import type { ReactElement } from 'react'
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
+import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { useMembers } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
@@ -32,6 +32,35 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/hooks/use-format-time-from-now')
 vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/use-common')
+vi.mock('@/service/access-control/use-workspace-roles')
+const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, key) {
+        if (key !== 'workspaces') return Reflect.get(target, key)
+        return {
+          current: {
+            summary: target.workspaces.current.summary,
+            members: {
+              inviteEmail: {
+                post: {
+                  mutationOptions: (
+                    options: Parameters<
+                      typeof actual.consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions
+                    >[0],
+                  ) => ({ ...options, mutationFn: inviteMember }),
+                },
+              },
+            },
+          },
+        }
+      },
+    }),
+  }
+})
 
 const renderMembersPage = () =>
   renderWithConsoleQuery(<MembersPage />, {
@@ -68,47 +97,6 @@ vi.mock('../edit-workspace-modal', () => ({
     <div>
       <div>Edit Workspace Modal</div>
       <button onClick={onCancel}>Close Edit Workspace</button>
-    </div>
-  ),
-}))
-vi.mock('../invite-modal', () => ({
-  InviteModal: ({
-    open,
-    trigger,
-    onOpenChange,
-    onSend,
-  }: {
-    open: boolean
-    trigger: ReactElement<{ disabled?: boolean }>
-    onOpenChange: (open: boolean) => void
-    onSend: (results: Array<{ email: string; status: 'success'; url: string }>) => void
-  }) => (
-    <div>
-      <button disabled={trigger.props.disabled} onClick={() => onOpenChange(true)}>
-        Invite
-      </button>
-      {open && (
-        <div>
-          <div>Invite Modal</div>
-          <button onClick={() => onOpenChange(false)}>Close Invite Modal</button>
-          <button
-            onClick={() => {
-              onOpenChange(false)
-              onSend([{ email: 'sent@example.com', status: 'success', url: 'http://invite/link' }])
-            }}
-          >
-            Send Invite Results
-          </button>
-        </div>
-      )}
-    </div>
-  ),
-}))
-vi.mock('../invited-modal', () => ({
-  default: ({ onCancel }: { onCancel: () => void }) => (
-    <div>
-      <div>Invited Modal</div>
-      <button onClick={onCancel}>Close Invited Modal</button>
     </div>
   ),
 }))
@@ -243,6 +231,21 @@ describe('MembersPage', () => {
       mutateAsync: mockUpdateRolesOfMember,
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
 
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      tenant_id: 'tenant-id',
+      invitation_results: [
+        { email: 'sent@example.com', status: 'success', url: 'http://invite/link' },
+      ],
+    })
+    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+      data: { pages: [{ data: [createRole({ id: 'admin', name: 'Admin' })] }] },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
     deploymentEdition = 'COMMUNITY'
     memberFeatures = { ...memberFeatures, is_allow_transfer_workspace: true }
 
@@ -306,24 +309,33 @@ describe('MembersPage', () => {
     renderMembersPage()
 
     await user.click(screen.getByRole('button', { name: /invite/i }))
-    expect(screen.getByText('Invite Modal'))!.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: /members\.inviteTeamMember$/ })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Close Invite Modal' }))
-    expect(screen.queryByText('Invite Modal')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should open invited modal after invite results are sent', async () => {
     const user = userEvent.setup()
 
-    renderMembersPage()
+    const { queryClient } = renderMembersPage()
+    vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
-    await user.click(screen.getByRole('button', { name: /invite/i }))
-    await user.click(screen.getByRole('button', { name: 'Send Invite Results' }))
+    await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
+    await user.type(
+      screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
+      'sent@example.com',
+    )
+    await user.click(screen.getByRole('combobox', { name: /members\.role/ }))
+    await user.click(screen.getByRole('option', { name: /Admin/ }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/ }))
 
-    expect(screen.getByText('Invited Modal'))!.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Close Invited Modal' }))
-    expect(screen.queryByText('Invited Modal')).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('dialog', { name: /members\.invitationSent$/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'http://invite/link' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /members\.ok$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('should open transfer ownership modal when transfer action is used', async () => {
@@ -702,7 +714,7 @@ describe('MembersPage', () => {
     renderMembersPage()
 
     expect(screen.getByText('Upgrade Button'))!.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Invite' }))
-    expect(screen.getByText('Invite Modal')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
+    expect(screen.getByRole('dialog', { name: /members\.inviteTeamMember$/ })).toBeInTheDocument()
   })
 })

@@ -1,5 +1,5 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { ActionItem, AppSearchResult, SearchResult } from './types'
+import type { ActionItem, AppSearchResult, SearchQueryOptions, SearchResult } from './types'
 import type { AppIconType, AppModeEnum as AppMode } from '@/types/app'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
@@ -144,7 +144,11 @@ export const appAction: ActionItem = {
   source: 'remote',
 }
 
-export function appSearchQueryOptions(searchTerm: string, scoped: boolean) {
+export function appSearchQueryOptions(
+  searchTerm: string,
+  scoped: boolean,
+  options: SearchQueryOptions = {},
+) {
   return consoleQuery.apps.get.queryOptions({
     input: {
       query: {
@@ -153,6 +157,7 @@ export function appSearchQueryOptions(searchTerm: string, scoped: boolean) {
       },
     },
     retry: false,
+    ...options,
     select: (response) =>
       scoped ? getScopedAppResults(response.data) : getAppResults(response.data),
   })

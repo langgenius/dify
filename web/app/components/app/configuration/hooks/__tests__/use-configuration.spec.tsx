@@ -4,6 +4,7 @@ import CommonLayoutError from '@/app/(commonLayout)/error'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
@@ -308,8 +309,8 @@ describe('useConfiguration', () => {
     }
   })
 
-  it('should retain the legacy unauthorized response for the redirect loading fallback', async () => {
-    const response = new Response(null, { status: 401 })
+  it('should retain unauthorized ORPCError for the redirect loading fallback', async () => {
+    const response = createHttpError(new Response(null, { status: 401 }))
     mockFetchCollectionList.mockRejectedValueOnce(response)
     const queryClient = createTestQueryClient()
     seedAccountProfileQuery(queryClient, { id: 'user-1' })

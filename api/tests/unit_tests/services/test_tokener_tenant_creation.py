@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
@@ -8,11 +8,12 @@ from models import TenantCreditPool
 from models.enums import ProviderQuotaType
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
-from services.account_service import TenantService
+from tests.unit_tests.account_domain import AccountDomain
 from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_create_tenant_persists_tokener_integration_in_initial_commit(
+    account_domain: AccountDomain,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -23,11 +24,7 @@ def test_create_tenant_persists_tokener_integration_in_initial_commit(
         TOKENER_PLUGIN_UNIQUE_IDENTIFIER="langgenius/tokener:0.1.2@checksum",
     )
 
-    with (
-        patch("services.account_service.SystemFeatureService.is_workspace_creation_allowed", return_value=True),
-        patch("services.account_service.generate_key_pair", return_value="public-key"),
-    ):
-        tenant = TenantService.create_tenant("Tokener tenant", session=sqlite_session)
+    tenant = account_domain.provisioning.create(name="Tokener tenant")
 
     integration = sqlite_session.scalar(
         select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
@@ -45,6 +42,7 @@ def test_create_tenant_persists_tokener_integration_in_initial_commit(
 
 
 def test_create_tenant_does_not_persist_tokener_integration_when_disabled(
+    account_domain: AccountDomain,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -55,11 +53,7 @@ def test_create_tenant_does_not_persist_tokener_integration_when_disabled(
         HOSTED_POOL_CREDITS=321,
     )
 
-    with (
-        patch("services.account_service.SystemFeatureService.is_workspace_creation_allowed", return_value=True),
-        patch("services.account_service.generate_key_pair", return_value="public-key"),
-    ):
-        tenant = TenantService.create_tenant("Legacy tenant", session=sqlite_session)
+    tenant = account_domain.provisioning.create(name="Legacy tenant")
 
     integration = sqlite_session.scalar(
         select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant.id)
@@ -77,6 +71,7 @@ def test_create_tenant_does_not_persist_tokener_integration_when_disabled(
 
 
 def test_tokener_cohort_assignment_does_not_depend_on_worker_switch(
+    account_domain: AccountDomain,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -86,11 +81,7 @@ def test_tokener_cohort_assignment_does_not_depend_on_worker_switch(
         TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED=False,
     )
 
-    with (
-        patch("services.account_service.SystemFeatureService.is_workspace_creation_allowed", return_value=True),
-        patch("services.account_service.generate_key_pair", return_value="public-key"),
-    ):
-        tenant = TenantService.create_tenant("Paused Tokener tenant", session=sqlite_session)
+    tenant = account_domain.provisioning.create(name="Paused Tokener tenant")
 
     profile = sqlite_session.get(TenantModelBillingProfile, tenant.id)
     integration = sqlite_session.scalar(

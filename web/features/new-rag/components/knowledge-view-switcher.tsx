@@ -60,7 +60,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
           render={
             <button
               type="button"
-              className="absolute top-1.25 right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="absolute top-1.25 right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-question-line size-3.5" />
             </button>

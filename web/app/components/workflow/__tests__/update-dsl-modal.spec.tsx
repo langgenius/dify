@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import UpdateDSLModal from '../update-dsl-modal'
 
 const mockEmit = vi.fn()
@@ -70,16 +71,6 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { id: string; mode: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: 'chat',
-      },
-    }),
-}))
-
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
@@ -98,6 +89,8 @@ function render(children: ReactNode) {
 describe('UpdateDSLModal', () => {
   const mockToastError = vi.mocked(toast.error)
   const defaultProps = {
+    appId: 'app-1',
+    appMode: 'workflow' as const,
     onCancel: vi.fn(),
     onBackup: vi.fn(),
     onImport: vi.fn(),
@@ -590,7 +583,9 @@ describe('UpdateDSLModal', () => {
 
   it('should show an error notification when import throws', async () => {
     mockImportDSL.mockRejectedValue(
-      Response.json({ message: 'Invalid app package' }, { status: 400 }),
+      await httpErrorFromResponse(
+        Response.json({ message: 'Invalid app package' }, { status: 400 }),
+      ),
     )
 
     renderModal()
@@ -666,7 +661,9 @@ describe('UpdateDSLModal', () => {
       current_dsl_version: '2.0.0',
     })
     mockImportDSLConfirm.mockRejectedValue(
-      Response.json({ message: 'Invalid app package' }, { status: 400 }),
+      await httpErrorFromResponse(
+        Response.json({ message: 'Invalid app package' }, { status: 400 }),
+      ),
     )
 
     renderModal()

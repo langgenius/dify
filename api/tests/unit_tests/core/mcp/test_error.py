@@ -8,24 +8,24 @@ from core.mcp.error import MCPAuthError, MCPConnectionError, MCPError
 class TestMCPError:
     """Test MCPError base exception class."""
 
-    def test_mcp_error_creation(self):
+    def test_mcp_error_creation(self) -> None:
         """Test creating MCPError instance."""
         error = MCPError("Test error message")
         assert str(error) == "Test error message"
         assert isinstance(error, Exception)
 
-    def test_mcp_error_inheritance(self):
+    def test_mcp_error_inheritance(self) -> None:
         """Test MCPError inherits from Exception."""
         error = MCPError()
         assert isinstance(error, Exception)
         assert type(error).__name__ == "MCPError"
 
-    def test_mcp_error_with_empty_message(self):
+    def test_mcp_error_with_empty_message(self) -> None:
         """Test MCPError with empty message."""
         error = MCPError()
         assert str(error) == ""
 
-    def test_mcp_error_raise(self):
+    def test_mcp_error_raise(self) -> None:
         """Test raising MCPError."""
         with pytest.raises(MCPError) as exc_info:
             raise MCPError("Something went wrong")
@@ -36,28 +36,28 @@ class TestMCPError:
 class TestMCPConnectionError:
     """Test MCPConnectionError exception class."""
 
-    def test_mcp_connection_error_creation(self):
+    def test_mcp_connection_error_creation(self) -> None:
         """Test creating MCPConnectionError instance."""
         error = MCPConnectionError("Connection failed")
         assert str(error) == "Connection failed"
         assert isinstance(error, MCPError)
         assert isinstance(error, Exception)
 
-    def test_mcp_connection_error_inheritance(self):
+    def test_mcp_connection_error_inheritance(self) -> None:
         """Test MCPConnectionError inheritance chain."""
         error = MCPConnectionError()
         assert isinstance(error, MCPConnectionError)
         assert isinstance(error, MCPError)
         assert isinstance(error, Exception)
 
-    def test_mcp_connection_error_raise(self):
+    def test_mcp_connection_error_raise(self) -> None:
         """Test raising MCPConnectionError."""
         with pytest.raises(MCPConnectionError) as exc_info:
             raise MCPConnectionError("Unable to connect to server")
 
         assert str(exc_info.value) == "Unable to connect to server"
 
-    def test_mcp_connection_error_catch_as_mcp_error(self):
+    def test_mcp_connection_error_catch_as_mcp_error(self) -> None:
         """Test catching MCPConnectionError as MCPError."""
         with pytest.raises(MCPError) as exc_info:
             raise MCPConnectionError("Connection issue")
@@ -69,7 +69,7 @@ class TestMCPConnectionError:
 class TestMCPAuthError:
     """Test MCPAuthError exception class."""
 
-    def test_mcp_auth_error_creation(self):
+    def test_mcp_auth_error_creation(self) -> None:
         """Test creating MCPAuthError instance."""
         error = MCPAuthError("Authentication failed")
         assert str(error) == "Authentication failed"
@@ -77,7 +77,7 @@ class TestMCPAuthError:
         assert isinstance(error, MCPError)
         assert isinstance(error, Exception)
 
-    def test_mcp_auth_error_inheritance(self):
+    def test_mcp_auth_error_inheritance(self) -> None:
         """Test MCPAuthError inheritance chain."""
         error = MCPAuthError()
         assert isinstance(error, MCPAuthError)
@@ -85,14 +85,14 @@ class TestMCPAuthError:
         assert isinstance(error, MCPError)
         assert isinstance(error, Exception)
 
-    def test_mcp_auth_error_raise(self):
+    def test_mcp_auth_error_raise(self) -> None:
         """Test raising MCPAuthError."""
         with pytest.raises(MCPAuthError) as exc_info:
             raise MCPAuthError("Invalid credentials")
 
         assert str(exc_info.value) == "Invalid credentials"
 
-    def test_mcp_auth_error_catch_hierarchy(self):
+    def test_mcp_auth_error_catch_hierarchy(self) -> None:
         """Test catching MCPAuthError at different levels."""
         # Catch as MCPAuthError
         with pytest.raises(MCPAuthError) as exc_info:
@@ -115,7 +115,7 @@ class TestMCPAuthError:
 class TestErrorHierarchy:
     """Test the complete error hierarchy."""
 
-    def test_exception_hierarchy(self):
+    def test_exception_hierarchy(self) -> None:
         """Test the complete exception hierarchy."""
         # Create instances
         base_error = MCPError("base")
@@ -132,16 +132,16 @@ class TestErrorHierarchy:
         assert isinstance(auth_error, MCPError)
         assert isinstance(auth_error, MCPConnectionError)
 
-    def test_error_handling_patterns(self):
+    def test_error_handling_patterns(self) -> None:
         """Test common error handling patterns."""
 
-        def raise_auth_error():
+        def raise_auth_error() -> None:
             raise MCPAuthError("401 Unauthorized")
 
-        def raise_connection_error():
+        def raise_connection_error() -> None:
             raise MCPConnectionError("Connection timeout")
 
-        def raise_base_error():
+        def raise_base_error() -> None:
             raise MCPError("Generic error")
 
         # Pattern 1: Catch specific errors first
@@ -165,11 +165,11 @@ class TestErrorHierarchy:
                 error_func()
             assert isinstance(exc_info.value, MCPError)
 
-    def test_error_with_cause(self):
+    def test_error_with_cause(self) -> None:
         """Test errors with cause (chained exceptions)."""
         original_error = ValueError("Original error")
 
-        def raise_chained_error():
+        def raise_chained_error() -> None:
             try:
                 raise original_error
             except ValueError as e:
@@ -181,7 +181,7 @@ class TestErrorHierarchy:
         assert str(exc_info.value) == "Connection failed"
         assert exc_info.value.__cause__ == original_error
 
-    def test_error_comparison(self):
+    def test_error_comparison(self) -> None:
         """Test error instance comparison."""
         error1 = MCPError("Test message")
         error2 = MCPError("Test message")
@@ -194,7 +194,7 @@ class TestErrorHierarchy:
         # But they have the same type
         assert type(error1) == type(error2) == type(error3)
 
-    def test_error_representation(self):
+    def test_error_representation(self) -> None:
         """Test error string representation."""
         base_error = MCPError("Base error message")
         connection_error = MCPConnectionError("Connection error message")

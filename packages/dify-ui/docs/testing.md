@@ -36,6 +36,19 @@ Color contrast is the only globally disabled rule because it is a known design-t
 add another global exception. Keep a temporary exception local to the affected story, and do not
 use a `play` test in place of an accessibility fix.
 
+## Type contracts
+
+Keep compile-only public API fixtures in `__tests__/types.tsx`; package type checking includes them
+without registering runtime tests. Import public subpaths, verify useful inference with
+`expectTypeOf`, and use `@ts-expect-error` for intentional API boundaries. Cover nullable callbacks,
+value models and unsupported composition, not every forwarded prop. Runtime assertions cannot
+prove TypeScript inference, and type fixtures cannot prove focus, DOM semantics or interaction.
+
+A documented example and its `play` belong in one story; do not create an automatic duplicate just
+to run the same render. Keep Docs autoplay off for examples that move focus or open portals. Retain
+explicit open previews when needed for accessibility checks on popup content. Regressions that do
+not teach a distinct usage belong in the unit project rather than extra sidebar entries.
+
 ## Animation setup
 
 Base UI can wait for `element.getAnimations()` before unmounting transition-driven components.

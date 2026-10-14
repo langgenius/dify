@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import ConfigParamModal from '../config-param-modal'
 
@@ -44,18 +45,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 
 vi.mock('@/config', () => ({
   ANNOTATION_DEFAULT: { score_threshold: 0.9 },
-}))
-
-vi.mock('../score-slider', () => ({
-  default: ({ value, onChange }: { value: number; onChange: (value: number) => void }) => (
-    <input
-      type="range"
-      min={0}
-      max={100}
-      value={value}
-      onChange={(e) => onChange(Number((e.target as HTMLInputElement).value))}
-    />
-  ),
 }))
 
 const defaultAnnotationConfig = {
@@ -182,7 +171,7 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    expect(screen.getByRole('slider')).toHaveValue('90')
+    expect(screen.getByRole('slider')).toHaveValue('0.9')
   })
 
   it('should render configConfirmBtn when isInit is false', () => {
@@ -287,8 +276,8 @@ describe('ConfigParamModal', () => {
 
     const slider = screen.getByRole('slider')
     expect(slider).toHaveAttribute('min', '0')
-    expect(slider).toHaveAttribute('max', '100')
-    expect(slider).toHaveValue('90')
+    expect(slider).toHaveAttribute('max', '1')
+    expect(slider).toHaveValue('0.9')
   })
 
   it('should update embedding model when model selector is used', () => {
@@ -404,7 +393,7 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    expect(screen.getByRole('slider')).toHaveValue('90')
+    expect(screen.getByRole('slider')).toHaveValue('0.9')
   })
 
   it('should preserve zero score threshold instead of falling back to default', async () => {
@@ -473,6 +462,7 @@ describe('ConfigParamModal', () => {
   })
 
   it('should save updated score after slider changes', async () => {
+    const user = userEvent.setup()
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(
       <ConfigParamModal
@@ -484,7 +474,10 @@ describe('ConfigParamModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByRole('slider'), { target: { value: '96' } })
+    const slider = screen.getByRole('slider')
+    await user.click(slider)
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('0.91'))
 
     const buttons = screen.getAllByRole('button')
     const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
@@ -493,7 +486,7 @@ describe('ConfigParamModal', () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({ embedding_provider_name: 'openai' }),
-        0.96,
+        0.91,
       )
     })
   })

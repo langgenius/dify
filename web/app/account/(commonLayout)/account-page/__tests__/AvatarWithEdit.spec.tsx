@@ -1,7 +1,7 @@
 import type { ImageIconInputProps } from '@/app/components/base/icon-picker/image-input'
 import type { ImageFile } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createTestQueryClient } from '@/test/query-client'
 import { TransferMethod } from '@/types/app'
@@ -149,9 +149,24 @@ describe('AvatarWithEdit', () => {
     await expect(request.json()).resolves.toEqual({ avatar: uploadedAvatar.fileId })
   })
 
-  it('clears the avatar through the account profile endpoint', async () => {
+  it('clears a saved avatar even after its image fails to load', async () => {
+    const images: HTMLImageElement[] = []
+    const NativeImage = window.Image
+    const imageLoader = vi.spyOn(window, 'Image').mockImplementation(
+      class extends NativeImage {
+        constructor() {
+          super()
+          images.push(this)
+        }
+      },
+    )
     const user = userEvent.setup()
-    renderAvatar('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==')
+    renderAvatar('https://example.com/broken.png')
+    await waitFor(() => expect(images.length).toBeGreaterThan(0))
+    await act(async () => {
+      for (const image of images) image.dispatchEvent(new Event('error'))
+    })
+    imageLoader.mockRestore()
 
     await user.click(screen.getByRole('button', { name: /avatar\.editAction/i }))
     await user.click(screen.getByRole('button', { name: /operation\.delete/i }))

@@ -7,6 +7,7 @@ import { toast } from '@/app/notifications'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import { getErrorMessage } from '@/utils/error-message'
 
 export const CreateFromDSLModalTab = {
   FROM_FILE: 'from-file',
@@ -24,28 +25,6 @@ type UseDSLImportOptions = {
 type DSLVersions = {
   importedVersion: string
   systemVersion: string
-}
-type ImportErrorResponse = {
-  message?: unknown
-  error?: unknown
-}
-const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-
-  const trimmedValue = value.trim()
-  return trimmedValue || undefined
-}
-const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Response && !error.bodyUsed) {
-    try {
-      const errorData = (await error.clone().json()) as ImportErrorResponse
-      return getNonEmptyString(errorData.message) ?? getNonEmptyString(errorData.error)
-    } catch {}
-  }
-
-  if (error instanceof Error) return getNonEmptyString(error.message)
-
-  return undefined
 }
 export const useDSLImport = ({
   activeTab = CreateFromDSLModalTab.FROM_FILE,
@@ -149,7 +128,7 @@ export const useDSLImport = ({
         notifyError(response.error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       isCreatingRef.current = false
     }
@@ -180,18 +159,17 @@ export const useDSLImport = ({
       if (status === DSLImportStatus.COMPLETED) {
         onSuccess?.()
         setShowConfirmModal(false)
-        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
         if (pipeline_id) await handleCheckPluginDependencies(pipeline_id, true)
         push(`/datasets/${dataset_id}/pipeline`)
       } else if (status === DSLImportStatus.FAILED) {
         notifyError(error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       setIsConfirming(false)
     }
-  }, [importId, importDSLConfirm, notifyError, t, onSuccess, handleCheckPluginDependencies, push])
+  }, [importId, importDSLConfirm, notifyError, onSuccess, handleCheckPluginDependencies, push])
   const handleCancelConfirm = useCallback(() => {
     setShowConfirmModal(false)
   }, [])

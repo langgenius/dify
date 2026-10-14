@@ -12,6 +12,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { createHttpError } from '@/service/http-error'
 import { seedFeatures } from '@/test/console/query-data'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
@@ -585,7 +586,6 @@ describe('AgentSkills', () => {
         name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
       }),
     )
-    expect(embeddedBadge).toHaveClass('opacity-0')
 
     const deleteAction = screen.getByText('common.operation.delete')
     fireEvent.mouseEnter(deleteAction.closest('[data-agent-skill-remove-button]')!)
@@ -908,9 +908,9 @@ describe('AgentSkills', () => {
 
   it('explains when an agent has reached the library skill limit', async () => {
     const user = userEvent.setup()
-    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce({
-      code: 'too_many_agent_skills',
-    })
+    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { code: 'too_many_agent_skills' }),
+    )
     mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
       const { input, getNextPageParam, initialPageParam } = options as {
         input: (pageParam: number) => { query?: { limit?: number } }
@@ -1307,7 +1307,6 @@ describe('AgentSkills', () => {
         name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Refund approval"}',
       }),
     )
-    expect(screen.getByText('refund-approval')).toHaveClass('opacity-0')
 
     const removeAction = await screen.findByText(
       'agentV2.agentDetail.configure.skills.removeAction',

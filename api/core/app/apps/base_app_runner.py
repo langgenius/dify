@@ -216,7 +216,7 @@ class AppRunner:
 
     def _handle_invoke_result(
         self,
-        invoke_result: Union[LLMResult, Generator[Any, None, None]],
+        invoke_result: Union[LLMResult, Generator[Any]],
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
@@ -277,7 +277,7 @@ class AppRunner:
 
     def _handle_invoke_result_stream(
         self,
-        invoke_result: Generator[LLMResultChunk, None, None],
+        invoke_result: Generator[LLMResultChunk],
         queue_manager: AppQueueManager,
         agent: bool,
         message_id: str | None = None,

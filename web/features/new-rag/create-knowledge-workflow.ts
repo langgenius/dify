@@ -1,5 +1,6 @@
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
 import { consoleClient } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 
 export const NAME_MAX_LENGTH = 160
 export const DESCRIPTION_MAX_LENGTH = 2000
@@ -33,17 +34,8 @@ export class KnowledgeCreationError extends Error {
   }
 }
 
-function responseStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error) return error.status
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data) return data.status
-  }
-}
-
 export function isDefinitiveCreationRejection(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === 400 || status === 401 || status === 403 || status === 422
 }
 

@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   confirmUploadReview,
   createDataTransfer,
@@ -239,7 +240,7 @@ describe('SkillDetailPage uploads', () => {
       ],
     })
     mocks.uploadSkillFile
-      .mockRejectedValueOnce(new Error('network timeout'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce({
         id: 'tool-file-retry',
         name: 'guide.md',
@@ -262,6 +263,10 @@ describe('SkillDetailPage uploads', () => {
     })
 
     await user.click(screen.getByRole('button', { name: /viewUploadErrors/ }))
+    expect(
+      screen.getByText('skill.skillManagement.detail.uploadNetworkFailure'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument()
     await user.click(screen.getAllByRole('button', { name: 'common.operation.retry' })[0]!)
 
     await waitFor(() => {
@@ -317,12 +322,14 @@ describe('SkillDetailPage uploads', () => {
             },
           ],
         })
-        throw new Response(
-          JSON.stringify({
-            code: 'skill_conflict',
-            message: 'skill has been modified by another user',
-          }),
-          { status: 409 },
+        throw await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              code: 'skill_conflict',
+              message: 'skill has been modified by another user',
+            }),
+            { status: 409 },
+          ),
         )
       })
       .mockImplementationOnce(async () => {

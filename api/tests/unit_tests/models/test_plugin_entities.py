@@ -5,7 +5,7 @@ from typing import Any
 from core.plugin.entities.request import TriggerDispatchResponse
 
 
-def test_trigger_dispatch_response():
+def test_trigger_dispatch_response() -> None:
     raw_http_response = b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"message": "Hello, world!"}'
 
     data: Mapping[str, Any] = {

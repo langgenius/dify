@@ -1,6 +1,6 @@
 'use client'
 
-import type { Import } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
@@ -10,14 +10,13 @@ import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { getErrorMessage } from '@/utils/error-message'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
@@ -29,14 +28,15 @@ import {
 import { initialEdges, initialNodes } from './utils'
 
 type UpdateDSLModalProps = {
+  appId: string
+  appMode: AppDetailWithSite['mode']
   onCancel: () => void
   onBackup: () => void
   onImport?: () => void
 }
 
-const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
+const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
   const { t } = useTranslation(['workflow', 'app', 'common'])
-  const appDetail = useAppStore((s) => s.appDetail)
   const [currentFile, setCurrentFile] = useState<File>()
   const { eventEmitter } = useEventEmitterContextContext()
   const { handleCheckPluginDependencies } = usePluginDependencies()
@@ -96,7 +96,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         toast.error(
           t(($) => $.error, { ns: 'common' }),
           {
-            description: await getAppTransferErrorMessage(error),
+            description: getErrorMessage(error),
           },
         )
         // Reload the committed graph before the old canvas can resume autosaving.
@@ -129,7 +129,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
     toast.error(
       t(($) => $['common.importFailure'], { ns: 'workflow' }),
       {
-        description: await getAppTransferErrorMessage(error),
+        description: getErrorMessage(error),
       },
     )
   }
@@ -139,12 +139,11 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
   )
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!appDetail) return
       if (file.name.toLowerCase().endsWith('.ifpkg'))
-        return requestImport({ body: { file, app_id: appDetail.id } })
+        return requestImport({ body: { file, app_id: appId } })
 
       const content = await file.text()
-      if (!content || !validateDSLContent(content, appDetail.mode)) {
+      if (!content || !validateDSLContent(content, appMode)) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
       }
@@ -152,7 +151,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         body: {
           mode: DSLImportMode.YAML_CONTENT,
           yaml_content: content,
-          app_id: appDetail.id,
+          app_id: appId,
         },
       })
     },
@@ -174,7 +173,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
   const isImporting = importMutation.isPending || confirmImportMutation.isPending
 
   const handleImport: MouseEventHandler = () => {
-    if (isImporting || !currentFile || !appDetail) return
+    if (isImporting || !currentFile) return
     importMutation.mutate(currentFile)
   }
 
@@ -253,7 +252,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               {t(($) => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
             <Button
-              disabled={isImporting || !currentFile || !appDetail}
+              disabled={isImporting || !currentFile}
               variant="primary"
               tone="destructive"
               onClick={handleImport}

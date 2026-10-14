@@ -27,11 +27,11 @@ class _End:
 
 
 def execution_owned_stream[T](
-    source: Generator[T, None, None],
+    source: Generator[T],
     *,
     on_finished: Callable[[], None],
     on_failed: Callable[[Exception], None],
-) -> Generator[T, None, None]:
+) -> Generator[T]:
     """Run one execution consumer; HTTP close only detaches its bounded output.
 
     The consumer owns source exhaustion, error handling and final persistence.
@@ -86,7 +86,7 @@ def execution_owned_stream[T](
                     on_finished()
                     deliver(_End())
 
-    def listen() -> Generator[T, None, None]:
+    def listen() -> Generator[T]:
         try:
             # Arm cleanup before returning, including close-before-first-read.
             # This private marker is consumed below and is never delivered.

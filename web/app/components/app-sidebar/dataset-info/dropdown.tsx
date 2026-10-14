@@ -1,19 +1,19 @@
 import type { DataSet } from '@/models/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -33,39 +33,18 @@ import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/kn
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import RenameDatasetModal from '../../datasets/rename-modal'
-import Menu from './menu'
 
 type DropDownProps = {
   expand: boolean
   triggerClassName?: string
 }
 
-type JsonErrorResponse = {
-  json: () => Promise<{ message?: string }>
-}
-
-const isJsonErrorResponse = (error: unknown): error is JsonErrorResponse => {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'json' in error &&
-    typeof error.json === 'function'
-  )
-}
-
-const getErrorMessage = async (error: unknown) => {
-  if (!isJsonErrorResponse(error)) return 'Unknown error'
-
-  const res = await error.json()
-  return res?.message || 'Unknown error'
-}
-
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
-  const { t } = useTranslation(['app', 'common', 'dataset'])
+  const { t } = useTranslation(['app', 'common', 'dataset', 'datasetPipeline', 'navigation'])
   const { push, replace } = useRouter()
-  const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -109,7 +88,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const openRenameModal = useCallback(() => {
-    setOpen(false)
     queueMicrotask(() => {
       setShowRenameModal(true)
     })
@@ -121,7 +99,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     async (include = false) => {
       const { pipeline_id, name } = dataset
       if (!pipeline_id) return
-      setOpen(false)
       try {
         const { data } = await exportPipelineConfig({
           pipelineId: pipeline_id,
@@ -137,7 +114,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   )
 
   const detectIsUsedByApp = useCallback(async () => {
-    setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
       setConfirmMessage(
@@ -147,12 +123,11 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
       )
       setShowConfirmDelete(true)
     } catch (e: unknown) {
-      toast.error(await getErrorMessage(e))
+      toast.error(getErrorMessage(e) ?? 'Unknown error')
     }
   }, [dataset.id, t])
 
   const openAccessConfig = useCallback(() => {
-    setOpen(false)
     push(`/datasets/${dataset.id}/access-config`)
   }, [dataset.id, push])
 
@@ -173,7 +148,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   if (!canShowOperations) return null
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <IconButton
@@ -185,22 +160,39 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
           </IconButton>
         }
       />
-      <DropdownMenuPortal>
-        <DropdownMenuPositioner placement={expand ? 'bottom-end' : 'right-start'} sideOffset={4}>
-          <DropdownMenuPopup>
-            <Menu
-              showEdit={datasetACLCapabilities.canEdit}
-              showDelete={datasetACLCapabilities.canDelete}
-              showExportPipeline={datasetACLCapabilities.canImportExportDSL}
-              showAccessConfig={datasetACLCapabilities.canAccessConfig}
-              openRenameModal={openRenameModal}
-              handleExportPipeline={handleExportPipeline}
-              detectIsUsedByApp={detectIsUsedByApp}
-              openAccessConfig={openAccessConfig}
-            />
-          </DropdownMenuPopup>
-        </DropdownMenuPositioner>
-      </DropdownMenuPortal>
+      <DropdownMenuContent
+        placement={expand ? 'bottom-end' : 'right-start'}
+        sideOffset={4}
+        className="w-50"
+      >
+        {datasetACLCapabilities.canEdit && (
+          <DropdownMenuItem onClick={openRenameModal}>
+            <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+            {t(($) => $['operation.edit'], { ns: 'common' })}
+          </DropdownMenuItem>
+        )}
+        {datasetACLCapabilities.canImportExportDSL && dataset.runtime_mode === 'rag_pipeline' && (
+          <DropdownMenuItem onClick={() => void handleExportPipeline()}>
+            <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
+            {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
+          </DropdownMenuItem>
+        )}
+        {datasetACLCapabilities.canAccessConfig && (
+          <DropdownMenuItem onClick={openAccessConfig}>
+            <span aria-hidden className="i-ri-lock-2-line size-4 text-text-tertiary" />
+            {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
+          </DropdownMenuItem>
+        )}
+        {datasetACLCapabilities.canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={detectIsUsedByApp}>
+              <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
+              {t(($) => $['operation.delete'], { ns: 'common' })}
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}
@@ -222,14 +214,14 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
               {confirmMessage}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </DropdownMenu>

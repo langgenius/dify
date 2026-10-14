@@ -116,6 +116,11 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .resource_access_token import (
+    ResourceAccessToken,
+    ResourceAccessTokenRelation,
+    ResourceAccessTokenResourceType,
+)
 from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, SkillFileStorage, SkillVersion
 from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
@@ -255,6 +260,9 @@ __all__ = [
     "ProviderQuotaType",
     "ProviderType",
     "RecommendedApp",
+    "ResourceAccessToken",
+    "ResourceAccessTokenRelation",
+    "ResourceAccessTokenResourceType",
     "SavedMessage",
     "Site",
     "Skill",

@@ -29,7 +29,7 @@ from models.dataset import (
 )
 from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode, TagType
 from models.model import Tag, TagBinding
-from services.dataset_service import DatasetService, DocumentService
+from services.knowledge.dataset_service import DatasetService, DocumentService
 
 
 class DatasetRetrievalTestDataFactory:
@@ -62,7 +62,7 @@ class DatasetRetrievalTestDataFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account, tenant
 
     @staticmethod
@@ -88,7 +88,7 @@ class DatasetRetrievalTestDataFactory:
         db_session_with_containers.add(join)
         db_session_with_containers.commit()
 
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
         return account
 
     @staticmethod

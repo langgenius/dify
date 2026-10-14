@@ -1,5 +1,9 @@
 import type { NodeDefault } from '../../types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
+import { AppModeEnum } from '@/types/app'
 import { createNode } from '../../__tests__/fixtures'
 import {
   baseRunningData,
@@ -18,15 +22,8 @@ import {
   useWorkflowReadOnly,
 } from '../use-workflow'
 
-let mockAppMode = 'workflow'
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) =>
-    selector({ appDetail: { mode: mockAppMode } }),
-}))
-
 beforeEach(() => {
   vi.clearAllMocks()
-  mockAppMode = 'workflow'
 })
 
 function createNodeDefault(type: BlockEnum): NodeDefault {
@@ -48,27 +45,67 @@ function createNodeDefault(type: BlockEnum): NodeDefault {
 // ---------------------------------------------------------------------------
 
 describe('useIsChatMode', () => {
-  it('should return true when app mode is advanced-chat', () => {
-    mockAppMode = 'advanced-chat'
-    const { result } = renderHook(() => useIsChatMode())
+  let queryClient: ReturnType<typeof createTestQueryClient>
+
+  beforeEach(() => {
+    queryClient = createTestQueryClient()
+  })
+
+  afterEach(() => {
+    queryClient.clear()
+  })
+
+  it.each([
+    { mode: AppModeEnum.ADVANCED_CHAT, expected: true },
+    { mode: AppModeEnum.WORKFLOW, expected: false },
+  ])('should return $expected for the current $mode app', ({ mode, expected }) => {
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+      createAppDetailFixture({ id: 'app-1', mode }),
+    )
+
+    const { result } = renderWorkflowHook(() => useIsChatMode(), {
+      initialStoreState: { appId: 'app-1' },
+      queryClient,
+    })
+
+    expect(result.current).toBe(expected)
+  })
+
+  it('should return false without an app id even when another chatflow is cached', () => {
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'chatflow-app' } } }),
+      createAppDetailFixture({ id: 'chatflow-app', mode: AppModeEnum.ADVANCED_CHAT }),
+    )
+
+    const { result } = renderWorkflowHook(() => useIsChatMode(), { queryClient })
+
+    expect(result.current).toBe(false)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+  })
+
+  it('should follow the current app id when switching between cached workflow and chatflow apps', () => {
+    for (const [appId, mode] of [
+      ['workflow-app', AppModeEnum.WORKFLOW],
+      ['chatflow-app', AppModeEnum.ADVANCED_CHAT],
+    ] as const) {
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appId } } }),
+        createAppDetailFixture({ id: appId, mode }),
+      )
+    }
+
+    const { result, store } = renderWorkflowHook(() => useIsChatMode(), {
+      initialStoreState: { appId: 'workflow-app' },
+      queryClient,
+    })
+
+    expect(result.current).toBe(false)
+
+    act(() => store.setState({ appId: 'chatflow-app' }))
     expect(result.current).toBe(true)
-  })
 
-  it('should return false when app mode is workflow', () => {
-    mockAppMode = 'workflow'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
-
-  it('should return false when app mode is chat', () => {
-    mockAppMode = 'chat'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
-
-  it('should return false when app mode is completion', () => {
-    mockAppMode = 'completion'
-    const { result } = renderHook(() => useIsChatMode())
+    act(() => store.setState({ appId: 'workflow-app' }))
     expect(result.current).toBe(false)
   })
 })

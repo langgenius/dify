@@ -400,7 +400,7 @@ describe('CredentialPanel', () => {
       })
     })
 
-    it('should show success toast and refresh data after successful mutation', async () => {
+    it('should refresh data after successful mutation', async () => {
       renderWithQueryClient(createProvider())
 
       await act(async () => {
@@ -408,7 +408,6 @@ describe('CredentialPanel', () => {
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
         expect(mockUpdateModelProviders).toHaveBeenCalled()
         expect(mockUpdateModelList).toHaveBeenCalledWith('llm')
       })

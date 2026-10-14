@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -106,13 +106,9 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           ...formData,
           settings: { ...formData.settings, api_key: apiKeyToSend },
         })
-        toast.success('External API updated successfully')
       } else {
         const res = await createExternalAPI({ body: formData })
-        if (res && res.id) {
-          toast.success('External API saved successfully')
-          onSave(res)
-        }
+        if (res && res.id) onSave(res)
       }
       onCancel()
     } catch (error) {
@@ -162,7 +158,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                       render={
                         <button
                           type="button"
-                          className="flex size-3.5 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          className="flex size-3.5 items-center justify-center rounded-sm hover:bg-state-base-hover"
                         >
                           <RiInformation2Line className="size-3.5" />
                         </button>
@@ -256,14 +252,14 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                 {`${t(($) => $['editExternalAPIConfirmWarningContent.front'], { ns: 'dataset' })} ${datasetBindings?.length} ${t(($) => $['editExternalAPIConfirmWarningContent.end'], { ns: 'dataset' })}`}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleSave}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </DialogContent>

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+import json
 
+import httpx
 import pytest
 
+import core.plugin.impl.base as plugin_client_module
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -63,27 +65,29 @@ def test_plugin_tool_provider_controller_basic_behaviors():
         controller.get_tool("missing")
 
 
-def test_validate_credentials_success():
+@pytest.mark.parametrize("valid", [True, False])
+def test_validate_credentials(monkeypatch: pytest.MonkeyPatch, valid: bool):
     controller = _build_controller()
-    manager = Mock()
-    manager.validate_provider_credentials.return_value = True
+    requests: list[httpx.Request] = []
 
-    with patch("core.tools.plugin_tool.provider.PluginToolManager", return_value=manager):
-        controller._validate_credentials(user_id="u1", credentials={"api_key": "x"})
+    def handle_request(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"code": 0, "message": "", "data": {"result": valid}})
 
-    manager.validate_provider_credentials.assert_called_once_with(
-        tenant_id="tenant-1",
-        user_id="u1",
-        provider="provider-a",
-        credentials={"api_key": "x"},
-    )
-
-
-def test_validate_credentials_failure():
-    controller = _build_controller()
-    manager = Mock()
-    manager.validate_provider_credentials.return_value = False
-
-    with patch("core.tools.plugin_tool.provider.PluginToolManager", return_value=manager):
-        with pytest.raises(ToolProviderCredentialValidationError, match="Invalid credentials"):
+    with httpx.Client(transport=httpx.MockTransport(handle_request)) as client:
+        monkeypatch.setattr(plugin_client_module, "_httpx_client", client)
+        if valid:
             controller._validate_credentials(user_id="u1", credentials={"api_key": "x"})
+        else:
+            with pytest.raises(ToolProviderCredentialValidationError, match="Invalid credentials"):
+                controller._validate_credentials(user_id="u1", credentials={"api_key": "x"})
+
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert request.url.path.endswith("/plugin/tenant-1/dispatch/tool/validate_credentials")
+    assert request.headers["X-Plugin-ID"] == "langgenius/provider-a"
+    assert json.loads(request.content) == {
+        "user_id": "u1",
+        "data": {"provider": "provider-a", "credentials": {"api_key": "x"}},
+    }

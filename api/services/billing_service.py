@@ -3,12 +3,12 @@ import logging
 import os
 from collections.abc import Sequence
 from datetime import date, datetime
-from typing import Annotated, Any, Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
+from warnings import deprecated
 
 import httpx
-from pydantic import Field, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
 
 from configs import dify_config
@@ -17,12 +17,49 @@ from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from services.billing_portal_service import BillingPortalLink
 from services.compliance_download_service import ComplianceDownloadLink
+from services.entities.tokener_metering import (
+    TokenerAllowanceMetering,
+    TokenerCurrentMonthAvailableMetering,
+    TokenerCurrentMonthMetering,
+    TokenerCurrentMonthUnavailableMetering,
+    TokenerTenantMeteringResponse,
+)
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
     LegacyCreditPoolManagedByTokenerError,
     TokenerEducationCheckoutUnsupportedError,
 )
+
+__all__ = [
+    "AccountNotificationDict",
+    "BillingInfo",
+    "BillingService",
+    "DismissNotificationDict",
+    "EducationAutocompleteResponseDict",
+    "EducationStatusResponseDict",
+    "EducationVerifyResponseDict",
+    "EmailFreezeType",
+    "KnowledgeRateLimitDict",
+    "LangContentDict",
+    "MessageResponseDict",
+    "NotificationDict",
+    "QuotaBalanceResult",
+    "QuotaCommitResult",
+    "QuotaConsumeCappedResult",
+    "QuotaReleaseResult",
+    "QuotaReserveResult",
+    "SubscriptionPlan",
+    "TenantFeaturePlanUsageDict",
+    "TenantFeatureQuotaInfo",
+    "TokenerAllowanceMetering",
+    "TokenerBootstrapUpstreamError",
+    "TokenerCurrentMonthAvailableMetering",
+    "TokenerCurrentMonthMetering",
+    "TokenerCurrentMonthUnavailableMetering",
+    "TokenerTenantBootstrapResponse",
+    "TokenerTenantMeteringResponse",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -106,51 +143,6 @@ class TokenerTenantBootstrapResponse(TypedDict):
     data_plane_api_key: NotRequired[str]
     retryable: bool
     error_code: NotRequired[str]
-
-
-_UnsignedDecimalString = Annotated[str, Field(pattern=r"^\d+$")]
-_CanonicalUnsignedDecimalString = Annotated[str, Field(pattern=r"^(0|[1-9]\d*)$")]
-_SignedDecimalString = Annotated[str, Field(pattern=r"^-?\d+$")]
-_IsoDateString = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")]
-
-
-class TokenerCurrentMonthAvailableMetering(TypedDict):
-    status: Literal["available"]
-    start_date: _IsoDateString
-    end_date: _IsoDateString
-    billed_usd_micro: _UnsignedDecimalString
-    request_count: _UnsignedDecimalString
-
-
-class TokenerCurrentMonthUnavailableMetering(TypedDict):
-    status: Literal["unavailable"]
-    start_date: _IsoDateString
-    end_date: _IsoDateString
-    error_code: Annotated[str, Field(pattern=r"^[a-z0-9_]{1,100}$")]
-
-
-TokenerCurrentMonthMetering = TokenerCurrentMonthAvailableMetering | TokenerCurrentMonthUnavailableMetering
-
-
-class TokenerAllowanceMetering(TypedDict):
-    window_id: str
-    source_ref: str
-    amount_usd_micro: _CanonicalUnsignedDecimalString
-    available_usd_micro: _CanonicalUnsignedDecimalString
-    starts_at: str
-    ends_at: str
-
-
-class TokenerTenantMeteringResponse(TypedDict):
-    tenant_id: str
-    currency: Literal["USD"]
-    available_usd_micro: _SignedDecimalString
-    current_month: TokenerCurrentMonthMetering
-    balance_generated_at: str
-    usage_generated_at: NotRequired[str]
-    allowance: NotRequired[TokenerAllowanceMetering | None]
-    entitlement_status: NotRequired[Literal["active", "processing", "retrying", "failed"]]
-    entitlement_error_code: NotRequired[Annotated[str, Field(pattern=r"^[a-z0-9_]{1,100}$")]]
 
 
 class EducationAutocompleteResponseDict(TypedDict):
@@ -317,14 +309,6 @@ class BillingService:
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
     _PLAN_CACHE_TTL = 600
-
-    @classmethod
-    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
-        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
-
-    @classmethod
-    def ensure_new_agent_beta_workflow(cls, workflow_id: str) -> None:
-        cls._send_request("POST", f"/new-agent-beta/workflows/{workflow_id}/ensure")
 
     @classmethod
     def bootstrap_tokener_tenant(cls, tenant_id: str, display_name: str) -> TokenerTenantBootstrapResponse:
@@ -852,11 +836,6 @@ class BillingService:
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str) -> None:
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
-
-    @classmethod
-    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str) -> dict[str, Any]:
-        payload = {"account_id": account_id, "click_id": click_id}
-        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
 
     @classmethod
     def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:

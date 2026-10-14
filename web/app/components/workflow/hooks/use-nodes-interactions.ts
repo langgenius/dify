@@ -67,7 +67,7 @@ import { useHelpline } from './use-helpline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
+import { useIsChatMode, useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 // Entry node deletion restriction has been removed to allow empty workflows
@@ -164,6 +164,7 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation(['workflow'])
+  const isChatMode = useIsChatMode()
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,
@@ -2127,6 +2128,19 @@ export const useNodesInteractions = () => {
       }
     })
 
+    if (!isChatMode) {
+      const memoryNodeTypes: BlockEnum[] = [
+        BlockEnum.LLM,
+        BlockEnum.QuestionClassifier,
+        BlockEnum.ParameterExtractor,
+        BlockEnum.Agent,
+      ]
+      nodesToPaste.forEach((node) => {
+        if (memoryNodeTypes.includes(getNodeCatalogType(node.data)) && 'memory' in node.data)
+          delete node.data.memory
+      })
+    }
+
     const newNodes = produce(nodes, (draft: Node[]) => {
       parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
         const p = draft.find((n) => n.id === parentId)
@@ -2153,6 +2167,7 @@ export const useNodesInteractions = () => {
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
     appDslVersion,
+    isChatMode,
   ])
 
   const handleNodesDuplicate = useCallback(

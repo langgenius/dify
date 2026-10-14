@@ -45,7 +45,6 @@
   "nodes.triggerSchedule.nextExecutionTimes": "Naslednjih 5 časov izvajanja",
   "nodes.triggerSchedule.onMinute": "Na minuto",
   "nodes.triggerSchedule.selectFrequency": "Izberite frekvenco",
-  "nodes.triggerSchedule.selectTime": "Izberi čas",
   "nodes.triggerSchedule.title": "Urnik",
   "nodes.triggerSchedule.useCronExpression": "Uporabi cron izraz",
   "nodes.triggerSchedule.useVisualPicker": "Uporabi vizualni izbirnik",

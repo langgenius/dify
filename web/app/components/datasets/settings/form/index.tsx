@@ -25,9 +25,6 @@ const Form = () => {
 
     // Icon
     iconInfo,
-    showIconPicker,
-    setShowIconPicker,
-    handleOpenAppIconPicker,
     handleSelectAppIcon,
 
     // Permission
@@ -77,9 +74,6 @@ const Form = () => {
         description={description}
         setDescription={setDescription}
         iconInfo={iconInfo}
-        showIconPicker={showIconPicker}
-        setShowIconPicker={setShowIconPicker}
-        handleOpenAppIconPicker={handleOpenAppIconPicker}
         handleSelectAppIcon={handleSelectAppIcon}
         permission={permission}
         setPermission={setPermission}

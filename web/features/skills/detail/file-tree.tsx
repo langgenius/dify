@@ -22,11 +22,11 @@ import type {
 import type { SkillUploadDecision, SkillUploadReviewItem } from './upload-workflow'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -58,6 +58,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { ORPCError } from '@orpc/client'
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
@@ -79,8 +80,6 @@ import {
   createUploadItemId,
   findFileByPath,
   flattenFileTree,
-  getAsyncSkillErrorMessage,
-  getAsyncSkillErrorPayload,
   getCopyTargetPath,
   getCreatedSkillFileMimeType,
   getDraggedSkillPaths,
@@ -570,12 +569,15 @@ export function FileTree({
       } catch (error) {
         activeUploadXhrRef.current = undefined
         failedCount += 1
-        const errorPayload = await getAsyncSkillErrorPayload(error)
-        const errorCode = getErrorCode(errorPayload ?? error)
+
+        const errorCode = getErrorCode(error)
         let failureKind: SkillUploadQueueItem['failureKind'] = 'network'
-        let errorMessage =
-          (await getAsyncSkillErrorMessage(error)) ??
-          t(($) => $['skillManagement.detail.uploadNetworkFailure'])
+        // Transport failures and cancellation carry browser text, not a user-facing message.
+        let errorMessage = cancelUploadRef.current
+          ? tCommon(($) => $['operation.cancel'])
+          : error instanceof ORPCError
+            ? error.message
+            : t(($) => $['skillManagement.detail.uploadNetworkFailure'])
         let suggestedPath: string | undefined
         if (errorCode === 'skill_conflict') {
           failureKind = 'conflict'
@@ -908,9 +910,7 @@ export function FileTree({
             copiedTargetPaths.push(targetPath)
             break
           } catch (error) {
-            const errorPayload = await getAsyncSkillErrorPayload(error)
-            if (hasRetriedConflict || getErrorCode(errorPayload ?? error) !== 'skill_conflict')
-              throw error
+            if (hasRetriedConflict || getErrorCode(error) !== 'skill_conflict') throw error
 
             latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
             fileMutationCoordinator.latestDetail = latestDetail
@@ -1248,7 +1248,7 @@ export function FileTree({
                       <button
                         type="button"
                         aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
                       >
                         <span
                           aria-hidden
@@ -1355,7 +1355,7 @@ export function FileTree({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
                   aria-label={tCommon(($) => $['operation.add'])}
-                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
                   <span aria-hidden className="i-ri-add-line size-4" />
@@ -1574,7 +1574,7 @@ export function FileTree({
               <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
                 {deleteNode?.path}
               </AlertDialogDescription>
-              <AlertDialogActions className="p-0 pt-6">
+              <AlertDialogFooter className="p-0 pt-6">
                 <AlertDialogCancelButton disabled={fileMutation.isPending}>
                   {tCommon(($) => $['operation.cancel'])}
                 </AlertDialogCancelButton>
@@ -1585,7 +1585,7 @@ export function FileTree({
                 >
                   {tCommon(($) => $['operation.delete'])}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
           <div className="mx-3 border-t border-divider-subtle pt-2 pb-3">
@@ -1595,7 +1595,7 @@ export function FileTree({
                   render={
                     <button
                       type="button"
-                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
                     >
                       <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>

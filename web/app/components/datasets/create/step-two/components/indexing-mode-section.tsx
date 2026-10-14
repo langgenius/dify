@@ -5,11 +5,11 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import type { RetrievalConfig } from '@/types/app'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -104,14 +104,14 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
               {t(($) => $['stepTwo.qaSwitchHighQualityTipContent'], { ns: 'datasetCreation' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary">
               {t(($) => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton tone="default" onClick={onQAConfirmDialogConfirm}>
               {t(($) => $['stepTwo.switch'], { ns: 'datasetCreation' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       <RadioGroup<IndexingType>

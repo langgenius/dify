@@ -20,7 +20,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_with_single_complete_chunk(self):
         """Test merging a single complete blob chunk."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # First chunk (partial)
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -46,7 +46,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_with_multiple_files(self):
         """Test merging chunks from multiple files."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # File 1, chunk 1
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -84,7 +84,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_passes_through_non_blob_messages(self):
         """Test that non-blob messages pass through unchanged."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Text message
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.TEXT,
@@ -116,7 +116,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_file_too_large(self):
         """Test that error is raised when file exceeds max size."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Send a chunk that would exceed the limit
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -132,7 +132,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_chunk_too_large(self):
         """Test that error is raised when chunk exceeds max chunk size."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Send a chunk that exceeds the max chunk size
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -148,7 +148,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_with_agent_invoke_message(self):
         """Test that merge_blob_chunks works with AgentInvokeMessage."""
 
-        def mock_generator() -> Generator[AgentInvokeMessage, None, None]:
+        def mock_generator() -> Generator[AgentInvokeMessage]:
             # First chunk
             yield AgentInvokeMessage(
                 type=AgentInvokeMessage.MessageType.BLOB_CHUNK,
@@ -172,7 +172,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_preserves_meta(self):
         """Test that meta information is preserved in merged messages."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
                 message=ToolInvokeMessage.BlobChunkMessage(
@@ -188,7 +188,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_custom_limits(self):
         """Test merge_blob_chunks with custom size limits."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # This should work with custom limits
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -208,7 +208,7 @@ class TestChunkMerger:
         assert len(result) == 1
 
         # Should fail with smaller file size limit
-        def mock_generator2() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator2() -> Generator[ToolInvokeMessage]:
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
                 message=ToolInvokeMessage.BlobChunkMessage(
@@ -225,7 +225,7 @@ class TestChunkMerger:
         original_data = b"This is a test message that will be split into chunks for testing purposes."
         chunk_size = 20
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Split original data into chunks
             chunks = []
             for i in range(0, len(original_data), chunk_size):
@@ -256,7 +256,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_empty_chunk(self):
         """Test handling of empty chunks."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # First chunk with data
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -289,7 +289,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_single_chunk_file(self):
         """Test file that arrives as a single complete chunk."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Single chunk that is both first and last
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
@@ -311,7 +311,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_concurrent_files(self):
         """Test that chunks from different files are properly separated."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Interleave chunks from three different files
             files_data = {
                 "file1": b"First file content",
@@ -359,7 +359,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_exact_buffer_size(self):
         """Test that data fitting exactly in buffer works correctly."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Create data that exactly fills the declared buffer
             exact_data = b"X" * 100
 
@@ -393,7 +393,7 @@ class TestChunkMerger:
     def test_merge_blob_chunks_large_file_simulation(self):
         """Test handling of a large file split into many chunks."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Simulate a 1MB file split into 128 chunks of 8KB each
             chunk_size = 8192
             num_chunks = 128
@@ -438,7 +438,7 @@ class TestChunkMerger:
         This test documents the expected behavior with sequential chunks.
         """
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             # Chunks arriving in correct sequential order
             data_parts = [b"First", b"Second", b"Third"]
             total_length = sum(len(part) for part in data_parts)
@@ -550,7 +550,7 @@ class TestConverter:
     def test_merge_blob_chunks_rejects_declared_size_above_limit(self):
         """A declared total_length above the limit is rejected before allocation."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
                 message=ToolInvokeMessage.BlobChunkMessage(
@@ -564,7 +564,7 @@ class TestConverter:
     def test_merge_blob_chunks_rejects_absurd_declared_size(self):
         """An absurd declared total_length raises ValueError, not MemoryError/OverflowError."""
 
-        def mock_generator() -> Generator[ToolInvokeMessage, None, None]:
+        def mock_generator() -> Generator[ToolInvokeMessage]:
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.BLOB_CHUNK,
                 message=ToolInvokeMessage.BlobChunkMessage(

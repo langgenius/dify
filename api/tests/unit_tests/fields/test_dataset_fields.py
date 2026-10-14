@@ -2,16 +2,12 @@ import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-import pytest
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from fields.dataset_fields import (
-    DatasetDetailPrefetch,
     DatasetDetailResponse,
-    build_dataset_detail_prefetch,
-    dataset_detail_response_source,
 )
 from models.account import Account
 from models.dataset import (
@@ -25,6 +21,7 @@ from models.dataset import (
 )
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
+from services.knowledge.dataset_read_service import load_dataset_detail, load_dataset_details
 
 
 def _dataset_detail_payload(**overrides):
@@ -207,8 +204,7 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
     }
 
 
-@pytest.mark.parametrize("sqlite_session", [(Dataset, Account, App, AppDatasetJoin)], indirect=True)
-def test_dataset_detail_response_source_uses_caller_session_for_database_fields(sqlite_session: Session):
+def test_dataset_detail_serializes_after_session_closes(sqlite_session: Session) -> None:
     account = Account(name="Ada", email="ada@example.com")
     account.id = "account-1"
     dataset = Dataset(
@@ -247,10 +243,10 @@ def test_dataset_detail_response_source_uses_caller_session_for_database_fields(
     sqlite_session.add_all([account, dataset, decoy_app, decoy_join])
     sqlite_session.flush()
 
-    response = DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=sqlite_session),
-        from_attributes=True,
-    )
+    detail = load_dataset_detail(dataset, session=sqlite_session)
+    sqlite_session.expire_all()
+    sqlite_session.close()
+    response = DatasetDetailResponse.model_validate(detail)
 
     assert response.app_count == 0
     assert response.document_count == 0
@@ -390,11 +386,8 @@ def _seed_dataset_page(session: Session) -> list[Dataset]:
     return datasets
 
 
-def _dump(dataset: Dataset, *, session: Session, prefetch: DatasetDetailPrefetch | None = None) -> dict[str, object]:
-    return DatasetDetailResponse.model_validate(
-        dataset_detail_response_source(dataset, session=session, prefetch=prefetch),
-        from_attributes=True,
-    ).model_dump(mode="json")
+def _dump(dataset: Dataset, *, session: Session) -> dict[str, object]:
+    return DatasetDetailResponse.model_validate(load_dataset_detail(dataset, session=session)).model_dump(mode="json")
 
 
 @contextmanager
@@ -419,8 +412,10 @@ def test_dataset_detail_prefetch_matches_per_dataset_lookups(sqlite_session: Ses
 
     expected = [_dump(dataset, session=sqlite_session) for dataset in datasets]
 
-    prefetch = build_dataset_detail_prefetch(datasets, session=sqlite_session)
-    prefetched = [_dump(dataset, session=sqlite_session, prefetch=prefetch) for dataset in datasets]
+    details = load_dataset_details(datasets, session=sqlite_session)
+    sqlite_session.expire_all()
+    sqlite_session.close()
+    prefetched = [DatasetDetailResponse.model_validate(detail).model_dump(mode="json") for detail in details]
 
     assert prefetched == expected
 
@@ -452,9 +447,8 @@ def test_dataset_detail_prefetch_keeps_query_count_independent_of_page_size(sqli
 
     def select_count(page: list[Dataset]) -> int:
         with _count_selects(sqlite_session) as statements:
-            prefetch = build_dataset_detail_prefetch(page, session=sqlite_session)
-            for dataset in page:
-                _dump(dataset, session=sqlite_session, prefetch=prefetch)
+            for detail in load_dataset_details(page, session=sqlite_session):
+                DatasetDetailResponse.model_validate(detail).model_dump(mode="json")
             return len(statements)
 
     small_page = select_count(datasets[:2])

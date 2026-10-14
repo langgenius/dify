@@ -1,6 +1,11 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import { convertTimezoneToOffsetStr, getTimezoneOffsetMinutes } from '@/utils/timezone'
+import {
+  convertToUserTimezoneRepresentation,
+  getCronExecutionInstants,
+  isValidCronExpression,
+  parseCronExpression,
+} from './cron-parser'
 
 const DEFAULT_TIMEZONE = 'UTC'
 
@@ -28,6 +33,34 @@ const getUserTimezoneCurrentTime = (timezone?: string): Date => {
   return new Date(year!, month! - 1, day, hour, minute, second)
 }
 
+// The Date objects here hold the wall time of the target timezone in local fields.
+// Turn that wall time back into the real instant so the offset label follows DST.
+// When DST ends, one wall time happens twice. Pick the first one that is not in the past.
+const getWallTimeInstant = (date: Date, timezone: string): Date => {
+  const wallAsUtc = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+  )
+  const offsetAt = (time: number) => getTimezoneOffsetMinutes(timezone, new Date(time)) ?? 0
+  // Offsets a day before and after cover both sides of any DST change near this wall time.
+  const offsetsNearby = [offsetAt(wallAsUtc - 24 * 3_600_000), offsetAt(wallAsUtc + 24 * 3_600_000)]
+  const candidates = [...new Set(offsetsNearby)]
+    .map((offset) => wallAsUtc - offset * 60_000)
+    .filter((time) => offsetAt(time) === (wallAsUtc - time) / 60_000)
+    .sort((a, b) => a - b)
+
+  // No candidate means the wall time falls in the DST gap. The run happens after
+  // the clocks move forward, so the label shows the new offset.
+  if (candidates.length === 0) return new Date(wallAsUtc - offsetsNearby[0]! * 60_000)
+
+  const now = Date.now()
+  return new Date(candidates.find((time) => time >= now) ?? candidates[0]!)
+}
+
 // Format date that is already in user timezone, no timezone conversion
 const formatUserTimezoneDate = (
   date: Date,
@@ -53,7 +86,7 @@ const formatUserTimezoneDate = (
   const timeStr = date.toLocaleTimeString('en-US', timeOptions)
 
   if (includeTimezone) {
-    const timezoneOffset = convertTimezoneToOffsetStr(timezone)
+    const timezoneOffset = convertTimezoneToOffsetStr(timezone, getWallTimeInstant(date, timezone))
     return `${dateStr}, ${timeStr} (${timezoneOffset})`
   }
 
@@ -88,12 +121,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
+      // setHours rolls past midnight into the next day, month and year on its own
       execution.setHours(hour + i, onMinute, 0, 0)
-      // Handle day overflow
-      if (hour + i >= 24) {
-        execution.setDate(userToday.getDate() + Math.floor((hour + i) / 24))
-        execution.setHours((hour + i) % 24, onMinute, 0, 0)
-      }
       times.push(execution)
     }
   } else if (data.frequency === 'daily') {
@@ -268,6 +297,17 @@ export const getFormattedExecutionTimes = (
   count: number = 5,
 ): string[] => {
   const timezone = resolveTimezone(data.timezone)
+  // Cron runs can repeat a wall time when DST ends, so label each run from its real instant.
+  if (data.mode === 'cron') {
+    if (!data.cron_expression || !isValidCronExpression(data.cron_expression)) return []
+    return getCronExecutionInstants(data.cron_expression, timezone)
+      .slice(0, count)
+      .map((instant) => {
+        const wallTime = convertToUserTimezoneRepresentation(instant, timezone)
+        const label = formatUserTimezoneDate(wallTime, timezone, false, false)
+        return `${label} (${convertTimezoneToOffsetStr(timezone, instant)})`
+      })
+  }
   const times = getNextExecutionTimes(data, count)
 
   return times.map((date) => {

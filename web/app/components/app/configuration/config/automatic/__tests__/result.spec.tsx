@@ -84,7 +84,12 @@ describe('Result', () => {
 
     fireEvent.click(screen.getByTestId('version-selector'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.copy' }))
-    fireEvent.click(screen.getByText(/(?:^|\.)generate\.apply(?=$|:)/))
+    const trigger = screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ })
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(mockOnApply).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockSetCurrentVersionIndex).toHaveBeenCalledWith(1)
     expect(mockCopy).toHaveBeenCalledWith('generated output')

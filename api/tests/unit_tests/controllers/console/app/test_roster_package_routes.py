@@ -33,7 +33,11 @@ from tests.unit_tests.controllers.conftest import ControllerTestServices
 def _roster_archive() -> io.BytesIO:
     source = io.BytesIO()
     with zipfile.ZipFile(source, "w") as archive:
-        archive.writestr("manifest.yaml", "format: dify.roster-agent")
+        # Fixed timestamp: passing a filename string stamps the current local
+        # time (2-second ZIP resolution), so two archives built across a
+        # timestamp boundary differ byte-for-byte and flake the assertion below.
+        info = zipfile.ZipInfo("manifest.yaml", date_time=(1980, 1, 1, 0, 0, 0))
+        archive.writestr(info, "format: dify.roster-agent")
     source.seek(0)
     return source
 

@@ -79,7 +79,8 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.entities.dsl_entities import ImportStatus
-from services.entities.knowledge_entities.knowledge_entities import (
+from services.errors.base import NoPermissionError
+from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
@@ -91,7 +92,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
-from services.errors.account import NoPermissionError
 
 register_enum_models(console_ns, IconType)
 
@@ -109,6 +109,7 @@ class AppListBaseQuery(BaseModel):
         description="Sort apps by last modified, recently created, or earliest created",
     )
     name: str | None = Field(default=None, description="Filter by app name")
+    openapi_visible: bool = Field(default=False, description="Only return apps with API access enabled")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")

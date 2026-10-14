@@ -1,4 +1,8 @@
 {
+  "callback.error": "認証に失敗しました",
+  "callback.errorHint": "前のページに戻ってもう一度お試しください。",
+  "callback.success": "認証が完了しました",
+  "callback.successHint": "このタブを閉じて前のページに戻ることができます。",
   "connect": "接続する",
   "continue": "続行",
   "error.authAppInfoFetchFailed": "認証のためのアプリ情報の取得に失敗しました",

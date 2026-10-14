@@ -5,10 +5,12 @@ import uuid
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, TypedDict
 
+from services.credentials.query import CredentialQuery
+
 if TYPE_CHECKING:
     from models.account import Account
 
-from sqlalchemy import delete, desc, func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -39,7 +41,6 @@ from models.trigger import (
     TriggerOAuthSystemClient,
     TriggerOAuthTenantClient,
     TriggerSubscription,
-    WorkflowPluginTrigger,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,48 +74,28 @@ class TriggerProviderService:
         tenant_id: str,
         provider_id: TriggerProviderID,
         user: "Account | None" = None,
+        *,
+        credential_query: CredentialQuery,
     ) -> list[TriggerProviderSubscriptionApiEntity]:
         """List all trigger subscriptions for the current tenant, filtered by visibility."""
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
-        subscriptions: list[TriggerProviderSubscriptionApiEntity] = []
-        workflows_in_use_map: dict[str, int] = {}
-        with Session(db.engine, expire_on_commit=False) as session:
-            # Get all subscriptions with visibility filtering
-            query = (
-                select(TriggerSubscription)
-                .where(
-                    TriggerSubscription.tenant_id == tenant_id,
-                    TriggerSubscription.provider_id == str(provider_id),
-                )
-                .order_by(desc(TriggerSubscription.created_at))
+        subscriptions = [
+            TriggerProviderSubscriptionApiEntity(
+                id=row.id,
+                name=row.name,
+                provider=row.provider,
+                credential_type=row.credential_type,
+                credentials=dict(row.credentials),
+                endpoint=generate_plugin_trigger_endpoint_url(row.endpoint_id),
+                parameters=dict(row.parameters),
+                properties=dict(row.properties),
+                workflows_in_use=row.workflows_in_use,
             )
-            if user is not None:
-                query = CredentialPermissionService.apply_visibility_filter(
-                    query,
-                    model_id_column=TriggerSubscription.id,
-                    model_user_id_column=TriggerSubscription.user_id,
-                    model_visibility_column=TriggerSubscription.visibility,
-                    credential_type=CredPermType.TRIGGER_SUBSCRIPTION,
-                    user=user,
-                )
-            subscriptions_db = session.scalars(query).all()
-            subscriptions = [subscription.to_api_entity() for subscription in subscriptions_db]
-            if not subscriptions:
-                return []
-            usage_counts = session.execute(
-                select(
-                    WorkflowPluginTrigger.subscription_id,
-                    func.count(func.distinct(WorkflowPluginTrigger.app_id)).label("app_count"),
-                )
-                .where(
-                    WorkflowPluginTrigger.tenant_id == tenant_id,
-                    WorkflowPluginTrigger.subscription_id.in_([s.id for s in subscriptions]),
-                )
-                .group_by(WorkflowPluginTrigger.subscription_id)
-            ).all()
-            workflows_in_use_map = {str(row.subscription_id): int(row.app_count) for row in usage_counts}
+            for row in credential_query.list_trigger_subscriptions(
+                workspace_id=tenant_id, provider=str(provider_id), actor_id=user.id if user else None
+            )
+        ]
+        if not subscriptions:
+            return []
 
         provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
         for subscription in subscriptions:
@@ -135,8 +116,6 @@ class TriggerProviderService:
                 properties_encrypter.mask_credentials(dict(properties_encrypter.decrypt(subscription.properties)))
             )
             subscription.parameters = dict(subscription.parameters)
-            count = workflows_in_use_map.get(subscription.id)
-            subscription.workflows_in_use = count if count is not None else 0
 
         return subscriptions
 

@@ -5,16 +5,34 @@ import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
+import { focusRingClassName } from '../internal/focus'
+import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root
-const AlertDialogTrigger = BaseAlertDialog.Trigger
 const AlertDialogTitle = BaseAlertDialog.Title
 const AlertDialogDescription = BaseAlertDialog.Description
+const createAlertDialogHandle = BaseAlertDialog.createHandle
+
+type AlertDialogActions = BaseAlertDialog.Root.Actions
+type AlertDialogChangeEventReason = BaseAlertDialog.Root.ChangeEventReason
+type AlertDialogChangeEventDetails = BaseAlertDialog.Root.ChangeEventDetails
 
 type AlertDialogProps<Payload = unknown> = BaseAlertDialog.Root.Props<Payload>
+type AlertDialogHandle<Payload = unknown> = BaseAlertDialog.Handle<Payload>
 type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<Payload>
+
+function AlertDialogTrigger<Payload = unknown>({
+  className,
+  ...props
+}: AlertDialogTriggerProps<Payload>) {
+  return (
+    <BaseAlertDialog.Trigger
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type AlertDialogTitleProps = BaseAlertDialog.Title.Props
 type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
 
@@ -59,9 +77,9 @@ function AlertDialogContent({
   )
 }
 
-type AlertDialogActionsProps = React.ComponentProps<'div'>
+type AlertDialogFooterProps = React.ComponentProps<'div'>
 
-function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
+function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
   return (
     <div
       className={cn('flex items-start justify-end gap-2 self-stretch p-6', className)}
@@ -90,21 +108,26 @@ function AlertDialogConfirmButton({
 
 export {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
+  createAlertDialogHandle,
 }
 
 export type {
-  AlertDialogActionsProps,
+  AlertDialogActions,
   AlertDialogCancelButtonProps,
+  AlertDialogChangeEventDetails,
+  AlertDialogChangeEventReason,
   AlertDialogConfirmButtonProps,
   AlertDialogContentProps,
   AlertDialogDescriptionProps,
+  AlertDialogFooterProps,
+  AlertDialogHandle,
   AlertDialogProps,
   AlertDialogTitleProps,
   AlertDialogTriggerProps,

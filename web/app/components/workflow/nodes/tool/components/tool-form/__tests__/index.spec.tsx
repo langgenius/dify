@@ -11,7 +11,6 @@ type MockToolFormItemProps = {
   schema: CredentialFormSchema
   value: ResourceVarInputs
   onChange: (value: ResourceVarInputs) => void
-  inPanel?: boolean
   showManageInputField?: boolean
   onManageInputField?: () => void
   extraParams?: Record<string, unknown>
@@ -21,7 +20,7 @@ type MockToolFormItemProps = {
 const mockToolFormItem = vi.fn<(props: MockToolFormItemProps) => void>()
 
 vi.mock('../item', () => ({
-  default: (props: MockToolFormItemProps) => {
+  ToolFormItem: (props: MockToolFormItemProps) => {
     mockToolFormItem(props)
     return (
       <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>
@@ -74,7 +73,6 @@ describe('tool/tool-form', () => {
         ]}
         value={value}
         onChange={handleChange}
-        inPanel
         showManageInputField
         onManageInputField={handleManageInputField}
         extraParams={{ mode: 'panel' }}
@@ -90,7 +88,6 @@ describe('tool/tool-form', () => {
       schema: expect.objectContaining({ variable: 'api_key' }),
       value,
       onChange: handleChange,
-      inPanel: true,
       showManageInputField: true,
       onManageInputField: handleManageInputField,
       extraParams: { mode: 'panel' },

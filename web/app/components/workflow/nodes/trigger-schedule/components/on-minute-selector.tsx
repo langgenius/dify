@@ -5,6 +5,7 @@ import {
   SliderLabel,
   SliderThumb,
   SliderTrack,
+  SliderValue,
 } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,9 +31,7 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
         {t(($) => $['nodes.triggerSchedule.onMinute'], { ns: 'workflowIntegrations' })}
       </SliderLabel>
       <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal">
-        <div className="flex h-full w-12 shrink-0 items-center justify-center text-[13px] text-components-input-text-filled">
-          {value}
-        </div>
+        <SliderValue className="flex h-full w-12 shrink-0 items-center justify-center text-[13px] text-components-input-text-filled" />
         <div className="absolute top-0 left-12 h-full w-px bg-components-panel-bg"></div>
         <div className="flex h-full grow items-center pr-3 pl-4">
           <SliderControl>

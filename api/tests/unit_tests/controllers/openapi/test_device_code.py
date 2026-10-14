@@ -26,22 +26,25 @@ def openapi_app() -> Flask:
     return app
 
 
-def test_openapi_route_registered(openapi_app: Flask):
+def test_openapi_route_registered(openapi_app: Flask) -> None:
     rules = {r.rule for r in openapi_app.url_map.iter_rules()}
     assert "/openapi/v1/oauth/device/code" in rules
 
 
-def test_route_dispatches_to_class(openapi_app: Flask):
+def test_route_dispatches_to_class(openapi_app: Flask) -> None:
     rule = next(r for r in openapi_app.url_map.iter_rules() if r.rule == "/openapi/v1/oauth/device/code")
-    assert openapi_app.view_functions[rule.endpoint].view_class is OAuthDeviceCodeApi
+    view = openapi_app.view_functions[rule.endpoint]
+    assert hasattr(view, "view_class")
+    assert view.view_class is OAuthDeviceCodeApi
 
 
-def test_route_accepts_post(openapi_app: Flask):
+def test_route_accepts_post(openapi_app: Flask) -> None:
     rule = next(r for r in openapi_app.url_map.iter_rules() if r.rule == "/openapi/v1/oauth/device/code")
+    assert rule.methods is not None
     assert "POST" in rule.methods
 
 
-def test_known_client_ids_default_includes_difyctl():
+def test_known_client_ids_default_includes_difyctl() -> None:
     from configs import dify_config
 
     assert "difyctl" in dify_config.OPENAPI_KNOWN_CLIENT_IDS

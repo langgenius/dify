@@ -9,20 +9,24 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
+from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
-from core.model_manager import ModelInstance
+from core.workflow.node_runtime import (
+    DifyPreparedLLM,
+    DifyPromptMessageSerializer,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.llm.entities import LLMNodeData
-from graphon.nodes.llm.file_saver import LLMFileSaver
 from graphon.nodes.llm.node import LLMNode
-from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
-from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
-from graphon.nodes.protocols import HttpClientProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
@@ -74,23 +78,19 @@ def init_llm_node(config: dict[str, object]) -> LLMNode:
     variable_pool.add(["abc", "output"], "sunny")
 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-    prompt_message_serializer = MagicMock(spec=PromptMessageSerializerProtocol)
-    prompt_message_serializer.serialize.side_effect = lambda *, prompt_messages, **_kwargs: [
-        message.model_dump(mode="json") for message in prompt_messages
-    ]
-    llm_file_saver = MagicMock(spec=LLMFileSaver)
+    run_context = resolve_dify_run_context(init_params.run_context)
 
     node = LLMNode(
         node_id=str(uuid.uuid4()),
         data=LLMNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        credentials_provider=MagicMock(spec=CredentialsProvider),
-        model_factory=MagicMock(spec=ModelFactory),
-        model_instance=MagicMock(spec=ModelInstance),
-        llm_file_saver=llm_file_saver,
-        prompt_message_serializer=prompt_message_serializer,
-        http_client=MagicMock(spec=HttpClientProtocol),
+        credentials_provider=DifyCredentialsProvider(run_context=run_context),
+        model_factory=DifyModelFactory(run_context=run_context),
+        model_instance=DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo")),
+        llm_file_saver=build_dify_llm_file_saver(run_context=run_context, http_client=graphon_ssrf_proxy),
+        prompt_message_serializer=DifyPromptMessageSerializer(),
+        http_client=graphon_ssrf_proxy,
     )
 
     return node
@@ -129,28 +129,16 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
 
     _mock_db_session_close(monkeypatch)
 
-    def build_mock_model_instance() -> MagicMock:
+    def build_model_instance() -> DifyPreparedLLM:
         from decimal import Decimal
         from unittest.mock import MagicMock
 
         from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
-        # Create mock model instance
-        mock_model_instance = MagicMock(spec=ModelInstance)
-        mock_model_instance.provider = "openai"
-        mock_model_instance.model_name = "gpt-3.5-turbo"
-        mock_model_instance.credentials = dict[str, object]()
-        mock_model_instance.parameters = dict[str, object]()
-        mock_model_instance.stop = list[str]()
-        mock_model_instance.model_type_instance = MagicMock()
-        mock_model_instance.model_type_instance.get_model_schema.return_value = MagicMock(
-            model_properties={},
-            parameter_rules=[],
-            features=[],
-        )
-        mock_model_instance.provider_model_bundle = MagicMock()
-        mock_model_instance.provider_model_bundle.configuration.using_provider_type = "custom"
+        model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
+        schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
+        monkeypatch.setattr(model_instance, "get_model_schema", MagicMock(return_value=schema))
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -172,9 +160,8 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
             message=mock_message,
             usage=mock_usage,
         )
-        mock_model_instance.invoke_llm.return_value = mock_llm_result
-
-        return mock_model_instance
+        monkeypatch.setattr(model_instance, "invoke_llm", MagicMock(return_value=mock_llm_result))
+        return DifyPreparedLLM(model_instance)
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_1(**_kwargs: object) -> tuple[list[PromptMessage], list[str]]:
@@ -185,7 +172,7 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
             UserPromptMessage(content="what's the weather today?"),
         ], []
 
-    node._model_instance = build_mock_model_instance()
+    node._model_instance = build_model_instance()
 
     with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1):
         # execute node
@@ -243,28 +230,16 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch) -> None:
 
     _mock_db_session_close(monkeypatch)
 
-    def build_mock_model_instance() -> MagicMock:
+    def build_model_instance() -> DifyPreparedLLM:
         from decimal import Decimal
         from unittest.mock import MagicMock
 
         from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
         from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 
-        # Create mock model instance
-        mock_model_instance = MagicMock(spec=ModelInstance)
-        mock_model_instance.provider = "openai"
-        mock_model_instance.model_name = "gpt-3.5-turbo"
-        mock_model_instance.credentials = dict[str, object]()
-        mock_model_instance.parameters = dict[str, object]()
-        mock_model_instance.stop = list[str]()
-        mock_model_instance.model_type_instance = MagicMock()
-        mock_model_instance.model_type_instance.get_model_schema.return_value = MagicMock(
-            model_properties={},
-            parameter_rules=[],
-            features=[],
-        )
-        mock_model_instance.provider_model_bundle = MagicMock()
-        mock_model_instance.provider_model_bundle.configuration.using_provider_type = "custom"
+        model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
+        schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
+        monkeypatch.setattr(model_instance, "get_model_schema", MagicMock(return_value=schema))
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -286,9 +261,8 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch) -> None:
             message=mock_message,
             usage=mock_usage,
         )
-        mock_model_instance.invoke_llm.return_value = mock_llm_result
-
-        return mock_model_instance
+        monkeypatch.setattr(model_instance, "invoke_llm", MagicMock(return_value=mock_llm_result))
+        return DifyPreparedLLM(model_instance)
 
     # Mock fetch_prompt_messages to avoid database calls
     def mock_fetch_prompt_messages_2(**_kwargs: object) -> tuple[list[PromptMessage], list[str]]:
@@ -299,7 +273,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch) -> None:
             UserPromptMessage(content="what's the weather today?"),
         ], []
 
-    node._model_instance = build_mock_model_instance()
+    node._model_instance = build_model_instance()
 
     with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2):
         # execute node

@@ -1,7 +1,7 @@
 'use client'
-
 import type { ProcessingTaskEvent } from './services/processing-task-events'
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { taskVersionIsAfter } from './document-model'
 import { streamProcessingTaskEvents } from './services/processing-task-events'
 
@@ -24,17 +24,6 @@ function waitForTaskEventReconnect(signal: AbortSignal, delay: number) {
       resolve()
     }
   })
-}
-
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
 }
 
 export function TaskEventObserver({
@@ -110,7 +99,7 @@ export function TaskEventObserver({
           }
         } catch (error) {
           if (controller.signal.aborted) return
-          if (responseStatus(error) === 403) {
+          if (getHttpErrorStatus(error) === 403) {
             if (taskVersionIsAfter(latestTaskVersionRef.current, streamTaskVersionRef.current))
               streamTaskVersionRef.current = latestTaskVersionRef.current
             onPermissionDenied(taskId, streamTaskVersionRef.current)

@@ -382,7 +382,7 @@ def test_http_detach_keeps_receipt_until_execution_terminal(
     message = Message(message_tokens=2, answer_tokens=3)
     message.id = MESSAGE
 
-    def execution() -> Generator[PingStreamResponse, None, None]:
+    def execution() -> Generator[PingStreamResponse]:
         # Exceed the delivery buffer, including close-before-first-read, to
         # prove an abandoned HTTP generator cannot strand terminal processing.
         for _ in range(100):

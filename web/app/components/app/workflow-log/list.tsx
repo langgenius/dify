@@ -239,7 +239,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   <td className="w-45 p-3 pr-2">
                     <DrawerTrigger
                       data-log-detail-trigger
-                      className="w-full cursor-pointer rounded-sm text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                      className="w-full cursor-pointer rounded-sm text-left"
                       onClick={(event) => {
                         event.stopPropagation()
                         setCurrentLog(log)
@@ -290,6 +290,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <DetailPanel
+                  appId={appDetail.id}
                   onClose={onCloseDrawer}
                   runID={currentLog?.workflow_run.id || ''}
                   canReplay={

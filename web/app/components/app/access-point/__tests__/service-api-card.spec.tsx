@@ -1,9 +1,9 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, useSuspenseQuery } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -11,6 +11,7 @@ import { AppModeEnum } from '@/types/app'
 import { ServiceApiAccessPointCard } from '../built-in-access-points/service-api-card'
 
 const mocks = vi.hoisted(() => ({
+  appInfo: null as AppDetailWithSite | null,
   apiSecretKeyButtonProps: vi.fn(),
   apiEnable: vi.fn(),
 }))
@@ -22,22 +23,19 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        apiEnable: {
-          post: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.apiEnable,
-              ...options,
-            }),
-          },
-        },
-      },
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return {
+    ...actual,
+    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+      if (options.request.method === 'GET') return Response.json(mocks.appInfo)
+      const body = await options.request.json()
+      const updatedApp = await mocks.apiEnable({ params: { app_id: 'app-1' }, body })
+      mocks.appInfo = { ...mocks.appInfo, ...updatedApp }
+      return Response.json(mocks.appInfo)
     },
-  },
-}))
+  }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
@@ -73,24 +71,30 @@ function renderCard(
   canManage = true,
   overrides: Partial<AppDetailWithSite> = {},
 ) {
-  useAppStore.setState({ appDetail: createAppInfo(mode, overrides) })
+  mocks.appInfo = createAppInfo(mode, overrides)
   const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppInfo(mode, overrides),
+  )
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <StoreConnectedServiceApiCard availability={availability} canManage={canManage} />
+      <QueryConnectedServiceApiCard availability={availability} canManage={canManage} />
     </QueryClientProvider>,
   )
 }
 
-function StoreConnectedServiceApiCard({
+function QueryConnectedServiceApiCard({
   availability,
   canManage,
 }: {
   availability: 'available' | 'loading' | 'unavailable'
   canManage: boolean
 }) {
-  const appInfo = useAppStore((state) => state.appDetail)
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: 'app-1' } } }),
+  )
   if (!appInfo) return null
 
   return (
@@ -116,9 +120,7 @@ function createDeferredPromise<T>() {
 describe('ServiceApiAccessPointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.apiEnable.mockResolvedValue({
-      enable_api: true,
-    })
+    mocks.apiEnable.mockResolvedValue(createAppDetailFixture({ enable_api: true }))
   })
 
   it.each([
@@ -209,14 +211,14 @@ describe('ServiceApiAccessPointCard', () => {
 
   it('keeps successful status changes silent', async () => {
     const user = userEvent.setup()
-    mocks.apiEnable.mockResolvedValueOnce({ enable_api: false })
+    mocks.apiEnable.mockResolvedValueOnce(createAppDetailFixture({ enable_api: false }))
     renderCard(AppModeEnum.WORKFLOW)
 
     const accessSwitch = screen.getByRole('switch')
     await user.click(accessSwitch)
 
     await waitFor(() => {
-      expect(useAppStore.getState().appDetail?.enable_api).toBe(false)
+      expect(screen.getByRole('switch')).not.toBeChecked()
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
     expect(toast.success).not.toHaveBeenCalled()

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from flask import Flask
 
+from dify_app import DifyApp
 from extensions import ext_set_secretkey
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -28,7 +28,7 @@ def test_init_app_uses_configured_secret_key(monkeypatch: pytest.MonkeyPatch) ->
     storage = InMemoryStorage()
     apply_config_overrides(monkeypatch, SECRET_KEY=secret_key)
     monkeypatch.setattr("configs.secret_key.storage", storage)
-    app = Flask(__name__)
+    app = DifyApp(__name__)
     app.config["SECRET_KEY"] = secret_key
 
     ext_set_secretkey.init_app(app)
@@ -44,7 +44,7 @@ def test_init_app_generates_and_persists_secret_key_when_missing(
     storage = InMemoryStorage()
     apply_config_overrides(monkeypatch, SECRET_KEY="")
     monkeypatch.setattr("configs.secret_key.storage", storage)
-    app = Flask(__name__)
+    app = DifyApp(__name__)
     app.config["SECRET_KEY"] = ""
 
     ext_set_secretkey.init_app(app)
@@ -64,7 +64,7 @@ def test_init_app_reuses_persisted_secret_key_when_missing(
     storage = InMemoryStorage({".dify_secret_key": f"{persisted_key}\n".encode()})
     apply_config_overrides(monkeypatch, SECRET_KEY="")
     monkeypatch.setattr("configs.secret_key.storage", storage)
-    app = Flask(__name__)
+    app = DifyApp(__name__)
     app.config["SECRET_KEY"] = ""
 
     ext_set_secretkey.init_app(app)
