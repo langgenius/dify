@@ -1,93 +1,152 @@
-from types import SimpleNamespace
-from typing import cast
-from unittest.mock import Mock
+import uuid
+from collections.abc import Callable
+from dataclasses import replace
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi import _app_settings
 from controllers.openapi._app_settings import WebAppPath
 from controllers.openapi._errors import WebAppAccessModeConsoleOnly, WebAppAccessUnavailable, WebAppPublicAccessDisabled
 from controllers.openapi._models import WebAppAccessPayload
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.subjects import AccountSubject
 from enums import WebAppAccessMode
+from extensions.ext_application_services import ApplicationServices
+from libs.oauth_bearer import AuthContext
 from models import AppMode
-from services.webapp_access_query_service import WebAppAccessUnavailableError
+from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
+from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
+from services.errors.enterprise import EnterpriseServiceError
+from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
+from services.webapp_access_query_service import WebAppAccessQueryService
+from tests.unit_tests.model_factories import make_app
 
 
-def _context() -> Context:
-    return cast(Context, SimpleNamespace(app=SimpleNamespace(id="app-1")))
+def _context(session: Session) -> Context:
+    subject = AccountSubject(
+        AuthContext(
+            subject_email="caller@example.com",
+            subject_issuer="dify:account",
+            account_id=uuid.uuid4(),
+            client_id="difyctl",
+            token_id=uuid.uuid4(),
+            token_type=TokenType.OAUTH_ACCOUNT,
+            expires_at=None,
+        )
+    )
+    ctx = Context(subject, session, {"app_id": "app-1"})
+    ctx._app = make_app(app_id="app-1")
+    return ctx
 
 
-def test_webapp_access_read_failure_is_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
-    webapp_access = Mock()
-    webapp_access.get_access_mode.side_effect = WebAppAccessUnavailableError()
-    monkeypatch.setattr(_app_settings, "application_services", lambda: SimpleNamespace(webapp_access=webapp_access))
+def _enterprise_cannot_read_access_modes(monkeypatch: pytest.MonkeyPatch) -> None:
+    def get_app_access_mode_by_id(_app_id: str) -> WebAppSettings:
+        raise EnterpriseServiceError("No data found.")
+
+    monkeypatch.setattr(EnterpriseService.WebAppAuth, "get_app_access_mode_by_id", get_app_access_mode_by_id)
+
+
+def _record_access_mode_writes(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
+    writes: list[tuple[str, str]] = []
+
+    def update_app_access_mode(app_id: str, access_mode: str) -> None:
+        writes.append((app_id, access_mode))
+
+    monkeypatch.setattr(EnterpriseService.WebAppAuth, "update_app_access_mode", update_app_access_mode)
+    return writes
+
+
+def test_webapp_access_read_failure_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    account_application_services: ApplicationServices,
+) -> None:
+    _enterprise_cannot_read_access_modes(monkeypatch)
+    webapp_access = WebAppAccessQueryService(
+        access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),
+        policy=EnterpriseWebAppAccessPolicyGateway(webapp_auth=EnterpriseService.WebAppAuth),
+        webapp_auth_enabled=True,
+        get_access_modes=lambda **_: {},
+        get_user_permissions=lambda **_: {},
+    )
+    services = replace(account_application_services, webapp_access=webapp_access)
+    monkeypatch.setattr(_app_settings, "application_services", lambda: services)
 
     with pytest.raises(WebAppAccessUnavailable):
-        _app_settings.webapp_access(_context())
+        _app_settings.webapp_access(_context(sqlite_session))
 
 
-def test_set_webapp_access_returns_the_written_mode_without_reading_back(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_webapp_access_returns_the_written_mode_without_reading_back(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     """A failing read after a saved write must not report the write as failed."""
-    webapp_access = Mock()
-    webapp_access.get_access_mode.side_effect = WebAppAccessUnavailableError()
-    monkeypatch.setattr(_app_settings, "application_services", lambda: SimpleNamespace(webapp_access=webapp_access))
-    policy = Mock()
-    monkeypatch.setattr(_app_settings, "_ACCESS_POLICY", policy)
+    _enterprise_cannot_read_access_modes(monkeypatch)
+    writes = _record_access_mode_writes(monkeypatch)
 
     result = _app_settings.update_webapp_access(
-        _context(), WebAppAccessPayload(access_mode=WebAppAccessMode.PRIVATE_ALL)
+        _context(sqlite_session), WebAppAccessPayload(access_mode=WebAppAccessMode.PRIVATE_ALL)
     )
 
     assert result.access_mode == WebAppAccessMode.PRIVATE_ALL
-    policy.update_access_mode.assert_called_once_with("app-1", WebAppAccessMode.PRIVATE_ALL)
+    assert writes == [("app-1", WebAppAccessMode.PRIVATE_ALL)]
 
 
 def test_set_webapp_access_public_is_refused_when_the_server_disables_public_access(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, config_overrides: Callable[..., None]
 ) -> None:
-    monkeypatch.setattr(_app_settings.dify_config, "WEBAPP_PUBLIC_ACCESS_ENABLED", False)
-    policy = Mock()
-    monkeypatch.setattr(_app_settings, "_ACCESS_POLICY", policy)
+    config_overrides(WEBAPP_PUBLIC_ACCESS_ENABLED=False)
+    writes = _record_access_mode_writes(monkeypatch)
 
     with pytest.raises(WebAppPublicAccessDisabled):
-        _app_settings.update_webapp_access(_context(), WebAppAccessPayload(access_mode=WebAppAccessMode.PUBLIC))
+        _app_settings.update_webapp_access(
+            _context(sqlite_session), WebAppAccessPayload(access_mode=WebAppAccessMode.PUBLIC)
+        )
 
-    policy.update_access_mode.assert_not_called()
+    assert writes == []
 
 
 @pytest.mark.parametrize("mode", [WebAppAccessMode.PRIVATE_ALL, WebAppAccessMode.SSO_VERIFIED])
 def test_set_webapp_access_non_public_modes_are_unaffected_by_the_public_switch(
-    monkeypatch: pytest.MonkeyPatch, mode: WebAppAccessMode
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    mode: WebAppAccessMode,
 ) -> None:
-    monkeypatch.setattr(_app_settings.dify_config, "WEBAPP_PUBLIC_ACCESS_ENABLED", False)
-    policy = Mock()
-    monkeypatch.setattr(_app_settings, "_ACCESS_POLICY", policy)
+    config_overrides(WEBAPP_PUBLIC_ACCESS_ENABLED=False)
+    writes = _record_access_mode_writes(monkeypatch)
 
-    result = _app_settings.update_webapp_access(_context(), WebAppAccessPayload(access_mode=mode))
+    result = _app_settings.update_webapp_access(_context(sqlite_session), WebAppAccessPayload(access_mode=mode))
 
     assert result.access_mode == mode
-    policy.update_access_mode.assert_called_once_with("app-1", mode)
+    assert writes == [("app-1", mode)]
 
 
-def test_set_webapp_access_public_is_written_when_the_server_allows_it(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_app_settings.dify_config, "WEBAPP_PUBLIC_ACCESS_ENABLED", True)
-    policy = Mock()
-    monkeypatch.setattr(_app_settings, "_ACCESS_POLICY", policy)
+def test_set_webapp_access_public_is_written_when_the_server_allows_it(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(WEBAPP_PUBLIC_ACCESS_ENABLED=True)
+    writes = _record_access_mode_writes(monkeypatch)
 
-    result = _app_settings.update_webapp_access(_context(), WebAppAccessPayload(access_mode=WebAppAccessMode.PUBLIC))
+    result = _app_settings.update_webapp_access(
+        _context(sqlite_session), WebAppAccessPayload(access_mode=WebAppAccessMode.PUBLIC)
+    )
 
     assert result.access_mode == WebAppAccessMode.PUBLIC
-    policy.update_access_mode.assert_called_once_with("app-1", WebAppAccessMode.PUBLIC)
+    assert writes == [("app-1", WebAppAccessMode.PUBLIC)]
 
 
 def test_set_webapp_access_private_still_answers_console_only_when_public_is_disabled(
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session, config_overrides: Callable[..., None]
 ) -> None:
-    monkeypatch.setattr(_app_settings.dify_config, "WEBAPP_PUBLIC_ACCESS_ENABLED", False)
+    config_overrides(WEBAPP_PUBLIC_ACCESS_ENABLED=False)
 
     with pytest.raises(WebAppAccessModeConsoleOnly):
-        _app_settings.update_webapp_access(_context(), WebAppAccessPayload(access_mode=WebAppAccessMode.PRIVATE))
+        _app_settings.update_webapp_access(
+            _context(sqlite_session), WebAppAccessPayload(access_mode=WebAppAccessMode.PRIVATE)
+        )
 
 
 @pytest.mark.parametrize(

@@ -1353,6 +1353,19 @@ def _build_paused_snapshot_events(
     )
 
 
+class _PausedRunRepo:
+    def __init__(self, pause_entity: WorkflowPauseEntity) -> None:
+        self._pause_entity = pause_entity
+
+    def get_workflow_pause(self, _workflow_run_id: str) -> WorkflowPauseEntity:
+        return self._pause_entity
+
+
+class _EmptyNodeRepo:
+    def get_execution_snapshots_by_workflow_run(self, **_kwargs: object) -> list[WorkflowNodeExecutionSnapshot]:
+        return []
+
+
 def _event_types(events: Sequence[Mapping[str, Any]]) -> list[str]:
     return [event["event"] for event in events]
 
@@ -1410,19 +1423,13 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
         pause_reasons=[_human_input_reason("form-1")],
     )
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
-    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
-    factory = SimpleNamespace(
-        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
-        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
-    )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
-    monkeypatch.setattr(
-        service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=_Topic(_StaticSubscription()))
-    )
-    monkeypatch.setattr(
-        service_module, "_load_resumption_context", MagicMock(return_value=_build_resumption_context("task-1"))
-    )
+    factory = service_module.DifyAPIRepositoryFactory
+    monkeypatch.setattr(factory, "create_api_workflow_run_repository", lambda _sm: _PausedRunRepo(pause_entity))
+    monkeypatch.setattr(factory, "create_api_workflow_node_execution_repository", lambda _sm: _EmptyNodeRepo())
+    topic = _Topic(_StaticSubscription())
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", lambda *_args: topic)
+    resumption_context = _build_resumption_context("task-1")
+    monkeypatch.setattr(service_module, "_load_resumption_context", lambda _pause_entity: resumption_context)
     live_finished = {"event": StreamEvent.WORKFLOW_FINISHED.value, "task_id": "task-1"}
     buffer_state = BufferState(
         queue=queue.Queue(),
@@ -1432,7 +1439,7 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
         task_id_hint="task-1",
     )
     buffer_state.queue.put(live_finished)
-    monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
+    monkeypatch.setattr(service_module, "_start_buffering", lambda _subscription: buffer_state)
     _persist_human_input_form(sqlite_session_factory, status=HumanInputFormStatus.SUBMITTED)
 
     events = list(

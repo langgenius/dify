@@ -1,15 +1,19 @@
 import json
-from collections.abc import Callable
+import uuid
+from collections.abc import Callable, Sequence
 from datetime import datetime
-from types import SimpleNamespace
+from io import BytesIO
 from typing import Protocol, cast
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi import app_workflow
 from controllers.openapi._errors import (
     DraftNotFound,
@@ -29,8 +33,9 @@ from controllers.openapi._models import (
     RestoreResponse,
     RunListQuery,
     VersionListQuery,
+    VersionListResponse,
 )
-from controllers.openapi._upload import file_fields
+from controllers.openapi._upload import UploadParts, file_fields
 from controllers.openapi.app_workflow import (
     AppEnvItemApi,
     AppPublishApi,
@@ -41,12 +46,22 @@ from controllers.openapi.app_workflow import (
     run_draft_node,
 )
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.subjects import Subject
+from controllers.openapi.auth.subjects import AccountSubject
 from core.helper import encrypter
-from graphon.variables import SecretVariable, StringVariable
+from extensions.ext_application_services import ApplicationServices
+from graphon.variables import SecretVariable, StringVariable, VariableBase
+from libs.oauth_bearer import AuthContext
 from models.account import Account, Tenant
-from models.model import App, AppMode
-from models.workflow import Workflow
+from models.enums import AppStatus
+from models.model import App, AppMode, IconType
+from models.workflow import Workflow, WorkflowType
+from services.workflow.graph_diff import draft_token
+from services.workflow_service import WorkflowService
+
+WORKSPACE_ID = "00000000-0000-4000-8000-000000000001"
+APP_ID = "00000000-0000-4000-8000-000000000002"
+ACCOUNT_ID = "00000000-0000-4000-8000-000000000003"
+VERSION_ID = "00000000-0000-4000-8000-000000000004"
 
 
 class _EndpointView(Protocol):
@@ -55,23 +70,81 @@ class _EndpointView(Protocol):
     __handler__: Callable[..., object]
 
 
-def _app_context(app_id: str = "app-1", **view_args: str) -> Context:
-    ctx = Context(cast(Subject, SimpleNamespace(account_id="account-1")), Mock(), {"app_id": app_id, **view_args})
+@pytest.fixture(autouse=True)
+def _identity_secret_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep secret variables readable without the workspace key provider."""
+    monkeypatch.setattr(encrypter, "encrypt_token", lambda **kwargs: kwargs["token"])
+    monkeypatch.setattr(encrypter, "decrypt_token", lambda **kwargs: kwargs["token"])
+
+
+def _app_context(session: Session, **view_args: str) -> Context:
+    auth = AuthContext(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        subject_email="tester@example.com",
+        subject_issuer="dify:account",
+        account_id=uuid.UUID(ACCOUNT_ID),
+        client_id="difyctl",
+        token_id=uuid.uuid4(),
+        expires_at=None,
+    )
+    ctx = Context(AccountSubject(auth), session, {"app_id": APP_ID, **view_args})
     ctx._workspace = Tenant(name="w")
-    ctx._workspace.id = "tenant-1"
-    ctx._app = App(id=app_id, tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    ctx._workspace.id = WORKSPACE_ID
+    ctx._app = App(
+        id=APP_ID,
+        tenant_id=WORKSPACE_ID,
+        name="a",
+        description="",
+        mode=AppMode.WORKFLOW,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        status=AppStatus.NORMAL,
+        enable_site=True,
+        enable_api=True,
+    )
+    session.add(ctx._app)
+    session.commit()
     account = Account(name="tester", email="tester@example.com")
-    account.id = "account-1"
+    account.id = ACCOUNT_ID
     ctx._caller = account
     return ctx
 
 
-def _fake_workflow_service(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    """Stand in for `WorkflowService()`: the real constructor needs a live db.engine,
-    which the bare Flask app these tests run under does not have."""
-    service = Mock()
+def _workflow_service(monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]) -> WorkflowService:
+    """`WorkflowService()` builds its sessions from db.engine, which the bare Flask app these tests run
+    under does not have; hand the handlers the real service over the test database instead."""
+    service = WorkflowService(session_factory)
     monkeypatch.setattr(app_workflow, "WorkflowService", lambda: service)
     return service
+
+
+def _workflow(
+    *, version: str = Workflow.VERSION_DRAFT, graph: str = "{}", environment_variables: Sequence[VariableBase] = ()
+) -> Workflow:
+    return Workflow.new(
+        tenant_id=WORKSPACE_ID,
+        app_id=APP_ID,
+        type=WorkflowType.WORKFLOW,
+        version=version,
+        graph=graph,
+        features="{}",
+        created_by=ACCOUNT_ID,
+        environment_variables=environment_variables,
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+
+
+def _add_draft(session: Session, *, graph: str = "{}", environment_variables: Sequence[VariableBase] = ()) -> Workflow:
+    draft = _workflow(graph=graph, environment_variables=environment_variables)
+    session.add(draft)
+    session.commit()
+    return draft
+
+
+def _env(draft: Workflow) -> list[tuple[str, object, type]]:
+    return [(variable.id, variable.value, type(variable)) for variable in draft.environment_variables]
 
 
 def test_env_variable_view_masks_only_secrets_that_have_a_value() -> None:
@@ -93,105 +166,142 @@ def test_run_list_hints_the_next_cursor() -> None:
     assert hint.input == {"app_id": "app-1", "limit": 1, "triggered_from": "debugging", "last_id": "run-1"}
 
 
-def test_set_env_rejects_mask_for_unknown_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_env_rejects_mask_for_unknown_id(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     """Sending the mask for an id that is not a stored secret must not encrypt the
     literal mask into the draft (the bug: it silently succeeded, storing `[__HIDDEN__]`)."""
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = SimpleNamespace(environment_variables=[])
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session, env_id="unknown-id")
+    draft = _add_draft(sqlite_session)
 
     body = EnvVariableSetPayload(name="KEY", value_type="secret", value=encrypter.full_mask_token())
     api = AppEnvItemApi()
-    ctx = _app_context(env_id="unknown-id")
     with app.test_request_context("/openapi/v1/apps/app-1/env/unknown-id", method="PUT"):
         with pytest.raises(SecretMaskUnknownId):
             cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "unknown-id", body=body)
 
-    service.patch_draft_workflow_environment_variables.assert_not_called()
+    assert _env(draft) == []
 
 
-def test_set_env_accepts_mask_for_a_stored_secret(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_env_accepts_mask_for_a_stored_secret(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     """The same mask for an id that *is* a stored secret keeps the existing flow working."""
     stored = SecretVariable(id="s-1", name="KEY", value="plain", selector=["env", "KEY"])
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = SimpleNamespace(environment_variables=[stored])
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session, env_id="s-1")
+    draft = _add_draft(sqlite_session, environment_variables=[stored])
 
     body = EnvVariableSetPayload(name="KEY", value_type="secret", value=encrypter.full_mask_token())
     api = AppEnvItemApi()
-    ctx = _app_context(env_id="s-1")
     with app.test_request_context("/openapi/v1/apps/app-1/env/s-1", method="PUT"):
         cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "s-1", body=body)
 
-    service.patch_draft_workflow_environment_variables.assert_called_once()
+    assert _env(draft) == [("s-1", "plain", SecretVariable)]
+    assert draft.updated_by == ACCOUNT_ID
 
 
-def test_set_env_rejects_the_mask_as_a_plain_value(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_env_rejects_the_mask_as_a_plain_value(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     """Re-typing a stored secret as a string while sending the mask would store the mask text
     and destroy the secret."""
     stored = SecretVariable(id="s-1", name="KEY", value="plain", selector=["env", "KEY"])
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = SimpleNamespace(environment_variables=[stored])
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session, env_id="s-1")
+    draft = _add_draft(sqlite_session, environment_variables=[stored])
 
     body = EnvVariableSetPayload(name="KEY", value_type="string", value=encrypter.full_mask_token())
     api = AppEnvItemApi()
     with app.test_request_context("/openapi/v1/apps/app-1/env/s-1", method="PUT"):
         with pytest.raises(SecretMaskNotSecret):
-            cast(_EndpointView, api.put).__handler__(api, _app_context(env_id="s-1"), "app-1", "s-1", body=body)
+            cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "s-1", body=body)
 
-    service.patch_draft_workflow_environment_variables.assert_not_called()
+    assert _env(draft) == [("s-1", "plain", SecretVariable)]
 
 
-def test_set_env_without_a_draft_is_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = None
+def test_set_env_without_a_draft_is_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session, env_id="e-1")
 
     body = EnvVariableSetPayload(name="KEY", value_type="string", value="v")
     api = AppEnvItemApi()
     with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="PUT"):
         with pytest.raises(DraftNotFound):
-            cast(_EndpointView, api.put).__handler__(api, _app_context(env_id="e-1"), "app-1", "e-1", body=body)
+            cast(_EndpointView, api.put).__handler__(api, ctx, "app-1", "e-1", body=body)
 
-    service.patch_draft_workflow_environment_variables.assert_not_called()
+    assert sqlite_session.scalars(select(Workflow)).all() == []
 
 
-def test_delete_env_without_a_draft_is_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = None
+def test_delete_env_without_a_draft_is_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session, env_id="e-1")
 
     api = AppEnvItemApi()
     with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="DELETE"):
         with pytest.raises(DraftNotFound):
-            cast(_EndpointView, api.delete).__handler__(api, _app_context(env_id="e-1"), "app-1", "e-1")
+            cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "e-1")
 
-    service.patch_draft_workflow_environment_variables.assert_not_called()
+    assert sqlite_session.scalars(select(Workflow)).all() == []
 
 
-def test_delete_env_with_an_unknown_id_is_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_delete_env_with_an_unknown_id_is_not_found(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     """An unknown id must not report success while deleting nothing."""
     stored = StringVariable(id="e-1", name="KEY", value="v", selector=["env", "KEY"])
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = SimpleNamespace(environment_variables=[stored])
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session, env_id="typo")
+    draft = _add_draft(sqlite_session, environment_variables=[stored])
 
     api = AppEnvItemApi()
     with app.test_request_context("/openapi/v1/apps/app-1/env/typo", method="DELETE"):
         with pytest.raises(EnvVariableNotFound):
-            cast(_EndpointView, api.delete).__handler__(api, _app_context(env_id="typo"), "app-1", "typo")
+            cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "typo")
 
-    service.patch_draft_workflow_environment_variables.assert_not_called()
+    assert _env(draft) == [("e-1", "v", StringVariable)]
 
 
-def test_delete_env_removes_a_stored_variable(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_delete_env_removes_a_stored_variable(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     stored = StringVariable(id="e-1", name="KEY", value="v", selector=["env", "KEY"])
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = SimpleNamespace(environment_variables=[stored])
+    kept = StringVariable(id="e-2", name="URL", value="https://x", selector=["env", "URL"])
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session, env_id="e-1")
+    draft = _add_draft(sqlite_session, environment_variables=[stored, kept])
 
     api = AppEnvItemApi()
     with app.test_request_context("/openapi/v1/apps/app-1/env/e-1", method="DELETE"):
-        cast(_EndpointView, api.delete).__handler__(api, _app_context(env_id="e-1"), "app-1", "e-1")
+        cast(_EndpointView, api.delete).__handler__(api, ctx, "app-1", "e-1")
 
-    service.patch_draft_workflow_environment_variables.assert_called_once()
-    assert service.patch_draft_workflow_environment_variables.call_args.kwargs["deleted_environment_variable_ids"] == [
-        "e-1"
-    ]
+    assert _env(draft) == [("e-2", "https://x", StringVariable)]
 
 
 def test_set_env_payload_rejects_a_value_type_the_console_does_not_allow() -> None:
@@ -199,54 +309,77 @@ def test_set_env_payload_rejects_a_value_type_the_console_does_not_allow() -> No
         EnvVariableSetPayload(name="KEY", value_type="boolean", value=True)
 
 
-def test_restore_rejects_a_garbage_version_id(app: Flask) -> None:
+def test_restore_rejects_a_garbage_version_id(app: Flask, sqlite_session: Session) -> None:
     api = AppVersionRestoreApi()
-    ctx = _app_context(version_id="not-a-uuid")
+    ctx = _app_context(sqlite_session, version_id="not-a-uuid")
     with app.test_request_context("/openapi/v1/apps/app-1/versions/not-a-uuid:restore", method="POST"):
         with pytest.raises(VersionNotFound):
             cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", "not-a-uuid")
 
 
-def test_version_list_excludes_the_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    no_versions: list[Workflow] = []
-    service.get_all_published_workflow.return_value = (no_versions, False)
+def test_version_list_excludes_the_draft(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session)
+    published = _workflow(version=Workflow.version_from_datetime(datetime(2026, 10, 1, 12, 0, 0)))
+    sqlite_session.add(published)
+    sqlite_session.commit()
+    ctx.app.workflow_id = published.id
 
     api = AppVersionListApi()
     with app.test_request_context("/openapi/v1/apps/app-1/versions"):
-        cast(_EndpointView, api.get).__handler__(api, _app_context(), "app-1", query=VersionListQuery())
+        response = cast(_EndpointView, api.get).__handler__(api, ctx, "app-1", query=VersionListQuery())
 
-    assert service.get_all_published_workflow.call_args.kwargs["include_draft"] is False
+    assert [row.id for row in cast(VersionListResponse, response).data] == [published.id]
 
 
-def test_restore_returns_the_hash_an_import_checks(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.restore_published_workflow_to_draft.return_value = SimpleNamespace(token="whole-draft-hash")
-    monkeypatch.setattr(app_workflow, "draft_token", lambda draft: draft.token)
+def test_restore_returns_the_hash_an_import_checks(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+    restored = _workflow(graph=_branch_skipping_graph())
+    monkeypatch.setattr(service, "restore_published_workflow_to_draft", lambda **_kwargs: restored)
     version_id = "11111111-1111-4111-8111-111111111111"
+    ctx = _app_context(sqlite_session, version_id=version_id)
 
     api = AppVersionRestoreApi()
     with app.test_request_context(f"/openapi/v1/apps/app-1/versions/{version_id}:restore", method="POST"):
-        response = cast(_EndpointView, api.post).__handler__(
-            api, _app_context(version_id=version_id), "app-1", version_id
-        )
+        response = cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", version_id)
 
-    assert cast(RestoreResponse, response).draft_hash == "whole-draft-hash"
+    assert cast(RestoreResponse, response).draft_hash == draft_token(restored)
 
 
-def test_run_node_list_is_not_found_for_a_run_of_another_app(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_node_list_is_not_found_for_a_run_of_another_app(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
     """Match describe: an unknown run is a 404, not an empty step list."""
-    runs = Mock()
-    runs.get_workflow_run.return_value = None
-    monkeypatch.setattr(app_workflow, "application_services", lambda: SimpleNamespace(workflow_runs=runs))
+    monkeypatch.setattr(app_workflow, "application_services", lambda: account_application_services)
+    step_reads: list[object] = []
+    monkeypatch.setattr(
+        account_application_services.workflow_runs,
+        "get_workflow_run_node_executions",
+        lambda *args, **kwargs: step_reads.append((args, kwargs)),
+    )
     run_id = "11111111-1111-4111-8111-111111111111"
+    ctx = _app_context(sqlite_session, run_id=run_id)
 
     api = AppRunNodeListApi()
     with app.test_request_context(f"/openapi/v1/apps/app-1/runs/{run_id}/nodes"):
         with pytest.raises(RunNotFound):
-            cast(_EndpointView, api.get).__handler__(api, _app_context(run_id=run_id), "app-1", run_id)
+            cast(_EndpointView, api.get).__handler__(api, ctx, "app-1", run_id)
 
-    runs.get_workflow_run_node_executions.assert_not_called()
+    assert step_reads == []
 
 
 @pytest.mark.parametrize("payload_cls", [NodeRunPayload, AdvancedChatNodeRunPayload])
@@ -256,25 +389,36 @@ def test_node_run_payload_accepts_files_and_forbids_attachments(payload_cls: typ
         payload_cls.model_validate({"attachments": []})
 
 
-def _draft_with_node(node_id: str) -> SimpleNamespace:
-    node = {"id": node_id, "data": SimpleNamespace(type="code")}
-    return SimpleNamespace(get_node_config_by_id=lambda _node_id: node)
+def _code_node_graph(node_id: str) -> str:
+    return json.dumps({"nodes": [{"id": node_id, "data": {"type": "code"}}], "edges": []})
 
 
-def test_run_draft_node_merges_local_files_into_the_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = _draft_with_node("n1")
-    merge = Mock(return_value={"x": 1, "doc": {"id": "file-1"}})
-    monkeypatch.setattr(app_workflow, "merge_files", merge)
+def _upload_part() -> FileStorage:
+    return FileStorage(stream=BytesIO(b"doc"), filename="doc.txt", content_type="text/plain")
+
+
+def test_run_draft_node_merges_local_files_into_the_inputs(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_code_node_graph("n1"))
+    merges: list[tuple[object, ...]] = []
+
+    def merge_files(inputs: object, files: object, caller: object) -> dict[str, object]:
+        merges.append((inputs, files, caller))
+        return {"x": 1, "doc": {"id": "file-1"}}
+
+    node_runs: list[dict[str, object]] = []
+    monkeypatch.setattr(app_workflow, "merge_files", merge_files)
+    monkeypatch.setattr(service, "run_draft_workflow_node", lambda **kwargs: node_runs.append(kwargs))
     monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
-    monkeypatch.setattr(app_workflow.WorkflowRunNodeExecutionResponse, "model_validate", Mock())
-    ctx = _app_context()
-    parts = {"doc": Mock()}
+    parts: UploadParts = {"doc": _upload_part()}
 
     run_draft_node(ctx, "n1", inputs={"x": 1}, query="", files=parts)
 
-    merge.assert_called_once_with({"x": 1}, parts, ctx.caller)
-    assert service.run_draft_workflow_node.call_args.kwargs["user_inputs"] == {"x": 1, "doc": {"id": "file-1"}}
+    assert merges == [({"x": 1}, parts, ctx.caller)]
+    assert [run["user_inputs"] for run in node_runs] == [{"x": 1, "doc": {"id": "file-1"}}]
 
 
 def test_node_run_payloads_take_files_as_multipart_parts() -> None:
@@ -282,22 +426,31 @@ def test_node_run_payloads_take_files_as_multipart_parts() -> None:
     assert file_fields(AdvancedChatNodeRunPayload) == {"files"}
 
 
-@pytest.mark.parametrize(("files", "ends_transaction"), [({"doc": Mock()}, True), (None, False)])
+@pytest.mark.parametrize(("with_files", "ends_transaction"), [(True, True), (False, False)])
 def test_run_draft_node_ends_the_read_transaction_before_uploading(
-    monkeypatch: pytest.MonkeyPatch, files: dict[str, Mock] | None, ends_transaction: bool
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    with_files: bool,
+    ends_transaction: bool,
 ) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.get_draft_workflow.return_value = _draft_with_node("n1")
-    calls = Mock()
-    monkeypatch.setattr(app_workflow, "end_read_transaction", calls.end)
-    monkeypatch.setattr(app_workflow, "merge_files", calls.merge)
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_code_node_graph("n1"))
+    names: list[str] = []
+    monkeypatch.setattr(app_workflow, "end_read_transaction", lambda _session: names.append("end"))
+
+    def merge_files(inputs: dict[str, object], *_args: object) -> dict[str, object]:
+        names.append("merge")
+        return inputs
+
+    monkeypatch.setattr(app_workflow, "merge_files", merge_files)
+    monkeypatch.setattr(service, "run_draft_workflow_node", lambda **_kwargs: None)
     monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
-    monkeypatch.setattr(app_workflow.WorkflowRunNodeExecutionResponse, "model_validate", Mock())
-    ctx = _app_context()
+    files: UploadParts | None = {"doc": _upload_part()} if with_files else None
 
     run_draft_node(ctx, "n1", inputs={}, query="", files=files)
 
-    names = [call[0] for call in calls.mock_calls]
     assert names == (["end", "merge"] if ends_transaction else ["merge"])
 
 
@@ -319,38 +472,57 @@ def _branch_skipping_graph() -> str:
     )
 
 
-@pytest.mark.parametrize("graph", ["{}", "{", None], ids=["clean", "invalid-json", "empty"])
+def _published_version(graph: str) -> Workflow:
+    version = _workflow(version=Workflow.version_from_datetime(datetime(2026, 10, 1, 12, 0, 0)), graph=graph)
+    version.id = VERSION_ID
+    version.created_at = datetime(2026, 10, 1, 12, 0, 0)
+    return version
+
+
+@pytest.mark.parametrize("graph", ["{}", "{", ""], ids=["clean", "invalid-json", "empty"])
 def test_publish_points_the_app_at_the_new_version(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, graph: str | None
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    graph: str,
 ) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.publish_workflow.return_value = SimpleNamespace(
-        id="version-1", created_at=datetime(2026, 10, 1, 12, 0, 0), graph=graph
-    )
-    ctx = _app_context()
-    stored_app = SimpleNamespace(workflow_id=None, updated_by=None, updated_at=None)
-    cast(Mock, ctx.session).get.return_value = stored_app
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+    publishes: list[dict[str, object]] = []
+
+    def publish_workflow(**kwargs: object) -> Workflow:
+        publishes.append(kwargs)
+        return _published_version(graph)
+
+    monkeypatch.setattr(service, "publish_workflow", publish_workflow)
+    ctx = _app_context(sqlite_session)
 
     api = AppPublishApi()
     with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
         response = cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload(marked_name="v2"))
 
-    assert service.publish_workflow.call_args.kwargs["marked_name"] == "v2"
-    assert (stored_app.workflow_id, stored_app.updated_by) == ("version-1", "account-1")
+    stored_app = sqlite_session.get(App, APP_ID)
+    assert stored_app is not None
+    assert [publish["marked_name"] for publish in publishes] == ["v2"]
+    assert (stored_app.workflow_id, stored_app.updated_by) == (VERSION_ID, ACCOUNT_ID)
     assert stored_app.updated_at is not None
-    assert cast(PublishResponse, response).version_id == "version-1"
+    assert cast(PublishResponse, response).version_id == VERSION_ID
     assert cast(PublishResponse, response).warning is None
 
 
-def test_publish_warns_about_references_to_a_skipped_branch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.publish_workflow.return_value = SimpleNamespace(
-        id="version-1", created_at=datetime(2026, 10, 1, 12, 0, 0), graph=_branch_skipping_graph()
-    )
+def test_publish_warns_about_references_to_a_skipped_branch(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+    monkeypatch.setattr(service, "publish_workflow", lambda **_kwargs: _published_version(_branch_skipping_graph()))
+    ctx = _app_context(sqlite_session)
 
     api = AppPublishApi()
     with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
-        response = cast(_EndpointView, api.post).__handler__(api, _app_context(), "app-1", body=PublishPayload())
+        response = cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
 
     warning = cast(PublishResponse, response).warning
     assert warning is not None
@@ -358,14 +530,25 @@ def test_publish_warns_about_references_to_a_skipped_branch(app: Flask, monkeypa
     assert "Producer" in warning
 
 
-def test_publish_refusal_is_a_bad_request(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service = _fake_workflow_service(monkeypatch)
-    service.publish_workflow.side_effect = ValueError("Node l (llm): Missing provider or model configuration")
-    ctx = _app_context()
+def test_publish_refusal_is_a_bad_request(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+
+    def publish_workflow(**_kwargs: object) -> Workflow:
+        raise ValueError("Node l (llm): Missing provider or model configuration")
+
+    monkeypatch.setattr(service, "publish_workflow", publish_workflow)
+    ctx = _app_context(sqlite_session)
 
     api = AppPublishApi()
     with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
         with pytest.raises(BadRequest, match="Missing provider"):
             cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
 
-    cast(Mock, ctx.session).get.assert_not_called()
+    stored_app = sqlite_session.get(App, APP_ID)
+    assert stored_app is not None
+    assert stored_app.workflow_id is None

@@ -9,6 +9,7 @@ from zipfile import ZipFile
 
 import pytest
 import yaml
+from blinker import Namespace
 from sqlalchemy import Engine, event, select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
@@ -62,6 +63,7 @@ from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
+from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 from tests.unit_tests.rbac_fakes import RBACDomain
 
@@ -739,31 +741,48 @@ def test_dsl_import_forwards_only_a_guarded_draft_hash(
 ) -> None:
     config_overrides(RBAC_ENABLED=False, DEPLOYMENT_EDITION="COMMUNITY")
     context, _ = copy_source
-    import_app = Mock(return_value=Import(id="import-1", status=ImportStatus.FAILED))
+    forwarded: list[str | None] = []
+
+    def import_app(_dsl: AppDslService, *, draft_hash: str | None, **_kwargs: object) -> Import:
+        forwarded.append(draft_hash)
+        return Import(id="import-1", status=ImportStatus.FAILED)
+
     monkeypatch.setattr(AppDslService, "import_app", import_app)
 
     app_services.console.import_app(context, params)
 
-    assert import_app.call_args.kwargs["draft_hash"] == draft_hash
+    assert forwarded == [draft_hash]
 
 
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-def test_create_draft_saves_the_starter_graph_of_the_apps_mode(monkeypatch: pytest.MonkeyPatch, mode: AppMode) -> None:
-    session = Mock()
-    session_factory = Mock(return_value=Mock(__enter__=Mock(return_value=session), __exit__=Mock(return_value=None)))
-    app = Mock(mode=mode.value)
-    monkeypatch.setattr(console_gateway, "require_console_app", Mock(return_value=app))
-    monkeypatch.setattr(console_gateway, "console_app_actor", Mock())
-    workflow_service = Mock()
-    monkeypatch.setattr(console_gateway, "WorkflowService", Mock(return_value=workflow_service))
-
-    AppLifecycleGateway(session_factory=session_factory).create_draft(
-        RequestContext("request-1", None, "account-1", "workspace-1"), "app-1"
+def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
+    sqlite_session_factory: sessionmaker[Session],
+    copy_source: tuple[RequestContext, str],
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+) -> None:
+    context, app_id = copy_source
+    with sqlite_session_factory.begin() as session:
+        app = session.get(App, app_id)
+        assert app is not None
+        app.mode = mode
+    syncs: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        WorkflowService, "sync_draft_workflow", record_calls(WorkflowService.sync_draft_workflow, syncs)
     )
+    # The app event handlers reach the Flask-bound database; this test only checks the saved draft.
+    monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Namespace().signal("synced"))
 
-    graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
-    assert graph == console_gateway._STARTER_DRAFT_GRAPHS[mode]
-    assert graph is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
+    AppLifecycleGateway(session_factory=sqlite_session_factory).create_draft(context, app_id)
+
+    assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
+    assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
+    with sqlite_session_factory() as session:
+        draft = session.scalar(
+            select(Workflow).where(Workflow.app_id == app_id, Workflow.version == Workflow.VERSION_DRAFT)
+        )
+        assert draft is not None
+        assert draft.graph_dict == console_gateway._STARTER_DRAFT_GRAPHS[mode]
 
 
 def test_chatflow_starter_draft_is_start_llm_answer_as_the_editor_saves_it() -> None:

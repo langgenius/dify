@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
@@ -23,6 +24,7 @@ from services.entities.dsl_entities import ImportStatus
 from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
+from services.workflow.graph_diff import draft_token
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
 
@@ -1058,73 +1060,83 @@ def test_missing_app_section_names_the_keys_that_were_present(
     assert not unbound_session.in_transaction()
 
 
+@dataclass
+class _DraftWorkflowService:
+    draft: Workflow | None
+    lookups: list[str] = field(default_factory=list)
+    synced_hashes: list[str | None] = field(default_factory=list)
+
+    def _draft_of(self, app_model: App) -> Workflow | None:
+        return self.draft if self.draft is not None and self.draft.app_id == app_model.id else None
+
+    def get_draft_workflow(self, app_model: App, **_: object) -> Workflow | None:
+        self.lookups.append("read")
+        return self._draft_of(app_model)
+
+    def get_draft_workflow_for_update(self, app_model: App, **_: object) -> Workflow | None:
+        self.lookups.append("locked")
+        return self._draft_of(app_model)
+
+    def sync_draft_workflow(self, *, graph: dict[str, object], unique_hash: str | None, **_: object) -> Workflow:
+        self.synced_hashes.append(unique_hash)
+        return _workflow(graph=graph)
+
+
+def _workflow_draft(app: App) -> Workflow:
+    return make_workflow(tenant_id=app.tenant_id, app_id=app.id, graph={"nodes": [], "edges": []})
+
+
 def _guarded_overwrite(
-    monkeypatch: pytest.MonkeyPatch, draft: object | None
-) -> tuple[AppDslService, SimpleNamespace, Callable[[str], App]]:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
+    monkeypatch: pytest.MonkeyPatch, session: Session, *, draft: Workflow | None
+) -> tuple[AppDslService, _DraftWorkflowService, Callable[[str], App]]:
     service = AppDslService(session=session)
-    workflow_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=draft),
-        get_draft_workflow_for_update=Mock(return_value=draft),
-        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
-    monkeypatch.setattr("services.app_dsl_service.draft_token", lambda workflow: workflow.token)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-    )
+    workflow_service = _DraftWorkflowService(draft=draft)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
+    app = _app(mode=AppMode.WORKFLOW)
 
     def overwrite(draft_hash: str) -> App:
         return service._create_or_update_app(
-            app=cast(App, app),
+            app=app,
             data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": {"nodes": [], "edges": []}}},
-            account=Mock(id="account-1"),
+            account=_account(),
             draft_hash=draft_hash,
         )
 
     return service, workflow_service, overwrite
 
 
-def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(monkeypatch: pytest.MonkeyPatch) -> None:
-    draft = SimpleNamespace(token="exported", unique_hash="graph-hash")
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, draft)
-
-    overwrite("exported")
-
-    workflow_service.get_draft_workflow_for_update.assert_called_once()
-    workflow_service.get_draft_workflow.assert_not_called()
-    assert workflow_service.sync_draft_workflow.call_args.kwargs["unique_hash"] == "graph-hash"
-
-
-@pytest.mark.parametrize(
-    "draft",
-    [SimpleNamespace(token="edited-since", unique_hash="graph-hash"), None],
-    ids=["draft-changed", "draft-gone"],
-)
-def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
-    monkeypatch: pytest.MonkeyPatch, draft: object | None
+def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, draft)
+    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW))
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+
+    overwrite(draft_token(draft))
+
+    assert workflow_service.lookups == ["locked"]
+    assert workflow_service.synced_hashes == [draft.unique_hash]
+
+
+@pytest.mark.parametrize("draft_exists", [True, False], ids=["draft-changed", "draft-gone"])
+def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, draft_exists: bool
+) -> None:
+    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW)) if draft_exists else None
+    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
 
     with pytest.raises(DraftChangedError):
         overwrite("exported")
 
-    workflow_service.sync_draft_workflow.assert_not_called()
+    assert workflow_service.synced_hashes == []
 
 
-def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(monkeypatch: pytest.MonkeyPatch) -> None:
-    service, workflow_service, _ = _guarded_overwrite(
-        monkeypatch, SimpleNamespace(token="edited-since", unique_hash="graph-hash")
-    )
-    cached = Mock()
-    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cached)
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", name="Before", description="")
+def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    app = _app(mode=AppMode.WORKFLOW)
+    service, workflow_service, _ = _guarded_overwrite(monkeypatch, unbound_session, draft=_workflow_draft(app))
+    cached: list[str] = []
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", lambda key, _expiry, _value: cached.append(key))
     dependency = PluginDependency(
         type=PluginDependencyType.Package,
         value=PluginDependency.Package(plugin_unique_identifier="langgenius/openai:1.0.0@abc"),
@@ -1132,16 +1144,24 @@ def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(monkeypa
 
     with pytest.raises(DraftChangedError):
         service._create_or_update_app(
-            app=cast(App, app),
+            app=app,
             data={"app": {"mode": AppMode.WORKFLOW.value, "name": "After"}, "workflow": {"graph": {}}},
-            account=Mock(id="account-1"),
+            account=_account(),
             dependencies=[dependency],
             draft_hash="exported",
         )
 
-    cached.assert_not_called()
-    assert app.name == "Before"
-    workflow_service.sync_draft_workflow.assert_not_called()
+    assert cached == []
+    assert app.name == "Existing app"
+    assert workflow_service.synced_hashes == []
+
+
+def _refuse_changed_draft(forwarded: list[str | None]) -> Callable[..., App]:
+    def create_or_update_app(*, draft_hash: str | None = None, **_: object) -> App:
+        forwarded.append(draft_hash)
+        raise DraftChangedError()
+
+    return create_or_update_app
 
 
 def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
@@ -1152,10 +1172,9 @@ def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
         "services.app_dsl_service.redis_client.setex",
         lambda key, _expiry, value: pending_imports.__setitem__(key, value),
     )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
     service = AppDslService(session=unbound_session)
-    create_or_update = Mock(side_effect=DraftChangedError())
-    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    forwarded: list[str | None] = []
+    monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
 
     with pytest.raises(DraftChangedError):
         service.import_app(
@@ -1166,7 +1185,7 @@ def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
             ),
             draft_hash="exported",
         )
-    assert create_or_update.call_args.kwargs["draft_hash"] == "exported"
+    assert forwarded == ["exported"]
 
     pending = service.import_app(
         account=_account(),
@@ -1191,18 +1210,18 @@ def test_confirm_import_checks_the_pending_draft_hash(
         ),
         draft_hash="exported",
     )
-    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
-    redis_delete = Mock()
-    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _key: pending.model_dump_json())
+    deleted: list[str] = []
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", deleted.append)
     service = AppDslService(unbound_session)
-    create_or_update = Mock(side_effect=DraftChangedError())
-    monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
+    forwarded: list[str | None] = []
+    monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
 
     with pytest.raises(DraftChangedError):
         service.confirm_import(import_id="pending-import", account=_account())
 
-    assert create_or_update.call_args.kwargs["draft_hash"] == "exported"
-    redis_delete.assert_not_called()
+    assert forwarded == ["exported"]
+    assert deleted == []
 
 
 def test_pending_data_without_a_draft_hash_still_reads() -> None:

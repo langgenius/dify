@@ -1,6 +1,4 @@
 from collections.abc import Mapping
-from typing import cast
-from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -66,8 +64,10 @@ def test_graph_without_nodes() -> None:
         ({"nodes": [START], "edges": [{"source": "start", "target": "end"}, 7]}, ("edges", 1)),
     ],
 )
-def test_malformed_shapes_are_graph_issues_not_errors(graph: Mapping[str, object], loc: tuple[object, ...]) -> None:
-    issues = check_graph(graph, mode=AppMode.WORKFLOW, resources=credential_check("ws-1", {}, cast(Session, Mock())))
+def test_malformed_shapes_are_graph_issues_not_errors(
+    sqlite_session: Session, graph: Mapping[str, object], loc: tuple[object, ...]
+) -> None:
+    issues = check_graph(graph, mode=AppMode.WORKFLOW, resources=credential_check("ws-1", {}, sqlite_session))
     assert [(i.code, i.loc) for i in issues] == [(IssueCode.GRAPH_INVALID, loc)]
 
 
@@ -209,51 +209,63 @@ def test_unexpected_node_validation_error_is_located_and_later_nodes_are_checked
 
 
 @pytest.fixture(autouse=True)
-def service_without_storage():
-    with (
-        patch.object(WorkflowService, "__init__", return_value=None),
-        patch.object(WorkflowService, "_is_load_balancing_enabled", return_value=False),
-    ):
-        yield
+def service_without_storage(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
+    monkeypatch.setattr(WorkflowService, "_is_load_balancing_enabled", lambda *_args: False)
 
 
-def test_credential_check_reports_what_publish_refuses_for_a_node() -> None:
+def _validate_llm_raising(monkeypatch: pytest.MonkeyPatch, error: Exception) -> list[tuple[str, str, str]]:
+    calls: list[tuple[str, str, str]] = []
+
+    def validate(_self: WorkflowService, tenant_id: str, provider: str, model_name: str) -> None:
+        calls.append((tenant_id, provider, model_name))
+        raise error
+
+    monkeypatch.setattr(WorkflowService, "_validate_llm_model_config", validate)
+    return calls
+
+
+def test_credential_check_reports_what_publish_refuses_for_a_node(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     llm = _node("l", {"type": "llm", "model": {"provider": "openai", "name": "gpt-4o"}})
-    check = credential_check("ws-1", {}, cast(Session, Mock()))
+    check = credential_check("ws-1", {}, sqlite_session)
+    calls = _validate_llm_raising(monkeypatch, ValueError("no credential"))
 
-    with patch.object(WorkflowService, "_validate_llm_model_config", side_effect=ValueError("no credential")) as v:
-        assert check(llm) == "no credential"
-
-    v.assert_called_once_with("ws-1", "openai", "gpt-4o")
+    assert check(llm) == "no credential"
+    assert calls == [("ws-1", "openai", "gpt-4o")]
 
 
-def test_credential_check_wraps_unexpected_errors_with_the_node() -> None:
+def test_credential_check_wraps_unexpected_errors_with_the_node(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     llm = _node("l", {"type": "llm", "model": {"provider": "openai", "name": "gpt-4o"}})
-    check = credential_check("ws-1", {}, cast(Session, Mock()))
+    check = credential_check("ws-1", {}, sqlite_session)
+    _validate_llm_raising(monkeypatch, RuntimeError("boom"))
 
-    with patch.object(WorkflowService, "_validate_llm_model_config", side_effect=RuntimeError("boom")):
-        assert check(llm) == "Node l (llm): boom"
+    assert check(llm) == "Node l (llm): boom"
 
 
 @pytest.mark.parametrize("node_type", ["knowledge-retrieval", "parameter-extractor", "question-classifier"])
-def test_credential_check_matches_publish_for_model_nodes_publish_skips(node_type: str) -> None:
+def test_credential_check_matches_publish_for_model_nodes_publish_skips(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, node_type: str
+) -> None:
     """Publish lists these types with underscores, so it never checks them; the release check must agree."""
     node = _node("n", {"type": node_type, "model": {"provider": "openai", "name": "gpt-4o"}})
-    check = credential_check("ws-1", {}, cast(Session, Mock()))
+    check = credential_check("ws-1", {}, sqlite_session)
+    calls = _validate_llm_raising(monkeypatch, ValueError("no credential"))
 
-    with patch.object(WorkflowService, "_validate_llm_model_config", side_effect=ValueError("no credential")) as v:
-        assert check(node) is None
-
-    v.assert_not_called()
+    assert check(node) is None
+    assert calls == []
 
 
-def test_chatflow_starter_draft_only_lacks_a_model() -> None:
+def test_chatflow_starter_draft_only_lacks_a_model(sqlite_session: Session) -> None:
     from services.app.console_gateway import _STARTER_DRAFT_GRAPHS
 
     issues = check_graph(
         _STARTER_DRAFT_GRAPHS[AppMode.ADVANCED_CHAT],
         mode=AppMode.ADVANCED_CHAT,
-        resources=credential_check("ws-1", {}, cast(Session, Mock())),
+        resources=credential_check("ws-1", {}, sqlite_session),
     )
 
     assert [(i.code, i.node_id, i.message) for i in issues] == [

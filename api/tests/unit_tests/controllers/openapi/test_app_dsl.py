@@ -1,14 +1,14 @@
 from collections.abc import Callable, Mapping
-from contextlib import nullcontext
-from types import SimpleNamespace
 from typing import Protocol, cast
-from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 import yaml
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
+from constants.oauth_bearer import TokenType
 from controllers.common.errors import ForbiddenError
 from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
@@ -25,16 +25,18 @@ from controllers.openapi._models import (
 from controllers.openapi.app_dsl import AppDslCheckApi, AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import Subject
+from controllers.openapi.auth.subjects import AccountSubject
+from libs.oauth_bearer import AuthContext
 from machinery.context import RequestContext
 from models.model import App, AppMode
-from services.app.console_service import ConsoleAppNotFoundError
+from models.workflow import Workflow, WorkflowType
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportStatus
 from services.errors.app import DraftChangedError, IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
-from services.workflow import dsl_import, graph_check
+from services.workflow import graph_check
 from services.workflow.graph_check import IssueCode, IssueSeverity
+from services.workflow.graph_diff import draft_token
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 
@@ -130,35 +132,64 @@ def test_import_hints_a_confirm_only_while_pending(
     assert (code, response.hints) == (status, hints)
 
 
-def test_export_reads_draft_hash_before_building_dsl(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+class _DraftReader:
+    """The one `WorkflowService` read the export handler makes, recording when it happens."""
+
+    def __init__(self, draft: Workflow | None, call_order: list[str]) -> None:
+        self._draft = draft
+        self._call_order = call_order
+
+    def get_draft_workflow(self, **_kwargs: object) -> Workflow | None:
+        self._call_order.append("draft_hash")
+        return self._draft
+
+
+def _export_context(session: Session) -> Context:
+    auth = AuthContext(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        subject_email="caller@example.com",
+        subject_issuer="dify:account",
+        account_id=uuid4(),
+        client_id="difyctl",
+        token_id=uuid4(),
+        expires_at=None,
+    )
+    ctx = Context(AccountSubject(auth), session, {"app_id": "app-1"})
+    ctx._app = App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    return ctx
+
+
+def test_export_reads_draft_hash_before_building_dsl(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     """The hash must describe the draft as of before the export, not after: an edit that
     commits in between would otherwise make a later import silently overwrite it."""
     call_order: list[str] = []
+    draft = Workflow(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph='{"nodes": [], "edges": []}',
+        features="{}",
+        created_by="account-1",
+    )
 
     def fake_export_dsl(**_kwargs: object) -> str:
         call_order.append("export")
         return "app: {}"
 
-    def fake_get_draft_workflow(**_kwargs: object) -> SimpleNamespace:
-        call_order.append("draft_hash")
-        return SimpleNamespace(token="hash-before-edit")
-
-    service = Mock()
-    service.get_draft_workflow.side_effect = fake_get_draft_workflow
-
     monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
-    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: service)
-    monkeypatch.setattr(app_dsl, "draft_token", lambda draft: draft.token)
-
-    ctx = Context(cast(Subject, SimpleNamespace()), Mock(), {"app_id": "app-1"})
-    ctx._app = App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: _DraftReader(draft, call_order))
 
     api = AppDslExportApi()
     with app.test_request_context("/openapi/v1/apps/app-1/dsl"):
-        response, status = cast(_ExportView, api.get).__handler__(api, ctx, "app-1", query=AppDslExportQuery())
+        response, status = cast(_ExportView, api.get).__handler__(
+            api, _export_context(sqlite_session), "app-1", query=AppDslExportQuery()
+        )
 
     assert call_order == ["draft_hash", "export"]
-    assert response.draft_hash == "hash-before-edit"
+    assert response.draft_hash == draft_token(draft)
     assert status == 200
 
 
@@ -178,17 +209,34 @@ def _dsl(mode: str, *nodes: Mapping[str, object]) -> str:
     )
 
 
+class _CredentialValidator:
+    """The one `WorkflowService` call the check makes, refusing with `problem` when set."""
+
+    def __init__(self, problem: str | None) -> None:
+        self._problem = problem
+
+    def validate_node_credentials(self, *_args: object, **_kwargs: object) -> None:
+        if self._problem:
+            raise ValueError(self._problem)
+
+
+def _recorded_import(
+    monkeypatch: pytest.MonkeyPatch, services: ControllerTestServices, result: Import | None = None
+) -> list[DraftGuardedImportParams]:
+    calls: list[DraftGuardedImportParams] = []
+
+    def import_app(_context: RequestContext, params: DraftGuardedImportParams) -> Import | None:
+        calls.append(params)
+        return result
+
+    monkeypatch.setattr(services.apps.imports, "import_app", import_app)
+    return calls
+
+
 @pytest.fixture
 def credentials(monkeypatch: pytest.MonkeyPatch) -> Callable[[str | None], None]:
-    monkeypatch.setattr(dsl_import, "session_factory", SimpleNamespace(create_session=nullcontext))
-
     def set_problem(problem: str | None) -> None:
-        def validate_node_credentials(*_args: object, **_kwargs: object) -> None:
-            if problem:
-                raise ValueError(problem)
-
-        service = SimpleNamespace(validate_node_credentials=validate_node_credentials)
-        monkeypatch.setattr(graph_check, "WorkflowService", lambda: service)
+        monkeypatch.setattr(graph_check, "WorkflowService", lambda: _CredentialValidator(problem))
 
     set_problem(None)
     return set_problem
@@ -205,8 +253,7 @@ def _check(app: Flask, body: DslCheckPayload) -> DslCheckResponse:
 def test_import_refuses_a_graph_with_errors_and_hints_the_check(
     app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import_app = Mock()
-    monkeypatch.setattr(app_query_services.apps.imports, "import_app", import_app)
+    import_calls = _recorded_import(monkeypatch, app_query_services)
 
     api = AppDslImportApi()
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
@@ -218,7 +265,7 @@ def test_import_refuses_a_graph_with_errors_and_hints_the_check(
                 body=AppDslImportPayload(mode="yaml-content", yaml_content=_dsl("workflow", _START, _ANSWER)),
             )
 
-    import_app.assert_not_called()
+    assert import_calls == []
     assert [(d.type, d.loc) for d in exc_info.value.details or []] == [
         (IssueCode.MODE_INCOMPATIBLE, ["nodes", "a", "data", "type"])
     ]
@@ -264,8 +311,18 @@ def test_check_reports_credential_problems_as_warnings(app: Flask, credentials: 
 
 
 @pytest.mark.usefixtures("credentials")
-def test_check_uses_the_overwritten_apps_mode(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dsl_import, "require_console_app", lambda *_args: SimpleNamespace(mode=AppMode.ADVANCED_CHAT))
+def test_check_uses_the_overwritten_apps_mode(app: Flask, sqlite_session: Session) -> None:
+    sqlite_session.add(
+        App(
+            id="app-1",
+            tenant_id="workspace-1",
+            name="a",
+            mode=AppMode.ADVANCED_CHAT,
+            enable_site=True,
+            enable_api=True,
+        )
+    )
+    sqlite_session.commit()
 
     response = _check(app, DslCheckPayload(yaml_content=_dsl("workflow", _START, _END), app_id="app-1"))
 
@@ -274,11 +331,11 @@ def test_check_uses_the_overwritten_apps_mode(app: Flask, monkeypatch: pytest.Mo
 
 
 @pytest.mark.usefixtures("credentials")
-def test_check_answers_404_for_an_app_outside_the_workspace(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    def missing(*_args: object) -> None:
-        raise ConsoleAppNotFoundError("App not found")
-
-    monkeypatch.setattr(dsl_import, "require_console_app", missing)
+def test_check_answers_404_for_an_app_outside_the_workspace(app: Flask, sqlite_session: Session) -> None:
+    sqlite_session.add(
+        App(id="app-1", tenant_id="workspace-2", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    )
+    sqlite_session.commit()
 
     with pytest.raises(NotFound):
         _check(app, DslCheckPayload(yaml_content=_dsl("workflow", _START), app_id="app-1"))
@@ -302,6 +359,7 @@ def test_check_refuses_dsls_it_cannot_read(app: Flask, yaml_content: str) -> Non
 def test_export_answers_a_missing_workflow_with_the_openapi_error(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     workflow_id: str | None,
     raised: Exception,
     expected: type[OpenApiError],
@@ -310,10 +368,8 @@ def test_export_answers_a_missing_workflow_with_the_openapi_error(
         raise raised
 
     monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
-    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: Mock(get_draft_workflow=Mock(return_value=None)))
-
-    ctx = Context(cast(Subject, SimpleNamespace()), Mock(), {"app_id": "app-1"})
-    ctx._app = App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: _DraftReader(None, []))
+    ctx = _export_context(sqlite_session)
 
     api = AppDslExportApi()
     with app.test_request_context("/openapi/v1/apps/app-1/dsl"), pytest.raises(expected):
@@ -324,8 +380,8 @@ def test_import_hands_the_draft_hash_to_the_save(
     app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(app_dsl, "prepare_import", lambda *_args, **_kwargs: "prepared yaml")
-    import_app = Mock(return_value=Import(id="import-1", status=ImportStatus.COMPLETED, app_id="app-1"))
-    monkeypatch.setattr(app_query_services.apps.imports, "import_app", import_app)
+    completed = Import(id="import-1", status=ImportStatus.COMPLETED, app_id="app-1")
+    import_calls = _recorded_import(monkeypatch, app_query_services, completed)
 
     api = AppDslImportApi()
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
@@ -336,8 +392,7 @@ def test_import_hands_the_draft_hash_to_the_save(
             body=AppDslImportPayload(mode="yaml-content", yaml_content="x", app_id="app-1", draft_hash="exported"),
         )
 
-    params = import_app.call_args.args[1]
-    assert isinstance(params, DraftGuardedImportParams)
+    [params] = import_calls
     assert (params.draft_hash, params.yaml_content, params.app_id) == ("exported", "prepared yaml", "app-1")
 
 
@@ -405,8 +460,7 @@ def test_check_reports_malformed_graphs_as_issues(app: Flask, graph: object) -> 
 def test_import_refuses_malformed_graphs(
     app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch, graph: object
 ) -> None:
-    import_app = Mock()
-    monkeypatch.setattr(app_query_services.apps.imports, "import_app", import_app)
+    import_calls = _recorded_import(monkeypatch, app_query_services)
 
     api = AppDslImportApi()
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
@@ -418,7 +472,7 @@ def test_import_refuses_malformed_graphs(
                 body=AppDslImportPayload(mode="yaml-content", yaml_content=_raw_dsl(graph)),
             )
 
-    import_app.assert_not_called()
+    assert import_calls == []
     assert {d.type for d in exc_info.value.details or []} == {IssueCode.GRAPH_INVALID}
 
 

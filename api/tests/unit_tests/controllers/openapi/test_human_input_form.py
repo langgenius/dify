@@ -78,16 +78,17 @@ def _mock_service(monkeypatch: pytest.MonkeyPatch, form) -> Mock:
 
 def _make_form(
     app_id: str = "app-1",
-    recipient_type=RecipientType.STANDALONE_WEB_APP,
+    recipient_type: RecipientType = RecipientType.STANDALONE_WEB_APP,
     workflow_run_id: str | None = None,
 ) -> SimpleNamespace:
-    return SimpleNamespace(
+    form = SimpleNamespace(
         app_id=app_id,
         tenant_id="tenant-1",
         recipient_type=recipient_type,
-        workflow_run_id=workflow_run_id,
         expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
     )
+    form.workflow_run_id = workflow_run_id
+    return form
 
 
 def _make_account(account_id: str = "acct-1") -> Account:

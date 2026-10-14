@@ -1,12 +1,13 @@
+import uuid
 from collections.abc import Callable
-from types import SimpleNamespace
 from typing import Protocol, cast
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
+from constants.oauth_bearer import TokenType
 from controllers.openapi import model_providers
 from controllers.openapi._models import (
     CredentialWriteResponse,
@@ -17,6 +18,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.model_providers import (
     ModelCredentialsApi,
     ModelProviderApi,
@@ -25,6 +27,8 @@ from controllers.openapi.model_providers import (
     model_rows,
 )
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
+from core.entities.provider_entities import CredentialConfiguration, CustomModelConfiguration
+from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -33,6 +37,7 @@ from graphon.model_runtime.entities.provider_entities import (
     FormType,
     ProviderCredentialSchema,
 )
+from libs.oauth_bearer import AuthContext
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -41,6 +46,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.model_provider.service import ModelProviderService
+from tests.unit_tests.model_factories import make_account, make_tenant
 
 
 def _model(
@@ -120,16 +126,53 @@ def test_matches_ignores_case_and_none() -> None:
     assert not matches("slack", "github", None)
 
 
+def _provider_response(
+    provider: str,
+    configuration: CustomConfigurationResponse,
+    schema: ProviderCredentialSchema | None = None,
+) -> ProviderResponse:
+    return ProviderResponse(
+        tenant_id="ws",
+        provider=provider,
+        label=I18nObject(en_US=provider),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        provider_credential_schema=schema,
+        preferred_provider_type=ProviderType.CUSTOM,
+        custom_configuration=configuration,
+        system_configuration=SystemConfigurationResponse(enabled=False),
+    )
+
+
+def _context(session: Session) -> Context:
+    subject = AccountSubject(
+        AuthContext(
+            subject_email="caller@example.com",
+            subject_issuer="dify:account",
+            account_id=uuid.uuid4(),
+            client_id="difyctl",
+            token_id=uuid.uuid4(),
+            token_type=TokenType.OAUTH_ACCOUNT,
+            expires_at=None,
+        )
+    )
+    ctx = Context(subject, session, {"workspace_id": "ws"})
+    ctx._workspace = make_tenant(tenant_id="ws")
+    ctx._caller = make_account(interface_language="en-US")
+    return ctx
+
+
 def test_inactive_credential_hints_replace_active() -> None:
-    configuration = SimpleNamespace(
+    configuration = CustomConfigurationResponse(
+        status=CustomConfigurationStatus.ACTIVE,
         current_credential_id="active-id",
         available_credentials=[
-            SimpleNamespace(credential_id="active-id", credential_name="main"),
-            SimpleNamespace(credential_id="new-id", credential_name="spare"),
+            CredentialConfiguration(credential_id="active-id", credential_name="main"),
+            CredentialConfiguration(credential_id="new-id", credential_name="spare"),
         ],
     )
-    provider = SimpleNamespace(provider="langgenius/openai/openai", custom_configuration=configuration)
-    response = _provider_write_response("ws", cast(ProviderResponse, provider), "new-id")
+    provider = _provider_response("langgenius/openai/openai", configuration)
+    response = _provider_write_response("ws", provider, "new-id")
     [hint] = response.hints
     assert not response.active
     assert hint.op == "set.model_provider.credential"
@@ -140,19 +183,22 @@ class _CreateView(Protocol):
     __handler__: Callable[..., tuple[CredentialWriteResponse, int]]
 
 
-def _model_provider(*custom_models: SimpleNamespace) -> ProviderResponse:
-    configuration = SimpleNamespace(custom_models=list(custom_models))
-    return cast(ProviderResponse, SimpleNamespace(provider=_OLLAMA, custom_configuration=configuration))
+def _model_provider(*custom_models: CustomModelConfiguration) -> ProviderResponse:
+    configuration = CustomConfigurationResponse(
+        status=CustomConfigurationStatus.ACTIVE, custom_models=list(custom_models)
+    )
+    return _provider_response(_OLLAMA, configuration)
 
 
-def _custom(current: str | None) -> SimpleNamespace:
-    return SimpleNamespace(
+def _custom(current: str | None) -> CustomModelConfiguration:
+    return CustomModelConfiguration(
         model="llama3",
         model_type=ModelType.LLM,
+        credentials=None,
         current_credential_id=current,
         available_model_credentials=[
-            SimpleNamespace(credential_id="new-id", credential_name="spare"),
-            SimpleNamespace(credential_id="other-id", credential_name="main"),
+            CredentialConfiguration(credential_id="new-id", credential_name="spare"),
+            CredentialConfiguration(credential_id="other-id", credential_name="main"),
         ],
     )
 
@@ -182,21 +228,37 @@ def test_nothing_active_reads_back_inactive_without_a_hint(provider: ProviderRes
     assert (response.active, response.hints) == (False, [])
 
 
-def test_creating_a_model_credential_never_switches_the_active_one(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service = Mock(spec=ModelProviderService)
-    service.create_model_credential.return_value = "new-id"
-    monkeypatch.setattr(model_providers, "ModelProviderService", Mock(return_value=service))
+def test_creating_a_model_credential_never_switches_the_active_one(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    writes: list[str] = []
+
+    def create_model_credential(_self: ModelProviderService, **_kwargs: object) -> str:
+        writes.append("create_model_credential")
+        return "new-id"
+
+    def recorded(name: str) -> Callable[..., None]:
+        return lambda *_args, **_kwargs: writes.append(name)
+
+    monkeypatch.setattr(ModelProviderService, "create_model_credential", create_model_credential)
+    for switch in (
+        "switch_active_custom_model_credential",
+        "switch_active_provider_credential",
+        "add_model_credential_to_model_list",
+    ):
+        monkeypatch.setattr(ModelProviderService, switch, recorded(switch))
     monkeypatch.setattr(model_providers, "_provider", lambda *_args: _model_provider(_custom("other-id")))
     body = ModelCredentialCreatePayload(model="llama3", model_type=ModelType.LLM, credentials={"base_url": "x"})
-    ctx = cast(Context, SimpleNamespace(workspace=SimpleNamespace(id="ws")))
 
     api = ModelCredentialsApi()
     with app.test_request_context("/openapi/v1/workspaces/ws/model-providers/x/models/credentials", method="POST"):
-        response, status = cast(_CreateView, api.post).__handler__(api, ctx, "ws", _OLLAMA, body=body)
+        response, status = cast(_CreateView, api.post).__handler__(
+            api, _context(sqlite_session), "ws", _OLLAMA, body=body
+        )
 
     assert status == 201
     assert not response.active
-    assert [call[0] for call in service.method_calls] == ["create_model_credential"]
+    assert writes == ["create_model_credential"]
 
 
 class _DescribeView(Protocol):
@@ -204,21 +266,12 @@ class _DescribeView(Protocol):
 
 
 def _describable_provider(status: CustomConfigurationStatus) -> ProviderResponse:
-    return ProviderResponse(
-        tenant_id="ws",
-        provider=_OPENAI,
-        label=I18nObject(en_US="OpenAI"),
-        supported_model_types=[ModelType.LLM],
-        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
-        provider_credential_schema=ProviderCredentialSchema(
-            credential_form_schemas=[
-                CredentialFormSchema(variable="api_key", label=I18nObject(en_US="API Key"), type=FormType.SECRET_INPUT)
-            ]
-        ),
-        preferred_provider_type=ProviderType.CUSTOM,
-        custom_configuration=CustomConfigurationResponse(status=status),
-        system_configuration=SystemConfigurationResponse(enabled=False),
+    schema = ProviderCredentialSchema(
+        credential_form_schemas=[
+            CredentialFormSchema(variable="api_key", label=I18nObject(en_US="API Key"), type=FormType.SECRET_INPUT)
+        ]
     )
+    return _provider_response(_OPENAI, CustomConfigurationResponse(status=status), schema)
 
 
 _OPENAI = "langgenius/openai/openai"
@@ -229,7 +282,11 @@ _ASK_SUMMARY = "Ask the user for these values, then save them"
     ("status", "visible", "asks"),
     [
         (CustomConfigurationStatus.ACTIVE, [], False),
-        (CustomConfigurationStatus.ACTIVE, [SimpleNamespace(credential_id="c1", credential_name="main")], False),
+        (
+            CustomConfigurationStatus.ACTIVE,
+            [CredentialConfiguration(credential_id="c1", credential_name="main")],
+            False,
+        ),
         (CustomConfigurationStatus.NO_CONFIGURE, [], True),
     ],
     ids=["active-via-a-credential-the-caller-cannot-see", "active-and-visible", "not-configured"],
@@ -237,23 +294,19 @@ _ASK_SUMMARY = "Ask the user for these values, then save them"
 def test_describe_asks_for_credentials_only_while_the_provider_is_not_configured(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
     status: CustomConfigurationStatus,
-    visible: list[SimpleNamespace],
+    visible: list[CredentialConfiguration],
     asks: bool,
 ) -> None:
-    service = Mock(spec=ModelProviderService)
-    service.get_provider_available_credentials.return_value = visible
-    monkeypatch.setattr(model_providers, "ModelProviderService", Mock(return_value=service))
+    monkeypatch.setattr(ModelProviderService, "get_provider_available_credentials", lambda *_args, **_kwargs: visible)
     monkeypatch.setattr(model_providers, "_provider", lambda *_args: _describable_provider(status))
-    monkeypatch.setattr(model_providers, "application_services", lambda: SimpleNamespace(credential_queries=None))
-    ctx = cast(
-        Context,
-        SimpleNamespace(workspace=SimpleNamespace(id="ws"), account=SimpleNamespace(interface_language="en-US")),
-    )
+    monkeypatch.setattr(model_providers, "application_services", lambda: account_application_services)
 
     api = ModelProviderApi()
     with app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}"):
-        response = cast(_DescribeView, api.get).__handler__(api, ctx, "ws", _OPENAI)
+        response = cast(_DescribeView, api.get).__handler__(api, _context(sqlite_session), "ws", _OPENAI)
 
     assert (_ASK_SUMMARY in [hint.summary for hint in response.hints]) is asks
     assert response.configured is (status == CustomConfigurationStatus.ACTIVE)
