@@ -2,6 +2,7 @@ import io
 import types
 from collections.abc import Callable
 from inspect import unwrap
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +10,7 @@ from flask import Flask
 from pydantic import ValidationError
 
 import controllers.files.plugin_file_upload as module
+from controllers.common.schema import JsonResponseWithStatus
 from controllers.files import bp as files_blueprint
 from core.workflow.file_reference import build_file_reference
 from enums import DeploymentEdition
@@ -68,6 +70,11 @@ def _valid_args() -> dict[str, object]:
     }
 
 
+def _post_upload() -> JsonResponseWithStatus:
+    api = module.PluginUploadFileApi()
+    return unwrap(cast(Callable[..., object], api.post))(api)
+
+
 @pytest.fixture
 def files_app(config_overrides: Callable[..., None]) -> Flask:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -96,7 +103,7 @@ class TestPluginUploadFileApi:
         service = application_services.return_value.plugin_file_uploads
         service.upload.return_value = _result()
 
-        response, status = unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+        response, status = _post_upload()
 
         assert status == 201
         assert response == {
@@ -134,7 +141,7 @@ class TestPluginUploadFileApi:
         monkeypatch.setattr(module, "request", _fake_request(_valid_args()))
 
         with pytest.raises(module.NoFileUploadedError):
-            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+            _post_upload()
 
     @pytest.mark.parametrize(
         ("file", "expected_error"),
@@ -152,7 +159,7 @@ class TestPluginUploadFileApi:
         monkeypatch.setattr(module, "request", _fake_request(_valid_args(), file=file))
 
         with pytest.raises(expected_error):
-            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+            _post_upload()
 
     @patch.object(module, "application_services")
     def test_access_denied_is_reported_without_leaking_identity_details(
@@ -164,7 +171,7 @@ class TestPluginUploadFileApi:
         application_services.return_value.plugin_file_uploads.upload.side_effect = PluginFileUploadAccessDeniedError()
 
         with pytest.raises(module.InvalidPluginFileUploadError) as error_info:
-            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+            _post_upload()
 
         assert error_info.value.code == 403
         assert error_info.value.error_code == "invalid_plugin_file_upload"
@@ -181,7 +188,7 @@ class TestPluginUploadFileApi:
         )
 
         with pytest.raises(module.FileTooLargeError) as error_info:
-            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+            _post_upload()
 
         assert error_info.value.code == 413
         assert error_info.value.__cause__ is not None
@@ -196,7 +203,7 @@ class TestPluginUploadFileApi:
         application_services.return_value.plugin_file_uploads.upload.side_effect = ServiceUnsupportedFileTypeError()
 
         with pytest.raises(module.UnsupportedFileTypeError) as error_info:
-            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+            _post_upload()
 
         assert error_info.value.code == 415
         assert error_info.value.__cause__ is not None
@@ -212,7 +219,7 @@ class TestPluginUploadFileApi:
         application_services.return_value.plugin_file_uploads.upload.side_effect = storage_error
 
         with pytest.raises(OSError) as error_info:
-            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+            _post_upload()
 
         assert error_info.value is storage_error
 
