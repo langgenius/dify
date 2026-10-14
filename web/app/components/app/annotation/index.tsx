@@ -125,14 +125,12 @@ const Annotation: FC<Props> = (props) => {
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appDetail.id, payload)
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appDetail.id, id)
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -140,7 +138,6 @@ const Annotation: FC<Props> = (props) => {
   const handleBatchDelete = async () => {
     try {
       await delAnnotations(appDetail.id, selectedIds)
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
@@ -158,7 +155,6 @@ const Annotation: FC<Props> = (props) => {
   const handleSave = async (question: string, answer: string) => {
     if (!currItem) return
     await editAnnotation(appDetail.id, currItem.id, { question, answer })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }

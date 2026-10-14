@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem } from '../type'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
 import {
@@ -241,7 +242,8 @@ describe('Annotation', () => {
     )
   })
 
-  it('should handle annotation creation and refresh list data', async () => {
+  it('should create annotations and refresh the list without a success toast', async () => {
+    const user = userEvent.setup()
     const annotation = createAnnotation()
     fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
     addAnnotationMock.mockResolvedValue(undefined)
@@ -249,21 +251,16 @@ describe('Annotation', () => {
     renderComponent()
 
     await screen.findByTestId('list')
-    fireEvent.click(screen.getByTestId('trigger-add'))
+    await user.click(screen.getByRole('button', { name: 'add' }))
 
     await waitFor(() => {
       expect(addAnnotationMock).toHaveBeenCalledWith(appDetail.id, {
         question: 'new question',
         answer: 'new answer',
       })
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'common.api.actionSuccess',
-          type: 'success',
-        }),
-      )
+      expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
     })
-    expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
+    expect(mockNotify).not.toHaveBeenCalled()
   })
 
   it('should refetch the list after a row is removed', async () => {
@@ -280,7 +277,8 @@ describe('Annotation', () => {
     })
   })
 
-  it('should support viewing items and running batch deletion success flow', async () => {
+  it('should refresh after batch and individual deletion without success toasts', async () => {
+    const user = userEvent.setup()
     const annotation = createAnnotation()
     fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
     delAnnotationsMock.mockResolvedValue(undefined)
@@ -301,23 +299,20 @@ describe('Annotation', () => {
     })
     await waitFor(() => {
       expect(delAnnotationsMock).toHaveBeenCalledWith(appDetail.id, [annotation.id])
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'success',
-        }),
-      )
       expect(latestListProps.selectedIds).toEqual([])
+      expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
     })
+    expect(mockNotify).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByTestId('list-view'))
+    await user.click(screen.getByRole('button', { name: 'view' }))
     expect(screen.getByTestId('view-modal')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('view-modal-remove'))
-    })
+    await user.click(screen.getByTestId('view-modal-remove'))
     await waitFor(() => {
       expect(delAnnotationMock).toHaveBeenCalledWith(appDetail.id, annotation.id)
+      expect(fetchAnnotationListMock).toHaveBeenCalledTimes(3)
     })
+    expect(mockNotify).not.toHaveBeenCalled()
   })
 
   it('should show an error notification when batch deletion fails', async () => {
@@ -450,30 +445,35 @@ describe('Annotation', () => {
     })
   })
 
-  it('should refresh the list from the header shortcut and allow saving or closing the view modal', async () => {
+  it('should refresh after editing without a success toast and support closing or reloading', async () => {
+    const user = userEvent.setup()
     const annotation = createAnnotation()
     fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
 
     renderComponent()
 
     await screen.findByTestId('list')
-    fireEvent.click(screen.getByTestId('list-view'))
+    await user.click(screen.getByRole('button', { name: 'view' }))
 
-    fireEvent.click(screen.getByTestId('view-modal-save'))
+    await user.click(screen.getByRole('button', { name: 'save' }))
 
     await waitFor(() => {
       expect(editAnnotationMock).toHaveBeenCalledWith(appDetail.id, annotation.id, {
         question: 'Edited question',
         answer: 'Edited answer',
       })
+      expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
     })
+    expect(mockNotify).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByTestId('view-modal-close'))
+    await user.click(screen.getByRole('button', { name: 'close' }))
     expect(screen.queryByTestId('view-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('trigger-added'))
+    await user.click(screen.getByRole('button', { name: 'added' }))
 
-    expect(fetchAnnotationListMock).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(fetchAnnotationListMock).toHaveBeenCalledTimes(3)
+    })
   })
 
   it('should clear selections on cancel and hide the config modal when requested', async () => {
