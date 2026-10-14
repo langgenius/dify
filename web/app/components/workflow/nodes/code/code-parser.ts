@@ -6,15 +6,19 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
   if (language === CodeLanguage.json) return []
 
   const patterns: Record<Exclude<CodeLanguage, typeof CodeLanguage.json>, RegExp> = {
-    [CodeLanguage.python3]: /def\s+main\s*\((.*?)\)/,
-    [CodeLanguage.javascript]: /function\s+main\s*\((.*?)\)/,
+    [CodeLanguage.python3]: /def\s+main\s*\(([\s\S]*?)\)/,
+    [CodeLanguage.javascript]: /function\s+main\s*\(([\s\S]*?)\)/,
   }
   const match = patterns[language].exec(code)
   const params: string[] = []
 
   if (match?.[1]) {
+    // The JavaScript `main` is invoked as `main(inputs_obj)`, so its parameters are
+    // usually written as a single destructuring pattern: `function main({ arg1, arg2 })`.
+    const rawParams = match[1].trim().replace(/^\{([\s\S]*)\}$/, '$1')
+
     params.push(
-      ...match[1]
+      ...rawParams
         .split(',')
         .map((p) => p.trim())
         .filter(Boolean)

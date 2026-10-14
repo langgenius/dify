@@ -13,6 +13,11 @@ const SAMPLE_CODES = {
       return {"output": result}`,
     withDefaults: `def main(param1: str = "default", param2: int = 0):
       return {"data": param1}`,
+    multiLineParams: `def main(
+      param1: str,
+      param2: int,
+    ) -> dict:
+      return {"result": param1}`,
   },
   javascript: {
     noParams: 'function main() {',
@@ -26,6 +31,15 @@ const SAMPLE_CODES = {
       return { output: process(param1, param2) }
     }`,
     withSpaces: 'function main(  param1  ,   param2  ) {',
+    destructuredParams: `function main({ param1, param2 }) {
+      return { result: param1 }
+    }`,
+    multiLineParams: `function main(
+      param1,
+      param2,
+    ) {
+      return { result: param1 }
+    }`,
   },
 }
 
@@ -56,6 +70,14 @@ describe('extractFunctionParams', () => {
 
     it('handles default values', () => {
       const result = extractFunctionParams(SAMPLE_CODES.python3.withDefaults, CodeLanguage.python3)
+      expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('handles a multi-line parameter list', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.python3.multiLineParams,
+        CodeLanguage.python3,
+      )
       expect(result).toEqual(['param1', 'param2'])
     })
   })
@@ -97,6 +119,22 @@ describe('extractFunctionParams', () => {
     it('handles whitespace', () => {
       const result = extractFunctionParams(
         SAMPLE_CODES.javascript.withSpaces,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('handles destructured parameters', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.destructuredParams,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('handles a multi-line parameter list', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.multiLineParams,
         CodeLanguage.javascript,
       )
       expect(result).toEqual(['param1', 'param2'])
