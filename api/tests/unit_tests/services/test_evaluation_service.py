@@ -26,7 +26,7 @@ from core.evaluation.entities.judgment_entity import JudgmentCondition, Judgment
 from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from libs.datetime_utils import naive_utc_now
-from models.account import Tenant
+from models.account import Account, Tenant
 from models.agent import Agent
 from models.evaluation import (
     EvaluationConfiguration,
@@ -1953,3 +1953,39 @@ def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
         )
 
     generator.generate.assert_not_called()
+
+
+def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    thread_session = MagicMock(spec=Session)
+    dataset = SimpleNamespace(provider="vendor")
+    account = MagicMock(spec=Account)
+    account.id = "account-1"
+    thread_session.scalar.side_effect = [dataset, object()]
+    thread_session.get.return_value = account
+
+    session_context = MagicMock()
+    session_context.__enter__.return_value = thread_session
+    session_context.__exit__.return_value = None
+    monkeypatch.setattr(
+        "services.evaluation_service.session_factory.create_session",
+        MagicMock(return_value=session_context),
+    )
+    retrieve = MagicMock(return_value={"records": [{"segment": {"content": "matched content"}, "score": 0.9}]})
+    monkeypatch.setattr("services.hit_testing_service.HitTestingService.retrieve", retrieve)
+
+    results, errors = EvaluationService.execute_retrieval_test_targets(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        account_id=account.id,
+        input_list=[EvaluationDatasetInput(index=1, inputs={"query": "hello"})],
+        max_workers=1,
+    )
+
+    assert errors == [None]
+    assert results[0] is not None
+    assert results[0].outputs == {"result": [{"content": "matched content", "score": 0.9}]}
+    account.set_tenant_id_with_session.assert_called_once_with("tenant-1", session=thread_session)
+    assert retrieve.call_args.kwargs["session"] is thread_session
+    assert retrieve.call_args.kwargs["account"] is account

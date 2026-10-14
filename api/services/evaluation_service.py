@@ -2934,7 +2934,7 @@ class EvaluationService:
                     )
                     if membership is None:
                         raise ValueError(f"Account {account_id} is not a member of tenant {tenant_id}")
-                    account.set_tenant_id(tenant_id)
+                    account.set_tenant_id_with_session(tenant_id, session=thread_session)
 
                     query = str(item.inputs.get("query", ""))
                     response = HitTestingService.retrieve(
