@@ -2,7 +2,7 @@
 Tool catalogue for the workflow generator.
 
 Returns a compact, LLM-readable inventory of the tools currently installed for
-a tenant (both hardcoded built-in providers and plugin providers). The planner
+a tenant (hardcoded built-in, plugin and native API providers). The planner
 uses this to recommend ``tool`` nodes by exact ``provider/tool`` identifier;
 the builder consumes the same list so it can emit a syntactically correct
 ``tool`` node ``data`` block (provider_id, provider_type, tool_name,
@@ -33,6 +33,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from services.tools.api_tool_catalogue import list_api_tool_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,10 @@ class ToolCatalogueEntry(TypedDict):
     tool_name: str
     tool_label: str
     description: str  # one-line LLM-friendly description
-    needs_credentials: bool  # provider_controller.need_credentials — see ToolTransformService
+    # Builtin/plugin: provider_controller.need_credentials. API: conservative
+    # unknown-auth flag; authorization_metadata must take precedence.
+    needs_credentials: bool
+    authorization_metadata: NotRequired[str]
     # Provider declaration metadata, searched with a low weight so a tool whose
     # own label is generic ("Post") still matches its provider's capability.
     provider_label: NotRequired[str]
@@ -119,7 +123,9 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
     Failures inside a single provider (mis-declared tool, plugin runtime
     error) are logged and skipped — one bad provider must not break the
     whole generator. A failed plugin inventory fetch is logged and leaves the
-    hardcoded built-in tools in place. Returns the complete installed
+    hardcoded built-in tools in place. Native API public metadata is read
+    independently and never constructs credential-bearing controllers.
+    Returns the complete installed
     inventory; prompt-specific truncation belongs to ``format_tool_catalogue``.
     """
     entries: list[ToolCatalogueEntry] = []
@@ -190,6 +196,11 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
                 )
                 continue
 
+    try:
+        entries.extend(list_api_tool_metadata(tenant_id))
+    except Exception:
+        logger.exception("Workflow generator: failed to list public API tool metadata; keeping other tools")
+
     entries.sort(key=itemgetter("provider_name", "tool_name"))
     return entries
 
@@ -231,10 +242,13 @@ def format_tool_catalogue(entries: list[ToolCatalogueEntry], *, max_tools: int |
         # (for example ``langgenius/google/google``). Explicit JSON-quoted
         # fields remove the ambiguous "split on the last slash" guess while
         # retaining the readable provider/tool display id.
-        line += (
+        identity_fields = (
             f" [provider_id={json.dumps(e['provider_name'], ensure_ascii=False)}; "
-            f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}]"
+            f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}"
         )
+        if e["provider_type"] == "api":
+            identity_fields += '; provider_type="api"'
+        line += identity_fields + "]"
         if desc:
             line += f" — {desc}"
         lines.append(line)
