@@ -263,8 +263,6 @@ project-excludes = [
   "core/datasource/entities/test_datasource_entities.py",
   "core/datasource/online_document/test_online_document_plugin.py",
   "core/datasource/online_drive/test_online_drive_plugin.py",
-  "core/datasource/test_datasource_file_manager.py",
-  "core/datasource/test_datasource_manager.py",
   "core/datasource/test_notion_provider.py",
   "core/datasource/test_website_crawl.py",
   "core/entities/test_entities_mcp_provider.py",
