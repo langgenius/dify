@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from sqlalchemy import Engine, event, select
