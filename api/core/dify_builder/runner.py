@@ -25,7 +25,6 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from core.dify_builder import recovery
 from core.dify_builder.contract import (
     AgentMessageEventData,
     AssistantTurnItem,
@@ -48,6 +47,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.ports import DifyBuilderAgent, DifyPort, ReasoningStreamingAgent, Repository
 from core.dify_builder.state import PcState, is_terminal, is_waiting, is_working
+from services.dify_builder import recovery
 
 __all__ = ["Env", "Handler", "Runner", "StepResult"]
 
@@ -508,32 +508,14 @@ class Runner:
             self._commit(s, s.current_state, fc, [], settled=True)
             return s
         if action_kind in ("check_recovery", "recovery_continue", "recovery_restart"):
-            # A recovered or restarted step never reuses a reserved confirmed
-            # command; any later real call needs a new prepare + confirm.
-            fc.confirmed_consent_id = ""
-            fc.confirmed_command_id = ""
-            response_item = None
-            if turn.action is not None and turn.action.interaction_response is not None:
-                response_item = ConversationItem(
-                    seq=fc.next_seq,
-                    kind="interaction_response",
-                    payload=turn.action.interaction_response,
-                    at_version=s.version + 1,
-                )
-                fc.next_seq += 1
-            next_state, items = recovery.apply_recovery_action(self._env.dify, turn, s, fc)
-            if response_item is not None:
-                items.insert(0, response_item)
-            # check_recovery / recovery_continue stay at the current waiting
-            # state. Restart into EDIT still rests at its input gate; BUILD,
-            # FIX, and FIX_CHECKLIST restart into working entry states that the
-            # runner must drive, so those fall through with the recovery action
-            # consumed.
-            settled = is_waiting(next_state) or is_terminal(next_state)
+            next_state, items, followup = recovery.prepare_recovery_step(self._env.dify, turn, s, fc)
+            # Drive working entry states and any input-backed re-entry before
+            # settling at the next user gate.
+            settled = (is_waiting(next_state) or is_terminal(next_state)) and followup.action is None
             self._commit(s, next_state, fc, items, settled=settled)
             if settled:
                 return s
-            turn = Turn(actor=turn.actor)  # action consumed
+            turn = followup
             self._env.begin_operation(s)
             # fall through to the advance loop below
 
