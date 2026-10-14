@@ -59,12 +59,11 @@ class TestGetParametersFromFeatureDict:
             ),
         ],
     )
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
     def test_defaults_when_key_missing(
         self,
         feature_key: _DefaultedFeatureKey,
         expected_default: object,
-        mock_config: None,
-        mock_default_file_limits: int,
     ) -> None:
         # Arrange
         features = {}
@@ -79,7 +78,8 @@ class TestGetParametersFromFeatureDict:
         # Assert
         assert result[feature_key] == expected_default
 
-    def test_opening_statement_present(self, mock_config: None, mock_default_file_limits: int) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_opening_statement_present(self) -> None:
         # Arrange
         features = {"opening_statement": "Hello"}
 
@@ -92,7 +92,8 @@ class TestGetParametersFromFeatureDict:
         # Assert
         assert result["opening_statement"] == "Hello"
 
-    def test_opening_statement_missing_returns_none(self, mock_config: None, mock_default_file_limits: int) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_opening_statement_missing_returns_none(self) -> None:
         # Arrange
         features = {}
 
@@ -105,7 +106,8 @@ class TestGetParametersFromFeatureDict:
         # Assert
         assert result["opening_statement"] is None
 
-    def test_all_features_provided(self, mock_config: None, mock_default_file_limits: int) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_all_features_provided(self) -> None:
         # Arrange
         features = {
             "opening_statement": "Hi",
@@ -144,7 +146,8 @@ class TestGetParametersFromFeatureDict:
             assert result_dict[key] == features[key]
         assert result["user_input_form"] == user_input
 
-    def test_file_upload_default_structure(self, mock_config: None, mock_default_file_limits: int) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_file_upload_default_structure(self) -> None:
         # Arrange
         features = {}
 
@@ -162,7 +165,8 @@ class TestGetParametersFromFeatureDict:
         assert "remote_url" in file_upload["image"]["transfer_methods"]
         assert "local_file" in file_upload["image"]["transfer_methods"]
 
-    def test_system_parameters_from_config(self, mock_config: None, mock_default_file_limits: int) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_system_parameters_from_config(self) -> None:
         # Arrange
         features = {}
 
@@ -202,9 +206,8 @@ class TestGetParametersFromFeatureDict:
         "user_input_form",
         [None, "invalid", 123],
     )
-    def test_user_input_form_invalid_type(
-        self, mock_config: None, mock_default_file_limits: int, user_input_form: object
-    ) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_user_input_form_invalid_type(self, user_input_form: object) -> None:
         # Arrange
         features = {}
 
@@ -217,7 +220,8 @@ class TestGetParametersFromFeatureDict:
         # Assert
         assert result["user_input_form"] == user_input_form
 
-    def test_empty_user_input_form(self, mock_config: None, mock_default_file_limits: int) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_empty_user_input_form(self) -> None:
         features = {}
         user_input = []
 
@@ -228,7 +232,8 @@ class TestGetParametersFromFeatureDict:
 
         assert result["user_input_form"] == []
 
-    def test_feature_values_none(self, mock_config: None, mock_default_file_limits: int) -> None:
+    @pytest.mark.usefixtures("mock_config", "mock_default_file_limits")
+    def test_feature_values_none(self) -> None:
         features: dict[str, object] = {
             "suggested_questions": None,
             "speech_to_text": None,

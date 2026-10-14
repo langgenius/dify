@@ -67,7 +67,7 @@ def service_with_fake_configurations(monkeypatch: pytest.MonkeyPatch) -> ModelPr
     )
 
     class _FakeProviderManager:
-        def get_configurations(self, tenant_id: str) -> _FakeConfigurations:
+        def get_configurations(self, _tenant_id: str) -> _FakeConfigurations:
             return _FakeConfigurations(fake_provider_configuration)
 
     svc = ModelProviderService()
