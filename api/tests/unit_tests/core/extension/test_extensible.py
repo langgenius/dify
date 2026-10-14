@@ -254,12 +254,11 @@ class TestExtensible:
     @patch("core.extension.extensible.os.listdir")
     @patch("core.extension.extensible.os.path.isdir")
     @patch("core.extension.extensible.os.path.exists")
-    @patch("core.extension.extensible.Path.read_text")
+    @patch("core.extension.extensible.Path.read_text", new=MagicMock())
     @patch("core.extension.extensible.importlib.util.module_from_spec")
     def test_scan_extensions_builtin_without_position_file(
         self,
         mock_module_from_spec: MagicMock,
-        mock_read_text: MagicMock,
         mock_exists: MagicMock,
         mock_isdir: MagicMock,
         mock_listdir: MagicMock,
