@@ -526,7 +526,7 @@ type AppStarredListQueryOptions = {
 }
 
 const openAppTypeSelect = async (user = userEvent.setup()) => {
-  await user.click(screen.getByRole('button', { name: /^(Types|app\.types\.)/ }))
+  await user.click(screen.getByRole('combobox', { name: 'Types' }))
   return user
 }
 
@@ -869,7 +869,7 @@ describe('List', () => {
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.or'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(
@@ -911,7 +911,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
     })
 
     it('should not render first empty state from placeholder data during a filter transition', () => {
@@ -936,7 +936,7 @@ describe('List', () => {
         'aria-busy',
         'false',
       )
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
     })
@@ -1033,13 +1033,15 @@ describe('List', () => {
     it('should render selected category in the trigger', () => {
       renderList('?category=workflow')
 
-      expect(screen.getByRole('button', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toHaveTextContent(
+        'app.types.workflow',
+      )
     })
 
     it('should reject API modes that the Studio category control does not support', () => {
       renderList('?category=channel')
 
-      expect(screen.getByRole('button', { name: 'Types' })).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
       const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
       expect(options.input(1).query).not.toHaveProperty('mode')
     })
@@ -1049,7 +1051,7 @@ describe('List', () => {
       const { onUrlUpdate } = renderList()
       await openAppTypeSelect(user)
 
-      await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))
+      await user.click(await screen.findByRole('option', { name: 'app.types.workflow' }))
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe(
@@ -1062,10 +1064,15 @@ describe('List', () => {
       const { onUrlUpdate } = renderList('?category=workflow')
       await openAppTypeSelect(user)
 
-      await user.click(await screen.findByRole('menuitemradio', { name: 'All' }))
+      expect(await screen.findByRole('option', { name: 'app.types.workflow' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      await user.click(screen.getByRole('option', { name: 'All' }))
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('category')).toBe(false)
+      expect(screen.getByRole('combobox', { name: 'Types' })).toHaveTextContent('Types')
     })
   })
 
@@ -1237,7 +1244,7 @@ describe('List', () => {
         const user = userEvent.setup()
         const { onUrlUpdate, unmount } = renderList()
         await openAppTypeSelect(user)
-        await user.click(await screen.findByRole('menuitemradio', { name: text }))
+        await user.click(await screen.findByRole('option', { name: text }))
         await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
         expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe(mode)
         unmount()
