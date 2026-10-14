@@ -6,18 +6,18 @@ import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
-import {
-  FileTreeBadge,
-  FileTreeGuide,
-  FileTreeIcon,
-  FileTreeLabel,
-} from '@/app/components/base/file-tree'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import {
+  FileTreeBadge,
+  FileTreeGuide,
+  FileTreeIcon,
+  FileTreeLabel,
+} from '@/app/components/base/file-tree'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {

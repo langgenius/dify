@@ -1,7 +1,12 @@
 'use client'
 
-import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
+import type {
+  CollapsiblePanelProps,
+  CollapsibleProps,
+  CollapsibleTriggerProps,
+} from '@langgenius/dify-ui/collapsible'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { mergeProps } from '@langgenius/dify-ui/merge-props'
 import { useRender } from '@langgenius/dify-ui/use-render'
 import * as React from 'react'
@@ -19,7 +24,7 @@ function resolveClassName<State>(
 const FileTreeLevelContext = React.createContext(1)
 
 function useFileTreeLevel() {
-  return React.useContext(FileTreeLevelContext)
+  return React.use(FileTreeLevelContext)
 }
 
 function renderGuides(level: number) {
@@ -48,7 +53,7 @@ type FileTreeProps = useRender.ComponentProps<'section'>
 function FileTree({ render, className, children, ...props }: FileTreeProps) {
   const defaultProps: useRender.ElementProps<'section'> = {
     className: cn('flex min-w-0 flex-col gap-px p-1', className),
-    children: <FileTreeLevelContext.Provider value={1}>{children}</FileTreeLevelContext.Provider>,
+    children: <FileTreeLevelContext value={1}>{children}</FileTreeLevelContext>,
   }
 
   return useRender({
@@ -72,19 +77,19 @@ function FileTreeList({ render, className, ...props }: FileTreeListProps) {
   })
 }
 
-type FileTreeFolderProps = BaseCollapsible.Root.Props
+type FileTreeFolderProps = CollapsibleProps
 
 function FileTreeFolder({ render = <li />, className, ...props }: FileTreeFolderProps) {
   return (
-    <BaseCollapsible.Root
+    <Collapsible
       render={render}
-      className={(state) => cn('min-w-0', resolveClassName(className, state))}
+      className={(state) => cn('!block min-w-0', resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-type FileTreeFolderTriggerProps = BaseCollapsible.Trigger.Props & {
+type FileTreeFolderTriggerProps = CollapsibleTriggerProps & {
   level?: number
 }
 
@@ -99,18 +104,22 @@ function FileTreeFolderTrigger({
   const level = levelProp ?? contextLevel
 
   return (
-    <BaseCollapsible.Trigger
-      className={(state) => fileTreeRowClassName({ className: resolveClassName(className, state) })}
+    <CollapsibleTrigger
+      className={(state) =>
+        fileTreeRowClassName({
+          className: cn('focus-visible:!ring-0', resolveClassName(className, state)),
+        })
+      }
       disabled={disabled}
       {...props}
     >
       {renderGuides(level)}
       <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">{children}</div>
-    </BaseCollapsible.Trigger>
+    </CollapsibleTrigger>
   )
 }
 
-type FileTreeFolderPanelProps = BaseCollapsible.Panel.Props
+type FileTreeFolderPanelProps = CollapsiblePanelProps
 
 function FileTreeFolderPanel({
   render = <ul />,
@@ -121,15 +130,18 @@ function FileTreeFolderPanel({
   const level = useFileTreeLevel()
 
   return (
-    <BaseCollapsible.Panel
+    <CollapsiblePanel
       render={render}
       className={(state) =>
-        cn('m-0 flex min-w-0 list-none flex-col gap-px p-0', resolveClassName(className, state))
+        cn(
+          'm-0 flex !h-auto min-w-0 list-none flex-col gap-px !overflow-visible p-0 !transition-none',
+          resolveClassName(className, state),
+        )
       }
       {...props}
     >
-      <FileTreeLevelContext.Provider value={level + 1}>{children}</FileTreeLevelContext.Provider>
-    </BaseCollapsible.Panel>
+      <FileTreeLevelContext value={level + 1}>{children}</FileTreeLevelContext>
+    </CollapsiblePanel>
   )
 }
 

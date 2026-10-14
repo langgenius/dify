@@ -6,8 +6,8 @@ import type {
   AgentBuildDraftChangeSummary,
 } from './build-draft-changes-context'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FileTreeIcon } from '@/app/components/base/file-tree'
 import { useTranslation } from 'react-i18next'
+import { FileTreeIcon } from '@/app/components/base/file-tree'
 
 type AgentBuildDraftChangeSection = {
   key: string

@@ -1,7 +1,7 @@
 'use client'
 
-import type { FileTreeIconType } from '@/app/components/base/file-tree'
 import type { ReactNode } from 'react'
+import type { FileTreeIconType } from '@/app/components/base/file-tree'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { createContext, createElement, useContext, useMemo } from 'react'

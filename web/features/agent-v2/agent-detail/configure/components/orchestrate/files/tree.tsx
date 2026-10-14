@@ -3,6 +3,10 @@
 import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { ScrollArea, ScrollAreaContent, ScrollAreaViewport } from '@langgenius/dify-ui/scroll-area'
+import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   FileTree,
   FileTreeFile,
@@ -13,10 +17,6 @@ import {
   FileTreeLabel,
   FileTreeList,
 } from '@/app/components/base/file-tree'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { ScrollArea, ScrollAreaContent, ScrollAreaViewport } from '@langgenius/dify-ui/scroll-area'
-import { Fragment } from 'react'
-import { useTranslation } from 'react-i18next'
 
 type AgentFileTreeFolderOpenStrategy = (context: { file: AgentFileNode; depth: number }) => boolean
 

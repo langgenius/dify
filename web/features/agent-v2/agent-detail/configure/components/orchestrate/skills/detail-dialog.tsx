@@ -8,7 +8,6 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { FileTreeFile } from '@/app/components/base/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
@@ -19,6 +18,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { FileTreeFile } from '@/app/components/base/file-tree'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AgentFileTree } from '../files/tree'
 
