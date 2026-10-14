@@ -34,6 +34,7 @@ import {
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
   zProviderQuotaExceededError,
   zRateLimitError,
   zRecommendedAppNotFoundError,
@@ -910,7 +911,6 @@ export const get6 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -936,7 +936,6 @@ export const get7 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -962,7 +961,6 @@ export const delete_ = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -990,7 +988,6 @@ export const get8 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1014,7 +1011,6 @@ export const post9 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1042,7 +1038,6 @@ export const get9 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1070,7 +1065,6 @@ export const post10 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1096,7 +1090,6 @@ export const get10 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1117,7 +1110,6 @@ export const get11 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1143,7 +1135,6 @@ export const get12 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1169,7 +1160,6 @@ export const get13 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1201,7 +1191,6 @@ export const get14 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1227,7 +1216,6 @@ export const delete2 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -1256,7 +1244,6 @@ export const get15 = oc
   .errors({
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
@@ -2557,17 +2544,11 @@ export const get42 = oc
   .output(zGetAppsByAppIdTextToAudioVoicesResponse)
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
-    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_not_support_speech_to_text: {
-      status: 400,
-      data: zProviderNotSupportSpeechToTextError,
-    },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
   })
 
 export const voices = {
@@ -2593,17 +2574,14 @@ export const post34 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
-    audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_not_support_speech_to_text: {
+    provider_not_support_text_to_speech: {
       status: 400,
-      data: zProviderNotSupportSpeechToTextError,
+      data: zProviderNotSupportTextToSpeechError,
     },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
   })
 
 export const textToAudio = {

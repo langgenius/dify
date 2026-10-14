@@ -570,6 +570,11 @@ export type TextToSpeechPayload = {
   voice?: string | null
 }
 
+export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
+  code: 'provider_not_support_text_to_speech'
+  status: 400
+}
+
 export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AgentConfigSnapshotListResponse = {
@@ -3110,7 +3115,7 @@ export type GetAgentByAgentIdConfigFilesData = {
 }
 
 export type GetAgentByAgentIdConfigFilesErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3137,7 +3142,7 @@ export type PostAgentByAgentIdConfigFilesData = {
 }
 
 export type PostAgentByAgentIdConfigFilesErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3165,7 +3170,7 @@ export type DeleteAgentByAgentIdConfigFilesByNameData = {
 }
 
 export type DeleteAgentByAgentIdConfigFilesByNameErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3193,7 +3198,7 @@ export type GetAgentByAgentIdConfigFilesByNameDownloadData = {
 }
 
 export type GetAgentByAgentIdConfigFilesByNameDownloadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3221,7 +3226,7 @@ export type GetAgentByAgentIdConfigFilesByNamePreviewData = {
 }
 
 export type GetAgentByAgentIdConfigFilesByNamePreviewErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3248,7 +3253,7 @@ export type GetAgentByAgentIdConfigManifestData = {
 }
 
 export type GetAgentByAgentIdConfigManifestErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3275,7 +3280,7 @@ export type GetAgentByAgentIdConfigSkillsData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3304,7 +3309,7 @@ export type PostAgentByAgentIdConfigSkillsUploadData = {
 }
 
 export type PostAgentByAgentIdConfigSkillsUploadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3332,7 +3337,7 @@ export type DeleteAgentByAgentIdConfigSkillsByNameData = {
 }
 
 export type DeleteAgentByAgentIdConfigSkillsByNameErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3360,7 +3365,7 @@ export type GetAgentByAgentIdConfigSkillsByNameDownloadData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameDownloadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3385,7 +3390,7 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesContentData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesContentErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3416,7 +3421,7 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3445,7 +3450,7 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3473,7 +3478,7 @@ export type GetAgentByAgentIdConfigSkillsByNameInspectData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameInspectErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3916,15 +3921,12 @@ export type PostAgentByAgentIdTextToAudioErrors = {
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
-    | NoAudioUploadedError
     | ProviderNotInitializeError
-    | ProviderNotSupportSpeechToTextError
+    | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
     | ErrorResponse
   403: ErrorResponse
   404: AgentNotFoundError | ErrorResponse
-  413: AudioTooLargeError | ErrorResponse
-  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3951,16 +3953,13 @@ export type GetAgentByAgentIdTextToAudioVoicesData = {
 
 export type GetAgentByAgentIdTextToAudioVoicesErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
-    | NoAudioUploadedError
     | ProviderNotInitializeError
-    | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
-  413: AudioTooLargeError | ErrorResponse
-  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 

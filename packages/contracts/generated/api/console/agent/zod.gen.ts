@@ -570,6 +570,18 @@ export const zTextToSpeechPayload = z.object({
 })
 
 /**
+ * ProviderNotSupportTextToSpeechError
+ *
+ * Provider does not support text to speech.
+ */
+export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_text_to_speech'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AgentConfigSnapshotRestoreResponse
  */
 export const zAgentConfigSnapshotRestoreResponse = z.object({

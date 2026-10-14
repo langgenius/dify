@@ -211,18 +211,6 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
- * AgentVersionNotFoundError
- *
- * Agent config version not found.
- */
-export const zAgentVersionNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('agent_version_not_found_error'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * AppMoreLikeThisDisabledError
  *
  * The 'More like this' feature is disabled. Please refresh your page.

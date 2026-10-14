@@ -238,18 +238,6 @@ export const zAgentNotFoundError = zErrorResponse.and(
 )
 
 /**
- * AgentVersionNotFoundError
- *
- * Agent config version not found.
- */
-export const zAgentVersionNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('agent_version_not_found_error'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * AgentConfigFileUploadPayload
  */
 export const zAgentConfigFileUploadPayload = z.object({
@@ -528,6 +516,18 @@ export const zSpeechToTextDisabledError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * AudioTooLargeError
  *
  * Audio size exceeded. {message}
@@ -718,6 +718,18 @@ export const zTextToSpeechPayload = z.object({
   text: z.string(),
   voice: z.string().nullish(),
 })
+
+/**
+ * ProviderNotSupportTextToSpeechError
+ *
+ * Provider does not support text to speech.
+ */
+export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_text_to_speech'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * AppTraceResponse

@@ -28,6 +28,7 @@ import {
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
   zProviderQuotaExceededError,
   zRateLimitError,
   zSpeechToTextDisabledError,
@@ -648,10 +649,7 @@ export const get9 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigFilesByNameDownloadResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const download = {
   get: get9,
@@ -672,10 +670,7 @@ export const get10 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigFilesByNamePreviewResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const preview = {
   get: get10,
@@ -696,10 +691,7 @@ export const delete3 = oc
     }),
   )
   .output(zDeleteAgentByAgentIdConfigFilesByNameResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const byName = {
   delete: delete3,
@@ -722,10 +714,7 @@ export const get11 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigFilesResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const post9 = oc
   .route({
@@ -744,10 +733,7 @@ export const post9 = oc
     }),
   )
   .output(zPostAgentByAgentIdConfigFilesResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const files = {
   get: get11,
@@ -770,10 +756,7 @@ export const get12 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigManifestResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const manifest = {
   get: get12,
@@ -796,10 +779,7 @@ export const post10 = oc
     }),
   )
   .output(zPostAgentByAgentIdConfigSkillsUploadResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const upload = {
   post: post10,
@@ -820,10 +800,7 @@ export const get13 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameDownloadResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const download2 = {
   get: get13,
@@ -839,10 +816,7 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdConfigSkillsByNameFilesContentPath }))
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const content = {
   get: get14,
@@ -863,10 +837,7 @@ export const get15 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const download3 = {
   get: get15,
@@ -887,10 +858,7 @@ export const get16 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const preview2 = {
   get: get16,
@@ -917,10 +885,7 @@ export const get17 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameInspectResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const inspect = {
   get: get17,
@@ -941,10 +906,7 @@ export const delete4 = oc
     }),
   )
   .output(zDeleteAgentByAgentIdConfigSkillsByNameResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const byName2 = {
   delete: delete4,
@@ -968,10 +930,7 @@ export const get18 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsResponse)
-  .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const skills = {
   get: get18,
@@ -1357,17 +1316,11 @@ export const get28 = oc
   .output(zGetAgentByAgentIdTextToAudioVoicesResponse)
   .errors({
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_not_support_speech_to_text: {
-      status: 400,
-      data: zProviderNotSupportSpeechToTextError,
-    },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
   })
 
 export const voices = {
@@ -1396,17 +1349,14 @@ export const post17 = oc
   .errors({
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
-    audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_not_support_speech_to_text: {
+    provider_not_support_text_to_speech: {
       status: 400,
-      data: zProviderNotSupportSpeechToTextError,
+      data: zProviderNotSupportTextToSpeechError,
     },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
   })
 
 export const textToAudio = {

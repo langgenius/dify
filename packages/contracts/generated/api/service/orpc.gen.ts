@@ -4,7 +4,6 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zAgentNotPublishedError,
-  zAgentVersionNotFoundError,
   zAppUnavailableError,
   zArchivedDocumentImmutableError,
   zAudioTooLargeError,
@@ -475,7 +474,6 @@ export const post3 = oc
   .input(z.object({ body: zPostAudioToTextBody }))
   .output(zPostAudioToTextResponse)
   .errors({
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -2514,17 +2512,10 @@ export const post36 = oc
   .output(zPostTextToAudioResponse)
   .errors({
     app_unavailable: { status: 400, data: zAppUnavailableError },
-    audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_not_support_speech_to_text: {
-      status: 400,
-      data: zProviderNotSupportSpeechToTextError,
-    },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
   })
 
 export const textToAudio = {

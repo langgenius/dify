@@ -24,11 +24,6 @@ export type AgentThought = {
   tool_labels: JsonValue
 }
 
-export type AgentVersionNotFoundError = ErrorResponse & {
-  code: 'agent_version_not_found_error'
-  status: 404
-}
-
 export type Annotation = {
   answer?: string | null
   created_at?: number | null
@@ -2834,7 +2829,6 @@ export type PostAudioToTextErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  404: AgentVersionNotFoundError | ErrorResponse
   413: AudioTooLargeError | ErrorResponse
   415: UnsupportedAudioTypeError | ErrorResponse
   500: ErrorResponse
@@ -4859,15 +4853,11 @@ export type PostTextToAudioErrors = {
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
-    | NoAudioUploadedError
     | ProviderNotInitializeError
-    | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  413: AudioTooLargeError | ErrorResponse
-  415: UnsupportedAudioTypeError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

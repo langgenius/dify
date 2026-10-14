@@ -251,11 +251,6 @@ export type AgentNotFoundError = ErrorResponse & {
   status: 404
 }
 
-export type AgentVersionNotFoundError = ErrorResponse & {
-  code: 'agent_version_not_found_error'
-  status: 404
-}
-
 export type AgentConfigFileUploadPayload = {
   upload_file_id: string
 }
@@ -497,6 +492,11 @@ export type ProviderQuotaExceededError = ErrorResponse & {
 export type SpeechToTextDisabledError = ErrorResponse & {
   code: 'speech_to_text_disabled'
   status: 400
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
 }
 
 export type AudioTooLargeError = ErrorResponse & {
@@ -815,6 +815,11 @@ export type TextToSpeechPayload = {
   streaming?: boolean | null
   text: string
   voice?: string | null
+}
+
+export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
+  code: 'provider_not_support_text_to_speech'
+  status: 400
 }
 
 export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
@@ -4912,7 +4917,7 @@ export type GetAppsByAppIdAgentConfigFilesData = {
 
 export type GetAppsByAppIdAgentConfigFilesErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4941,7 +4946,7 @@ export type PostAppsByAppIdAgentConfigFilesData = {
 
 export type PostAppsByAppIdAgentConfigFilesErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4971,7 +4976,7 @@ export type DeleteAppsByAppIdAgentConfigFilesByNameData = {
 
 export type DeleteAppsByAppIdAgentConfigFilesByNameErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5001,7 +5006,7 @@ export type GetAppsByAppIdAgentConfigFilesByNameDownloadData = {
 
 export type GetAppsByAppIdAgentConfigFilesByNameDownloadErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5031,7 +5036,7 @@ export type GetAppsByAppIdAgentConfigFilesByNamePreviewData = {
 
 export type GetAppsByAppIdAgentConfigFilesByNamePreviewErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5060,7 +5065,7 @@ export type GetAppsByAppIdAgentConfigManifestData = {
 
 export type GetAppsByAppIdAgentConfigManifestErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5089,7 +5094,7 @@ export type GetAppsByAppIdAgentConfigSkillsData = {
 
 export type GetAppsByAppIdAgentConfigSkillsErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5120,7 +5125,7 @@ export type PostAppsByAppIdAgentConfigSkillsUploadData = {
 
 export type PostAppsByAppIdAgentConfigSkillsUploadErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5150,7 +5155,7 @@ export type DeleteAppsByAppIdAgentConfigSkillsByNameData = {
 
 export type DeleteAppsByAppIdAgentConfigSkillsByNameErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5180,7 +5185,7 @@ export type GetAppsByAppIdAgentConfigSkillsByNameDownloadData = {
 
 export type GetAppsByAppIdAgentConfigSkillsByNameDownloadErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5206,7 +5211,7 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5239,7 +5244,7 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5270,7 +5275,7 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5300,7 +5305,7 @@ export type GetAppsByAppIdAgentConfigSkillsByNameInspectData = {
 
 export type GetAppsByAppIdAgentConfigSkillsByNameInspectErrors = {
   400: AgentNotBoundError | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6768,14 +6773,11 @@ export type PostAppsByAppIdTextToAudioErrors = {
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
-    | NoAudioUploadedError
     | ProviderNotInitializeError
-    | ProviderNotSupportSpeechToTextError
+    | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
     | ErrorResponse
   404: AppNotFoundError | ErrorResponse
-  413: AudioTooLargeError | ErrorResponse
-  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6804,16 +6806,13 @@ export type GetAppsByAppIdTextToAudioVoicesData = {
 
 export type GetAppsByAppIdTextToAudioVoicesErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
-    | NoAudioUploadedError
     | ProviderNotInitializeError
-    | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | ErrorResponse
   404: AppNotFoundError | ErrorResponse
-  413: AudioTooLargeError | ErrorResponse
-  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 
