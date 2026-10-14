@@ -26,6 +26,11 @@ _SYSTEM_RULES = (
     "a publishing node; a literal template uses the requested literal text and variables=[] "
     'when it references no inputs. Consumers select [<bound producer ID>,"output"]. '
     "An End output label may name the published result without renaming its producer root. "
+    "For End, outputs[].variable is the public workflow output name; preserve the name requested "
+    "in the original user request and reflected by the node purpose. "
+    "Keep value_selector on the actual upstream producer ID and its published output root. "
+    "Do not copy example labels result or output unless requested as the public name. "
+    "Preserve existing authored End output names unless the original request explicitly changes them. "
     "Preserve the original user goal and valid authored mutable assignments. "
     "Do not automatically rewrite node types/configuration or invent upstream outputs. "
     "All selectors/placeholders must use the actual bound producer ID. "
