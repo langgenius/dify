@@ -60,10 +60,9 @@ class ProviderConfigEncrypter:
             fields[credential.name] = credential
 
         for field_name, field in fields.items():
-            if field.type == ProviderConfigType.SECRET_INPUT:
-                if field_name in data:
-                    encrypted = encrypter.encrypt_token(self.tenant_id, data[field_name] or "")
-                    data[field_name] = encrypted
+            if field.type == ProviderConfigType.SECRET_INPUT and field_name in data:
+                encrypted = encrypter.encrypt_token(self.tenant_id, data[field_name] or "")
+                data[field_name] = encrypted
 
         return data
 
@@ -81,14 +80,11 @@ class ProviderConfigEncrypter:
             fields[credential.name] = credential
 
         for field_name, field in fields.items():
-            if field.type == ProviderConfigType.SECRET_INPUT:
-                if field_name in data:
-                    if len(data[field_name]) > 6:
-                        data[field_name] = (
-                            data[field_name][:2] + "*" * (len(data[field_name]) - 4) + data[field_name][-2:]
-                        )
-                    else:
-                        data[field_name] = "*" * len(data[field_name])
+            if field.type == ProviderConfigType.SECRET_INPUT and field_name in data:
+                if len(data[field_name]) > 6:
+                    data[field_name] = data[field_name][:2] + "*" * (len(data[field_name]) - 4) + data[field_name][-2:]
+                else:
+                    data[field_name] = "*" * len(data[field_name])
 
         return data
 
@@ -112,14 +108,13 @@ class ProviderConfigEncrypter:
             fields[credential.name] = credential
 
         for field_name, field in fields.items():
-            if field.type == ProviderConfigType.SECRET_INPUT:
-                if field_name in data:
-                    with contextlib.suppress(Exception):
-                        # if the value is None or empty string, skip decrypt
-                        if not data[field_name]:
-                            continue
+            if field.type == ProviderConfigType.SECRET_INPUT and field_name in data:
+                with contextlib.suppress(Exception):
+                    # if the value is None or empty string, skip decrypt
+                    if not data[field_name]:
+                        continue
 
-                        data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
+                    data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
 
         self.provider_config_cache.set(dict(data))
         return data

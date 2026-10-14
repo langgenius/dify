@@ -75,16 +75,15 @@ class ToolParameterConfigurationManager:
             if (
                 parameter.form == ToolParameter.ToolParameterForm.FORM
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
-            ):
-                if parameter.name in parameters:
-                    if len(parameters[parameter.name]) > 6:
-                        parameters[parameter.name] = (
-                            parameters[parameter.name][:2]
-                            + "*" * (len(parameters[parameter.name]) - 4)
-                            + parameters[parameter.name][-2:]
-                        )
-                    else:
-                        parameters[parameter.name] = "*" * len(parameters[parameter.name])
+            ) and parameter.name in parameters:
+                if len(parameters[parameter.name]) > 6:
+                    parameters[parameter.name] = (
+                        parameters[parameter.name][:2]
+                        + "*" * (len(parameters[parameter.name]) - 4)
+                        + parameters[parameter.name][-2:]
+                    )
+                else:
+                    parameters[parameter.name] = "*" * len(parameters[parameter.name])
 
         return parameters
 
@@ -103,10 +102,9 @@ class ToolParameterConfigurationManager:
             if (
                 parameter.form == ToolParameter.ToolParameterForm.FORM
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
-            ):
-                if parameter.name in parameters:
-                    encrypted = encrypter.encrypt_token(self.tenant_id, parameters[parameter.name])
-                    parameters[parameter.name] = encrypted
+            ) and parameter.name in parameters:
+                encrypted = encrypter.encrypt_token(self.tenant_id, parameters[parameter.name])
+                parameters[parameter.name] = encrypted
 
         return parameters
 
@@ -137,11 +135,10 @@ class ToolParameterConfigurationManager:
             if (
                 parameter.form == ToolParameter.ToolParameterForm.FORM
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
-            ):
-                if parameter.name in parameters:
-                    has_secret_input = True
-                    with contextlib.suppress(Exception):
-                        parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
+            ) and parameter.name in parameters:
+                has_secret_input = True
+                with contextlib.suppress(Exception):
+                    parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
 
         if has_secret_input:
             cache.set(parameters)
