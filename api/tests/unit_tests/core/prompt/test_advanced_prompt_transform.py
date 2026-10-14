@@ -19,6 +19,16 @@ from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
+@pytest.mark.parametrize("node_id", ["input_check", "input-check"])
+@pytest.mark.parametrize("user_input", ["red", "blue"])
+def test_prompt_template_parser_formats_workflow_node_reference(node_id: str, user_input: str) -> None:
+    variable = f"#{node_id}.yanzhenghou_shuru#"
+    parser = PromptTemplateParser(template="Input: {{" + variable + "}}", with_variable_tmpl=True)
+
+    assert parser.variable_keys == [variable]
+    assert parser.format({variable: user_input}) == f"Input: {user_input}"
+
+
 def test__get_completion_model_prompt_messages():
     model_config = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
 

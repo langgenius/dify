@@ -28,7 +28,7 @@ _BRANCH_NODE_TYPES: frozenset[str] = frozenset(
 )
 
 _TEMPLATE_REFERENCE_PATTERN = re.compile(
-    r"\{\{#([a-zA-Z0-9_]{1,50})\.[a-zA-Z_][a-zA-Z0-9_]{0,29}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){0,9}#\}\}"
+    r"\{\{#([a-zA-Z0-9_-]{1,50})\.[a-zA-Z_][a-zA-Z0-9_]{0,29}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){0,9}#\}\}"
 )
 _MAX_REPORTED_ISSUES = 10
 
