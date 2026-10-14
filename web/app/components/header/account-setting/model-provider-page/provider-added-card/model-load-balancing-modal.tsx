@@ -131,6 +131,7 @@ const ModelLoadBalancingModal = ({
   )
   const { mutateAsync: updateModelLoadBalancingConfig } = useUpdateModelLoadBalancingConfig(
     provider.provider,
+    { meta: { errorMessage: t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }) } },
   )
   const initialCustomModelCredential = useMemo(() => {
     if (!current_credential_id) return undefined
@@ -171,12 +172,8 @@ const ModelLoadBalancingModal = ({
           )?.error || t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
         )
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
-      )
+    } catch {
+      // The load balancing mutation reports its failure.
     } finally {
       setLoading(false)
     }

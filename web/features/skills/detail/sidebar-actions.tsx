@@ -56,7 +56,9 @@ function SkillDetailDeleteDialog({
   const queryClient = useQueryClient()
   const router = useRouter()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+      meta: { errorMessage: t(($) => $['skillManagement.deleteFailed']) },
+    }),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -98,9 +100,6 @@ function SkillDetailDeleteDialog({
           invalidateSkillListQueries(queryClient)
           onOpenChange(false)
           router.push('/skills')
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.deleteFailed']))
         },
       },
     )
@@ -208,7 +207,9 @@ export function SkillDetailSidebarActions({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const router = useRouter()
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
+      meta: { errorMessage: t(($) => $['skillManagement.duplicateFailed']) },
+    }),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(detail.id),
@@ -233,9 +234,6 @@ export function SkillDetailSidebarActions({
         onSuccess: (copiedSkill) => {
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.duplicateFailed']))
         },
       },
     )

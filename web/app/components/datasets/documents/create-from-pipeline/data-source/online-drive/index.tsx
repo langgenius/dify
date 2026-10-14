@@ -10,6 +10,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
+import { toastStreamError } from '@/app/notifications/request-error'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
@@ -114,6 +115,7 @@ const OnlineDrive = ({
           setIsLoading(false)
           isLoadingRef.current = false
         },
+        onError: (message) => toastStreamError(message),
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           toast.error(error.error)
           setIsLoading(false)

@@ -15,6 +15,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { toastStreamError } from '@/app/notifications/request-error'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { CrawlStep } from '@/models/datasets'
@@ -141,6 +142,7 @@ const WebsiteCrawl = ({
             setCrawlErrorMessage('')
             setStep(CrawlStep.finished)
           },
+          onError: (message) => toastStreamError(message),
           onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
             setCrawlErrorMessage(
               error.error || t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),

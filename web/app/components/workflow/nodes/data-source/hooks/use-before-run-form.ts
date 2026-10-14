@@ -7,6 +7,7 @@ import {
   useDataSourceStore,
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
 import { useInvalidLastRun } from '@/service/use-workflow'
@@ -95,7 +96,9 @@ const useBeforeRunForm = ({
     }
 
     // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(FlowType.ragPipeline, flowId, nodeId)
+    const vars = await withRequestErrorToast(
+      fetchNodeInspectVars(FlowType.ragPipeline, flowId, nodeId),
+    )
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(nodeId, vars, nodes)

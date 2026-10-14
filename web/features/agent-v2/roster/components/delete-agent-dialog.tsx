@@ -11,7 +11,6 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 type DeleteAgentDialogProps = {
@@ -31,7 +30,11 @@ export function DeleteAgentDialog({
 }: DeleteAgentDialogProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
-  const deleteAgentMutation = useMutation(consoleQuery.agent.byAgentId.delete.mutationOptions())
+  const deleteAgentMutation = useMutation(
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      meta: { errorMessage: t(($) => $['roster.deleteFailed'], { ns: 'agentRoster' }) },
+    }),
+  )
 
   const handleDelete = () => {
     if (deleteAgentMutation.isPending) return
@@ -46,9 +49,6 @@ export function DeleteAgentDialog({
         onSuccess: () => {
           onOpenChange(false)
           onDeleted?.()
-        },
-        onError: () => {
-          toast.error(t(($) => $['roster.deleteFailed'], { ns: 'agentRoster' }))
         },
       },
     )

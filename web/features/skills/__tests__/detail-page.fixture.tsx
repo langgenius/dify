@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, vi } from 'vite-plus/test'
+import { createRequestErrorCaches } from '@/app/get-query-client'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { SkillDetailPage } from '../detail/page'
 
@@ -234,11 +235,17 @@ vi.mock('@/service/console', async (importOriginal) => {
             },
             bySkillId: {
               delete: {
-                mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                mutationOptions: (options?: Record<string, unknown>) => ({
+                  ...options,
+                  mutationFn: mocks.deleteSkillMutationFn,
+                }),
               },
               duplicate: {
                 post: {
-                  mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
+                  mutationOptions: (options?: Record<string, unknown>) => ({
+                    ...options,
+                    mutationFn: mocks.duplicateSkillMutationFn,
+                  }),
                 },
               },
               get: {
@@ -246,13 +253,16 @@ vi.mock('@/service/console', async (importOriginal) => {
                 queryOptions: mocks.skillDetailQueryOptions,
               },
               patch: {
-                mutationOptions: () => ({ mutationFn: mocks.skillMetadataMutationFn }),
+                mutationOptions: (options?: Record<string, unknown>) => ({
+                  ...options,
+                  mutationFn: mocks.skillMetadataMutationFn,
+                }),
               },
               publish: {
                 post: {
                   mutationOptions: (options?: unknown) => {
                     mocks.publishSkillMutationOptions(options)
-                    return { mutationFn: mocks.publishSkillMutationFn }
+                    return { ...(options as object), mutationFn: mocks.publishSkillMutationFn }
                   },
                 },
               },
@@ -265,11 +275,17 @@ vi.mock('@/service/console', async (importOriginal) => {
               files: {
                 check: {
                   post: {
-                    mutationOptions: () => ({ mutationFn: mocks.checkDraftFilesMutationFn }),
+                    mutationOptions: (options?: Record<string, unknown>) => ({
+                      ...options,
+                      mutationFn: mocks.checkDraftFilesMutationFn,
+                    }),
                   },
                 },
                 patch: {
-                  mutationOptions: () => ({ mutationFn: mocks.saveDraftFileMutationFn }),
+                  mutationOptions: (options?: Record<string, unknown>) => ({
+                    ...options,
+                    mutationFn: mocks.saveDraftFileMutationFn,
+                  }),
                 },
               },
               versions: {
@@ -282,7 +298,10 @@ vi.mock('@/service/console', async (importOriginal) => {
                     queryOptions: mocks.skillVersionDetailQueryOptions,
                   },
                   patch: {
-                    mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
+                    mutationOptions: (options?: Record<string, unknown>) => ({
+                      ...options,
+                      mutationFn: mocks.versionPatchMutationFn,
+                    }),
                   },
                   delete:
                     actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId
@@ -491,6 +510,7 @@ export function createAgentReference(
 
 export function renderSkillDetailPage({
   queryClient = new QueryClient({
+    ...createRequestErrorCaches(),
     defaultOptions: {
       queries: { retry: false },
       mutations: { retry: false },

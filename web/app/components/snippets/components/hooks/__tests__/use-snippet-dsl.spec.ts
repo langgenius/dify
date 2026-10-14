@@ -48,7 +48,7 @@ describe('useSnippetDSL', () => {
     })
   })
 
-  it('shows an error when exporting fails', async () => {
+  it('leaves a failed export to the export mutation', async () => {
     mockMutateAsync.mockRejectedValueOnce(new Error('failed'))
     const { result } = renderHook(() =>
       useSnippetDSL({ snippetId: 'snippet-1', snippetName: 'My Snippet' }),
@@ -56,7 +56,10 @@ describe('useSnippetDSL', () => {
 
     await act(() => result.current.handleExportDSL(false, 'workflow-1'))
 
-    expect(toast.error).toHaveBeenCalledWith('snippet.exportFailed')
+    expect(useExportSnippetMutation).toHaveBeenCalledWith({
+      meta: { errorMessage: 'snippet.exportFailed' },
+    })
+    expect(toast.error).not.toHaveBeenCalled()
     expect(downloadBlob).not.toHaveBeenCalled()
   })
 })

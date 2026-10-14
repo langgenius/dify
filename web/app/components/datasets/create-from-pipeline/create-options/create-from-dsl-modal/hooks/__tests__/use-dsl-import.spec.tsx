@@ -16,11 +16,25 @@ const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 
 vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({
-    mutateAsync: mockImportDSL,
+  useImportPipelineDSL: (options?: { onError?: (error: Error) => void }) => ({
+    mutateAsync: async (...args: unknown[]) => {
+      try {
+        return await mockImportDSL(...args)
+      } catch (error) {
+        options?.onError?.(error as Error)
+        throw error
+      }
+    },
   }),
-  useImportPipelineDSLConfirm: () => ({
-    mutateAsync: mockImportDSLConfirm,
+  useImportPipelineDSLConfirm: (options?: { onError?: (error: Error) => void }) => ({
+    mutateAsync: async (...args: unknown[]) => {
+      try {
+        return await mockImportDSLConfirm(...args)
+      } catch (error) {
+        options?.onError?.(error as Error)
+        throw error
+      }
+    },
   }),
 }))
 

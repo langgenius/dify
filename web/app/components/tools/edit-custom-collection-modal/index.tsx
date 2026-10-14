@@ -29,6 +29,7 @@ import {
 } from '@/app/components/base/icon-picker'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { parseParamsSchema } from '@/service/tools'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
@@ -126,7 +127,8 @@ const EditCustomCollectionModal: FC<Props> = ({
         })
         setCustomCollection(newCollection)
         setParamsSchemas(parameters_schema)
-      } catch {
+      } catch (error) {
+        toastRequestError(error)
         const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = ''

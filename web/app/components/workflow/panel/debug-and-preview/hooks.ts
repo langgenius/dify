@@ -18,6 +18,11 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { toast } from '@/app/notifications'
+import {
+  toastRequestError,
+  toastStreamError,
+  withRequestErrorToast,
+} from '@/app/notifications/request-error'
 import { sseGet } from '@/service/base'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -182,7 +187,8 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current) stopChat(taskIdRef.current)
+    if (stopChat && taskIdRef.current)
+      void Promise.resolve(stopChat(taskIdRef.current)).catch(toastRequestError)
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)
     if (suggestedQuestionsAbortControllerRef.current)
@@ -400,7 +406,8 @@ export const useChat = (
                     (suggestedQuestionsAbortControllerRef.current = newAbortController),
                 )
                 setSuggestedQuestions(data)
-              } catch {
+              } catch (error) {
+                toastRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -424,7 +431,8 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError() {
+        onError(message) {
+          toastStreamError(message)
           handleResponding(false)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
@@ -719,7 +727,7 @@ export const useChat = (
     formToken: string,
     formData: HumanInputFormSubmitData,
   ) => {
-    await submitHumanInputForm(formToken, formData)
+    await withRequestErrorToast(submitHumanInputForm(formToken, formData))
   }
 
   const getHumanInputNodeData = (nodeID: string) => {
@@ -785,7 +793,8 @@ export const useChat = (
                     (suggestedQuestionsAbortControllerRef.current = newAbortController),
                 )
                 setSuggestedQuestions(data)
-              } catch {
+              } catch (error) {
+                toastRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -806,7 +815,8 @@ export const useChat = (
             responseItem.content = messageReplace.answer
           })
         },
-        onError() {
+        onError(message) {
+          toastStreamError(message)
           handleResponding(false)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id }) => {

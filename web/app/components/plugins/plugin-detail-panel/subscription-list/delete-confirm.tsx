@@ -28,8 +28,12 @@ const tPrefix = 'subscription.list.item.actions.deleteConfirm'
 export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
   const { refetch } = useSubscriptionList()
-  const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
   const { t } = useTranslation(['common', 'pluginTrigger'])
+  const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription({
+    meta: {
+      errorMessage: t(($) => $[`${tPrefix}.error`], { ns: 'pluginTrigger', name: currentName }),
+    },
+  })
   const [inputName, setInputName] = useState('')
 
   const handleOpenChange = (open: boolean) => {
@@ -49,13 +53,6 @@ export const DeleteConfirm = (props: Props) => {
       onSuccess: () => {
         refetch?.()
         onClose(true)
-      },
-      onError: (error: unknown) => {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t(($) => $[`${tPrefix}.error`], { ns: 'pluginTrigger', name: currentName }),
-        )
       },
     })
   }

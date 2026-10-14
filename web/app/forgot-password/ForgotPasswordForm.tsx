@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toastRequestError } from '@/app/notifications/request-error'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import {
@@ -50,6 +51,7 @@ const ForgotPasswordForm = () => {
       if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
     } catch (error) {
+      toastRequestError(error)
       console.error('Request failed:', error)
     } finally {
       setIsSubmitting(false)
@@ -57,13 +59,17 @@ const ForgotPasswordForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then(() => {
-      fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-        if (res.status === 'not_started') window.location.href = `${basePath}/init`
-      })
+    fetchSetupStatus()
+      .then(() => {
+        fetchInitValidateStatus()
+          .then((res: InitValidateStatusResponse) => {
+            if (res.status === 'not_started') window.location.href = `${basePath}/init`
+          })
+          .catch(toastRequestError)
 
-      setLoading(false)
-    })
+        setLoading(false)
+      })
+      .catch(toastRequestError)
   }, [])
 
   return loading ? (

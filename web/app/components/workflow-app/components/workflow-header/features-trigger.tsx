@@ -28,6 +28,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -169,7 +170,7 @@ const FeaturesTrigger = () => {
         queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
       })
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     }
   }, [appID, setAppDetail, queryClient])
 

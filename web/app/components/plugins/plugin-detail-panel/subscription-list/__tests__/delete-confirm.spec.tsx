@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DeleteConfirm } from '../delete-confirm'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 const mockRefetch = vi.fn()
 const mockDelete = vi.fn()
 const mockDeleteState = { isPending: false }
@@ -14,10 +16,13 @@ vi.mock('../use-subscription-list', () => ({
 }))
 
 vi.mock('@/service/use-triggers', () => ({
-  useDeleteTriggerSubscription: () => ({
-    mutate: mockDelete,
-    isPending: mockDeleteState.isPending,
-  }),
+  useDeleteTriggerSubscription: (...args: unknown[]) => {
+    hookOptions.useDeleteTriggerSubscription = args.at(-1)
+    return {
+      mutate: mockDelete,
+      isPending: mockDeleteState.isPending,
+    }
+  },
 }))
 
 vi.mock('@/app/notifications', async (importOriginal) => {
@@ -90,11 +95,7 @@ describe('DeleteConfirm', () => {
     expect(onClose).toHaveBeenCalledWith(true)
   })
 
-  it('should show error toast when delete fails', () => {
-    mockDelete.mockImplementation((_id: string, options?: { onError?: (error: Error) => void }) => {
-      options?.onError?.(new Error('network error'))
-    })
-
+  it('should leave a failed deletion to the delete mutation', () => {
     render(
       <DeleteConfirm
         isShow
@@ -111,7 +112,14 @@ describe('DeleteConfirm', () => {
       }),
     )
 
-    expect(mockToastError).toHaveBeenCalledWith('network error')
+    expect(hookOptions.useDeleteTriggerSubscription).toEqual({
+      meta: {
+        errorMessage:
+          'pluginTrigger.subscription.list.item.actions.deleteConfirm.error:{"name":"Subscription One"}',
+      },
+    })
+    expect(mockDelete.mock.calls[0]![1]).not.toHaveProperty('onError')
+    expect(mockToastError).not.toHaveBeenCalled()
   })
 
   it('should ignore form submission while deletion is pending', async () => {

@@ -128,7 +128,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         if (!domain) return
 
         const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
-        const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
+        const res = await uploadRemoteFileInfo(remoteIcon)
         if (isStale()) return
 
         setAppIcon({ type: 'image', url: res.url, fileId: res.id })

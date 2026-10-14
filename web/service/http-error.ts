@@ -12,6 +12,14 @@ export function isNotFoundError(error: unknown): boolean {
   return getHttpErrorStatus(error) === 404
 }
 
+/** The URL of the failed request, when the error came from an HTTP response. */
+export function getHttpErrorUrl(error: unknown): string | undefined {
+  if (!(error instanceof ORPCError)) return undefined
+  const cause: unknown = error.cause
+  if (typeof cause !== 'object' || cause === null || !('url' in cause)) return undefined
+  return typeof cause.url === 'string' ? cause.url : undefined
+}
+
 /** 3xx responses are not failures, and ORPCError rejects statuses in 200-399. */
 export function isHttpErrorStatus(status: number): boolean {
   return status < 200 || status >= 400
@@ -33,7 +41,7 @@ const nonEmptyString = (value: unknown): string | undefined =>
 
 /** Decode the backend envelope without declaring it as a validated contract error. */
 export function createHttpError(
-  response: Pick<Response, 'status' | 'statusText' | 'headers'>,
+  response: Pick<Response, 'status' | 'statusText' | 'headers'> & { url?: string },
   body?: unknown,
 ) {
   const data = asRecord(body)
@@ -46,7 +54,7 @@ export function createHttpError(
       nonEmptyString(response.statusText) ??
       `HTTP ${response.status}`,
     data,
-    cause: { headers: new Headers(response.headers) },
+    cause: { headers: new Headers(response.headers), url: response.url || undefined },
   })
 }
 
@@ -59,10 +67,14 @@ export function httpErrorFromXhr(xhr: XMLHttpRequest) {
     const separator = line.indexOf(':')
     if (separator > 0) headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
   }
-  return createHttpError({ status: xhr.status, statusText: xhr.statusText, headers }, xhr.response)
+  return createHttpError(
+    { status: xhr.status, statusText: xhr.statusText, headers, url: xhr.responseURL },
+    xhr.response,
+  )
 }
 
-export async function httpErrorFromResponse(response: Response) {
+/** `requestUrl` covers responses that do not carry their own URL, such as constructed ones. */
+export async function httpErrorFromResponse(response: Response, requestUrl?: string) {
   let body: unknown
   try {
     body = await response.clone().json()
@@ -71,5 +83,13 @@ export async function httpErrorFromResponse(response: Response) {
     // Body read failures, including cancellation, must keep their original identity.
     if (!(error instanceof SyntaxError)) throw error
   }
-  return createHttpError(response, body)
+  return createHttpError(
+    {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      url: response.url || requestUrl,
+    },
+    body,
+  )
 }

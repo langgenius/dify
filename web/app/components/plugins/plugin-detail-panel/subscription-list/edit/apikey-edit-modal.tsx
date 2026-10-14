@@ -126,7 +126,14 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     null,
   )
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
+  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription({
+    onError: (error: unknown) => {
+      const errorMessage =
+        parsePluginErrorMessage(error) ||
+        t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })
+      toast.error(errorMessage)
+    },
+  })
   const { mutate: verifyCredentials, isPending: isVerifying } = useVerifyTriggerSubscription()
 
   const parametersSchema = useMemo<ParametersSchema[]>(
@@ -209,12 +216,6 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         onSuccess: () => {
           refetch?.()
           onClose()
-        },
-        onError: (error: unknown) => {
-          const errorMessage =
-            parsePluginErrorMessage(error) ||
-            t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })
-          toast.error(errorMessage)
         },
       },
     )

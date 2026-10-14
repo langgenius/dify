@@ -11,6 +11,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Countdown from '@/app/components/signin/countdown'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { TURNSTILE_SITE_KEY } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -89,7 +90,7 @@ export default function CheckCode() {
         toast.error(ret.data)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     } finally {
       setLoading(false)
       if (shouldResetTurnstile) {
@@ -119,7 +120,7 @@ export default function CheckCode() {
         router.replace(`/signin/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     } finally {
       setIsResending(false)
       setShowResendTurnstile(false)

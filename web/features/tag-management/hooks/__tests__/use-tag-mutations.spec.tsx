@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { createRequestErrorCaches } from '@/app/get-query-client'
 import { useApplyTagBindingsMutation } from '../use-tag-mutations'
 
 const { appListKey, bindTag, listKey, recentAppListKey, starredAppListKey, unbindTag } = vi.hoisted(
@@ -44,8 +45,15 @@ vi.mock('@/service/console', () => ({
   },
 }))
 
+const toastError = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: toastError },
+}))
+
 const createQueryClient = () =>
   new QueryClient({
+    ...createRequestErrorCaches(),
     defaultOptions: {
       queries: {
         retry: false,
@@ -158,6 +166,27 @@ describe('useTagMutations', () => {
           },
         },
       })
+    })
+
+    it('should report a failed binding update as a modification failure', async () => {
+      unbindTag.mockRejectedValueOnce(new Error('Unbind failed'))
+      const { result } = renderMutationHook(() => useApplyTagBindingsMutation())
+
+      await act(async () => {
+        await result.current
+          .mutateAsync({
+            currentTagIds: ['tag-1'],
+            nextTagIds: [],
+            targetId: 'app-1',
+            type: 'app',
+          })
+          .catch(() => undefined)
+      })
+
+      expect(toastError).toHaveBeenCalledExactlyOnceWith(
+        'common.actionMsg.modifiedUnsuccessfully',
+        expect.anything(),
+      )
     })
   })
 })

@@ -3,6 +3,7 @@ import type { KnowledgeRetrievalNodeType } from '../types'
 import type { DataSet } from '@/models/datasets'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { fetchDatasets } from '@/service/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '../utils'
@@ -38,13 +39,15 @@ const useKnowledgeDatasetSelection = ({
       const currentInputs = inputRef.current
       const datasetIds = currentInputs.dataset_ids
       if (datasetIds.length > 0) {
-        const { data: dataSetsWithDetail } = await fetchDatasets({
-          url: '/datasets',
-          params: {
-            page: 1,
-            ids: datasetIds,
-          },
-        })
+        const { data: dataSetsWithDetail } = await withRequestErrorToast(
+          fetchDatasets({
+            url: '/datasets',
+            params: {
+              page: 1,
+              ids: datasetIds,
+            },
+          }),
+        )
         setSelectedDatasets(dataSetsWithDetail)
       }
 

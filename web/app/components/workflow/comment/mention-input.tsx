@@ -20,6 +20,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -171,6 +172,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
         })
         workflowStore.getState().setMentionableUsersCache(appId, response.users)
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to load mentionable users:', error)
       } finally {
         workflowStore.getState().setMentionableUsersLoading(appId, false)

@@ -1,3 +1,5 @@
+import { getHttpErrorUrl, isNotFoundError } from './http-error'
+
 type AppDeletionState = {
   pendingCount: number
   deleted: boolean
@@ -37,8 +39,10 @@ export const markAppDeletionFailed = (appId: string) => {
 
 export const isAppDeletingOrDeleted = (appId: string) => appDeletionStates.has(appId)
 
-export const shouldSuppressAppDeletionErrorToast = (requestUrl: string, status: number) => {
-  if (status !== 404) return false
+/** Workflow requests that settle after their app was deleted fail with 404 by design. */
+export const isAppDeletionError = (error: unknown) => {
+  const requestUrl = getHttpErrorUrl(error)
+  if (!requestUrl || !isNotFoundError(error)) return false
 
   const match = new URL(requestUrl, globalThis.location?.origin).pathname.match(
     /\/apps\/([^/]+)\/workflows(?:\/|$)/,

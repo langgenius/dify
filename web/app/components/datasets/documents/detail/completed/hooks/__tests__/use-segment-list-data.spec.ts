@@ -14,6 +14,8 @@ import { ChunkingMode as ChunkingModeEnum } from '@/models/datasets'
 import { segmentImportStatus } from '@/types/dataset'
 import { useSegmentListData } from '../use-segment-list-data'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 // Type for mutation callbacks
 type SegmentMutationResponse = { data: SegmentDetailModel }
 type SegmentMutationCallbacks = {
@@ -129,7 +131,10 @@ vi.mock('@/service/knowledge/use-segment', () => ({
   useChunkListDisabledKey: ['segment', 'chunkList', { enabled: false }],
   useEnableSegment: () => ({ mutateAsync: mockEnableSegment }),
   useDisableSegment: () => ({ mutateAsync: mockDisableSegment }),
-  useDeleteSegment: () => ({ mutateAsync: mockDeleteSegment }),
+  useDeleteSegment: (...args: unknown[]) => {
+    hookOptions.useDeleteSegment = args.at(-1)
+    return { mutateAsync: mockDeleteSegment }
+  },
   useUpdateSegment: () => ({ mutateAsync: mockUpdateSegment }),
 }))
 
@@ -574,12 +579,8 @@ describe('useSegmentListData', () => {
       expect(clearSelection).toHaveBeenCalled()
     })
 
-    it('should notify error on failure', async () => {
-      mockDeleteSegment.mockImplementation(
-        async (_params, { onError }: { onError: () => void }) => {
-          onError()
-        },
-      )
+    it('should leave failures to the delete mutation', async () => {
+      mockDeleteSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
@@ -589,10 +590,11 @@ describe('useSegmentListData', () => {
         await result.current.onDelete('seg-1')
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+      expect(hookOptions.useDeleteSegment).toEqual({
+        meta: { errorMessage: 'common.actionMsg.modifiedUnsuccessfully' },
       })
+      expect(mockDeleteSegment.mock.calls[0]![1]).not.toHaveProperty('onError')
+      expect(mockNotify).not.toHaveBeenCalled()
     })
   })
 

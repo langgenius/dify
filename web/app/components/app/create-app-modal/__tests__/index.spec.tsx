@@ -56,7 +56,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       apps: {
         ...actual.consoleQuery.apps,
         post: {
-          mutationOptions: () => ({
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            ...options,
             mutationFn: ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
           }),
         },
@@ -222,7 +223,12 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalled())
-    expect(mockToastError).toHaveBeenCalledWith('boom')
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith(
+        'app.newApp.appCreateFailed',
+        expect.anything(),
+      ),
+    )
     expect(onClose).not.toHaveBeenCalled()
   })
 

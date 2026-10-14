@@ -190,7 +190,6 @@ describe('useCommonModalState', () => {
       },
       expect.objectContaining({
         onSuccess: expect.any(Function),
-        onError: expect.any(Function),
       }),
     )
     expect(result.current.currentStep).toBe(ApiKeyStep.Configuration)
@@ -239,7 +238,6 @@ describe('useCommonModalState', () => {
       },
       expect.objectContaining({
         onSuccess: expect.any(Function),
-        onError: expect.any(Function),
       }),
     )
   })
@@ -277,9 +275,7 @@ describe('useCommonModalState', () => {
         subscriptionBuilderId: builder.id,
         properties: { webhook_url: 'https://hook.example.com' },
       },
-      expect.objectContaining({
-        onError: expect.any(Function),
-      }),
+      expect.objectContaining({}),
     )
 
     vi.useRealTimers()

@@ -34,7 +34,9 @@ const Conversion = () => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
+  const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline({
+    meta: { errorMessage: t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }) },
+  })
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, datasetId])
   const datasetACLCapabilities = React.useMemo(
     () =>
@@ -58,9 +60,6 @@ const Conversion = () => {
         } else if (res.status === 'failed') {
           toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
         }
-      },
-      onError: () => {
-        toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
       },
     })
   }, [canConvertDataset, convert, datasetId, invalidDatasetDetail, t])

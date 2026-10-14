@@ -41,10 +41,9 @@ export type ExportWorkflowAppDslResult =
     }
 
 async function getSecretEnvironmentVariables(appId: string) {
-  const { items } = await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get(
-    { params: { app_id: appId } },
-    { context: { silent: true } },
-  )
+  const { items } = await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get({
+    params: { app_id: appId },
+  })
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
 }
 
@@ -56,18 +55,15 @@ export async function exportAppDslFile({
   versionId,
   format,
 }: ExportAppDslInput) {
-  const response = await consoleClient.apps.byAppId.export.get(
-    {
-      params: { app_id: appId },
-      query: {
-        include_secret: includeSecret,
-        ...(workflowId ? { workflow_id: workflowId } : {}),
-        ...(versionId ? { version_id: versionId } : {}),
-        ...(format && { format }),
-      },
+  const response = await consoleClient.apps.byAppId.export.get({
+    params: { app_id: appId },
+    query: {
+      include_secret: includeSecret,
+      ...(workflowId ? { workflow_id: workflowId } : {}),
+      ...(versionId ? { version_id: versionId } : {}),
+      ...(format && { format }),
     },
-    { context: { silent: true } },
-  )
+  })
 
   if (response instanceof Blob) {
     const name = response instanceof File ? response.name : undefined
@@ -122,6 +118,8 @@ export function useExportAppDsl() {
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (input: ExportAppDslInput): Promise<ExportAppDslResult> =>
       downloadAppDsl(input, messages),
+    // The progress toast from downloadAppDsl already turns into the failure message.
+    onError: () => {},
   })
 
   const exportAppDsl = useCallback(
@@ -162,6 +160,8 @@ export function useExportWorkflowAppDsl() {
 
       return downloadAppDsl(input, messages)
     },
+    // Each step above already reports its own failure.
+    onError: () => {},
   })
 
   const exportWorkflowAppDsl = useCallback(

@@ -1,0 +1,59 @@
+import { ORPCError } from '@orpc/client'
+import { isAppDeletionError } from '@/service/app-deletion'
+import { toast } from '.'
+
+const isAbortError = (error: unknown) => error instanceof Error && error.name === 'AbortError'
+
+// Unauthorized responses are resolved by the transport redirecting to sign-in, and requests that
+// race an app deletion fail by design.
+const isExpectedRequestError = (error: unknown) =>
+  isAbortError(error) ||
+  (error instanceof ORPCError && (error.status === 401 || isAppDeletionError(error)))
+
+/**
+ * Show a request failure to the user. The request layer never notifies on its own, so callers
+ * that handle a failure imperatively decide here whether it deserves a toast.
+ *
+ * `title` names the failed action; the server message then explains it underneath. Without a
+ * title only request failures that carry a server message are shown.
+ */
+export function toastRequestError(error: unknown, title?: string) {
+  if (isExpectedRequestError(error)) return
+  const serverMessage = error instanceof ORPCError ? error.message || undefined : undefined
+  const text = title ?? serverMessage
+  if (!text) return
+  const description = title && serverMessage !== title ? serverMessage : undefined
+  // Identical failures, such as several queries hitting the same outage, share one visible toast.
+  toast.error(text, {
+    id: `request-error:${text}${description ? `:${description}` : ''}`,
+    ...(description && { description }),
+  })
+}
+
+/** Toast a request failure while keeping it rejected for callers that must still stop on it. */
+export async function withRequestErrorToast<T>(request: Promise<T>): Promise<T> {
+  try {
+    return await request
+  } catch (error) {
+    toastRequestError(error)
+    throw error
+  }
+}
+
+// Streams report cancellation as a message, for instance when one is stopped or its page is left.
+const isStreamCancellation = (message: string) =>
+  message === 'AbortError' ||
+  message.startsWith('AbortError:') ||
+  message.includes('TypeError: Cannot assign to read only property')
+
+/**
+ * Show a stream failure from an `ssePost` / `sseGet` `onError` callback. Pages with their own
+ * toast host pass `notify` to show it there.
+ */
+export function toastStreamError(
+  message: string,
+  notify: (message: string) => void = (text) => toast.error(text, { id: `request-error:${text}` }),
+) {
+  if (typeof message !== 'string' || !message || isStreamCancellation(message)) return
+  notify(message)
+}

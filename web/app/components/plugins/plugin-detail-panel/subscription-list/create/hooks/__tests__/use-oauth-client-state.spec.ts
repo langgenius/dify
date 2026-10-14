@@ -5,12 +5,13 @@ import type {
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
-import { createHttpError } from '@/service/http-error'
 import {
   AuthorizationStatusEnum,
   ClientTypeEnum,
   useOAuthClientState,
 } from '../use-oauth-client-state'
+
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
 
 // ============================================================================
 // Mock Factory Functions
@@ -81,9 +82,12 @@ vi.mock('@/service/use-triggers', () => ({
   useConfigureTriggerOAuth: () => ({
     mutate: mockConfigureOAuth,
   }),
-  useDeleteTriggerOAuth: () => ({
-    mutate: mockDeleteOAuth,
-  }),
+  useDeleteTriggerOAuth: (...args: unknown[]) => {
+    hookOptions.useDeleteTriggerOAuth = args.at(-1)
+    return {
+      mutate: mockDeleteOAuth,
+    }
+  },
 }))
 
 const mockOpenOAuthPopup = vi.fn()
@@ -331,24 +335,17 @@ describe('useOAuthClientState', () => {
       })
     })
 
-    it('shows the HTTP error message when removal fails', () => {
-      const error = createHttpError(new Response(null, { status: 403 }), {
-        message: 'Delete failed',
-      })
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError(error)
-      })
-
+    it('leaves a failed removal to the delete mutation', () => {
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
       act(() => {
         result.current.handleRemove()
       })
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Delete failed',
+      expect(hookOptions.useDeleteTriggerOAuth).toEqual({
+        meta: { errorMessage: 'pluginTrigger.modal.oauth.remove.failed' },
       })
+      expect(mockDeleteOAuth.mock.calls[0]![1]).not.toHaveProperty('onError')
     })
   })
 

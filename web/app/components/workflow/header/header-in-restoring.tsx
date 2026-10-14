@@ -52,7 +52,11 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
 
   const { handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow({
+    onError: () => {
+      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
+    },
+  })
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore =
     !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
@@ -144,7 +148,6 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       await emitRestoreComplete(true)
       await emitWorkflowUpdate()
     } catch {
-      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
       await emitRestoreComplete(false, 'restore failed')
     } finally {
       resetWorkflowVersionHistory()

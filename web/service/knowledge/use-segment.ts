@@ -1,3 +1,4 @@
+import type { MutationMeta } from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
 import type {
   BatchImportResponse,
@@ -101,8 +102,9 @@ export const useDisableSegment = () => {
   })
 }
 
-export const useDeleteSegment = () => {
+export const useDeleteSegment = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'delete'],
     mutationFn: (payload: { datasetId: string; documentId: string; segmentIds: string[] }) => {
       const { datasetId, documentId, segmentIds } = payload
@@ -141,8 +143,9 @@ export const useChildSegmentList = (
   })
 }
 
-export const useDeleteChildSegment = () => {
+export const useDeleteChildSegment = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'childChunk', 'delete'],
     mutationFn: (payload: {
       datasetId: string
@@ -195,8 +198,9 @@ export const useUpdateChildSegment = () => {
   })
 }
 
-export const useSegmentBatchImport = () => {
+export const useSegmentBatchImport = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'batchImport'],
     mutationFn: (payload: { url: string; body: { upload_file_id: string } }) => {
       const { url, body } = payload
@@ -205,8 +209,9 @@ export const useSegmentBatchImport = () => {
   })
 }
 
-export const useCheckSegmentBatchImportProgress = () => {
+export const useCheckSegmentBatchImportProgress = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'batchImport', 'checkProgress'],
     mutationFn: (payload: { jobID: string }) => {
       const { jobID } = payload

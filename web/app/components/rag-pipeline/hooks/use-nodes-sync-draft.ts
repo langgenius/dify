@@ -81,13 +81,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt, syncWorkflowDraftHash } =
         workflowStore.getState()
       const [error, res, isDefined] = await safe(
-        consoleClient.rag.pipelines.byPipelineId.workflows.draft.post(
-          {
-            params: { pipeline_id: baseParams.pipelineId },
-            body: { ...baseParams.params, hash: syncWorkflowDraftHash },
-          },
-          { context: { silent: true } },
-        ),
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.post({
+          params: { pipeline_id: baseParams.pipelineId },
+          body: { ...baseParams.params, hash: syncWorkflowDraftHash },
+        }),
       )
       try {
         if (error) {

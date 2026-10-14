@@ -12,6 +12,7 @@ import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { updateFromMarketPlace } from '@/service/plugins'
 import { usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
 import useGetIcon from '../install-plugin/base/use-get-icon'
@@ -115,7 +116,8 @@ const UpdatePluginModal = ({
           return
         }
         await onSave()
-      } catch {
+      } catch (error) {
+        toastRequestError(error)
         setUploadStep(UploadStep.notStarted)
       }
       return

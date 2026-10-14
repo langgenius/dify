@@ -92,7 +92,11 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const { mutateAsync: createApp } = useMutation(consoleQuery.apps.post.mutationOptions())
+  const { mutateAsync: createApp } = useMutation(
+    consoleQuery.apps.post.mutationOptions({
+      meta: { errorMessage: t(($) => $['newApp.appCreateFailed'], { ns: 'app' }) },
+    }),
+  )
   const creatingRef = useRef(false)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -140,12 +144,8 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         workspacePermissionKeys,
         isRbacEnabled,
       })
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-      )
+    } catch {
+      // The create mutation reports its failure.
     } finally {
       creatingRef.current = false
       setIsCreating(false)

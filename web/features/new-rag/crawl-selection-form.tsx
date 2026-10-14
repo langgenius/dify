@@ -597,7 +597,6 @@ export function CrawlSelectionForm({
   const { t } = useTranslation(['dataset'])
   const policyQuery = useQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.queryOptions({
-      context: { silent: true },
       input: { params: { id: knowledgeSpaceId, sourceId: source.id } },
       retry: false,
     }),

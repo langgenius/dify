@@ -263,7 +263,11 @@ export const VersionHistoryPanel = ({
   }, [configsMap?.flowId])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow({
+    onError: () => {
+      toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
+    },
+  })
 
   const handleRestore = useCallback(
     async (item: VersionHistory) => {
@@ -284,7 +288,6 @@ export const VersionHistoryPanel = ({
         await emitRestoreComplete(item, true)
         await emitWorkflowUpdate()
       } catch {
-        toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
         await emitRestoreComplete(item, false, 'restore failed')
       } finally {
         resetWorkflowVersionHistory()
@@ -307,7 +310,11 @@ export const VersionHistoryPanel = ({
     ],
   )
 
-  const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
+  const { mutateAsync: deleteWorkflow } = useDeleteWorkflow({
+    meta: {
+      errorMessage: t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }),
+    },
+  })
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -318,9 +325,6 @@ export const VersionHistoryPanel = ({
           deleteAllInspectVars()
           invalidAllLastRun()
         },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }))
-        },
         onSettled: () => {
           setDeleteConfirmOpen(false)
         },
@@ -328,7 +332,6 @@ export const VersionHistoryPanel = ({
     },
     [
       deleteWorkflow,
-      t,
       resetWorkflowVersionHistory,
       deleteAllInspectVars,
       invalidAllLastRun,
@@ -336,7 +339,11 @@ export const VersionHistoryPanel = ({
     ],
   )
 
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({
+    meta: {
+      errorMessage: t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
+    },
+  })
 
   const handleUpdateWorkflow = useCallback(
     async (params: { id?: string; title: string; releaseNotes: string }) => {
@@ -359,11 +366,6 @@ export const VersionHistoryPanel = ({
             )
               invalidateAppWorkflow(configsMap.flowId)
           },
-          onError: () => {
-            toast.error(
-              t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
-            )
-          },
           onSettled: () => {
             setEditModalOpen(false)
           },
@@ -376,7 +378,6 @@ export const VersionHistoryPanel = ({
       configsMap?.flowType,
       invalidateAppWorkflow,
       latestVersionId,
-      t,
       updateWorkflow,
       updateVersionUrl,
     ],

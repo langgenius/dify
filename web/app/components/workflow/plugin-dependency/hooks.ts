@@ -11,7 +11,12 @@ export const usePluginDependencies = () => {
   const { t } = useTranslation(['common'])
   const { mutateAsync: checkWorkflowDependencies } = useMutation(
     consoleQuery.apps.imports.byAppId.checkDependencies.get.mutationOptions({
-      context: { silent: true },
+      onError: (error) => {
+        toast.error(
+          t(($) => $.error, { ns: 'common' }),
+          { description: getErrorMessage(error) },
+        )
+      },
     }),
   )
   const { mutateAsync: checkPipelineDependencies } = useCheckPipelineDependencies()
@@ -35,18 +40,12 @@ export const usePluginDependencies = () => {
           })),
         )
         return true
-      } catch (error) {
+      } catch {
         setDependencies([])
-        toast.error(
-          t(($) => $.error, { ns: 'common' }),
-          {
-            description: getErrorMessage(error),
-          },
-        )
         return false
       }
     },
-    [checkWorkflowDependencies, checkPipelineDependencies, t],
+    [checkWorkflowDependencies, checkPipelineDependencies],
   )
 
   return {

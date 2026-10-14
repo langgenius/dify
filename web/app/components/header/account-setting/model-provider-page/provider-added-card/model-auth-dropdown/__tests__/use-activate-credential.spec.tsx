@@ -3,16 +3,21 @@ import { act, renderHook } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { useActivateCredential } from '../use-activate-credential'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 const mockMutate = vi.fn()
 const mockUpdateModelProviders = vi.fn()
 const mockUpdateModelList = vi.fn()
 let mockIsPending = false
 
 vi.mock('@/service/use-models', () => ({
-  useActiveProviderCredential: () => ({
-    mutate: mockMutate,
-    isPending: mockIsPending,
-  }),
+  useActiveProviderCredential: (...args: unknown[]) => {
+    hookOptions.useActiveProviderCredential = args.at(-1)
+    return {
+      mutate: mockMutate,
+      isPending: mockIsPending,
+    }
+  },
 }))
 
 vi.mock('../../../hooks', () => ({
@@ -88,7 +93,6 @@ describe('useActivateCredential', () => {
       { credential_id: 'cred-2' },
       expect.objectContaining({
         onSuccess: expect.any(Function),
-        onError: expect.any(Function),
       }),
     )
 
@@ -103,7 +107,7 @@ describe('useActivateCredential', () => {
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, 'text-embedding')
   })
 
-  it('should reset the optimistic selection and show an error toast when activation fails', () => {
+  it('should reset the optimistic selection and leave the toast to the mutation when activation fails', () => {
     const { result } = renderHook(() => useActivateCredential(createProvider()))
 
     act(() => {
@@ -119,6 +123,9 @@ describe('useActivateCredential', () => {
     })
 
     expect(result.current.selectedCredentialId).toBe('cred-1')
-    expect(toastErrorSpy).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(hookOptions.useActiveProviderCredential).toEqual({
+      meta: { errorMessage: 'common.actionMsg.modifiedUnsuccessfully' },
+    })
+    expect(toastErrorSpy).not.toHaveBeenCalled()
   })
 })

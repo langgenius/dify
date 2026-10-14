@@ -42,7 +42,8 @@ export function SkillDisplayNameEditor({
   const [draftName, setDraftName] = useState(detail.display_name)
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
+      // Each call site reports its own failure.
+      onError: () => {},
     }),
   )
   const saving = metadataMutation.isPending

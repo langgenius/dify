@@ -95,6 +95,8 @@ describe('SSOAuth', () => {
 
     await waitFor(() => expect(button).toBeEnabled())
     expect(mocks.toastError).toHaveBeenCalledTimes(1)
-    expect(mocks.toastError).toHaveBeenCalledWith('SSO provider unavailable')
+    expect(mocks.toastError).toHaveBeenCalledWith('SSO provider unavailable', {
+      id: 'request-error:SSO provider unavailable',
+    })
   })
 })

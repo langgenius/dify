@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { useExportSnippetMutation } from '@/service/use-snippets'
 import { downloadBlob } from '@/utils/download'
 
@@ -11,7 +10,9 @@ type UseSnippetDSLOptions = {
 
 export const useSnippetDSL = ({ snippetId, snippetName }: UseSnippetDSLOptions) => {
   const { t } = useTranslation(['snippet'])
-  const exportSnippetMutation = useExportSnippetMutation()
+  const exportSnippetMutation = useExportSnippetMutation({
+    meta: { errorMessage: t(($) => $.exportFailed) },
+  })
 
   const handleExportDSL = useCallback(
     async (include = false, workflowId?: string) => {
@@ -24,10 +25,10 @@ export const useSnippetDSL = ({ snippetId, snippetName }: UseSnippetDSLOptions) 
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${snippetName}.yml` })
       } catch {
-        toast.error(t(($) => $.exportFailed))
+        // The export mutation reports its failure.
       }
     },
-    [exportSnippetMutation, snippetId, snippetName, t],
+    [exportSnippetMutation, snippetId, snippetName],
   )
 
   return { handleExportDSL }

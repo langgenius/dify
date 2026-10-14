@@ -104,24 +104,23 @@ export function useAgentConfigureSync({
 
   const { mutateAsync: saveComposerDraft } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
-      context: {
-        silent: true,
-      },
+      // Autosave stays quiet; explicit commands report failures through their callers.
+      onError: () => {},
     }),
   )
   const { mutateAsync: saveComposerDraftOnPageClose } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
       context: {
         keepalive: true,
-        silent: true,
       },
+      // The page is closing, so there is nobody left to notify.
+      onError: () => {},
     }),
   )
   const { mutateAsync: publishAgent } = useMutation(
     consoleQuery.agent.byAgentId.publish.post.mutationOptions({
-      context: {
-        silent: true,
-      },
+      // Publishing reports failures through the command that started it.
+      onError: () => {},
     }),
   )
 

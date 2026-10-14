@@ -273,10 +273,20 @@ export function AppCardInteractions({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
-  const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
-  const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
+  const { mutate: copyApp } = useMutation(
+    consoleQuery.apps.byAppId.copy.post.mutationOptions({
+      meta: { errorMessage: t(($) => $['newApp.appCreateFailed'], { ns: 'app' }) },
+    }),
+  )
+  const { mutateAsync: updateApp } = useMutation(
+    consoleQuery.apps.byAppId.put.mutationOptions({
+      meta: { errorMessage: t(($) => $.editFailed, { ns: 'app' }) },
+    }),
+  )
   const { mutate: deleteApp, isPending: isDeleting } = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      meta: { errorMessage: t(($) => $.appDeleteFailed, { ns: 'app' }) },
+    }),
   )
   const { mutate: starApp, isPending: isStarring } = useMutation(
     consoleQuery.apps.byAppId.star.post.mutationOptions(),
@@ -318,27 +328,16 @@ export function AppCardInteractions({
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const onConfirmDelete = useCallback(() => {
-    try {
-      deleteApp(
-        { params: { app_id: app.id } },
-        {
-          onSuccess: () => {
-            setActiveDialog(null)
-            setConfirmDeleteInput('')
-          },
-          onError: (error) => {
-            const message = error instanceof Error ? error.message : ''
-            toast.error(
-              `${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`,
-            )
-          },
+    deleteApp(
+      { params: { app_id: app.id } },
+      {
+        onSuccess: () => {
+          setActiveDialog(null)
+          setConfirmDeleteInput('')
         },
-      )
-    } catch (error) {
-      const message = error instanceof Error ? error.message : ''
-      toast.error(`${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`)
-    }
-  }, [app.id, deleteApp, t])
+      },
+    )
+  }, [app.id, deleteApp])
 
   const onDeleteDialogOpenChange = useCallback(
     (open: boolean) => {
@@ -420,11 +419,11 @@ export function AppCardInteractions({
           },
         })
         setActiveDialog(null)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
+      } catch {
+        // The update mutation reports its failure.
       }
     },
-    [app.id, t, updateApp],
+    [app.id, updateApp],
   )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = ({
@@ -433,38 +432,33 @@ export function AppCardInteractions({
     icon,
     icon_background,
   }) => {
-    try {
-      copyApp(
-        {
-          params: { app_id: app.id },
-          body: {
-            name,
-            icon_type,
-            icon,
-            icon_background,
-          },
+    copyApp(
+      {
+        params: { app_id: app.id },
+        body: {
+          name,
+          icon_type,
+          icon,
+          icon_background,
         },
-        {
-          onSuccess: (newApp) => {
-            if (!('mode' in newApp)) {
-              toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-              return
-            }
+      },
+      {
+        onSuccess: (newApp) => {
+          if (!('mode' in newApp)) {
+            toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+            return
+          }
 
-            setActiveDialog(null)
-            getRedirection(newApp, push, {
-              currentUserId,
-              resourceMaintainer: newApp.maintainer ?? undefined,
-              workspacePermissionKeys,
-              isRbacEnabled,
-            })
-          },
-          onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
+          setActiveDialog(null)
+          getRedirection(newApp, push, {
+            currentUserId,
+            resourceMaintainer: newApp.maintainer ?? undefined,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
         },
-      )
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-    }
+      },
+    )
     return Promise.resolve()
   }
 

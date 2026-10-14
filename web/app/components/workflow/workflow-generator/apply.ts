@@ -1,6 +1,7 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
 import type { AppModeEnum } from '@/types/app'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { consoleClient } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
@@ -92,16 +93,18 @@ export const applyToNewApp = async ({
   const appMode = MODE_TO_APP_MODE[mode]
   const name = (appName ?? '').trim() || deriveAppName(instruction)
   const appIcon = (icon ?? '').trim() || '🤖'
-  const app = await consoleClient.apps.post({
-    body: {
-      name,
-      mode: appMode,
-      icon_type: 'emoji',
-      icon: appIcon,
-      icon_background: '#FFEAD5',
-      description: instruction.trim().slice(0, 200),
-    },
-  })
+  const app = await withRequestErrorToast(
+    consoleClient.apps.post({
+      body: {
+        name,
+        mode: appMode,
+        icon_type: 'emoji',
+        icon: appIcon,
+        icon_background: '#FFEAD5',
+        description: instruction.trim().slice(0, 200),
+      },
+    }),
+  )
 
   // Sync the generated graph into the brand-new app's draft. ``createApp``
   // already succeeded so the app exists; if the sync fails (network blip,

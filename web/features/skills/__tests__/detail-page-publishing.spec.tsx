@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import {
   createAgentReference,
   createSkillDetail,
@@ -29,16 +30,18 @@ function getVersionRequests(action: 'restore' | 'delete') {
 describe('SkillDetailPage publishing', () => {
   beforeEach(resetDetailPageFixture)
 
-  it('shows only the detailed backend error when publishing fails', async () => {
+  it('names the failed publish and explains it with the backend error', async () => {
     const user = userEvent.setup()
     mocks.publishSkillMutationFn.mockRejectedValueOnce(
-      new Error('SKILL.md frontmatter name is required'),
+      createHttpError(new Response(null, { status: 400 }), {
+        message: 'SKILL.md frontmatter name is required',
+      }),
     )
 
     renderSkillDetailPage()
 
     expect(mocks.publishSkillMutationOptions).toHaveBeenCalledWith({
-      context: { silent: true },
+      meta: { errorMessage: 'skill.skillManagement.detail.publishFailed' },
     })
     await user.click(
       await screen.findByRole('button', {
@@ -47,7 +50,10 @@ describe('SkillDetailPage publishing', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('SKILL.md frontmatter name is required')
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        'skill.skillManagement.detail.publishFailed',
+        expect.objectContaining({ description: 'SKILL.md frontmatter name is required' }),
+      )
     })
     expect(mocks.toastError).toHaveBeenCalledTimes(1)
   })

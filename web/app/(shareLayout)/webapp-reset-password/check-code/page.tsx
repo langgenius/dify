@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
@@ -41,7 +42,7 @@ export default function CheckCode() {
         router.push(`/webapp-reset-password/set-password?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     } finally {
       setIsLoading(false)
     }
@@ -56,7 +57,7 @@ export default function CheckCode() {
         router.replace(`/webapp-reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     }
   }
 

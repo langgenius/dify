@@ -14,6 +14,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
@@ -65,7 +66,8 @@ const ChangePasswordForm = () => {
           },
         })
         setShowSuccess(true)
-      } catch {
+      } catch (error) {
+        toastRequestError(error)
         await revalidateToken()
       } finally {
         setIsSubmitting(false)

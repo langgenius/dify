@@ -3,6 +3,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import SnippetCard from '../snippet-card'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 const {
   mockDeleteMutate,
   mockDownloadBlob,
@@ -74,9 +76,12 @@ vi.mock('@/service/use-snippets', () => ({
     mutate: mockDeleteMutate,
     isPending: false,
   }),
-  useExportSnippetMutation: () => ({
-    mutateAsync: mockExportMutateAsync,
-  }),
+  useExportSnippetMutation: (...args: unknown[]) => {
+    hookOptions.useExportSnippetMutation = args.at(-1)
+    return {
+      mutateAsync: mockExportMutateAsync,
+    }
+  },
   useUpdateSnippetMutation: () => ({
     mutate: mockUpdateMutate,
     isPending: false,
@@ -334,7 +339,7 @@ describe('SnippetCard', () => {
       })
     })
 
-    it('should show an error toast when snippet export fails', async () => {
+    it('should leave a failed snippet export to the export mutation', async () => {
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
@@ -347,9 +352,11 @@ describe('SnippetCard', () => {
       )
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('snippet.exportFailed')
+      await waitFor(() => expect(mockExportMutateAsync).toHaveBeenCalled())
+      expect(hookOptions.useExportSnippetMutation).toEqual({
+        meta: { errorMessage: 'snippet.exportFailed' },
       })
+      expect(mockToastError).not.toHaveBeenCalled()
       expect(mockDownloadBlob).not.toHaveBeenCalled()
     })
 
@@ -382,19 +389,14 @@ describe('SnippetCard', () => {
           },
           expect.objectContaining({
             onSuccess: expect.any(Function),
-            onError: expect.any(Function),
           }),
         )
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
-    it('should show update errors from the mutation callback', async () => {
-      mockUpdateMutate.mockImplementation(
-        (_payload, options?: { onError?: (error: Error) => void }) => {
-          options?.onError?.(new Error('Update failed'))
-        },
-      )
+    it('should leave failed updates to the global mutation error handler', async () => {
+      mockUpdateMutate.mockImplementation(() => undefined)
 
       render(<SnippetCard snippet={createSnippet({ description: '' })} onRefresh={mockOnRefresh} />)
 
@@ -419,8 +421,8 @@ describe('SnippetCard', () => {
           }),
           expect.any(Object),
         )
-        expect(mockToastError).toHaveBeenCalledWith('Update failed')
       })
+      expect(mockToastError).not.toHaveBeenCalled()
       expect(mockOnRefresh).not.toHaveBeenCalled()
     })
 
@@ -446,19 +448,14 @@ describe('SnippetCard', () => {
           },
           expect.objectContaining({
             onSuccess: expect.any(Function),
-            onError: expect.any(Function),
           }),
         )
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
-    it('should show delete errors from the mutation callback', async () => {
-      mockDeleteMutate.mockImplementation(
-        (_payload, options?: { onError?: (error: Error) => void }) => {
-          options?.onError?.(new Error('Delete failed'))
-        },
-      )
+    it('should leave failed deletions to the global mutation error handler', async () => {
+      mockDeleteMutate.mockImplementation(() => undefined)
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
@@ -470,9 +467,8 @@ describe('SnippetCard', () => {
       fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
       fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('Delete failed')
-      })
+      await waitFor(() => expect(mockDeleteMutate).toHaveBeenCalled())
+      expect(mockToastError).not.toHaveBeenCalled()
       expect(mockOnRefresh).not.toHaveBeenCalled()
     })
   })

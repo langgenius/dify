@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastStreamError } from '@/app/notifications/request-error'
 import { ssePost } from '@/service/base'
-
-type SendOptions = {
-  onNotifyError?: (message: string, code?: string) => void
-}
 
 export const useTextGeneration = () => {
   const { t } = useTranslation(['appDebug'])
   const [isResponding, setIsResponding] = useState(false)
   const [completion, setCompletion] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
-  const handleSend = async (url: string, data: any, { onNotifyError }: SendOptions = {}) => {
+  const handleSend = async (
+    url: string,
+    data: any,
+    { onNotifyError }: { onNotifyError?: (message: string) => void } = {},
+  ) => {
     if (isResponding) {
       toast.info(t(($) => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return false
@@ -42,10 +43,10 @@ export const useTextGeneration = () => {
         onCompleted() {
           setIsResponding(false)
         },
-        onError() {
+        onError(message) {
+          toastStreamError(message, onNotifyError)
           setIsResponding(false)
         },
-        onNotifyError,
       },
     )
     return true

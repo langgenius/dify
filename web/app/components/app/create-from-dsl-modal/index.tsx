@@ -29,7 +29,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -98,16 +98,21 @@ function CreateFromDSLModal({
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
-  const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
-  )
+  const showImportFailed = (error: unknown) => {
+    toast.error(
+      t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+      {
+        description: getErrorMessage(error),
+      },
+    )
+  }
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
       if (
         source.type === CreateFromDSLModalTab.FROM_FILE &&
         source.file.name.toLowerCase().endsWith('.ifpkg')
       )
-        return requestImport({ body: { file: source.file } })
+        return consoleClient.apps.imports.post({ body: { file: source.file } })
 
       const body =
         source.type === CreateFromDSLModalTab.FROM_FILE
@@ -120,12 +125,13 @@ function CreateFromDSLModal({
               yaml_url: source.url,
             } satisfies AppImportPayload)
 
-      return requestImport({ body })
+      return consoleClient.apps.imports.post({ body })
     },
+    onError: showImportFailed,
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
+      onError: showImportFailed,
     }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
@@ -237,13 +243,7 @@ function CreateFromDSLModal({
       }
 
       response = await importMutation.mutateAsync(source)
-    } catch (error) {
-      toast.error(
-        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-        {
-          description: getErrorMessage(error),
-        },
-      )
+    } catch {
       return
     }
     await handleImportResponse(response)
@@ -257,13 +257,7 @@ function CreateFromDSLModal({
       response = await confirmImportMutation.mutateAsync({
         params: { import_id: pendingImport.id },
       })
-    } catch (error) {
-      toast.error(
-        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-        {
-          description: getErrorMessage(error),
-        },
-      )
+    } catch {
       return
     }
 

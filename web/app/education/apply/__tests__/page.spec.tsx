@@ -85,7 +85,10 @@ vi.mock('@/service/console', () => ({
           }),
         },
         post: {
-          mutationOptions: () => ({ mutationFn: mockEducationAdd }),
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            ...options,
+            mutationFn: mockEducationAdd,
+          }),
         },
       },
     },
@@ -107,7 +110,10 @@ vi.mock('@/service/console', () => ({
       },
       switch: {
         post: {
-          mutationOptions: () => ({ mutationFn: mockSwitchWorkspace }),
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            ...options,
+            mutationFn: mockSwitchWorkspace,
+          }),
         },
       },
     },
@@ -221,7 +227,10 @@ describe('EducationApplyPage billing boundary', () => {
 
     await waitFor(() => {
       expect(selector).toBeEnabled()
-      expect(vi.mocked(toast.error)).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+        'common.actionMsg.modifiedUnsuccessfully',
+        expect.anything(),
+      )
     })
     expect(globalThis.location.reload).not.toHaveBeenCalled()
   })

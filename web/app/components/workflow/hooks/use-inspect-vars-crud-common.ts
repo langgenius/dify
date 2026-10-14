@@ -12,6 +12,7 @@ import {
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import useFLow from '@/service/use-flow'
 import {
   useAllBuiltInTools,
@@ -149,7 +150,7 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
         allPluginInfoList,
         schemaTypeDefinitions,
       )
-      const vars = await fetchNodeInspectVars(flowType, flowId, nodeId!)
+      const vars = await withRequestErrorToast(fetchNodeInspectVars(flowType, flowId, nodeId!))
       const varsWithSchemaType = vars.map((varItem) => {
         const schemaType =
           currentNodeOutputVars[0]?.vars.find((v) => v.variable === varItem.name)?.schemaType || ''

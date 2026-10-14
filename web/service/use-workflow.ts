@@ -9,7 +9,13 @@ import type {
   ListEnvironmentDeploymentsResponse,
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
+import type {
+  InfiniteData,
+  MutationMeta,
+  MutationOptions,
+  QueryClient,
+  UseQueryOptions,
+} from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -24,6 +30,7 @@ import type {
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { AppModeEnum } from '@/types/app'
 import { del, get, patch, post, put } from './base'
 import { useInvalid } from './use-base'
@@ -264,9 +271,10 @@ function syncWorkflowDeploymentCaches(
   return environmentDeploymentsQuery.queryKey
 }
 
-export const useUpdateWorkflow = () => {
+export const useUpdateWorkflow = ({ meta }: { meta?: MutationMeta } = {}) => {
   const queryClient = useQueryClient()
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'update'],
     mutationFn: (params: UpdateWorkflowParams) =>
       patch<WorkflowResponse>(params.url, {
@@ -299,23 +307,31 @@ export const useUpdateWorkflow = () => {
   })
 }
 
-export const useDeleteWorkflow = () => {
+export const useDeleteWorkflow = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'delete'],
     mutationFn: (url: string) => del(url),
   })
 }
 
-export const useRestoreWorkflow = () => {
+export const useRestoreWorkflow = (
+  mutationOptions: MutationOptions<
+    CommonResponse & { updated_at: number; hash: string },
+    Error,
+    string
+  > = {},
+) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'restore'],
-    mutationFn: (url: string) =>
-      post<CommonResponse & { updated_at: number; hash: string }>(url, {}, { silent: true }),
+    mutationFn: (url: string) => post<CommonResponse & { updated_at: number; hash: string }>(url),
+    ...mutationOptions,
   })
 }
 
-export const usePublishWorkflow = () => {
+export const usePublishWorkflow = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'publish'],
     mutationFn: (params: PublishWorkflowParams) =>
       post<WorkflowPublishResponse>(params.url, {
@@ -334,17 +350,19 @@ export const useLastRun = (
   nodeId: string,
   enabled: boolean,
 ) => {
-  return useQuery<NodeTracing>({
+  return useQuery<NodeTracing | null>({
     enabled,
     queryKey: [...useLastRunKey, flowType, flowId, nodeId],
     queryFn: async () => {
-      return get(
-        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`,
-        {},
-        {
-          silent: true,
-        },
-      )
+      try {
+        return await get<NodeTracing>(
+          `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`,
+        )
+      } catch (error) {
+        // A node that has never run has no last run; that is an answer, not a failure.
+        if (isNotFoundError(error)) return null
+        throw error
+      }
     },
     retry: 0,
   })

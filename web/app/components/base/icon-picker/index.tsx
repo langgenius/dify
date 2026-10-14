@@ -191,7 +191,10 @@ function IconPickerSession({
   }, [open])
 
   const upload = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.files.upload.post.mutationOptions({
+      // The picker renders the failure inline.
+      onError: () => {},
+    }),
   )
   const uploading = preparing || upload.isPending
   const uploadError =

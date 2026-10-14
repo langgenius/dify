@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import TemplateCard from '../index'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -111,9 +113,12 @@ const mockHandleCheckPluginDependencies = vi.fn()
 let mockIsExporting = false
 
 vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDatasetFromCustomized: () => ({
-    mutateAsync: mockCreateDataset,
-  }),
+  useCreatePipelineDatasetFromCustomized: (...args: unknown[]) => {
+    hookOptions.useCreatePipelineDatasetFromCustomized = args.at(-1)
+    return {
+      mutateAsync: mockCreateDataset,
+    }
+  },
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -134,12 +139,15 @@ vi.mock('@/service/use-pipeline', () => ({
   useDeleteTemplate: () => ({
     mutateAsync: mockDeletePipeline,
   }),
-  useExportTemplateDSL: () => ({
-    mutateAsync: mockExportPipelineDSL,
-    get isPending() {
-      return mockIsExporting
-    },
-  }),
+  useExportTemplateDSL: (...args: unknown[]) => {
+    hookOptions.useExportTemplateDSL = args.at(-1)
+    return {
+      mutateAsync: mockExportPipelineDSL,
+      get isPending() {
+        return mockIsExporting
+      },
+    }
+  },
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
 }))
 
@@ -294,19 +302,18 @@ describe('TemplateCard', () => {
       })
     })
 
-    it('should show error toast on creation failure', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onError(new Error('Creation failed'))
-        return Promise.resolve()
-      })
+    it('should leave a failed creation to the create mutation', async () => {
+      mockCreateDataset.mockResolvedValue(undefined)
 
       render(<TemplateCard {...defaultProps} />)
       const chooseButton = screen.getByTestId('action-choose')
       fireEvent.click(chooseButton)
 
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
+      await waitFor(() => expect(mockCreateDataset).toHaveBeenCalled())
+      expect(hookOptions.useCreatePipelineDatasetFromCustomized).toEqual({
+        meta: { errorMessage: 'datasetPipeline.creation.errorTip' },
       })
+      expect(mockCreateDataset.mock.calls[0]![1]).not.toHaveProperty('onError')
     })
   })
 
@@ -472,19 +479,18 @@ describe('TemplateCard', () => {
       })
     })
 
-    it('should show error toast on export failure', async () => {
-      mockExportPipelineDSL.mockImplementation((_id, callbacks) => {
-        callbacks.onError(new Error('Export failed'))
-        return Promise.resolve()
-      })
+    it('should leave a failed export to the export mutation', async () => {
+      mockExportPipelineDSL.mockResolvedValue(undefined)
 
       render(<TemplateCard {...defaultProps} />)
       const exportButton = screen.getByTestId('action-export')
       fireEvent.click(exportButton)
 
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
+      await waitFor(() => expect(mockExportPipelineDSL).toHaveBeenCalled())
+      expect(hookOptions.useExportTemplateDSL).toEqual({
+        meta: { errorMessage: 'datasetPipeline.exportDSL.errorTip' },
       })
+      expect(mockExportPipelineDSL.mock.calls[0]![1]).not.toHaveProperty('onError')
     })
 
     it('should call downloadBlob on successful export', async () => {

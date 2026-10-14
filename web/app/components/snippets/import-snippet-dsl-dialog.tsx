@@ -189,7 +189,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
       handleImportResponse(response)
     } catch (error) {
-      // HTTP error notifications are owned by the request layer.
+      // The global mutation handler reports HTTP failures.
       if (!(error instanceof ORPCError) && error instanceof Error && error.message)
         toast.error(error.message)
     }
@@ -209,7 +209,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const response = await confirmSnippetImportMutation.mutateAsync({ importId })
       handleImportResponse(response)
     } catch (error) {
-      // HTTP error notifications are owned by the request layer.
+      // The global mutation handler reports HTTP failures.
       if (!(error instanceof ORPCError) && error instanceof Error && error.message)
         toast.error(error.message)
     }

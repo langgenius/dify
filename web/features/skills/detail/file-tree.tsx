@@ -316,12 +316,13 @@ export function FileTree({
 
   const fileMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
+      // Each call site reports its own failure.
+      onError: () => {},
     }),
   )
   const fileCheckMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.check.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorMessage: t(($) => $['skillManagement.detail.uploadCheckFailed']) },
     }),
   )
   const tree = toFileTree(files)
@@ -482,7 +483,7 @@ export function FileTree({
       setUploadReviewItems(reviewItems)
       setUploadReviewOpen(true)
     } catch {
-      toast.error(t(($) => $['skillManagement.detail.uploadCheckFailed']))
+      // The upload check mutation reports its failure.
     }
   }
 

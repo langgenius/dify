@@ -10,6 +10,7 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
@@ -56,7 +57,12 @@ function Splash({ children }: PropsWithChildren) {
       return
     }
 
-    await webAppLogout(address)
+    try {
+      await webAppLogout(address)
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, pathname, redirectUrl, router])
@@ -132,7 +138,7 @@ function Splash({ children }: PropsWithChildren) {
           proceedToAuth(getHttpErrorStatus(error) === 401)
         }
       }
-    })()
+    })().catch(toastRequestError)
   }, [
     shareCode,
     redirectUrl,

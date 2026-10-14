@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toastRequestError } from '@/app/notifications/request-error'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -128,6 +129,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         if (ignore) return
 
         if (isNotFoundError(error)) router.replace('/apps')
+        else toastRequestError(error)
       })
       .finally(() => {
         if (ignore) return

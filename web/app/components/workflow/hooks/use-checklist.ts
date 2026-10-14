@@ -28,6 +28,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
@@ -748,10 +749,12 @@ export const useChecklistBeforePublish = () => {
 
       updateTimeRef.current = updateTimeRef.current + 1
       const currUpdateTime = updateTimeRef.current
-      const { data: datasetsDetail } = await fetchDatasets({
-        url: '/datasets',
-        params: { page: 1, ids: [...allDatasetIds] },
-      })
+      const { data: datasetsDetail } = await withRequestErrorToast(
+        fetchDatasets({
+          url: '/datasets',
+          params: { page: 1, ids: [...allDatasetIds] },
+        }),
+      )
       if (currUpdateTime < updateTimeRef.current) return null
       if (datasetsDetail?.length) updateDatasetsDetail(datasetsDetail)
       return datasetsDetail || []

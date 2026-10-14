@@ -218,10 +218,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         }
 
         const [error, res, isDefined] = await safe(
-          consoleClient.apps.byAppId.workflows.draft.post(
-            { params: { app_id: baseParams.appId }, body },
-            { context: { silent: true } },
-          ),
+          consoleClient.apps.byAppId.workflows.draft.post({
+            params: { app_id: baseParams.appId },
+            body,
+          }),
         )
         if (error) {
           const { appId, isWorkflowDataLoaded } = workflowStore.getState()

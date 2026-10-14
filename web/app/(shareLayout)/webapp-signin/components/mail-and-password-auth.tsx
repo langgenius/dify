@@ -12,6 +12,7 @@ import {
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { emailRegex } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
@@ -92,12 +93,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         toast.error(res.data)
       }
     } catch (error: unknown) {
-      const authenticationError = error as { code?: unknown; message?: unknown }
-      if (
-        authenticationError.code === 'authentication_failed' &&
-        typeof authenticationError.message === 'string'
-      )
-        toast.error(authenticationError.message)
+      toastRequestError(error)
     } finally {
       setIsLoading(false)
     }

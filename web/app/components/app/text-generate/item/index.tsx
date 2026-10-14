@@ -14,6 +14,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import {
@@ -102,10 +103,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { config } = useChatContext()
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback(
-      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
-      appSourceType,
-      installedAppId,
+    await withRequestErrorToast(
+      updateFeedback(
+        { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
+        appSourceType,
+        installedAppId,
+      ),
     )
     setChildFeedback(childFeedback)
   }
@@ -139,7 +142,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
+    const res: any = await withRequestErrorToast(
+      fetchMoreLikeThis(messageId as string, appSourceType, installedAppId),
+    )
     setCompletionRes(res.answer)
     setChildFeedback({
       rating: null,
@@ -166,10 +171,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleOpenLog = async () => {
     if (!onOpenLog) return
-    const data = await fetchTextGenerationMessage({
-      appId: params.appId as string,
-      messageId: messageId!,
-    })
+    const data = await withRequestErrorToast(
+      fetchTextGenerationMessage({
+        appId: params.appId as string,
+        messageId: messageId!,
+      }),
+    )
     onOpenLog(buildPromptLogItem(data))
   }
 
@@ -186,7 +193,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (appSourceType === AppSourceType.installedApp)
         await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      else await withRequestErrorToast(submitHumanInputForm(formToken, formData))
     },
     [appSourceType],
   )

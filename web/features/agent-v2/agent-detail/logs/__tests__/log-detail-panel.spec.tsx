@@ -8,6 +8,7 @@ import { Drawer } from '@langgenius/dify-ui/drawer'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createRequestErrorCaches } from '@/app/get-query-client'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
@@ -59,7 +60,10 @@ vi.mock('@/service/console', () => ({
       byAgentId: {
         feedbacks: {
           post: {
-            mutationOptions: () => ({ mutationFn: mocks.feedbackMutationFn }),
+            mutationOptions: (options?: Record<string, unknown>) => ({
+              ...options,
+              mutationFn: mocks.feedbackMutationFn,
+            }),
           },
         },
         logs: {
@@ -144,6 +148,7 @@ const webappMessages: AgentLogMessageListResponse = {
 function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMessageListResponse) {
   mocks.messagesQueryFn.mockResolvedValue(messages)
   const queryClient = new QueryClient({
+    ...createRequestErrorCaches(),
     defaultOptions: { queries: { retry: false } },
   })
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()

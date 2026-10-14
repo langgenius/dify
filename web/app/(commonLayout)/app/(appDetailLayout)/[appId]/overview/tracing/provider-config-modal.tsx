@@ -29,6 +29,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -184,10 +185,12 @@ const ProviderConfigModal: FC<Props> = ({
   ] = useBoolean(false)
 
   const handleRemove = useCallback(async () => {
-    await removeTracingConfig({
-      appId,
-      provider: type,
-    })
+    await withRequestErrorToast(
+      removeTracingConfig({
+        appId,
+        provider: type,
+      }),
+    )
     toast(
       t(($) => $['api.remove'], { ns: 'common' }),
       { type: 'success' },

@@ -5,6 +5,7 @@ import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -127,7 +128,9 @@ export const useSetWorkflowVarsWithValue = ({ flowType, flowId }: Params) => {
       const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
       invalidateConversationVarValues()
       invalidateSysVarValues()
-      const data = passInVars ? vars! : await fetchAllInspectVars(flowType, flowId)
+      const data = passInVars
+        ? vars!
+        : await withRequestErrorToast(fetchAllInspectVars(flowType, flowId))
       setInspectVarsToStore(data, passedInAllPluginInfoList, passedInSchemaTypeDefinitions)
       handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
     },

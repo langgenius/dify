@@ -81,7 +81,9 @@ export const TagSelector = ({
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
-    consoleQuery.tags.post.mutationOptions(),
+    consoleQuery.tags.post.mutationOptions({
+      meta: { errorMessage: t(($) => $['tag.failed'], { ns: 'common' }) },
+    }),
   )
   const { data: tagList = [] } = useQuery(
     consoleQuery.tags.get.queryOptions({
@@ -181,14 +183,6 @@ export const TagSelector = ({
             },
           )
         },
-        onError: () => {
-          toast.error(
-            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
-            {
-              id: toastId,
-            },
-          )
-        },
         onSettled: () => {
           onTagsChange?.()
         },
@@ -224,9 +218,6 @@ export const TagSelector = ({
           onSuccess: () => {
             toast.success(t(($) => $['tag.created'], { ns: 'common' }))
             setInputValue('')
-          },
-          onError: () => {
-            toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
           },
         },
       )

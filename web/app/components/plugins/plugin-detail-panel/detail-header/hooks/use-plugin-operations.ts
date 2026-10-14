@@ -6,6 +6,7 @@ import { useCallback } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
@@ -119,7 +120,7 @@ export const usePluginOperations = ({
     if (!canDeletePlugin) return
 
     modalStates.showDeleting()
-    const res = await uninstallPlugin(id)
+    const res = await withRequestErrorToast(uninstallPlugin(id))
     modalStates.hideDeleting()
 
     if (res.success) {

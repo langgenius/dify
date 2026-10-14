@@ -88,7 +88,12 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const hideBatchModal = () => setBatchModalVisible(false)
   const resetImportStatus = () => setImportStatus(undefined)
 
-  const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
+  const batchImportMeta = {
+    errorMessage: t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' }),
+  }
+  const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress({
+    meta: batchImportMeta,
+  })
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress(
       { jobID },
@@ -103,17 +108,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           if (res.job_status === segmentImportStatus.error)
             toast.error(`${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}`)
         },
-        onError: (e) => {
-          const message = 'message' in e ? `: ${e.message}` : ''
-          toast.error(
-            `${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`,
-          )
-        },
       },
     )
   }
 
-  const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
+  const { mutateAsync: segmentBatchImport } = useSegmentBatchImport({ meta: batchImportMeta })
   const runBatch = async (csv: FileItem) => {
     await segmentBatchImport(
       {
@@ -124,12 +123,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         onSuccess: (res) => {
           setImportStatus(res.job_status)
           checkProcess(res.job_id)
-        },
-        onError: (e) => {
-          const message = 'message' in e ? `: ${e.message}` : ''
-          toast.error(
-            `${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`,
-          )
         },
       },
     )

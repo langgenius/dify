@@ -19,6 +19,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -76,22 +77,28 @@ const InstallForm = () => {
         // Fallback to signin page if auto-login fails
         replace('/signin')
       }
+    } catch (error) {
+      toastRequestError(error)
     } finally {
       setIsSubmitting(false)
     }
   }
 
   useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
-      if (res.step === 'finished') {
-        push('/signin')
-      } else {
-        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-          if (res.status === 'not_started') push('/init')
-        })
-      }
-      setLoading(false)
-    })
+    fetchSetupStatus()
+      .then((res: SetupStatusResponse) => {
+        if (res.step === 'finished') {
+          push('/signin')
+        } else {
+          fetchInitValidateStatus()
+            .then((res: InitValidateStatusResponse) => {
+              if (res.status === 'not_started') push('/init')
+            })
+            .catch(toastRequestError)
+        }
+        setLoading(false)
+      })
+      .catch(toastRequestError)
   }, [push])
 
   return loading ? (

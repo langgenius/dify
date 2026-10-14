@@ -1,6 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { createHttpError } from '@/service/http-error'
 import LastRun from '../index'
 
 const mockUseHooksStore = vi.hoisted(() => vi.fn())
@@ -110,11 +109,10 @@ describe('LastRun', () => {
     )
   })
 
-  it('should render the no-data state for 404 last-run responses and forward single-run clicks', () => {
+  it('should render the no-data state for nodes without a last run and forward single-run clicks', () => {
     mockUseLastRun.mockReturnValue({
-      data: undefined,
+      data: null,
       isFetching: false,
-      error: createHttpError(new Response(null, { status: 404 })),
     })
 
     render(

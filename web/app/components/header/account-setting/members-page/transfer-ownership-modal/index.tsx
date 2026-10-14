@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
@@ -62,7 +63,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     )
   }
   const sendEmail = async () => {
-    const res = await sendOwnerEmail({})
+    const res = await withRequestErrorToast(sendOwnerEmail({}))
     startCount()
     if (res.data) setStepToken(res.data)
   }

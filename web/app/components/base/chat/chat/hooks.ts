@@ -22,6 +22,11 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import {
+  toastRequestError,
+  toastStreamError,
+  withRequestErrorToast,
+} from '@/app/notifications/request-error'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -68,7 +73,8 @@ type SendCallback = {
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
-  onNotifyError?: IOtherOptions['onNotifyError']
+  /** Shows stream failures on a page-specific toast host instead of the global one. */
+  onNotifyError?: (message: string) => void
   isPublicAPI?: boolean
 }
 
@@ -527,7 +533,8 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
+    if (stopChat && taskIdRef.current && !pausedStateRef.current)
+      void Promise.resolve(stopChat(taskIdRef.current)).catch(toastRequestError)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
@@ -609,7 +616,6 @@ export const useChat = (
       }
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -670,7 +676,8 @@ export const useChat = (
                     (suggestedQuestionsAbortControllerRef.current = newAbortController),
                 )
                 setSuggestedQuestions(data)
-              } catch {
+              } catch (error) {
+                toastRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -784,9 +791,10 @@ export const useChat = (
             responseItem.content = messageReplace.answer
           })
         },
-        onError() {
+        onError(message) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          toastStreamError(message, onNotifyError)
           handleResponding(false)
           settleSend(true)
         },
@@ -1197,7 +1205,6 @@ export const useChat = (
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
@@ -1268,10 +1275,12 @@ export const useChat = (
               !hasStopRespondedRef.current &&
               onGetConversationMessages
             ) {
-              const conversationMessagesResponse = await onGetConversationMessages(
-                conversationIdRef.current,
-                (newAbortController) =>
-                  (conversationMessagesAbortControllerRef.current = newAbortController),
+              const conversationMessagesResponse = await withRequestErrorToast(
+                onGetConversationMessages(
+                  conversationIdRef.current,
+                  (newAbortController) =>
+                    (conversationMessagesAbortControllerRef.current = newAbortController),
+                ),
               )
               const data = getConversationMessagesData(conversationMessagesResponse)
               const newResponseItem = data.find((item) => item.id === responseItem.id)
@@ -1346,7 +1355,8 @@ export const useChat = (
                     (suggestedQuestionsAbortControllerRef.current = newAbortController),
                 )
                 setSuggestedQuestions(data)
-              } catch {
+              } catch (error) {
+                toastRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -1485,9 +1495,10 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError() {
+        onError(message) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          toastStreamError(message, onNotifyError)
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({

@@ -49,7 +49,9 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     },
     false,
   )
-  const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
+  const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized({
+    meta: { errorMessage: t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }) },
+  })
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const invalidDatasetList = useInvalidDatasetList()
 
@@ -75,9 +77,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         })
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
-      onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
-      },
     })
   }, [
     getPipelineTemplateInfo,
@@ -99,7 +98,9 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowEditModal(false)
   }, [])
 
-  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
+  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL({
+    meta: { errorMessage: t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }) },
+  })
 
   const handleExportDSL = useCallback(async () => {
     if (isExporting) return
@@ -108,9 +109,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
         toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
-      },
-      onError: () => {
-        toast.error(t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }))
       },
     })
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])

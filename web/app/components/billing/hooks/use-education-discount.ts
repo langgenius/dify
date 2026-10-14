@@ -3,6 +3,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
 
@@ -21,9 +22,11 @@ export function useEducationDiscount() {
 
     setIsEducationDiscountLoading(true)
     try {
-      const { url } = await consoleClient.billing.subscription.get({
-        query: { plan: 'professional', interval: 'year' },
-      })
+      const { url } = await withRequestErrorToast(
+        consoleClient.billing.subscription.get({
+          query: { plan: 'professional', interval: 'year' },
+        }),
+      )
       window.location.href = url
     } finally {
       setIsEducationDiscountLoading(false)

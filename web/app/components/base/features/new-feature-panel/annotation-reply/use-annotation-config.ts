@@ -6,6 +6,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
@@ -48,7 +49,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {
-      const res: any = await queryAnnotationJobStatus(appId, status, jobId)
+      const res: any = await withRequestErrorToast(queryAnnotationJobStatus(appId, status, jobId))
       isCompleted = res.job_status === JobStatus.completed
       if (isCompleted) break
 
@@ -59,11 +60,8 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score?: number) => {
     if (!annotationConfig.enabled && (isAnnotationQuotaUnavailable || isAnnotationFull)) return
 
-    const { job_id: jobId }: any = await updateAnnotationStatus(
-      appId,
-      AnnotationEnableStatus.enable,
-      embeddingModel,
-      score,
+    const { job_id: jobId }: any = await withRequestErrorToast(
+      updateAnnotationStatus(appId, AnnotationEnableStatus.enable, embeddingModel, score),
     )
     await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
     setAnnotationConfig(
@@ -88,7 +86,9 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const handleDisableAnnotation = async (embeddingModel: EmbeddingModelConfig) => {
     if (!annotationConfig.enabled) return
 
-    await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel)
+    await withRequestErrorToast(
+      updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel),
+    )
     setAnnotationConfig(
       produce(annotationConfig, (draft: AnnotationReplyConfig) => {
         draft.enabled = false

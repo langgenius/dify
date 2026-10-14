@@ -13,6 +13,7 @@ import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import {
   AppSourceType,
   fetchChatList,
@@ -291,7 +292,7 @@ const ChatWrapper = () => {
       if (!(await prepareHumanInputSubmission())) return
 
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      else await withRequestErrorToast(submitHumanInputForm(formToken, formData))
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )

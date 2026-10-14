@@ -1,10 +1,8 @@
 import Cookies from 'js-cookie'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { flushEvents } from '@/app/components/base/amplitude/utils'
 import { reportOAuthRegistrationIfNewUser } from '@/app/components/oauth-registration-attribution'
-import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 
 export function buildReturnUrl(pathname: string, search: string) {
@@ -52,7 +50,6 @@ export function useSilentAuthorize({
   searchParams,
   state,
 }: SilentAuthorizeOptions) {
-  const { t } = useTranslation(['oauth'])
   const router = useRouter()
   const startedRef = useRef(false)
   const [autoAuthorizationFailed, setAutoAuthorizationFailed] = useState(false)
@@ -79,10 +76,9 @@ export function useSilentAuthorize({
         await flushEvents()
         globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
       })
-      .catch((error: unknown) => {
+      .catch(() => {
+        // The authorize mutation reports its failure.
         setAutoAuthorizationFailed(true)
-        const message = error instanceof Error ? error.message : String(error)
-        toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
       })
   }, [
     authorize,
@@ -94,7 +90,6 @@ export function useSilentAuthorize({
     searchParams,
     shouldAutoAuthorize,
     state,
-    t,
   ])
 
   return {

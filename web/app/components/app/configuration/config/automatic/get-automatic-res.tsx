@@ -16,6 +16,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { consoleQuery } from '@/service/console'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useAutoGenModel } from '../auto-gen-model-storage'
@@ -222,11 +223,13 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       let apiRes: GenRes
       let hasError = false
       if (isBasicMode || !currentPrompt) {
-        const { error, ...res } = await generateBasicAppFirstTimeRule({
-          instruction,
-          model_config: model,
-          no_variable: false,
-        })
+        const { error, ...res } = await withRequestErrorToast(
+          generateBasicAppFirstTimeRule({
+            instruction,
+            model_config: model,
+            no_variable: false,
+          }),
+        )
         apiRes = {
           ...res,
           modified: res.prompt,
@@ -236,14 +239,16 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           toast.error(error)
         }
       } else {
-        const { error, ...res } = await generateRule({
-          flow_id: flowId,
-          node_id: nodeId,
-          current: currentPrompt,
-          instruction,
-          ideal_output: ideaOutput,
-          model_config: model,
-        })
+        const { error, ...res } = await withRequestErrorToast(
+          generateRule({
+            flow_id: flowId,
+            node_id: nodeId,
+            current: currentPrompt,
+            instruction,
+            ideal_output: ideaOutput,
+            model_config: model,
+          }),
+        )
         apiRes = res
         if (error) {
           hasError = true

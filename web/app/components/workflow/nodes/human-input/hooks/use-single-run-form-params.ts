@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
@@ -90,7 +91,9 @@ const useSingleRunFormParams = ({
         }
       })
       requestParamsObj = { ...inputs }
-      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
+      const data = await withRequestErrorToast(
+        fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! }),
+      )
       setFormData(data)
       setRequiredInputs(requestParamsObj)
       return data
@@ -106,11 +109,13 @@ const useSingleRunFormParams = ({
     }) => {
       const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
 
-      await submitHumanInputNodeStepRunForm(fetchURL, {
-        inputs: requiredInputs,
-        form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs),
-        action: submission.action,
-      })
+      await withRequestErrorToast(
+        submitHumanInputNodeStepRunForm(fetchURL, {
+          inputs: requiredInputs,
+          form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs),
+          action: submission.action,
+        }),
+      )
     },
     [fetchURL, formData?.inputs, inputs.inputs, requiredInputs],
   )

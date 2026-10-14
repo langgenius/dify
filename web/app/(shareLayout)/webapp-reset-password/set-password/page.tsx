@@ -10,6 +10,7 @@ import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -80,7 +81,7 @@ const ChangePasswordForm = () => {
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     }
   }, [password, token, valid, confirmPassword])
 

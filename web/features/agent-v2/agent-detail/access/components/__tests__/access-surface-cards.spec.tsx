@@ -8,6 +8,7 @@ import { QueryClient, useQuery } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createRequestErrorCaches } from '@/app/get-query-client'
 import { toast } from '@/app/notifications'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AccessMode } from '@/models/access-control'
@@ -314,6 +315,7 @@ function renderWithQueryClient(
 
 function createConsoleQueryClient(webAppAuthEnabled = true) {
   const queryClient = new QueryClient({
+    ...createRequestErrorCaches(),
     defaultOptions: {
       queries: {
         retry: false,

@@ -38,15 +38,21 @@ A success toast is appropriate when the result is not on screen: a background jo
 
 ## Errors
 
-- When a request fails and the server returns an error message, the request layer shows that message unless the request is `silent`; see `afterResponseErrorCode` in [request layer]. Do not add a second toast for the same failure in `catch` or `onError`.
-- To present a request error differently, make the request `silent` (`{ context: { silent: true } }` for generated clients) and show the error inline. A `silent` request with no other error presentation fails without any feedback.
+The request layer only rejects; it never shows a toast. Failure feedback is decided where the request is made:
+
+- **Mutations**: the global mutation handler in [query client] shows the server message once. Declaring `onError` on `useMutation` (or on generated `mutationOptions`) takes over that feedback, whether you show a toast, render the error inline, or rely on feedback the mutation function already gives. Put that `onError` on the hook, not on the `mutate(variables, { onError })` call, and do not toast again in a `catch` around `mutateAsync`: the global handler cannot see either, so the failure would toast twice. Keep call-level `onError` and `catch` for state cleanup. Use `meta: { errorMessage }` to name the failed action: it becomes the toast title and the server message its description, and it also covers failures that never got a response. Service mutation hooks take `meta` so each caller can name its action.
+- **Queries**: a failed first load shows nothing globally; render the error state in the component, or set `meta: { errorMessage }` to toast it. A failed background refetch keeps the stale data and toasts once. When an error status is an expected answer, such as a 404 meaning "not created yet", return it as data from `queryFn` instead of throwing.
+- **Imperative requests** outside React Query: call `toastRequestError(error)` from [request error] in `catch`, or wrap the request in `withRequestErrorToast(...)` when the rejection must keep propagating.
+- **Streams** (`ssePost`, `sseGet`): every failure, including cancellation, reaches `onError`. Call `toastStreamError(message)` there; it ignores cancellations and accepts a page-specific notifier.
+- These helpers skip 401 responses, aborted requests, and workflow requests that race an app deletion, and identical failures share one visible toast.
 - Failures that never reach the request layer, such as a rejected clipboard write or a client-side exception, still need their own feedback.
 - Client-side validation belongs at the field through the [form contract], never in a toast.
 
 ## Existing Code
 
-Many existing calls predate these rules and are migrated in batches. Do not copy them into new code, and do not remove an error toast without confirming the request layer covers that failure.
+Many existing calls predate these rules and are migrated in batches. Do not copy them into new code.
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
 [form contract]: ../../packages/dify-ui/docs/forms.md
-[request layer]: ../service/fetch.ts
+[query client]: ../app/get-query-client.ts
+[request error]: ../app/notifications/request-error.ts

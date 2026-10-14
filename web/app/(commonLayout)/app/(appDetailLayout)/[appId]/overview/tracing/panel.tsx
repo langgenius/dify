@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import {
   fetchTracingConfig as doFetchTracingConfig,
   fetchTracingStatus,
@@ -46,7 +47,7 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
   const [tracingStatus, setTracingStatus] = useState<TracingStatus | null>(null)
   const enabled = tracingStatus?.enabled || false
   const handleTracingStatusChange = async (tracingStatus: TracingStatus, noToast?: boolean) => {
-    await updateTracingStatus({ appId, body: tracingStatus })
+    await withRequestErrorToast(updateTracingStatus({ appId, body: tracingStatus }))
     setTracingStatus(tracingStatus)
     if (!noToast) {
       toast(
@@ -213,7 +214,7 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
 
   useEffect(() => {
     ;(async () => {
-      const tracingStatus = await fetchTracingStatus({ appId })
+      const tracingStatus = await withRequestErrorToast(fetchTracingStatus({ appId }))
       setTracingStatus(tracingStatus)
       await fetchTracingConfig()
       setLoaded()

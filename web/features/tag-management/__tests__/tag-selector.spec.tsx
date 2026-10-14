@@ -331,7 +331,7 @@ describe('TagSelector', () => {
     })
   })
 
-  it('shows an error toast when applying bindings fails', async () => {
+  it('leaves a failed binding update to the binding mutation', async () => {
     const user = userEvent.setup()
     vi.mocked(unBindTag).mockRejectedValueOnce(new Error('Unbind failed'))
     render(<TagSelector {...defaultProps} />)
@@ -341,11 +341,8 @@ describe('TagSelector', () => {
     await user.click(await screen.findByRole('option', { name: /Frontend/i }))
     await user.click(trigger)
 
-    await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith(i18n.modifiedUnsuccessfully, {
-        id: 'tag-bindings-app-target-1',
-      })
-    })
+    await waitFor(() => expect(unBindTag).toHaveBeenCalled())
+    expect(mockToast.error).not.toHaveBeenCalled()
   })
 
   it('creates a tag with the current tag type without binding it implicitly', async () => {

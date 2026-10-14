@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getRawInputsFromUrlParams } from '@/app/components/base/chat/utils'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -110,7 +111,7 @@ export const useTextGenerationAppState = ({
   const handleSaveMessage = useCallback(
     async (messageId: string) => {
       if (!appId) return
-      await saveMessage(messageId, appSourceType, appId)
+      await withRequestErrorToast(saveMessage(messageId, appSourceType, appId))
       toast.success(t(($) => $['api.saved'], { ns: 'common' }))
       await fetchSavedMessages(appId)
     },
@@ -119,7 +120,7 @@ export const useTextGenerationAppState = ({
   const handleRemoveSavedMessage = useCallback(
     async (messageId: string) => {
       if (!appId) return
-      await removeMessage(messageId, appSourceType, appId)
+      await withRequestErrorToast(removeMessage(messageId, appSourceType, appId))
       toast.success(t(($) => $['api.remove'], { ns: 'common' }))
       await fetchSavedMessages(appId)
     },

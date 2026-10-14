@@ -49,7 +49,14 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
+  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription({
+    onError: (error: unknown) => {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' }),
+      )
+    },
+  })
 
   const parametersSchema = useMemo<ParametersSchema[]>(
     () => detail?.declaration?.trigger?.subscription_constructor?.parameters || [],
@@ -85,12 +92,6 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
         onSuccess: () => {
           refetch?.()
           onClose()
-        },
-        onError: (error: unknown) => {
-          toast.error(
-            getErrorMessage(error) ??
-              t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' }),
-          )
         },
       },
     )

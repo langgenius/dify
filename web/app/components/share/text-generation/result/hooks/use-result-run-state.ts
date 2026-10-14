@@ -4,6 +4,7 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
 
 type Notify = (payload: { type: 'error'; message: string }) => void
@@ -146,16 +147,18 @@ export const useResultRunState = ({
 
   const handleFeedback = useCallback(
     async (nextFeedback: FeedbackType) => {
-      await updateFeedback(
-        {
-          url: `/messages/${messageId}/feedbacks`,
-          body: {
-            rating: nextFeedback.rating,
-            content: nextFeedback.content,
+      await withRequestErrorToast(
+        updateFeedback(
+          {
+            url: `/messages/${messageId}/feedbacks`,
+            body: {
+              rating: nextFeedback.rating,
+              content: nextFeedback.content,
+            },
           },
-        },
-        appSourceType,
-        appId,
+          appSourceType,
+          appId,
+        ),
       )
       setFeedback(nextFeedback)
     },

@@ -14,6 +14,7 @@ const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
 const mockExportPipeline = vi.fn()
+const mockUseExportPipelineDSL = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
 const mockToast = vi.fn()
@@ -122,7 +123,10 @@ vi.mock('@/service/use-base', () => ({
 }))
 
 vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({ mutateAsync: mockExportPipeline }),
+  useExportPipelineDSL: (options: unknown) => {
+    mockUseExportPipelineDSL(options)
+    return { mutateAsync: mockExportPipeline }
+  },
 }))
 
 vi.mock('@/service/datasets', () => ({
@@ -233,7 +237,7 @@ describe('Dropdown callback coverage', () => {
     })
   })
 
-  it('should surface an export failure toast when pipeline export fails', async () => {
+  it('should leave a failed pipeline export to the export mutation', async () => {
     const user = userEvent.setup()
     mockExportPipeline.mockRejectedValueOnce(new Error('export failed'))
 
@@ -242,9 +246,11 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('app.exportFailed')
+    await waitFor(() => expect(mockExportPipeline).toHaveBeenCalled())
+    expect(mockUseExportPipelineDSL).toHaveBeenCalledWith({
+      meta: { errorMessage: 'app.exportFailed' },
     })
+    expect(mockToast).not.toHaveBeenCalled()
   })
 
   it('should not attempt export when the dataset has no pipeline id', async () => {

@@ -29,6 +29,7 @@ import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { getPluginLanguage } from '@/i18n/metadata'
 import {
   fetchBuiltInToolList,
@@ -98,7 +99,9 @@ const SettingBuiltInTool: FC<Props> = ({
           })()
         })
         setTools(list)
-      } catch {}
+      } catch (error) {
+        toastRequestError(error)
+      }
       setIsLoading(false)
     })()
     // oxlint-disable-next-line react/exhaustive-deps

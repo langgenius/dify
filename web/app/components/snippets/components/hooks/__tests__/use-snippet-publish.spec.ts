@@ -2,6 +2,8 @@ import { act, renderHook } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { useSnippetPublish } from '../use-snippet-publish'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 const mockMutateAsync = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetQueryData = vi.fn()
@@ -28,10 +30,13 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/use-snippet-workflows', () => ({
-  usePublishSnippetWorkflowMutation: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending,
-  }),
+  usePublishSnippetWorkflowMutation: (...args: unknown[]) => {
+    hookOptions.usePublishSnippetWorkflowMutation = args.at(-1)
+    return {
+      mutateAsync: mockMutateAsync,
+      isPending,
+    }
+  },
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -105,7 +110,7 @@ describe('useSnippetPublish', () => {
       expect(toast.success).not.toHaveBeenCalled()
     })
 
-    it('should surface publish errors through toast feedback', async () => {
+    it('should leave publish failures to the publish mutation', async () => {
       mockMutateAsync.mockRejectedValue(new Error('publish failed'))
 
       const { result } = renderHook(() =>
@@ -118,7 +123,10 @@ describe('useSnippetPublish', () => {
         await result.current.handlePublish()
       })
 
-      expect(toast.error).toHaveBeenCalledWith('publish failed')
+      expect(hookOptions.usePublishSnippetWorkflowMutation).toEqual({
+        meta: { errorMessage: 'snippet.publishFailed' },
+      })
+      expect(toast.error).not.toHaveBeenCalled()
     })
   })
 

@@ -14,6 +14,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useStore } from '@/app/components/workflow/store'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 
@@ -35,10 +36,12 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
 
   const getChatVarLatestValues = useCallback(async () => {
     if (conversationID && varList.length > 0) {
-      const res = await fetchCurrentValueOfConversationVariable({
-        url: `/apps/${appID}/conversation-variables`,
-        params: { conversation_id: conversationID },
-      })
+      const res = await withRequestErrorToast(
+        fetchCurrentValueOfConversationVariable({
+          url: `/apps/${appID}/conversation-variables`,
+          params: { conversation_id: conversationID },
+        }),
+      )
       if (res.data.length > 0) {
         const valueMap = res.data.reduce((acc: any, cur) => {
           acc[cur.id] = cur.value

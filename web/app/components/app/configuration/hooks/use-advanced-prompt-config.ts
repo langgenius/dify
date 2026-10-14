@@ -14,6 +14,7 @@ import {
   checkHasQueryBlock,
   PRE_PROMPT_PLACEHOLDER_TEXT,
 } from '@/app/components/base/prompt-editor/constants'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { fetchPromptTemplate } from '@/service/debug'
@@ -121,12 +122,14 @@ const useAdvancedPromptConfig = ({
     if (!appMode) return
 
     if (!isAdvancedPrompt) {
-      const { chat_prompt_config, completion_prompt_config, stop } = await fetchPromptTemplate({
-        appMode,
-        mode,
-        modelName,
-        hasSetDataSet,
-      })
+      const { chat_prompt_config, completion_prompt_config, stop } = await withRequestErrorToast(
+        fetchPromptTemplate({
+          appMode,
+          mode,
+          modelName,
+          hasSetDataSet,
+        }),
+      )
       if (modelModeType === ModelModeType.chat) {
         const newPromptConfig = produce(chat_prompt_config, (draft) => {
           draft.prompt = draft.prompt.map((p) => {
@@ -154,12 +157,14 @@ const useAdvancedPromptConfig = ({
     }
 
     if (isMigrateToCompetition) {
-      const { completion_prompt_config, chat_prompt_config, stop } = await fetchPromptTemplate({
-        appMode,
-        mode: toModelModeType as ModelModeType,
-        modelName,
-        hasSetDataSet,
-      })
+      const { completion_prompt_config, chat_prompt_config, stop } = await withRequestErrorToast(
+        fetchPromptTemplate({
+          appMode,
+          mode: toModelModeType as ModelModeType,
+          modelName,
+          hasSetDataSet,
+        }),
+      )
 
       if (toModelModeType === ModelModeType.completion) {
         const newPromptConfig = produce(completion_prompt_config, (draft) => {

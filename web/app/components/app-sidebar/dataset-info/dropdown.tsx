@@ -23,6 +23,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -93,7 +94,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     })
   }, [])
 
-  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
+  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL({
+    meta: { errorMessage: t(($) => $.exportFailed, { ns: 'app' }) },
+  })
 
   const handleExportPipeline = useCallback(
     async (include = false) => {
@@ -107,10 +110,10 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
       } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+        // The export mutation reports its failure.
       }
     },
-    [dataset, exportPipelineConfig, t],
+    [dataset, exportPipelineConfig],
   )
 
   const detectIsUsedByApp = useCallback(async () => {
@@ -133,7 +136,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
 
   const onConfirmDelete = useCallback(async () => {
     try {
-      await deleteDataset(dataset.id)
+      await withRequestErrorToast(deleteDataset(dataset.id))
       toast(
         t(($) => $.datasetDeleted, { ns: 'dataset' }),
         { type: 'success' },

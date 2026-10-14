@@ -154,19 +154,31 @@ vi.mock('@/service/use-base', () => ({
   useInvalid: () => mockInvalidPublishedPipelineInfo,
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  publishedPipelineInfoQueryKeyPrefix: ['pipeline', 'published'],
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline: () => ({
-    mutateAsync: mockPublishAsCustomizedPipeline,
-  }),
-}))
+vi.mock('@/service/use-pipeline', async () => {
+  const { routeMockedMutateAsyncFailure } = await import('@/test/mutation-mock')
+  return {
+    publishedPipelineInfoQueryKeyPrefix: ['pipeline', 'published'],
+    useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
+    usePublishAsCustomizedPipeline: (options?: {
+      onError?: (error: Error) => void
+      meta?: { errorMessage?: string }
+    }) => ({
+      mutateAsync: routeMockedMutateAsyncFailure(options, mockPublishAsCustomizedPipeline),
+    }),
+  }
+})
 
-vi.mock('@/service/use-workflow', () => ({
-  usePublishWorkflow: () => ({
-    mutateAsync: mockPublishWorkflow,
-  }),
-}))
+vi.mock('@/service/use-workflow', async () => {
+  const { routeMockedMutateAsyncFailure } = await import('@/test/mutation-mock')
+  return {
+    usePublishWorkflow: (options?: {
+      onError?: (error: Error) => void
+      meta?: { errorMessage?: string }
+    }) => ({
+      mutateAsync: routeMockedMutateAsyncFailure(options, mockPublishWorkflow),
+    }),
+  }
+})
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   default: ({
@@ -727,10 +739,12 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(toastMocks.call).toHaveBeenCalledWith({
-            type: 'error',
-            message: 'datasetPipeline.publishPipeline.error.message',
-          })
+          expect(toastMocks.call).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'datasetPipeline.publishPipeline.error.message',
+            }),
+          )
         })
       })
 
@@ -753,10 +767,12 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(toastMocks.call).toHaveBeenCalledWith({
-            type: 'error',
-            message: 'datasetPipeline.publishTemplate.error.message',
-          })
+          expect(toastMocks.call).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'datasetPipeline.publishTemplate.error.message',
+            }),
+          )
         })
       })
 
@@ -974,10 +990,12 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(toastMocks.call).toHaveBeenCalledWith({
-            type: 'error',
-            message: 'datasetPipeline.publishPipeline.error.message',
-          })
+          expect(toastMocks.call).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'datasetPipeline.publishPipeline.error.message',
+            }),
+          )
         })
 
         await waitFor(() => {
@@ -1023,10 +1041,12 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(toastMocks.call).toHaveBeenCalledWith({
-            type: 'error',
-            message: 'datasetPipeline.publishPipeline.error.message',
-          })
+          expect(toastMocks.call).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'datasetPipeline.publishPipeline.error.message',
+            }),
+          )
         })
       })
     })

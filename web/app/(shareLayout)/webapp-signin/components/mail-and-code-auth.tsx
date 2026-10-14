@@ -6,6 +6,7 @@ import { useLocale } from '#i18n'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { emailRegex } from '@/config'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
@@ -56,7 +57,7 @@ export default function MailAndCodeAuth() {
         router.push(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     } finally {
       setLoading(false)
     }

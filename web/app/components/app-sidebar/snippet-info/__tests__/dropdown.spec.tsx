@@ -12,6 +12,7 @@ const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
 const mockUpdateMutate = vi.fn()
 const mockExportMutateAsync = vi.fn()
+const mockUseExportSnippetMutation = vi.fn()
 const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
 const mockConsoleState = vi.hoisted(() => ({
@@ -49,10 +50,13 @@ vi.mock('@/service/use-snippets', () => ({
     mutate: mockUpdateMutate,
     isPending: false,
   }),
-  useExportSnippetMutation: () => ({
-    mutateAsync: mockExportMutateAsync,
-    isPending: false,
-  }),
+  useExportSnippetMutation: (options: unknown) => {
+    mockUseExportSnippetMutation(options)
+    return {
+      mutateAsync: mockExportMutateAsync,
+      isPending: false,
+    }
+  },
   useDeleteSnippetMutation: () => ({
     mutate: mockDeleteMutate,
     isPending: false,
@@ -200,7 +204,6 @@ describe('SnippetInfoDropdown', () => {
         },
         expect.objectContaining({
           onSuccess: expect.any(Function),
-          onError: expect.any(Function),
         }),
       )
     })
@@ -228,7 +231,7 @@ describe('SnippetInfoDropdown', () => {
       })
     })
 
-    it('should show an error toast when export fails', async () => {
+    it('should leave a failed export to the export mutation', async () => {
       const user = userEvent.setup()
       mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
@@ -238,9 +241,11 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.exportSnippet'))
 
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('snippet.exportFailed')
+      await waitFor(() => expect(mockExportMutateAsync).toHaveBeenCalled())
+      expect(mockUseExportSnippetMutation).toHaveBeenCalledWith({
+        meta: { errorMessage: 'snippet.exportFailed' },
       })
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 
@@ -270,7 +275,6 @@ describe('SnippetInfoDropdown', () => {
         },
         expect.objectContaining({
           onSuccess: expect.any(Function),
-          onError: expect.any(Function),
         }),
       )
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.deleted')

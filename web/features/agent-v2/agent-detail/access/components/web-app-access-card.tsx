@@ -127,7 +127,11 @@ export function WebAppAccessCard({
       },
     }),
   )
-  const updateSiteMutation = useMutation(consoleQuery.apps.byAppId.site.post.mutationOptions())
+  const updateSiteMutation = useMutation(
+    consoleQuery.apps.byAppId.site.post.mutationOptions({
+      meta: { errorMessage: tCommon(($) => $['actionMsg.modifiedUnsuccessfully']) },
+    }),
+  )
   const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
   const optimisticEnabled =
     toggleSiteMutation.isPending && pendingEnabled !== undefined
@@ -198,7 +202,7 @@ export function WebAppAccessCard({
       toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       return true
     } catch {
-      toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
+      // The site mutation reports its failure.
       return false
     }
   }

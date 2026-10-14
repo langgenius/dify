@@ -71,7 +71,7 @@ export function EditAccountNameDialog({ name }: { name: string }) {
       await updateProfile.mutateAsync({ body: { name } })
       actionsRef.current?.close()
     } catch (error) {
-      // HTTP error notifications are owned by the request layer.
+      // The global mutation handler reports HTTP failures.
       // Only report a failure that never produced a response.
       if (!(error instanceof ORPCError) && error instanceof Error && error.message)
         toast.error(error.message)

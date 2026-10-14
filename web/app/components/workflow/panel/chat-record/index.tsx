@@ -7,6 +7,7 @@ import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { fetchConversationMessages } from '@/service/debug'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
@@ -69,7 +70,8 @@ const ChatRecord = () => {
         const tree = buildChatItemTree(newAllChatItems)
         setChatItemTree(tree)
         setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
-      } catch {
+      } catch (error) {
+        toastRequestError(error)
       } finally {
         setFetched(true)
       }

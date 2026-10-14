@@ -48,7 +48,6 @@ export async function uploadSkillFile(
     {
       bodyStringify: false,
       deleteContentType: true,
-      silent: true,
     },
   )
 }
@@ -125,7 +124,6 @@ export function sendSkillAssistMessage({
       },
     },
     {
-      silent: true,
       getAbortController,
       onCompleted: (hasError, errorMessage) => {
         onCompleted?.(streamErrorHandled && hasError ? false : hasError, errorMessage)

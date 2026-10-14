@@ -126,7 +126,9 @@ export const useChildSegmentData = (
     [queryClient, currentQueryKey],
   )
   // Mutations
-  const { mutateAsync: deleteChildSegment } = useDeleteChildSegment()
+  const { mutateAsync: deleteChildSegment } = useDeleteChildSegment({
+    meta: { errorMessage: t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }) },
+  })
   const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
   const onDeleteChildChunk = useCallback(
     async (segmentIdParam: string, childChunkId: string) => {
@@ -144,9 +146,6 @@ export const useChildSegmentData = (
             } else {
               resetChildList()
             }
-          },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
           },
         },
       )

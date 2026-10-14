@@ -1,3 +1,4 @@
+import type { MutationMeta } from '@tanstack/react-query'
 import type {
   SnippetCanvasData,
   SnippetDetailPayload,
@@ -254,10 +255,11 @@ export const useDeleteSnippetMutation = () => {
   })
 }
 
-export const useIncrementSnippetUseCountMutation = () => {
+export const useIncrementSnippetUseCountMutation = ({ meta }: { meta?: MutationMeta } = {}) => {
   const queryClient = useQueryClient()
 
   return useMutation<IncrementSnippetUseCountResponse, Error, SnippetIdInput>({
+    meta,
     mutationKey: customizedSnippetsContract.bySnippetId.useCount.increment.post.mutationKey(),
     mutationFn: ({ params }) =>
       customizedSnippetsClient.bySnippetId.useCount.increment.post({
@@ -271,8 +273,9 @@ export const useIncrementSnippetUseCountMutation = () => {
   })
 }
 
-export const useExportSnippetMutation = () => {
+export const useExportSnippetMutation = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation<string, Error, { snippetId: string; include?: boolean; workflowId?: string }>({
+    meta,
     mutationFn: ({ snippetId, include = false, workflowId }) => {
       return customizedSnippetsClient.bySnippetId.export.get({
         params: { snippet_id: snippetId },

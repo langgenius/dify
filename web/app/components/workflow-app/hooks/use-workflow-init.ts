@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowConfig } from '@/service/use-workflow'
@@ -212,6 +213,7 @@ export const useWorkflowInit = () => {
       })
     } else {
       console.error(nodesDefaultConfigsResult.reason)
+      toastRequestError(nodesDefaultConfigsResult.reason)
     }
 
     if (publishedWorkflowResult.status === 'fulfilled') {

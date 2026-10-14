@@ -9,6 +9,7 @@ import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-pan
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { submitHumanInputForm } from '@/service/workflow'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import ResultPanel from '../run/result-panel'
@@ -98,7 +99,7 @@ const WorkflowPreview = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      await submitHumanInputForm(formToken, formData)
+      await withRequestErrorToast(submitHumanInputForm(formToken, formData))
     },
     [],
   )

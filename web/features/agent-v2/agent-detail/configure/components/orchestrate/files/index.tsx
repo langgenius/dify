@@ -18,6 +18,7 @@ import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {
@@ -224,54 +225,60 @@ function AgentFileItem({
 
       const fileName = getAgentFilePreviewKey(targetFile)
       if (apiContext.trialAppId) {
-        const result = await queryClient.query({
-          ...consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
-            input: {
-              params: { app_id: apiContext.trialAppId, name: fileName },
-              query: { version_id: apiContext.versionId },
-            },
+        const result = await withRequestErrorToast(
+          queryClient.query({
+            ...consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
+              input: {
+                params: { app_id: apiContext.trialAppId, name: fileName },
+                query: { version_id: apiContext.versionId },
+              },
+            }),
+            staleTime: 0,
           }),
-          staleTime: 0,
-        })
+        )
         downloadUrl({ url: result.url, fileName: targetFile.name })
         return
       }
       if (apiContext.workflow) {
-        const result = await queryClient.query({
-          ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
+        const result = await withRequestErrorToast(
+          queryClient.query({
+            ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
+              input: {
+                params: {
+                  app_id: apiContext.workflow.appId,
+                  name: fileName,
+                },
+                query: {
+                  node_id: apiContext.workflow.nodeId,
+                  draft_type: apiContext.draftType,
+                  version_id: apiContext.versionId,
+                },
+              },
+            }),
+            staleTime: 0,
+          }),
+        )
+        downloadUrl({ url: result.url, fileName: targetFile.name })
+        return
+      }
+
+      const result = await withRequestErrorToast(
+        queryClient.query({
+          ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
             input: {
               params: {
-                app_id: apiContext.workflow.appId,
+                agent_id: apiContext.agentId,
                 name: fileName,
               },
               query: {
-                node_id: apiContext.workflow.nodeId,
                 draft_type: apiContext.draftType,
                 version_id: apiContext.versionId,
               },
             },
           }),
           staleTime: 0,
-        })
-        downloadUrl({ url: result.url, fileName: targetFile.name })
-        return
-      }
-
-      const result = await queryClient.query({
-        ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
-          input: {
-            params: {
-              agent_id: apiContext.agentId,
-              name: fileName,
-            },
-            query: {
-              draft_type: apiContext.draftType,
-              version_id: apiContext.versionId,
-            },
-          },
         }),
-        staleTime: 0,
-      })
+      )
       downloadUrl({ url: result.url, fileName: targetFile.name })
     },
     [apiContext, queryClient],

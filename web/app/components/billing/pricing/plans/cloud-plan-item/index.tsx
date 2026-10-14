@@ -14,6 +14,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
@@ -128,9 +129,11 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
         return
       }
 
-      const { url } = await consoleClient.billing.subscription.get({
-        query: { plan, interval: billingInterval },
-      })
+      const { url } = await withRequestErrorToast(
+        consoleClient.billing.subscription.get({
+          query: { plan, interval: billingInterval },
+        }),
+      )
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
     } finally {

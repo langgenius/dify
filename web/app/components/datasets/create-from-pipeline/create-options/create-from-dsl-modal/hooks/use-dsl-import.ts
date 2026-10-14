@@ -44,14 +44,18 @@ export const useDSLImport = ({
   const [isConfirming, setIsConfirming] = useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const isCreatingRef = useRef(false)
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
   const notifyError = useCallback(
     (message?: string) => {
       toast.error(message || t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
     },
     [t],
   )
+  const notifyRequestError = (error: Error) =>
+    notifyError(getErrorMessage(error)?.trim() || undefined)
+  const { mutateAsync: importDSL } = useImportPipelineDSL({ onError: notifyRequestError })
+  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm({
+    onError: notifyRequestError,
+  })
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -127,8 +131,8 @@ export const useDSLImport = ({
       } else {
         notifyError(response.error)
       }
-    } catch (error) {
-      notifyError(getErrorMessage(error)?.trim() || undefined)
+    } catch {
+      // The import mutation reports its failure.
     } finally {
       isCreatingRef.current = false
     }
@@ -164,8 +168,8 @@ export const useDSLImport = ({
       } else if (status === DSLImportStatus.FAILED) {
         notifyError(error)
       }
-    } catch (error) {
-      notifyError(getErrorMessage(error)?.trim() || undefined)
+    } catch {
+      // The confirm mutation reports its failure.
     } finally {
       setIsConfirming(false)
     }

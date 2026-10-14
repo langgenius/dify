@@ -1,6 +1,7 @@
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { IOtherOptions } from '@/service/base'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { toastStreamError } from '@/app/notifications/request-error'
 import { sseGet } from '@/service/base'
 
 type ContainerSize = {
@@ -150,6 +151,7 @@ export const createBaseWorkflowRunCallbacks = ({
   let hasStartedResumeStream = false
 
   const wrappedOnError: IOtherOptions['onError'] = (params, code) => {
+    toastStreamError(params)
     clearAbortController()
     handleWorkflowFailed(params)
     const workflowData = getWorkflowRunningData()
@@ -362,6 +364,7 @@ export const createFinalWorkflowRunCallbacks = ({
       }
     },
     onError: (params, code) => {
+      toastStreamError(params)
       clearAbortController()
       handleWorkflowFailed(params)
       const workflowData = getWorkflowRunningData()

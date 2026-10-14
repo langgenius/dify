@@ -48,6 +48,11 @@ import {
 } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
+import {
+  toastRequestError,
+  toastStreamError,
+  withRequestErrorToast,
+} from '@/app/notifications/request-error'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
 import {
@@ -319,7 +324,7 @@ const useOneStepRun = <T>({
       }
 
       // run fail may also update the inspect vars when the node set the error default output.
-      const vars = await fetchNodeInspectVars(flowType, flowId!, id)
+      const vars = await withRequestErrorToast(fetchNodeInspectVars(flowType, flowId!, id))
       const { getNodes } = store.getState()
       const nodes = getNodes()
       appendNodeInspectVars(id, vars, nodes)
@@ -868,7 +873,8 @@ const useOneStepRun = <T>({
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
-            onError: () => {
+            onError: (message) => {
+              toastStreamError(message)
               if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
@@ -968,7 +974,8 @@ const useOneStepRun = <T>({
               _loopResult = newLoopRunResult
               setLoopRunResult(newLoopRunResult)
             },
-            onError: () => {
+            onError: (message) => {
+              toastStreamError(message)
               if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
@@ -990,6 +997,7 @@ const useOneStepRun = <T>({
       }
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {
+      toastRequestError(e)
       console.error(e)
       hasError = true
       invalidLastRun()

@@ -44,6 +44,7 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
+import { toastRequestError, withRequestErrorToast } from '@/app/notifications/request-error'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
@@ -137,7 +138,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     setIsDetailLoading(true)
-    const res = await fetchCustomCollection(collection.name)
+    const res = await withRequestErrorToast(fetchCustomCollection(collection.name))
     if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
       if (res.credentials.api_key_value)
         res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
@@ -153,7 +154,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
 
-    await updateCustomCollection(data)
+    await withRequestErrorToast(updateCustomCollection(data))
     onRefreshData()
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
@@ -163,7 +164,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const doRemoveCustomToolCollection = async () => {
     if (!canManageTools) return
 
-    await removeCustomCollection(collection?.name as string)
+    await withRequestErrorToast(removeCustomCollection(collection?.name as string))
     onRefreshData()
     setIsShowEditCustomCollectionModal(false)
   }
@@ -171,7 +172,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
-    const res = await fetchWorkflowToolDetail(collection.id)
+    const res = await withRequestErrorToast(fetchWorkflowToolDetail(collection.id))
     const payload = {
       ...res,
       parameters:
@@ -192,7 +193,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const removeWorkflowToolProvider = async () => {
     if (!canManageTools) return
 
-    await deleteWorkflowTool(collection.id)
+    await withRequestErrorToast(deleteWorkflowTool(collection.id))
     onRefreshData()
     setWorkflowToolDrawerOpen(false)
   }
@@ -205,7 +206,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   ) => {
     if (!canManageTools) return
 
-    await saveWorkflowToolProvider(data)
+    await withRequestErrorToast(saveWorkflowToolProvider(data))
     invalidateAllWorkflowTools()
     onRefreshData()
     getWorkflowToolProvider()
@@ -243,7 +244,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
     setIsDetailLoading(false)
   }, [collection.name, collection.type])
 
@@ -509,14 +512,16 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     onSaved={async (value) => {
                       if (!canSaveCredentialSettings) return
 
-                      await updateBuiltInToolCredential(collection.name, value)
+                      await withRequestErrorToast(
+                        updateBuiltInToolCredential(collection.name, value),
+                      )
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
                     onRemove={async () => {
                       if (!canManageCredential) return
 
-                      await removeBuiltInToolCredential(collection.name)
+                      await withRequestErrorToast(removeBuiltInToolCredential(collection.name))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}

@@ -15,6 +15,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
@@ -146,7 +147,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
           })
           selectedPluginIdRef.current = pluginId
           showInstallFromMarketplace()
-        } catch {
+        } catch (error) {
+          toastRequestError(error)
           // Keep the provider actionable so the user can retry the marketplace request.
         } finally {
           setLoadingPluginId(null)

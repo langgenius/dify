@@ -197,7 +197,9 @@ export const useSegmentListData = (
   // Mutations
   const { mutateAsync: enableSegment } = useEnableSegment()
   const { mutateAsync: disableSegment } = useDisableSegment()
-  const { mutateAsync: deleteSegment } = useDeleteSegment()
+  const { mutateAsync: deleteSegment } = useDeleteSegment({
+    meta: { errorMessage: t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }) },
+  })
   const { mutateAsync: updateSegment } = useUpdateSegment()
   const onChangeSwitch = useCallback(
     async (enable: boolean, segId?: string) => {
@@ -240,9 +242,6 @@ export const useSegmentListData = (
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             resetList()
             if (!segId) clearSelection()
-          },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
           },
         },
       )

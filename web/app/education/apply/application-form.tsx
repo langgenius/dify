@@ -60,7 +60,11 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
-  const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
+  const switchWorkspaceMutation = useMutation(
+    consoleQuery.workspaces.switch.post.mutationOptions({
+      meta: { errorMessage: t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }) },
+    }),
+  )
 
   const appliedEducationCase = (() => {
     if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
@@ -125,7 +129,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id: tenantId } })
       globalThis.location.reload()
     } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      // The switch mutation reports its failure.
     }
   }
 

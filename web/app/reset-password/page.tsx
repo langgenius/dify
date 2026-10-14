@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { emailRegex } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -39,7 +40,7 @@ export default function CheckCode() {
         toast.error(res.data)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     } finally {
       setLoading(false)
     }

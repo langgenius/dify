@@ -38,6 +38,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toastStreamError } from '@/app/notifications/request-error'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -320,10 +321,10 @@ const Debug: FC<IDebug> = ({
       onCompleted() {
         setRespondingFalse()
       },
-      onError() {
+      onError(message) {
+        toastStreamError(message, toast.error)
         setRespondingFalse()
       },
-      onNotifyError: (message) => toast.error(message),
     })
   }
 

@@ -27,15 +27,16 @@ vi.mock('@/app/notifications', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      imports: {
+        post: ({ body }: { body: unknown }) => mockImportDSL(body),
+      },
+    },
+  },
   consoleQuery: {
     apps: {
       imports: {
-        post: {
-          mutationOptions: (options: Record<string, unknown>) => ({
-            ...options,
-            mutationFn: ({ body }: { body: unknown }) => mockImportDSL(body),
-          }),
-        },
         byImportId: {
           confirm: {
             post: {

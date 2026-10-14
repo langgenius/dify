@@ -16,7 +16,6 @@ import {
   useInitiateTriggerOAuth,
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
-import { getErrorMessage } from '@/utils/error-message'
 
 export const AuthorizationStatusEnum = {
   Pending: 'pending',
@@ -85,7 +84,9 @@ export const useOAuthClientState = ({
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
   const { mutate: verifyBuilder } = useVerifyAndUpdateTriggerSubscriptionBuilder()
   const { mutate: configureOAuth } = useConfigureTriggerOAuth()
-  const { mutate: deleteOAuth } = useDeleteTriggerOAuth()
+  const { mutate: deleteOAuth } = useDeleteTriggerOAuth({
+    meta: { errorMessage: t(($) => $['modal.oauth.remove.failed'], { ns: 'pluginTrigger' }) },
+  })
 
   // Compute OAuth client schema with default values
   const oauthClientSchema = useMemo(() => {
@@ -136,12 +137,6 @@ export const useOAuthClientState = ({
       onSuccess: () => {
         onOpenChange(false)
         toast.success(t(($) => $['modal.oauth.remove.success'], { ns: 'pluginTrigger' }))
-      },
-      onError: (error: unknown) => {
-        toast.error(
-          getErrorMessage(error) ??
-            t(($) => $['modal.oauth.remove.failed'], { ns: 'pluginTrigger' }),
-        )
       },
     })
   }, [providerName, deleteOAuth, onOpenChange, t])

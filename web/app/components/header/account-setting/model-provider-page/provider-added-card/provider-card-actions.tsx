@@ -28,6 +28,7 @@ import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
+import { toastRequestError, withRequestErrorToast } from '@/app/notifications/request-error'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
@@ -138,7 +139,8 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
           : normalizedDetail
       setDetail(detailWithLatestVersion)
       setDetailAction(action)
-    } catch {
+    } catch (error) {
+      toastRequestError(error)
     } finally {
       setLoadingAction(undefined)
     }
@@ -147,7 +149,7 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
   const handleDelete = async () => {
     startDeleting()
     try {
-      const response = await uninstallPlugin(summary.installation_id)
+      const response = await withRequestErrorToast(uninstallPlugin(summary.installation_id))
       if (!response.success) return
       closeDeleteConfirm()
       await onUpdate?.()

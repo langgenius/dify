@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { fetchInitValidateStatus, initValidate } from '@/service/common'
@@ -37,10 +38,12 @@ const InitPasswordPopup = () => {
   }
 
   useEffect(() => {
-    fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-      if (res.status === 'finished') window.location.href = `${basePath}/install`
-      else setLoading(false)
-    })
+    fetchInitValidateStatus()
+      .then((res: InitValidateStatusResponse) => {
+        if (res.status === 'finished') window.location.href = `${basePath}/install`
+        else setLoading(false)
+      })
+      .catch(toastRequestError)
   }, [])
 
   return loading ? (

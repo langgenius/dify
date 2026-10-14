@@ -78,10 +78,26 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({ mutateAsync: mockImportDSL }),
-  useImportPipelineDSLConfirm: () => ({ mutateAsync: mockImportDSLConfirm }),
-}))
+vi.mock('@/service/use-pipeline', () => {
+  const withMutationOnError =
+    (mutate: (...args: unknown[]) => unknown, options?: { onError?: (error: Error) => void }) =>
+    async (...args: unknown[]) => {
+      try {
+        return await mutate(...args)
+      } catch (error) {
+        options?.onError?.(error as Error)
+        throw error
+      }
+    }
+  return {
+    useImportPipelineDSL: (options?: { onError?: (error: Error) => void }) => ({
+      mutateAsync: withMutationOnError(mockImportDSL, options),
+    }),
+    useImportPipelineDSLConfirm: (options?: { onError?: (error: Error) => void }) => ({
+      mutateAsync: withMutationOnError(mockImportDSLConfirm, options),
+    }),
+  }
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({

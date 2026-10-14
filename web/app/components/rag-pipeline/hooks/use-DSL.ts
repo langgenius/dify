@@ -34,13 +34,16 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         return false
       }
 
-      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get(
-        { params: { pipeline_id: pipelineId }, query: { include_secret: String(include) } },
-        { context: { silent: true } },
-      )
+      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get({
+        params: { pipeline_id: pipelineId },
+        query: { include_secret: String(include) },
+      })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
       return true
+    },
+    onError: () => {
+      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     },
   })
   const handleExportDSL = useCallback(
@@ -50,11 +53,10 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       try {
         return await exportPipeline(include)
       } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
         return false
       }
     },
-    [t, isExporting, exportPipeline],
+    [isExporting, exportPipeline],
   )
   const exportCheck = useCallback(async () => {
     const { pipelineId } = workflowStore.getState()

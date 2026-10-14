@@ -1,3 +1,4 @@
+import type { MutationMeta } from '@tanstack/react-query'
 import type {
   ModelCredential,
   ModelCredentialPayload,
@@ -67,8 +68,12 @@ export const useDeleteProviderCredential = (provider: string) => {
   })
 }
 
-export const useActiveProviderCredential = (provider: string) => {
+export const useActiveProviderCredential = (
+  provider: string,
+  { meta }: { meta?: MutationMeta } = {},
+) => {
   return useMutation({
+    meta,
     mutationFn: (data: { credential_id: string; model?: string; model_type?: ModelTypeEnum }) =>
       post<{ result: string }>(
         `/workspaces/current/model-providers/${provider}/credentials/switch`,
@@ -156,8 +161,12 @@ export const useActiveModelCredential = (provider: string) => {
   })
 }
 
-export const useUpdateModelLoadBalancingConfig = (provider: string) => {
+export const useUpdateModelLoadBalancingConfig = (
+  provider: string,
+  { meta }: { meta?: MutationMeta } = {},
+) => {
   return useMutation({
+    meta,
     mutationFn: (data: {
       config_from: string
       model: string

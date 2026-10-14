@@ -46,7 +46,7 @@ const mocks = vi.hoisted(() => {
     mockInvalidateAllLastRun: vi.fn(),
     mockInvalidateRunHistory: vi.fn(),
     mockSsePost: vi.fn(),
-    mockStopWorkflowRun: vi.fn(),
+    mockStopWorkflowRun: vi.fn(() => Promise.resolve()),
     runEventHandlers: {
       handleWorkflowStarted: vi.fn(),
       handleWorkflowFinished: vi.fn(),

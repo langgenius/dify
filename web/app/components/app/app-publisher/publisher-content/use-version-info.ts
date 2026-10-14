@@ -23,7 +23,11 @@ export function useVersionInfo({
 }) {
   const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
-  const { mutate: updateWorkflow } = useUpdateWorkflow()
+  const { mutate: updateWorkflow } = useUpdateWorkflow({
+    meta: {
+      errorMessage: t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
+    },
+  })
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
 
   function openEditor() {
@@ -50,9 +54,6 @@ export function useVersionInfo({
             t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
           )
           invalidateAppWorkflow(appId)
-        },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
         },
         onSettled: () => {
           setIsOpen(false)

@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { emailRegex } from '@/config'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -78,6 +79,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
     } catch (error) {
       if (hasErrorCode(error, 'authentication_failed'))
         toast.error(t(($) => $['error.invalidEmailOrPassword'], { ns: 'login' }))
+      else toastRequestError(error)
     } finally {
       setIsLoading(false)
     }

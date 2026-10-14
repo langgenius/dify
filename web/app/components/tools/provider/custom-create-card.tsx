@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
@@ -21,7 +22,7 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
 
-    await createCustomCollection(data)
+    await withRequestErrorToast(createCustomCollection(data))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }

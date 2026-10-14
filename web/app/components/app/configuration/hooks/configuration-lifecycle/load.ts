@@ -1,5 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import { zAppLegacyDatasetToolResponse } from '@dify/contracts/api/console/apps/zod.gen'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { PromptMode } from '@/models/debug'
 import { consoleClient } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
@@ -21,8 +22,13 @@ export async function loadConfigurationState({
   currentRerankModel?: string
   currentRerankProvider?: string
 }) {
-  const collectionList = withCollectionIconBasePath(await fetchCollectionList(), basePath)
-  const response = await consoleClient.apps.byAppId.get({ params: { app_id: appId } })
+  const collectionList = withCollectionIconBasePath(
+    await withRequestErrorToast(fetchCollectionList()),
+    basePath,
+  )
+  const response = await withRequestErrorToast(
+    consoleClient.apps.byAppId.get({ params: { app_id: appId } }),
+  )
   const mode = response.mode
   if (
     mode !== AppModeEnum.CHAT &&
@@ -45,13 +51,15 @@ export async function loadConfigurationState({
   const datasetIds = configuredDatasets.flatMap(({ id }) => (id ? [id] : []))
 
   if (datasetIds.length) {
-    const { data } = await fetchDatasets({
-      url: '/datasets',
-      params: {
-        page: 1,
-        ids: datasetIds,
-      },
-    })
+    const { data } = await withRequestErrorToast(
+      fetchDatasets({
+        url: '/datasets',
+        params: {
+          page: 1,
+          ids: datasetIds,
+        },
+      }),
+    )
     nextDataSets = data
   }
 

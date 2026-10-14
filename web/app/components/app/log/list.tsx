@@ -51,6 +51,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { toast } from '@/app/notifications'
+import { toastRequestError, withRequestErrorToast } from '@/app/notifications/request-error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -232,6 +233,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       // Use functional update to avoid stale state issues
       setAllChatItems((prevItems: IChatItem[]) => mergeUniqueChatItems(prevItems, newItems))
     } catch (err: unknown) {
+      toastRequestError(err)
       if (err instanceof Error && err.name === 'AbortError') return
       console.error('fetchData execution failed:', err)
     } finally {
@@ -374,6 +376,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
         return nextItems.items
       })
     } catch (error) {
+      toastRequestError(error)
       console.error(error)
       setHasMore(false)
       retryCountRef.current = 0
@@ -637,10 +640,12 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
-      body: { message_id: mid, rating, content: content ?? undefined },
-    })
+    await withRequestErrorToast(
+      updateLogMessageFeedbacks({
+        url: `/apps/${appDetail.id}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      }),
+    )
     conversationDetailMutate()
   }
 
@@ -691,10 +696,12 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
-      body: { message_id: mid, rating, content: content ?? undefined },
-    })
+    await withRequestErrorToast(
+      updateLogMessageFeedbacks({
+        url: `/apps/${appDetail.id}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      }),
+    )
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {

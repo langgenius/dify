@@ -82,20 +82,26 @@ const mockVerifyBuilder = vi.fn()
 const mockConfigureOAuth = vi.fn()
 const mockDeleteOAuth = vi.fn()
 
-vi.mock('@/service/use-triggers', () => ({
-  useInitiateTriggerOAuth: () => ({
-    mutate: mockInitiateOAuth,
-  }),
-  useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockVerifyBuilder,
-  }),
-  useConfigureTriggerOAuth: () => ({
-    mutate: mockConfigureOAuth,
-  }),
-  useDeleteTriggerOAuth: () => ({
-    mutate: mockDeleteOAuth,
-  }),
-}))
+vi.mock('@/service/use-triggers', async () => {
+  const { routeMockedMutationFailure } = await import('@/test/mutation-mock')
+  return {
+    useInitiateTriggerOAuth: () => ({
+      mutate: mockInitiateOAuth,
+    }),
+    useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
+      mutate: mockVerifyBuilder,
+    }),
+    useConfigureTriggerOAuth: () => ({
+      mutate: mockConfigureOAuth,
+    }),
+    useDeleteTriggerOAuth: (options?: {
+      onError?: (error: Error) => void
+      meta?: { errorMessage?: string }
+    }) => ({
+      mutate: routeMockedMutationFailure(options, mockDeleteOAuth),
+    }),
+  }
+})
 
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
@@ -110,7 +116,8 @@ vi.mock('@/app/notifications', () => ({
       mockToastNotify({ type: options?.type, message }),
     {
       success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      error: (message: string, options?: { description?: string }) =>
+        mockToastNotify({ type: 'error', message, ...options }),
       warning: (message: string) => mockToastNotify({ type: 'warning', message }),
       info: (message: string) => mockToastNotify({ type: 'info', message }),
       dismiss: vi.fn(),
@@ -519,10 +526,12 @@ describe('OAuthClientSettingsModal', () => {
       const removeButton = screen.getByText('common.operation.remove')
       fireEvent.click(removeButton)
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Delete failed',
-      })
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'pluginTrigger.modal.oauth.remove.failed',
+        }),
+      )
     })
   })
 
@@ -660,7 +669,7 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('getErrorMessage helper', () => {
-    it('should extract error message from Error object', () => {
+    it('should name the failed removal for errors without a server response', () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
@@ -675,13 +684,15 @@ describe('OAuthClientSettingsModal', () => {
 
       fireEvent.click(screen.getByText('common.operation.remove'))
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Custom error message',
-      })
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'pluginTrigger.modal.oauth.remove.failed',
+        }),
+      )
     })
 
-    it('should extract the backend message from an API error', () => {
+    it('should explain the failed removal with the backend message', () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
@@ -698,10 +709,13 @@ describe('OAuthClientSettingsModal', () => {
 
       fireEvent.click(screen.getByText('common.operation.remove'))
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Object error message',
-      })
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'pluginTrigger.modal.oauth.remove.failed',
+          description: 'Object error message',
+        }),
+      )
     })
 
     it('should use fallback message when error has no message', () => {
@@ -719,10 +733,12 @@ describe('OAuthClientSettingsModal', () => {
 
       fireEvent.click(screen.getByText('common.operation.remove'))
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'pluginTrigger.modal.oauth.remove.failed',
-      })
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'pluginTrigger.modal.oauth.remove.failed',
+        }),
+      )
     })
 
     it('should use fallback when error.message is not a string', () => {
@@ -740,10 +756,12 @@ describe('OAuthClientSettingsModal', () => {
 
       fireEvent.click(screen.getByText('common.operation.remove'))
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'pluginTrigger.modal.oauth.remove.failed',
-      })
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'pluginTrigger.modal.oauth.remove.failed',
+        }),
+      )
     })
 
     it('should use fallback when error.message is empty string', () => {
@@ -761,10 +779,12 @@ describe('OAuthClientSettingsModal', () => {
 
       fireEvent.click(screen.getByText('common.operation.remove'))
 
-      expect(mockToastNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'pluginTrigger.modal.oauth.remove.failed',
-      })
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: 'pluginTrigger.modal.oauth.remove.failed',
+        }),
+      )
     })
   })
 

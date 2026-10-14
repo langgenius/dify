@@ -26,7 +26,6 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -79,10 +78,14 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const { mutateAsync: convertToWorkflow } = useMutation(
-    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions(),
+    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({
+      meta: { errorMessage: t(($) => $['newApp.appCreateFailed'], { ns: 'app' }) },
+    }),
   )
   const { mutateAsync: deleteOriginalApp } = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      meta: { errorMessage: t(($) => $.appDeleteFailed, { ns: 'app' }) },
+    }),
   )
 
   const goStart = async () => {
@@ -115,7 +118,7 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
         { isRbacEnabled },
       )
     } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      // The conversion and deletion mutations report their failures.
     }
   }
 

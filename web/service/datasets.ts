@@ -83,13 +83,7 @@ export const createEmptyDataset = ({ name }: { name: string }): Promise<DataSet>
 }
 
 export const checkIsUsedInApp = (id: string): Promise<{ is_using: boolean }> => {
-  return get<{ is_using: boolean }>(
-    `/datasets/${id}/use-check`,
-    {},
-    {
-      silent: true,
-    },
-  )
+  return get<{ is_using: boolean }>(`/datasets/${id}/use-check`, {})
 }
 
 export const deleteDataset = (datasetID: string): Promise<DataSet> => {
@@ -266,17 +260,11 @@ export const createFirecrawlTask = (body: Record<string, any>): Promise<CommonRe
 }
 
 export const checkFirecrawlTaskStatus = (jobId: string): Promise<CommonResponse> => {
-  return get<CommonResponse>(
-    `website/crawl/status/${jobId}`,
-    {
-      params: {
-        provider: DataSourceProvider.fireCrawl,
-      },
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: DataSourceProvider.fireCrawl,
     },
-    {
-      silent: true,
-    },
-  )
+  })
 }
 
 export const createJinaReaderTask = (body: Record<string, any>): Promise<CommonResponse> => {
@@ -289,17 +277,11 @@ export const createJinaReaderTask = (body: Record<string, any>): Promise<CommonR
 }
 
 export const checkJinaReaderTaskStatus = (jobId: string): Promise<CommonResponse> => {
-  return get<CommonResponse>(
-    `website/crawl/status/${jobId}`,
-    {
-      params: {
-        provider: 'jinareader',
-      },
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: 'jinareader',
     },
-    {
-      silent: true,
-    },
-  )
+  })
 }
 
 export const createWatercrawlTask = (body: Record<string, any>): Promise<CommonResponse> => {
@@ -312,17 +294,11 @@ export const createWatercrawlTask = (body: Record<string, any>): Promise<CommonR
 }
 
 export const checkWatercrawlTaskStatus = (jobId: string): Promise<CommonResponse> => {
-  return get<CommonResponse>(
-    `website/crawl/status/${jobId}`,
-    {
-      params: {
-        provider: DataSourceProvider.waterCrawl,
-      },
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: DataSourceProvider.waterCrawl,
     },
-    {
-      silent: true,
-    },
-  )
+  })
 }
 
 export const retryErrorDocs = ({

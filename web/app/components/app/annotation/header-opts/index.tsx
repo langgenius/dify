@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '#i18n'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { LanguagesSupported } from '@/i18n/language'
 import { fetchExportAnnotationList } from '@/service/annotation'
 import { consoleQuery } from '@/service/console'
@@ -134,7 +135,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   const [list, setList] = useState<AnnotationItemBasic[]>([])
 
   const fetchList = React.useCallback(async () => {
-    const { data }: any = await fetchExportAnnotationList(appId)
+    const { data }: any = await withRequestErrorToast(fetchExportAnnotationList(appId))
     setList(data as AnnotationItemBasic[])
   }, [appId])
 

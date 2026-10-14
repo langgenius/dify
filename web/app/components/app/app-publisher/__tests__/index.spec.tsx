@@ -465,7 +465,6 @@ describe('AppPublisher', () => {
       },
       expect.objectContaining({
         onSuccess: expect.any(Function),
-        onError: expect.any(Function),
         onSettled: expect.any(Function),
       }),
     )

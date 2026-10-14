@@ -9,7 +9,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { isNotFoundError } from '@/service/http-error'
 import { useLastRun } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
 import NoData from './no-data'
@@ -65,11 +64,7 @@ const LastRun: FC<Props> = ({
     isOneStepRunSucceed ||
     isOneStepRunFailed ||
     (pageHasHide && hidePageOneStepRunFinished)
-  const {
-    data: lastRunResult,
-    isFetching,
-    error,
-  } = useLastRun(
+  const { data: lastRunResult, isFetching } = useLastRun(
     configsMap?.flowType || FlowType.appFlow,
     configsMap?.flowId || '',
     nodeId,
@@ -82,7 +77,7 @@ const LastRun: FC<Props> = ({
       ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
 
-  const noLastRun = isNotFoundError(error)
+  const noLastRun = lastRunResult === null
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
 
   let resolvedStatus = (runResult as any).status || otherResultPanelProps.status

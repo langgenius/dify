@@ -327,10 +327,9 @@ describe('useAppInfoActions', () => {
         })
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'app.newApp.appCreateFailed',
-      })
+      expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ type: 'error', message: 'app.newApp.appCreateFailed' }),
+      )
     })
   })
 
@@ -476,10 +475,9 @@ describe('useAppInfoActions', () => {
       expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
       expect(mockMarkAppDeletionFailed).toHaveBeenCalledWith('app-1')
       expect(mockMarkAppDeletionSucceeded).not.toHaveBeenCalled()
-      expect(toastMocks.call).toHaveBeenCalledWith({
-        type: 'error',
-        message: expect.stringContaining('app.appDeleteFailed'),
-      })
+      expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ type: 'error', message: 'app.appDeleteFailed' }),
+      )
     })
   })
 

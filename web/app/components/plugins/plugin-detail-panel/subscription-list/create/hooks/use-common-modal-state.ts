@@ -128,8 +128,23 @@ export const useCommonModalState = ({
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } =
     useVerifyAndUpdateTriggerSubscriptionBuilder()
   const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder()
-  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
-  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
+  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription({
+    onError: (error: unknown) => {
+      const errorMessage =
+        parsePluginErrorMessage(error) ||
+        t(($) => $['subscription.createFailed'], { ns: 'pluginTrigger' })
+      toast.error(errorMessage)
+    },
+  })
+  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder({
+    onError: (error: unknown) => {
+      const errorMessage =
+        parsePluginErrorMessage(error) ||
+        t(($) => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
+      console.error('Failed to update subscription builder:', error)
+      toast.error(errorMessage)
+    },
+  })
 
   // Schemas
   const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || []
@@ -162,15 +177,7 @@ export const useCommonModalState = ({
             subscriptionBuilderId: builderId,
             properties,
           },
-          {
-            onError: (error: unknown) => {
-              const errorMessage =
-                parsePluginErrorMessage(error) ||
-                t(($) => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
-              console.error('Failed to update subscription builder:', error)
-              toast.error(errorMessage)
-            },
-          },
+          {},
         )
       }, 500),
     [updateBuilder, t],
@@ -296,12 +303,6 @@ export const useCommonModalState = ({
       onSuccess: () => {
         onClose()
         refetch?.()
-      },
-      onError: (error: unknown) => {
-        const errorMessage =
-          parsePluginErrorMessage(error) ||
-          t(($) => $['subscription.createFailed'], { ns: 'pluginTrigger' })
-        toast.error(errorMessage)
       },
     })
   }, [

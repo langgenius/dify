@@ -166,9 +166,6 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: buildDraftQueryInput.params,
     },
-    context: {
-      silent: true,
-    },
   })
   const buildDraftQuery = useQuery(
     queryOptions({
@@ -182,11 +179,13 @@ export function useAgentConfigureBuildDraftData({
         try {
           return await buildDraftQueryOptions.queryFn(context)
         } catch (error) {
-          if (isNotFoundError(error)) setSoulSourceOverride('draft')
-          else toast.error(t(($) => $['api.actionFailed']))
-          throw error
+          // No build draft is an answer that returns the editor to the normal draft.
+          if (!isNotFoundError(error)) throw error
+          setSoulSourceOverride('draft')
+          return null
         }
       },
+      meta: { errorMessage: t(($) => $['api.actionFailed']) },
       retry: false,
       refetchOnReconnect: false,
       refetchOnWindowFocus: false,
@@ -195,16 +194,13 @@ export function useAgentConfigureBuildDraftData({
   const {
     data: buildDraftData,
     dataUpdatedAt: buildDraftDataUpdatedAt,
-    error: buildDraftError,
     isError: isBuildDraftError,
     isPending: isBuildDraftPending,
     refetch: refetchBuildDraft,
   } = buildDraftQuery
-  const buildDraftNotFound = isNotFoundError(buildDraftError)
   const resolvedSoulSource: AgentConfigureSoulSource = isViewingVersion
     ? 'view-version'
-    : (soulSourceOverride ??
-      (!buildDraftNotFound && !!buildDraftData && !isBuildDraftError ? 'build-draft' : 'draft'))
+    : (soulSourceOverride ?? (!!buildDraftData && !isBuildDraftError ? 'build-draft' : 'draft'))
   const hasActiveBuildDraft = resolvedSoulSource === 'build-draft'
   const soulSource = !isBuildMode && hasActiveBuildDraft ? 'draft' : resolvedSoulSource
   const isBuildDraftActive = soulSource === 'build-draft'

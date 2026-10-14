@@ -17,6 +17,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -100,6 +101,7 @@ const Action: FC<Props> = ({
         onDelete()
       }
     } catch (error) {
+      toastRequestError(error)
       console.error('uninstallPlugin error', error)
     } finally {
       hideDeleting()

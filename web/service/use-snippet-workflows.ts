@@ -1,3 +1,4 @@
+import type { MutationMeta } from '@tanstack/react-query'
 import type { PublishSnippetWorkflowResponse, SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -5,14 +6,9 @@ import { isNotFoundError } from '@/service/http-error'
 
 export const fetchSnippetDraftWorkflow = async (snippetId: string) => {
   try {
-    return await consoleClient.snippets.bySnippetId.workflows.draft.get(
-      {
-        params: { snippet_id: snippetId },
-      },
-      {
-        context: { silent: true },
-      },
-    )
+    return await consoleClient.snippets.bySnippetId.workflows.draft.get({
+      params: { snippet_id: snippetId },
+    })
   } catch (error) {
     if (isNotFoundError(error)) return undefined
 
@@ -103,10 +99,14 @@ export const useSnippetDefaultBlockConfigs = (
   })
 }
 
-export const usePublishSnippetWorkflowMutation = (snippetId: string) => {
+export const usePublishSnippetWorkflowMutation = (
+  snippetId: string,
+  { meta }: { meta?: MutationMeta } = {},
+) => {
   const queryClient = useQueryClient()
 
   return useMutation<PublishSnippetWorkflowResponse, Error, { params: { snippetId: string } }>({
+    meta,
     mutationKey: snippetWorkflowContract.workflows.publish.post.mutationKey(),
     mutationFn: ({ params }) =>
       snippetWorkflowClient.workflows.publish.post({

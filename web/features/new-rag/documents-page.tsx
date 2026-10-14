@@ -204,14 +204,24 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const taskProgressStore = taskProgressStoreRef.current
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
+  // A revoked write permission is shown by the page itself instead of a toast.
+  const notifyWriteFailure = (message: string) => (error: Error) => {
+    if (getHttpErrorStatus(error) !== 403) toast.error(message)
+  }
   const { mutateAsync: uploadDocument } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocuments.mutationOptions(),
+    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocuments.mutationOptions({
+      onError: notifyWriteFailure(t(($) => $['newKnowledge.documentUploadFailed'])),
+    }),
   )
   const { mutateAsync: bulkUploadDocuments } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulk.mutationOptions(),
+    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulk.mutationOptions({
+      onError: notifyWriteFailure(t(($) => $['newKnowledge.documentUploadFailed'])),
+    }),
   )
   const { mutateAsync: reindexDocuments } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulkReindex.mutationOptions(),
+    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulkReindex.mutationOptions({
+      onError: notifyWriteFailure(t(($) => $['newKnowledge.documentsReindexFailed'])),
+    }),
   )
 
   const documentsQuery = useInfiniteQuery(
@@ -1500,7 +1510,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (getHttpErrorStatus(error) === 403) {
           writePermissionDenied = true
           handleWritePermissionDenied()
-        } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
+        }
       } finally {
         if (!writePermissionDenied) {
           writePermissionFocusRecoveryRequestedRef.current = false
@@ -1564,7 +1574,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       refreshDocumentsAndTasks()
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) handleWritePermissionDenied()
-      else toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
     } finally {
       reindexPendingRef.current = false
       setReindexing(false)

@@ -12,7 +12,9 @@ const CreateCard = () => {
   const { t } = useTranslation(['datasetPipeline'])
   const { push } = useRouter()
 
-  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
+  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset({
+    meta: { errorMessage: t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }) },
+  })
   const invalidDatasetList = useInvalidDatasetList()
 
   const handleCreate = useCallback(async () => {
@@ -27,9 +29,6 @@ const CreateCard = () => {
           })
           push(`/datasets/${id}/pipeline`)
         }
-      },
-      onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
       },
     })
   }, [createEmptyDataset, push, invalidDatasetList, t])

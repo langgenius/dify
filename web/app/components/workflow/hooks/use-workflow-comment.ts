@@ -7,6 +7,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { toastRequestError, withRequestErrorToast } from '@/app/notifications/request-error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useParams } from '@/next/navigation'
@@ -101,9 +102,11 @@ export const useWorkflowComment = () => {
     async (commentId: string) => {
       if (!appId) return
 
-      const detail = await consoleClient.apps.byAppId.workflow.comments.byCommentId.get({
-        params: { app_id: appId, comment_id: commentId },
-      })
+      const detail = await withRequestErrorToast(
+        consoleClient.apps.byAppId.workflow.comments.byCommentId.get({
+          params: { app_id: appId, comment_id: commentId },
+        }),
+      )
 
       commentDetailCacheRef.current = {
         ...commentDetailCacheRef.current,
@@ -127,6 +130,7 @@ export const useWorkflowComment = () => {
       })
       setComments(response.data)
     } catch (error) {
+      toastRequestError(error)
       console.error('Failed to fetch comments:', error)
     } finally {
       setCommentsLoading(false)
@@ -245,6 +249,7 @@ export const useWorkflowComment = () => {
         setPendingComment(null)
         setCommentQuickAdd(false)
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to create comment:', error)
         setPendingComment(null)
         setCommentQuickAdd(false)
@@ -321,6 +326,7 @@ export const useWorkflowComment = () => {
 
         if (activeCommentIdRef.current === comment.id) setActiveComment(detail)
       } catch (e) {
+        toastRequestError(e)
         console.warn('Failed to load workflow comment detail', e)
       } finally {
         setActiveCommentLoading(false)
@@ -355,6 +361,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to resolve comment:', error)
       } finally {
         setActiveCommentLoading(false)
@@ -398,6 +405,7 @@ export const useWorkflowComment = () => {
           activeCommentIdRef.current = null
         }
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to delete comment:', error)
       } finally {
         setActiveCommentLoading(false)
@@ -458,6 +466,7 @@ export const useWorkflowComment = () => {
         })
         collaborationManager.emitCommentsUpdate(appId)
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to update comment position:', error)
         setComments(previousComments)
 
@@ -508,6 +517,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to update comment:', error)
       }
     },
@@ -532,6 +542,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to create reply:', error)
       } finally {
         setReplySubmitting(false)
@@ -563,6 +574,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to update reply:', error)
       } finally {
         setReplyUpdating(false)
@@ -586,6 +598,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        toastRequestError(error)
         console.error('Failed to delete reply:', error)
       } finally {
         setActiveCommentLoading(false)

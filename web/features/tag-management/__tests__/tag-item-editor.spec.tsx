@@ -34,12 +34,20 @@ const tagMocks = vi.hoisted(() => {
 })
 
 vi.mock('@tanstack/react-query', () => ({
-  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
+  useMutation: (mutationOptions: {
+    mutationFn: (input: unknown) => Promise<unknown>
+    meta?: { errorMessage?: string }
+  }) => ({
     isPending: false,
     mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
       Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
+        .catch(async (error: unknown) => {
+          // Mirrors the app's global mutation failure handler.
+          const { toastRequestError } = await import('@/app/notifications/request-error')
+          toastRequestError(error, mutationOptions.meta?.errorMessage)
+          options?.onError?.()
+        })
     },
   }),
 }))
@@ -49,7 +57,8 @@ vi.mock('@/service/console', () => ({
     tags: {
       byTagId: {
         patch: {
-          mutationOptions: () => ({
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            ...options,
             mutationFn: ({
               params,
               body,
@@ -60,7 +69,8 @@ vi.mock('@/service/console', () => ({
           }),
         },
         delete: {
-          mutationOptions: () => ({
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            ...options,
             mutationFn: ({ params }: { params: { tag_id: string } }) =>
               tagMocks.deleteTag(params.tag_id),
           }),
@@ -177,10 +187,9 @@ describe('TagItemEditor', () => {
       await user.click(document.body)
 
       await waitFor(() => {
-        expect(tagMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'tag name is empty',
-        })
+        expect(tagMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'tag name is empty' }),
+        )
       })
       expect(tagMocks.updateTag).not.toHaveBeenCalled()
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -203,10 +212,14 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Broken Name')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
-      })
+      await waitFor(() =>
+        expect(tagMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            message: 'common.actionMsg.modifiedUnsuccessfully',
+          }),
+        ),
+      )
     })
   })
 
@@ -276,10 +289,14 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
-      })
+      await waitFor(() =>
+        expect(tagMocks.record).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            message: 'common.actionMsg.modifiedUnsuccessfully',
+          }),
+        ),
+      )
     })
   })
 })

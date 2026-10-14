@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchHitHistoryList } from '@/service/annotation'
@@ -78,7 +79,9 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
       })
       setHitHistoryList(data as HitHistoryItem[])
       setTotal(total)
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
   }
 
   useEffect(() => {

@@ -102,31 +102,40 @@ const setMockPendingStates = (verifying: boolean, building: boolean) => {
   mockIsBuilding = building
 }
 
-vi.mock('@/service/use-triggers', () => ({
-  useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockVerifyCredentials,
-    get isPending() {
-      return mockIsVerifyingCredentials
-    },
-  }),
-  useCreateTriggerSubscriptionBuilder: () => ({
-    mutateAsync: mockCreateBuilder,
-    isPending: false,
-  }),
-  useBuildTriggerSubscription: () => ({
-    mutate: mockBuildSubscription,
-    get isPending() {
-      return mockIsBuilding
-    },
-  }),
-  useUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockUpdateBuilder,
-    isPending: false,
-  }),
-  useTriggerSubscriptionBuilderLogs: () => ({
-    data: createMockLogData(),
-  }),
-}))
+vi.mock('@/service/use-triggers', async () => {
+  const { routeMockedMutationFailure } = await import('@/test/mutation-mock')
+  return {
+    useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
+      mutate: mockVerifyCredentials,
+      get isPending() {
+        return mockIsVerifyingCredentials
+      },
+    }),
+    useCreateTriggerSubscriptionBuilder: () => ({
+      mutateAsync: mockCreateBuilder,
+      isPending: false,
+    }),
+    useBuildTriggerSubscription: (options?: {
+      onError?: (error: Error) => void
+      meta?: { errorMessage?: string }
+    }) => ({
+      mutate: routeMockedMutationFailure(options, mockBuildSubscription),
+      get isPending() {
+        return mockIsBuilding
+      },
+    }),
+    useUpdateTriggerSubscriptionBuilder: (options?: {
+      onError?: (error: Error) => void
+      meta?: { errorMessage?: string }
+    }) => ({
+      mutate: routeMockedMutationFailure(options, mockUpdateBuilder),
+      isPending: false,
+    }),
+    useTriggerSubscriptionBuilderLogs: () => ({
+      data: createMockLogData(),
+    }),
+  }
+})
 
 const mockParsePluginErrorMessage = vi.fn().mockReturnValue(null)
 vi.mock('@/utils/error-parser', () => ({
@@ -635,7 +644,6 @@ describe('CommonCreateModal', () => {
           }),
           expect.objectContaining({
             onSuccess: expect.any(Function),
-            onError: expect.any(Function),
           }),
         )
       })
@@ -1251,7 +1259,6 @@ describe('CommonCreateModal', () => {
           }),
           expect.objectContaining({
             onSuccess: expect.any(Function),
-            onError: expect.any(Function),
           }),
         )
       })

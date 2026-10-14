@@ -27,7 +27,6 @@ import {
   getFirstTextFile,
   isDirectory,
   setSkillDetailCache,
-  showSkillErrorToast,
 } from './shared'
 import { DetailSkeleton } from './shell'
 import { VersionPanel } from './version-panel'
@@ -99,7 +98,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   })
   const publishMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorMessage: t(($) => $['skillManagement.detail.publishFailed']) },
     }),
   )
   const queriedDetail = detailQuery.data
@@ -254,12 +253,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
           })
-        },
-        onError: (error) => {
-          showSkillErrorToast(
-            error,
-            t(($) => $['skillManagement.detail.publishFailed']),
-          )
         },
       },
     )

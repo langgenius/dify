@@ -11,6 +11,7 @@ import { produce } from 'immer'
 import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toastStreamError } from '@/app/notifications/request-error'
 import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning'; message: string }) => void
@@ -304,6 +305,9 @@ export const createWorkflowStreamHandlers = ({
 
   const otherOptions: IOtherOptions = {
     isPublicAPI,
+    onError: (message) => {
+      toastStreamError(message, (text) => notify({ type: 'error', message: text }))
+    },
     onWorkflowStarted: ({ workflow_run_id, task_id }) => {
       const workflowProcessData = getWorkflowProcessData()
       if (workflowProcessData?.tracing.length) {

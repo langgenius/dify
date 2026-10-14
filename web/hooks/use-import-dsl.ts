@@ -1,5 +1,5 @@
 import type { AppImportPayload, Import } from '@dify/contracts/api/console/apps/types.gen'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { createElement, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +11,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
+import { consoleClient } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
@@ -27,14 +27,6 @@ export const useImportDSL = () => {
   const { t } = useTranslation(['app'])
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { push } = useRouter()
-  const { mutateAsync: importApp } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
-  )
-  const { mutateAsync: confirmImport } = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
   const actionInFlightRef = useRef(false)
   const [isFetching, setIsFetching] = useState(false)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -57,7 +49,7 @@ export const useImportDSL = () => {
       setIsFetching(true)
 
       try {
-        const response = await importApp({ body: payload })
+        const response = await consoleClient.apps.imports.post({ body: payload })
 
         if (!response) return
 
@@ -135,15 +127,7 @@ export const useImportDSL = () => {
         setIsFetching(false)
       }
     },
-    [
-      t,
-      handleCheckPluginDependencies,
-      isRbacEnabled,
-      push,
-      importApp,
-      currentUserId,
-      workspacePermissionKeys,
-    ],
+    [t, handleCheckPluginDependencies, isRbacEnabled, push, currentUserId, workspacePermissionKeys],
   )
 
   const handleImportDSLConfirm = useCallback(
@@ -158,7 +142,7 @@ export const useImportDSL = () => {
       setIsFetching(true)
 
       try {
-        const response = await confirmImport({
+        const response = await consoleClient.apps.imports.byImportId.confirm.post({
           params: { import_id: importIdRef.current },
         })
 
@@ -224,15 +208,7 @@ export const useImportDSL = () => {
         setIsFetching(false)
       }
     },
-    [
-      t,
-      handleCheckPluginDependencies,
-      isRbacEnabled,
-      push,
-      confirmImport,
-      currentUserId,
-      workspacePermissionKeys,
-    ],
+    [t, handleCheckPluginDependencies, isRbacEnabled, push, currentUserId, workspacePermissionKeys],
   )
 
   return {

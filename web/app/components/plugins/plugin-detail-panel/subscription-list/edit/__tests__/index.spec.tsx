@@ -101,16 +101,22 @@ const mockVerifyCredentials = vi.fn()
 let mockIsUpdating = false
 let mockIsVerifying = false
 
-vi.mock('@/service/use-triggers', () => ({
-  useUpdateTriggerSubscription: () => ({
-    mutate: mockUpdateSubscription,
-    isPending: mockIsUpdating,
-  }),
-  useVerifyTriggerSubscription: () => ({
-    mutate: mockVerifyCredentials,
-    isPending: mockIsVerifying,
-  }),
-}))
+vi.mock('@/service/use-triggers', async () => {
+  const { routeMockedMutationFailure } = await import('@/test/mutation-mock')
+  return {
+    useUpdateTriggerSubscription: (options?: {
+      onError?: (error: Error) => void
+      meta?: { errorMessage?: string }
+    }) => ({
+      mutate: routeMockedMutationFailure(options, mockUpdateSubscription),
+      isPending: mockIsUpdating,
+    }),
+    useVerifyTriggerSubscription: () => ({
+      mutate: mockVerifyCredentials,
+      isPending: mockIsVerifying,
+    }),
+  }
+})
 
 vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
   ReadmeEntrance: ({ pluginDetail }: { pluginDetail: PluginDetail }) => (

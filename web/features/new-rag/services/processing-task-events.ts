@@ -38,7 +38,6 @@ export async function* streamProcessingTaskEvents(
         },
       },
       {
-        context: { silent: true },
         signal: input.signal,
       },
     )

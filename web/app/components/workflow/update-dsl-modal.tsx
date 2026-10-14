@@ -14,7 +14,7 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getErrorMessage } from '@/utils/error-message'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
@@ -134,20 +134,17 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
     )
   }
 
-  const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
-  )
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
       if (file.name.toLowerCase().endsWith('.ifpkg'))
-        return requestImport({ body: { file, app_id: appId } })
+        return consoleClient.apps.imports.post({ body: { file, app_id: appId } })
 
       const content = await file.text()
       if (!content || !validateDSLContent(content, appMode)) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
       }
-      return requestImport({
+      return consoleClient.apps.imports.post({
         body: {
           mode: DSLImportMode.YAML_CONTENT,
           yaml_content: content,
@@ -162,7 +159,6 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
       onError: (error) => notifyImportError(error),
       onSettled: async (response) => {
         if (response) await handleImportResponse(response)

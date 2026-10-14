@@ -17,6 +17,7 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
@@ -497,7 +498,9 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       if (taskId) {
         const appId = useAppStore.getState().appDetail?.id
-        stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+        void stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`).catch(
+          toastRequestError,
+        )
         setStoppedState()
         return
       }

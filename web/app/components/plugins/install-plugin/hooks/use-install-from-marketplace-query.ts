@@ -2,6 +2,7 @@
 
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { useEffect, useState } from 'react'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
@@ -59,6 +60,7 @@ export const useInstallFromMarketplaceQuery = ({
           })
           setIsShowInstallFromMarketplace(true)
         } catch (error) {
+          toastRequestError(error)
           if (!ignore) console.error('Failed to load marketplace plugin manifest:', error)
         }
         return
@@ -72,6 +74,7 @@ export const useInstallFromMarketplaceQuery = ({
           setDependencies(data.version.dependencies)
           setIsShowInstallFromMarketplace(true)
         } catch (error) {
+          toastRequestError(error)
           if (!ignore) console.error('Failed to load bundle info:', error)
         }
       }

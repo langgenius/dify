@@ -86,7 +86,11 @@ export function Popup({
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = usePublishWorkflow({
+    meta: {
+      errorMessage: t(($) => $['publishPipeline.error.message'], { ns: 'datasetPipeline' }),
+    },
+  })
   const workflowStore = useWorkflowStore()
   const { data: isAllowPublishAsCustomKnowledgePipelineTemplate } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -170,7 +174,7 @@ export function Popup({
           }
         }
       } catch {
-        toast.error(t(($) => $['publishPipeline.error.message'], { ns: 'datasetPipeline' }))
+        // The publish mutation reports its failure.
       } finally {
         if (startedPublishing) hidePublishing()
         if (confirmVisible) handleHideConfirm()

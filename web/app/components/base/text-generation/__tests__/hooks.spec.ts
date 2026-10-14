@@ -82,9 +82,13 @@ describe('useTextGeneration', () => {
           onMessageReplace: expect.any(Function),
           onCompleted: expect.any(Function),
           onError: expect.any(Function),
-          onNotifyError,
         }),
       )
+
+      act(() => {
+        getLatestStreamOptions().onError?.('Base model not found')
+      })
+      expect(onNotifyError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should append chunks and update messageId when onData is triggered', async () => {

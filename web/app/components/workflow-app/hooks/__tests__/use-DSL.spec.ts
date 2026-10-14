@@ -178,13 +178,10 @@ describe('useDSLByCanEdit', () => {
     await act(async () => {
       expect(await result.current.handleExportDSL(true, 'revision-1')).toBe(true)
     })
-    expect(mockExportAppConfig).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'app-1' },
-        query: { include_secret: true, workflow_id: 'revision-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { include_secret: true, workflow_id: 'revision-1' },
+    })
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockDownloadBlob).toHaveBeenCalledWith({ data: file, fileName: 'workflow.ifpkg' })
   })
@@ -196,18 +193,12 @@ describe('useDSLByCanEdit', () => {
       await result.current.exportCheck()
     })
 
-    expect(mockFetchEnvironmentVariables).toHaveBeenCalledWith(
-      { params: { app_id: 'app-1' } },
-      { context: { silent: true } },
-    )
+    expect(mockFetchEnvironmentVariables).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    expect(mockExportAppConfig).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'app-1' },
-        query: { include_secret: false, workflow_id: undefined },
-      },
-      { context: { silent: true } },
-    )
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { include_secret: false, workflow_id: undefined },
+    })
     expect(mockDownloadBlob).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.any(Blob),
@@ -252,13 +243,10 @@ workflow:
       await result.current.handleExportDSL(true, 'workflow-1')
     })
 
-    expect(mockExportAppConfig).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'app-1' },
-        query: { include_secret: true, workflow_id: 'workflow-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { include_secret: true, workflow_id: 'workflow-1' },
+    })
   })
 
   it('should emit DSL_EXPORT_CHECK when secret environment variables exist', async () => {

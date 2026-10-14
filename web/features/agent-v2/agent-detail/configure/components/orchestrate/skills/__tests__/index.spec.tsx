@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createRequestErrorCaches } from '@/app/get-query-client'
 import { toast } from '@/app/notifications'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -134,12 +135,18 @@ vi.mock('@/service/console', async (importOriginal) => ({
           skills: {
             upload: {
               post: {
-                mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
+                mutationOptions: (options?: Record<string, unknown>) => ({
+                  ...options,
+                  mutationFn: mocks.uploadSkillMutationFn,
+                }),
               },
             },
             byName: {
               delete: {
-                mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                mutationOptions: (options?: Record<string, unknown>) => ({
+                  ...options,
+                  mutationFn: mocks.deleteSkillMutationFn,
+                }),
               },
               download: {
                 get: {
@@ -175,12 +182,18 @@ vi.mock('@/service/console', async (importOriginal) => ({
             skills: {
               upload: {
                 post: {
-                  mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
+                  mutationOptions: (options?: Record<string, unknown>) => ({
+                    ...options,
+                    mutationFn: mocks.uploadSkillMutationFn,
+                  }),
                 },
               },
               byName: {
                 delete: {
-                  mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                  mutationOptions: (options?: Record<string, unknown>) => ({
+                    ...options,
+                    mutationFn: mocks.deleteSkillMutationFn,
+                  }),
                 },
                 download: {
                   get: {
@@ -238,7 +251,8 @@ vi.mock('@/service/console', async (importOriginal) => ({
                 queryOptions: mocks.agentSkillBindingsQueryOptions,
               },
               put: {
-                mutationOptions: () => ({
+                mutationOptions: (options?: Record<string, unknown>) => ({
+                  ...options,
                   mutationFn: mocks.replaceAgentSkillBindingsMutationFn,
                 }),
               },
@@ -340,6 +354,7 @@ function renderAgentSkills({
   viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
+    ...createRequestErrorCaches(),
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity },
       mutations: { retry: false },

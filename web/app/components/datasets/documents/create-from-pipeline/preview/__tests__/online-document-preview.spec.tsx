@@ -133,7 +133,6 @@ describe('OnlineDocumentPreview', () => {
           },
           expect.objectContaining({
             onSuccess: expect.any(Function),
-            onError: expect.any(Function),
           }),
         )
       })
@@ -261,34 +260,14 @@ describe('OnlineDocumentPreview', () => {
   })
 
   describe('Error Handling', () => {
-    it('should show toast notification on error', async () => {
-      const errorMessage = 'Failed to fetch document'
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onError(new Error(errorMessage))
-        // Return a resolved promise to avoid unhandled rejection
-        return Promise.resolve()
-      })
+    it('should leave a failed preview to the global mutation handler', async () => {
+      mockMutateAsync.mockResolvedValue(undefined)
 
       render(<OnlineDocumentPreview {...defaultProps} />)
 
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(errorMessage)
-      })
-    })
-
-    it('should handle network errors', async () => {
-      const networkError = new Error('Network Error')
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onError(networkError)
-        // Return a resolved promise to avoid unhandled rejection
-        return Promise.resolve()
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('Network Error')
-      })
+      await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled())
+      expect(mockMutateAsync.mock.calls[0]![1]).not.toHaveProperty('onError')
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 

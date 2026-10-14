@@ -1,4 +1,4 @@
-import type { MutationOptions } from '@tanstack/react-query'
+import type { MutationMeta, MutationOptions } from '@tanstack/react-query'
 import type { IconInfo } from '@/models/datasets'
 import type {
   ConversionResponse,
@@ -119,11 +119,7 @@ export const useImportPipelineDSL = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import'],
     mutationFn: (request: ImportPipelineDSLRequest) => {
-      return post<ImportPipelineDSLResponse>(
-        '/rag/pipelines/imports',
-        { body: request },
-        { silent: true },
-      )
+      return post<ImportPipelineDSLResponse>('/rag/pipelines/imports', { body: request })
     },
     ...mutationOptions,
   })
@@ -135,11 +131,7 @@ export const useImportPipelineDSLConfirm = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import-confirm'],
     mutationFn: (importId: string) => {
-      return post<ImportPipelineDSLConfirmResponse>(
-        `/rag/pipelines/imports/${importId}/confirm`,
-        {},
-        { silent: true },
-      )
+      return post<ImportPipelineDSLConfirmResponse>(`/rag/pipelines/imports/${importId}/confirm`)
     },
     ...mutationOptions,
   })
@@ -283,8 +275,9 @@ export const usePublishedPipelinePreProcessingParams = (
   })
 }
 
-export const useExportPipelineDSL = () => {
+export const useExportPipelineDSL = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'export-pipeline-dsl'],
     mutationFn: ({ pipelineId, include = false }: { pipelineId: string; include?: boolean }) => {
       return get<ExportTemplateDSLResponse>(
@@ -294,8 +287,9 @@ export const useExportPipelineDSL = () => {
   })
 }
 
-export const usePublishAsCustomizedPipeline = () => {
+export const usePublishAsCustomizedPipeline = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'publish-as-customized-pipeline'],
     mutationFn: ({
       pipelineId,
@@ -332,8 +326,9 @@ export const usePipelineExecutionLog = (params: PipelineExecutionLogRequest) => 
   })
 }
 
-export const usePreviewOnlineDocument = () => {
+export const usePreviewOnlineDocument = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'preview-online-document'],
     mutationFn: (params: OnlineDocumentPreviewRequest) => {
       const { pipelineId, datasourceNodeId, workspaceID, pageID, pageType, credentialId } = params
@@ -355,8 +350,9 @@ export const usePreviewOnlineDocument = () => {
   })
 }
 
-export const useConvertDatasetToPipeline = () => {
+export const useConvertDatasetToPipeline = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey: [NAME_SPACE, 'convert-dataset-to-pipeline'],
     mutationFn: (datasetId: string) => {
       return post<ConversionResponse>(`/rag/pipelines/transform/datasets/${datasetId}`)

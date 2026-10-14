@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import NotionIcon from '@/app/components/base/notion-icon'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { fetchNotionPagePreview } from '@/service/datasets'
 import s from './index.module.css'
 
@@ -31,7 +32,9 @@ const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IPr
       })
       setPreviewContent(res.content)
       setLoading(false)
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
   }
 
   useEffect(() => {

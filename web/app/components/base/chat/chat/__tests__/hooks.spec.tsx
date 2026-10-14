@@ -452,7 +452,7 @@ describe('useChat', () => {
       expect(ssePost).toHaveBeenCalledWith(
         'test-url',
         expect.any(Object),
-        expect.objectContaining({ onNotifyError }),
+        expect.objectContaining({ onError: expect.any(Function) }),
       )
       expect(result.current.isResponding).toBe(true)
 
@@ -1497,7 +1497,7 @@ describe('useChat', () => {
       expect(sseGet).toHaveBeenCalledWith(
         '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
         expect.any(Object),
-        expect.objectContaining({ onNotifyError }),
+        expect.objectContaining({ onError: expect.any(Function) }),
       )
 
       act(() => {

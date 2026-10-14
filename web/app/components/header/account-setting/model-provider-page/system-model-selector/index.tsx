@@ -17,6 +17,7 @@ import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
@@ -174,23 +175,25 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   const handleSave = async () => {
     if (!canManageSystemDefaultModel || isSystemModelListLoading) return
 
-    const res = await consoleClient.workspaces.current.defaultModel.post({
-      body: {
-        model_settings: [
-          ModelTypeEnum.textGeneration,
-          ModelTypeEnum.textEmbedding,
-          ModelTypeEnum.rerank,
-          ModelTypeEnum.speech2text,
-          ModelTypeEnum.tts,
-        ].map((modelType) => {
-          return {
-            model_type: modelType,
-            provider: getCurrentDefaultModelByModelType(modelType)?.provider ?? null,
-            model: getCurrentDefaultModelByModelType(modelType)?.model ?? null,
-          }
-        }),
-      },
-    })
+    const res = await withRequestErrorToast(
+      consoleClient.workspaces.current.defaultModel.post({
+        body: {
+          model_settings: [
+            ModelTypeEnum.textGeneration,
+            ModelTypeEnum.textEmbedding,
+            ModelTypeEnum.rerank,
+            ModelTypeEnum.speech2text,
+            ModelTypeEnum.tts,
+          ].map((modelType) => {
+            return {
+              model_type: modelType,
+              provider: getCurrentDefaultModelByModelType(modelType)?.provider ?? null,
+              model: getCurrentDefaultModelByModelType(modelType)?.model ?? null,
+            }
+          }),
+        },
+      }),
+    )
     if (res.result === 'success') {
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setManuallyOpen(false)

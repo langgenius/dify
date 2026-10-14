@@ -17,7 +17,9 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
   const { t } = useTranslation(['snippet'])
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
-  const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
+  const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId, {
+    meta: { errorMessage: t(($) => $.publishFailed) },
+  })
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
 
@@ -42,8 +44,8 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
       resetWorkflowVersionHistory()
       toast.success(t(($) => $.publishSuccess))
       return true
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t(($) => $.publishFailed))
+    } catch {
+      // The publish mutation reports its failure.
       return false
     }
   }, [

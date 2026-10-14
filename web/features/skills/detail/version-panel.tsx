@@ -35,7 +35,6 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { RestoreVersionDialogContent } from './restore-version-dialog-content'
@@ -200,7 +199,9 @@ function VersionRow({
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions({
+      meta: { errorMessage: t(($) => $['skillManagement.detail.renameVersionFailed']) },
+    }),
   )
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
@@ -244,9 +245,6 @@ function VersionRow({
         onSuccess: () => {
           setRenameOpen(false)
           invalidateVersions()
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.renameVersionFailed']))
         },
       },
     )

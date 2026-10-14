@@ -171,7 +171,8 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
   const actionsRef = useRef<DialogActions>(null)
   const { mutate, reset, isPending, error } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
+      // The form renders the failure inline.
+      onError: () => {},
       onSuccess: (response) => {
         // The request alone decides success; seat and member refreshes run in the background.
         void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })

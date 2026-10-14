@@ -17,6 +17,7 @@ import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -38,7 +39,7 @@ function MenuDropdown({ data, placement, hideLogout }: Props) {
   const { t } = useTranslation(['common', 'share'])
 
   const handleLogout = async () => {
-    await webAppLogout(resolveWebAppAddress())
+    await withRequestErrorToast(webAppLogout(resolveWebAppAddress()))
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }
 

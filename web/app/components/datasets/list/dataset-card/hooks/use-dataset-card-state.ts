@@ -2,7 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
@@ -61,7 +61,9 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const { mutateAsync: deleteDatasetMutation } = useMutation(
     consoleQuery.datasets.byDatasetId.delete.mutationOptions(),
   )
-  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
+  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL({
+    meta: { errorMessage: t(($) => $.exportFailed, { ns: 'app' }) },
+  })
 
   // Export pipeline handler
   const handleExportPipeline = useCallback(
@@ -78,7 +80,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
       } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+        // The export mutation reports its failure.
       } finally {
         setExporting(false)
       }
@@ -98,7 +100,6 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
           },
           staleTime: 0,
           retry: false,
-          context: { silent: true },
         }),
       )
       const message = isUsedByApp
@@ -110,9 +111,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         showConfirmDelete: true,
       }))
     } catch (e: unknown) {
-      toast.error(
-        (e instanceof Error ? e.message : '') || t(($) => $.unknownError, { ns: 'dataset' }),
-      )
+      toastRequestError(e)
     }
   }, [dataset.id, queryClient, t])
 

@@ -195,8 +195,9 @@ type OneMoreStepPayload = {
   interface_language: string
   timezone: string
 }
-export const useOneMoreStep = () => {
+export const useOneMoreStep = ({ onError }: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    onError,
     mutationKey: [NAME_SPACE, 'one-more-step'],
     mutationFn: (body: OneMoreStepPayload) => post<CommonResponse>('/account/init', { body }),
   })
@@ -260,7 +261,7 @@ export const useModelParameterRules = (provider?: string, model?: string, enable
     queryFn: () =>
       get<{ data: ModelParameterRule[] }>(
         `/workspaces/current/model-providers/${provider}/models/parameter-rules`,
-        { params: { model }, silent: true },
+        { params: { model } },
       ),
     enabled: !!provider && !!model && (enabled ?? true),
   })

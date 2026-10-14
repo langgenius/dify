@@ -1,3 +1,4 @@
+import type { MutationMeta } from '@tanstack/react-query'
 import type { FormOption } from '@/app/components/base/form/types'
 import type {
   ParametersSchema,
@@ -625,8 +626,11 @@ export const useCreateTriggerSubscriptionBuilder = () => {
   })
 }
 
-export const useUpdateTriggerSubscriptionBuilder = () => {
+export const useUpdateTriggerSubscriptionBuilder = ({
+  onError,
+}: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    onError,
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
@@ -650,6 +654,8 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
 
 export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
   return useMutation({
+    // Every caller reports failures from its own mutate callbacks.
+    onError: () => {},
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
@@ -663,9 +669,6 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
           params: { provider, subscription_builder_id: subscriptionBuilderId },
           body: credentials === undefined ? {} : { credentials },
         },
-        {
-          context: { silent: true },
-        },
       )
     },
   })
@@ -673,6 +676,8 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
 
 export const useVerifyTriggerSubscription = () => {
   return useMutation({
+    // Every caller reports failures from its own mutate callbacks.
+    onError: () => {},
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post.mutationKey(),
     mutationFn: (payload: {
@@ -686,9 +691,6 @@ export const useVerifyTriggerSubscription = () => {
           params: { provider, subscription_id: subscriptionId },
           body: { credentials: credentials ?? {} },
         },
-        {
-          context: { silent: true },
-        },
       )
     },
   })
@@ -701,8 +703,11 @@ export type BuildTriggerSubscriptionPayload = {
   parameters?: Record<string, unknown>
 }
 
-export const useBuildTriggerSubscription = () => {
+export const useBuildTriggerSubscription = ({
+  onError,
+}: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    onError,
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: BuildTriggerSubscriptionPayload) => {
@@ -717,8 +722,9 @@ export const useBuildTriggerSubscription = () => {
   })
 }
 
-export const useDeleteTriggerSubscription = () => {
+export const useDeleteTriggerSubscription = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post.mutationKey(),
     mutationFn: (subscriptionId: string) => {
@@ -739,8 +745,11 @@ type UpdateTriggerSubscriptionPayload = {
   credentials?: Record<string, unknown>
 }
 
-export const useUpdateTriggerSubscription = () => {
+export const useUpdateTriggerSubscription = ({
+  onError,
+}: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    onError,
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post.mutationKey(),
     mutationFn: (payload: UpdateTriggerSubscriptionPayload) => {
@@ -824,8 +833,9 @@ export const useConfigureTriggerOAuth = () => {
   })
 }
 
-export const useDeleteTriggerOAuth = () => {
+export const useDeleteTriggerOAuth = ({ meta }: { meta?: MutationMeta } = {}) => {
   return useMutation({
+    meta,
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.delete.mutationKey(),
     mutationFn: (provider: string) => {
@@ -838,6 +848,8 @@ export const useDeleteTriggerOAuth = () => {
 
 export const useInitiateTriggerOAuth = () => {
   return useMutation({
+    // Every caller reports failures from its own mutate callbacks.
+    onError: () => {},
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get.mutationKey(),
     mutationFn: async (provider: string) => {
@@ -845,9 +857,6 @@ export const useInitiateTriggerOAuth = () => {
         await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get(
           {
             params: { provider },
-          },
-          {
-            context: { silent: true },
           },
         )
       return {
@@ -897,29 +906,21 @@ export const useTriggerPluginDynamicOptions = (
                 provider: payload.provider,
               },
             },
-            {
-              context: { silent: true },
-            },
           ),
         )
       }
 
       return normalizeDynamicOptionsResponse(
-        await consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get(
-          {
-            query: {
-              action: payload.action,
-              credential_id: payload.credential_id,
-              parameter: payload.parameter,
-              plugin_id: payload.plugin_id,
-              provider: payload.provider,
-              provider_type: 'trigger',
-            },
+        await consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get({
+          query: {
+            action: payload.action,
+            credential_id: payload.credential_id,
+            parameter: payload.parameter,
+            plugin_id: payload.plugin_id,
+            provider: payload.provider,
+            provider_type: 'trigger',
           },
-          {
-            context: { silent: true },
-          },
-        ),
+        }),
       )
     },
     enabled:

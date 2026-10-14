@@ -22,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
@@ -96,7 +97,8 @@ const MemberMenu = ({
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
       setRemoveConfirmOpen(false)
-    } catch {
+    } catch (error) {
+      toastRequestError(error)
     } finally {
       setRemoving(false)
     }

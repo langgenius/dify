@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { getQueryClient } from '@/app/get-query-client'
 import { createHttpError } from '@/service/http-error'
 import { useAgentConfigureBuildDraftData } from '../use-agent-configure-build-draft'
 
@@ -19,16 +20,9 @@ vi.mock('@/service/console', () => ({
       byAgentId: {
         buildDraft: {
           get: {
-            queryOptions: ({ context }: { context?: { silent?: boolean } }) => ({
+            queryOptions: () => ({
               queryKey: ['agent', 'agent-1', 'build-draft'],
-              queryFn: async () => {
-                try {
-                  return await mocks.request()
-                } catch (error) {
-                  if (!context?.silent) mocks.toastError('Request failed')
-                  throw error
-                }
-              },
+              queryFn: () => mocks.request(),
             }),
           },
         },
@@ -38,9 +32,9 @@ vi.mock('@/service/console', () => ({
 }))
 
 function setup() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
+  // The app client carries the global failure notifications.
+  const queryClient = getQueryClient()
+  queryClient.clear()
   const setSoulSourceOverride = vi.fn()
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -76,7 +70,7 @@ describe('build draft refresh errors', () => {
     mocks.request.mockRejectedValueOnce(notFound)
     await act(async () => {
       const refreshed = await result.current.refetch()
-      expect(refreshed.error).toBe(notFound)
+      expect(refreshed.data).toBeNull()
     })
 
     await waitFor(() => expect(result.current.soulSource).toBe('draft'))
@@ -96,7 +90,10 @@ describe('build draft refresh errors', () => {
       expect(refreshed.error).toBe(serverError)
     })
 
-    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed', {
+      id: 'request-error:common.api.actionFailed:HTTP 500',
+      description: 'HTTP 500',
+    })
     expect(setSoulSourceOverride).not.toHaveBeenCalled()
   })
 })

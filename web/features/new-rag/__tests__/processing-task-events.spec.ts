@@ -88,7 +88,6 @@ describe('KnowledgeFS processing task events', () => {
         },
       },
       {
-        context: { silent: true },
         signal: abortController.signal,
       },
     )

@@ -35,12 +35,20 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
-  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
+  useMutation: (mutationOptions: {
+    mutationFn: (input: unknown) => Promise<unknown>
+    meta?: { errorMessage?: string }
+  }) => ({
     isPending: false,
     mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
       Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
+        .catch(async (error: unknown) => {
+          // Mirrors the app's global mutation failure handler.
+          const { toastRequestError } = await import('@/app/notifications/request-error')
+          toastRequestError(error, mutationOptions.meta?.errorMessage)
+          options?.onError?.()
+        })
     },
   }),
 }))
@@ -59,7 +67,8 @@ vi.mock('@/service/console', () => ({
         queryOptions: () => ({}),
       },
       post: {
-        mutationOptions: () => ({
+        mutationOptions: (options?: Record<string, unknown>) => ({
+          ...options,
           mutationFn: ({
             body,
           }: {
@@ -69,12 +78,14 @@ vi.mock('@/service/console', () => ({
       },
       byTagId: {
         patch: {
-          mutationOptions: () => ({
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            ...options,
             mutationFn: () => Promise.resolve(undefined),
           }),
         },
         delete: {
-          mutationOptions: () => ({
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            ...options,
             mutationFn: () => Promise.resolve(undefined),
           }),
         },
@@ -270,10 +281,9 @@ describe('TagManagementModal', () => {
       await user.keyboard('{Enter}')
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: i18n.failed,
-        })
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: i18n.failed }),
+        )
       })
     })
   })

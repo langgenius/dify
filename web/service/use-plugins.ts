@@ -1197,7 +1197,9 @@ export const useMutationPluginPermissionSettings = ({
 
       return { previousPermission, hadPreviousPermission }
     },
-    onError: (_error, _payload, context) => {
+    // Rolling back in onSettled leaves the failure toast to the global mutation handler.
+    onSettled: (_data, error, _payload, context) => {
+      if (!error) return
       if (context?.hadPreviousPermission)
         queryClient.setQueryData(usePluginPermissionSettingsKey, context.previousPermission)
       else queryClient.removeQueries({ queryKey: usePluginPermissionSettingsKey })
@@ -1240,9 +1242,9 @@ export const useMutationPluginAutoUpgradeSettings = ({
 
       return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
     },
-    onError: (_error, _payload, context) => {
+    onSettled: (_data, error, _payload, context) => {
       // Roll back the category this save started for; the caller may have moved to another one.
-      if (!context) return
+      if (!error || !context) return
       if (context.hadPreviousAutoUpgrade)
         queryClient.setQueryData(context.queryKey, context.previousAutoUpgrade)
       else queryClient.removeQueries({ queryKey: context.queryKey })
@@ -1335,7 +1337,8 @@ export const useMutationReferenceSettings = ({
         shouldUpdateAutoUpgrade,
       }
     },
-    onError: (_error, _payload, context) => {
+    onSettled: (_data, error, _payload, context) => {
+      if (!error) return
       if (context?.shouldUpdatePermission && context.hadPreviousPermission)
         queryClient.setQueryData(usePluginPermissionSettingsKey, context.previousPermission)
       else if (context?.shouldUpdatePermission)

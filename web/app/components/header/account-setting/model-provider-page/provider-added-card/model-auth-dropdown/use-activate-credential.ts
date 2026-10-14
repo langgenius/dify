@@ -1,7 +1,6 @@
 import type { Credential, ModelProvider } from '../../declarations'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { useActiveProviderCredential } from '@/service/use-models'
 import { useUpdateModelList, useUpdateModelProviders } from '../../hooks'
 
@@ -9,7 +8,9 @@ export function useActivateCredential(provider: ModelProvider) {
   const { t } = useTranslation(['common'])
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const { mutate, isPending } = useActiveProviderCredential(provider.provider)
+  const { mutate, isPending } = useActiveProviderCredential(provider.provider, {
+    meta: { errorMessage: t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }) },
+  })
   const [optimisticId, setOptimisticId] = useState<string>()
   const currentId = provider.custom_configuration.current_credential_id
   const selectedCredentialId = optimisticId ?? currentId
@@ -33,12 +34,11 @@ export function useActivateCredential(provider: ModelProvider) {
           },
           onError: () => {
             setOptimisticId(undefined)
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
           },
         },
       )
     },
-    [mutate, t, updateModelProviders, updateModelList],
+    [mutate, updateModelProviders, updateModelList],
   )
   return {
     selectedCredentialId,

@@ -65,15 +65,11 @@ vi.mock('@/service/console', async (importOriginal) => {
         ...actual.consoleQuery.apps,
         imports: {
           ...actual.consoleQuery.apps.imports,
-          post: {
-            mutationOptions: () => ({
-              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
-            }),
-          },
           byImportId: {
             confirm: {
               post: {
-                mutationOptions: () => ({
+                mutationOptions: (options?: Record<string, unknown>) => ({
+                  ...options,
                   mutationFn: ({ params }: { params: { import_id: string } }) =>
                     mockImportDSLConfirm({ import_id: params.import_id }),
                 }),

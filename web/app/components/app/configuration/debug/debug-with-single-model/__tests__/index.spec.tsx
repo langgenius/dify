@@ -615,16 +615,10 @@ describe('DebugWithSingleModel', () => {
       })
 
       expect(mockSsePost.mock.calls[0]![0]).toBe('apps/test-app-id/chat-messages')
-      expect(mockSsePost.mock.calls[0]![2]).toEqual(
-        expect.objectContaining({
-          onNotifyError: expect.any(Function),
-        }),
-      )
-
       const callbacks = mockSsePost.mock.calls[0]![2] as {
-        onNotifyError: (message: string) => void
+        onError: (message: string) => void
       }
-      callbacks.onNotifyError('Base model not found')
+      act(() => callbacks.onError('Base model not found'))
       expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 

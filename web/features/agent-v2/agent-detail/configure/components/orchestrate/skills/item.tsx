@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { MissingReferenceWarning } from '../common/missing-reference-warning'
@@ -46,55 +47,61 @@ export function AgentSkillItem({
     if (skill.isMissing) return
 
     if (apiContext.trialAppId) {
-      const result = await queryClient.query({
-        ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.download.get.queryOptions({
-          input: {
-            params: { app_id: apiContext.trialAppId, name: skill.name },
-            query: { version_id: apiContext.versionId },
-          },
+      const result = await withRequestErrorToast(
+        queryClient.query({
+          ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+            input: {
+              params: { app_id: apiContext.trialAppId, name: skill.name },
+              query: { version_id: apiContext.versionId },
+            },
+          }),
+          staleTime: 0,
         }),
-        staleTime: 0,
-      })
+      )
       downloadUrl({ url: result.url, fileName: skill.name })
       return
     }
 
     if (apiContext.workflow) {
-      const result = await queryClient.query({
-        ...consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+      const result = await withRequestErrorToast(
+        queryClient.query({
+          ...consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+            input: {
+              params: {
+                app_id: apiContext.workflow.appId,
+                name: skill.name,
+              },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            },
+          }),
+          staleTime: 0,
+        }),
+      )
+      downloadUrl({ url: result.url, fileName: skill.name })
+      return
+    }
+
+    const result = await withRequestErrorToast(
+      queryClient.query({
+        ...consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
           input: {
             params: {
-              app_id: apiContext.workflow.appId,
+              agent_id: apiContext.agentId,
               name: skill.name,
             },
             query: {
-              node_id: apiContext.workflow.nodeId,
               draft_type: apiContext.draftType,
               version_id: apiContext.versionId,
             },
           },
         }),
         staleTime: 0,
-      })
-      downloadUrl({ url: result.url, fileName: skill.name })
-      return
-    }
-
-    const result = await queryClient.query({
-      ...consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
-        input: {
-          params: {
-            agent_id: apiContext.agentId,
-            name: skill.name,
-          },
-          query: {
-            draft_type: apiContext.draftType,
-            version_id: apiContext.versionId,
-          },
-        },
       }),
-      staleTime: 0,
-    })
+    )
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.isMissing, skill.name])
   const handleDownload = useCallback(() => {

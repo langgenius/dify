@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import Conversion from '../conversion'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 const mockConvert = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
 vi.mock('@/context/workspace-state', async () => {
@@ -29,10 +31,13 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 vi.mock('@/service/use-pipeline', () => ({
-  useConvertDatasetToPipeline: () => ({
-    mutateAsync: mockConvert,
-    isPending: false,
-  }),
+  useConvertDatasetToPipeline: (...args: unknown[]) => {
+    hookOptions.useConvertDatasetToPipeline = args.at(-1)
+    return {
+      mutateAsync: mockConvert,
+      isPending: false,
+    }
+  },
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -164,7 +169,6 @@ describe('Conversion', () => {
       'ds-123',
       expect.objectContaining({
         onSuccess: expect.any(Function),
-        onError: expect.any(Function),
       }),
     )
   })
@@ -200,16 +204,17 @@ describe('Conversion', () => {
     expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
   })
 
-  it('should handle conversion error', async () => {
-    mockConvert.mockImplementation((_id: string, opts: { onError: () => void }) => {
-      opts.onError()
-    })
+  it('should leave a failed conversion to the conversion mutation', async () => {
+    mockConvert.mockRejectedValue(new Error('conversion failed'))
 
     render(<Conversion />)
 
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage')
+    expect(hookOptions.useConvertDatasetToPipeline).toEqual({
+      meta: { errorMessage: 'datasetPipeline.conversion.errorMessage' },
+    })
+    expect(mockToast.error).not.toHaveBeenCalled()
   })
 })

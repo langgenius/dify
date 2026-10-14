@@ -7,6 +7,7 @@ import { useNodes } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { toastRequestError } from '@/app/notifications/request-error'
 import { updateFeatures } from '@/service/workflow'
 import { useIsChatMode, useNodesReadOnly } from './hooks/use-workflow'
 import useConfig from './nodes/start/use-config'
@@ -72,6 +73,7 @@ const Features = () => {
         })
       }
     } catch (error) {
+      toastRequestError(error)
       console.error('Failed to update features:', error)
     }
 

@@ -27,7 +27,11 @@ const Publisher = () => {
   const canPipelineRelease = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const docLink = useDocLink()
   const pipelineId = useStore((s) => s.pipelineId)
-  const { mutateAsync: publishAsCustomizedPipeline } = usePublishAsCustomizedPipeline()
+  const { mutateAsync: publishAsCustomizedPipeline } = usePublishAsCustomizedPipeline({
+    meta: {
+      errorMessage: t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }),
+    },
+  })
   const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =
     useState(false)
@@ -81,7 +85,7 @@ const Publisher = () => {
         )
         invalidCustomizedTemplateList()
       } catch {
-        toast.error(t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }))
+        // The publish mutation reports its failure.
       } finally {
         setIsPublishingAsCustomizedPipeline(false)
         hidePublishAsKnowledgePipelineModal()

@@ -215,9 +215,8 @@ describe('CrawlSelectionForm', () => {
     renderSelectionForm()
     await screen.findByRole('checkbox', { name: 'Getting started' })
 
-    expect(policyQueryOptionsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ context: { silent: true } }),
-    )
+    // First-load failures are left to the form; only a declared error message would toast them.
+    expect(policyQueryOptionsMock.mock.lastCall?.[0]).not.toHaveProperty('meta.errorMessage')
   })
 
   it('preserves the sync policy selected in the creation flow', async () => {

@@ -243,7 +243,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       let remoteUpload
       if (isHumanInputFormPage) remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
       else if (remoteUploadUrl)
-        remoteUpload = uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
+        remoteUpload = uploadRemoteFileInfo(url, !!params.token, remoteUploadUrl)
       else remoteUpload = uploadRemoteFileInfo(url, !!params.token)
 
       remoteUpload

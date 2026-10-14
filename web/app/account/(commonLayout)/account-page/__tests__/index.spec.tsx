@@ -377,9 +377,9 @@ describe('AccountPage', () => {
   })
 
   it.each(['name', 'password'])(
-    'leaves a server-reported %s failure to the request layer',
+    'leaves a server-reported %s failure to the global mutation handler',
     async (field) => {
-      // The request layer reports the server message and rejects with an ORPCError.
+      // The global mutation handler shows the server message once; the form adds nothing.
       const error = vi.spyOn(toast, 'error')
       const user = userEvent.setup()
       mocks.request.mockRejectedValueOnce(
@@ -423,7 +423,7 @@ describe('AccountPage', () => {
         name: field === 'name' ? 'common.operation.save' : 'common.operation.reset',
       })
       await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
-      expect(error).not.toHaveBeenCalled()
+      expect(error).toHaveBeenCalledExactlyOnceWith('Rejected', { id: 'request-error:Rejected' })
     },
   )
 

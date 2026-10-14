@@ -11,6 +11,8 @@ import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { useChildSegmentData } from '../use-child-segment-data'
 
+const hookOptions = vi.hoisted(() => ({}) as Record<string, unknown>)
+
 // Type for mutation callbacks
 type MutationResponse = { data: ChildChunkDetail }
 type MutationCallbacks = {
@@ -86,7 +88,10 @@ vi.mock('@/service/knowledge/use-segment', () => ({
     data: mockChildSegmentListData.current,
   }),
   useChildSegmentListKey: ['segment', 'childChunkList'],
-  useDeleteChildSegment: () => ({ mutateAsync: mockDeleteChildSegment }),
+  useDeleteChildSegment: (...args: unknown[]) => {
+    hookOptions.useDeleteChildSegment = args.at(-1)
+    return { mutateAsync: mockDeleteChildSegment }
+  },
   useUpdateChildSegment: () => ({ mutateAsync: mockUpdateChildSegment }),
 }))
 
@@ -250,12 +255,8 @@ describe('useChildSegmentData', () => {
       expect(mockInvalidChildSegmentList).toHaveBeenCalled()
     })
 
-    it('should notify error on failure', async () => {
-      mockDeleteChildSegment.mockImplementation(
-        async (_params, { onError }: { onError: () => void }) => {
-          onError()
-        },
-      )
+    it('should leave failures to the delete mutation', async () => {
+      mockDeleteChildSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(() => useChildSegmentData(defaultOptions), {
         wrapper: createWrapper(),
@@ -265,10 +266,11 @@ describe('useChildSegmentData', () => {
         await result.current.onDeleteChildChunk('seg-1', 'child-1')
       })
 
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+      expect(hookOptions.useDeleteChildSegment).toEqual({
+        meta: { errorMessage: 'common.actionMsg.modifiedUnsuccessfully' },
       })
+      expect(mockDeleteChildSegment.mock.calls[0]![1]).not.toHaveProperty('onError')
+      expect(mockNotify).not.toHaveBeenCalled()
     })
   })
 

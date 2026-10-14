@@ -27,8 +27,6 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const { eventEmitter } = useEventEmitterContextContext()
   const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
   // File state
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
@@ -59,6 +57,12 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     },
     [t],
   )
+  const notifyRequestError = (error: Error) =>
+    notifyError(getErrorMessage(error)?.trim() || undefined)
+  const { mutateAsync: importDSL } = useImportPipelineDSL({ onError: notifyRequestError })
+  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm({
+    onError: notifyRequestError,
+  })
   const updateWorkflow = useCallback(
     async (pipelineId: string) => {
       const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(
@@ -132,8 +136,9 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       else if (status === DSLImportStatus.PENDING)
         showVersionMismatch(id, imported_dsl_version, current_dsl_version)
       else notifyError(response.error)
-    } catch (error) {
-      notifyError(getErrorMessage(error)?.trim() || undefined)
+    } catch {
+      // The import mutation reports its failure.
+      setLoading(false)
     }
     isCreatingRef.current = false
   }, [
@@ -154,8 +159,9 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         return
       }
       if (status === DSLImportStatus.FAILED) notifyError(error)
-    } catch (error) {
-      notifyError(getErrorMessage(error)?.trim() || undefined)
+    } catch {
+      // The confirm mutation reports its failure.
+      setLoading(false)
     }
   }, [importId, importDSLConfirm, completeImport, notifyError])
   return {

@@ -376,10 +376,9 @@ describe('SwitchAppModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.newApp.appCreateFailed',
-        })
+        expect(notify).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error', message: 'app.newApp.appCreateFailed' }),
+        )
       })
       expect(onClose).not.toHaveBeenCalled()
     })
