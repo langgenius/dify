@@ -254,7 +254,7 @@ describe('PluginAuth', () => {
     expect(mockConnection).toHaveTextContent('•••• 7A2F')
     expect(testConnection.getByText('plugin.auth.appUser.testConnectionDescription')).toBeVisible()
     expect(
-      testConnection.queryByRole('button', { name: 'plugin.auth.useApiAuth' }),
+      testConnection.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
     ).not.toBeInTheDocument()
 
     mockUsePluginAuth.mockReturnValue({
@@ -406,7 +406,7 @@ describe('PluginAuth', () => {
           }),
         ).toBeEnabled()
         expect(
-          testConnection.queryByRole('button', { name: 'plugin.auth.useApiAuth' }),
+          testConnection.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
         ).not.toBeInTheDocument()
         expect(
           testConnection.queryByText('plugin.auth.permissionHint.title'),
@@ -417,6 +417,9 @@ describe('PluginAuth', () => {
         ).toBeDisabled()
         expect(
           screen.queryByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
+        ).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
         ).not.toBeInTheDocument()
         expect(
           screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' }),
@@ -433,7 +436,9 @@ describe('PluginAuth', () => {
       name: 'plugin.auth.workspaceAuth',
     })
     expect(
-      within(restoredWorkspacePanel).getByRole('button', { name: 'plugin.auth.useApiAuth' }),
+      within(restoredWorkspacePanel).getByRole('button', {
+        name: 'plugin.auth.useApiAuth',
+      }),
     ).toBeDisabled()
     expect(
       within(restoredWorkspacePanel).getByText('plugin.auth.permissionHint.title'),
@@ -674,7 +679,7 @@ describe('PluginAuth', () => {
       within(panel).queryByText('plugin.auth.appUser.enterDescription'),
     ).not.toBeInTheDocument()
     await user.click(
-      within(panel).getByRole('button', { name: 'plugin.auth.appUser.configureClient' }),
+      within(panel).getByRole('button', { name: 'plugin.auth.common.configureClient' }),
     )
     const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
     expect(within(dialog).getByText('https://example.com/oauth/callback')).toBeVisible()
@@ -747,7 +752,7 @@ describe('PluginAuth', () => {
     await waitFor(() => expect(reopened).not.toBeInTheDocument())
     expect(mockOAuthClientMutations.remove).toHaveBeenCalledExactlyOnceWith()
     expect(
-      await within(panel).findByRole('button', { name: 'plugin.auth.appUser.configureClient' }),
+      await within(panel).findByRole('button', { name: 'plugin.auth.common.configureClient' }),
     ).toBeVisible()
     expect(within(panel).getByText('plugin.auth.appUser.setupClient')).toBeVisible()
     expect(

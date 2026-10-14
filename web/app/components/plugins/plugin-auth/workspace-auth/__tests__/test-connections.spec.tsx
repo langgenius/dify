@@ -162,9 +162,7 @@ describe('App user mock test connections', () => {
     const { onChange } = setup()
     const openNewApiKey = async () => {
       await user.click(picker())
-      await user.click(
-        await screen.findByRole('button', { name: 'plugin.auth.connection.addApiKey' }),
-      )
+      await user.click(await screen.findByRole('button', { name: 'plugin.auth.common.addApiKey' }))
       return screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
     }
     const canceled = await openNewApiKey()
@@ -237,9 +235,7 @@ describe('App user mock test connections', () => {
       },
     ])
     await user.click(picker())
-    await user.click(
-      await screen.findByRole('button', { name: 'plugin.auth.connection.addApiKey' }),
-    )
+    await user.click(await screen.findByRole('button', { name: 'plugin.auth.common.addApiKey' }))
     const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
     const token = within(dialog).getByLabelText('API token', { exact: false })
     const workspaceId = within(dialog).getByRole('textbox', { name: /Workspace ID/ })
@@ -271,9 +267,7 @@ describe('App user mock test connections', () => {
     mocks.consoleCall.mockReturnValue(schemaRequest)
     const { onChange } = setup(undefined, null)
     await user.click(picker())
-    await user.click(
-      await screen.findByRole('button', { name: 'plugin.auth.connection.addApiKey' }),
-    )
+    await user.click(await screen.findByRole('button', { name: 'plugin.auth.common.addApiKey' }))
     const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
     const save = within(dialog).getByRole('button', { name: saveLabel })
     expect(save).toBeDisabled()
@@ -386,7 +380,7 @@ describe('App user mock test connections', () => {
     expect(screen.queryByRole('button', { name: /^Test OAuth connection/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Test API key/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'plugin.auth.connection.addApiKey' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' })).toBeVisible()
     expect(
       screen.queryByRole('group', { name: 'datasetSettings.form.permissionsOnlyMe' }),
     ).not.toBeInTheDocument()

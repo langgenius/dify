@@ -366,7 +366,7 @@ describe('AddOAuthButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('plugin.auth.setupOAuth'))
+    fireEvent.click(screen.getByText('plugin.auth.common.configureClient'))
 
     expect(screen.getByTestId('oauth-settings-modal')).toBeInTheDocument()
     expect(mockOAuthClientSettingsProps.at(-1)?.editValues).toMatchObject({
@@ -388,7 +388,7 @@ describe('AddOAuthButton', () => {
       />,
     )
 
-    await user.click(screen.getByText('plugin.auth.setupOAuth'))
+    await user.click(screen.getByText('plugin.auth.common.configureClient'))
     await user.click(
       within(screen.getByTestId('oauth-settings-modal')).getByRole('button', {
         name: 'plugin.auth.saveAndAuth',

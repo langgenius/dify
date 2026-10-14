@@ -36,7 +36,7 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
   const apiKeyButtonProps: AddApiKeyButtonProps = useMemo(() => {
     return {
       pluginPayload,
-      buttonText: t(($) => $['auth.addApi'], { ns: 'plugin' }),
+      buttonText: t(($) => $['auth.common.addApiKey'], { ns: 'plugin' }),
     }
   }, [pluginPayload, t])
 

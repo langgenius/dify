@@ -254,7 +254,7 @@ describe('ConnectionSelector', () => {
     await user.click(screen.getByRole('button', { name: /Team API connection/ }))
 
     expect(screen.getByRole('button', { name: 'plugin.auth.addOAuth' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'plugin.auth.connection.addApiKey' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: 'plugin.auth.connection.oauthClientSettings' }),
     ).toBeDisabled()
@@ -292,7 +292,7 @@ describe('ConnectionSelector', () => {
   })
 
   it.each([
-    { action: 'plugin.auth.connection.addApiKey', title: 'plugin.auth.useApiAuth' },
+    { action: 'plugin.auth.common.addApiKey', title: 'plugin.auth.useApiAuth' },
     { action: 'plugin.auth.addOAuth', title: 'plugin.auth.whoCanUse' },
     {
       action: 'plugin.auth.connection.oauthClientSettings',

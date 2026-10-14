@@ -317,7 +317,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      expect(screen.getByText('plugin.auth.setupOAuth')).toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.common.configureClient')).toBeInTheDocument()
     })
   })
 
@@ -412,7 +412,7 @@ describe('AddOAuthButton', () => {
       })
 
       // Should render configured button since oAuthData has is_system_oauth_params_exists=true
-      expect(screen.queryByText('plugin.auth.setupOAuth')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.common.configureClient')).not.toBeInTheDocument()
     })
   })
 
@@ -457,7 +457,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      fireEvent.click(screen.getByText('plugin.auth.setupOAuth'))
+      fireEvent.click(screen.getByText('plugin.auth.common.configureClient'))
 
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
@@ -560,7 +560,7 @@ describe('AddOAuthButton', () => {
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       // Open settings
-      fireEvent.click(screen.getByText('plugin.auth.setupOAuth'))
+      fireEvent.click(screen.getByText('plugin.auth.common.configureClient'))
 
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
@@ -588,7 +588,7 @@ describe('AddOAuthButton', () => {
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       // Should show the configured button, not setup button
-      expect(screen.queryByText('plugin.auth.setupOAuth')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.common.configureClient')).not.toBeInTheDocument()
     })
 
     it('should open OAuth settings modal with correct data', async () => {
@@ -602,7 +602,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      fireEvent.click(screen.getByText('plugin.auth.setupOAuth'))
+      fireEvent.click(screen.getByText('plugin.auth.common.configureClient'))
 
       await waitFor(() => {
         // OAuthClientSettings modal should open
@@ -647,7 +647,7 @@ describe('AddOAuthButton', () => {
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       // Should render configured button (not setup button)
-      expect(screen.queryByText('plugin.auth.setupOAuth')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.common.configureClient')).not.toBeInTheDocument()
     })
 
     it('should open OAuth settings when system OAuth params exist', async () => {
@@ -683,7 +683,7 @@ describe('AddOAuthButton', () => {
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       // When isConfigured is true (is_system_oauth_params_exists=true), it should show the configured button
-      expect(screen.queryByText('plugin.auth.setupOAuth')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.common.configureClient')).not.toBeInTheDocument()
     })
 
     it('should return custom when not configured and no system OAuth params', () => {
@@ -698,7 +698,7 @@ describe('AddOAuthButton', () => {
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       // When not configured, it should show the setup button
-      expect(screen.getByText('plugin.auth.setupOAuth')).toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.common.configureClient')).toBeInTheDocument()
     })
   })
 
@@ -2017,7 +2017,7 @@ describe('Authorize Components Integration', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      fireEvent.click(screen.getByText('plugin.auth.setupOAuth'))
+      fireEvent.click(screen.getByText('plugin.auth.common.configureClient'))
 
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()

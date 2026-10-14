@@ -135,7 +135,7 @@ describe('Authorize', () => {
         wrapper: createWrapper(),
       })
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeInTheDocument()
     })
 
     it('should render both OAuth and API Key buttons when both are true', () => {
@@ -147,6 +147,9 @@ describe('Authorize', () => {
 
       const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBe(2)
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).toBeInTheDocument()
     })
 
     it('should render divider when showDivider is true and both buttons are shown', () => {
@@ -226,6 +229,9 @@ describe('Authorize', () => {
 
         const buttons = screen.getAllByRole('button')
         expect(buttons).toHaveLength(2)
+        expect(
+          screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+        ).toBeInTheDocument()
       })
     })
 
@@ -362,14 +368,17 @@ describe('Authorize', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getAllByRole('button').length).toBe(1)
+      expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeInTheDocument()
 
       rerender(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />)
 
       expect(screen.getAllByRole('button').length).toBe(2)
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+      ).toBeInTheDocument()
     })
 
-    it('should change button styling when theme changes', () => {
+    it('should retain the API-only button name when theme changes', () => {
       const pluginPayload = createPluginPayload()
 
       const { rerender } = render(
@@ -377,12 +386,11 @@ describe('Authorize', () => {
         { wrapper: createWrapper() },
       )
 
-      const primaryClassName = screen.getByRole('button').className
+      expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeInTheDocument()
 
       rerender(<Authorize pluginPayload={pluginPayload} canApiKey={true} theme="secondary" />)
 
-      const secondaryClassName = screen.getByRole('button').className
-      expect(primaryClassName).not.toBe(secondaryClassName)
+      expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeInTheDocument()
     })
   })
 

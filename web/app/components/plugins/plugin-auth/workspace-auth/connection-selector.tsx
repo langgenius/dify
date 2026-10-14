@@ -204,7 +204,7 @@ const ConnectionSelectorContent = ({
               disabled={!dataSource.allowCustom || !dataSource.canCreate}
               onClick={addApiKey}
             >
-              {t(($) => $['auth.connection.addApiKey'], { ns: 'plugin' })}
+              {t(($) => $['auth.common.addApiKey'], { ns: 'plugin' })}
             </Button>
           )}
         </div>

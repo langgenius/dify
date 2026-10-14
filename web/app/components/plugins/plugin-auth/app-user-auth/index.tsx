@@ -165,7 +165,7 @@ const AppUserAuth = ({
                     disabled={oauthDisabled}
                     aria-describedby={errors.oauthClient ? oauthClientErrorId : undefined}
                   >
-                    {t(($) => $['auth.appUser.configureClient'], { ns: 'plugin' })}
+                    {t(($) => $['auth.common.configureClient'], { ns: 'plugin' })}
                   </Button>
                 ))}
               {oauthEnabled && errors.oauthClient && (

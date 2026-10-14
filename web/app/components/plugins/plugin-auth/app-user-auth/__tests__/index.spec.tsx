@@ -102,7 +102,7 @@ const ControlledHarness = ({
 }
 
 const saveCustomClient = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' }))
+  await user.click(screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }))
   const dialog = await screen.findByRole('dialog', { name: clientDialogName })
   await user.type(within(dialog).getByRole('textbox', { name: clientIdLabel }), 'client-id')
   await user.type(
@@ -188,7 +188,7 @@ describe('AppUserAuth', () => {
   it('saves the shared custom client and retains its server configuration while OAuth is disabled', async () => {
     const user = userEvent.setup()
     render(<AppUserAuth pluginPayload={pluginPayload} providerName="Google Drive" />)
-    await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }))
     const dialog = await screen.findByRole('dialog', { name: clientDialogName })
     expect(
       within(dialog).queryByRole('radio', { name: 'plugin.auth.default' }),
@@ -296,7 +296,7 @@ describe('AppUserAuth', () => {
   it('uses the required provider fields and blocks saving an incomplete client', async () => {
     const user = userEvent.setup()
     render(<AppUserAuth pluginPayload={pluginPayload} />)
-    await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }))
     const dialog = await screen.findByRole('dialog', { name: clientDialogName })
     const clientId = within(dialog).getByRole('textbox', { name: clientIdLabel })
     const clientSecret = within(dialog).getByLabelText(clientSecretLabel, { exact: false })
@@ -344,7 +344,7 @@ describe('AppUserAuth', () => {
     expect(mocks.deleteOAuthClient).toHaveBeenCalledOnce()
     expect(mocks.setOAuthClient).not.toHaveBeenCalled()
     expect(
-      await screen.findByRole('button', { name: 'plugin.auth.appUser.configureClient' }),
+      await screen.findByRole('button', { name: 'plugin.auth.common.configureClient' }),
     ).toHaveAccessibleDescription('plugin.auth.appUser.setupClient')
     expect(onChange).toHaveBeenLastCalledWith({ ...initialDraft, client: undefined })
     expect(JSON.stringify(onChange.mock.calls)).not.toContain('existing-client')
@@ -361,7 +361,7 @@ describe('AppUserAuth', () => {
       path.includes('clientSchema') ? pendingSchema : originalCall(path, ...args),
     )
     render(<AppUserAuth pluginPayload={pluginPayload} />, { loading: true })
-    const configure = screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' })
+    const configure = screen.getByRole('button', { name: 'plugin.auth.common.configureClient' })
     expect(configure).toBeDisabled()
     await user.click(configure)
     expect(screen.queryByRole('dialog', { name: clientDialogName })).not.toBeInTheDocument()
@@ -390,7 +390,7 @@ describe('AppUserAuth', () => {
         />,
         { workspacePermissionKeys: props.workspacePermissionKeys },
       )
-      const configure = screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' })
+      const configure = screen.getByRole('button', { name: 'plugin.auth.common.configureClient' })
       expect(configure).toBeDisabled()
       await user.click(configure)
       expect(screen.queryByRole('dialog', { name: clientDialogName })).not.toBeInTheDocument()
@@ -475,7 +475,7 @@ describe('AppUserAuth', () => {
     const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
     render(<ControlledHarness initialDraft={initialDraft} onChange={onChange} />)
     const configureClient = screen.getByRole('button', {
-      name: 'plugin.auth.appUser.configureClient',
+      name: 'plugin.auth.common.configureClient',
     })
     expect(screen.getByText('plugin.auth.appUser.setupClient')).toBeVisible()
     expect(configureClient).toHaveAccessibleDescription('plugin.auth.appUser.setupClient')

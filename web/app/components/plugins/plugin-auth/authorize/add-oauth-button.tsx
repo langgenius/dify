@@ -233,7 +233,7 @@ const AddOAuthButton = ({
       className="w-full"
     >
       <span className="i-ri-equalizer-2-line size-4" />
-      {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
+      {t(($) => $['auth.common.configureClient'], { ns: 'plugin' })}
     </Button>
   )
 

@@ -186,7 +186,7 @@ const ConnectionPicker = ({
                   disabled={actions.addApiKey.disabled}
                   onClick={actions.addApiKey.onClick}
                 >
-                  {t(($) => $['auth.connection.addApiKey'], { ns: 'plugin' })}
+                  {t(($) => $['auth.common.addApiKey'], { ns: 'plugin' })}
                 </Button>
               )}
             </div>
