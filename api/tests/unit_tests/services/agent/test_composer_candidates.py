@@ -150,8 +150,8 @@ def test_previous_outputs_capped_and_flagged() -> None:
     entries, truncated = previous_node_output_candidates(
         graph=graph,
         node_id="t",
-        declared_outputs_loader=lambda nid: None,
-        draft_variables_loader=lambda nid: [],
+        declared_outputs_loader=lambda _nid: None,
+        draft_variables_loader=lambda _nid: [],
         system_variables_loader=lambda: many,
     )
     assert len(entries) == MAX_CANDIDATES_PER_LIST
@@ -194,7 +194,7 @@ def test_soul_candidates_lists_configured_items_only() -> None:
     )
     lists, truncated = soul_candidates(
         agent_soul=_soul(),
-        dataset_lookup=lambda ids: {"ds-1": dataset},
+        dataset_lookup=lambda _ids: {"ds-1": dataset},
         workspace_tools_loader=lambda: [
             {"id": "tavily/tavily_search", "name": "tavily_search", "provider": "tavily", "plugin_id": "lg/tavily"}
         ],
@@ -236,7 +236,7 @@ def test_candidates_response_omits_legacy_skill_file_candidates() -> None:
 def test_soul_candidates_empty_config_yields_empty_lists() -> None:
     lists, truncated = soul_candidates(
         agent_soul=None,
-        dataset_lookup=lambda ids: {},
+        dataset_lookup=lambda _ids: {},
         workspace_tools_loader=lambda: [],
     )
     assert truncated is False
@@ -246,7 +246,7 @@ def test_soul_candidates_empty_config_yields_empty_lists() -> None:
 def test_soul_candidates_caps_lists() -> None:
     lists, truncated = soul_candidates(
         agent_soul=None,
-        dataset_lookup=lambda ids: {},
+        dataset_lookup=lambda _ids: {},
         workspace_tools_loader=lambda: [{"id": str(i)} for i in range(MAX_CANDIDATES_PER_LIST + 1)],
     )
     assert len(lists["dify_tools"]) == MAX_CANDIDATES_PER_LIST

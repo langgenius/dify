@@ -4,6 +4,16 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type DifyBuilderCreateSessionPayload =
   | DifyBuilderCreateBuildSessionPayload
   | DifyBuilderCreateEditSessionPayload
@@ -1822,6 +1832,13 @@ export type PostDifyBuilderAgentPingData = {
   url: '/dify-builder/agent/ping'
 }
 
+export type PostDifyBuilderAgentPingErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderAgentPingError =
+  PostDifyBuilderAgentPingErrors[keyof PostDifyBuilderAgentPingErrors]
+
 export type PostDifyBuilderAgentPingResponses = {
   200: {
     [key: string]: unknown
@@ -1839,7 +1856,8 @@ export type PostDifyBuilderSessionsData = {
 }
 
 export type PostDifyBuilderSessionsErrors = {
-  400: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsError =
@@ -1862,7 +1880,8 @@ export type GetDifyBuilderSessionsBySessionIdData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdErrors = {
-  404: DifyBuilderErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdError =
@@ -1885,9 +1904,10 @@ export type PostDifyBuilderSessionsBySessionIdActionsData = {
 }
 
 export type PostDifyBuilderSessionsBySessionIdActionsErrors = {
-  400: DifyBuilderErrorResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdActionsError =
@@ -1914,8 +1934,9 @@ export type GetDifyBuilderSessionsBySessionIdConversationData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdConversationErrors = {
-  400: DifyBuilderErrorResponse
-  404: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdConversationError =
@@ -1938,9 +1959,10 @@ export type PostDifyBuilderSessionsBySessionIdMessagesData = {
 }
 
 export type PostDifyBuilderSessionsBySessionIdMessagesErrors = {
-  400: DifyBuilderErrorResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderErrorResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdMessagesError =
@@ -1963,10 +1985,11 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsData = {
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsErrors = {
-  400: DifyBuilderErrorResponse
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsError =
@@ -1990,9 +2013,10 @@ export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdErrors = {
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdError =
@@ -2016,10 +2040,11 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirm
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmErrors = {
-  400: DifyBuilderErrorResponse
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmError =
@@ -2043,10 +2068,11 @@ export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecute
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteErrors = {
-  400: DifyBuilderErrorResponse
-  403: DifyBuilderRealCallForbiddenResponse
-  404: DifyBuilderErrorResponse
-  409: DifyBuilderRealCallRefusalResponse
+  400: DifyBuilderErrorResponse | ErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderRealCallRefusalResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteError =
@@ -2069,7 +2095,8 @@ export type GetDifyBuilderSessionsBySessionIdStreamData = {
 }
 
 export type GetDifyBuilderSessionsBySessionIdStreamErrors = {
-  404: DifyBuilderErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDifyBuilderSessionsBySessionIdStreamError =

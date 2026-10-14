@@ -45,6 +45,7 @@ def provisioning(monkeypatch: pytest.MonkeyPatch) -> Mock:
         owner_transfer=Mock(),
         invitations=Mock(),
         identity=Mock(),
+        resource_cleanup=Mock(),
     )
     monkeypatch.setattr(controller, "application_services", lambda: Services(services))
     return provisioning
