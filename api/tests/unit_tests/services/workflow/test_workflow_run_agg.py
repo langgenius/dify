@@ -157,19 +157,20 @@ def _local_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
     from core.app.apps import workflow_app_runner
 
-    monkeypatch.setattr(workflow_app_runner, "dispatch_human_input_email_task", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(workflow_app_runner.dispatch_human_input_email_task, "apply_async", lambda **_kwargs: None)
 
 
 @pytest.mark.usefixtures("_local_storage")
 @pytest.mark.parametrize("persist_snapshot", [False, True])
 def test_pause_publication_persists_summary_and_optional_snapshot(
-    sqlite_engine: Engine, persist_snapshot: bool
+    sqlite_engine: Engine, persist_snapshot: bool, caplog: pytest.LogCaptureFixture
 ) -> None:
     runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
     config = (
         PauseStateLayerConfig(sqlite_engine, runner.application_generate_entity.user_id) if persist_snapshot else None
     )
     WorkflowRunAgg.run(runner, config, workflow_repository, node_repository)
+    assert "Failed to enqueue human input email task" not in caplog.text
     events = [message.event for message in runner._queue_manager.listen()]
     assert isinstance(events[-1], QueueWorkflowPausedEvent), events
     with Session(sqlite_engine) as session:
