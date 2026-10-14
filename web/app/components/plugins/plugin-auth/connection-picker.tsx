@@ -12,7 +12,7 @@ export type ConnectionPickerOption = {
   id: string
   name: string
   subtitle: string
-  method: CredentialType
+  method?: CredentialType
   disabled?: boolean
   info?: string
 }
@@ -144,9 +144,11 @@ const ConnectionPicker = ({
                               {option.subtitle}
                             </span>
                           </span>
-                          <span className="shrink-0 system-xs-regular text-text-tertiary">
-                            {methodLabel(option.method)}
-                          </span>
+                          {option.method && (
+                            <span className="shrink-0 system-xs-regular text-text-tertiary">
+                              {methodLabel(option.method)}
+                            </span>
+                          )}
                         </Button>
                         {option.info && (
                           <Tooltip>

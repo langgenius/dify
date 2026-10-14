@@ -489,6 +489,10 @@ describe('PluginAuth', () => {
     })
     expect(oauth).toHaveTextContent('@test-user')
     await user.click(oauth)
+    const picker = await screen.findByRole('dialog', { name: 'plugin.auth.authorization' })
+    expect(
+      within(picker).queryByRole('button', { name: /plugin\.auth\.workspaceDefault/ }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Personal connection/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Workspace connection/ })).not.toBeInTheDocument()
     await user.click(

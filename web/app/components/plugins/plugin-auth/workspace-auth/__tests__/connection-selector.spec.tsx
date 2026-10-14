@@ -1,9 +1,11 @@
+import type { ReactElement } from 'react'
 import type { usePluginAuth } from '../../hooks/use-plugin-auth'
 import type { Credential } from '../../types'
 import type { ConnectionSelectorProps } from '../connection-selector'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { PermissionLevel } from '@/models/permission'
@@ -119,6 +121,7 @@ const createAuthorization = (
 const renderSelector = (
   props: Partial<ConnectionSelectorProps> = {},
   workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage'],
+  ui?: ReactElement,
 ) => {
   const queryClient = createConsoleQueryClient()
   const providerQuery = consoleQuery.workspaces.current.toolProvider.builtin.byProvider
@@ -147,12 +150,14 @@ const renderSelector = (
 
   return renderWithConsoleQuery(
     <TooltipProvider delay={0} closeDelay={0}>
-      <ConnectionSelector
-        pluginPayload={pluginPayload}
-        authorization={createAuthorization()}
-        onAuthorizationItemClick={vi.fn()}
-        {...props}
-      />
+      {ui ?? (
+        <ConnectionSelector
+          pluginPayload={pluginPayload}
+          authorization={createAuthorization()}
+          onAuthorizationItemClick={vi.fn()}
+          {...props}
+        />
+      )}
     </TooltipProvider>,
     { queryClient, accountProfile: { id: 'current-user' }, workspacePermissionKeys },
   )
@@ -206,7 +211,11 @@ describe('ConnectionSelector', () => {
     })
     expect(
       within(workspaceGroup).getByRole('button', { name: /^Team API connection/ }),
-    ).toHaveAttribute('aria-pressed', 'true')
+    ).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /^plugin.auth.workspaceDefault/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     expect(
       within(workspaceGroup).getByRole('button', { name: /^Raw API connection/ }),
     ).toHaveTextContent('plugin.auth.connection.apiKey')
@@ -226,7 +235,7 @@ describe('ConnectionSelector', () => {
   })
 
   it.each([false, true])(
-    'follows the default connection when its row is selected with default tracking %s',
+    'fixes the actual default connection ID when its row is selected with legacy default tracking %s',
     async (trackDefault) => {
       const user = userEvent.setup()
       const onAuthorizationItemClick = vi.fn()
@@ -239,12 +248,136 @@ describe('ConnectionSelector', () => {
       const workspaceGroup = screen.getByRole('group', { name: 'common.userProfile.workspace' })
       await user.click(within(workspaceGroup).getByRole('button', { name: /^Team API connection/ }))
 
-      expect(onAuthorizationItemClick).toHaveBeenCalledWith(trackDefault ? 'workspace-api' : '')
+      expect(onAuthorizationItemClick).toHaveBeenCalledWith('workspace-api')
       await waitFor(() => {
         expect(
           screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
         ).not.toBeInTheDocument()
       })
+    },
+  )
+
+  it.each([false, true])(
+    'selects Workspace Default separately with legacy default tracking %s',
+    async (trackDefault) => {
+      const user = userEvent.setup()
+      const onAuthorizationItemClick = vi.fn()
+      const onDefaultCredentialChange = vi.fn()
+      renderSelector({
+        credentialId: 'personal-oauth',
+        onAuthorizationItemClick,
+        onDefaultCredentialChange: trackDefault ? onDefaultCredentialChange : undefined,
+      })
+      await user.click(screen.getByRole('button', { name: /^Personal OAuth connection/ }))
+      const defaultChoice = screen.getByRole('button', { name: /^plugin.auth.workspaceDefault/ })
+      expect(defaultChoice).toHaveAttribute('aria-pressed', 'false')
+      await user.click(defaultChoice)
+
+      expect(onAuthorizationItemClick).toHaveBeenCalledExactlyOnceWith(
+        trackDefault ? 'workspace-api' : '',
+      )
+      if (trackDefault) expect(onDefaultCredentialChange).toHaveBeenCalledWith('workspace-api')
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'plugin.auth.authorization' }),
+        ).not.toBeInTheDocument(),
+      )
+    },
+  )
+
+  it.each(['fixed', 'follow'] as const)(
+    'keeps the %s selection contract when the Workspace default changes from A to B',
+    async (mode) => {
+      const user = userEvent.setup()
+      const onAuthorizationItemClick = vi.fn()
+      const ControlledSelector = ({ serverCredentials }: { serverCredentials: Credential[] }) => {
+        const [credentialId, setCredentialId] = useState('personal-oauth')
+        return (
+          <ConnectionSelector
+            pluginPayload={pluginPayload}
+            authorization={createAuthorization({ credentials: serverCredentials })}
+            credentialId={credentialId}
+            onAuthorizationItemClick={(id) => {
+              setCredentialId(id)
+              onAuthorizationItemClick(id)
+            }}
+          />
+        )
+      }
+      const { rerender } = renderSelector(
+        {},
+        undefined,
+        <ControlledSelector serverCredentials={credentials} />,
+      )
+      await user.click(screen.getByRole('button', { name: /^Personal OAuth connection/ }))
+      await user.click(
+        screen.getByRole('button', {
+          name: mode === 'fixed' ? /^Team API connection/ : /^plugin.auth.workspaceDefault/,
+        }),
+      )
+      expect(onAuthorizationItemClick).toHaveBeenCalledExactlyOnceWith(
+        mode === 'fixed' ? 'workspace-api' : '',
+      )
+      expect(screen.getByRole('button', { name: /^Team API connection/ })).toHaveTextContent(
+        '•••• 3456',
+      )
+
+      const updatedCredentials = credentials.map((credential) => ({
+        ...credential,
+        is_default: credential.id === 'raw-api',
+      }))
+      rerender(
+        <TooltipProvider delay={0} closeDelay={0}>
+          <ControlledSelector serverCredentials={updatedCredentials} />
+        </TooltipProvider>,
+      )
+
+      const trigger = screen.getByRole('button', {
+        name: mode === 'fixed' ? /^Team API connection/ : /^Raw API connection/,
+      })
+      expect(trigger).toBeVisible()
+      expect(onAuthorizationItemClick).toHaveBeenCalledOnce()
+      await user.click(trigger)
+      expect(screen.getByRole('button', { name: /^plugin.auth.workspaceDefault/ })).toHaveAttribute(
+        'aria-pressed',
+        mode === 'follow' ? 'true' : 'false',
+      )
+      const workspace = within(screen.getByRole('group', { name: 'common.userProfile.workspace' }))
+      expect(workspace.getByRole('button', { name: /^Team API connection/ })).toHaveAttribute(
+        'aria-pressed',
+        mode === 'fixed' ? 'true' : 'false',
+      )
+      expect(workspace.getByRole('button', { name: /^Raw API connection/ })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    },
+  )
+
+  it.each(['missing-default', 'missing-use-permission'] as const)(
+    'prevents choosing Workspace Default with %s',
+    async (missing) => {
+      const user = userEvent.setup()
+      const onAuthorizationItemClick = vi.fn()
+      renderSelector(
+        {
+          credentialId: 'personal-oauth',
+          onAuthorizationItemClick,
+          authorization: createAuthorization({
+            credentials: credentials.map((credential) => ({
+              ...credential,
+              is_default: missing === 'missing-default' ? false : credential.is_default,
+            })),
+          }),
+        },
+        missing === 'missing-use-permission' ? [] : undefined,
+      )
+      await user.click(screen.getByRole('button', { name: /^Personal OAuth connection/ }))
+      const defaultChoice = screen.getByRole('button', { name: /^plugin.auth.workspaceDefault/ })
+      expect(defaultChoice).toBeDisabled()
+      await user.click(defaultChoice)
+      expect(onAuthorizationItemClick).not.toHaveBeenCalled()
+      expect(screen.getByRole('dialog', { name: 'plugin.auth.authorization' })).toBeVisible()
     },
   )
 

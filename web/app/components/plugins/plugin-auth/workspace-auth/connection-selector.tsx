@@ -35,6 +35,11 @@ export type ConnectionSelectorProps = {
 export type ConnectionSelectorDataSource = {
   credentials: Credential[]
   selectedCredential?: Credential
+  workspaceDefault?: {
+    option: ConnectionPickerOption
+    selected: boolean
+    select: () => void
+  }
   fallbackName: string
   unavailable?: boolean
   canUse: boolean
@@ -72,7 +77,7 @@ const ConnectionSelectorContent = ({
   const [connectionActionsHandle] = useState(() => createDropdownMenuHandle<Credential>())
   const [apiKeySession, setApiKeySession] = useState(0)
   const [apiKeyOpen, setApiKeyOpen] = useState(false)
-  const { credentials } = dataSource
+  const { credentials, workspaceDefault } = dataSource
   const toOption = (credential: Credential): ConnectionPickerOption => ({
     id: credential.id,
     name: credential.name,
@@ -103,6 +108,17 @@ const ConnectionSelectorContent = ({
       items: credentials.filter((credential) => credential.from_other_member),
     },
   ].map((group) => ({ ...group, items: group.items.map(toOption) }))
+  if (workspaceDefault) groups[0]?.items.unshift(workspaceDefault.option)
+  const selected = dataSource.selectedCredential
+    ? toOption(dataSource.selectedCredential)
+    : undefined
+  const selectedOption = workspaceDefault?.selected
+    ? {
+        ...(selected ?? workspaceDefault.option),
+        id: workspaceDefault.option.id,
+        name: selected?.name ?? dataSource.fallbackName,
+      }
+    : selected
   const addOAuth = () => {
     if (!dataSource.allowCustom || dataSource.oauthDisabled) return
     setOpen(false)
@@ -127,12 +143,16 @@ const ConnectionSelectorContent = ({
           open={open}
           onOpenChange={setOpen}
           groups={groups}
-          selected={
-            dataSource.selectedCredential ? toOption(dataSource.selectedCredential) : undefined
-          }
+          selected={selectedOption}
           fallbackName={dataSource.fallbackName}
           unavailable={dataSource.unavailable}
           onSelect={(id) => {
+            if (workspaceDefault && id === workspaceDefault.option.id) {
+              if (!dataSource.canUse || workspaceDefault.option.disabled) return
+              workspaceDefault.select()
+              setOpen(false)
+              return
+            }
             const credential = credentials.find((item) => item.id === id)
             if (!credential || !dataSource.canUse || credential.not_allowed_to_use) return
             dataSource.select(credential)
@@ -352,6 +372,21 @@ const WorkspaceConnectionSelector = ({
         dataSource={{
           credentials,
           selectedCredential,
+          workspaceDefault: {
+            option: {
+              id: '__workspace_default__',
+              name: t(($) => $['auth.workspaceDefault'], { ns: 'plugin' }),
+              subtitle:
+                defaultCredential?.name ?? t(($) => $['auth.unavailable'], { ns: 'plugin' }),
+              disabled:
+                !canUseCredential || !defaultCredential || defaultCredential.not_allowed_to_use,
+            },
+            selected: !credentialId,
+            select: () =>
+              onAuthorizationItemClick(
+                onDefaultCredentialChange ? (defaultCredential?.id ?? '') : '',
+              ),
+          },
           fallbackName: selectedName,
           unavailable,
           canUse: canUseCredential,
@@ -366,10 +401,7 @@ const WorkspaceConnectionSelector = ({
           subtitle,
           select: (credential) => {
             if (!canUseCredential) return
-            const id = credential.is_default ? '' : credential.id
-            onAuthorizationItemClick(
-              id || (onDefaultCredentialChange ? defaultCredential?.id || '' : ''),
-            )
+            onAuthorizationItemClick(credential.id)
           },
           addOAuth: startOAuth,
           openOAuthClientSettings: openOAuthSettings,
