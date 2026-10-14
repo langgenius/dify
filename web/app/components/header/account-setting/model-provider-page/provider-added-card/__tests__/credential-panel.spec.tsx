@@ -1,5 +1,7 @@
+import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../../declarations'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
@@ -20,6 +22,8 @@ const {
   mockUpdateModelList: vi.fn(),
   mockUpdateModelProviders: vi.fn(),
   mockTrialCredits: {
+    modelBillingMigrationStatus:
+      'none' as ModelProviderCreditsResponse['model_billing_migration_status'],
     credits: 100,
     totalCredits: 10_000,
     isExhausted: false,
@@ -139,6 +143,7 @@ describe('CredentialPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     Object.assign(mockTrialCredits, {
+      modelBillingMigrationStatus: 'none',
       credits: 100,
       totalCredits: 10_000,
       isExhausted: false,
@@ -147,6 +152,28 @@ describe('CredentialPanel', () => {
   })
 
   describe('Text label variants', () => {
+    it('shows processing instead of exhaustion and keeps customer key selection available', async () => {
+      const user = userEvent.setup()
+      mockTrialCredits.modelBillingMigrationStatus = 'processing'
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      renderWithQueryClient(createProvider())
+
+      expect(screen.getByRole('status').textContent).toMatch(/tokenerProcessing/)
+      expect(screen.queryByText(/quotaExhausted/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/aiCreditsInUse/)).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Change Priority' }))
+
+      expect(mockChangePriorityFn).toHaveBeenCalledWith(
+        {
+          params: { provider: 'langgenius/openai/openai' },
+          body: { preferred_provider_type: 'custom' },
+        },
+        expect.anything(),
+      )
+    })
+
     it('should show "AI credits in use" for credits-active variant', () => {
       renderWithQueryClient(createProvider())
       expect(screen.getByText(/aiCreditsInUse/)).toBeInTheDocument()

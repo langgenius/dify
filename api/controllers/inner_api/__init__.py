@@ -16,6 +16,7 @@ api = ExternalApi(
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
 from . import mail as _mail
+from . import model_billing_migration as _model_billing_migration
 from . import runtime_credentials as _runtime_credentials
 from .agent import files as _agent_files
 from .agent import llm as _agent_llm
@@ -41,6 +42,7 @@ __all__ = [
     "_app_file_grants",
     "_knowledge_retrieval",
     "_mail",
+    "_model_billing_migration",
     "_plugin",
     "_runtime_credentials",
     "_skills",

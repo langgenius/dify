@@ -201,6 +201,11 @@ class ProviderConfiguration(BaseModel):
                         raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
+            from core.model_invocation_routing import bind_legacy_credentials, routed_credentials
+
+            managed = routed_credentials(self, model_type, model)
+            if managed is not None:
+                return managed
             restrict_models = []
             for quota_configuration in self.system_configuration.quota_configurations:
                 if self.system_configuration.current_quota_type != quota_configuration.quota_type:
@@ -219,7 +224,7 @@ class ProviderConfiguration(BaseModel):
                         and restrict_model.base_model_name
                     ):
                         copy_credentials["base_model_name"] = restrict_model.base_model_name
-            return copy_credentials
+            return bind_legacy_credentials(self, model_type, model, copy_credentials)
         else:
             credentials = None
             current_credential_id = None
@@ -263,6 +268,20 @@ class ProviderConfiguration(BaseModel):
         """
         if self.system_configuration.enabled is False:
             return SystemConfigurationStatus.UNSUPPORTED
+
+        from core.model_invocation_routing import (
+            SettlementOwner,
+            has_compatibility_route,
+            migration_routing_state,
+            settlement_owner,
+        )
+
+        if settlement_owner(
+            self.system_configuration, ProviderType.SYSTEM
+        ) == SettlementOwner.SHARED_CREDIT_POOL and has_compatibility_route(migration_routing_state(self.tenant_id)):
+            # The hosted entry remains configured. Invocation admission still
+            # blocks processing and the target enforces its actual balance.
+            return SystemConfigurationStatus.ACTIVE
 
         current_quota_type = self.system_configuration.current_quota_type
         current_quota_configuration = next(
@@ -1813,11 +1832,9 @@ class ProviderConfiguration(BaseModel):
                         if model and restrict_model.model != model:
                             continue
 
-                        copy_credentials = (
-                            self.system_configuration.credentials.copy()
-                            if self.system_configuration.credentials
-                            else {}
-                        )
+                        # Listing logical hosted models is not invocation
+                        # admission. Keep it available while cutover is processing.
+                        copy_credentials = dict(self.system_configuration.credentials or {})
                         if restrict_model.base_model_name:
                             copy_credentials["base_model_name"] = restrict_model.base_model_name
 
@@ -1865,7 +1882,10 @@ class ProviderConfiguration(BaseModel):
             for provider_model in provider_models:
                 if provider_model.model not in restrict_model_names:
                     provider_model.status = ModelStatus.NO_PERMISSION
-                elif not quota_configuration.is_valid:
+                elif (
+                    not quota_configuration.is_valid
+                    and self.get_system_configuration_status() != SystemConfigurationStatus.ACTIVE
+                ):
                     provider_model.status = ModelStatus.QUOTA_EXCEEDED
 
         return provider_models

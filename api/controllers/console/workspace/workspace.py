@@ -1,5 +1,6 @@
 from datetime import datetime
 from http import HTTPStatus
+from typing import Literal
 
 from flask import request
 from flask_restx import Resource
@@ -71,6 +72,19 @@ class TenantInfoResponse(ResponseModel):
     trial_credits_used: int | None = None
     trial_credits_exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
+    model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
+    model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
+    tokener_bootstrap_status: (
+        Literal[
+            "pending",
+            "installing_plugin",
+            "provisioning",
+            "configuring_provider",
+            "ready",
+            "failed",
+        ]
+        | None
+    ) = None
 
     @field_validator("status", "trial_end_reason", mode="before")
     @classmethod
@@ -92,7 +106,24 @@ class CurrentWorkspaceSummaryResponse(ResponseModel):
     name: str
     role: TenantAccountRole
     plan: CloudPlan | None
-    credits: int | None = Field(description="Remaining credits in the effective pool; -1 means unlimited.")
+    credits: int | None = Field(
+        description=(
+            "Remaining legacy credits; -1 means unlimited, null means unavailable or not managed by legacy credits."
+        )
+    )
+    model_billing_source: Literal["legacy_message_credits", "tokener"] = "legacy_message_credits"
+    model_billing_migration_status: Literal["none", "preparing", "processing", "active"] = "none"
+    tokener_bootstrap_status: (
+        Literal[
+            "pending",
+            "installing_plugin",
+            "provisioning",
+            "configuring_provider",
+            "ready",
+            "failed",
+        ]
+        | None
+    ) = None
 
 
 class TenantListItemResponse(ResponseModel):

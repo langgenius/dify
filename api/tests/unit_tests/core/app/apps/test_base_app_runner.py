@@ -103,8 +103,8 @@ class TestAppRunner:
         )
 
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.ModelInstance",
-            lambda provider_model_bundle, model: _TokenCountingModel(80),
+            "core.app.apps.base_app_runner.create_model_instance",
+            lambda provider_model_bundle, model, credentials: _TokenCountingModel(80),
         )
 
         runner.recalc_llm_max_tokens(model_config, prompt_messages=[AssistantPromptMessage(content="hi")])
@@ -126,8 +126,8 @@ class TestAppRunner:
         )
 
         monkeypatch.setattr(
-            "core.app.apps.base_app_runner.ModelInstance",
-            lambda provider_model_bundle, model: _TokenCountingModel(10),
+            "core.app.apps.base_app_runner.create_model_instance",
+            lambda provider_model_bundle, model, credentials: _TokenCountingModel(10),
         )
 
         assert runner.recalc_llm_max_tokens(model_config, prompt_messages=[]) == -1

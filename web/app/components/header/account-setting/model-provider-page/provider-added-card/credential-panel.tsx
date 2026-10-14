@@ -29,6 +29,7 @@ type CredentialPanelContentProps = {
 
 const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
   'credits-active',
+  'credits-processing',
   'credits-fallback',
   'credits-exhausted',
   'no-usage',
@@ -90,6 +91,7 @@ const CredentialPanel = ({ provider }: CredentialPanelProps) => {
 
 const TEXT_LABEL_KEYS = {
   'credits-active': 'modelProvider.card.aiCreditsInUse',
+  'credits-processing': 'modelProvider.tokenerProcessing',
   'credits-fallback': 'modelProvider.card.aiCreditsInUse',
   'credits-exhausted': 'modelProvider.card.quotaExhausted',
   'no-usage': 'modelProvider.card.noAvailableUsage',
@@ -104,7 +106,10 @@ function TextLabel({ variant }: { variant: CardVariant }) {
 
   return (
     <>
-      <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
+      <span
+        role={variant === 'credits-processing' ? 'status' : undefined}
+        className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}
+      >
         {t(($) => $[labelKey], { ns: 'modelProvider' })}
       </span>
       {variant === 'credits-fallback' && (

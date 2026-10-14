@@ -179,6 +179,8 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
         "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
+        "tasks.bootstrap_tokener_tenant_task",  # managed Tokener setup for new tenants
+        "tasks.prepare_tokener_migration_task",  # recover persisted legacy migration preparations
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
@@ -187,6 +189,17 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED and dify_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK:
+        beat_schedule["tokener_bootstrap_recovery_sweeper"] = {
+            "task": "tasks.bootstrap_tokener_tenant_task.sweep_pending_tokener_integrations_task",
+            "schedule": timedelta(minutes=dify_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL),
+        }
+    # Independent of new admission, so pausing a batch does not strand old intents.
+    if dify_config.ENABLE_TOKENER_MIGRATION_RECOVERY_TASK:
+        beat_schedule["tokener_migration_recovery_sweeper"] = {
+            "task": "tasks.prepare_tokener_migration_task.sweep_tokener_migrations_task",
+            "schedule": timedelta(minutes=1),
+        }
     if dify_config.AGENT_SANDBOX_METERING_ENABLED:
         try:
             interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)

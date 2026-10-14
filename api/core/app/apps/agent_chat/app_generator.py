@@ -18,6 +18,7 @@ from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.agent_chat.generate_response_converter import AgentChatAppGenerateResponseConverter
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
@@ -208,6 +209,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 session=session,
             )
 
+            from core.app.llm.message_billing import begin_message_billing
+
             # init queue manager
             queue_manager = MessageBasedAppQueueManager(
                 task_id=application_generate_entity.task_id,
@@ -233,18 +236,23 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 },
             )
 
-            worker_thread.start()
+            try:
+                begin_message_billing(application_generate_entity, message.id)
+                worker_thread.start()
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    queue_manager=queue_manager,
+                    conversation=conversation,
+                    message=message,
+                    user=user,
+                    stream=streaming,
+                )
+                return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            except Exception:
+                from core.app.llm.message_billing import release_message_billing
 
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
-                user=user,
-                stream=streaming,
-            )
-            return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+                release_message_billing(application_generate_entity)
+                raise
 
     def _generate_worker(
         self,
@@ -266,6 +274,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         """
 
         with preserve_flask_contexts(flask_app, context_vars=context):
+            worker_failed = True
             try:
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
@@ -281,6 +290,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                         message=message,
                         session=session,
                     )
+                worker_failed = False
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -297,3 +307,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+            finally:
+                if worker_failed and queue_manager.execution_state != AppExecutionState.TERMINAL:
+                    from core.app.llm.message_billing import release_message_billing
+
+                    release_message_billing(application_generate_entity)

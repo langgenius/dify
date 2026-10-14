@@ -46,8 +46,10 @@ def init_app(app: DifyApp):
         upgrade_db,
         vdb_migrate,
     )
+    from model_billing_migration_commands import tokener_migration
 
     cmds_to_register = [
+        tokener_migration,
         reset_password,
         reset_email,
         reset_encrypt_key_pair,

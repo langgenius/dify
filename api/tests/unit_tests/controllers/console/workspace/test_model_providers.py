@@ -29,6 +29,7 @@ from controllers.console.workspace.model_providers import (
     PreferredProviderTypeUpdateApi,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from core.model_billing_profile import ModelBillingSource
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -37,6 +38,7 @@ from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models import Account
 from models.account import TenantAccountRole
 from models.provider import ProviderType
+from services.billing_service import TokenerTenantMeteringResponse
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
@@ -265,12 +267,15 @@ class TestModelProviderCreditsApi:
         with patch(
             "controllers.console.workspace.model_providers.application_services",
         ) as services:
-            get_effective_credit_pool = services.return_value.workspaces.management.get_effective_credit_pool
-            get_effective_credit_pool.return_value = credit_pool
+            get_model_provider_credits = services.return_value.workspaces.management.get_model_provider_credits
+            get_model_provider_credits.return_value = credit_pool
             result = method(api, "tenant1")
 
-        get_effective_credit_pool.assert_called_once_with("tenant1")
+        get_model_provider_credits.assert_called_once_with("tenant1")
         assert result == {
+            "model_billing_source": "legacy_message_credits",
+            "model_billing_migration_status": "none",
+            "tokener_bootstrap_status": None,
             "pool_type": "paid",
             "quota_limit": -1,
             "quota_used": 999,
@@ -279,6 +284,7 @@ class TestModelProviderCreditsApi:
             "is_exhausted": False,
             "exhausted_at": None,
             "next_credit_reset_date": 1775001600,
+            "tokener_metering": None,
         }
 
     def test_get_without_effective_pool(self) -> None:
@@ -288,10 +294,13 @@ class TestModelProviderCreditsApi:
         with patch(
             "controllers.console.workspace.model_providers.application_services",
         ) as services:
-            services.return_value.workspaces.management.get_effective_credit_pool.return_value = EffectiveCreditPool()
+            services.return_value.workspaces.management.get_model_provider_credits.return_value = EffectiveCreditPool()
             result = method(api, "tenant1")
 
         assert result == {
+            "model_billing_source": "legacy_message_credits",
+            "model_billing_migration_status": "none",
+            "tokener_bootstrap_status": None,
             "pool_type": None,
             "quota_limit": None,
             "quota_used": None,
@@ -300,6 +309,72 @@ class TestModelProviderCreditsApi:
             "is_exhausted": True,
             "exhausted_at": None,
             "next_credit_reset_date": None,
+            "tokener_metering": None,
+        }
+
+    def test_get_tokener_metering_keeps_decimal_strings_and_nested_partial_status(self) -> None:
+        api = ModelProviderCreditsApi()
+        method = unwrap(api.get)
+        usage: TokenerTenantMeteringResponse = {
+            "tenant_id": VALID_UUID,
+            "currency": "USD",
+            "available_usd_micro": "12500000",
+            "current_month": {
+                "status": "unavailable",
+                "start_date": "2026-09-01",
+                "end_date": "2026-09-03",
+                "error_code": "metering_unavailable",
+            },
+            "balance_generated_at": "2026-09-03T06:00:00Z",
+            "entitlement_status": "active",
+            "allowance": {
+                "window_id": "invoice-period-1",
+                "source_ref": "invoice-1",
+                "amount_usd_micro": "59000000",
+                "available_usd_micro": "20000000",
+                "starts_at": "2026-09-01T00:00:00Z",
+                "ends_at": "2026-10-01T00:00:00Z",
+            },
+        }
+        credit_pool = EffectiveCreditPool(
+            model_billing_source=ModelBillingSource.TOKENER,
+            tokener_bootstrap_status="ready",
+            tokener_metering=usage,
+        )
+
+        with patch(
+            "controllers.console.workspace.model_providers.application_services",
+        ) as services:
+            get_model_provider_credits = services.return_value.workspaces.management.get_model_provider_credits
+            get_model_provider_credits.return_value = credit_pool
+            result = method(api, VALID_UUID)
+
+        get_model_provider_credits.assert_called_once_with(VALID_UUID)
+
+        assert result["model_billing_source"] == "tokener"
+        assert result["is_exhausted"] is False
+        assert result["tokener_metering"] == {
+            "tenant_id": VALID_UUID,
+            "currency": "USD",
+            "available_usd_micro": "12500000",
+            "current_month": {
+                "status": "unavailable",
+                "start_date": "2026-09-01",
+                "end_date": "2026-09-03",
+                "error_code": "metering_unavailable",
+            },
+            "balance_generated_at": "2026-09-03T06:00:00Z",
+            "usage_generated_at": None,
+            "allowance": {
+                "window_id": "invoice-period-1",
+                "source_ref": "invoice-1",
+                "amount_usd_micro": "59000000",
+                "available_usd_micro": "20000000",
+                "starts_at": "2026-09-01T00:00:00Z",
+                "ends_at": "2026-10-01T00:00:00Z",
+            },
+            "entitlement_status": "active",
+            "entitlement_error_code": None,
         }
 
 

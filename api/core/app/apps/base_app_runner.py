@@ -27,7 +27,7 @@ from core.app.features.hosting_moderation.hosting_moderation import HostingModer
 from core.db.session_factory import session_factory
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance
+from core.model_manager import create_model_instance
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
@@ -57,8 +57,10 @@ class AppRunner:
         self, model_config: ModelConfigWithCredentialsEntity, prompt_messages: list[PromptMessage]
     ):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
-        model_instance = ModelInstance(
-            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
+        model_instance = create_model_instance(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model,
+            credentials=model_config.credentials,
         )
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)

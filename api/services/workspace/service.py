@@ -4,6 +4,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from typing import Protocol
 
 from enums import CloudPlan
+from enums.model_billing import ModelBillingSource
 from machinery.context import RequestContext
 from services.errors.file import UnsupportedFileTypeError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
@@ -48,6 +49,8 @@ class WorkspaceFeatureGateway(Protocol):
     def get_features(self, workspace_id: str) -> WorkspaceFeatures: ...
 
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool: ...
+
+    def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool: ...
 
     def logo_url(self, workspace_id: str) -> str: ...
 
@@ -109,10 +112,16 @@ class WorkspaceService:
             "role": workspace.role,
             "plan": credits.plan,
             "credits": credits.remaining_credits,
+            "model_billing_source": credits.model_billing_source.value,
+            "model_billing_migration_status": credits.model_billing_migration_status,
+            "tokener_bootstrap_status": credits.tokener_bootstrap_status,
         }
 
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
         return self._features.get_effective_credit_pool(workspace_id)
+
+    def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool:
+        return self._features.get_model_provider_credits(workspace_id)
 
     def switch(self, context: RequestContext, workspace_id: str) -> dict[str, object]:
         workspace = self._workspaces.switch(account_id=context.account_id, workspace_id=workspace_id)
@@ -170,11 +179,18 @@ class WorkspaceService:
             "role": workspace.role,
             "plan": credits.plan,
             "trial_end_reason": None,
+            "model_billing_source": credits.model_billing_source.value,
+            "model_billing_migration_status": credits.model_billing_migration_status,
+            "tokener_bootstrap_status": credits.tokener_bootstrap_status,
         }
         # Preserve the existing workspace-wide privileged-member check.
         if features.can_replace_logo and workspace.has_privileged_member:
             info["custom_config"] = self._public_config(workspace)
-        if credits.plan is not None:
+        if (
+            credits.plan is not None
+            and credits.model_billing_source == ModelBillingSource.LEGACY_MESSAGE_CREDITS
+            and credits.model_billing_migration_status not in {"processing", "active"}
+        ):
             info["next_credit_reset_date"] = credits.next_credit_reset_date
             if credits.quota_limit is not None:
                 info["trial_credits"] = credits.quota_limit

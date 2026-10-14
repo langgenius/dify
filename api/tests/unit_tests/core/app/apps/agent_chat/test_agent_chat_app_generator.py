@@ -17,6 +17,7 @@ from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.execution_coordinator import AppExecutionCoordinator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
@@ -61,9 +62,13 @@ class RecordingQueueManager(MessageBasedAppQueueManager):
     def __init__(self, **kwargs: object) -> None:
         self.init_kwargs = kwargs
         self.published_errors: list[tuple[Exception, object]] = []
+        self._execution_coordinator = AppExecutionCoordinator(
+            task_id=str(kwargs.get("task_id", "task")), on_timeout=lambda _reason: None
+        )
 
     def publish_error(self, error: Exception, publish_from: object) -> None:
         self.published_errors.append((error, publish_from))
+        self._execution_coordinator.mark_terminal()
 
 
 class RecordingThread(threading.Thread):
@@ -253,6 +258,7 @@ class TestAgentChatAppGeneratorGenerate:
     def test_generate_success_with_debugger_override(
         self, generator: AgentChatAppGenerator, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
+        monkeypatch.setattr("core.app.llm.message_billing.begin_message_billing", CallRecorder(None))
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
 
@@ -328,6 +334,7 @@ class TestAgentChatAppGeneratorGenerate:
     def test_generate_without_file_config(
         self, generator: AgentChatAppGenerator, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
+        monkeypatch.setattr("core.app.llm.message_billing.begin_message_billing", CallRecorder(None))
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
         annotation_reply = {"enabled": False}

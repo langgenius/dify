@@ -16,7 +16,7 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import create_session
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance
+from core.model_manager import create_model_instance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from graphon.file import File
@@ -77,9 +77,10 @@ class ChatAppRunner(AppRunner):
         memory = None
         if application_generate_entity.conversation_id:
             # get memory of conversation (read-only)
-            model_instance = ModelInstance(
+            model_instance = create_model_instance(
                 provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
                 model=application_generate_entity.model_conf.model,
+                credentials=application_generate_entity.model_conf.credentials,
             )
 
             memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
@@ -228,9 +229,13 @@ class ChatAppRunner(AppRunner):
         self.recalc_llm_max_tokens(model_config=application_generate_entity.model_conf, prompt_messages=prompt_messages)
 
         # Invoke model
-        model_instance = ModelInstance(
+        from core.app.llm.message_billing import require_message_billing
+
+        model_instance = create_model_instance(
             provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
             model=application_generate_entity.model_conf.model,
+            credentials=application_generate_entity.model_conf.credentials,
+            message_billing=require_message_billing(application_generate_entity),
         )
 
         request_metadata: dict[str, object] = {"app_id": app_config.app_id}

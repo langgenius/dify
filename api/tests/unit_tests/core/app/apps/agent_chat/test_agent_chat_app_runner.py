@@ -210,7 +210,7 @@ class TestAgentChatAppRunnerRun:
 
         llm_instance = mocker.MagicMock()
         llm_instance.model_type_instance.get_model_schema.return_value = None
-        mocker.patch("core.app.apps.agent_chat.app_runner.ModelInstance", return_value=llm_instance)
+        mocker.patch("core.app.apps.agent_chat.app_runner.create_model_instance", return_value=llm_instance)
         conversation, message = _records(sqlite_session)
 
         with pytest.raises(ValueError):
@@ -262,7 +262,7 @@ class TestAgentChatAppRunnerRun:
 
         llm_instance = mocker.MagicMock()
         llm_instance.model_type_instance.get_model_schema.return_value = model_schema
-        mocker.patch("core.app.apps.agent_chat.app_runner.ModelInstance", return_value=llm_instance)
+        mocker.patch("core.app.apps.agent_chat.app_runner.create_model_instance", return_value=llm_instance)
 
         conversation, message = _records(sqlite_session)
 
@@ -323,7 +323,7 @@ class TestAgentChatAppRunnerRun:
 
         llm_instance = mocker.MagicMock()
         llm_instance.model_type_instance.get_model_schema.return_value = model_schema
-        mocker.patch("core.app.apps.agent_chat.app_runner.ModelInstance", return_value=llm_instance)
+        mocker.patch("core.app.apps.agent_chat.app_runner.create_model_instance", return_value=llm_instance)
 
         conversation, message = _records(sqlite_session)
 
@@ -364,7 +364,7 @@ class TestAgentChatAppRunnerRun:
 
         llm_instance = mocker.MagicMock()
         llm_instance.model_type_instance.get_model_schema.return_value = model_schema
-        mocker.patch("core.app.apps.agent_chat.app_runner.ModelInstance", return_value=llm_instance)
+        mocker.patch("core.app.apps.agent_chat.app_runner.create_model_instance", return_value=llm_instance)
 
         conversation, message = _records(sqlite_session)
 
@@ -493,7 +493,7 @@ class TestAgentChatAppRunnerRun:
 
         llm_instance = mocker.MagicMock()
         llm_instance.model_type_instance.get_model_schema.return_value = model_schema
-        mocker.patch("core.app.apps.agent_chat.app_runner.ModelInstance", return_value=llm_instance)
+        mocker.patch("core.app.apps.agent_chat.app_runner.create_model_instance", return_value=llm_instance)
 
         conversation, message = _records(sqlite_session)
 
