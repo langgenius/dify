@@ -296,9 +296,9 @@ class AppDescribeQuery(BaseModel):
             return None
         if not isinstance(v, str):
             raise ValueError("fields must be a comma-separated string")
-        _ALLOWED_DESCRIBE_FIELDS = frozenset({"info", "parameters", "input_schema"})
+        _allowed_describe_fields = frozenset({"info", "parameters", "input_schema"})
         members = {m.strip() for m in v.split(",") if m.strip()}
-        unknown = members - _ALLOWED_DESCRIBE_FIELDS
+        unknown = members - _allowed_describe_fields
         if unknown:
             raise ValueError(f"unknown field(s): {sorted(unknown)}")
         return members

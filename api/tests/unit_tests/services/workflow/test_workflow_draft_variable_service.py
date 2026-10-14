@@ -75,41 +75,41 @@ class TestDraftVariableSaver:
             expected_node_id: str
             expected_name: str
 
-        _NODE_ID = "1747228642872"
+        _node_id = "1747228642872"
         cases = [
             TestCase(
                 name="name with `sys.` prefix should return the system node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="sys.workflow_id",
                 expected_node_id=SYSTEM_VARIABLE_NODE_ID,
                 expected_name="workflow_id",
             ),
             TestCase(
                 name="name without `sys.` prefix should return the original input node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="start_input",
-                expected_node_id=_NODE_ID,
+                expected_node_id=_node_id,
                 expected_name="start_input",
             ),
             TestCase(
                 name="name with `env.` prefix should return the environment node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="env.API_KEY",
                 expected_node_id=ENVIRONMENT_VARIABLE_NODE_ID,
                 expected_name="API_KEY",
             ),
             TestCase(
                 name="name with `conversation.` prefix should return the conversation node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="conversation.session_id",
                 expected_node_id=CONVERSATION_VARIABLE_NODE_ID,
                 expected_name="session_id",
             ),
             TestCase(
                 name="dummy_variable should return the original input node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="__dummy__",
-                expected_node_id=_NODE_ID,
+                expected_node_id=_node_id,
                 expected_name="__dummy__",
             ),
         ]
@@ -121,7 +121,7 @@ class TestDraftVariableSaver:
             session=sqlite_session,
             tenant_id="test-tenant-id",
             app_id=test_app_id,
-            node_id=_NODE_ID,
+            node_id=_node_id,
             node_type=BuiltinNodeTypes.START,
             node_execution_id="test_execution_id",
             user=mock_user,

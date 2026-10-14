@@ -244,10 +244,10 @@ class TidbService:
             response_data = response.json()
             for item in response_data["clusters"]:
                 state = item["state"]
-                userPrefix = item["userPrefix"]
-                if state == "ACTIVE" and len(userPrefix) > 0:
+                user_prefix = item["userPrefix"]
+                if state == "ACTIVE" and len(user_prefix) > 0:
                     cluster_info = tidb_serverless_list_map[item["clusterId"]]
-                    cluster_info.account = f"{userPrefix}.root"
+                    cluster_info.account = f"{user_prefix}.root"
                     if not cluster_info.qdrant_endpoint:
                         cluster_info.qdrant_endpoint = TidbService.extract_qdrant_endpoint(
                             item
