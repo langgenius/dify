@@ -1,0 +1,7 @@
+AMDGPUCloud logo source: https://notebooks.amd.com/static/image.png
+Original PNG: 800 x 191, 13,320 bytes.
+Original SHA-256: b1f64a122dbd2d3d3010bffe3ef38dd56760d5896be44bdf5e416dcff0902153.
+icon.png is a local 256 x 256 PNG, centered on a white canvas; no remote image is loaded at runtime.
+scripts/prepare_brand_icon.ps1 reproduces it after checking the source checksum.
+AMD names and marks remain the property of their owners.
+This preview does not establish brand approval or an approved AMD Marketplace publisher.

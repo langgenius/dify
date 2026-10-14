@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv*/
+.env
+
+baseline/
+acceptance-private/
+preservation*.json
+*.receipt.json
+verify_*.py
+API_COMPATIBILITY_GUIDE.md
+/verify_running_api.py
+/verify_dynamic_smoke.py

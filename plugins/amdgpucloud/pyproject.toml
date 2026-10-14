@@ -1,0 +1,30 @@
+[project]
+name = "dify-plugin-amdgpucloud"
+version = "0.0.9"
+description = "AMDGPUCloud model provider for Dify (AMD GPU Cloud / Token Factory)"
+authors = [{ name = "Letian Kang", email = "Letian.Kang@amd.com" }]
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "dify-plugin==0.10.2",
+    "requests==2.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pyyaml==6.0.3",
+    "ruff==0.15.22",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["live: calls the public AMDGPUCloud API and requires an explicit test key"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]

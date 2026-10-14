@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.local/
+.pytest_cache/
+.ruff_cache/
+.venv/
+.venv-dev/
+.venv-test/
+__pycache__/
+*.py[cod]
+*.difypkg
+validation-report/
+# Retired delivery and local acceptance helpers.
+scripts/build_windows_bundle.py
+scripts/verify_local_daemon_upload.py
+docs/Windows安装说明.txt

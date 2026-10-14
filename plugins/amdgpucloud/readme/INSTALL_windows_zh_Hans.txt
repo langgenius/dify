@@ -1,0 +1,45 @@
+AMDGPUCloud（AMD GPU Cloud / Token Factory）— Dify 插件安装说明（Windows）
+版本：0.0.9 动态目录兼容预览版
+作者：Letian Kang
+联系邮箱：Letian.Kang@amd.com
+
+一、前提
+这是导入已有 Dify Workspace 的插件，不是 EXE/MSI，也不安装 Dify 服务。
+Windows 用户通过浏览器操作，无需本机 Python、ROCm 或显卡驱动。
+Dify 1.17.1／SDK 0.10.2 未接通原生远端列表链路，须同时部署只读 API 兼容层。
+单独插件不提供未修改 Dify Cloud 的动态发现；兼容步骤见插件根目录 README.md
+的 Self-hosted API compatibility 小节，所需源码及 Compose 覆盖配置在仓库 api-compat/。
+Windows 完整应用安装器是独立交付，不是本插件的依赖。
+
+二、安装
+1. 登录有安装权限的 Dify Workspace，在“集成 → 安装 → 从本地文件”导入
+   AMDGPUCloud-0.0.9.difypkg。
+2. 从 https://developer.amd.com.cn/radeon/modelapis 手动取得自己的 rc-* API Key。
+3. 在“模型提供方 → AMDGPUCloud”凭据框保存 Key；不要使用内部订阅 Key。
+4. 在 Chat／Agent／Workflow 选择模型；目录缓存到期后刷新原生列表查看变化。
+固定 API：https://developer.amd.com.cn/radeon/api/v1，不需要手填 URL。
+保存凭据发送 max_tokens=1 的短验证请求，会消耗少量额度；/models 不能单独验证 Key。
+未签名包或本地安装被拒绝时联系管理员，不擅自关闭生产安全校验。
+
+三、身份与动态目录
+保留插件 ID amdgpucloud/amdgpucloud 和 Provider amdgpucloud/amdgpucloud/amdgpucloud，
+同 ID 升级保留已保存 Key；不要为更新目录卸载已配置的供应商。
+更换 publisher 须单独迁移凭据、默认模型和应用引用；目录更新不复制 Key、改写应用或卸载供应商。
+包内没有模型 YAML、固定验证 ID 或兜底清单；模型、能力、上下文、参数和价格来自公网 /v1/models。
+内存缓存最多 30 秒，按凭据摘要隔离，API 层另按租户／Provider 隔离；刷新失败报错，不返回旧目录。
+按元数据过滤 OCR／非聊天模型，新增模型无需重打包；未知最大输出值不虚构上限，默认预算不是服务最大值。
+
+四、计费、隐私与卸载
+Dify 展示普通输入／输出估算价格，不含缓存折扣；实际扣费、额度及限额以 Token Factory 账号和账单为准。
+请求固定带 X-Source: dify 汇总渠道用量，不附加用户、工作区、应用、会话或请求标识。
+Prompt、历史、图片和工具数据会发送到 AMD；插件不新增持久化存储，但服务可能保留日志，详见插件根目录 PRIVACY.md。
+Key 只填写到安全凭据框，不发送到聊天、GitHub、截图或日志。
+卸载前先迁移依赖的 App／Workflow；泄漏或停用的 Key 须在 Token Factory 撤销，卸载不自动撤销云端 Key。
+
+五、验收与支持
+既有本地验证覆盖离线目录、凭据、线协议／流处理、包安全及原生列表，不等于业务推理通过。
+公网 Key 的 Chat／Agent／Workflow、图片／JSON／工具续轮和 GPU 侧取消仍待验收，建议先用测试 Workspace。
+不声明并行工具、JSON Schema、Embedding、OCR 或视频能力；当前输出上限、价格及 Marketplace／品牌批准仍需核验。
+源码：https://github.com/JoursBleu/dify；支持联系见文首，反馈只附版本和脱敏错误。
+Dify 及第三方许可证和商标声明继续适用；本地 Logo 不联网加载，来源见插件根目录 _assets/BRAND_ASSET_NOTICE.txt。
+本预览包不代表 AMD／Dify 官方签名、publisher 归属或 Marketplace 批准。

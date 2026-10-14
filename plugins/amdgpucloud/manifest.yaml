@@ -1,0 +1,39 @@
+version: 0.0.9
+type: plugin
+# Compatibility build: preserve the currently installed identity and its saved credentials.
+author: amdgpucloud
+name: amdgpucloud
+label:
+  en_US: AMDGPUCloud
+  zh_Hans: AMDGPUCloud
+description:
+  en_US: AMDGPUCloud (AMD GPU Cloud / Token Factory) models in Dify. Author — Letian Kang. Contact — Letian.Kang@amd.com.
+  zh_Hans: 在 Dify 原生模型供应商中使用 AMDGPUCloud（AMD GPU Cloud / Token Factory）。作者：Letian Kang；联系邮箱：Letian.Kang@amd.com。
+icon: icon.png
+repo: https://github.com/JoursBleu/dify
+contact: Letian.Kang@amd.com
+created_at: "2026-10-12T00:00:00.000000000Z"
+resource:
+  memory: 268435456
+  permission:
+    model:
+      enabled: true
+      llm: true
+network:
+  domains:
+    - developer.amd.com.cn
+plugins:
+  models:
+    - provider/amdgpucloud.yaml
+meta:
+  version: 0.0.2
+  minimum_dify_version: 1.17.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+privacy: PRIVACY.md
+verified: false

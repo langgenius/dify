@@ -1,0 +1,28 @@
+# Dify 1.17.1 only. Place alongside the deployment's existing Compose files.
+# Preserve its project, environment, profiles and other overrides.
+x-model-catalog-volumes: &model-catalog-volumes
+  - type: bind
+    source: ./compat/provider_configuration.py
+    target: /app/api/core/entities/provider_configuration.py
+    read_only: true
+  - type: bind
+    source: ./compat/model_runtime.py
+    target: /app/api/core/plugin/impl/model_runtime.py
+    read_only: true
+  - type: bind
+    source: ./compat/amdgpucloud_remote.py
+    target: /app/api/amdgpucloud_remote.py
+    read_only: true
+  - type: bind
+    source: ./compat/model_catalog.py
+    target: /app/api/model_catalog.py
+    read_only: true
+services:
+  api:
+    volumes: *model-catalog-volumes
+  api_websocket:
+    volumes: *model-catalog-volumes
+  worker:
+    volumes: *model-catalog-volumes
+  worker_beat:
+    volumes: *model-catalog-volumes
