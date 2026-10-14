@@ -1,19 +1,41 @@
 """Read owned conversations and restore their inputs outside the query transaction."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from typing import Protocol
 
+from machinery.context import RequestContext
 from services.entities.conversation_entities import (
+    ConsoleChatConversationDetail,
+    ConsoleCompletionConversationDetail,
+    ConsoleCompletionConversationRecord,
+    ConsoleConversationDetailSource,
+    ConsoleConversationFilters,
+    ConsoleConversationKind,
+    ConsoleConversationPage,
+    ConsoleConversationScope,
     ConversationInputValue,
     ConversationListSource,
     ConversationPage,
     ConversationScope,
     ConversationSort,
 )
+from services.entities.message_entities import MessageFileProjection, MessageFileReference
 
 
 class ConversationQueryStore(Protocol):
+    def get_console_detail(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleConversationDetailSource: ...
+
+    def get_console_scope(
+        self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleConversationScope: ...
+
+    def get_console_page(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationFilters
+    ) -> ConsoleConversationPage: ...
+
     def get_page(
         self,
         *,
@@ -32,10 +54,69 @@ class ConversationInputRestorer(Protocol):
     ) -> dict[str, ConversationInputValue]: ...
 
 
+class MessageFiles(Protocol):
+    def resolve(
+        self,
+        *,
+        tenant_id: str,
+        inputs: dict[str, ConversationInputValue],
+        answer: str,
+        files: Sequence[MessageFileReference],
+    ) -> MessageFileProjection: ...
+
+
 class ConversationQueryService:
-    def __init__(self, *, conversations: ConversationQueryStore, restore_inputs: ConversationInputRestorer) -> None:
+    def __init__(
+        self, *, conversations: ConversationQueryStore, restore_inputs: ConversationInputRestorer, files: MessageFiles
+    ) -> None:
         self._conversations = conversations
         self._restore_inputs = restore_inputs
+        self._files = files
+
+    def get_console_detail(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleCompletionConversationDetail | ConsoleChatConversationDetail:
+        source = self._conversations.get_console_detail(context, app_id, conversation_id, kind=kind)
+        record = source.record
+        if isinstance(record, ConsoleCompletionConversationDetail) and record.first_message is not None:
+            message = record.first_message
+            files = self._files.resolve(
+                tenant_id=source.tenant_id, inputs=message.inputs, answer=message.answer, files=source.files
+            )
+            record = replace(
+                record,
+                first_message=replace(message, inputs=files.inputs, answer=files.answer, message_files=files.files),
+            )
+        return record
+
+    def get_console_scope(
+        self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleConversationScope:
+        return self._conversations.get_console_scope(context, app_id, kind=kind)
+
+    def get_console_page(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationFilters
+    ) -> ConsoleConversationPage:
+        page = self._conversations.get_console_page(scope=scope, filters=filters)
+        # Completion logs include the first message's file inputs. Restore them
+        # only after every database-backed response field has been materialized.
+        return replace(
+            page,
+            items=tuple(
+                replace(
+                    record,
+                    first_message=replace(
+                        record.first_message,
+                        inputs=self._restore_inputs(
+                            inputs=record.first_message.inputs, tenant_resolver=lambda: page.tenant_id
+                        ),
+                    ),
+                )
+                if isinstance(record, ConsoleCompletionConversationRecord) and record.first_message is not None
+                else record
+                for record in page.items
+            ),
+        )
 
     def get_page(
         self,

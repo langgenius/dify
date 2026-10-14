@@ -1,13 +1,21 @@
 """Conversation commands exercise persistence, ownership and cleanup ordering."""
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, delete, event, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
+from machinery.context import RequestContext
+from models.account import Account
+from models.agent import (
+    AgentConfigVersionKind,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import App, AppMode, Conversation, EndUser
 from models.web import PinnedConversation
@@ -285,3 +293,172 @@ def test_end_user_existing_pin_and_unpin_do_not_require_live_conversation(
     service.set_pinned(ref=end_user_ref, is_pinned=False)
     with sqlite_session_factory() as session:
         assert session.scalars(select(PinnedConversation)).all() == []
+
+
+@dataclass(frozen=True)
+class ConsoleDeletionData:
+    context: RequestContext
+    app_id: str
+    conversation_id: str
+    workspace_ids: tuple[str, ...]
+    binding_ids: tuple[str, ...]
+
+
+@pytest.fixture
+def console_deletion(sqlite_session_factory: sessionmaker[Session]) -> ConsoleDeletionData:
+    context = RequestContext(
+        request_id="console-delete", trace_id=None, account_id=str(uuid4()), active_workspace_id=str(uuid4())
+    )
+    with sqlite_session_factory.begin() as session:
+        app = App(
+            tenant_id=context.active_workspace_id, name="Chat", mode=AppMode.CHAT, enable_api=True, enable_site=True
+        )
+        account = Account(name="Owner", email="owner@example.com")
+        account.id = context.account_id
+        session.add_all([app, account])
+        session.flush()
+        conversation = Conversation(
+            app_id=app.id,
+            mode=AppMode.CHAT,
+            name="Console conversation",
+            inputs={},
+            from_source=ConversationFromSource.CONSOLE,
+            from_account_id=context.account_id,
+            from_end_user_id=None,
+            is_deleted=False,
+        )
+        session.add(conversation)
+        session.flush()
+        workspaces: list[AgentWorkspace] = []
+        bindings: list[AgentWorkspaceBinding] = []
+        for owner_scope_key in ("root", "node-1:workflow-binding"):
+            workspace = AgentWorkspace(
+                id=str(uuid4()),
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                owner_id=conversation.id,
+                owner_scope_key=owner_scope_key,
+                backend_workspace_ref=owner_scope_key,
+                status=AgentWorkingResourceStatus.ACTIVE,
+                active_guard=1,
+            )
+            binding = AgentWorkspaceBinding(
+                id=str(uuid4()),
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                workspace_id=workspace.id,
+                agent_id=str(uuid4()),
+                agent_config_version_id=str(uuid4()),
+                agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                backend_binding_ref=owner_scope_key,
+                status=AgentWorkingResourceStatus.ACTIVE,
+            )
+            session.add_all([workspace, binding])
+            workspaces.append(workspace)
+            bindings.append(binding)
+        conversation.agent_workspace_binding_id = bindings[0].id
+        return ConsoleDeletionData(
+            context=context,
+            app_id=app.id,
+            conversation_id=conversation.id,
+            workspace_ids=tuple(workspace.id for workspace in workspaces),
+            binding_ids=tuple(binding.id for binding in bindings),
+        )
+
+
+@pytest.mark.parametrize("has_root_binding", [False, True])
+def test_console_delete_retires_all_workspaces_and_returns_connection_before_cleanup(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    console_deletion: ConsoleDeletionData,
+    has_root_binding: bool,
+) -> None:
+    data = console_deletion
+    if not has_root_binding:
+        with sqlite_session_factory.begin() as session:
+            session.execute(
+                update(Conversation)
+                .where(Conversation.id == data.conversation_id)
+                .values(agent_workspace_binding_id=None)
+            )
+    events: list[str] = []
+
+    @event.listens_for(sqlite_engine, "checkout")
+    def checkout(_connection: object, _record: object, _proxy: object) -> None:
+        events.append("checkout")
+
+    @event.listens_for(sqlite_engine, "checkin")
+    def checkin(_connection: object, _record: object) -> None:
+        events.append("checkin")
+
+    def cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
+        assert events == ["checkout", "checkin"]
+        assert (tenant_id, conversation_id) == (data.context.active_workspace_id, data.conversation_id)
+        assert set(retired_workspace_ids) == set(data.workspace_ids)
+        events.append("cleanup")
+        with sqlite_session_factory() as session:
+            assert session.get_one(Conversation, conversation_id).is_deleted is True
+            for workspace_id in data.workspace_ids:
+                workspace = session.get_one(AgentWorkspace, workspace_id)
+                assert workspace.status == AgentWorkingResourceStatus.RETIRED
+                assert workspace.active_guard is None
+                assert workspace.retired_at is not None
+            for binding_id in data.binding_ids:
+                binding = session.get_one(AgentWorkspaceBinding, binding_id)
+                assert binding.status == AgentWorkingResourceStatus.RETIRED
+                assert binding.retired_at is not None
+
+    service = _service(sqlite_session_factory, cleanup=cleanup)
+    service.delete_console(data.context, data.app_id, data.conversation_id, kind="chat")
+    assert events == ["checkout", "checkin", "cleanup", "checkout", "checkin"]
+    with pytest.raises(ConversationNotExistsError):
+        service.delete_console(data.context, data.app_id, data.conversation_id, kind="chat")
+    assert events.count("cleanup") == 1
+
+
+def test_console_delete_failed_commit_rolls_back_root_and_node_resources_without_cleanup(
+    sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine, console_deletion: ConsoleDeletionData
+) -> None:
+    data = console_deletion
+    factory = sessionmaker(bind=sqlite_engine)
+
+    @event.listens_for(factory, "before_commit")
+    def fail_commit(session: Session) -> None:
+        # Flush actual writes before the failure to exercise transaction rollback.
+        session.flush()
+        raise RuntimeError("Database commit failed")
+
+    with pytest.raises(RuntimeError, match="Database commit failed"):
+        _service(factory).delete_console(data.context, data.app_id, data.conversation_id, kind="chat")
+    with sqlite_session_factory() as session:
+        assert session.get_one(Conversation, data.conversation_id).is_deleted is False
+        for workspace_id in data.workspace_ids:
+            workspace = session.get_one(AgentWorkspace, workspace_id)
+            assert workspace.status == AgentWorkingResourceStatus.ACTIVE
+            assert workspace.active_guard == 1
+            assert workspace.retired_at is None
+        for binding_id in data.binding_ids:
+            binding = session.get_one(AgentWorkspaceBinding, binding_id)
+            assert binding.status == AgentWorkingResourceStatus.ACTIVE
+            assert binding.retired_at is None
+
+
+def test_console_cleanup_failure_cannot_rollback_committed_deletion(
+    sqlite_session_factory: sessionmaker[Session], console_deletion: ConsoleDeletionData
+) -> None:
+    data = console_deletion
+
+    def cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
+        assert (tenant_id, conversation_id) == (data.context.active_workspace_id, data.conversation_id)
+        assert set(retired_workspace_ids) == set(data.workspace_ids)
+        raise RuntimeError("Cleanup transport unavailable")
+
+    with pytest.raises(RuntimeError, match="Cleanup transport unavailable"):
+        _service(sqlite_session_factory, cleanup=cleanup).delete_console(
+            data.context, data.app_id, data.conversation_id, kind="chat"
+        )
+    with sqlite_session_factory() as session:
+        assert session.get_one(Conversation, data.conversation_id).is_deleted is True
+        for workspace_id in data.workspace_ids:
+            assert session.get_one(AgentWorkspace, workspace_id).status == AgentWorkingResourceStatus.RETIRED

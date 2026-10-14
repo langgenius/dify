@@ -11,7 +11,6 @@ from dataclasses import replace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from libs.datetime_utils import naive_utc_now
@@ -164,93 +163,6 @@ def conversation_workspace(sqlite_session: Session) -> tuple[AgentWorkspace, Age
     return workspace, binding
 
 
-@pytest.mark.parametrize("has_root_binding", [False, True])
-def test_delete_retires_then_commits_before_enqueue(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-    conversation_workspace: tuple[AgentWorkspace, AgentWorkspaceBinding],
-    has_root_binding: bool,
-) -> None:
-    workspace, binding = conversation_workspace
-    app = ConversationServiceTestDataFactory.create_app()
-    account = ConversationServiceTestDataFactory.create_account()
-    conversation = ConversationServiceTestDataFactory.create_conversation()
-    conversation.agent_workspace_binding_id = binding.id if has_root_binding else None
-    node_workspace = AgentWorkspace(
-        id="workspace-node",
-        tenant_id=TENANT_ID,
-        app_id=APP_ID,
-        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
-        owner_id=conversation.id,
-        owner_scope_key="node-1:workflow-binding-1",
-        backend_workspace_ref="backend-workspace-node",
-        status=AgentWorkingResourceStatus.ACTIVE,
-        active_guard=1,
-    )
-    sqlite_session.add_all([conversation, node_workspace])
-    sqlite_session.commit()
-    events: list[str] = []
-    event.listen(sqlite_session, "after_commit", lambda _session: events.append("commit"))
-
-    def enqueue(*, tenant_id: str, workspace_ids: tuple[str, ...]) -> None:
-        assert tenant_id == TENANT_ID
-        assert set(workspace_ids) == {workspace.id, node_workspace.id}
-        assert not sqlite_session.in_transaction()
-        assert conversation.is_deleted is True
-        assert binding.status == workspace.status == AgentWorkingResourceStatus.RETIRED
-        assert binding.retired_at is not None
-        assert workspace.retired_at is not None
-        assert workspace.active_guard is None
-        assert node_workspace.status == AgentWorkingResourceStatus.RETIRED
-        assert node_workspace.retired_at is not None
-        assert node_workspace.active_guard is None
-        events.append("agent cleanup")
-
-    monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue)
-    delete_related = MagicMock(side_effect=lambda _conversation_id: events.append("conversation cleanup"))
-    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", delete_related)
-
-    ConversationService.delete(app, conversation.id, account, session=sqlite_session)
-
-    assert events == ["commit", "agent cleanup", "conversation cleanup"]
-    delete_related.assert_called_once_with(conversation.id)
-
-
-def test_delete_commit_failure_rolls_back_all_lifecycle_changes_without_enqueue(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-    conversation_workspace: tuple[AgentWorkspace, AgentWorkspaceBinding],
-) -> None:
-    workspace, binding = conversation_workspace
-    app = ConversationServiceTestDataFactory.create_app()
-    account = ConversationServiceTestDataFactory.create_account()
-    conversation = ConversationServiceTestDataFactory.create_conversation()
-    conversation.agent_workspace_binding_id = binding.id
-    sqlite_session.add(conversation)
-    sqlite_session.commit()
-
-    def fail_commit(session: Session) -> None:
-        session.flush()
-        raise RuntimeError("commit failed")
-
-    event.listen(sqlite_session, "before_commit", fail_commit, once=True)
-    enqueue_collection = MagicMock()
-    delete_related = MagicMock()
-    monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue_collection)
-    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", delete_related)
-
-    with pytest.raises(RuntimeError, match="commit failed"):
-        ConversationService.delete(app, conversation.id, account, session=sqlite_session)
-
-    assert conversation.is_deleted is False
-    assert binding.status == workspace.status == AgentWorkingResourceStatus.ACTIVE
-    assert binding.retired_at is None
-    assert workspace.retired_at is None
-    assert workspace.active_guard == 1
-    enqueue_collection.assert_not_called()
-    delete_related.assert_not_called()
-
-
 def test_retire_leaves_commit_and_cleanup_to_the_caller(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -325,21 +237,21 @@ def test_retire_rejects_participants_owned_by_another_scope(
     assert binding.status == workspace.status == AgentWorkingResourceStatus.ACTIVE
 
 
-def test_delete_keeps_soft_deleted_marker_when_dispatch_fails(
+def test_cleanup_keeps_soft_deleted_marker_when_dispatch_fails(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    app = ConversationServiceTestDataFactory.create_app()
-    account = ConversationServiceTestDataFactory.create_account()
-    conversation = ConversationServiceTestDataFactory.create_conversation()
+    conversation = ConversationServiceTestDataFactory.create_conversation(is_deleted=True)
     sqlite_session.add(conversation)
-    sqlite_session.flush()
+    sqlite_session.commit()
     monkeypatch.setattr(
         conversation_service.delete_conversation_related_data,
         "delay",
         MagicMock(side_effect=RuntimeError("broker unavailable")),
     )
 
-    ConversationService.delete(app, conversation.id, account, session=sqlite_session)
+    ConversationService.enqueue_delete_cleanup(
+        tenant_id=TENANT_ID, conversation_id=conversation.id, retired_workspace_ids=()
+    )
 
     persisted = sqlite_session.get(Conversation, conversation.id)
     assert persisted is not None

@@ -145,6 +145,7 @@ from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.message_file_preview_service import MessageFilePreviewService
+from services.message_query_adapters import MessageFileResolver
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
 from services.notification_gateway import BillingNotificationGateway
@@ -531,7 +532,9 @@ def build_application_services(
         conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
     )
 
-    conversation_queries = ConversationQueryService(conversations=conversations, restore_inputs=restore_input_files)
+    conversation_queries = ConversationQueryService(
+        files=MessageFileResolver(), conversations=conversations, restore_inputs=restore_input_files
+    )
     conversation_variables = ConversationVariableRepository(session_factory=database_client)
 
     return ApplicationServices(

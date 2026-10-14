@@ -1,26 +1,29 @@
+"""Execute Console read-marker writes against PostgreSQL without replacing the clock."""
+
 from datetime import datetime
-from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.console.app.conversation import _get_conversation
+from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
 from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation
+from repositories.conversation_repository import ConversationRepository
+from services.errors.conversation import ConversationNotExistsError
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     create_console_account_and_tenant,
     create_console_app,
 )
 
 
-def test_get_conversation_mark_read_keeps_updated_at_unchanged(
+def test_console_detail_then_mark_preserves_updated_at_and_the_first_reader(
     db_session_with_containers: Session,
-):
+) -> None:
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-
-    original_updated_at = datetime(2026, 2, 8, 0, 0, 0)
+    original_updated_at = datetime(2020, 2, 8)
     conversation = Conversation(
         app_id=app.id,
         name="read timestamp test",
@@ -33,29 +36,69 @@ def test_get_conversation_mark_read_keeps_updated_at_unchanged(
     )
     db_session_with_containers.add(conversation)
     db_session_with_containers.commit()
+    context = RequestContext(
+        request_id="postgres-read", trace_id=None, account_id=account.id, active_workspace_id=tenant.id
+    )
+    app_id, conversation_id = app.id, conversation.id
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    db_session_with_containers.rollback()
+    repository = ConversationRepository(session_factory=sessions)
 
-    read_at = datetime(2026, 2, 9, 0, 0, 0)
+    loaded = repository.get_console_detail(context, app_id, conversation_id, kind="chat")
+    assert loaded.record.id == conversation_id
+    with sessions() as session:
+        stored = session.get_one(Conversation, conversation_id)
+        assert stored.read_at is None
+        assert stored.read_account_id is None
+        assert stored.updated_at == original_updated_at
 
-    with patch(
-        "controllers.console.app.conversation.naive_utc_now",
-        return_value=read_at,
-        autospec=True,
-    ):
-        loaded = _get_conversation(db_session_with_containers, account, app, conversation.id)
+    before = naive_utc_now()
+    repository.mark_console_read(context, app_id, conversation_id, kind="chat")
+    after = naive_utc_now()
+    with sessions() as session:
+        stored = session.get_one(Conversation, conversation_id)
+        first_read_at = stored.read_at
+        assert before <= first_read_at <= after
+        assert stored.read_account_id == context.account_id
+        assert stored.updated_at == original_updated_at
 
-    db_session_with_containers.refresh(conversation)
+    second_reader = context._replace(account_id=str(uuid4()))
+    repository.mark_console_read(second_reader, app_id, conversation_id, kind="chat")
+    with sessions() as session:
+        stored = session.get_one(Conversation, conversation_id)
+        assert stored.read_at == first_read_at
+        assert stored.read_account_id == context.account_id
+        assert stored.updated_at == original_updated_at
 
-    assert loaded.id == conversation.id
-    assert conversation.read_at == read_at
-    assert conversation.read_account_id == account.id
-    assert conversation.updated_at == original_updated_at
 
-
-def test_get_conversation_raises_not_found_for_missing_conversation(
+def test_console_missing_detail_or_mark_does_not_mark_another_conversation(
     db_session_with_containers: Session,
-):
+) -> None:
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-
-    with pytest.raises(NotFound):
-        _get_conversation(db_session_with_containers, account, app, "00000000-0000-0000-0000-000000000000")
+    conversation = Conversation(
+        app_id=app.id,
+        name="Untouched conversation",
+        inputs={},
+        mode=AppMode.CHAT,
+        from_source=ConversationFromSource.CONSOLE,
+        from_account_id=account.id,
+    )
+    db_session_with_containers.add(conversation)
+    db_session_with_containers.commit()
+    context = RequestContext(
+        request_id="postgres-read", trace_id=None, account_id=account.id, active_workspace_id=tenant.id
+    )
+    app_id, conversation_id = app.id, conversation.id
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    db_session_with_containers.rollback()
+    repository = ConversationRepository(session_factory=sessions)
+    missing_id = str(uuid4())
+    with pytest.raises(ConversationNotExistsError):
+        repository.get_console_detail(context, app_id, missing_id, kind="chat")
+    with pytest.raises(ConversationNotExistsError):
+        repository.mark_console_read(context, app_id, missing_id, kind="chat")
+    with sessions() as session:
+        stored = session.get_one(Conversation, conversation_id)
+        assert stored.read_at is None
+        assert stored.read_account_id is None

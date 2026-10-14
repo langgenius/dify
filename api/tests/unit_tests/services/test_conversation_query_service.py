@@ -3,6 +3,7 @@
 from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -11,12 +12,16 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.file import FILE_MODEL_IDENTITY, File
+from machinery.context import RequestContext
 from models.enums import ConversationFromSource, EndUserType
-from models.model import App, AppMode, Conversation, EndUser, InstalledApp
+from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message
 from models.utils.file_input_compat import restore_input_files
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_query_service import ConversationQueryService
 from services.entities.conversation_entities import (
+    ConsoleCompletionConversationRecord,
+    ConsoleConversationFilters,
+    ConsoleConversationScope,
     ConversationInputValue,
     ConversationListSource,
     ConversationScope,
@@ -24,6 +29,8 @@ from services.entities.conversation_entities import (
     InstalledAppConversationScope,
 )
 from services.installed_app_access_service import InstalledAppRef
+from services.message_query_adapters import MessageFileResolver
+from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
 
 
 @dataclass(frozen=True)
@@ -145,7 +152,9 @@ def test_query_restores_real_file_inputs_after_returning_database_connection(
         return restore_input_files(inputs=inputs, tenant_resolver=tenant_resolver)
 
     service = ConversationQueryService(
-        conversations=ConversationRepository(session_factory=sqlite_session_factory), restore_inputs=restore
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore,
     )
     result = service.get_page(
         scope=query_context.scope,
@@ -226,7 +235,9 @@ def test_invalid_file_input_error_propagates_after_repository_connection_is_clos
         conversation.inputs = {"file": {"dify_model_identity": FILE_MODEL_IDENTITY, "transfer_method": "invalid"}}
     connection_events = _record_connections(sqlite_engine)
     service = ConversationQueryService(
-        conversations=ConversationRepository(session_factory=sqlite_session_factory), restore_inputs=restore_input_files
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore_input_files,
     )
     with pytest.raises(ValueError):
         service.get_page(
@@ -242,3 +253,109 @@ def test_invalid_file_input_error_propagates_after_repository_connection_is_clos
         assert (
             session.scalar(select(Conversation.id).where(Conversation.id == query_context.conversation_id)) is not None
         )
+
+
+@pytest.fixture
+def console_scope(sqlite_session_factory: sessionmaker[Session]) -> ConsoleConversationScope:
+    with sqlite_session_factory.begin() as session:
+        session.add(make_account(timezone="Asia/Shanghai"))
+        session.add(make_app(mode=AppMode.COMPLETION))
+        session.add(make_conversation(mode=AppMode.COMPLETION, inputs={}, from_source=ConversationFromSource.API))
+        session.add(
+            make_message(
+                inputs={},
+                query="Question",
+                message=[{"text": "Prompt"}],
+                answer="Answer",
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                total_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+            )
+        )
+    return ConversationRepository(session_factory=sqlite_session_factory).get_console_scope(
+        RequestContext(request_id="test", trace_id=None, account_id="account-1", active_workspace_id="tenant-1"),
+        "app-1",
+        kind="completion",
+    )
+
+
+def _console_filters() -> ConsoleConversationFilters:
+    return ConsoleConversationFilters(
+        keyword=None, start=None, end=None, annotation_status="all", sort_by="-created_at", page=1, limit=20
+    )
+
+
+def test_console_message_file_inputs_restore_after_all_database_projections_complete(
+    sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine, console_scope: ConsoleConversationScope
+) -> None:
+    file_mapping: dict[str, JsonValue] = {
+        "dify_model_identity": FILE_MODEL_IDENTITY,
+        "transfer_method": "remote_url",
+        "type": "document",
+        "url": "https://example.com/report.pdf",
+        "filename": "report.pdf",
+        "extension": ".pdf",
+        "mime_type": "application/pdf",
+        "size": 1,
+    }
+    inputs: dict[str, ConversationInputValue] = {"file": file_mapping, "zero": 0, "none": None}
+    with sqlite_session_factory.begin() as session:
+        message = session.get_one(Message, "message-1")
+        message.inputs = deepcopy(inputs)
+    connection_events = _record_connections(sqlite_engine)
+    commits: list[bool] = []
+
+    @event.listens_for(sqlite_session_factory, "after_commit")
+    def committed(_session: Session) -> None:
+        commits.append(True)
+
+    def restore(
+        *, inputs: Mapping[str, ConversationInputValue], tenant_resolver: Callable[[], str]
+    ) -> dict[str, ConversationInputValue]:
+        assert connection_events == ["checkout", "checkin"]
+        assert tenant_resolver() == console_scope.tenant_id
+        connection_events.append("restore")
+        return restore_input_files(inputs=inputs, tenant_resolver=tenant_resolver)
+
+    service = ConversationQueryService(
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore,
+    )
+    page = service.get_console_page(scope=console_scope, filters=_console_filters())
+
+    assert console_scope.timezone == "Asia/Shanghai"
+    assert connection_events == ["checkout", "checkin", "restore"]
+    assert commits == []
+    record = page.items[0]
+    assert isinstance(record, ConsoleCompletionConversationRecord)
+    assert record.first_message is not None
+    file = record.first_message.inputs["file"]
+    assert isinstance(file, File)
+    assert file.remote_url == "https://example.com/report.pdf"
+    assert record.first_message.inputs["zero"] == 0
+    assert record.first_message.inputs["none"] is None
+    with sqlite_session_factory() as session:
+        message = session.get_one(Message, "message-1")
+        assert message._inputs == inputs
+
+
+def test_console_invalid_file_metadata_fails_after_connection_release(
+    sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine, console_scope: ConsoleConversationScope
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        message = session.get_one(Message, "message-1")
+        message.inputs = {"file": {"dify_model_identity": FILE_MODEL_IDENTITY, "transfer_method": "invalid"}}
+    connection_events = _record_connections(sqlite_engine)
+    service = ConversationQueryService(
+        files=MessageFileResolver(),
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        restore_inputs=restore_input_files,
+    )
+
+    with pytest.raises(ValueError):
+        service.get_console_page(scope=console_scope, filters=_console_filters())
+
+    assert connection_events == ["checkout", "checkin"]

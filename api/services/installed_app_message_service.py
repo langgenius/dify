@@ -8,11 +8,10 @@ from typing import Literal, Protocol
 
 from pydantic import JsonValue
 
-from graphon.file import File
+from services.entities.message_entities import MessageAgentThoughtRecord, MessageFileRecord, MessageInputValue
 from services.installed_app_access_service import InstalledAppRef
 
 type MessageRating = Literal["like", "dislike"]
-type MessageInputValue = JsonValue | File | list[File]
 
 
 class MessageNotChatAppError(Exception):
@@ -26,35 +25,6 @@ class FeedbackRatingRequiredError(Exception):
 @dataclass(frozen=True, slots=True)
 class MessageFeedbackRecord:
     rating: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class MessageFileRecord:
-    id: str
-    filename: str | None
-    type: str
-    url: str | None
-    mime_type: str | None
-    size: int | None
-    transfer_method: str
-    belongs_to: str | None
-    upload_file_id: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class MessageAgentThoughtRecord:
-    id: str
-    message_id: str
-    message_chain_id: str | None
-    position: int
-    thought: str | None
-    answer: str | None
-    tool: str | None
-    tool_labels: JsonValue
-    tool_input: str | None
-    created_at: datetime | None
-    observation: str | None
-    files: list[str]
 
 
 @dataclass(frozen=True, slots=True)

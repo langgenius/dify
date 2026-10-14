@@ -5209,7 +5209,11 @@ export type GetAppsByAppIdChatConversationsData = {
 }
 
 export type GetAppsByAppIdChatConversationsErrors = {
+  400: unknown
+  401: unknown
   403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type GetAppsByAppIdChatConversationsResponses = {
@@ -5230,6 +5234,7 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }
@@ -5252,6 +5257,7 @@ export type GetAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdChatConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }
@@ -5346,7 +5352,11 @@ export type GetAppsByAppIdCompletionConversationsData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsErrors = {
+  400: unknown
+  401: unknown
   403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type GetAppsByAppIdCompletionConversationsResponses = {
@@ -5367,6 +5377,7 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }
@@ -5389,6 +5400,7 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdErrors = {
+  401: unknown
   403: unknown
   404: unknown
 }

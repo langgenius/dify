@@ -21,6 +21,7 @@ from models.web import PinnedConversation
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_query_service import ConversationQueryService
 from services.entities.conversation_entities import ConversationSort
+from services.message_query_adapters import MessageFileResolver
 from tests.unit_tests.controllers.web import test_conversation_rename as rename_tests
 from tests.unit_tests.controllers.web.test_conversation_rename import _Harness as RenameHarness
 from tests.unit_tests.model_factories import make_conversation
@@ -63,6 +64,7 @@ def harness(rename_harness: RenameHarness) -> _Harness:
 
     rename_harness.app.extensions["application_services"] = _Services(
         conversation_queries=ConversationQueryService(
+            files=MessageFileResolver(),
             conversations=ConversationRepository(session_factory=rename_harness.repository_factory),
             restore_inputs=restore,
         )

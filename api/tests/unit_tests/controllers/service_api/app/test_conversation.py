@@ -33,7 +33,6 @@ from fields._value_type_serializer import serialize_value_type
 from graphon.variables import StringSegment
 from graphon.variables.types import SegmentType
 from models.model import App, AppMode
-from services.conversation_service import ConversationService
 
 
 class TestConversationListQuery:
@@ -397,15 +396,6 @@ class TestConversationErrorTypes:
         """Test ConversationVariableTypeMismatchError exists."""
         error = services.errors.conversation.ConversationVariableTypeMismatchError("Type mismatch")
         assert isinstance(error, services.errors.conversation.ConversationVariableTypeMismatchError)
-
-
-class TestConversationService:
-    """Test ConversationService integration patterns."""
-
-    def test_delete_method_exists(self):
-        """Test that ConversationService.delete exists."""
-        assert hasattr(ConversationService, "delete")
-        assert callable(ConversationService.delete)
 
 
 class TestConversationPayloadsController:

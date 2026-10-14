@@ -1,17 +1,41 @@
-"""Persist conversations within their end-user or installed-account owner chain."""
+"""Persist conversations within their end-user, installed-account, or Console app scope."""
 
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
+from typing import cast
 
-from sqlalchemy import Select, exists, or_, select
+from pydantic import JsonValue
+from sqlalchemy import Select, exists, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import ConversationFromSource, CreatorUserRole
-from models.model import App, Conversation, EndUser, InstalledApp, Message
+from libs.datetime_utils import naive_utc_now
+from libs.helper import escape_like_pattern
+from libs.pagination import paginate_query
+from machinery.context import RequestContext
+from models.account import Account
+from models.enums import ConversationFromSource, CreatorUserRole, InvokeFrom
+from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation
 from models.web import PinnedConversation
+from repositories.app.console_repository import find_console_app
 from repositories.conversation_lifecycle import retire_conversation
+from repositories.message_projection import snapshot_console_message
+from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (
+    ConsoleChatConversationDetail,
+    ConsoleChatConversationRecord,
+    ConsoleCompletionConversationDetail,
+    ConsoleCompletionConversationRecord,
+    ConsoleConversationAccount,
+    ConsoleConversationAnnotation,
+    ConsoleConversationDetail,
+    ConsoleConversationDetailSource,
+    ConsoleConversationFilters,
+    ConsoleConversationKind,
+    ConsoleConversationMessage,
+    ConsoleConversationPage,
+    ConsoleConversationRecord,
+    ConsoleConversationScope,
     ConversationDeletion,
     ConversationInputValue,
     ConversationListSource,
@@ -24,6 +48,7 @@ from services.entities.conversation_entities import (
     InstalledAppConversationRef,
     InstalledAppConversationScope,
 )
+from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
@@ -129,6 +154,277 @@ class ConversationRepository:
                 ),
             )
 
+    def get_console_scope(
+        self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleConversationScope:
+        with self._session_factory() as session:
+            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            account = session.get(Account, context.account_id)
+            if account is None:
+                raise NoPermissionError("The admitted account no longer exists.")
+            assert account.timezone is not None
+            return ConsoleConversationScope(
+                app_id=app.id,
+                tenant_id=app.tenant_id,
+                app_mode=app.mode,
+                timezone=account.timezone,
+            )
+
+    def get_console_page(
+        self, *, scope: ConsoleConversationScope, filters: ConsoleConversationFilters
+    ) -> ConsoleConversationPage:
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+            if app is None:
+                raise ConsoleAppNotFoundError("App not found.")
+            if app.mode != scope.app_mode:
+                raise ConsoleAppNotFoundError(
+                    f"App mode changed from '{scope.app_mode}' to '{app.mode}' after admission."
+                )
+            completion = app.mode == AppMode.COMPLETION
+            statement = select(Conversation).where(Conversation.app_id == app.id, Conversation.is_deleted.is_(False))
+            if completion:
+                statement = statement.where(Conversation.mode == AppMode.COMPLETION)
+            if filters.keyword:
+                pattern = f"%{escape_like_pattern(filters.keyword)}%"
+                statement = statement.join(Message, Message.conversation_id == Conversation.id)
+                matches = [
+                    Message.query.ilike(pattern, escape="\\"),
+                    Message.answer.ilike(pattern, escape="\\"),
+                ]
+                if not completion:
+                    statement = statement.outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
+                    matches.extend(
+                        [
+                            Conversation.name.ilike(pattern, escape="\\"),
+                            Conversation.introduction.ilike(pattern, escape="\\"),
+                            EndUser.session_id.ilike(pattern, escape="\\"),
+                        ]
+                    )
+                    statement = statement.group_by(Conversation.id)
+                # Completion historically counts each matching message join row.
+                statement = statement.where(or_(*matches))
+
+            column = (
+                Conversation.created_at
+                if completion or filters.sort_by in {"created_at", "-created_at"}
+                else Conversation.updated_at
+            )
+            if filters.start is not None:
+                statement = statement.where(column >= filters.start)
+            if filters.end is not None:
+                statement = statement.where(column <= filters.end)
+            if filters.annotation_status == "annotated":
+                statement = statement.join(
+                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
+                ).group_by(Conversation.id)
+            elif filters.annotation_status == "not_annotated":
+                statement = (
+                    statement.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
+                    .group_by(Conversation.id)
+                    .having(func.count(MessageAnnotation.id) == 0)
+                )
+            if app.mode == AppMode.ADVANCED_CHAT:
+                # SQL != also excludes NULL, matching the existing Console query.
+                statement = statement.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
+            statement = statement.order_by(
+                column.desc() if completion or filters.sort_by.startswith("-") else column.asc()
+            )
+            page = paginate_query(statement, session=session, page=filters.page, per_page=filters.limit)
+            return ConsoleConversationPage(
+                tenant_id=app.tenant_id,
+                page=page.page,
+                per_page=page.per_page,
+                total=page.total,
+                has_next=page.has_next,
+                items=tuple(
+                    self._console_record(conversation=item, session=session, completion=completion)
+                    for item in page.items
+                ),
+            )
+
+    def get_console_detail(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> ConsoleConversationDetailSource:
+        with self._session_factory() as session:
+            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            conversation = self._get_console_conversation(
+                session=session, app_id=app.id, conversation_id=conversation_id
+            )
+            common = self._console_detail_record(conversation=conversation, session=session)
+            if kind == "completion":
+                message = conversation.first_message_with_session(session=session)
+                first_message, files = (
+                    snapshot_console_message(message=message, session=session) if message else (None, ())
+                )
+                return ConsoleConversationDetailSource(
+                    tenant_id=app.tenant_id,
+                    record=ConsoleCompletionConversationDetail(
+                        id=common.id,
+                        status=common.status,
+                        from_source=common.from_source,
+                        from_end_user_id=common.from_end_user_id,
+                        from_account_id=common.from_account_id,
+                        created_at=common.created_at,
+                        model_config=common.model_config,
+                        first_message=first_message,
+                    ),
+                    files=files,
+                )
+            return ConsoleConversationDetailSource(
+                tenant_id=app.tenant_id,
+                record=ConsoleChatConversationDetail(
+                    id=common.id,
+                    status=common.status,
+                    from_source=common.from_source,
+                    from_end_user_id=common.from_end_user_id,
+                    from_account_id=common.from_account_id,
+                    created_at=common.created_at,
+                    model_config=common.model_config,
+                    updated_at=conversation.updated_at,
+                    annotated=conversation.annotated_with_session(session=session),
+                    introduction=conversation.introduction,
+                    message_count=conversation.message_count_with_session(session=session),
+                    user_feedback_stats=conversation.user_feedback_stats_with_session(session=session),
+                    admin_feedback_stats=conversation.admin_feedback_stats_with_session(session=session),
+                ),
+                files=(),
+            )
+
+    def mark_console_read(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> None:
+        with self._session_factory.begin() as session:
+            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            self._get_console_conversation(session=session, app_id=app.id, conversation_id=conversation_id)
+            session.execute(
+                update(Conversation)
+                .where(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == app.id,
+                    Conversation.read_at.is_(None),
+                )
+                .values(
+                    {
+                        Conversation.read_at: naive_utc_now(),
+                        Conversation.read_account_id: context.account_id,
+                        # Marking a log read must not reorder the conversation list.
+                        Conversation.updated_at: Conversation.updated_at,
+                    }
+                )
+            )
+
+    @staticmethod
+    def _get_console_conversation(*, session: Session, app_id: str, conversation_id: str) -> Conversation:
+        # Console details include every actor's history and soft-deleted rows.
+        conversation = session.scalar(
+            select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_id)
+        )
+        if conversation is None:
+            raise ConversationNotExistsError(f"Conversation {conversation_id} is unavailable for app {app_id}.")
+        return conversation
+
+    @staticmethod
+    def _console_detail_record(*, conversation: Conversation, session: Session) -> ConsoleConversationDetail:
+        return ConsoleConversationDetail(
+            id=conversation.id,
+            status=conversation.status,
+            from_source=conversation.from_source,
+            from_end_user_id=conversation.from_end_user_id,
+            from_account_id=conversation.from_account_id,
+            created_at=conversation.created_at,
+            model_config=deepcopy(cast(dict[str, JsonValue], conversation.model_config_with_session(session=session))),
+        )
+
+    @classmethod
+    def _console_record(
+        cls, *, conversation: Conversation, session: Session, completion: bool
+    ) -> ConsoleCompletionConversationRecord | ConsoleChatConversationRecord:
+        # Keep established config/feedback/summary policies in their current
+        # DB-only owners; this snapshot must not restore attachments or URLs.
+        detail = cls._console_detail_record(conversation=conversation, session=session)
+        common = ConsoleConversationRecord(
+            id=detail.id,
+            status=detail.status,
+            from_source=detail.from_source,
+            from_end_user_id=detail.from_end_user_id,
+            from_end_user_session_id=conversation.from_end_user_session_id_with_session(session=session),
+            from_account_id=detail.from_account_id,
+            from_account_name=conversation.from_account_name_with_session(session=session),
+            read_at=conversation.read_at,
+            created_at=detail.created_at,
+            updated_at=conversation.updated_at,
+            model_config=detail.model_config,
+            user_feedback_stats=conversation.user_feedback_stats_with_session(session=session),
+            admin_feedback_stats=conversation.admin_feedback_stats_with_session(session=session),
+        )
+        if completion:
+            annotation = conversation.annotation_with_session(session=session)
+            account = annotation.account_with_session(session=session) if annotation is not None else None
+            annotation_record = (
+                ConsoleConversationAnnotation(
+                    id=annotation.id,
+                    question=annotation.question,
+                    content=annotation.content,
+                    account=(
+                        ConsoleConversationAccount(id=account.id, name=account.name, email=account.email)
+                        if account is not None
+                        else None
+                    ),
+                    created_at=annotation.created_at,
+                )
+                if annotation is not None
+                else None
+            )
+            message = conversation.first_message_with_session(session=session)
+            first_message = (
+                ConsoleConversationMessage(
+                    inputs=deepcopy(message._inputs),
+                    query=message.query,
+                    message=deepcopy(cast(JsonValue, message.message)),
+                    answer=message.answer,
+                )
+                if message is not None
+                else None
+            )
+            return ConsoleCompletionConversationRecord(
+                id=common.id,
+                status=common.status,
+                from_source=common.from_source,
+                from_end_user_id=common.from_end_user_id,
+                from_end_user_session_id=common.from_end_user_session_id,
+                from_account_id=common.from_account_id,
+                from_account_name=common.from_account_name,
+                read_at=common.read_at,
+                created_at=common.created_at,
+                updated_at=common.updated_at,
+                model_config=common.model_config,
+                user_feedback_stats=common.user_feedback_stats,
+                admin_feedback_stats=common.admin_feedback_stats,
+                annotation=annotation_record,
+                first_message=first_message,
+            )
+        return ConsoleChatConversationRecord(
+            id=common.id,
+            status=common.status,
+            from_source=common.from_source,
+            from_end_user_id=common.from_end_user_id,
+            from_end_user_session_id=common.from_end_user_session_id,
+            from_account_id=common.from_account_id,
+            from_account_name=common.from_account_name,
+            read_at=common.read_at,
+            created_at=common.created_at,
+            updated_at=common.updated_at,
+            model_config=common.model_config,
+            user_feedback_stats=common.user_feedback_stats,
+            admin_feedback_stats=common.admin_feedback_stats,
+            name=conversation.name,
+            summary_or_query=conversation.summary_or_query_with_session(session=session),
+            annotated=conversation.annotated_with_session(session=session),
+            message_count=conversation.message_count_with_session(session=session),
+            status_count=conversation.status_count_with_session(session=session),
+        )
+
     def get_name_source(self, *, ref: ConversationRef) -> ConversationNameSource:
         with self._session_factory() as session:
             app, conversation = self._resolve(session=session, ref=ref)
@@ -160,6 +456,23 @@ class ConversationRepository:
     def delete(self, *, ref: ConversationRef) -> ConversationDeletion:
         with self._session_factory.begin() as session:
             app, conversation = self._resolve(session=session, ref=ref)
+            retired_workspace_ids = retire_conversation(app_model=app, conversation=conversation, session=session)
+            return ConversationDeletion(
+                tenant_id=app.tenant_id,
+                conversation_id=conversation.id,
+                retired_workspace_ids=retired_workspace_ids,
+            )
+
+    def delete_console(
+        self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
+    ) -> ConversationDeletion:
+        with self._session_factory.begin() as session:
+            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            # Console log queries see all users; deletion still requires the
+            # current account's Console conversation, as in the original API.
+            conversation = self._get_conversation(
+                session=session, app_id=app.id, account_id=context.account_id, conversation_id=conversation_id
+            )
             retired_workspace_ids = retire_conversation(app_model=app, conversation=conversation, session=session)
             return ConversationDeletion(
                 tenant_id=app.tenant_id,
@@ -247,6 +560,23 @@ class ConversationRepository:
                 f"Conversation {ref.conversation_id} does not belong to this end user and app."
             )
         return result[0], result[1]
+
+    @staticmethod
+    def _get_console_app(
+        *, session: Session, context: RequestContext, app_id: str, kind: ConsoleConversationKind
+    ) -> App:
+        app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
+        allowed_modes = (
+            {AppMode.COMPLETION}
+            if kind == "completion"
+            else {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
+        )
+        if app is None:
+            raise ConsoleAppNotFoundError("App not found.")
+        if app.mode not in allowed_modes:
+            mode_values = sorted(mode.value for mode in allowed_modes)
+            raise ConsoleAppNotFoundError(f"App mode is not in the supported list: {mode_values}")
+        return app
 
     @staticmethod
     def _get_app(*, session: Session, installed_app: InstalledAppRef) -> App:
