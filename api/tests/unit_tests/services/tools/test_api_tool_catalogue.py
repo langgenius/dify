@@ -7,6 +7,7 @@ the native output schema: discovery must not manufacture dynamic selectors.
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 from typing import NoReturn, cast
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ import pytest
 from sqlalchemy import insert, text
 from sqlalchemy.engine import Engine
 
+from core.tools.utils.parser import ApiBasedToolSchemaParser
 from core.workflow.generator.tool_catalogue import (
     ToolCapabilityQuery,
     ToolCatalogueEntry,
@@ -39,6 +41,10 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 PROVIDER_ID = "14076462-4152-4ef0-aad2-3eaea9369b1a"
 ACTION = "qa_news_search"
 DECLARED_RESPONSE = "Declared response root news[] contains required title and url; optional source."
+CONTROLLED_DESCRIPTION = (
+    "Synthetic test action. Bind Tool query to runtime Start.keyword; fixed timespan=24h/maxrecords=5. "
+    "Declared response root news; project title/url and limit to five. Test transport only, no live requests."
+)
 
 type PublicInventory = tuple[Engine, list[str], list[str]]
 
@@ -102,6 +108,14 @@ def _add_provider(
         )
 
 
+def _add_parsed_public_fixture(engine: Engine) -> None:
+    """Persist the approved public fixture through the real native parser."""
+    fixture = Path(__file__).with_name("fixtures") / "qa_news_search_openapi.json"
+    schema = cast(dict[str, object], json.loads(fixture.read_text()))
+    bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(schema)
+    _add_provider(engine, tools=[bundle.model_dump(mode="json") for bundle in bundles])
+
+
 @pytest.fixture
 def public_inventory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> PublicInventory:
     from core.tools.custom_tool.provider import ApiToolProviderController
@@ -143,6 +157,7 @@ def test_public_api_rows_join_complete_catalogue_with_full_native_identity(publi
 
     assert entry is not None
     assert entry["provider_type"] == "api"
+    assert entry["tool_label"] == "qa_news_search"
     assert entry["plugin_id"] == ""
     assert entry["provider_label"] == "QA News Search"
     assert entry["provider_description"] == "Search recent news headlines."
@@ -160,6 +175,36 @@ def test_public_api_rows_join_complete_catalogue_with_full_native_identity(publi
         "credentials_str" not in query and "user_id" not in query and "schema_type_str" not in query
         for query in api_reads
     )
+    assert forbidden == []
+
+
+def test_real_openapi_parser_bundle_uses_native_action_label(public_inventory: PublicInventory) -> None:
+    engine, forbidden, _sql = public_inventory
+    _add_parsed_public_fixture(engine)
+
+    entry = find_tool_entry(build_tool_catalogue(TENANT_ID), PROVIDER_ID, ACTION)
+
+    assert entry is not None
+    assert entry["tool_label"] == "qa_news_search"
+    assert entry["provider_label"] == "QA News Search"
+    assert entry["provider_type"] == "api"
+    assert entry["output_schema"] == {}
+    assert [(p["name"], p["type"], p["required"]) for p in entry["parameters"]] == [
+        ("query", "string", True),
+        ("timespan", "string", True),
+        ("maxrecords", "number", True),
+    ]
+    assert forbidden == []
+
+
+def test_real_openapi_parser_bundle_includes_capability_description_once(public_inventory: PublicInventory) -> None:
+    engine, forbidden, _sql = public_inventory
+    _add_parsed_public_fixture(engine)
+
+    entry = find_tool_entry(build_tool_catalogue(TENANT_ID), PROVIDER_ID, ACTION)
+
+    assert entry is not None
+    assert entry["description"] == CONTROLLED_DESCRIPTION
     assert forbidden == []
 
 
@@ -282,7 +327,7 @@ def test_api_only_resources_stay_bindable_without_credential_queries(
     assert "authorization" in tools[0].meta.lower()
     assert "not verified" in tools[0].meta.lower() or "could not be verified" in tools[0].meta.lower()
     bound = build.bind_resources(None, TENANT_ID, ["Search news"], [f"{PROVIDER_ID}/{ACTION}"], account_id=ACCOUNT_A)
-    assert bound == [f"Search news (using QA News Search [{PROVIDER_ID}/{ACTION}])"]
+    assert bound == [f"Search news (using qa_news_search [{PROVIDER_ID}/{ACTION}])"]
     assert forbidden == []
 
 
