@@ -6,11 +6,6 @@ export type ClientOptions = {
 
 export type EventStreamResponse = string
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -48,7 +43,6 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdEventsErrors = {
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -72,7 +66,7 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsErrors = {
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 

@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zDatasetAccessDeniedError, zNotFoundError } from './zod.gen.ts'
+import { zDatasetAccessDeniedError } from './zod.gen.ts'
 import {
   zGetNotionPagesByPageIdByPageTypePreviewPath,
   zGetNotionPagesByPageIdByPageTypePreviewQuery,
@@ -26,7 +26,6 @@ export const get = oc
     }),
   )
   .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const preview = {
   get,
@@ -54,10 +53,7 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetNotionPreImportPagesQuery }))
   .output(zGetNotionPreImportPagesResponse)
-  .errors({
-    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const pages2 = {
   get: get2,

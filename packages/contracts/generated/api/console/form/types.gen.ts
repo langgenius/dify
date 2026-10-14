@@ -8,9 +8,9 @@ export type ConsoleHumanInputFormDefinitionResponse = {
   [key: string]: unknown
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status: 412
 }
 
 export type ErrorResponse = {
@@ -21,11 +21,6 @@ export type ErrorResponse = {
   message: string
   params?: string
   status: number
-}
-
-export type HumanInputFormSubmittedError = ErrorResponse & {
-  code: 'human_input_form_submitted'
-  status: 412
 }
 
 export type HumanInputFormSubmitPayload = {
@@ -62,7 +57,6 @@ export type GetFormHumanInputByFormTokenData = {
 }
 
 export type GetFormHumanInputByFormTokenErrors = {
-  404: NotFoundError | ErrorResponse
   412: HumanInputFormSubmittedError | ErrorResponse
   default: ErrorResponse
 }
@@ -88,7 +82,6 @@ export type PostFormHumanInputByFormTokenData = {
 
 export type PostFormHumanInputByFormTokenErrors = {
   400: InvalidFormDataError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   default: ErrorResponse
 }

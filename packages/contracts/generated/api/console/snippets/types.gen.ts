@@ -292,11 +292,6 @@ export type WorkflowDraftVariableListWithoutValueResponse = {
   total: number | null
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type WorkflowDraftVariableResponse = {
   description: string
   edited: boolean
@@ -1904,7 +1899,7 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -1929,7 +1924,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -1954,7 +1949,7 @@ export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -1979,7 +1974,7 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetData =
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 

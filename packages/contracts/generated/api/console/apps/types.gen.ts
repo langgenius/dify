@@ -915,11 +915,6 @@ export type WorkflowRunDetailResponse = {
   version?: string | null
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
@@ -7160,7 +7155,7 @@ export type GetAppsByAppIdWorkflowRunsByRunIdData = {
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdErrors = {
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7302,7 +7297,7 @@ export type GetAppsByAppIdWorkflowCommentsData = {
 
 export type GetAppsByAppIdWorkflowCommentsErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7327,7 +7322,7 @@ export type PostAppsByAppIdWorkflowCommentsData = {
 
 export type PostAppsByAppIdWorkflowCommentsErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7352,7 +7347,7 @@ export type GetAppsByAppIdWorkflowCommentsMentionUsersData = {
 
 export type GetAppsByAppIdWorkflowCommentsMentionUsersErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7378,7 +7373,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7404,7 +7399,7 @@ export type GetAppsByAppIdWorkflowCommentsByCommentIdData = {
 
 export type GetAppsByAppIdWorkflowCommentsByCommentIdErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7430,7 +7425,7 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdData = {
 
 export type PutAppsByAppIdWorkflowCommentsByCommentIdErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7456,7 +7451,7 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesData = {
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7483,7 +7478,7 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
 
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7510,7 +7505,7 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
 
 export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7536,7 +7531,7 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveData = {
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveErrors = {
   403: ForbiddenError | ErrorResponse
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7799,7 +7794,7 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8654,7 +8649,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8679,7 +8674,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8704,7 +8699,7 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8729,7 +8724,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetData = {
 }
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: AppNotFoundError | NotFoundError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

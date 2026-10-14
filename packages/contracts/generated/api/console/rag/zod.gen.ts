@@ -224,16 +224,6 @@ export const zRateLimitError = zErrorResponse.and(
 )
 
 /**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * WorkflowDraftVariablePatchPayload
  */
 export const zWorkflowDraftVariablePatchPayload = z.object({

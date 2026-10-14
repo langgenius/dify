@@ -286,11 +286,6 @@ export type CannotOperateSelfError = ErrorResponse & {
   status: 400
 }
 
-export type RoleAlreadyAssignedError = ErrorResponse & {
-  code: 'role_already_assigned'
-  status: 400
-}
-
 export type ForbiddenError = ErrorResponse & {
   code: 'forbidden'
   status: 403
@@ -307,6 +302,11 @@ export type OwnerTransferPayload = {
 
 export type MemberRoleUpdatePayload = {
   role: string
+}
+
+export type RoleAlreadyAssignedError = ErrorResponse & {
+  code: 'role_already_assigned'
+  status: 400
 }
 
 export type ModelProviderListResponse = {
@@ -1348,11 +1348,6 @@ export type TriggerOAuthAuthorizeResponse = {
   authorization_url: string
   subscription_builder: SubscriptionBuilderApiEntity
   subscription_builder_id: string
-}
-
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
 }
 
 export type TriggerSubscriptionVerifyPayload = {
@@ -3817,7 +3812,7 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdErrors = {
-  400: CannotOperateSelfError | InvalidRoleError | RoleAlreadyAssignedError | ErrorResponse
+  400: CannotOperateSelfError | ErrorResponse
   403: ForbiddenError | ErrorResponse
   404: MemberNotFoundError | ErrorResponse
   default: ErrorResponse
@@ -8470,7 +8465,6 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors = {
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8544,7 +8538,6 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors = {
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

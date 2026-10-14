@@ -814,16 +814,6 @@ export const zWorkflowTriggerListResponse = z.object({
 })
 
 /**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * NoActiveBindingError
  *
  * No active sandbox binding.

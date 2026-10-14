@@ -506,11 +506,6 @@ export type NotCompletionAppError = ErrorResponse & {
   status: 400
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type NotWorkflowAppError = ErrorResponse & {
   code: 'not_workflow_app'
   status: 400
@@ -1745,7 +1740,7 @@ export type GetFormHumanInputByFormTokenData = {
 
 export type GetFormHumanInputByFormTokenErrors = {
   403: ErrorResponse
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   429: WebFormRateLimitExceededError | ErrorResponse
   default: ErrorResponse
@@ -1772,7 +1767,7 @@ export type PostFormHumanInputByFormTokenData = {
 
 export type PostFormHumanInputByFormTokenErrors = {
   400: InvalidFormDataError | ErrorResponse
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   429: WebFormRateLimitExceededError | ErrorResponse
   default: ErrorResponse
@@ -1798,7 +1793,7 @@ export type PostFormHumanInputByFormTokenUploadTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenUploadTokenErrors = {
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   412: ErrorResponse
   429: WebFormRateLimitExceededError | ErrorResponse
   default: ErrorResponse
@@ -2394,7 +2389,6 @@ export type GetWorkflowByTaskIdEventsData = {
 
 export type GetWorkflowByTaskIdEventsErrors = {
   400: InvalidParamError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

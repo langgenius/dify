@@ -245,18 +245,6 @@ export const zUnsupportedAudioTypeError = zErrorResponse.and(
 )
 
 /**
- * InternalServerError
- *
- * The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
- */
-export const zInternalServerError = zErrorResponse.and(
-  z.object({
-    code: z.literal('internal_server_error'),
-    status: z.literal(500),
-  }),
-)
-
-/**
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
@@ -280,28 +268,6 @@ export const zNotChatAppError = zErrorResponse.and(
   z.object({
     code: z.literal('not_chat_app'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * UnauthorizedError
- *
- * Authentication is required.
- */
-export const zUnauthorizedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('unauthorized'),
-    status: z.literal(401),
-  }),
-)
-
-/**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
   }),
 )
 

@@ -781,16 +781,6 @@ export const zNotCompletionAppError = zErrorResponse.and(
 )
 
 /**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * NotWorkflowAppError
  *
  * Please check if your Workflow app mode matches the right API route.

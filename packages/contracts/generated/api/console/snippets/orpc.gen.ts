@@ -11,7 +11,6 @@ import {
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
   zInvalidComposerConfigError,
-  zNotFoundError,
   zPlaintextSecretNotAllowedError,
 } from './zod.gen.ts'
 import {
@@ -704,7 +703,6 @@ export const put2 = oc
   })
   .input(z.object({ params: zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath }))
   .output(zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const reset = {
   put: put2,
@@ -725,7 +723,6 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 /**
  * Get a specific draft workflow variable (snippet scope)
@@ -741,7 +738,6 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 /**
  * Update a draft workflow variable (snippet scope)
@@ -762,7 +758,6 @@ export const patch = oc
     }),
   )
   .output(zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const byVariableId = {
   delete: delete2,

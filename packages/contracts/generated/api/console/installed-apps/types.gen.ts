@@ -127,11 +127,6 @@ export type UnsupportedAudioTypeError = ErrorResponse & {
   status: 415
 }
 
-export type InternalServerError = ErrorResponse & {
-  code: 'internal_server_error'
-  status: 500
-}
-
 export type ChatMessagePayload = {
   conversation_id?: string | null
   draft_type?: 'debug_build' | 'draft'
@@ -151,16 +146,6 @@ export type ChatMessagePayload = {
 export type NotChatAppError = ErrorResponse & {
   code: 'not_chat_app'
   status: 400
-}
-
-export type UnauthorizedError = ErrorResponse & {
-  code: 'unauthorized'
-  status: 401
-}
-
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
 }
 
 export type RateLimitError = ErrorResponse & {
@@ -1090,7 +1075,6 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextErrors = {
   404: AgentVersionNotFoundError | InstalledAppNotFoundError | ErrorResponse
   413: AudioTooLargeError | ErrorResponse
   415: UnsupportedAudioTypeError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1123,11 +1107,9 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404: InstalledAppNotFoundError | NotFoundError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1190,10 +1172,8 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404: InstalledAppNotFoundError | NotFoundError | ErrorResponse
-  500: InternalServerError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1430,7 +1410,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1442,7 +1421,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
     | MessageCursorNotFoundError
     | MessageNotFoundError
     | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1478,7 +1456,6 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors 
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1490,7 +1467,6 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors 
     | MessageCursorNotFoundError
     | MessageNotFoundError
     | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1528,7 +1504,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1540,7 +1515,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisError
     | MessageCursorNotFoundError
     | MessageNotFoundError
     | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1578,7 +1552,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1590,7 +1563,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
     | MessageCursorNotFoundError
     | MessageNotFoundError
     | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1701,7 +1673,7 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesData = {
 export type PostInstalledAppsByInstalledAppIdSavedMessagesErrors = {
   400: NotCompletionAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
-  404: InstalledAppNotFoundError | NotFoundError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1769,7 +1741,6 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioErrors = {
   404: AgentVersionNotFoundError | InstalledAppNotFoundError | ErrorResponse
   413: AudioTooLargeError | ErrorResponse
   415: UnsupportedAudioTypeError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1801,11 +1772,9 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404: InstalledAppNotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }

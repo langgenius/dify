@@ -2,7 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zInvalidActionError, zNotFoundError } from './zod.gen.ts'
+import { zInvalidActionError } from './zod.gen.ts'
 import {
   zGetDataSourceIntegratesResponse,
   zPatchDataSourceIntegratesByBindingIdByActionPath,
@@ -19,10 +19,7 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchDataSourceIntegratesByBindingIdByActionPath }))
   .output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
-  .errors({
-    invalid_action: { status: 400, data: zInvalidActionError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const byAction = {
   patch,

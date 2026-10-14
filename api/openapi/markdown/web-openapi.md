@@ -373,7 +373,7 @@ GET /api/form/human_input/<form_token>
 | ---- | ----------- | ------ |
 | 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -410,7 +410,7 @@ Request body:
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 | 400 | Bad request - invalid submission data | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -432,7 +432,7 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Upload token issued successfully | **application/json**: [HumanInputUploadTokenResponse](#humaninputuploadtokenresponse)<br> |
-| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -963,7 +963,6 @@ Returns Server-Sent Events stream.
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidParamError](#invalidparamerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
@@ -1634,12 +1633,6 @@ Please check if your Completion app mode matches the right API route.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NotCompletionAppError |  | Please check if your Completion app mode matches the right API route. |  |
-
-#### NotFoundError
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| NotFoundError |  |  |  |
 
 #### NotWorkflowAppError
 

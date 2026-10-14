@@ -6,7 +6,6 @@ import {
   zDatasetNameDuplicateError,
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
-  zNotFoundError,
   zPipelineNotFoundError,
   zRateLimitError,
 } from './zod.gen.ts'
@@ -925,10 +924,7 @@ export const put = oc
     z.object({ params: zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath }),
   )
   .output(zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse)
-  .errors({
-    not_found: { status: 404, data: zNotFoundError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const reset = {
   put,
@@ -947,10 +943,7 @@ export const delete3 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({
-    not_found: { status: 404, data: zNotFoundError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const get18 = oc
   .route({
@@ -962,10 +955,7 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({
-    not_found: { status: 404, data: zNotFoundError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const patch2 = oc
   .route({
@@ -982,10 +972,7 @@ export const patch2 = oc
     }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({
-    not_found: { status: 404, data: zNotFoundError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byVariableId = {
   delete: delete3,

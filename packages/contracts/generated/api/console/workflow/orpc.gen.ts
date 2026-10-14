@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zNotFoundError } from './zod.gen.ts'
 import {
   zGetWorkflowByWorkflowRunIdEventsPath,
   zGetWorkflowByWorkflowRunIdEventsResponse,
@@ -30,7 +29,6 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdEventsPath }))
   .output(zGetWorkflowByWorkflowRunIdEventsResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const events = {
   get,
@@ -57,7 +55,6 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdPauseDetailsPath }))
   .output(zGetWorkflowByWorkflowRunIdPauseDetailsResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const pauseDetails = {
   get: get2,

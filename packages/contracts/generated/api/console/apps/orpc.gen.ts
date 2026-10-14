@@ -31,7 +31,6 @@ import {
   zNoFileUploadedError,
   zNodeNotInWorkflowRunError,
   zNodeOutputNotDeclaredError,
-  zNotFoundError,
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -2931,10 +2930,7 @@ export const get49 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowRunsByRunIdPath }))
   .output(zGetAppsByAppIdWorkflowRunsByRunIdResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byRunId = {
   get: get49,
@@ -3108,7 +3104,6 @@ export const get53 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const mentionUsers = {
@@ -3136,7 +3131,6 @@ export const delete9 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 /**
@@ -3164,7 +3158,6 @@ export const put2 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const byReplyId = {
@@ -3198,7 +3191,6 @@ export const post40 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const replies = {
@@ -3226,7 +3218,6 @@ export const post41 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const resolve = {
@@ -3254,7 +3245,6 @@ export const delete10 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 /**
@@ -3277,7 +3267,6 @@ export const get54 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 /**
@@ -3305,7 +3294,6 @@ export const put3 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const byCommentId = {
@@ -3336,7 +3324,6 @@ export const get55 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 /**
@@ -3365,7 +3352,6 @@ export const post42 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const comments = {
@@ -3553,10 +3539,7 @@ export const get62 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftConversationVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftConversationVariablesResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update conversation variables for workflow draft
@@ -4392,10 +4375,7 @@ export const put5 = oc
   })
   .input(z.object({ params: zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath }))
   .output(zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const reset = {
   put: put5,
@@ -4416,10 +4396,7 @@ export const delete12 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get a specific workflow variable
@@ -4435,10 +4412,7 @@ export const get73 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update a workflow variable
@@ -4459,10 +4433,7 @@ export const patch2 = oc
     }),
   )
   .output(zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byVariableId = {
   delete: delete12,

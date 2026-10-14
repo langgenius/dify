@@ -24,16 +24,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * HumanInputPauseTypeResponse
  */
 export const zHumanInputPauseTypeResponse = z.object({

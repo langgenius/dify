@@ -16,7 +16,6 @@ import {
   zInvalidMetadataError,
   zMaxKeysExceededError,
   zModelCurrentlyNotSupportError,
-  zNotFoundError,
   zProviderNotInitializeError,
   zProviderQuotaExceededError,
 } from './zod.gen.ts'
@@ -443,7 +442,6 @@ export const post4 = oc
   .errors({
     dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
     indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
-    not_found: { status: 404, data: zNotFoundError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
@@ -506,7 +504,6 @@ export const post6 = oc
   .output(zPostDatasetsNotionIndexingEstimateResponse)
   .errors({
     indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
-    not_found: { status: 404, data: zNotFoundError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
@@ -623,7 +620,6 @@ export const get12 = oc
     dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
     document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
     indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
-    not_found: { status: 404, data: zNotFoundError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
@@ -677,12 +673,6 @@ export const post8 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
-  .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const downloadZip = {
   post: post8,
@@ -784,12 +774,6 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
-  .errors({
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const download = {
   get: get14,
@@ -813,7 +797,6 @@ export const get15 = oc
     dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
     document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
     indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
-    not_found: { status: 404, data: zNotFoundError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
@@ -874,10 +857,7 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse)
-  .errors({
-    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync = {
   get: get17,
@@ -1629,10 +1609,7 @@ export const get28 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
-  .errors({
-    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync2 = {
   get: get28,

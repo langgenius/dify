@@ -24,16 +24,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * HumanInputFormSubmittedError
  *
  * This form has already been submitted by another user, form_id={form_id}

@@ -8,11 +8,6 @@ export type TextContentResponse = {
   content: string
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -69,7 +64,6 @@ export type GetNotionPagesByPageIdByPageTypePreviewData = {
 }
 
 export type GetNotionPagesByPageIdByPageTypePreviewErrors = {
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -95,7 +89,6 @@ export type GetNotionPreImportPagesData = {
 
 export type GetNotionPreImportPagesErrors = {
   403: DatasetAccessDeniedError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

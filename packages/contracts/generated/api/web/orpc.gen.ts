@@ -31,7 +31,6 @@ import {
   zNoFileUploadedError,
   zNotChatAppError,
   zNotCompletionAppError,
-  zNotFoundError,
   zNotWorkflowAppError,
   zPasswordMismatchError,
   zPasswordResetRateLimitExceededError,
@@ -593,10 +592,7 @@ export const post13 = oc
   })
   .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
   .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
-  .errors({
-    not_found: { status: 404, data: zNotFoundError },
-    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
-  })
+  .errors({ web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError } })
 
 export const uploadToken = {
   post: post13,
@@ -624,7 +620,6 @@ export const get2 = oc
   .errors({
     human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
     human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
-    not_found: { status: 404, data: zNotFoundError },
     web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
   })
 
@@ -664,7 +659,6 @@ export const post14 = oc
     human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
     human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
     invalid_form_data: { status: 400, data: zInvalidFormDataError },
-    not_found: { status: 404, data: zNotFoundError },
     web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
   })
 
@@ -1278,10 +1272,7 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetWorkflowByTaskIdEventsPath }))
   .output(zGetWorkflowByTaskIdEventsResponse)
-  .errors({
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_found: { status: 404, data: zNotFoundError },
-  })
+  .errors({ invalid_param: { status: 400, data: zInvalidParamError } })
 
 export const events = {
   get: get16,

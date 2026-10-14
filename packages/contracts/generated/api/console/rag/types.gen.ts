@@ -323,11 +323,6 @@ export type WorkflowDraftVariableListWithoutValueResponse = {
   total: number | null
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type WorkflowDraftVariableResponse = {
   description: string
   edited: boolean
@@ -1742,7 +1737,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdDat
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | PipelineNotFoundError | ErrorResponse
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1767,7 +1762,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData =
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | PipelineNotFoundError | ErrorResponse
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1792,7 +1787,7 @@ export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | PipelineNotFoundError | ErrorResponse
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1817,7 +1812,7 @@ export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetD
 }
 
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: NotFoundError | PipelineNotFoundError | ErrorResponse
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

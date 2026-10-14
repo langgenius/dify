@@ -46,11 +46,6 @@ export type ErrorResponse = {
   status: number
 }
 
-export type UnauthorizedError = ErrorResponse & {
-  code: 'unauthorized'
-  status: 401
-}
-
 export type AppSiteUnavailableError = ErrorResponse & {
   code: 'app_site_unavailable'
   status: 403
@@ -193,11 +188,6 @@ export type UnsupportedAudioTypeError = ErrorResponse & {
   status: 415
 }
 
-export type InternalServerError = ErrorResponse & {
-  code: 'internal_server_error'
-  status: 500
-}
-
 export type ChatRequest = {
   conversation_id?: string | null
   files?: Array<unknown> | null
@@ -212,11 +202,6 @@ export type ChatRequest = {
 export type NotChatAppError = ErrorResponse & {
   code: 'not_chat_app'
   status: 400
-}
-
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
 }
 
 export type RateLimitError = ErrorResponse & {
@@ -1499,7 +1484,6 @@ export type GetTrialAppsByAppIdData = {
 
 export type GetTrialAppsByAppIdErrors = {
   400: AppUnavailableError | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403: AppSiteUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
@@ -1820,7 +1804,6 @@ export type PostTrialAppsByAppIdAudioToTextErrors = {
   404: AgentVersionNotFoundError | ErrorResponse
   413: AudioTooLargeError | ErrorResponse
   415: UnsupportedAudioTypeError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1852,15 +1835,12 @@ export type PostTrialAppsByAppIdChatMessagesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | TrialAppFeatureDisabledError
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
-  404: NotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1924,15 +1904,12 @@ export type PostTrialAppsByAppIdCompletionMessagesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | TrialAppFeatureDisabledError
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
-  404: NotFoundError | ErrorResponse
   429: RateLimitError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2062,15 +2039,12 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | AppSuggestedQuestionsAfterAnswerDisabledError
     | TrialAppFeatureDisabledError
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
-  404: NotFoundError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2200,7 +2174,6 @@ export type PostTrialAppsByAppIdTextToAudioErrors = {
   404: AgentVersionNotFoundError | ErrorResponse
   413: AudioTooLargeError | ErrorResponse
   415: UnsupportedAudioTypeError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2257,14 +2230,12 @@ export type PostTrialAppsByAppIdWorkflowsRunErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: UnauthorizedError | ErrorResponse
   403:
     | TrialAppFeatureDisabledError
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
-  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 

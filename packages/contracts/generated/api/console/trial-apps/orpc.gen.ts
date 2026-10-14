@@ -14,14 +14,12 @@ import {
   zFileExtensionBlockedError,
   zFileTooLargeError,
   zFilenameNotExistsError,
-  zInternalServerError,
   zModelCurrentlyNotSupportError,
   zNeedAddIdsError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
   zNotChatAppError,
   zNotCompletionAppError,
-  zNotFoundError,
   zNotWorkflowAppError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -39,7 +37,6 @@ import {
   zTrialAppFeatureDisabledError,
   zTrialAppLimitExceededError,
   zTrialAppNotAllowedError,
-  zUnauthorizedError,
   zUnsupportedAudioTypeError,
   zUnsupportedFileTypeError,
 } from './zod.gen.ts'
@@ -393,7 +390,6 @@ export const post = oc
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -456,17 +452,14 @@ export const post3 = oc
   .errors({
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
-    not_found: { status: 404, data: zNotFoundError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
     trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
-    unauthorized: { status: 401, data: zUnauthorizedError },
   })
 
 export const chatMessages = {
@@ -492,17 +485,14 @@ export const post4 = oc
   .errors({
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_completion_app: { status: 400, data: zNotCompletionAppError },
-    not_found: { status: 404, data: zNotFoundError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
     trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
-    unauthorized: { status: 401, data: zUnauthorizedError },
   })
 
 export const completionMessages = {
@@ -608,16 +598,13 @@ export const get13 = oc
     },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
-    not_found: { status: 404, data: zNotFoundError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
     trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
-    unauthorized: { status: 401, data: zUnauthorizedError },
   })
 
 export const suggestedQuestions = {
@@ -746,7 +733,6 @@ export const post7 = oc
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -788,7 +774,6 @@ export const post8 = oc
   .errors({
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
-    internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -797,7 +782,6 @@ export const post8 = oc
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
     trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
-    unauthorized: { status: 401, data: zUnauthorizedError },
   })
 
 export const run = {
@@ -880,7 +864,6 @@ export const get17 = oc
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_site_unavailable: { status: 403, data: zAppSiteUnavailableError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
-    unauthorized: { status: 401, data: zUnauthorizedError },
   })
 
 export const byAppId = {

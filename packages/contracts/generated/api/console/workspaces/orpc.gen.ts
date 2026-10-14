@@ -21,7 +21,6 @@ import {
   zMemberNotFoundError,
   zMemberNotInTenantError,
   zNoFileUploadedError,
-  zNotFoundError,
   zNotOwnerError,
   zOwnerTransferLimitError,
   zOwnerTransferRateLimitExceededError,
@@ -1260,9 +1259,7 @@ export const delete4 = oc
   .errors({
     cannot_operate_self: { status: 400, data: zCannotOperateSelfError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_role: { status: 400, data: zInvalidRoleError },
     member_not_found: { status: 404, data: zMemberNotFoundError },
-    role_already_assigned: { status: 400, data: zRoleAlreadyAssignedError },
   })
 
 export const byMemberId = {
@@ -5083,7 +5080,6 @@ export const get114 = oc
     }),
   )
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const authorize = {
   get: get114,
@@ -5181,7 +5177,6 @@ export const post78 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
-  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const update7 = {
   post: post78,

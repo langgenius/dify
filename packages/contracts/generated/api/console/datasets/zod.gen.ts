@@ -154,16 +154,6 @@ export const zDatasetAccessDeniedError = zErrorResponse.and(
 )
 
 /**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * IndexingEstimateError
  *
  * Knowledge indexing estimate failed: {message}

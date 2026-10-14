@@ -314,18 +314,6 @@ export const zCannotOperateSelfError = zErrorResponse.and(
 )
 
 /**
- * RoleAlreadyAssignedError
- *
- * Role already assigned.
- */
-export const zRoleAlreadyAssignedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('role_already_assigned'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ForbiddenError
  *
  * You don't have the permission to access the requested resource.
@@ -362,6 +350,18 @@ export const zOwnerTransferPayload = z.object({
 export const zMemberRoleUpdatePayload = z.object({
   role: z.string(),
 })
+
+/**
+ * RoleAlreadyAssignedError
+ *
+ * Role already assigned.
+ */
+export const zRoleAlreadyAssignedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('role_already_assigned'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ModelProviderCreditsResponse
@@ -1031,16 +1031,6 @@ export const zTriggerVerificationResponse = z.object({
 export const zTriggerProviderErrorResponse = z.object({
   error: z.string(),
 })
-
-/**
- * NotFoundError
- */
-export const zNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_found'),
-    status: z.literal(404),
-  }),
-)
 
 /**
  * TriggerSubscriptionVerifyPayload

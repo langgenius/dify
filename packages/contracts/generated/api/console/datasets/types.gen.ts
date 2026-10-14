@@ -224,11 +224,6 @@ export type DatasetAccessDeniedError = ErrorResponse & {
   status: 403
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type IndexingEstimateError = ErrorResponse & {
   code: 'indexing_estimate_error'
   status: 500
@@ -1534,7 +1529,6 @@ export type PostDatasetsIndexingEstimateData = {
 export type PostDatasetsIndexingEstimateErrors = {
   400: ProviderNotInitializeError | ErrorResponse
   403: DatasetAccessDeniedError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
@@ -1604,7 +1598,6 @@ export type PostDatasetsNotionIndexingEstimateData = {
 
 export type PostDatasetsNotionIndexingEstimateErrors = {
   400: ProviderNotInitializeError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
@@ -1820,7 +1813,6 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateErrors = {
   400: DocumentAlreadyFinishedError | ProviderNotInitializeError | ErrorResponse
   403: DatasetAccessDeniedError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
@@ -1957,12 +1949,6 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2128,12 +2114,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
-  400:
-    | DocumentIndexingError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2160,7 +2140,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = {
   400: DocumentAlreadyFinishedError | ProviderNotInitializeError | ErrorResponse
   403: DatasetAccessDeniedError | ErrorResponse
-  404: NotFoundError | ErrorResponse
+  404: ErrorResponse
   500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
@@ -2238,7 +2218,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors = {
   403: DatasetAccessDeniedError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3005,7 +2984,6 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
 
 export type GetDatasetsByDatasetIdNotionSyncErrors = {
   403: DatasetAccessDeniedError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

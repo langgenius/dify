@@ -27,11 +27,6 @@ export type InvalidActionError = ErrorResponse & {
   status: 400
 }
 
-export type NotFoundError = ErrorResponse & {
-  code: 'not_found'
-  status: 404
-}
-
 export type DataSourceIntegrateResponse = {
   created_at: number | null
   disabled: boolean | null
@@ -99,7 +94,6 @@ export type PatchDataSourceIntegratesByBindingIdByActionData = {
 
 export type PatchDataSourceIntegratesByBindingIdByActionErrors = {
   400: InvalidActionError | ErrorResponse
-  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
