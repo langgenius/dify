@@ -2907,6 +2907,7 @@ export const get48 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const children = {
   get: get48,

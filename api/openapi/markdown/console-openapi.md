@@ -3846,7 +3846,8 @@ Get the internal node executions of one workflow tool invocation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Internal node executions retrieved successfully | **application/json**: [WorkflowToolNodeExecutionListResponse](#workflowtoolnodeexecutionlistresponse)<br> |
-| 404 | Workflow run not found |  |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
 List a directory in a workflow Agent node sandbox

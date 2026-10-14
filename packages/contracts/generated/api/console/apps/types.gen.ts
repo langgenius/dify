@@ -7290,8 +7290,12 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChil
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors = {
-  404: unknown
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenError =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses = {
   200: WorkflowToolNodeExecutionListResponse
