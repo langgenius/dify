@@ -15,6 +15,7 @@ def _snapshot(session_id: str) -> progress_snapshot.ProgressSnapshot:
         operation_id="operation-1",
         at_version=2,
         revision=4,
+        reply_language="zh-Hans",
         execution=ExecutionProgress(
             status="running",
             activities=[ExecutionActivity(id="plan", label="Generate plan", state="active")],

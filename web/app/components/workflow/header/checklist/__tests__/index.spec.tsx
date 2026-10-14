@@ -236,7 +236,7 @@ describe('WorkflowChecklist', () => {
     const { store } = renderChecklist({ disabled: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.fixRun' }))
 
     expect(screen.getByRole('button', { name: 'workflow.panel.checklist 2' })).toHaveAttribute(
       'aria-expanded',
@@ -263,9 +263,7 @@ describe('WorkflowChecklist', () => {
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
 
-    expect(
-      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixRun' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
   })
 
   it('should keep checklist Fix disabled without edit access or while the session is busy', async () => {
@@ -273,11 +271,11 @@ describe('WorkflowChecklist', () => {
     const { unmount } = renderChecklist({ disabled: false }, { canEdit: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'difyBuilder.fixRun' })).toBeDisabled()
 
     unmount()
     renderChecklist({ disabled: false }, { busy: true })
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'difyBuilder.fixRun' })).toBeDisabled()
   })
 })

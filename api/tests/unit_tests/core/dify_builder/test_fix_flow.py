@@ -34,6 +34,7 @@ from core.dify_builder.placeholder_agent import FIXED_CODE, PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, canvas_read_only
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 def _actor() -> Actor:
@@ -155,7 +156,7 @@ def test_full_fix_flow_request_fix_to_publish_success():
     assert "change_set" not in conv_kinds
     assert "test_result" in conv_kinds
     assert any(
-        item.kind == "assistant_turn" and str(item.payload.get("reply_text", "")).startswith("Applied ")
+        item.kind == "assistant_turn" and english_text(item.payload.get("reply_text", "")).startswith("Applied ")
         for item in conversation
     )
 

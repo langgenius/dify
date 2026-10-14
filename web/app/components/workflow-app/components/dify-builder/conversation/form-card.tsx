@@ -26,6 +26,8 @@ import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { MAX_FILE_UPLOAD_LIMIT } from '@/app/components/base/file-uploader/constants'
 import { useStore } from '@/app/components/workflow/store'
+import { useBuilderText } from '../copy/use-builder-text'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 import {
   DEFAULT_ALLOWED_FILE_EXTENSIONS,
   DEFAULT_ALLOWED_FILE_TYPES,
@@ -56,7 +58,11 @@ export const FormCard = memo(
     onActionValidityChange?: DifyBuilderActionValidityChange
     onSubmit?: () => void
   }) => {
-    const { t } = useTranslation(['workflow', 'common', 'workflowAgent'])
+    const locale = useDifyBuilderInteractionLocale()
+    const { t } = useTranslation(['common', 'difyBuilder'], {
+      lng: locale,
+    })
+    const { renderText } = useBuilderText()
     const fileUploadConfig = useStore((state) => state.fileUploadConfig)
     const errorId = useId()
     const fields = item.payload.fields ?? EMPTY_FORM_FIELDS
@@ -73,7 +79,7 @@ export const FormCard = memo(
           ? 'submit_edit_rules'
           : 'provide_testdata'
     const frozen = busy || item.payload.frozen === true
-    const category = t(($) => $['difyBuilder.cardCategory.form'], { ns: 'workflow' })
+    const category = t(($) => $['cardCategory.form'], { ns: 'difyBuilder' })
     const prepared = useMemo(() => prepareFormValues(fields, values), [fields, values])
     const actionPayloadChangeRef = useRef(onActionPayloadChange)
     const actionValidityChangeRef = useRef(onActionValidityChange)
@@ -121,28 +127,34 @@ export const FormCard = memo(
 
     const validationMessage = (field: FormField, error: FormValidationError) => {
       if (error === 'required')
-        return t(($) => $['errorMsg.fieldRequired'], { ns: 'workflow', field: field.label })
+        return t(($) => $['validation.fieldRequired'], {
+          ns: 'difyBuilder',
+          field: renderText(field.label),
+        })
       if (error === 'invalid-json-object')
-        return `${field.label}: ${t(($) => $['nodes.agent.outputVars.defaultValueObjectInvalid'], { ns: 'workflowAgent' })}`
+        return `${renderText(field.label)}: ${t(($) => $['validation.invalidJsonObject'], { ns: 'difyBuilder' })}`
       if (error === 'invalid-json')
-        return t(($) => $['errorMsg.invalidJson'], { ns: 'workflow', field: field.label })
+        return t(($) => $['validation.invalidJson'], {
+          ns: 'difyBuilder',
+          field: renderText(field.label),
+        })
       if (error === 'invalid-number')
-        return t(($) => $['nodes.agent.outputVars.defaultValueNumberInvalid'], {
-          ns: 'workflowAgent',
+        return t(($) => $['validation.invalidNumber'], {
+          ns: 'difyBuilder',
         })
       if (error === 'invalid-option')
-        return t(($) => $['difyBuilder.validation.invalidOption'], { ns: 'workflow' })
+        return t(($) => $['validation.invalidOption'], { ns: 'difyBuilder' })
       if (error === 'max-files')
-        return t(($) => $['difyBuilder.validation.maxFiles'], {
-          ns: 'workflow',
+        return t(($) => $['validation.maxFiles'], {
+          ns: 'difyBuilder',
           limit: field.number_limits ?? field.max_length ?? 1,
         })
       if (error === 'max-length')
-        return t(($) => $['difyBuilder.validation.maxLength'], {
-          ns: 'workflow',
+        return t(($) => $['validation.maxLength'], {
+          ns: 'difyBuilder',
           limit: field.max_length ?? 0,
         })
-      return t(($) => $['difyBuilder.validation.invalidValue'], { ns: 'workflow' })
+      return t(($) => $['validation.invalidValue'], { ns: 'difyBuilder' })
     }
 
     const form = (
@@ -169,7 +181,7 @@ export const FormCard = memo(
           const fieldErrorId = `${errorId}-${index}-error`
           const labelContent = (
             <>
-              {field.label}
+              {renderText(field.label)}
               {field.type === 'number' && field.unit ? ` (${field.unit})` : null}
               {field.required && <span aria-hidden> *</span>}
             </>
@@ -200,7 +212,7 @@ export const FormCard = memo(
                   </FieldError>
                 )}
                 {field.hint && !validationError && (
-                  <FieldDescription>{field.hint}</FieldDescription>
+                  <FieldDescription>{renderText(field.hint)}</FieldDescription>
                 )}
               </Field>
             )
@@ -227,7 +239,7 @@ export const FormCard = memo(
             return (
               <fieldset
                 key={field.key}
-                aria-label={field.label}
+                aria-label={renderText(field.label)}
                 aria-required={field.required || undefined}
                 aria-invalid={validationError ? true : undefined}
                 aria-describedby={validationError ? fieldErrorId : undefined}
@@ -235,7 +247,7 @@ export const FormCard = memo(
                 disabled={frozen}
               >
                 <legend className="mb-1 system-xs-medium text-text-secondary">
-                  {field.label}
+                  {renderText(field.label)}
                   {field.required && <span aria-hidden> *</span>}
                 </legend>
                 <FileUploaderInAttachmentWrapper
@@ -283,7 +295,7 @@ export const FormCard = memo(
 
           if (field.type === 'select') {
             const emptyOptionLabel =
-              field.placeholder ?? t(($) => $['operation.clear'], { ns: 'common' })
+              renderText(field.placeholder) || t(($) => $['operation.clear'], { ns: 'common' })
             return (
               <Field
                 key={field.key}
@@ -303,7 +315,7 @@ export const FormCard = memo(
                     aria-invalid={validationError ? true : undefined}
                     aria-describedby={validationError ? fieldErrorId : undefined}
                   >
-                    <SelectValue placeholder={field.placeholder ?? ''} />
+                    <SelectValue placeholder={renderText(field.placeholder) || ''} />
                   </SelectTrigger>
                   <SelectContent>
                     {!(field.options ?? []).includes('') && (
@@ -326,7 +338,7 @@ export const FormCard = memo(
                   </FieldError>
                 )}
                 {field.hint && !validationError && (
-                  <FieldDescription>{field.hint}</FieldDescription>
+                  <FieldDescription>{renderText(field.hint)}</FieldDescription>
                 )}
               </Field>
             )
@@ -347,7 +359,7 @@ export const FormCard = memo(
                   disabled={frozen}
                   required={field.required}
                   maxLength={field.max_length ?? undefined}
-                  placeholder={field.placeholder ?? undefined}
+                  placeholder={renderText(field.placeholder) || undefined}
                   aria-invalid={validationError ? true : undefined}
                   aria-describedby={validationError ? fieldErrorId : undefined}
                   className="min-h-18 resize-y"
@@ -361,7 +373,7 @@ export const FormCard = memo(
                   disabled={frozen}
                   required={field.required}
                   maxLength={field.max_length ?? undefined}
-                  placeholder={field.placeholder ?? undefined}
+                  placeholder={renderText(field.placeholder) || undefined}
                   aria-invalid={validationError ? true : undefined}
                   aria-describedby={validationError ? fieldErrorId : undefined}
                   onValueChange={(nextValue) =>
@@ -377,7 +389,9 @@ export const FormCard = memo(
                   {validationMessage(field, validationError)}
                 </FieldError>
               )}
-              {field.hint && !validationError && <FieldDescription>{field.hint}</FieldDescription>}
+              {field.hint && !validationError && (
+                <FieldDescription>{renderText(field.hint)}</FieldDescription>
+              )}
             </Field>
           )
         })}

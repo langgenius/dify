@@ -37,6 +37,7 @@ from services.dify_builder.service import (
     resolve_action_kind,
     resolve_submitted_action,
 )
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text, english_tree
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -1031,7 +1032,7 @@ def test_session_view_carries_the_same_choice_as_options_and_as_actions(
     assert [o.id for o in view.decision.options] == [a.id for a in view.actions]
     assert view.decision.default_option_id == "run_validation"
     assert view.decision.submit is not None
-    assert (view.decision.submit.id, view.decision.submit.label) == ("confirm", "Submit")
+    assert (view.decision.submit.id, english_text(view.decision.submit.label)) == ("confirm", "Submit")
 
 
 def test_prepare_choice_action_snapshots_the_submitted_option(
@@ -1047,7 +1048,8 @@ def test_prepare_choice_action_snapshots_the_submitted_option(
 
     service._prepare_action(session.id, _actor(), action)
 
-    assert action.interaction_response == {
+    assert english_tree(action.interaction_response) == {
+        "reply_language": "",
         "interaction_kind": "choice",
         "question": "What should happen to this fix?",
         "answer": "Publish fix",
@@ -1070,7 +1072,7 @@ def test_prepare_choice_action_ignores_free_text_for_an_option_without_input(
     service._prepare_action(session.id, _actor(), action)
 
     assert action.interaction_response is not None
-    assert action.interaction_response["answer"] == "Publish fix"
+    assert english_text(action.interaction_response["answer"]) == "Publish fix"
     assert action.interaction_response["submitted_data"] == {"option_id": "publish_fix"}
 
 
@@ -1087,7 +1089,8 @@ def test_prepare_interrupted_action_snapshots_the_visible_recovery_choice(
 
     service._prepare_action(session.id, _actor(), action)
 
-    assert action.interaction_response == {
+    assert english_tree(action.interaction_response) == {
+        "reply_language": "",
         "interaction_kind": "choice",
         "question": "How should Builder continue?",
         "answer": "Retry",
@@ -1314,21 +1317,18 @@ def test_submit_action_update_model_persists_without_dispatch(
     assert view.model.name == "gpt-4o"
     assert view.model.mode == "chat"
     assert view.model.completion_params == {"temperature": 0.2}
-    assert repo.list_conversation(s.id)[-1].payload["text"] == "Model changed to gpt-4o"
+    assert len(repo.list_conversation(s.id)) == 1
+    assert view.conversation_last_seq == 0
     assert enqueued == []
 
 
-def test_submit_action_update_model_localizes_notice(
+def test_submit_action_update_model_preserves_language_without_adding_history(
     service: DifyBuilderService,
     repo: SqlDifyBuilderRepository,
     enqueued: list[tuple],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """update_model commits its notice directly (bypassing the engine _commit
-    localization hook), so the service must localize it itself when the session
-    has a detected reply_language."""
-    import services.dify_builder.agent.localize as localize_mod
-
+    """The selected model is the feedback; changing it leaves history and language intact."""
     s = Session(
         app_id=APP_ID,
         tenant_id=TENANT_ID,
@@ -1343,18 +1343,6 @@ def test_submit_action_update_model_localizes_notice(
     )
     monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, config: config)
 
-    class _FakeLocalizer:
-        def __init__(self, _provider):
-            pass
-
-        def localize_items(self, items, language):
-            for it in items:
-                if "text" in it.payload:
-                    it.payload["text"] = f"[{language}] {it.payload['text']}"
-            return items
-
-    monkeypatch.setattr(localize_mod, "Localizer", _FakeLocalizer)
-
     model_config = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
     service.submit_action(
         s.id,
@@ -1362,7 +1350,12 @@ def test_submit_action_update_model_localizes_notice(
         Action(kind="update_model", payload={"model_config": model_config}, base_version=s.version),
     )
 
-    assert repo.list_conversation(s.id)[-1].payload["text"] == "[ja] Model changed to gpt-4o"
+    stored, context = repo.get_session(s.id)
+    assert stored.version == 2
+    assert context.model_config == model_config
+    assert context.reply_language == "ja"
+    assert context.next_seq == 1
+    assert [(item.kind, item.seq) for item in repo.list_conversation(s.id)] == [("run-context", 0)]
     assert enqueued == []
 
 
@@ -1398,6 +1391,11 @@ def test_submit_action_stream_update_model_emits_terminal_command_finished_frame
     assert _business_event(frames[0]) == "command_started"
     state_frames = [f for f in frames if _business_event(f) == "command_finished"]
     assert state_frames, "update_model must emit a terminal command_finished frame with the new version"
+    assert [_business_event(frame) for frame in frames] == ["command_started", "command_finished"]
+    data = json.loads(state_frames[0].split("data: ", 1)[1])["data"]
+    assert data["version"] == s.version + 1
+    assert data["model"]["name"] == "gpt-4o"
+    assert data["conversation_last_seq"] == 0
 
 
 def test_submit_action_stream_subscribes_before_dispatch_and_streams(repo: SqlDifyBuilderRepository) -> None:
@@ -1861,8 +1859,9 @@ def test_failed_build_planning_reload_reoffers_confirmed_requirements_and_retry_
     assert card.payload["values"] == accepted
     assert card.seq > historical.seq
     assert card.at_version == view.version
-    assert card.payload == {**historical.payload, "values": accepted}
+    assert english_tree(card.payload) == {**historical.payload, "values": accepted}
     assert repo.list_conversation(session.id)[0] == historical
+    assert not any(item.kind == "notice" for item in repo.list_conversation(session.id))
 
     retry = Action(kind="submit_requirements", payload=copy.deepcopy(card.payload["values"]), base_version=view.version)
     reloaded._prepare_action(session.id, _actor(), retry)
@@ -1919,7 +1918,8 @@ def test_prepare_form_action_snapshots_submitted_field_values(
 
     service._prepare_action(session.id, _actor(), action)
 
-    assert action.interaction_response == {
+    assert english_tree(action.interaction_response) == {
+        "reply_language": "",
         "interaction_kind": "form",
         "question": "Review the requirements",
         "answer": "",
@@ -1966,7 +1966,8 @@ def test_prepare_resource_action_snapshots_selected_resource_labels(
 
     service._prepare_action(session.id, _actor(), action)
 
-    assert action.interaction_response == {
+    assert english_tree(action.interaction_response) == {
+        "reply_language": "",
         "interaction_kind": "resource",
         "question": "Which resources should Builder use?",
         "answer": "Ticket lookup",
@@ -2081,7 +2082,9 @@ def test_create_edit_session_seeds_and_dispatches_opening_goal(
     assert view.state == "edit.capability_check"
     assert view.entry_mode == EntryMode.EDIT
     conversation = repo.list_conversation(view.session_id)
-    assert [(item.kind, item.payload["text"]) for item in conversation] == [("user", "Tighten risk handling")]
+    assert [(item.kind, english_text(item.payload["text"])) for item in conversation] == [
+        ("user", "Tighten risk handling")
+    ]
     assert isinstance(conversation[0].payload["turn_id"], str)
     _session, context = repo.get_session(view.session_id)
     assert context.goal_text == "Tighten risk handling"
@@ -2118,7 +2121,7 @@ def test_edit_plan_approval_offers_a_way_out_of_the_gate(
     ]
     # Nothing has been applied at this gate, so the revert discards a proposal
     # rather than undoing a visible canvas change -- and it says so.
-    assert [a.label for a in view.actions][-1] == "Discard this change plan"
+    assert [english_text(a.label) for a in view.actions][-1] == "Discard this change plan"
 
 
 def test_every_action_the_edit_gate_offers_is_actually_admitted(
@@ -2249,16 +2252,12 @@ def test_recovery_ref_for():
 
     assert recovery.recovery_ref_for("") is None
 
-    # the two "keep going either way" classes: both continuing and restarting
-    # are offered, and .message comes from the dict-lookup path (recovery.
-    # _RECOVERY_MESSAGE), not the RecoveryRef.get(..., "") fallback.
+    # Both continuing and restarting remain available for compatible changes.
     for cls in (RecoveryClass.CONFIG_ONLY, RecoveryClass.STRUCTURAL_COMPATIBLE):
         ref3 = recovery.recovery_ref_for(str(cls))
         assert ref3 is not None
         assert ref3.can_continue is True
         assert ref3.can_restart is True
-        assert ref3.message
-        assert ref3.message == recovery._RECOVERY_MESSAGE[cls]
 
 
 def test_get_session_view_surfaces_recovery_when_set(

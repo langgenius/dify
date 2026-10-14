@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 
 const DifyBuilderButton = ({ disabled }: { disabled: boolean }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['difyBuilder'])
   const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
   const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
-  const label = t(($) => $['difyBuilder.buttonTooltip'], { ns: 'workflow' })
+  const label = t(($) => $.buttonTooltip, { ns: 'difyBuilder' })
 
   // React Flow's nokey class preserves native Space activation on the button.
   return (

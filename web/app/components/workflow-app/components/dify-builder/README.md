@@ -20,7 +20,7 @@ conversation groups through a separate paginated JSON GET. Create, action, and
 message commands use typed POST SSE requests; an independent GET SSE route is
 opened only while reconnecting to an active command. SSE never carries full
 history: `command_started` is a bounded handshake, the server persists durable
-items internally, and emits each non-assistant item through
+items internally, and emits cards and complete assistant replies through
 `conversation_item_appended`. New-session prompts and message commands render
 the submitted user text immediately. Message turns use their client-generated
 `turn_id`; the matching durable event then supplies sequence and version
@@ -29,16 +29,25 @@ participates in durable sequence-gap checks.
 During an active command, restore keeps the preceding interaction dock hidden
 until the settled state arrives, so a submitted form does not reappear as an
 unfinished disabled form. Interrupted commands still expose recovery choices.
+Recovery explanations belong to the existing decision description. Builder
+does not append new `notice` items or expose `recovery.message`. Legacy notices
+remain readable and retain their sequence numbers for pagination and reconnect
+watermarks, but are hidden in the conversation and excluded from model history.
+User submission receipts and native dynamic replies retain their existing
+payloads. Model changes update the selector and terminal state without adding
+a conversation item.
 The reconnect stream checks durable session state on idle heartbeats and emits
 the settled or interrupted projection if a terminal broadcast was missed.
 Trace export records restore requests, JSON state snapshots, and reconnect
 requests even before the first SSE event arrives.
-`agent_message` owns assistant text: all deltas
+`agent_message` owns native assistant text: all deltas
 share a preallocated `seq` and `turn_id`, and its `done` frame promotes that
 exact accumulated text into the live conversation. Model replies use their
-native deltas; deterministic Builder copy is split at natural text boundaries.
-The browser reveals queued text at a bounded rate on animation frames and does
-not process later card/item events until that visible queue is drained. The
+native deltas. Complete handler replies use `conversation_item_appended` after
+commit, with `reply_mode: complete`. They bypass the text queue and appear in
+full with a brief transition; history hydration does not replay it.
+The browser reveals native queued text at a bounded rate on animation frames;
+following card/item events for those turns wait until that visible queue is drained. The
 empty `done` frame is emitted only after the assistant turn is durable. Each
 frame also carries the cumulative UTF-8 byte count; a mismatch at `done`
 exposes a dropped delta and leaves the sequence missing so terminal gap
@@ -101,6 +110,21 @@ Historical form and resource cards are omitted from the transcript; submitted
 responses remain visible there.
 Unsubmitted field drafts remain local component state and are intentionally not
 persisted.
+
+Interaction controls derive their locale from the latest accepted progress or
+SessionView's `reply_language`, falling back to the account locale when unsupported or empty.
+The independent `difyBuilder` i18n namespace owns fixed copy for the whole panel.
+The backend sends typed `{ type: "copy", id, params }` references, or ordered
+`{ type: "parts", parts }` for replies combining fixed frames and literal prose.
+Dynamic content is never matched against translation source strings. Language
+metadata is persisted per item, so later language changes do not relocalize
+history. The override does not change account language or cookies.
+
+Optimistic receipts use the same renderer and send a separate `receipt_snapshot`
+containing localized display strings. The server preserves raw submitted values
+and validates the snapshot's interaction kind and field keys before freezing it.
+Historical literal receipts remain unchanged. Fixed copy never invokes a model;
+only user language detection and dynamic cognition retain model calls.
 
 The browser persists only an unfinished or restartable failed session id in `sessionStorage`, under
 `dify-builder:v1:{tenantId}:{userId}:{appId}:active-session-id`. Conversation,

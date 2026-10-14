@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 
 export const DifyBuilderPanelEmptyState = () => {
-  const { t } = useTranslation(['workflow'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
 
   return (
     <div className="mx-4 flex h-full flex-col items-center justify-center gap-3 rounded-[10px] px-4 py-16 text-center">
@@ -13,10 +15,10 @@ export const DifyBuilderPanelEmptyState = () => {
       </div>
       <div className="flex w-full flex-col gap-1 wrap-break-word">
         <h3 className="system-xl-medium text-text-secondary">
-          {t(($) => $['difyBuilder.emptyBuildTitle'], { ns: 'workflow' })}
+          {t(($) => $.emptyBuildTitle, { ns: 'difyBuilder' })}
         </h3>
         <p className="system-xs-regular text-pretty text-text-tertiary">
-          {t(($) => $['difyBuilder.emptyDescription'], { ns: 'workflow' })}
+          {t(($) => $.emptyDescription, { ns: 'difyBuilder' })}
         </p>
       </div>
     </div>

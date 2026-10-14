@@ -1,3 +1,4 @@
+import type { InteractionResponseCopy } from './interactions/optimistic-response'
 import type {
   ChecklistErrorPayload,
   DifyBuilderActiveInteraction,
@@ -8,7 +9,10 @@ import type {
 import type { DifyBuilderCanvasNode } from './utils'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
-import { createOptimisticInteractionResponse } from './interactions/optimistic-response'
+import {
+  createOptimisticInteractionResponse,
+  receiptSnapshotFor,
+} from './interactions/optimistic-response'
 import {
   difyBuilderActiveCommandAtom,
   difyBuilderConversationAtom,
@@ -372,7 +376,13 @@ export const difyBuilderSelectModelAtom = atom(null, async (get, set, model: Ses
 
 export const difyBuilderSubmitActionAtom = atom(
   null,
-  async (get, set, actionId: string, payload: Record<string, unknown> = {}) => {
+  async (
+    get,
+    set,
+    actionId: string,
+    payload: Record<string, unknown>,
+    copy: InteractionResponseCopy,
+  ) => {
     const runtime = get(difyBuilderRuntimeAtom)
     if (
       !runtime?.enabled ||
@@ -401,6 +411,7 @@ export const difyBuilderSubmitActionAtom = atom(
       ? createOptimisticInteractionResponse({
           actionId,
           activeInteraction: get(difyBuilderActiveInteractionAtom),
+          copy,
           decision: view.decision ?? null,
           payload: actionPayload,
         })
@@ -422,6 +433,12 @@ export const difyBuilderSubmitActionAtom = atom(
     }
 
     try {
+      if (optimisticPayload)
+        return await runtime.session.runAction(
+          actionId,
+          actionPayload,
+          receiptSnapshotFor(optimisticPayload, copy),
+        )
       return await runtime.session.runAction(actionId, actionPayload)
     } finally {
       if (localId) {

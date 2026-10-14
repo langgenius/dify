@@ -377,7 +377,7 @@ describe('ResultPanel', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.fixRun' }))
     expect(onFixRun).toHaveBeenCalledWith('run-failed-1')
 
     rerender(
@@ -387,8 +387,6 @@ describe('ResultPanel', () => {
         onFixRun={onFixRun}
       />,
     )
-    expect(
-      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixRun' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
   })
 })

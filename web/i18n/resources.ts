@@ -52,12 +52,14 @@ type PluralBaseResources = {
   skill: {
     'skillManagement.detail.uploadFilesFailedStatus': string
   }
+  difyBuilder: {
+    checklistFixAction: string
+    checklistFixSummary: string
+    checklistUnfixableNote: string
+  }
   workflow: {
     'changeHistory.stepBackward': string
     'changeHistory.stepForward': string
-    'difyBuilder.checklistFixAction': string
-    'difyBuilder.checklistFixSummary': string
-    'difyBuilder.checklistUnfixableNote': string
     'nodes.iteration.error': string
     'nodes.iteration.iteration': string
     'nodes.loop.error': string
@@ -104,6 +106,7 @@ export const namespaces = [
   'datasetPipeline',
   'datasetSettings',
   'deployments',
+  'difyBuilder',
   'deviceFlow',
   'education',
   'explore',

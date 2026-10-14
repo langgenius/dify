@@ -13891,7 +13891,7 @@ Model class for AI model.
 | canvas_event | string |  | No |
 | id | string |  | Yes |
 | kind | [ActionKind](#actionkind) |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | next_state | string |  | No |
 
 #### ActionKind
@@ -17348,7 +17348,9 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | cards | [ string ] |  | No |
 | execution | [ExecutionProgress](#executionprogress) |  | Yes |
 | reasoning_text | string |  | No |
-| reply_text | string |  | No |
+| reply_language | string |  | No |
+| reply_mode | string, <br>**Available values:** "complete", "stream", <br>**Default:** stream | *Enum:* `"complete"`, `"stream"` | No |
+| reply_text | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | stage_id | string |  | Yes |
 | turn_id | string |  | Yes |
 
@@ -17513,6 +17515,20 @@ ExporleBanner status
 | login_page_logo | string |  | Yes |
 | workspace_logo | string |  | Yes |
 
+#### BuilderCopy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | [BuilderCopyId](#buildercopyid) |  | Yes |
+| params | object |  | No |
+| type | string, <br>**Default:** copy |  | No |
+
+#### BuilderCopyId
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BuilderCopyId | string |  |  |
+
 #### BuilderErrorCode
 
 Stable HTTP error codes returned by the Builder console routes.
@@ -17520,6 +17536,13 @@ Stable HTTP error codes returned by the Builder console routes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | BuilderErrorCode | string | Stable HTTP error codes returned by the Builder console routes. |  |
+
+#### BuilderTextParts
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| parts | [ string<br>[BuilderCopy](#buildercopy) ] |  | Yes |
+| type | string, <br>**Default:** parts |  | No |
 
 #### BuiltinCredentialListQuery
 
@@ -17591,11 +17614,11 @@ reconstruct the same canvas.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | canvas_event | string |  | No |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | id | string |  | Yes |
 | input | [OptionInput](#optioninput) |  | No |
 | is_default | boolean |  | No |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | next_state | string |  | No |
 | tone | string, <br>**Default:** neutral |  | No |
 
@@ -18984,16 +19007,17 @@ Enum class for datasource provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default_option_id | string |  | No |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | options | [ [CardOption](#cardoption) ] |  | No |
 | submit | [Action](#action) |  | No |
-| title | string |  | Yes |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### DecisionItem
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
+| reply_language | string |  | No |
+| text | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### DeclaredArrayItem
 
@@ -19137,7 +19161,7 @@ Enum representing the deployment edition of the platform.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | kind | [ActionKind](#actionkind) |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### DifyBuilderActiveInteractionResponse
 
@@ -19285,7 +19309,7 @@ Console permission-guard denial as serialized by the shared console HTTP error h
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | command_id | string |  | Yes |
-| item | [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderInteractionResponseConversationItemResponse](#difybuilderinteractionresponseconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) |  | Yes |
+| item | [DifyBuilderUserConversationItemResponse](#difybuilderuserconversationitemresponse)<br>[DifyBuilderDecisionConversationItemResponse](#difybuilderdecisionconversationitemresponse)<br>[DifyBuilderInteractionResponseConversationItemResponse](#difybuilderinteractionresponseconversationitemresponse)<br>[DifyBuilderNoticeConversationItemResponse](#difybuildernoticeconversationitemresponse)<br>[DifyBuilderRunContextConversationItemResponse](#difybuilderruncontextconversationitemresponse)<br>[DifyBuilderPreflightContextConversationItemResponse](#difybuilderpreflightcontextconversationitemresponse)<br>[DifyBuilderAssistantTurnConversationItemResponse](#difybuilderassistantturnconversationitemresponse)<br>[DifyBuilderPlanConversationItemResponse](#difybuilderplanconversationitemresponse)<br>[DifyBuilderFormConversationItemResponse](#difybuilderformconversationitemresponse)<br>[DifyBuilderResourceSelectConversationItemResponse](#difybuilderresourceselectconversationitemresponse)<br>[DifyBuilderTestResultConversationItemResponse](#difybuildertestresultconversationitemresponse) |  | Yes |
 | session_id | string |  | Yes |
 
 #### DifyBuilderConversationItemAppendedEventResponse
@@ -19404,7 +19428,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | parent_id | string |  | No |
 | state | string, <br>**Available values:** "active", "done", "failed", "stopped" | *Enum:* `"active"`, `"done"`, `"failed"`, `"stopped"` | Yes |
 
@@ -19486,6 +19510,7 @@ Builder is not enabled for the workspace (the shared ``dify_builder_required`` g
 | activity | [DifyBuilderExecutionActivityResponse](#difybuilderexecutionactivityresponse) |  | Yes |
 | at_version | integer |  | Yes |
 | operation_id | string |  | Yes |
+| reply_language | string |  | No |
 | revision | integer |  | Yes |
 | session_id | string |  | Yes |
 | status | string, <br>**Available values:** "completed", "error", "running", "stopped" | *Enum:* `"completed"`, `"error"`, `"running"`, `"stopped"` | Yes |
@@ -19506,6 +19531,7 @@ Complete observed activity state before subsequent live progress deltas.
 | at_version | integer |  | Yes |
 | execution | [DifyBuilderExecutionProgressResponse](#difybuilderexecutionprogressresponse) |  | Yes |
 | operation_id | string |  | Yes |
+| reply_language | string |  | Yes |
 | revision | integer |  | Yes |
 | session_id | string |  | Yes |
 
@@ -19613,6 +19639,26 @@ Sanitized refusal of a real-call consent operation; carries fixed codes only.
 | data | [DifyBuilderReasoningEventData](#difybuilderreasoningeventdata) |  | Yes |
 | event | string |  | Yes |
 
+#### DifyBuilderReceiptFieldSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| display_value | string |  | Yes |
+| key | string |  | Yes |
+| label | string |  | Yes |
+
+#### DifyBuilderReceiptSnapshot
+
+Localized display only; submitted values remain in action.payload.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| fields | [ [DifyBuilderReceiptFieldSnapshot](#difybuilderreceiptfieldsnapshot) ] |  | No |
+| interaction_kind | string, <br>**Available values:** "choice", "form", "resource" | *Enum:* `"choice"`, `"form"`, `"resource"` | Yes |
+| question | string |  | Yes |
+| reply_language | string |  | Yes |
+
 #### DifyBuilderResourceSelectConversationItemResponse
 
 | Name | Type | Description | Required |
@@ -19667,6 +19713,7 @@ One JSON object carried by an SSE ``data:`` frame.
 | base_app_revision | string |  | Yes |
 | base_version | integer |  | Yes |
 | payload | object |  | No |
+| receipt_snapshot | [DifyBuilderReceiptSnapshot](#difybuilderreceiptsnapshot) |  | No |
 
 #### DifyBuilderSubmitMessagePayload
 
@@ -20352,7 +20399,7 @@ The type of the parameter
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | kind | string, <br>**Available values:** "node", "stage", <br>**Default:** stage | *Enum:* `"node"`, `"stage"` | No |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | parent_id | string |  | No |
 | state | string, <br>**Available values:** "active", "done", "failed", "stopped" | *Enum:* `"active"`, `"done"`, `"failed"`, `"stopped"` | Yes |
 
@@ -20681,10 +20728,11 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | fields | [ [FormField](#formfield) ] |  | No |
 | frozen | boolean |  | No |
-| title | string |  | No |
+| reply_language | string |  | No |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | values | object |  | No |
 | variant | string |  | Yes |
 
@@ -20696,14 +20744,14 @@ Enum class for fetch from.
 | allowed_file_types | [ string ] |  | No |
 | allowed_file_upload_methods | [ string ] |  | No |
 | default | string<br>integer<br>number<br>boolean |  | No |
-| hint | string |  | No |
+| hint | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | json_schema | string<br>object |  | No |
 | key | string |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | max_length | integer |  | No |
 | number_limits | integer |  | No |
 | options | [ string ] |  | No |
-| placeholder | string |  | No |
+| placeholder | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | required | boolean |  | No |
 | type | string |  | Yes |
 | unit | string |  | No |
@@ -21139,19 +21187,20 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| display_value | string |  | Yes |
+| display_value | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | key | string |  | Yes |
-| label | string |  | Yes |
+| label | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | value |  |  | Yes |
 
 #### InteractionResponseItem
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string |  | No |
+| answer | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | fields | [ [InteractionResponseField](#interactionresponsefield) ] |  | No |
 | interaction_kind | string, <br>**Available values:** "choice", "form", "resource" | *Enum:* `"choice"`, `"form"`, `"resource"` | Yes |
-| question | string |  | Yes |
+| question | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
+| reply_language | string |  | No |
 | submitted_data | object |  | No |
 
 #### IterationNodeRunPayload
@@ -21936,7 +21985,8 @@ Coarse node-level status used by Inspector to pick a banner.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
+| reply_language | string |  | No |
+| text | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 | tone | string, <br>**Default:** neutral |  | No |
 
 #### NotificationItemResponse
@@ -22180,7 +22230,7 @@ OAuth schema
 | ---- | ---- | ----------- | -------- |
 | max_length | integer, <br>**Default:** 100 |  | No |
 | min_length | integer |  | No |
-| placeholder | string |  | No |
+| placeholder | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | required | boolean, <br>**Default:** true |  | No |
 
 #### OutputErrorStrategy
@@ -22738,7 +22788,8 @@ Coarse UX phase shown in the panel header (spec §2).
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | items | [ string ] |  | No |
-| title | string |  | Yes |
+| reply_language | string |  | No |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 
 #### PlanningStrategy
 
@@ -23726,7 +23777,6 @@ Resource types understood by access policies.
 | ---- | ---- | ----------- | -------- |
 | can_continue | boolean |  | Yes |
 | can_restart | boolean |  | Yes |
-| message | string |  | Yes |
 | recovery_class | string |  | Yes |
 
 #### RedirectResponse
@@ -23906,9 +23956,10 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
+| description | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | recommended | [ [ResourceOption](#resourceoption) ] |  | No |
-| title | string |  | No |
+| reply_language | string |  | No |
+| title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 
 #### ResourceUserAccessPolicies
 
@@ -25385,10 +25436,11 @@ Tag type
 | dify_run_id | string |  | No |
 | executed_node_ids | [ string ] |  | No |
 | execution_mode | string, <br>**Available values:** "confirmed_tool", "mock", "restricted" |  | No |
-| failure_reason | string |  | No |
+| failure_reason | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | outcome | string, <br>**Available values:** "execution_failed", "execution_succeeded_needs_review", "execution_unknown", "required_output_unresolved" |  | No |
 | policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-json-parse-v1", "builder-restricted-v1" |  | No |
-| review_note | string |  | No |
+| reply_language | string |  | No |
+| review_note | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | safety_outcome | string, <br>**Available values:** "confirmed_tool_completed", "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
 | simulated_node_ids | [ string ] |  | No |
 | status | string, <br>**Available values:** "failed", "succeeded" | *Enum:* `"failed"`, `"succeeded"` | Yes |

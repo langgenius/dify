@@ -136,7 +136,7 @@ def _seed(repo, entry_mode, state, fc):
     return s
 
 
-def test_check_recovery_sets_class_and_appends_notice():
+def test_check_recovery_sets_class_without_appending_notice():
     dify = FakeDifyPort()
     dify.graph = {"nodes": [{"id": "n1", "data": {"type": "llm"}}], "edges": []}
     dify.hash = "h-new"
@@ -157,12 +157,13 @@ def test_check_recovery_sets_class_and_appends_notice():
     _s, fc2 = repo.get_session(s.id)
     assert fc2.recovery_class == "config_only"
     convo = repo.list_conversation(s.id)
-    assert any(item.kind == "notice" for item in convo[1:])  # a notice was appended
+    assert len(convo) == 1
+    assert fc2.next_seq == 1
 
 
 def test_check_recovery_classifies_unchanged_via_runner():
     """The remaining classify() classes, exercised end-to-end through the
-    runner's check_recovery path (test_check_recovery_sets_class_and_appends_notice
+    runner's check_recovery path (test_check_recovery_sets_class_without_appending_notice
     above already covers CONFIG_ONLY)."""
     dify = FakeDifyPort()  # graph {"nodes": []}, hash "h0" (untouched)
     repo = InMemoryRepository()
@@ -233,6 +234,8 @@ def test_recovery_continue_clears_class():
     assert fc2.recovery_class == ""
     assert fc2.last_snapshot_hash == dify.hash
     assert fc2.last_structure_fingerprint == dify.structural_fingerprint(dify.graph)
+    assert len(repo.list_conversation(s.id)) == 1
+    assert fc2.next_seq == 1
 
 
 def test_recovery_restart_resets_to_entry_state_and_preserves_conversation():
@@ -261,7 +264,8 @@ def test_recovery_restart_resets_to_entry_state_and_preserves_conversation():
     assert fc2.plan_items == []
     assert fc2.checkpoint_id == ""
     assert fc2.goal_text == "build me a thing"  # preserved
-    assert len(repo.list_conversation(s.id)) >= 1  # conversation preserved (+ restart notice)
+    assert len(repo.list_conversation(s.id)) >= 1  # conversation preserved
+    assert not any(item.kind == "notice" for item in repo.list_conversation(s.id))
 
 
 # ---- recovery_restart into a WORKING entry state must be driven, not stranded (FINDING 1) --

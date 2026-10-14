@@ -4,6 +4,7 @@ Spec: docs/superpowers/specs/2026-08-21-dify-builder-full-flow-contract-design.m
 """
 
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -30,8 +31,11 @@ from core.dify_builder.state import PcState
 from services.dify_builder.service import SessionView, _run_status
 from services.dify_builder.wiring import session_view_to_dict
 
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
-def test_recovery_class_members():
+
+def test_recovery_class_members() -> None:
     from core.dify_builder.contract import RecoveryClass
 
     assert RecoveryClass.UNCHANGED == "unchanged"
@@ -66,8 +70,12 @@ def test_recovery_class_members():
     ],
 )
 def test_post_canvas_action_requires_an_applied_transition_and_available_follow_up(
-    state, action_kind, completed_state, available_action_ids, expected
-):
+    state: str,
+    action_kind: str,
+    completed_state: str,
+    available_action_ids: list[str],
+    expected: str | None,
+) -> None:
     assert (
         post_canvas_action_id(
             state, action_kind, completed_state=completed_state, available_action_ids=available_action_ids
@@ -76,17 +84,14 @@ def test_post_canvas_action_requires_an_applied_transition_and_available_follow_
     )
 
 
-def test_recovery_ref_fields():
+def test_recovery_ref_fields() -> None:
     from core.dify_builder.contract import RecoveryRef
 
-    ref = RecoveryRef(recovery_class="config_only", can_continue=True, can_restart=True, message="m")
-    assert ref.recovery_class == "config_only"
-    assert ref.can_continue is True
-    assert ref.can_restart is True
-    assert ref.message == "m"
+    ref = RecoveryRef(recovery_class="config_only", can_continue=True, can_restart=True)
+    assert asdict(ref) == {"recovery_class": "config_only", "can_continue": True, "can_restart": True}
 
 
-def test_enums_match_spec():
+def test_enums_match_spec() -> None:
     assert [p.value for p in Phase] == [
         "understand",
         "clarify",
@@ -113,7 +118,7 @@ def test_enums_match_spec():
     assert PcState.EDIT_IMPACT_ANALYSIS.value == "edit.impact_analysis"
 
 
-def test_session_view_public_projection_excludes_engine_state():
+def test_session_view_public_projection_excludes_engine_state() -> None:
     fix_session_view = SessionView(
         session_id="s1",
         app_id="a1",
@@ -130,7 +135,7 @@ def test_session_view_public_projection_excludes_engine_state():
     assert {"app_id", "state", "entry_mode", "decision", "checkpoint"}.isdisjoint(d)
 
 
-def test_run_status_terminal_states():
+def test_run_status_terminal_states() -> None:
     """Regression for the reviewer-found defect: PcState.BUILD_COMPLETE and
     PcState.EDIT_COMPLETE are terminal (spec §7.1/§7.2, run_status: complete)
     but are absent from both _WORKING and _WAITING and aren't SUCCESS/FAILED
@@ -145,7 +150,7 @@ def test_run_status_terminal_states():
     assert _run_status(PcState.FIX_AWAIT_DECISION) == RunStatus.WAITING_CONFIRMATION
 
 
-def test_card_shapes_round_trip():
+def test_card_shapes_round_trip() -> None:
     """Each card's asdict() is exactly its wire payload (no ``kind`` key --
     ``kind`` is a ClassVar discriminant), and to_item() wraps it into the
     shipped ConversationItem envelope. One representative assertion per
@@ -158,6 +163,7 @@ def test_card_shapes_round_trip():
     plan_item = plan.to_item(seq=1, at_version=1)
     assert plan_item.kind == "plan"
     assert plan_item.payload == {
+        "reply_language": "",
         "title": "Build plan",
         "items": ["Add start node", "Add LLM node"],
     }
@@ -214,6 +220,7 @@ def test_card_shapes_round_trip():
     assert "kind" not in asdict(tr)
     tr_item = tr.to_item(seq=4, at_version=2)
     assert tr_item.payload == {
+        "reply_language": "",
         "status": "failed",
         "failure_reason": "One node failed",
         "outcome": None,
@@ -278,7 +285,7 @@ def test_card_shapes_round_trip():
     }
 
 
-def test_create_request_requires_edit_goal_and_one_fix_input():
+def test_create_request_requires_edit_goal_and_one_fix_input() -> None:
     from pydantic import ValidationError
 
     from controllers.console.dify_builder_fields import (
@@ -318,16 +325,17 @@ def test_create_request_requires_edit_goal_and_one_fix_input():
     assert isinstance(checklist_fix, DifyBuilderCreateChecklistFixSessionPayload)
     assert checklist_fix.checklist_errors[0].node_id == "n1"
 
-    for invalid in (
+    invalid_payloads: tuple[dict[str, object], ...] = (
         {"app_id": "app-1", "scenario": "edit"},
         {"app_id": "app-1", "scenario": "fix"},
         {"app_id": "app-1", "scenario": "fix", "checklist_errors": []},
-    ):
+    )
+    for invalid in invalid_payloads:
         with pytest.raises(ValidationError):
             DifyBuilderCreateSessionPayload.model_validate(invalid)
 
 
-def test_request_models_reject_legacy_response_mode():
+def test_request_models_reject_legacy_response_mode() -> None:
     from pydantic import ValidationError
 
     from controllers.console.dify_builder_fields import (
@@ -336,7 +344,7 @@ def test_request_models_reject_legacy_response_mode():
         DifyBuilderSubmitMessagePayload,
     )
 
-    cases = (
+    cases: tuple[tuple[type[BaseModel], dict[str, object]], ...] = (
         (
             DifyBuilderCreateSessionPayload,
             {
@@ -372,7 +380,7 @@ def test_request_models_reject_legacy_response_mode():
             model.model_validate(payload)
 
 
-def test_transport_json_schema_contains_request_and_sse_unions():
+def test_transport_json_schema_contains_request_and_sse_unions() -> None:
     from controllers.console.dify_builder_fields import (
         DifyBuilderCreateSessionPayload,
         DifyBuilderStreamEventResponse,
@@ -384,14 +392,26 @@ def test_transport_json_schema_contains_request_and_sse_unions():
     assert len(create_schema["anyOf"]) == 4
     assert "response_mode" not in str(create_schema)
     assert stream_schema["discriminator"]["propertyName"] == "event"
-    assert len(stream_schema["oneOf"]) == 9
+    assert set(stream_schema["discriminator"]["mapping"]) == {
+        "agent_message",
+        "canvas",
+        "command_finished",
+        "command_started",
+        "conversation_item_appended",
+        "error",
+        "progress",
+        "progress_snapshot",
+        "reasoning",
+        "workflow",
+    }
 
 
-def test_sse_union_accepts_current_payloads():
+def test_sse_union_accepts_current_payloads() -> None:
     from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
 
-    view = {
+    view: dict[str, object] = {
         "session_id": "s1",
+        "reply_language": "",
         "version": 2,
         "canvas_read_only": False,
         "run_status": "waiting_input",
@@ -400,7 +420,7 @@ def test_sse_union_accepts_current_payloads():
         "phase": "clarify",
         "actions": [],
     }
-    events = [
+    events: list[dict[str, object]] = [
         {
             "event": "command_started",
             "data": {
@@ -499,6 +519,23 @@ def test_sse_union_accepts_current_payloads():
             },
         },
         {
+            "event": "progress_snapshot",
+            "data": {
+                "session_id": "s1",
+                "operation_id": "operation-1",
+                "at_version": 3,
+                "revision": 2,
+                "reply_language": "zh-Hans",
+                "execution": {
+                    "status": "running",
+                    "activities": [
+                        {"id": "edit-inspect-workflow", "label": "检查工作流", "state": "done"},
+                        {"id": "edit-analyze-impact", "label": "分析修改影响", "state": "active"},
+                    ],
+                },
+            },
+        },
+        {
             "event": "command_finished",
             "data": {"command_id": "command-1", **view},
         },
@@ -513,10 +550,13 @@ def test_sse_union_accepts_current_payloads():
     ]
 
     for event in events:
-        assert DifyBuilderStreamEventResponse.model_validate(event).root.event == event["event"]
+        decoded = DifyBuilderStreamEventResponse.model_validate(event).root
+        assert decoded.event == event["event"]
+        if decoded.event == "progress_snapshot":
+            assert decoded.data.model_dump(mode="json", exclude_unset=True) == event["data"]
 
 
-def test_sse_union_rejects_unknown_event():
+def test_sse_union_rejects_unknown_event() -> None:
     from pydantic import ValidationError
 
     from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
@@ -525,7 +565,7 @@ def test_sse_union_rejects_unknown_event():
         DifyBuilderStreamEventResponse.model_validate({"event": "message", "data": {}})
 
 
-def test_conversation_item_event_rejects_assistant_text():
+def test_conversation_item_event_rejects_assistant_text() -> None:
     from pydantic import ValidationError
 
     from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
@@ -553,13 +593,14 @@ def test_conversation_item_event_rejects_assistant_text():
         )
 
 
-def test_sample_session_view_validates():
+def test_sample_session_view_validates() -> None:
     from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse
 
     view = DifyBuilderSessionViewResponse.model_validate(
         {
             "session_id": "s1",
             "app_id": "a1",
+            "reply_language": "",
             "version": 1,
             "state": "fix.await_verify",
             "canvas_read_only": False,
@@ -580,7 +621,7 @@ def test_sample_session_view_validates():
     assert {"app_id", "state", "entry_mode", "checkpoint"}.isdisjoint(dumped)
 
 
-def test_verification_card_schema_preserves_terminal_null_and_absence():
+def test_verification_card_schema_preserves_terminal_null_and_absence() -> None:
     from pydantic import TypeAdapter
 
     adapter = TypeAdapter(TestResultCard)

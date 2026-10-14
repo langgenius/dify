@@ -17,6 +17,9 @@ export type DifyBuilderRetryableMessage = {
 }
 
 export const difyBuilderSessionViewAtom = atom<SessionView | null>(null)
+export const difyBuilderReplyLanguageAtom = atom(
+  (get) => get(difyBuilderSessionViewAtom)?.reply_language ?? '',
+)
 export const difyBuilderActiveCommandAtom = atom<DifyBuilderActiveCommand | null>(null)
 // The only session lifecycle value persisted by the browser. SessionView is
 // an in-memory server projection rebuilt from GET on restore and updated by

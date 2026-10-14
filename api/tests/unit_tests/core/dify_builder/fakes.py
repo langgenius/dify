@@ -237,7 +237,8 @@ class InMemoryRepository:
         if limit < 1:
             raise ValueError("limit must be positive")
         with self._lock:
-            return copy.deepcopy(self._items.get(session_id, [])[-limit:])
+            items = [item for item in self._items.get(session_id, []) if item.kind != "notice"]
+            return copy.deepcopy(items[-limit:])
 
     def get_conversation_turn_kinds(self, session_id: str, turn_id: str) -> frozenset[str]:
         with self._lock:

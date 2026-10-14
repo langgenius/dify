@@ -4,6 +4,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 import { difyBuilderModelReadonlyAtom, difyBuilderSelectModelAtom } from './store'
 
 type DifyBuilderModelSelectorProps = Pick<
@@ -15,7 +16,8 @@ const DifyBuilderModelSelector = ({
   selection: model,
   modelList,
 }: DifyBuilderModelSelectorProps) => {
-  const { t } = useTranslation(['modelProvider'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['modelProvider'], { lng: locale })
   const readonly = useAtomValue(difyBuilderModelReadonlyAtom)
   const selectModel = useSetAtom(difyBuilderSelectModelAtom)
 

@@ -1,3 +1,4 @@
+import type { DifyBuilderReceiptSnapshot } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ChecklistErrorPayload, SessionModel } from '../types'
 import { consoleClient } from '@/service/console'
 
@@ -104,6 +105,7 @@ export const runSessionAction = (
   baseVersion: number,
   baseAppRevision: string,
   signal: AbortSignal,
+  receiptSnapshot?: DifyBuilderReceiptSnapshot,
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId.actions.post(
     {
@@ -113,6 +115,7 @@ export const runSessionAction = (
         payload,
         base_version: baseVersion,
         base_app_revision: baseAppRevision,
+        ...(receiptSnapshot ? { receipt_snapshot: receiptSnapshot } : {}),
       },
     },
     { signal },

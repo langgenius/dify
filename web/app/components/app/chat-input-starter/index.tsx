@@ -45,7 +45,7 @@ function StarterContent({
   isAppsFull,
   error,
 }: Omit<ChatInputStarterProps, 'show' | 'onClose' | 'onCreateTemplate'>) {
-  const { t } = useTranslation(['app', 'workflow'])
+  const { t } = useTranslation(['app', 'workflow', 'difyBuilder'])
   const [prompt, setPrompt] = useState('')
   const {
     improve,
@@ -191,7 +191,7 @@ function StarterContent({
                     type="submit"
                     variant="primary"
                     size="lg"
-                    aria-label={t(($) => $['difyBuilder.messageSend'], { ns: 'workflow' })}
+                    aria-label={t(($) => $.messageSend, { ns: 'difyBuilder' })}
                     disabled={disabled || isCreating || !prompt.trim()}
                   >
                     <span
@@ -263,7 +263,7 @@ export default function ChatInputStarter({
   onCreateTemplate,
   ...props
 }: ChatInputStarterProps) {
-  const { t } = useTranslation(['app'])
+  const { t } = useTranslation(['app', 'difyBuilder'])
   return (
     <CreateAppDialogShell
       show={show}

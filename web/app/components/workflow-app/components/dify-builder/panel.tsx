@@ -6,6 +6,7 @@ import ErrorBoundary from '@/app/components/base/error-boundary'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useStore } from '@/app/components/workflow/store'
 import { DifyBuilderConversation } from './conversation'
+import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 import { DifyBuilderPanelBackground } from './panel/background'
 import { DifyBuilderPanelEmptyState } from './panel/empty-state'
 import { DifyBuilderPanelFooter } from './panel/footer'
@@ -30,7 +31,8 @@ import {
 
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
 const DifyBuilderPanel = () => {
-  const { t } = useTranslation(['workflow', 'common'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
   const conversation = useAtomValue(difyBuilderConversationAtom)
   const conversationHasMore = useAtomValue(difyBuilderConversationHasMoreAtom)
@@ -45,6 +47,7 @@ const DifyBuilderPanel = () => {
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const reset = useSetAtom(difyBuilderResetAtom)
   const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
+  const panelTitleRef = useRef<HTMLHeadingElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinnedToBottomRef = useRef(true)
 
@@ -90,7 +93,7 @@ const DifyBuilderPanel = () => {
 
   return (
     <aside
-      aria-label={t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}
+      aria-label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}
       className="flex h-full w-100 shrink-0 bg-background-body py-1 pr-1"
     >
       <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl bg-background-section shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
@@ -98,6 +101,7 @@ const DifyBuilderPanel = () => {
 
         <DifyBuilderPanelHeader
           resetDisabled={!hasSession || interactionBusy}
+          titleRef={panelTitleRef}
           onReset={handleReset}
           onClose={() => setShowDifyBuilderPanel(false)}
         />
@@ -161,7 +165,7 @@ const DifyBuilderPanel = () => {
           )}
         </div>
 
-        <DifyBuilderPanelFooter />
+        <DifyBuilderPanelFooter focusTargetRef={panelTitleRef} />
       </div>
     </aside>
   )

@@ -8,6 +8,7 @@ import type { DifyBuilderConversationGroup } from './group-conversation-items'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 import { ConversationCard, UserMessage } from './conversation-card'
 import { groupConversationItems } from './group-conversation-items'
 import { StreamingAssistantTurn } from './streaming-assistant-turn'
@@ -112,7 +113,8 @@ export const DifyBuilderConversation = memo(
     localUserMessage?: DifyBuilderLocalUserMessage | null
     onStreamingContentChange?: () => void
   }) => {
-    const { t } = useTranslation(['workflow'])
+    const locale = useDifyBuilderInteractionLocale()
+    const { t } = useTranslation(['difyBuilder'], { lng: locale })
     const groups = useMemo(() => groupConversationItems(items), [items])
     const sourceFormFieldsByResponse = useMemo(() => {
       const result = new Map<number, FormField[]>()
@@ -141,12 +143,12 @@ export const DifyBuilderConversation = memo(
             role="alert"
             className="rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
           >
-            {t(($) => $['difyBuilder.interrupted'], { ns: 'workflow' })}
+            {t(($) => $.interrupted, { ns: 'difyBuilder' })}
           </div>
         )}
         <div
           role="log"
-          aria-label={t(($) => $['difyBuilder.panelTitle'], { ns: 'workflow' })}
+          aria-label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}
           aria-live="polite"
           aria-relevant="additions"
           className="flex flex-col gap-3"
@@ -198,7 +200,7 @@ export const DifyBuilderConversation = memo(
                 {group.invalidated && (
                   <div className="flex items-center gap-1.5 px-1 system-2xs-medium-uppercase text-text-tertiary">
                     <span aria-hidden className="i-ri-history-line size-3.5" />
-                    <span>{t(($) => $['difyBuilder.invalidated'], { ns: 'workflow' })}</span>
+                    <span>{t(($) => $.invalidated, { ns: 'difyBuilder' })}</span>
                   </div>
                 )}
                 <ConversationCard item={group.turn} invalidated={group.invalidated} />

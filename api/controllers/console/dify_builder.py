@@ -228,6 +228,7 @@ def _action(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
         return {"code": "bad_request"}, 400
     action = Action(
         kind=resolve_submitted_action(payload.action_id, payload.payload),
+        receipt_snapshot=payload.receipt_snapshot.model_dump() if payload.receipt_snapshot is not None else None,
         payload=payload.payload,
         base_version=payload.base_version,
         base_app_revision=payload.base_app_revision,

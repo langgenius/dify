@@ -9,6 +9,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
+import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 
 type ModelStatusProps = Pick<
   ReturnType<typeof useDifyBuilderModel>,
@@ -26,21 +27,24 @@ export const DifyBuilderModelStatus = ({
   retry,
   rejected,
 }: ModelStatusProps) => {
-  const { t } = useTranslation(['workflow', 'common', 'workflowGenerator', 'modelProvider'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], {
+    lng: locale,
+  })
   const permissions = useAtomValue(workspacePermissionKeysAtom)
   const canConfigure = hasPermission(permissions, 'plugin.model_config')
   const [_settings, setSettings] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const message = isLoading
-    ? t(($) => $['difyBuilder.modelLoading'], { ns: 'workflow' })
+    ? t(($) => $.modelLoading, { ns: 'difyBuilder' })
     : isError
-      ? t(($) => $['difyBuilder.modelLoadFailed'], { ns: 'workflow' })
+      ? t(($) => $.modelLoadFailed, { ns: 'difyBuilder' })
       : rejected
-        ? t(($) => $['difyBuilder.modelUnavailable'], { ns: 'workflow' })
+        ? t(($) => $.modelUnavailable, { ns: 'difyBuilder' })
         : hasAvailableModels
-          ? t(($) => $['workflowGenerator.modelRequired'], { ns: 'workflowGenerator' })
+          ? t(($) => $.modelRequired, { ns: 'difyBuilder' })
           : canConfigure
-            ? t(($) => $['modelProvider.noneConfigured'], { ns: 'modelProvider' })
-            : t(($) => $['difyBuilder.modelContactAdmin'], { ns: 'workflow' })
+            ? t(($) => $.modelNoneConfigured, { ns: 'difyBuilder' })
+            : t(($) => $.modelContactAdmin, { ns: 'difyBuilder' })
 
   return (
     <div className="mx-4 mb-2 flex flex-col gap-2 rounded-lg bg-state-warning-hover p-2 text-text-secondary">
@@ -56,7 +60,7 @@ export const DifyBuilderModelStatus = ({
           )}
           {!isError && canConfigure && (!hasAvailableModels || rejected) && (
             <Button size="small" onClick={() => void setSettings('provider')}>
-              {t(($) => $['errorMsg.configureModel'], { ns: 'workflow' })}
+              {t(($) => $.configureModel, { ns: 'difyBuilder' })}
             </Button>
           )}
         </div>

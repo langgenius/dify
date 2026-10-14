@@ -225,15 +225,11 @@ describe('DifyBuilderModelSelector', () => {
       })
 
       expect(screen.getByRole('button', { name: userModel.name })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'difyBuilder.messageSend' })).toBeDisabled()
+      expect(screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })).toBeEnabled()
       expect(
-        screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }),
-      ).toBeDisabled()
-      expect(
-        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
-      ).toBeEnabled()
-      expect(
-        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
-      ).toHaveAccessibleDescription('workflowGenerator.workflowGenerator.modelRequired')
+        screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' }),
+      ).toHaveAccessibleDescription('difyBuilder.modelRequired')
     },
   )
 })

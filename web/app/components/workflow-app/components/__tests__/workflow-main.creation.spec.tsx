@@ -6,7 +6,9 @@ import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { StrictMode, useState } from 'react'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { builderModel, createBuilderQueryClient } from '../dify-builder/__tests__/model-fixtures'
 import { difyBuilderPendingCreationAtom } from '../dify-builder/creation'
 import { difyBuilderDraftAtom, difyBuilderErrorAtom } from '../dify-builder/store'
@@ -156,6 +158,15 @@ function CreatedAppNavigation() {
   )
 }
 
+const createCreationQueryClient = () => {
+  const queryClient = createBuilderQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'created-app' } } }),
+    createAppDetailFixture({ id: 'created-app', mode: 'workflow' }),
+  )
+  return queryClient
+}
+
 describe('Workflow creation with App Builder', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -186,6 +197,7 @@ describe('Workflow creation with App Builder', () => {
           version: 1,
           canvas_read_only: false,
           run_status: 'waiting_input',
+          reply_language: '',
           interrupted: false,
           last_command_id: 'command-1',
           conversation_last_seq: -1,
@@ -210,6 +222,7 @@ describe('Workflow creation with App Builder', () => {
             version: view.version,
             canvas_read_only: view.canvas_read_only,
             run_status: view.run_status,
+            reply_language: view.reply_language,
             interrupted: view.interrupted,
             conversation_last_seq: view.conversation_last_seq,
             phase: view.phase,
@@ -228,7 +241,7 @@ describe('Workflow creation with App Builder', () => {
         <CreatedAppNavigation />
       </StrictMode>,
       {
-        queryClient: createBuilderQueryClient(),
+        queryClient: createCreationQueryClient(),
         accountProfile: { id: 'user-1' },
         features: { dify_builder_enabled: true },
         systemFeatures: { enable_collaboration_mode: true },
@@ -272,7 +285,7 @@ describe('Workflow creation with App Builder', () => {
     mocks.collaborative = false
     const user = userEvent.setup()
     renderWithConsoleQuery(<CreatedAppNavigation />, {
-      queryClient: createBuilderQueryClient(),
+      queryClient: createCreationQueryClient(),
       accountProfile: { id: 'user-1' },
       features: { dify_builder_enabled: true },
       systemFeatures: { enable_collaboration_mode: false },

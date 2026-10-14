@@ -358,7 +358,7 @@ def test_generate_specs_document_dify_builder_json_reads_and_typed_sse_operation
     assert stream_events["progress_snapshot"] == "#/components/schemas/DifyBuilderProgressSnapshotEventResponse"
     assert "snapshot" not in stream_events
     progress_snapshot_schema = payload["components"]["schemas"]["DifyBuilderProgressSnapshotEventData"]
-    assert {"session_id", "operation_id", "at_version", "revision", "execution"} <= set(
+    assert {"session_id", "operation_id", "at_version", "revision", "reply_language", "execution"} <= set(
         progress_snapshot_schema["required"]
     )
     assert progress_snapshot_schema["properties"]["execution"] == {

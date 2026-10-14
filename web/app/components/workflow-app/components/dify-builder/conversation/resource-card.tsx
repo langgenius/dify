@@ -2,6 +2,7 @@ import type { ConversationItem, DifyBuilderActionPayloadChange } from '../types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 export const ResourceCard = memo(
   ({
     item,
@@ -12,7 +13,8 @@ export const ResourceCard = memo(
     busy: boolean
     onActionPayloadChange: DifyBuilderActionPayloadChange
   }) => {
-    const { t } = useTranslation(['workflow'])
+    const locale = useDifyBuilderInteractionLocale()
+    const { t } = useTranslation(['difyBuilder'], { lng: locale })
     const resources = item.payload.recommended ?? []
     const resourceListId = useId()
     const [selected, setSelected] = useState(() => resources.map((resource) => resource.id))
@@ -43,8 +45,8 @@ export const ResourceCard = memo(
                   {resource.meta}
                   {resource.meta && ' · '}
                   {resource.readiness === 'missing_config'
-                    ? t(($) => $['difyBuilder.resourceNeedsAuthorization'], { ns: 'workflow' })
-                    : t(($) => $['difyBuilder.resourceReady'], { ns: 'workflow' })}
+                    ? t(($) => $.resourceNeedsAuthorization, { ns: 'difyBuilder' })
+                    : t(($) => $.resourceReady, { ns: 'difyBuilder' })}
                 </span>
               </span>
               <Checkbox

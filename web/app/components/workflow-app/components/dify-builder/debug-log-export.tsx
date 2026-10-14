@@ -7,12 +7,14 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 import { difyBuilderSessionViewAtom } from './session/state'
 import { buildTraceExport, serializeTraceExport } from './session/trace-export'
 import { difyBuilderRuntimeAtom } from './store'
 
 const DebugLogExport = () => {
-  const { t } = useTranslation(['common', 'workflow'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const runtime = useAtomValue(difyBuilderRuntimeAtom)
   const view = useAtomValue(difyBuilderSessionViewAtom)
 
@@ -49,7 +51,7 @@ const DebugLogExport = () => {
         <DropdownMenuItem onClick={handleExport}>
           <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
           <div className="ml-2 system-md-regular text-text-secondary">
-            {t(($) => $['difyBuilder.exportDebugLog'], { ns: 'workflow' })}
+            {t(($) => $.exportDebugLog, { ns: 'difyBuilder' })}
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

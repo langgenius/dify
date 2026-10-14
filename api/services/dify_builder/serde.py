@@ -87,8 +87,6 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         skill_learning_policy=d.get("skill_learning_policy", "ask"),
         model_config=dict(d.get("model_config") or {}),
         reply_language=d.get("reply_language", ""),
-        ui_copy_language=d.get("ui_copy_language", ""),
-        ui_copy=dict(d.get("ui_copy") or {}),
     )
 
 
