@@ -96,7 +96,7 @@ def service(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> Service
     svc = ModelLoadBalancingService()
     monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: manager)
     monkeypatch.setattr(
-        "services.model_load_balancing_service.create_plugin_provider_manager", lambda tenant_id: manager
+        "services.model_load_balancing_service.create_plugin_provider_manager", lambda **_kwargs: manager
     )
     monkeypatch.setattr(
         "services.model_load_balancing_service.ProviderManager.invalidate_configurations_cache", MagicMock()
