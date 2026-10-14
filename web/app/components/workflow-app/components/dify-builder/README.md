@@ -26,6 +26,13 @@ the submitted user text immediately. Message turns use their client-generated
 `turn_id`; the matching durable event then supplies sequence and version
 metadata without adding a second bubble. The local display item never
 participates in durable sequence-gap checks.
+During an active command, restore keeps the preceding interaction dock hidden
+until the settled state arrives, so a submitted form does not reappear as an
+unfinished disabled form. Interrupted commands still expose recovery choices.
+The reconnect stream checks durable session state on idle heartbeats and emits
+the settled or interrupted projection if a terminal broadcast was missed.
+Trace export records restore requests, JSON state snapshots, and reconnect
+requests even before the first SSE event arrives.
 `agent_message` owns assistant text: all deltas
 share a preallocated `seq` and `turn_id`, and its `done` frame promotes that
 exact accumulated text into the live conversation. Model replies use their
@@ -43,6 +50,14 @@ restore, reconnect, or a sequence gap detected from the terminal watermark.
 `progress` frames carry ordered, single-activity deltas. The browser reduces
 them by `operation_id`; `revision` and `at_version` reject stale updates. The
 durable assistant turn retains the complete execution snapshot.
+The worker saves the full observed activity list before each live broadcast.
+Redis keys are scoped to the tenant, session, and activated worker lease, with
+a bounded TTL and monotonic snapshot writes. Reconnect establishes the live
+subscription before reading this snapshot, then emits `progress_snapshot`
+before queued live events. The browser restores its ordered completed and
+active activities in one update and ignores subsequent revisions already
+included in the snapshot. Released or replaced leases and already committed
+session versions never restore old in-flight progress.
 
 Build creation persists the opening goal before dispatching the internal
 `start_build` command. `build.capability_check` is an automatic working step;
