@@ -210,7 +210,7 @@ class TestSegmentDumpAndLoad:
         assert len(loaded.segments) == len(all_segments)
 
         for original, loaded_segment in zip(all_segments, loaded.segments):
-            assert type(loaded_segment) == type(original)
+            assert type(loaded_segment) is type(original)
             assert loaded_segment.value_type == original.value_type
 
             # For file segments, compare key properties instead of exact equality
@@ -252,7 +252,7 @@ class TestSegmentDumpAndLoad:
         assert len(loaded.variables) == len(all_variables)
 
         for original, loaded_variable in zip(all_variables, loaded.variables):
-            assert type(loaded_variable) == type(original)
+            assert type(loaded_variable) is type(original)
             assert loaded_variable.value_type == original.value_type
             assert loaded_variable.name == original.name
 
