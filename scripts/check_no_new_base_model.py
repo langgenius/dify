@@ -31,9 +31,7 @@ from check_no_new_test_doubles import changed_file_versions
 def working_file_versions() -> dict[str, tuple[str, str]]:
     baseline = "HEAD"
     for revision in ("upstream/main", "origin/main", "main"):
-        merge_base = git_output(
-            "merge-base", "HEAD", revision, allow_missing=True
-        ).strip()
+        merge_base = git_output("merge-base", "HEAD", revision, allow_missing=True).strip()
         if merge_base:
             baseline = merge_base
             break
@@ -58,11 +56,7 @@ def working_file_versions() -> dict[str, tuple[str, str]]:
         old_path = next(fields)
         path = next(fields) if status.startswith("R") else old_path
         paths[path] = old_path
-    for path in (
-        git_output("ls-files", "--others", "--exclude-standard", "-z", "api")
-        .rstrip("\0")
-        .split("\0")
-    ):
+    for path in git_output("ls-files", "--others", "--exclude-standard", "-z", "api").rstrip("\0").split("\0"):
         paths[path] = path
     versions = {}
     for path in sorted(paths):
@@ -82,10 +76,7 @@ def find_new_base_models(versions: dict[str, tuple[str, str]]) -> list[Violation
     for path, (old_source, new_source) in versions.items():
         if not Path(path).is_relative_to("api"):
             continue
-        existing = Counter(
-            match.meta_variables["NAME"]
-            for match in run_ast_grep(old_source, rule=rule)
-        )
+        existing = Counter(match.meta_variables["NAME"] for match in run_ast_grep(old_source, rule=rule))
         for match in run_ast_grep(new_source, rule=rule):
             name = match.meta_variables["NAME"]
             if existing[name]:
@@ -105,16 +96,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--base-rev", help="Compare this revision with committed HEAD.")
-    source.add_argument(
-        "--staged", action="store_true", help="Compare staged changes with HEAD."
-    )
+    source.add_argument("--staged", action="store_true", help="Compare staged changes with HEAD.")
     args = parser.parse_args()
     try:
-        versions = (
-            changed_file_versions(args)
-            if args.base_rev or args.staged
-            else working_file_versions()
-        )
+        versions = changed_file_versions(args) if args.base_rev or args.staged else working_file_versions()
         violations = find_new_base_models(versions)
     except (OSError, RuntimeError) as error:
         sys.stderr.write(f"{error}\n")
