@@ -590,9 +590,12 @@ describe('SkillDetailPage builder', () => {
     )
 
     renderSkillDetailPage()
+    const builder = await screen.findByRole('region', {
+      name: 'skill.skillManagement.detail.builder.title',
+    })
     // The settings button waits for the model list and its lazily loaded contract segment.
     await user.click(
-      await screen.findByRole(
+      await within(builder).findByRole(
         'button',
         { name: 'modelProvider.modelProvider.modelSettings' },
         { timeout: 5000 },
