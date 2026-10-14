@@ -50,6 +50,7 @@ import pkgutil
 import subprocess
 import sys
 import textwrap
+import typing
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -118,10 +119,22 @@ def resolve(expr: ast.AST, env: Mapping[str, object], owner: type | None) -> obj
         except Exception:
             return None
     if isinstance(expr, ast.Call):
-        # ``Service(...).method``: an instance resolves its methods like its class does.
+        # ``Service(...).method``: an instance resolves its methods like its class does, and so does
+        # ``make_service(...).method`` when the factory is annotated to return a class.
         built = resolve(expr.func, env, owner)
+        if inspect.isfunction(built) or inspect.ismethod(built):
+            built = _annotated_return(built)
         return built if isinstance(built, type) and not issubclass(built, BaseException) else None
     return None
+
+
+def _annotated_return(fn: Callable[..., object]) -> object:
+    """The class ``fn`` is annotated to return, if its annotation resolves to one."""
+    try:
+        hints = typing.get_type_hints(fn)
+    except Exception:
+        return None
+    return hints.get("return")
 
 
 def local_instances(node: ast.AST, env: Mapping[str, object], owner: type | None) -> dict[str, tuple[type, ...]]:

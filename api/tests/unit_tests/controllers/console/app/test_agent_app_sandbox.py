@@ -159,21 +159,34 @@ def test_sandbox_error_responses(
 ) -> None:
     service.error = error
     with app.test_request_context("/?caller_type=conversation&caller_id=conversation"):
-        result = raised_error(lambda: unwrap(module.AgentAppSandboxInfoResource.get)(object(), CONTEXT, RESOURCE_ID))
+        result = raised_error(lambda: unwrap(module.AgentAppSandboxListResource.get)(object(), CONTEXT, RESOURCE_ID))
     assert result == ({"code": code, "message": message}, status)
 
 
+def test_info_translates_only_binding_errors(app: Flask, service: SandboxService) -> None:
+    # Info resolves the binding from the database and never calls the Agent backend.
+    service.error = AgentSandboxBindingNotFoundError("no active binding")
+    with app.test_request_context("/?caller_type=conversation&caller_id=conversation"):
+        result = raised_error(lambda: unwrap(module.AgentAppSandboxInfoResource.get)(object(), CONTEXT, RESOURCE_ID))
+    assert result == ({"code": "no_active_binding", "message": "no active binding"}, 404)
+    with pytest.raises(DifyAgentClientError):
+        module._handle_agent_app_binding(DifyAgentClientError("transport failed"))
+
+
 @pytest.mark.parametrize(
-    ("error", "expected"),
+    ("translate", "error", "expected"),
     [
-        (AgentAppNotFoundError(), AgentNotFoundError),
-        (WorkflowSandboxAppNotFoundError(), module.AppNotFoundError),
-        (RuntimeError("unexpected"), RuntimeError),
+        (module._handle_agent_app_files, AgentAppNotFoundError(), AgentNotFoundError),
+        (module._handle_workflow_files, WorkflowSandboxAppNotFoundError(), module.AppNotFoundError),
+        (module._handle_agent_app_files, RuntimeError("unexpected"), RuntimeError),
+        # Each caller kind resolves its own binding; the other kind's lookup failure is not translated.
+        (module._handle_agent_app_files, WorkflowSandboxAppNotFoundError(), WorkflowSandboxAppNotFoundError),
+        (module._handle_workflow_files, AgentAppNotFoundError(), AgentAppNotFoundError),
     ],
 )
-def test_resource_errors_keep_existing_http_contract(error: Exception, expected: type[Exception]) -> None:
+def test_resource_errors_keep_existing_http_contract(translate, error: Exception, expected: type[Exception]) -> None:
     with pytest.raises(expected):
-        module._handle(error)
+        translate(error)
 
 
 def test_download_unavailable_is_translated_only_for_downloads(app: Flask, service: SandboxService) -> None:
@@ -187,4 +200,4 @@ def test_download_unavailable_is_translated_only_for_downloads(app: Flask, servi
     assert result == ({"code": "binding_file_download_unavailable", "message": "cannot download"}, 502)
     # Listing, reading and info never convert a file to a download URL, so they do not document the code.
     with pytest.raises(AgentSandboxDownloadUnavailableError):
-        module._handle(AgentSandboxDownloadUnavailableError("cannot download"))
+        module._handle_agent_app_files(AgentSandboxDownloadUnavailableError("cannot download"))

@@ -76,6 +76,19 @@ def _delegating_handler() -> None:
     _service()
 
 
+class _Backend:
+    def run(self) -> None:
+        raise _ServiceError()
+
+
+def _make_backend() -> _Backend:
+    return _Backend()
+
+
+def _factory_built_handler() -> None:
+    _make_backend().run()
+
+
 def _swallowing_handler() -> None:
     try:
         _service()
@@ -129,6 +142,10 @@ def test_infers_raises_translations_aborts_and_validation(analyzer: lint.RaiseAn
     # The callee's raise is translated by the handler's ``except``, so only the translation escapes.
     assert _ServiceError not in raised
     assert _ServiceError in analyzer.raises_of_function(_delegating_handler, None, 0)
+
+
+def test_follows_methods_on_what_an_annotated_factory_returns(analyzer: lint.RaiseAnalyzer) -> None:
+    assert _ServiceError in analyzer.raises_of_function(_factory_built_handler, None, 0)
 
 
 def test_caught_exceptions_do_not_escape(analyzer: lint.RaiseAnalyzer) -> None:

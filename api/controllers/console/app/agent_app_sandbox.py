@@ -137,13 +137,26 @@ register_response_schema_models(
 )
 
 
-def _handle(exc: Exception) -> NoReturn:
+def _handle_agent_app_binding(exc: Exception) -> NoReturn:
+    """Resolving an Agent App caller's binding needs the agent and an active binding; nothing else is called."""
     if isinstance(exc, AgentAppNotFoundError):
         raise AgentNotFoundError from exc
+    if isinstance(exc, AgentSandboxBindingNotFoundError):
+        raise AgentSandboxBindingNotFoundHTTPError(str(exc)) from exc
+    raise exc
+
+
+def _handle_workflow_binding(exc: Exception) -> NoReturn:
+    """Resolving a workflow run caller's binding needs the app and an active binding."""
     if isinstance(exc, WorkflowSandboxAppNotFoundError):
         raise AppNotFoundError from exc
     if isinstance(exc, AgentSandboxBindingNotFoundError):
         raise AgentSandboxBindingNotFoundHTTPError(str(exc)) from exc
+    raise exc
+
+
+def _handle_agent_app_files(exc: Exception) -> NoReturn:
+    """Listing and reading files also talk to the Agent backend."""
     if isinstance(exc, AgentSandboxUnavailableError):
         raise AgentSandboxUnavailableHTTPError(str(exc)) from exc
     if isinstance(exc, DifyAgentHTTPError) and backend_reported_failure(exc):
@@ -151,26 +164,38 @@ def _handle(exc: Exception) -> NoReturn:
         raise RelayedHTTPError(status=exc.status_code, error_code=code, message=message) from exc
     if isinstance(exc, DifyAgentClientError):
         raise AgentBackendUnreachableError(str(exc)) from exc
-    raise exc
+    _handle_agent_app_binding(exc)
 
 
-def _handle_download(exc: Exception) -> NoReturn:
+def _handle_workflow_files(exc: Exception) -> NoReturn:
+    """Listing and reading files also talk to the Agent backend."""
+    if isinstance(exc, AgentSandboxUnavailableError):
+        raise AgentSandboxUnavailableHTTPError(str(exc)) from exc
+    if isinstance(exc, DifyAgentHTTPError) and backend_reported_failure(exc):
+        code, message = backend_error_detail(exc)
+        raise RelayedHTTPError(status=exc.status_code, error_code=code, message=message) from exc
+    if isinstance(exc, DifyAgentClientError):
+        raise AgentBackendUnreachableError(str(exc)) from exc
+    _handle_workflow_binding(exc)
+
+
+def _handle_agent_app_download(exc: Exception) -> NoReturn:
     """Downloads also depend on the file being convertible to a download URL."""
     if isinstance(exc, AgentSandboxDownloadUnavailableError):
         raise AgentSandboxDownloadUnavailableHTTPError(str(exc)) from exc
-    _handle(exc)
+    _handle_agent_app_files(exc)
+
+
+def _handle_workflow_download(exc: Exception) -> NoReturn:
+    """Downloads also depend on the file being convertible to a download URL."""
+    if isinstance(exc, AgentSandboxDownloadUnavailableError):
+        raise AgentSandboxDownloadUnavailableHTTPError(str(exc)) from exc
+    _handle_workflow_files(exc)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox")
 class AgentAppSandboxInfoResource(Resource):
-    @error_responses(
-        AgentBackendUnreachableError,
-        AgentNotFoundError,
-        AgentSandboxBindingNotFoundHTTPError,
-        AgentSandboxUnavailableHTTPError,
-        AppNotFoundError,
-        RelayedHTTPError,
-    )
+    @error_responses(AgentNotFoundError, AgentSandboxBindingNotFoundHTTPError)
     @console_ns.doc("get_agent_app_sandbox_info")
     @console_ns.doc(description="Get basic information for an Agent App conversation sandbox")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxInfoQuery)})
@@ -183,7 +208,7 @@ class AgentAppSandboxInfoResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id)
             )
         except Exception as exc:
-            _handle(exc)
+            _handle_agent_app_binding(exc)
         return dump_response(SandboxInfoResponse, result)
 
 
@@ -194,7 +219,6 @@ class AgentAppSandboxListResource(Resource):
         AgentNotFoundError,
         AgentSandboxBindingNotFoundHTTPError,
         AgentSandboxUnavailableHTTPError,
-        AppNotFoundError,
         RelayedHTTPError,
     )
     @console_ns.doc("list_agent_app_sandbox_files")
@@ -209,7 +233,7 @@ class AgentAppSandboxListResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            _handle(exc)
+            _handle_agent_app_files(exc)
         return dump_response(SandboxListResponse, result)
 
 
@@ -220,7 +244,6 @@ class AgentAppSandboxReadResource(Resource):
         AgentNotFoundError,
         AgentSandboxBindingNotFoundHTTPError,
         AgentSandboxUnavailableHTTPError,
-        AppNotFoundError,
         RelayedHTTPError,
     )
     @console_ns.doc("read_agent_app_sandbox_file")
@@ -235,7 +258,7 @@ class AgentAppSandboxReadResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            _handle(exc)
+            _handle_agent_app_files(exc)
         return dump_response(SandboxReadResponse, result)
 
 
@@ -247,7 +270,6 @@ class AgentAppSandboxDownloadResource(Resource):
         AgentSandboxBindingNotFoundHTTPError,
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
-        AppNotFoundError,
         RelayedHTTPError,
     )
     @console_ns.doc("download_agent_app_sandbox_file")
@@ -262,7 +284,7 @@ class AgentAppSandboxDownloadResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            _handle_download(exc)
+            _handle_agent_app_download(exc)
         return dump_response(SandboxDownloadResponse, result)
 
 
@@ -270,7 +292,6 @@ class AgentAppSandboxDownloadResource(Resource):
 class WorkflowAgentSandboxListResource(Resource):
     @error_responses(
         AgentBackendUnreachableError,
-        AgentNotFoundError,
         AgentSandboxBindingNotFoundHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
@@ -297,7 +318,7 @@ class WorkflowAgentSandboxListResource(Resource):
                 query.path,
             )
         except Exception as exc:
-            _handle(exc)
+            _handle_workflow_files(exc)
         return dump_response(SandboxListResponse, result)
 
 
@@ -307,7 +328,6 @@ class WorkflowAgentSandboxListResource(Resource):
 class WorkflowAgentSandboxReadResource(Resource):
     @error_responses(
         AgentBackendUnreachableError,
-        AgentNotFoundError,
         AgentSandboxBindingNotFoundHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
@@ -334,7 +354,7 @@ class WorkflowAgentSandboxReadResource(Resource):
                 query.path,
             )
         except Exception as exc:
-            _handle(exc)
+            _handle_workflow_files(exc)
         return dump_response(SandboxReadResponse, result)
 
 
@@ -344,7 +364,6 @@ class WorkflowAgentSandboxReadResource(Resource):
 class WorkflowAgentSandboxDownloadResource(Resource):
     @error_responses(
         AgentBackendUnreachableError,
-        AgentNotFoundError,
         AgentSandboxBindingNotFoundHTTPError,
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
@@ -365,5 +384,5 @@ class WorkflowAgentSandboxDownloadResource(Resource):
                 query.path,
             )
         except Exception as exc:
-            _handle_download(exc)
+            _handle_workflow_download(exc)
         return dump_response(SandboxDownloadResponse, result)
