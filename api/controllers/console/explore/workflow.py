@@ -27,6 +27,7 @@ from core.errors.error import (
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -44,6 +45,14 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -90,6 +99,7 @@ class InstalledAppWorkflowRunApi(Resource):
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(Resource):
+    @error_responses(NotWorkflowAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app

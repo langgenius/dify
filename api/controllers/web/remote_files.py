@@ -17,6 +17,7 @@ from controllers.common.errors import (
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 from services.remote_file_service import (
@@ -45,6 +46,14 @@ register_response_schema_models(web_ns, RemoteFileInfo, FileWithSignedUrl)
 
 @web_ns.route("/remote-files/<path:url>")
 class RemoteFileInfoApi(WebApiResource):
+    @error_responses(
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+    )
     @web_ns.doc("get_remote_file_info")
     @web_ns.doc(description="Get information about a remote file")
     @web_ns.doc(
@@ -101,6 +110,17 @@ class RemoteFileInfoApi(WebApiResource):
 
 @web_ns.route("/remote-files/upload")
 class RemoteFileUploadApi(WebApiResource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FileTooLargeError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+        UnsupportedFileTypeError,
+    )
     @web_ns.doc("upload_remote_file")
     @web_ns.doc(description="Upload a file from a remote URL")
     @web_ns.doc(
