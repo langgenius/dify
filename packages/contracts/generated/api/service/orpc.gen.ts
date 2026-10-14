@@ -612,7 +612,6 @@ export const post7 = oc
   .input(z.object({ body: zPostCompletionMessagesBody }))
   .output(zPostCompletionMessagesResponse)
   .errors({
-    agent_not_published: { status: 400, data: zAgentNotPublishedError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },

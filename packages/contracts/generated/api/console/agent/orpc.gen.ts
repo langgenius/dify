@@ -379,7 +379,6 @@ export const post5 = oc
     agent_home_snapshot_create_failed: { status: 502, data: zAgentHomeSnapshotCreateFailedError },
     agent_home_snapshot_too_large: { status: 413, data: zAgentHomeSnapshotTooLargeError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
@@ -1132,7 +1131,6 @@ export const post15 = oc
   .errors({
     agent_model_not_configured: { status: 400, data: zAgentModelNotConfiguredError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },

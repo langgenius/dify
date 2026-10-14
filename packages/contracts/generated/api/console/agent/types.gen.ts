@@ -2854,11 +2854,7 @@ export type PostAgentByAgentIdBuildDraftApplyData = {
 }
 
 export type PostAgentByAgentIdBuildDraftApplyErrors = {
-  400:
-    | AgentSoulLockedError
-    | InvalidComposerConfigError
-    | PlaintextSecretNotAllowedError
-    | ErrorResponse
+  400: InvalidComposerConfigError | PlaintextSecretNotAllowedError | ErrorResponse
   404:
     | AgentBuildSandboxNotFoundError
     | AgentNotFoundError
@@ -3726,7 +3722,6 @@ export type PostAgentByAgentIdPublishData = {
 export type PostAgentByAgentIdPublishErrors = {
   400:
     | AgentModelNotConfiguredError
-    | AgentSoulLockedError
     | InvalidComposerConfigError
     | PlaintextSecretNotAllowedError
     | ErrorResponse

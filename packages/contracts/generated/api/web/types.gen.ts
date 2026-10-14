@@ -1387,7 +1387,6 @@ export type PostCompletionMessagesData = {
 
 export type PostCompletionMessagesErrors = {
   400:
-    | AgentNotPublishedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
