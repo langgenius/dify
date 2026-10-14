@@ -605,10 +605,12 @@ describe('SkillDetailPage builder', () => {
     await user.clear(temperature)
     await user.type(temperature, '1.2')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
-    await user.type(
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    await user.click(
       screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
-      'Update the skill{Enter}',
     )
+    await user.paste('Update the skill')
+    await user.keyboard('{Enter}')
 
     expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
       expect.objectContaining({
