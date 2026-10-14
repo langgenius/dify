@@ -82,7 +82,7 @@ class WorkflowHumanInputRuntime(HumanInputRuntime):
         initiator: AccountInitiator | EndUserInitiator | None = None
         if self._context.user_from == UserFrom.ACCOUNT:
             initiator = AccountInitiator(AccountId(self._context.user_id))
-        elif self._context.invoke_from == InvokeFrom.WEB_APP:
+        elif self._context.invoke_from in (InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API):
             initiator = EndUserInitiator(self._context.user_id)
         context = FormExecutionContext(
             tenant_id=TenantId(self._context.tenant_id),

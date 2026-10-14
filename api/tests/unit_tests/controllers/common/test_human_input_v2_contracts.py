@@ -11,7 +11,6 @@ from controllers.common.human_input_v2_contracts import (
     BatchGetContactsQuery,
     ExternalContactCreateRequest,
     FormAccessRequestResponse,
-    HumanInputV2ServiceFormSubmitRequest,
     IMSyncResultItem,
     IMSyncRun,
     ListIMIdentitiesQuery,
@@ -386,20 +385,6 @@ def test_v1_and_v2_submit_payloads_are_independent() -> None:
     assert "otp_code" not in v1_schema["properties"]
     assert "challenge_token" in v2_schema["properties"]
     assert "otp_code" in v2_schema["properties"]
-
-
-def test_service_v2_submit_payload_does_not_accept_public_otp_fields() -> None:
-    payload: dict[str, object] = {
-        "user": "end-user",
-        "inputs": {},
-        "action": "approve",
-    }
-
-    request_body = HumanInputV2ServiceFormSubmitRequest.model_validate(payload)
-
-    assert request_body.user == "end-user"
-    with pytest.raises(ValidationError):
-        HumanInputV2ServiceFormSubmitRequest.model_validate({**payload, "otp_code": "123456"})
 
 
 def test_public_v2_submit_requires_complete_email_proof() -> None:

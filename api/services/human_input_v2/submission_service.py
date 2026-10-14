@@ -1,10 +1,12 @@
 """Authorize recipients and atomically commit Human Input v2 approvals."""
 
 import hashlib
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum, StrEnum, auto
 
+from kombu.exceptions import OperationalError
 from pydantic import JsonValue, TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,6 +18,7 @@ from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from factories.file_factory import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileUploadConfig
+from graphon.variables.factory import build_segment
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment, StringSegment
 from libs.datetime_utils import naive_utc_now
 from repositories.factory import DifyAPIRepositoryFactory
@@ -23,6 +26,7 @@ from repositories.human_input_v2.contact import ContactType
 from repositories.human_input_v2.delivery_repository import (
     EmailTargetSnapshot,
     IMUserTargetSnapshot,
+    InitiatorSnapshot,
     SubmissionAuthType,
 )
 from repositories.human_input_v2.form_repository import Form, FormSubmissionFailure
@@ -33,6 +37,7 @@ from repositories.human_input_v2.recipient_repository import (
     EndUserRecipientSubject,
     Recipient,
 )
+from repositories.human_input_v2.sqlalchemy_audit_repository import SQLAlchemyAuditRepository
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
@@ -50,6 +55,12 @@ from services.human_input_v2.email_otp_service import (
 _STRING = TypeAdapter(str)
 _FILE = TypeAdapter(dict[str, JsonValue])
 _FILES = TypeAdapter(list[dict[str, JsonValue]])
+logger = logging.getLogger(__name__)
+
+
+class _InputValidationMode(Enum):
+    STRICT = auto()
+    LEGACY_COMPATIBLE = auto()
 
 
 class HumanInputFormErrorCode(StrEnum):
@@ -63,8 +74,10 @@ class HumanInputFormErrorCode(StrEnum):
 class HumanInputFormError(Exception):
     """A rejection translated to an HTTP response by the owning transport."""
 
-    def __init__(self, code: HumanInputFormErrorCode):
+    def __init__(self, code: HumanInputFormErrorCode, *, form_id: str | None = None):
         self.code = code
+        # Unknown or unauthorized tokens have no form identity to expose.
+        self.form_id = form_id
         super().__init__(code.value)
 
 
@@ -75,6 +88,18 @@ class WebAppFormActor:
     tenant_id: TenantId
     app_id: str
     end_user_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceAPIFormActor:
+    """App ownership established by the Service API bearer token.
+
+    The caller may submit for a different EndUser than the run initiator.
+    EndUser attribution is recorded separately from the recipient grant.
+    """
+
+    tenant_id: TenantId
+    app_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +115,50 @@ class IMFormActor:
 class HumanInputSubmissionService:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_service_api_form(self, *, actor: ServiceAPIFormActor, form_token: str) -> Form:
+        token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+        with self._session_factory() as session:
+            form, _ = self._authorize_service_api(session, actor=actor, token_hash=token_hash)
+        return form
+
+    def submit_service_api_form(
+        self,
+        *,
+        actor: ServiceAPIFormActor,
+        end_user_id: str,
+        form_token: str,
+        action: str,
+        inputs: Mapping[str, JsonValue],
+    ) -> None:
+        token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+
+        def authorize(session: Session) -> tuple[Form, Recipient]:
+            return self._authorize_service_api(session, actor=actor, token_hash=token_hash)
+
+        def audit_submission(session: Session, form: Form, recipient: Recipient) -> None:
+            SQLAlchemyAuditRepository(session, form.tenant_id, form.id).record_service_api_submission(
+                recipient_id=recipient.id,
+                end_user_id=end_user_id,
+            )
+
+        form = self._submit_form(
+            authorize=authorize,
+            action=action,
+            inputs=inputs,
+            input_validation_mode=_InputValidationMode.LEGACY_COMPATIBLE,
+            after_submission=audit_submission,
+        )
+        try:
+            self._enqueue_resume(form)
+        except OperationalError:
+            # The legacy Service API acknowledges the committed submission even
+            # when the broker is unavailable; a retry cannot undo that acceptance.
+            logger.exception(
+                "Failed to enqueue resume task after Service API form submission, form_id=%s, workflow_run_id=%s",
+                form.id,
+                form.workflow_run_id,
+            )
 
     def get_console_form(self, *, account_id: AccountId, form_token: str) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
@@ -192,7 +261,7 @@ class HumanInputSubmissionService:
         def authorize(session: Session) -> tuple[Form, Recipient]:
             return self._authorize_public(session, verified=verified)
 
-        def audit_submission(session: Session) -> None:
+        def audit_submission(session: Session, _form: Form, _recipient: Recipient) -> None:
             verified.add_submission_audit(session, ip_address=ip_address)
 
         form = self._submit_form(authorize=authorize, action=action, inputs=inputs, after_submission=audit_submission)
@@ -223,16 +292,17 @@ class HumanInputSubmissionService:
         authorize: Callable[[Session], tuple[Form, Recipient]],
         action: str,
         inputs: Mapping[str, JsonValue],
-        after_submission: Callable[[Session], None] | None = None,
+        after_submission: Callable[[Session, Form, Recipient], None] | None = None,
+        input_validation_mode: _InputValidationMode = _InputValidationMode.STRICT,
     ) -> Form:
         with self._session_factory() as session:
             form, _ = authorize(session)
         # File reconstruction can access storage or remote URLs. Keep it outside
         # the write transaction, then recheck authorization and terminal state.
         try:
-            normalized = _normalize_inputs(form, action=action, inputs=inputs)
+            normalized = _normalize_inputs(form, action, inputs, mode=input_validation_mode)
         except ValueError as exc:
-            raise HumanInputFormError(HumanInputFormErrorCode.INVALID_INPUT) from exc
+            raise HumanInputFormError(HumanInputFormErrorCode.INVALID_INPUT, form_id=form.id) from exc
 
         with self._session_factory() as session, session.begin():
             form, recipient = authorize(session)
@@ -274,13 +344,13 @@ class HumanInputSubmissionService:
                 case FormSubmissionFailure.NOT_FOUND:
                     raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
                 case FormSubmissionFailure.ALREADY_SUBMITTED:
-                    raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
+                    raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED, form_id=form.id)
                 case FormSubmissionFailure.FORM_EXPIRED | FormSubmissionFailure.GLOBAL_TIMEOUT:
-                    raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+                    raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
                 case Form():
                     form = result
             if after_submission is not None:
-                after_submission(session)
+                after_submission(session, form, recipient)
         return form
 
     @staticmethod
@@ -289,6 +359,43 @@ class HumanInputSubmissionService:
             from tasks.app_generate.workflow_execute_task import resume_app_execution
 
             resume_app_execution.apply_async(kwargs={"payload": {"workflow_run_id": form.workflow_run_id}})
+
+    @staticmethod
+    def _authorize_service_api(
+        session: Session,
+        *,
+        actor: ServiceAPIFormActor,
+        token_hash: str,
+    ) -> tuple[Form, Recipient]:
+        delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
+        if (
+            delivery is None
+            or delivery.tenant_id != actor.tenant_id
+            or delivery.auth_type != SubmissionAuthType.WEB_APP
+            or not isinstance(delivery.target_snapshot, InitiatorSnapshot)
+        ):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        repository = SQLAlchemyFormRepository.for_existing_form(
+            session,
+            tenant_id=actor.tenant_id,
+            form_id=delivery.form_id,
+        )
+        if repository is None:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        form = repository.get_form_by_id(delivery.form_id)
+        if form is None or form.app_id != actor.app_id:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        recipient = SQLAlchemyRecipientRepository(session, actor.tenant_id, form.id).get_recipient(
+            delivery.recipient_id
+        )
+        if recipient is None or not isinstance(recipient.subject, EndUserRecipientSubject):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        # Service API authorizes the application, not a browser passport.
+        # Do not require the submitted user to equal the original recipient.
+        _ensure_form_waiting(form)
+        if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
+            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
+        return form, recipient
 
     @staticmethod
     def _authorize_console(session: Session, *, account_id: AccountId, token_hash: str) -> tuple[Form, Recipient]:
@@ -430,26 +537,41 @@ class HumanInputSubmissionService:
 
 def _ensure_form_waiting(form: Form) -> None:
     if form.status == HumanInputFormStatus.SUBMITTED:
-        raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
+        raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED, form_id=form.id)
     if form.status in (HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED):
-        raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+        raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
 
 
-def _normalize_inputs(form: Form, *, action: str, inputs: Mapping[str, JsonValue]) -> dict[str, Segment]:
+def _normalize_inputs(
+    form: Form,
+    action: str,
+    inputs: Mapping[str, JsonValue],
+    *,
+    mode: _InputValidationMode,
+) -> dict[str, Segment]:
     if action not in {item.id for item in form.resolved_form.actions}:
         raise ValueError("Unknown form action")
     fields = {
         part.output_variable_name: part for part in form.resolved_form.parts if not isinstance(part, MarkdownFragment)
     }
-    if inputs.keys() != fields.keys():
+    # Legacy submissions retain extra raw fields but only declared fields become
+    # node outputs. Paragraphs preserve their JSON values rather than coercing them.
+    missing_inputs = fields.keys() - inputs.keys()
+    extra_inputs = inputs.keys() - fields.keys()
+    if missing_inputs or (mode is _InputValidationMode.STRICT and extra_inputs):
         raise ValueError("Submitted fields must match the resolved form")
     normalized: dict[str, Segment] = {}
     for name, part in fields.items():
         value = inputs[name]
         match part:
-            case ParagraphInput() | SelectInput():
+            case ParagraphInput():
+                if mode is _InputValidationMode.LEGACY_COMPATIBLE:
+                    normalized[name] = build_segment(value)
+                else:
+                    normalized[name] = StringSegment(value=_STRING.validate_python(value, strict=True))
+            case SelectInput():
                 text = _STRING.validate_python(value, strict=True)
-                if isinstance(part, SelectInput) and text not in part.options:
+                if text not in part.options:
                     raise ValueError("Unknown select option")
                 normalized[name] = StringSegment(value=text)
             case FileInput() | FileListInput():

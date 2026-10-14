@@ -1067,16 +1067,6 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
-export type FormDefinitionResponse = {
-  expiration_time: number
-  form_content?: string | null
-  inputs?: Array<FormInputConfig>
-  resolved_default_values?: {
-    [key: string]: string
-  }
-  user_actions?: Array<UserActionConfig>
-}
-
 export type FormInputConfig =
   | ({
       type: 'paragraph'
@@ -1090,10 +1080,6 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
-
-export type FormSubmitResponse = {
-  [key: string]: unknown
-}
 
 export type HitTestingChildChunk = {
   content: string
@@ -1235,14 +1221,6 @@ export type HumanInputFormSubmitPayloadWithUser = {
 
 export type HumanInputFormSubmitResponse = {
   [key: string]: never
-}
-
-export type HumanInputV2ServiceFormSubmitRequest = {
-  action: string
-  inputs: {
-    [key: string]: JsonValue2
-  }
-  user: string
 }
 
 export type I18nObject = {
@@ -2015,10 +1993,6 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
-export type ServiceFormQuery = {
-  user: string
-}
-
 export type SimpleAccountResponse = {
   email: string
   id: string
@@ -2405,10 +2379,6 @@ export type WorkflowRunResponse = {
 
 export type WorkflowTaskStopPayload = {
   user: string
-}
-
-export type FormSubmitResponseWritable = {
-  [key: string]: unknown
 }
 
 export type HumanInputFormSubmitResponseWritable = {
@@ -4147,67 +4117,25 @@ export type GetFormHumanInputByFormTokenData = {
   path: {
     form_token: string
   }
-  query: {
-    user: string
-  }
-  url: '/form/human-input/{form_token}'
-}
-
-export type GetFormHumanInputByFormTokenErrors = {
-  403: unknown
-}
-
-export type GetFormHumanInputByFormTokenResponses = {
-  200: FormDefinitionResponse
-}
-
-export type GetFormHumanInputByFormTokenResponse =
-  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
-
-export type PostFormHumanInputByFormTokenData = {
-  body: HumanInputV2ServiceFormSubmitRequest
-  path: {
-    form_token: string
-  }
-  query?: never
-  url: '/form/human-input/{form_token}'
-}
-
-export type PostFormHumanInputByFormTokenErrors = {
-  403: unknown
-}
-
-export type PostFormHumanInputByFormTokenResponses = {
-  200: FormSubmitResponse
-}
-
-export type PostFormHumanInputByFormTokenResponse =
-  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
-
-export type GetFormHumanInputByFormToken2Data = {
-  body?: never
-  path: {
-    form_token: string
-  }
   query?: never
   url: '/form/human_input/{form_token}'
 }
 
-export type GetFormHumanInputByFormToken2Errors = {
+export type GetFormHumanInputByFormTokenErrors = {
   401: unknown
   403: unknown
   404: unknown
   412: unknown
 }
 
-export type GetFormHumanInputByFormToken2Responses = {
+export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
 
-export type GetFormHumanInputByFormToken2Response =
-  GetFormHumanInputByFormToken2Responses[keyof GetFormHumanInputByFormToken2Responses]
+export type GetFormHumanInputByFormTokenResponse =
+  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
-export type PostFormHumanInputByFormToken2Data = {
+export type PostFormHumanInputByFormTokenData = {
   body: HumanInputFormSubmitPayloadWithUser
   path: {
     form_token: string
@@ -4216,7 +4144,7 @@ export type PostFormHumanInputByFormToken2Data = {
   url: '/form/human_input/{form_token}'
 }
 
-export type PostFormHumanInputByFormToken2Errors = {
+export type PostFormHumanInputByFormTokenErrors = {
   400: unknown
   401: unknown
   403: unknown
@@ -4224,12 +4152,12 @@ export type PostFormHumanInputByFormToken2Errors = {
   412: unknown
 }
 
-export type PostFormHumanInputByFormToken2Responses = {
+export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormToken2Response =
-  PostFormHumanInputByFormToken2Responses[keyof PostFormHumanInputByFormToken2Responses]
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
 
 export type GetInfoData = {
   body?: never

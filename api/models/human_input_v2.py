@@ -1425,8 +1425,19 @@ class IMCallbackVerificationEvent(_ImmutableJSONModel):
     reason: str  # fail reasons
 
 
+class ServiceAPIFormSubmissionEvent(_ImmutableJSONModel):
+    """Distinguish the approving recipient grant from the Service API caller."""
+
+    # TODO(QuantumGhost): we need to check what other information needed to be stored
+    # in the audit event later.
+
+    type: Literal[AuditEventType.FORM_SUBMISSION] = AuditEventType.FORM_SUBMISSION
+    recipient_id: str
+    end_user_id: str
+
+
 type AuditEvent = Annotated[
-    FormViewEvent | OtpSendEvent | OtpVerificationEvent | IMCallbackVerificationEvent,
+    FormViewEvent | OtpSendEvent | OtpVerificationEvent | IMCallbackVerificationEvent | ServiceAPIFormSubmissionEvent,
     Field(discriminator="type"),
 ]
 
@@ -1447,6 +1458,7 @@ class HumanInputAuditEvent(DefaultFieldsDCMixin, TypeBase):
                 OtpSendEvent,
                 OtpVerificationEvent,
                 IMCallbackVerificationEvent,
+                ServiceAPIFormSubmissionEvent,
             ),
         ),
         nullable=False,

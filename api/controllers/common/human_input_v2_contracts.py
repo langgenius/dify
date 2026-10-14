@@ -6,7 +6,8 @@ defaults a missing version to ``"1"``, rejects any other explicit version, and
 rejects duplicate node IDs. Its transport shape mirrors the frontend migration
 adapter so the generated client can replace the temporary mock without changing
 frontend orchestration.
-Public v2, trusted Service API v2, and legacy v1 submit DTOs stay independent.
+Public v2 keeps its email-proof DTO. Service API uses the existing form DTO for
+both node versions.
 """
 
 from __future__ import annotations
@@ -540,12 +541,6 @@ class FormDefinitionResponse(ResponseModel):
     expiration_time: int = Field(description="Unix timestamp when the current form expires.")
 
 
-class ServiceFormQuery(_NoExtraModel):
-    """Query params for reading one service-api human-input form."""
-
-    user: str = Field(min_length=1, description="End-user identifier used to scope the service API request.")
-
-
 class BatchGetContactsQuery(_NoExtraModel):
     contact_ids: list[ContactId] = Field(..., description="List of contact IDs to retrieve.")
 
@@ -583,14 +578,6 @@ class HumanInputV2FormSubmitRequest(_RequestModel):
         if has_challenge_token != has_otp_code:
             raise ValueError("challenge_token and otp_code must be provided together")
         return self
-
-
-class HumanInputV2ServiceFormSubmitRequest(_RequestModel):
-    """Trusted Service API submit payload without public-web OTP proof fields."""
-
-    inputs: dict[str, JsonValue] = Field(description="Submitted form values keyed by output variable name.")
-    action: str = Field(description="Identifier of the selected Human Input v2 action.")
-    user: str = Field(min_length=1, description="End-user identifier scoped to the current app token.")
 
 
 class FormUploadTokenResponse(ResponseModel):
@@ -696,7 +683,6 @@ __all__ = [
     "HumanInputContact",
     "HumanInputContactType",
     "HumanInputV2FormSubmitRequest",
-    "HumanInputV2ServiceFormSubmitRequest",
     "IMContactSyncErrorResponse",
     "IMIdentity",
     "IMIdentityBindingStatus",
@@ -724,7 +710,6 @@ __all__ = [
     "RemoveContactsRequest",
     "RemoveContactsResponse",
     "ResetContactIMOverrideResponse",
-    "ServiceFormQuery",
     "SetContactIMOverrideRequest",
     "SetContactIMOverrideResponse",
 ]
