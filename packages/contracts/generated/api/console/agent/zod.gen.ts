@@ -83,18 +83,6 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
- * MaxKeysExceededError
- *
- * The API key limit has been reached.
- */
-export const zMaxKeysExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('max_keys_exceeded'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
@@ -112,6 +100,18 @@ export const zApiKeyItem = z.object({
 export const zApiKeyList = z.object({
   data: z.array(zApiKeyItem),
 })
+
+/**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * AudioTranscriptResponse

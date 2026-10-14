@@ -3,13 +3,11 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAgentNotPublishedError,
   zArchivedDocumentImmutableError,
   zChildChunkDeleteIndexError,
   zChildChunkIndexingError,
   zCompletionRequestError,
   zDatasetAccessDeniedError,
-  zDatasetInUseError,
   zDatasetNameDuplicateError,
   zDocumentAlreadyFinishedError,
   zDocumentIndexingError,
@@ -237,10 +235,6 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteDatasetsApiKeysByApiKeyIdPath }))
   .output(zDeleteDatasetsApiKeysByApiKeyIdResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 export const byApiKeyId = {
   delete: delete_,
@@ -259,10 +253,6 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetDatasetsApiKeysResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 export const post = oc
   .route({
@@ -274,10 +264,7 @@ export const post = oc
   })
   .input(z.object({ body: zPostDatasetsApiKeysBody }))
   .output(zPostDatasetsApiKeysResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
+  .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys = {
   get: get2,
@@ -594,10 +581,6 @@ export const post7 = oc
   })
   .input(z.object({ params: zPostDatasetsByDatasetIdApiKeysByStatusPath }))
   .output(zPostDatasetsByDatasetIdApiKeysByStatusResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const byStatus = {
   post: post7,
@@ -621,10 +604,6 @@ export const get11 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdAutoDisableLogsPath }))
   .output(zGetDatasetsByDatasetIdAutoDisableLogsResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const autoDisableLogs = {
   get: get11,
@@ -1039,8 +1018,6 @@ export const patch6 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
   .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
     invalid_action: { status: 400, data: zInvalidActionError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
@@ -1064,12 +1041,7 @@ export const post12 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
+  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
 
 export const segment = {
   post: post12,
@@ -1091,12 +1063,6 @@ export const post13 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
 
 export const batchImport = {
   post: post13,
@@ -1121,12 +1087,7 @@ export const delete3 = oc
   .output(
     zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
+  .errors({ child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError } })
 
 export const patch7 = oc
   .route({
@@ -1147,12 +1108,7 @@ export const patch7 = oc
   .output(
     zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
+  .errors({ child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError } })
 
 export const byChildChunkId = {
   delete: delete3,
@@ -1175,12 +1131,6 @@ export const get19 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
 
 export const patch8 = oc
   .route({
@@ -1197,12 +1147,7 @@ export const patch8 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
+  .errors({ child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError } })
 
 export const post14 = oc
   .route({
@@ -1220,9 +1165,7 @@ export const post14 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
   .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
     child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
@@ -1246,12 +1189,6 @@ export const delete4 = oc
     z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath }),
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
 
 export const patch9 = oc
   .route({
@@ -1268,12 +1205,7 @@ export const patch9 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
+  .errors({ provider_not_initialize: { status: 400, data: zProviderNotInitializeError } })
 
 export const bySegmentId = {
   delete: delete4,
@@ -1297,12 +1229,6 @@ export const delete5 = oc
     }),
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
 
 export const get20 = oc
   .route({
@@ -1319,12 +1245,6 @@ export const get20 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
-  .errors({
-    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
-    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-  })
 
 export const segments = {
   delete: delete5,
@@ -1532,10 +1452,6 @@ export const get25 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdErrorDocsPath }))
   .output(zGetDatasetsByDatasetIdErrorDocsResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const errorDocs = {
   get: get25,
@@ -1610,10 +1526,6 @@ export const get26 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdIndexingStatusPath }))
   .output(zGetDatasetsByDatasetIdIndexingStatusResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const indexingStatus3 = {
   get: get26,
@@ -1744,10 +1656,6 @@ export const get29 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdPermissionPartUsersPath }))
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const permissionPartUsers = {
   get: get29,
@@ -1767,10 +1675,6 @@ export const get30 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdQueriesPath }))
   .output(zGetDatasetsByDatasetIdQueriesResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const queries = {
   get: get30,
@@ -1790,10 +1694,6 @@ export const get31 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdRelatedAppsPath }))
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const relatedApps = {
   get: get31,
@@ -1844,10 +1744,6 @@ export const get32 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdUseCheckPath }))
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const useCheck2 = {
   get: get32,
@@ -1864,10 +1760,6 @@ export const delete9 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
   .output(zDeleteDatasetsByDatasetIdResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 /**
  * Get dataset details
@@ -1883,10 +1775,6 @@ export const get33 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdPath }))
   .output(zGetDatasetsByDatasetIdResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 /**
  * Update dataset details
@@ -1902,10 +1790,6 @@ export const patch11 = oc
   })
   .input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath }))
   .output(zPatchDatasetsByDatasetIdResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
 
 export const byDatasetId = {
   delete: delete9,
@@ -1943,10 +1827,6 @@ export const delete10 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
   .output(zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 export const byApiKeyId2 = {
   delete: delete10,
@@ -1966,10 +1846,6 @@ export const get34 = oc
   })
   .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
   .output(zGetDatasetsByResourceIdApiKeysResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 /**
  * Create a new API key for a dataset
@@ -1986,10 +1862,7 @@ export const post21 = oc
   })
   .input(z.object({ params: zPostDatasetsByResourceIdApiKeysPath }))
   .output(zPostDatasetsByResourceIdApiKeysResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
+  .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys3 = {
   get: get34,
@@ -2031,10 +1904,7 @@ export const post22 = oc
   })
   .input(z.object({ body: zPostDatasetsBody }))
   .output(zPostDatasetsResponse)
-  .errors({
-    dataset_in_use: { status: 409, data: zDatasetInUseError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-  })
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const datasets = {
   get: get35,

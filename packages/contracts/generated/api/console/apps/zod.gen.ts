@@ -1246,6 +1246,25 @@ export const zWorkflowRestoreResponse = z.object({
 })
 
 /**
+ * ApiKeyItem
+ */
+export const zApiKeyItem = z.object({
+  created_at: z.int().nullish(),
+  dataset_ids: z.array(z.string()).optional().default([]),
+  id: z.string(),
+  last_used_at: z.int().nullish(),
+  token: z.string(),
+  type: z.string(),
+})
+
+/**
+ * ApiKeyList
+ */
+export const zApiKeyList = z.object({
+  data: z.array(zApiKeyItem),
+})
+
+/**
  * MaxKeysExceededError
  *
  * The API key limit has been reached.
@@ -1268,25 +1287,6 @@ export const zAgentNotPublishedError = zErrorResponse.and(
     status: z.literal(409),
   }),
 )
-
-/**
- * ApiKeyItem
- */
-export const zApiKeyItem = z.object({
-  created_at: z.int().nullish(),
-  dataset_ids: z.array(z.string()).optional().default([]),
-  id: z.string(),
-  last_used_at: z.int().nullish(),
-  token: z.string(),
-  type: z.string(),
-})
-
-/**
- * ApiKeyList
- */
-export const zApiKeyList = z.object({
-  data: z.array(zApiKeyItem),
-})
 
 /**
  * IconType

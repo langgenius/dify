@@ -249,10 +249,6 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteAgentByAgentIdApiKeysByApiKeyIdPath }))
   .output(zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 export const byApiKeyId = {
   delete: delete_,
@@ -268,10 +264,6 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdApiKeysPath }))
   .output(zGetAgentByAgentIdApiKeysResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 export const post2 = oc
   .route({

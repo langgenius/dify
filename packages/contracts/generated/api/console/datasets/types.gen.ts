@@ -73,11 +73,6 @@ export type DatasetDetailWithPartialMembersResponse = {
   word_count: number
 }
 
-export type DatasetInUseError = ErrorResponse & {
-  code: 'dataset_in_use'
-  status: 409
-}
-
 export type DatasetNameDuplicateError = ErrorResponse & {
   code: 'dataset_name_duplicate'
   status: 409
@@ -91,16 +86,6 @@ export type ApiKeyList = {
   data: Array<ApiKeyItem>
 }
 
-export type MaxKeysExceededError = ErrorResponse & {
-  code: 'max_keys_exceeded'
-  status: 400
-}
-
-export type AgentNotPublishedError = ErrorResponse & {
-  code: 'agent_not_published'
-  status: 409
-}
-
 export type DatasetApiKeyCreatePayload = {
   dataset_ids?: Array<string>
 }
@@ -112,6 +97,11 @@ export type ApiKeyItem = {
   last_used_at?: number | null
   token: string
   type: string
+}
+
+export type MaxKeysExceededError = ErrorResponse & {
+  code: 'max_keys_exceeded'
+  status: 400
 }
 
 export type SegmentBatchImportStatusResponse = {
@@ -514,16 +504,6 @@ export type SegmentDetailResponse = {
   doc_form: string
 }
 
-export type ChildChunkDeleteIndexError = ErrorResponse & {
-  code: 'child_chunk_delete_index_error'
-  status: 500
-}
-
-export type ChildChunkIndexingError = ErrorResponse & {
-  code: 'child_chunk_indexing_error'
-  status: 500
-}
-
 export type ConsoleSegmentListResponse = {
   data: Array<SegmentResponse>
   limit: number
@@ -565,12 +545,22 @@ export type ChildChunkBatchUpdateResponse = {
   data: Array<ChildChunkResponse>
 }
 
+export type ChildChunkIndexingError = ErrorResponse & {
+  code: 'child_chunk_indexing_error'
+  status: 500
+}
+
 export type ChildChunkCreatePayload = {
   content: string
 }
 
 export type ChildChunkDetailResponse = {
   data: ChildChunkResponse
+}
+
+export type ChildChunkDeleteIndexError = ErrorResponse & {
+  code: 'child_chunk_delete_index_error'
+  status: 500
 }
 
 export type ChildChunkUpdatePayload = {
@@ -1246,7 +1236,7 @@ export type PostDatasetsData = {
 
 export type PostDatasetsErrors = {
   400: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1287,8 +1277,6 @@ export type GetDatasetsApiKeysData = {
 }
 
 export type GetDatasetsApiKeysErrors = {
-  400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1310,7 +1298,6 @@ export type PostDatasetsApiKeysData = {
 
 export type PostDatasetsApiKeysErrors = {
   400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1333,8 +1320,6 @@ export type DeleteDatasetsApiKeysByApiKeyIdData = {
 }
 
 export type DeleteDatasetsApiKeysByApiKeyIdErrors = {
-  400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1711,7 +1696,6 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1737,7 +1721,6 @@ export type GetDatasetsByDatasetIdData = {
 export type GetDatasetsByDatasetIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1763,7 +1746,6 @@ export type PatchDatasetsByDatasetIdData = {
 export type PatchDatasetsByDatasetIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1788,7 +1770,6 @@ export type PostDatasetsByDatasetIdApiKeysByStatusData = {
 }
 
 export type PostDatasetsByDatasetIdApiKeysByStatusErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1813,7 +1794,6 @@ export type GetDatasetsByDatasetIdAutoDisableLogsData = {
 
 export type GetDatasetsByDatasetIdAutoDisableLogsErrors = {
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2420,8 +2400,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
+  400: ProviderNotInitializeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2450,7 +2429,6 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionErrors = {
   400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2477,8 +2455,6 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2510,8 +2486,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2536,8 +2510,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ErrorMessageResponse | ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
+  500: ErrorMessageResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2563,8 +2536,6 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2590,8 +2561,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
+  400: ProviderNotInitializeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2621,8 +2591,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2648,8 +2616,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
+  500: ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2675,8 +2642,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
+  400: ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2705,8 +2672,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-    500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
+    500: ChildChunkDeleteIndexError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -2736,8 +2702,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
-    500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
+    500: ChildChunkIndexingError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -2819,7 +2784,6 @@ export type GetDatasetsByDatasetIdErrorDocsData = {
 
 export type GetDatasetsByDatasetIdErrorDocsErrors = {
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2899,7 +2863,6 @@ export type GetDatasetsByDatasetIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdIndexingStatusErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3068,7 +3031,6 @@ export type GetDatasetsByDatasetIdPermissionPartUsersData = {
 export type GetDatasetsByDatasetIdPermissionPartUsersErrors = {
   403: ErrorResponse
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3092,7 +3054,6 @@ export type GetDatasetsByDatasetIdQueriesData = {
 }
 
 export type GetDatasetsByDatasetIdQueriesErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3116,7 +3077,6 @@ export type GetDatasetsByDatasetIdRelatedAppsData = {
 }
 
 export type GetDatasetsByDatasetIdRelatedAppsErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3169,7 +3129,6 @@ export type GetDatasetsByDatasetIdUseCheckData = {
 }
 
 export type GetDatasetsByDatasetIdUseCheckErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3193,8 +3152,6 @@ export type GetDatasetsByResourceIdApiKeysData = {
 }
 
 export type GetDatasetsByResourceIdApiKeysErrors = {
-  400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3219,7 +3176,6 @@ export type PostDatasetsByResourceIdApiKeysData = {
 
 export type PostDatasetsByResourceIdApiKeysErrors = {
   400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3244,8 +3200,6 @@ export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
 }
 
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdErrors = {
-  400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -130,11 +130,6 @@ export type ApiKeyList = {
   data: Array<ApiKeyItem>
 }
 
-export type MaxKeysExceededError = ErrorResponse & {
-  code: 'max_keys_exceeded'
-  status: 400
-}
-
 export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
@@ -142,6 +137,11 @@ export type ApiKeyItem = {
   last_used_at?: number | null
   token: string
   type: string
+}
+
+export type MaxKeysExceededError = ErrorResponse & {
+  code: 'max_keys_exceeded'
+  status: 400
 }
 
 export type AudioTranscriptResponse = {
@@ -2634,8 +2634,6 @@ export type GetAgentByAgentIdApiKeysData = {
 }
 
 export type GetAgentByAgentIdApiKeysErrors = {
-  400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2685,8 +2683,6 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdData = {
 }
 
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdErrors = {
-  400: MaxKeysExceededError | ErrorResponse
-  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -542,8 +542,6 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent service API keys | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-keys
@@ -575,8 +573,6 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Agent service API key deleted |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/audio-to-text
@@ -5283,8 +5279,6 @@ Get all API keys for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{resource_id}/api-keys
@@ -5320,8 +5314,6 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | API key deleted successfully |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/default-list
@@ -5615,7 +5607,7 @@ Create a new dataset
 | ---- | ----------- | ------ |
 | 201 | Dataset created successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/api-base-info
@@ -5636,8 +5628,6 @@ Get dataset API keys
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/api-keys
@@ -5653,7 +5643,6 @@ Get dataset API keys
 | ---- | ----------- | ------ |
 | 200 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/api-keys/{api_key_id}
@@ -5670,8 +5659,6 @@ Delete dataset API key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | API key deleted successfully |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/batch_import_status/{job_id}
@@ -5932,7 +5919,6 @@ Get mock dataset retrieval settings by vector type
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Dataset deleted successfully |  |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
@@ -5951,7 +5937,6 @@ Get dataset details
 | 200 | Dataset retrieved successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}
@@ -5976,7 +5961,6 @@ Update dataset details
 | 200 | Dataset updated successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/api-keys/{status}
@@ -5992,7 +5976,6 @@ Update dataset details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/auto-disable-logs
@@ -6010,7 +5993,6 @@ Get dataset auto disable logs
 | ---- | ----------- | ------ |
 | 200 | Auto disable logs retrieved successfully | **application/json**: [AutoDisableLogsResponse](#autodisablelogsresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-estimate
@@ -6445,8 +6427,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment created successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segment/{action}
@@ -6465,7 +6446,6 @@ Update document processing status (pause/resume)
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments
@@ -6482,8 +6462,6 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Segments deleted successfully |  |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments
@@ -6505,8 +6483,6 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segments retrieved successfully | **application/json**: [ConsoleSegmentListResponse](#consolesegmentlistresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
@@ -6528,8 +6504,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Batch import failed | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Batch import failed | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -6546,8 +6521,6 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Segment deleted successfully |  |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -6570,8 +6543,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment updated successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -6591,8 +6563,6 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunks retrieved successfully | **application/json**: [ChildChunkListResponse](#childchunklistresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -6615,8 +6585,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunks updated successfully | **application/json**: [ChildChunkBatchUpdateResponse](#childchunkbatchupdateresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -6639,8 +6608,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk created successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
@@ -6658,8 +6627,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Child chunk deleted successfully |  |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
@@ -6683,8 +6651,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk updated successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/summary-status
@@ -6750,7 +6717,6 @@ Get dataset error documents
 | ---- | ----------- | ------ |
 | 200 | Error documents retrieved successfully | **application/json**: [ErrorDocsResponse](#errordocsresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/external-hit-testing
@@ -6816,7 +6782,6 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
@@ -6936,7 +6901,6 @@ Get dataset permission user list
 | 200 | Permission users retrieved successfully | **application/json**: [PartialMemberListResponse](#partialmemberlistresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/queries
@@ -6953,7 +6917,6 @@ Get dataset query history
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Query history retrieved successfully | **application/json**: [DatasetQueryListResponse](#datasetquerylistresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/related-apps
@@ -6970,7 +6933,6 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Related apps retrieved successfully | **application/json**: [RelatedAppListResponse](#relatedapplistresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/retry
@@ -7010,7 +6972,6 @@ Check if dataset is in use
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{resource_id}/api-keys
@@ -7027,8 +6988,6 @@ Get all API keys for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{resource_id}/api-keys
@@ -7046,7 +7005,6 @@ Create a new API key for a dataset
 | ---- | ----------- | ------ |
 | 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{resource_id}/api-keys/{api_key_id}
@@ -7064,8 +7022,6 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | API key deleted successfully |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login
@@ -20101,14 +20057,6 @@ Dataset access denied.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | icon_url | string |  | No |
-
-#### DatasetInUseError
-
-The dataset is being used by some apps. Please remove the dataset from the apps before deleting it.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasetInUseError |  | The dataset is being used by some apps. Please remove the dataset from the apps before deleting it. |  |
 
 #### DatasetKeywordSettingResponse
 

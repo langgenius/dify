@@ -19,18 +19,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * DatasetInUseError
- *
- * The dataset is being used by some apps. Please remove the dataset from the apps before deleting it.
- */
-export const zDatasetInUseError = zErrorResponse.and(
-  z.object({
-    code: z.literal('dataset_in_use'),
-    status: z.literal(409),
-  }),
-)
-
-/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -48,30 +36,6 @@ export const zDatasetNameDuplicateError = zErrorResponse.and(
 export const zApiBaseUrlResponse = z.object({
   api_base_url: z.string(),
 })
-
-/**
- * MaxKeysExceededError
- *
- * The API key limit has been reached.
- */
-export const zMaxKeysExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('max_keys_exceeded'),
-    status: z.literal(400),
-  }),
-)
-
-/**
- * AgentNotPublishedError
- *
- * Publish the Agent before enabling Web App or API access.
- */
-export const zAgentNotPublishedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('agent_not_published'),
-    status: z.literal(409),
-  }),
-)
 
 /**
  * DatasetApiKeyCreatePayload
@@ -98,6 +62,18 @@ export const zApiKeyItem = z.object({
 export const zApiKeyList = z.object({
   data: z.array(zApiKeyItem),
 })
+
+/**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * SegmentBatchImportStatusResponse
@@ -387,30 +363,6 @@ export const zSegmentCreatePayload = z.object({
 })
 
 /**
- * ChildChunkDeleteIndexError
- *
- * Delete child chunk index failed: {message}
- */
-export const zChildChunkDeleteIndexError = zErrorResponse.and(
-  z.object({
-    code: z.literal('child_chunk_delete_index_error'),
-    status: z.literal(500),
-  }),
-)
-
-/**
- * ChildChunkIndexingError
- *
- * Create child chunk index failed: {message}
- */
-export const zChildChunkIndexingError = zErrorResponse.and(
-  z.object({
-    code: z.literal('child_chunk_indexing_error'),
-    status: z.literal(500),
-  }),
-)
-
-/**
  * BatchImportPayload
  */
 export const zBatchImportPayload = z.object({
@@ -439,11 +391,35 @@ export const zSegmentUpdatePayload = z.object({
 })
 
 /**
+ * ChildChunkIndexingError
+ *
+ * Create child chunk index failed: {message}
+ */
+export const zChildChunkIndexingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('child_chunk_indexing_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * ChildChunkCreatePayload
  */
 export const zChildChunkCreatePayload = z.object({
   content: z.string(),
 })
+
+/**
+ * ChildChunkDeleteIndexError
+ *
+ * Delete child chunk index failed: {message}
+ */
+export const zChildChunkDeleteIndexError = zErrorResponse.and(
+  z.object({
+    code: z.literal('child_chunk_delete_index_error'),
+    status: z.literal(500),
+  }),
+)
 
 /**
  * ChildChunkUpdatePayload

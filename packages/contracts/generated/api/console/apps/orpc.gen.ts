@@ -4992,10 +4992,6 @@ export const delete16 = oc
   })
   .input(z.object({ params: zDeleteAppsByResourceIdApiKeysByApiKeyIdPath }))
   .output(zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 export const byApiKeyId = {
   delete: delete16,
@@ -5015,10 +5011,6 @@ export const get84 = oc
   })
   .input(z.object({ params: zGetAppsByResourceIdApiKeysPath }))
   .output(zGetAppsByResourceIdApiKeysResponse)
-  .errors({
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-  })
 
 /**
  * Create a new API key for an app
