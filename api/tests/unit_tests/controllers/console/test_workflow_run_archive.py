@@ -91,7 +91,12 @@ def test_workflow_run_archive_endpoints_declare_cloud_paid_plan_admission(method
     assert "console_account_admission" in decorator_names
     assert "cloud_edition_billing_paid_plan_required" in decorator_names
     assert "only_edition_cloud" not in decorator_names
-    assert allowed_roles == frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+    expected_roles = (
+        {TenantAccountRole.OWNER}
+        if method == WorkflowRunArchiveMonthApi.delete
+        else {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+    )
+    assert allowed_roles == frozenset(expected_roles)
 
 
 @pytest.mark.parametrize("method", _ENDPOINTS)
@@ -173,6 +178,53 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
     context = service.list_archives.call_args.args[0]
     assert context.account_id == "account-1"
     assert context.active_workspace_id == "tenant-1"
+
+
+@pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.NORMAL])
+def test_workflow_run_archive_role_permissions_when_rbac_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    role: TenantAccountRole,
+) -> None:
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    identity = AccountWithTenant(account=_account(role), tenant_id="tenant-1")
+    monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
+    monkeypatch.setattr(
+        "controllers.console.wraps.BillingService.get_info",
+        lambda _tenant_id, **_kwargs: {"subscription": {"plan": CloudPlan.TEAM}},
+    )
+    service = MagicMock()
+    task = object()
+    archives = object()
+    service.delete_archive.return_value = task
+    service.create_download.return_value = task
+    service.list_archives.return_value = archives
+    monkeypatch.setattr(
+        workflow_run_archive, "application_services", lambda: SimpleNamespace(workflow_run_archives=service)
+    )
+    monkeypatch.setattr(workflow_run_archive, "dump_response", lambda _model, value: value)
+    app = Flask(__name__)
+
+    with app.test_request_context(method="POST", json={"year": 2025, "month": 3}):
+        if role == TenantAccountRole.OWNER:
+            assert _admission_injector(WorkflowRunArchiveMonthApi.delete)(None, 2025, 3) == (task, 202)
+            context = service.delete_archive.call_args.args[0]
+            assert context.account_id == "account-1"
+            assert context.active_workspace_id == "tenant-1"
+            service.delete_archive.assert_called_once_with(context, year=2025, month=3)
+        else:
+            with pytest.raises(Forbidden):
+                _admission_injector(WorkflowRunArchiveMonthApi.delete)(None, 2025, 3)
+            service.delete_archive.assert_not_called()
+
+        if role == TenantAccountRole.ADMIN:
+            assert _admission_injector(WorkflowRunArchivesApi.get)(None) is archives
+            assert _admission_injector(WorkflowRunArchiveDownloadsApi.post)(None) == (task, 202)
+            context = service.list_archives.call_args.args[0]
+            assert context.account_id == "account-1"
+            assert context.active_workspace_id == "tenant-1"
+            service.list_archives.assert_called_once_with(context)
+            service.create_download.assert_called_once_with(context, year=2025, month=3)
 
 
 def test_workflow_run_archive_endpoints_delegate_to_application_service(

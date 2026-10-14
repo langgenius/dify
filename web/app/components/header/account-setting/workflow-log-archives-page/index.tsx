@@ -19,6 +19,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,6 +30,7 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { toast } from '@/app/notifications'
 import { API_PREFIX } from '@/config'
+import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 
@@ -325,6 +327,7 @@ function ArchivedLogsUpgradeBanner() {
 
 function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
   const { t } = useTranslation(['appLog', 'common'])
+  const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const archiveMonthLabelId = useId()
   const downloadActionLabelId = useId()
   const deleteActionLabelId = useId()
@@ -437,7 +440,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const onAction = isReady ? downloadArchive : prepareDownload
 
   const deleteArchive = () => {
-    if (isDeleting) return
+    if (!isCurrentWorkspaceOwner || isDeleting) return
 
     setDeletionRetryAvailable(false)
     deleteArchiveMutation.mutate(
@@ -487,73 +490,75 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
               </TooltipTrigger>
               <TooltipContent>{downloadHint}</TooltipContent>
             </Tooltip>
-            <AlertDialog
-              open={deleteDialogOpen}
-              onOpenChange={(open) => {
-                if (deleteArchiveMutation.isPending) return
-                if (open) deleteArchiveMutation.reset()
-                setDeleteDialogOpen(open)
-              }}
-            >
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    size="small"
-                    variant="tertiary"
-                    tone="destructive"
-                    className="shrink-0"
-                    loading={isDeleting}
-                    aria-labelledby={`${deleteActionLabelId} ${archiveMonthLabelId}`}
-                  />
-                }
+            {isCurrentWorkspaceOwner && (
+              <AlertDialog
+                open={deleteDialogOpen}
+                onOpenChange={(open) => {
+                  if (deleteArchiveMutation.isPending) return
+                  if (open) deleteArchiveMutation.reset()
+                  setDeleteDialogOpen(open)
+                }}
               >
-                {!isDeleting && (
-                  <span className="i-ri-delete-bin-line size-3.5" aria-hidden="true" />
-                )}
-                <span id={deleteActionLabelId}>
-                  {isDeleting
-                    ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
-                    : archive.deletion_status === 'failed' || canRetryDeletion
-                      ? t(($) => $['archives.delete.retry'], { ns: 'appLog' })
-                      : t(($) => $['operation.delete'], { ns: 'common' })}
-                </span>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                  <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-                    {t(($) => $['archives.delete.title'], { ns: 'appLog', month: archiveMonth })}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
-                    {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
-                  </AlertDialogDescription>
-                  {deleteArchiveMutation.isError && (
-                    <div role="alert" className="system-sm-regular text-text-destructive">
-                      {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
-                    </div>
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      size="small"
+                      variant="tertiary"
+                      tone="destructive"
+                      className="shrink-0"
+                      loading={isDeleting}
+                      aria-labelledby={`${deleteActionLabelId} ${archiveMonthLabelId}`}
+                    />
+                  }
+                >
+                  {!isDeleting && (
+                    <span className="i-ri-delete-bin-line size-3.5" aria-hidden="true" />
                   )}
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancelButton
-                    variant="secondary"
-                    disabled={deleteArchiveMutation.isPending}
-                  >
-                    {t(($) => $['operation.cancel'], { ns: 'common' })}
-                  </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton
-                    loading={isDeleting}
-                    disabled={isDeletionActive && !canRetryDeletion}
-                    aria-labelledby={confirmDeleteLabelId}
-                    onClick={deleteArchive}
-                  >
-                    <span id={confirmDeleteLabelId}>
-                      {isDeleting
-                        ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
-                        : t(($) => $['archives.delete.confirm'], { ns: 'appLog' })}
-                    </span>
-                  </AlertDialogConfirmButton>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  <span id={deleteActionLabelId}>
+                    {isDeleting
+                      ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+                      : archive.deletion_status === 'failed' || canRetryDeletion
+                        ? t(($) => $['archives.delete.retry'], { ns: 'appLog' })
+                        : t(($) => $['operation.delete'], { ns: 'common' })}
+                  </span>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                    <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+                      {t(($) => $['archives.delete.title'], { ns: 'appLog', month: archiveMonth })}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
+                      {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
+                    </AlertDialogDescription>
+                    {deleteArchiveMutation.isError && (
+                      <div role="alert" className="system-sm-regular text-text-destructive">
+                        {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
+                      </div>
+                    )}
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancelButton
+                      variant="secondary"
+                      disabled={deleteArchiveMutation.isPending}
+                    >
+                      {t(($) => $['operation.cancel'], { ns: 'common' })}
+                    </AlertDialogCancelButton>
+                    <AlertDialogConfirmButton
+                      loading={isDeleting}
+                      disabled={isDeletionActive && !canRetryDeletion}
+                      aria-labelledby={confirmDeleteLabelId}
+                      onClick={deleteArchive}
+                    >
+                      <span id={confirmDeleteLabelId}>
+                        {isDeleting
+                          ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+                          : t(($) => $['archives.delete.confirm'], { ns: 'appLog' })}
+                      </span>
+                    </AlertDialogConfirmButton>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
           {archive.deletion_status === 'failed' && (
             <div role="alert" className="max-w-56 system-xs-regular text-text-destructive">

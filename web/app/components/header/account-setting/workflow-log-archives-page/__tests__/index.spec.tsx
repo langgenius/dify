@@ -3,6 +3,7 @@ import type {
   GetWorkflowRunArchivesResponse,
   WorkflowRunArchiveDeletionTaskResponse,
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -80,11 +81,13 @@ let plan: CloudPlan = 'professional'
 function renderPage(
   data: GetWorkflowRunArchivesResponse | null = archiveData,
   queryClient = createConsoleQueryClient(),
+  role: GetWorkspacesCurrentSummaryResponse['role'] = 'owner',
 ) {
   if (data) queryClient.setQueryData(consoleQuery.workflowRunArchives.get.queryKey(), data)
 
   return render(<WorkflowLogArchivesPage />, {
     queryClient,
+    currentWorkspace: { role },
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { billing: { subscription: { plan } } },
   })
@@ -110,6 +113,42 @@ describe('WorkflowLogArchivesPage', () => {
   })
 
   describe('Delete monthly archives', () => {
+    it('lets admins prepare downloads without offering archive deletion', async () => {
+      const user = userEvent.setup()
+      renderPage(archiveData, undefined, 'admin')
+
+      expect(screen.getByRole('row', { name: /2025-03/ })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.delete 2025-03' }),
+      ).not.toBeInTheDocument()
+      await user.click(
+        screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
+      )
+
+      expect(archiveRequests.prepareDownload).toHaveBeenCalledWith({
+        body: { year: 2025, month: 3 },
+      })
+      expect(archiveRequests.delete).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+
+    it.each(['admin', 'editor', 'dataset_operator', 'normal'] as const)(
+      'does not offer deletion retry to a workspace %s',
+      (role) => {
+        renderPage(
+          { ...archiveData, months: [{ ...archiveMonth, deletion_status: 'failed' }] },
+          undefined,
+          role,
+        )
+
+        expect(
+          screen.queryByRole('button', { name: 'appLog.archives.delete.retry 2025-03' }),
+        ).not.toBeInTheDocument()
+        expect(screen.getByRole('alert')).toHaveTextContent('appLog.archives.delete.failed')
+        expect(archiveRequests.delete).not.toHaveBeenCalled()
+      },
+    )
+
     it('cancels confirmation without deleting any archived data', async () => {
       const user = userEvent.setup()
       renderPage()
