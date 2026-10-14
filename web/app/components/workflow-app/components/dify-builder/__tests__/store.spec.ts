@@ -1,3 +1,4 @@
+import type { InteractionResponseCopy } from '../interactions/optimistic-response'
 import type { DifyBuilderRuntime } from '../store'
 import type { ConversationItem, SessionView } from '../types'
 import { QueryClient } from '@tanstack/react-query'
@@ -42,6 +43,21 @@ const builderModel = {
   name: 'gpt-4o',
   provider: 'openai',
 } satisfies NonNullable<SessionView['model']>
+
+const englishResponseCopy: InteractionResponseCopy = {
+  renderText: (text) => (typeof text === 'string' ? text : ''),
+  replyLanguage: 'en-US',
+  booleanFalse: 'No',
+  booleanTrue: 'Yes',
+  noResourcesSelected: 'No resources selected',
+}
+const chineseResponseCopy: InteractionResponseCopy = {
+  renderText: (text) => (typeof text === 'string' ? text : ''),
+  replyLanguage: 'zh-Hans',
+  booleanFalse: '否',
+  booleanTrue: '是',
+  noResourcesSelected: '未选择资源',
+}
 
 const createSessionView = (overrides: Partial<SessionView> = {}): SessionView => ({
   canvas_read_only: false,
@@ -92,18 +108,26 @@ describe('Dify Builder store', () => {
       )
       expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
       expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
-      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(false)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        false,
+      )
 
       store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
-      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(false)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        false,
+      )
       store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 2 })
       store.set(difyBuilderCanvasRefreshFailedAtom, true)
-      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(false)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        false,
+      )
       expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
 
       store.set(difyBuilderCanvasRefreshFailedAtom, false)
       expect(store.get(difyBuilderCanvasLockedAtom)).toBe(false)
-      expect(await store.set(difyBuilderSubmitActionAtom, actionId)).toBe(true)
+      expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
+        true,
+      )
       expect(runAction).toHaveBeenCalledExactlyOnceWith(actionId, {})
     },
   )
@@ -308,7 +332,6 @@ describe('Dify Builder store', () => {
         recovery: {
           can_continue: true,
           can_restart: true,
-          message: 'Choose how to recover.',
           recovery_class: 'config_only',
         },
         run_status: 'waiting_confirmation',
@@ -519,9 +542,14 @@ describe('Dify Builder store', () => {
       }),
     )
 
-    const submission = store.set(difyBuilderSubmitActionAtom, 'confirm', {
-      option_id: 'approve_plan',
-    })
+    const submission = store.set(
+      difyBuilderSubmitActionAtom,
+      'confirm',
+      {
+        option_id: 'approve_plan',
+      },
+      englishResponseCopy,
+    )
 
     expect(store.get(difyBuilderLocalInteractionResponseAtom)).toMatchObject({
       afterSequence: 4,
@@ -544,117 +572,174 @@ describe('Dify Builder store', () => {
     expect(store.get(difyBuilderLocalInteractionResponseAtom)).toBeNull()
   })
 
-  it('formats submitted form values for the optimistic conversation response', async () => {
-    const store = createStore()
-    let finishAction!: (submitted: boolean) => void
-    const action = new Promise<boolean>((resolve) => {
-      finishAction = resolve
-    })
-    const runAction = vi.fn(() => action)
-    const card: Extract<ConversationItem, { kind: 'form' }> = {
-      at_version: 1,
-      kind: 'form',
-      payload: {
+  it.each([
+    { language: 'en-US', copy: englishResponseCopy },
+    { language: 'zh-Hans', copy: chineseResponseCopy },
+  ])(
+    'formats $language boolean receipts without translating submitted values',
+    async ({ copy }) => {
+      const store = createStore()
+      let finishAction!: (submitted: boolean) => void
+      const action = new Promise<boolean>((resolve) => {
+        finishAction = resolve
+      })
+      const runAction = vi.fn(() => action)
+      const card: Extract<ConversationItem, { kind: 'form' }> = {
+        at_version: 1,
+        kind: 'form',
+        payload: {
+          fields: [
+            { key: 'topic', label: 'Topic', type: 'text-input' },
+            { key: 'enabled', label: 'Enabled', type: 'bool' },
+            { key: 'disabled', label: 'Disabled', type: 'bool' },
+            { key: 'literal', label: 'Goal', type: 'text' },
+            { key: 'goal', label: 'Goal', type: 'text' },
+            { key: 'list', label: 'List', type: 'json' },
+            { key: 'file', label: 'File', type: 'file' },
+          ],
+          title: 'Provide test data',
+          values: {},
+          variant: 'testdata',
+        },
+        seq: 0,
+      }
+      store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+      store.set(difyBuilderConversationAtom, [card])
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({
+          active_interaction: {
+            action_id: 'provide_testdata',
+            card_seq: card.seq,
+            valid_at_version: 1,
+          },
+          conversation_last_seq: 0,
+        }),
+      )
+
+      const inputs = {
+        enabled: true,
+        disabled: false,
+        topic: 'AI agents',
+        literal: 'Yes',
+        goal: 'Goal',
+        list: [true, false, 'Yes', 'Goal'],
+        file: { name: 'Goal', upload_file_id: 'file-1' },
+      }
+      const payload = {
+        mode: 'provide',
+        inputs,
+      }
+      const originalPayload = structuredClone(payload)
+      const submission = store.set(difyBuilderSubmitActionAtom, 'provide_testdata', payload, copy)
+
+      expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+        reply_language: copy.replyLanguage,
+        interaction_kind: 'form',
+        question: 'Provide test data',
         fields: [
-          { key: 'topic', label: 'Topic', type: 'text-input' },
-          { key: 'enabled', label: 'Enabled', type: 'bool' },
-        ],
-        title: 'Provide test data',
-        values: {},
-        variant: 'testdata',
-      },
-      seq: 0,
-    }
-    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
-    store.set(difyBuilderConversationAtom, [card])
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({
-        active_interaction: {
-          action_id: 'provide_testdata',
-          card_seq: card.seq,
-          valid_at_version: 1,
-        },
-        conversation_last_seq: 0,
-      }),
-    )
-
-    const submission = store.set(difyBuilderSubmitActionAtom, 'provide_testdata', {
-      mode: 'provide',
-      inputs: { enabled: true, topic: 'AI agents' },
-    })
-
-    expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
-      interaction_kind: 'form',
-      question: 'Provide test data',
-      fields: [
-        { key: 'topic', label: 'Topic', value: 'AI agents', display_value: 'AI agents' },
-        { key: 'enabled', label: 'Enabled', value: true, display_value: 'Yes' },
-      ],
-      submitted_data: { enabled: true, topic: 'AI agents' },
-    })
-    finishAction(true)
-    await submission
-  })
-
-  it('uses selected resource labels in the optimistic conversation response', async () => {
-    const store = createStore()
-    let finishAction!: (submitted: boolean) => void
-    const action = new Promise<boolean>((resolve) => {
-      finishAction = resolve
-    })
-    const runAction = vi.fn(() => action)
-    const card: Extract<ConversationItem, { kind: 'resource_select' }> = {
-      at_version: 1,
-      kind: 'resource_select',
-      payload: {
-        recommended: [
+          { key: 'topic', label: 'Topic', value: 'AI agents', display_value: 'AI agents' },
+          { key: 'enabled', label: 'Enabled', value: true, display_value: copy.booleanTrue },
+          { key: 'disabled', label: 'Disabled', value: false, display_value: copy.booleanFalse },
+          { key: 'literal', label: 'Goal', value: 'Yes', display_value: 'Yes' },
+          { key: 'goal', label: 'Goal', value: 'Goal', display_value: 'Goal' },
           {
-            id: 'knowledge',
-            kind: 'knowledge',
-            label: 'Support knowledge base',
-            meta: 'Dataset',
-            readiness: 'ready',
+            key: 'list',
+            label: 'List',
+            value: inputs.list,
+            display_value: `${copy.booleanTrue}, ${copy.booleanFalse}, Yes, Goal`,
           },
-          {
-            id: 'slack',
-            kind: 'tool',
-            label: 'Slack',
-            meta: 'Tool',
-            readiness: 'ready',
-          },
+          { key: 'file', label: 'File', value: inputs.file, display_value: 'Goal' },
         ],
-        title: 'Choose resources',
-      },
-      seq: 0,
-    }
-    store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
-    store.set(difyBuilderConversationAtom, [card])
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({
-        active_interaction: {
-          action_id: 'confirm_resources',
-          card_seq: card.seq,
-          valid_at_version: 1,
+        submitted_data: inputs,
+      })
+      expect(runAction).toHaveBeenCalledExactlyOnceWith(
+        'provide_testdata',
+        originalPayload,
+        expect.objectContaining({ interaction_kind: 'form', reply_language: copy.replyLanguage }),
+      )
+      expect(payload).toEqual(originalPayload)
+      finishAction(true)
+      await submission
+    },
+  )
+
+  it.each([
+    { selectedIds: ['slack'], answer: 'Slack' },
+    { selectedIds: ['knowledge'], answer: 'Goal' },
+    { selectedIds: [], answer: chineseResponseCopy.noResourcesSelected },
+  ])(
+    'formats resource receipts as $answer without changing IDs or names',
+    async ({ selectedIds, answer }) => {
+      const store = createStore()
+      let finishAction!: (submitted: boolean) => void
+      const action = new Promise<boolean>((resolve) => {
+        finishAction = resolve
+      })
+      const runAction = vi.fn(() => action)
+      const card: Extract<ConversationItem, { kind: 'resource_select' }> = {
+        at_version: 1,
+        kind: 'resource_select',
+        payload: {
+          recommended: [
+            {
+              id: 'knowledge',
+              kind: 'knowledge',
+              label: 'Goal',
+              meta: 'Dataset',
+              readiness: 'ready',
+            },
+            {
+              id: 'slack',
+              kind: 'tool',
+              label: 'Slack',
+              meta: 'Tool',
+              readiness: 'ready',
+            },
+          ],
+          title: 'Choose resources',
         },
-        conversation_last_seq: 0,
-      }),
-    )
+        seq: 0,
+      }
+      store.set(difyBuilderRuntimeAtom, createRuntime(runAction))
+      store.set(difyBuilderConversationAtom, [card])
+      store.set(
+        difyBuilderSessionViewAtom,
+        createSessionView({
+          active_interaction: {
+            action_id: 'confirm_resources',
+            card_seq: card.seq,
+            valid_at_version: 1,
+          },
+          conversation_last_seq: 0,
+        }),
+      )
 
-    const submission = store.set(difyBuilderSubmitActionAtom, 'confirm_resources', {
-      resource_ids: ['slack'],
-    })
+      const submission = store.set(
+        difyBuilderSubmitActionAtom,
+        'confirm_resources',
+        {
+          resource_ids: selectedIds,
+        },
+        chineseResponseCopy,
+      )
 
-    expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
-      interaction_kind: 'resource',
-      question: 'Choose resources',
-      answer: 'Slack',
-      submitted_data: { resource_ids: ['slack'] },
-    })
-    finishAction(true)
-    await submission
-  })
+      expect(store.get(difyBuilderLocalInteractionResponseAtom)?.item.payload).toEqual({
+        reply_language: 'zh-Hans',
+        interaction_kind: 'resource',
+        question: 'Choose resources',
+        answer,
+        submitted_data: { resource_ids: selectedIds },
+      })
+      expect(runAction).toHaveBeenCalledExactlyOnceWith(
+        'confirm_resources',
+        { resource_ids: selectedIds },
+        expect.objectContaining({ reply_language: 'zh-Hans', answer }),
+      )
+      finishAction(true)
+      await submission
+    },
+  )
 
   it('builds recheck payloads from the latest checklist atom value', async () => {
     const store = createStore()
@@ -677,7 +762,9 @@ describe('Dify Builder store', () => {
     })
 
     expect(store.get(difyBuilderRecheckReadyAtom)).toBe(false)
-    expect(await store.set(difyBuilderSubmitActionAtom, 'recheck')).toBe(false)
+    expect(await store.set(difyBuilderSubmitActionAtom, 'recheck', {}, englishResponseCopy)).toBe(
+      false,
+    )
     expect(runAction).not.toHaveBeenCalled()
 
     store.set(difyBuilderRegisterChecklistErrorsAtom, {
@@ -685,16 +772,21 @@ describe('Dify Builder store', () => {
       generation: 1,
     })
 
-    await store.set(difyBuilderSubmitActionAtom, 'recheck')
+    await store.set(difyBuilderSubmitActionAtom, 'recheck', {}, englishResponseCopy)
 
-    expect(runAction).toHaveBeenCalledWith('recheck', {
-      passed: false,
-      remaining,
-    })
+    expect(runAction.mock.calls.at(-1)?.slice(0, 2)).toEqual([
+      'recheck',
+      {
+        passed: false,
+        remaining,
+      },
+    ])
 
     store.set(difyBuilderCanvasRefreshingAtom, true)
     expect(store.get(difyBuilderRecheckReadyAtom)).toBe(false)
-    expect(await store.set(difyBuilderSubmitActionAtom, 'recheck')).toBe(false)
+    expect(await store.set(difyBuilderSubmitActionAtom, 'recheck', {}, englishResponseCopy)).toBe(
+      false,
+    )
     expect(runAction).toHaveBeenCalledOnce()
   })
 })

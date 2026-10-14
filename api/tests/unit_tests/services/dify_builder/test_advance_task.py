@@ -34,6 +34,7 @@ from core.dify_builder.state import PcState
 from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, StubAgent, saved_test_context
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text, english_tree
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -90,6 +91,7 @@ def active_worker_lock(monkeypatch: pytest.MonkeyPatch) -> None:
     # The worker releases exactly the owner value its activation returned; these
     # engine-wiring tests use the dispatch token as that value.
     monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, token: token)
+    monkeypatch.setattr(mod.progress_snapshot, "save", lambda *_args, **_kwargs: None)
 
 
 @pytest.fixture
@@ -242,7 +244,9 @@ def test_repair_command_only_requests_retest_after_a_committed_repair(
         assert finished["post_canvas_action_id"] == follow_up
         assert follow_up in [action["id"] for action in finished["actions"]]
         assert context.last_snapshot_hash == port.hash == "h1"
-        assert next(node for node in port.graph["nodes"] if node["id"] == "llm")["data"]["title"] == "Fixed"
+        assert (
+            english_text(next(node for node in port.graph["nodes"] if node["id"] == "llm")["data"]["title"]) == "Fixed"
+        )
         assert canvas_events
         assert all(event["event"] == "apply_error_fix" for event in canvas_events)
     else:
@@ -358,7 +362,7 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
     progress_events = [ev for _sid, ev in events if ev["kind"] == "progress"]
     assert progress_events, "structured cognition and workflow work must publish visible phase progress"
     assert progress_events[0]["status"] == "running"
-    assert progress_events[0]["activity"] == {
+    assert english_tree(progress_events[0]["activity"]) == {
         "id": "fix-load-failure",
         "label": "Load the failed run",
         "state": "active",
@@ -388,6 +392,51 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
 
     assert (s.id, "tok-2") in released
     assert (s.id, "tok-3") in released
+
+
+def test_progress_snapshot_is_cumulative_and_saved_before_broadcast(repo, wired, monkeypatch):
+    events, _released = wired
+    saved: list[mod.progress_snapshot.ProgressSnapshot] = []
+    session = _seed_fix_session(repo)
+
+    def save(snapshot, *, tenant_id, owner):
+        assert tenant_id == TENANT_ID
+        assert owner == "active-owner"
+        assert snapshot.session_id == session.id
+        assert not any(
+            event["kind"] == "progress"
+            and event["operation_id"] == snapshot.operation_id
+            and event["revision"] == snapshot.revision
+            for _sid, event in events
+        )
+        saved.append(snapshot)
+
+    monkeypatch.setattr(mod.progress_snapshot, "save", save)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
+
+    assert saved
+    assert any(
+        snapshot.execution.activities[0].state == "done" and snapshot.execution.activities[-1].state == "active"
+        for snapshot in saved
+    )
+    assert saved[-1].execution.status == "completed"
+    assert all(activity.state == "done" for activity in saved[-1].execution.activities)
+    assert len({activity.id for activity in saved[-1].execution.activities}) == len(saved[-1].execution.activities)
+
+
+def test_progress_snapshot_failure_does_not_block_command_completion(repo, wired, monkeypatch):
+    events, released = wired
+    session = _seed_fix_session(repo)
+
+    def fail_save(*_args, **_kwargs):
+        raise RuntimeError("snapshot store unavailable")
+
+    monkeypatch.setattr(mod.progress_snapshot, "save", fail_save)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
+
+    assert repo.get_session(session.id)[0].current_state == PcState.FIX_AWAIT_VERIFY
+    assert events[-1][1]["kind"] == "command_finished"
+    assert released == [(session.id, "active-owner")]
 
 
 def test_expired_queued_task_does_not_run_or_release_newer_lock(
@@ -558,7 +607,7 @@ def test_message_advance_publishes_assistant_delta_before_durable_reply(
     assert finished["done"] is True
     items = repo.list_conversation(session.id)
     assert [item.kind for item in items] == ["user", "assistant_turn"]
-    assert items[1].payload["reply_text"] == delta["delta"]
+    assert english_text(items[1].payload["reply_text"]) == delta["delta"]
     assert released == [(session.id, "tok-message")]
 
 
@@ -833,7 +882,9 @@ def _seed_build_session(repo: SqlDifyBuilderRepository) -> Session:
     return s
 
 
-def test_start_build_streams_text_before_form_and_reaches_goal_analysis(repo: SqlDifyBuilderRepository, wired) -> None:
+def test_start_build_emits_complete_reply_with_form_and_reaches_goal_analysis(
+    repo: SqlDifyBuilderRepository, wired
+) -> None:
     events, released = wired
     s = _seed_build_session(repo)
 
@@ -842,21 +893,16 @@ def test_start_build_streams_text_before_form_and_reaches_goal_analysis(repo: Sq
     stored, _fc = repo.get_session(s.id)
     assert stored.current_state == PcState.BUILD_GOAL_ANALYSIS  # build handler resolved, not a 500
     payloads = [event for _session_id, event in events]
-    message_events = [event for event in payloads if event["kind"] == "agent_message"]
-    deltas = [event for event in message_events if not event["done"]]
-    assert len(deltas) > 1
-    assert message_events[-1]["done"] is True
-    assert message_events[-1]["delta"] == ""
-
+    assert not any(event["kind"] == "agent_message" for event in payloads)
+    assistant_events = [
+        event
+        for event in payloads
+        if event["kind"] == "conversation_item_appended" and event["item"]["kind"] == "assistant_turn"
+    ]
+    assert len(assistant_events) == 1
+    assert assistant_events[0]["item"]["payload"]["reply_mode"] == "complete"
     assistant = next(item for item in repo.list_conversation(s.id) if item.kind == "assistant_turn")
-    assert "".join(event["delta"] for event in deltas) == assistant.payload["reply_text"]
-    final_message_index = payloads.index(message_events[-1])
-    form_event_index = next(
-        index
-        for index, event in enumerate(payloads)
-        if event["kind"] == "conversation_item_appended" and event["item"]["kind"] == "form"
-    )
-    assert final_message_index < form_event_index
+    assert assistant_events[0]["item"]["payload"] == assistant.payload
     assert payloads[-1]["kind"] == "command_finished"
     assert (s.id, "tok-b1") in released
 

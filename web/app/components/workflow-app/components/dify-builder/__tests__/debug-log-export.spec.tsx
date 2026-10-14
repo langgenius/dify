@@ -86,7 +86,7 @@ describe('DebugLogExport', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    await user.click(screen.getByText('workflow.difyBuilder.exportDebugLog'))
+    await user.click(screen.getByText('difyBuilder.exportDebugLog'))
 
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
     const blob = vi.mocked(URL.createObjectURL).mock.calls[0]![0] as Blob

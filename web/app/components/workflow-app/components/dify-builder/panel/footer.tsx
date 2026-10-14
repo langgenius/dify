@@ -1,11 +1,12 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import DifyBuilderComposer from '../composer'
+import { useBuilderText } from '../copy/use-builder-text'
 import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
 import {
   difyBuilderActiveInteractionAtom,
@@ -16,10 +17,11 @@ import {
   difyBuilderErrorAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderInteractionRefAtom,
+  difyBuilderInterruptedAtom,
   difyBuilderLocalInteractionResponseAtom,
   difyBuilderRecheckReadyAtom,
-  difyBuilderRecoveryAtom,
   difyBuilderRetryCanvasRefreshAtom,
+  difyBuilderRunActiveAtom,
   difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderViewVersionAtom,
@@ -27,12 +29,28 @@ import {
 
 const AnimatedInteractionDock = ({
   children,
+  focusTargetRef,
   visible,
 }: {
   children: ReactNode
+  focusTargetRef: RefObject<HTMLElement | null>
   visible: boolean
 }) => {
+  const dockRef = useRef<HTMLDivElement>(null)
   const [entered, setEntered] = useState(false)
+
+  useLayoutEffect(() => {
+    const dock = dockRef.current
+    if (!dock) return
+
+    // Move focus before either attribute hides the focused control from accessibility APIs.
+    if (!visible && dock.contains(dock.ownerDocument.activeElement)) {
+      focusTargetRef.current?.focus({ preventScroll: true })
+    }
+    dock.inert = !visible
+    if (visible) dock.removeAttribute('aria-hidden')
+    else dock.setAttribute('aria-hidden', 'true')
+  }, [focusTargetRef, visible])
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setEntered(visible))
@@ -41,10 +59,9 @@ const AnimatedInteractionDock = ({
 
   return (
     <div
-      aria-hidden={visible ? undefined : true}
-      inert={!visible}
+      ref={dockRef}
       className={cn(
-        'transition-[opacity,transform] ease-out motion-reduce:translate-y-0',
+        'transition-[opacity,transform] ease-out motion-reduce:translate-y-0 motion-reduce:duration-0',
         visible && entered
           ? 'translate-y-0 opacity-100 duration-160'
           : 'translate-y-3 opacity-0 duration-120',
@@ -56,8 +73,13 @@ const AnimatedInteractionDock = ({
   )
 }
 
-export const DifyBuilderPanelFooter = () => {
-  const { t } = useTranslation(['common'])
+export const DifyBuilderPanelFooter = ({
+  focusTargetRef,
+}: {
+  focusTargetRef: RefObject<HTMLElement | null>
+}) => {
+  const { locale } = useBuilderText()
+  const { t } = useTranslation(['common'], { lng: locale })
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
@@ -66,9 +88,10 @@ export const DifyBuilderPanelFooter = () => {
   const decision = useAtomValue(difyBuilderDecisionAtom)
   const error = useAtomValue(difyBuilderErrorAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
+  const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const localInteractionResponse = useAtomValue(difyBuilderLocalInteractionResponseAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
-  const recovery = useAtomValue(difyBuilderRecoveryAtom)
+  const runActive = useAtomValue(difyBuilderRunActiveAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
@@ -78,7 +101,8 @@ export const DifyBuilderPanelFooter = () => {
     localInteractionResponse?.sessionId === sessionId &&
     localInteractionResponse.baseVersion === viewVersion,
   )
-  const interactionVisible = interactionPending && !interactionSubmitted
+  const interactionVisible =
+    interactionPending && !interactionSubmitted && (!runActive || interrupted)
   const interactionKey = interactionRef
     ? `${sessionId}:${interactionRef.action_id}:${interactionRef.card_seq}`
     : decision
@@ -87,14 +111,6 @@ export const DifyBuilderPanelFooter = () => {
 
   return (
     <footer className="relative z-10 shrink-0 pb-2">
-      {recovery?.message && (
-        <div
-          role="alert"
-          className="mx-4 mb-2 rounded-lg bg-state-warning-hover px-2 py-1.5 system-xs-regular text-text-warning"
-        >
-          {recovery.message}
-        </div>
-      )}
       {error && (
         <div
           role="alert"
@@ -130,7 +146,11 @@ export const DifyBuilderPanelFooter = () => {
           }
         >
           {interactionPending && (
-            <AnimatedInteractionDock key={interactionKey} visible={interactionVisible}>
+            <AnimatedInteractionDock
+              key={interactionKey}
+              focusTargetRef={focusTargetRef}
+              visible={interactionVisible}
+            >
               <DifyBuilderInteractionDock
                 activeInteraction={activeInteraction}
                 busy={interactionBusy || !canvasReady}

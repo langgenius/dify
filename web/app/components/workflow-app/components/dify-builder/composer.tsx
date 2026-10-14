@@ -1,6 +1,7 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 import DifyBuilderModelSelector from './model-selector'
 import { DifyBuilderModelStatus } from './model-status'
 import { difyBuilderSessionErrorCodeAtom } from './session/state'
@@ -16,17 +17,18 @@ import { useDifyBuilderModel } from './use-dify-builder-model'
 const COMPOSITION_END_DELAY = 50
 
 const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) => {
-  const { t } = useTranslation(['workflow'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   const canCompose = useAtomValue(difyBuilderCanComposeAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const placeholder = canCompose
-    ? t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })
+    ? t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })
     : interactionBusy
-      ? t(($) => $['difyBuilder.workingPlaceholder'], { ns: 'workflow' })
-      : t(($) => $['difyBuilder.inputUnavailable'], { ns: 'workflow' })
+      ? t(($) => $.workingPlaceholder, { ns: 'difyBuilder' })
+      : t(($) => $.inputUnavailable, { ns: 'difyBuilder' })
 
   useEffect(() => {
     return () => {
@@ -38,7 +40,7 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
     <textarea
       value={draft}
       disabled={!canCompose}
-      aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
+      aria-label={t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })}
       aria-describedby={descriptionId}
       placeholder={placeholder}
       className="block min-h-10 w-full grow resize-none bg-transparent px-2 py-1 text-sm leading-5 tracking-[-0.07px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder disabled:cursor-not-allowed"
@@ -65,14 +67,15 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
 }
 
 const DifyBuilderSendButton = ({ hasModel }: { hasModel: boolean }) => {
-  const { t } = useTranslation(['workflow'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const canSend = useAtomValue(difyBuilderCanSendDraftAtom) && hasModel
 
   return (
     <button
       type="submit"
       disabled={!canSend}
-      aria-label={t(($) => $['difyBuilder.messageSend'], { ns: 'workflow' })}
+      aria-label={t(($) => $.messageSend, { ns: 'difyBuilder' })}
       className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border-[0.5px] border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text outline-hidden hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:border-components-button-primary-border-disabled disabled:bg-components-button-primary-bg-disabled disabled:text-components-button-primary-text-disabled"
     >
       <span aria-hidden className="i-ri-send-plane-2-fill size-4" />
@@ -81,7 +84,8 @@ const DifyBuilderSendButton = ({ hasModel }: { hasModel: boolean }) => {
 }
 
 const DifyBuilderComposer = () => {
-  const { t } = useTranslation(['workflow'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const sendDraft = useSetAtom(difyBuilderSendDraftAtom)
   const modelState = useDifyBuilderModel()
   const { model } = modelState
@@ -94,7 +98,7 @@ const DifyBuilderComposer = () => {
     <>
       {showStatus && <DifyBuilderModelStatus {...modelState} id={statusId} rejected={rejected} />}
       <form
-        aria-label={t(($) => $['difyBuilder.messagePlaceholder'], { ns: 'workflow' })}
+        aria-label={t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })}
         className="mx-4 h-21 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
         onSubmit={(event) => {
           event.preventDefault()

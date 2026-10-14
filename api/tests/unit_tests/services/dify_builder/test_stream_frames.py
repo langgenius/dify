@@ -2,8 +2,10 @@ import json
 
 import pytest
 
+from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
 from core.dify_builder.models import ConversationItem
 from services.dify_builder import wiring
+from services.dify_builder.progress_snapshot import ProgressSnapshot
 from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import native_workflow_payloads
 
 
@@ -32,6 +34,7 @@ def _event(frame: str) -> dict:
 def _view(**overrides) -> dict:
     return {
         "session_id": "s1",
+        "reply_language": "",
         "version": 1,
         "canvas_read_only": False,
         "run_status": "processing",
@@ -277,6 +280,56 @@ def test_reconnect_stream_skips_handshake_and_emits_settled_state():
     ]
 
 
+@pytest.mark.parametrize(
+    "settled",
+    [
+        _view(version=1, run_status="waiting_input", last_command_id="command-2"),
+        _view(version=2, run_status="failed", last_command_id="command-2"),
+        _view(version=1, interrupted=True, last_command_id="command-2"),
+    ],
+)
+def test_reconnect_recovers_settled_state_when_terminal_notification_is_missing(settled):
+    subscription = _FakeSubscription([None])
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(),
+            subscription,
+            expect_advance=True,
+            emit_command_started=False,
+            command_id="command-1",
+            read_session_view=lambda: settled,
+        )
+    )
+
+    assert [_event(frame) for frame in frames] == [
+        {
+            "event": "command_finished",
+            "data": {key: value for key, value in settled.items() if key != "last_command_id"}
+            | {"command_id": "command-2"},
+        }
+    ]
+    assert subscription.closed is True
+
+
+def test_reconnect_keeps_watching_while_the_worker_is_active():
+    subscription = _FakeSubscription([None, json.dumps(_internal_finished()).encode()])
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(),
+            subscription,
+            expect_advance=True,
+            emit_command_started=False,
+            read_session_view=_view,
+        )
+    )
+
+    assert frames[0] == ": keep-alive\n\n"
+    assert _event(frames[1])["event"] == "command_finished"
+    assert subscription.closed is True
+
+
 def test_stream_advance_frames_emits_synchronously_persisted_items_individually():
     items = [
         ConversationItem(seq=0, at_version=1, kind="user", payload={"text": "Build it"}),
@@ -303,3 +356,46 @@ def test_stream_advance_frames_emits_synchronously_persisted_items_individually(
     ]
     assert [_event(frame)["data"].get("item", {}).get("seq") for frame in frames] == [None, 0, 1, None]
     assert all("kind" not in _event(frame)["data"] for frame in frames)
+
+
+@pytest.mark.parametrize(
+    ("at_version", "expected_events"),
+    [(2, ["progress_snapshot", "command_finished"]), (1, ["command_finished"])],
+)
+def test_reconnect_restores_progress_before_live_events_without_replaying_committed_progress(
+    at_version, expected_events
+):
+    snapshot = ProgressSnapshot(
+        session_id="s1",
+        operation_id="operation-1",
+        at_version=at_version,
+        revision=5,
+        reply_language="zh-Hans",
+        execution=ExecutionProgress(
+            status="running",
+            activities=[
+                ExecutionActivity(id="inspect", label="Inspect workflow", state="done"),
+                ExecutionActivity(id="plan", label="Generate plan", state="active"),
+            ],
+        ),
+    )
+    subscription = _FakeSubscription([json.dumps(_internal_finished()).encode()])
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(), subscription, expect_advance=True, emit_command_started=False, initial_progress=snapshot
+        )
+    )
+
+    envelopes = [_event(frame) for frame in frames]
+    assert [event["event"] for event in envelopes] == expected_events
+    if at_version == 2:
+        from controllers.console.dify_builder_fields import DifyBuilderStreamEventResponse
+
+        data = DifyBuilderStreamEventResponse.model_validate(envelopes[0]).model_dump(mode="json")["data"]
+        assert data["execution"]["activities"] == [
+            {"id": "inspect", "label": "Inspect workflow", "state": "done", "parent_id": None},
+            {"id": "plan", "label": "Generate plan", "state": "active", "parent_id": None},
+        ]
+        assert (data["revision"], data["reply_language"]) == (5, "zh-Hans")
+    assert subscription.closed

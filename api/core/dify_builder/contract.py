@@ -18,6 +18,7 @@ from typing import Any, ClassVar, Literal
 
 from core.dify_builder.execution_policy import HttpResponseFixtureV1, decode_http_fixture_submission
 from core.dify_builder.models import ConversationItem, EntryMode
+from services.dify_builder.presentation import BuilderPresentation, BuilderText
 
 
 class Phase(StrEnum):
@@ -171,7 +172,7 @@ class Action:
     """
 
     id: str
-    label: str
+    label: BuilderText
     kind: ActionKind
     next_state: str | None = None
     canvas_event: str | None = None
@@ -190,7 +191,7 @@ class OptionInput:
     server does not reject on them yet.
     """
 
-    placeholder: str = ""
+    placeholder: BuilderText = ""
     min_length: int = 0
     max_length: int = 100
     required: bool = True
@@ -205,10 +206,10 @@ class CardOption:
     """
 
     id: str
-    label: str
+    label: BuilderText
     # The second line under an option. Empty for now: the per-state action table
     # carries labels only, and writing the copy here is a product decision.
-    description: str = ""
+    description: BuilderText = ""
     # Shown as a DEFAULT badge. Advisory only -- these gates have side effects,
     # so declining to choose must never apply anything.
     is_default: bool = False
@@ -222,8 +223,8 @@ class CardOption:
 class Decision:
     """The one blocking choice shown in the fixed conversation footer."""
 
-    title: str
-    description: str = ""
+    title: BuilderText
+    description: BuilderText = ""
     options: list[CardOption] = field(default_factory=list)
     submit: Action | None = None
     default_option_id: str = ""
@@ -234,18 +235,17 @@ class CheckpointRef:
     """Active restore point on the SessionView (spec §8)."""
 
     checkpoint_id: str
-    label: str
+    label: BuilderText
     created_at: str
 
 
 @dataclass
 class RecoveryRef:
-    """Draft-drift recovery offer on the SessionView (spec §8 / C-1)."""
+    """Draft-drift recovery capabilities; copy belongs to the decision card."""
 
     recovery_class: str
     can_continue: bool
     can_restart: bool
-    message: str
 
 
 @dataclass
@@ -273,7 +273,7 @@ class FormField:
     """One field of a ``form`` card, including Start-node input constraints."""
 
     key: str
-    label: str
+    label: BuilderText
     type: str
     options: list[str] = field(default_factory=list)
     required: bool = False
@@ -282,8 +282,8 @@ class FormField:
     allowed_file_types: list[str] = field(default_factory=list)
     allowed_file_extensions: list[str] = field(default_factory=list)
     allowed_file_upload_methods: list[str] = field(default_factory=list)
-    placeholder: str | None = None
-    hint: str | None = None
+    placeholder: BuilderText | None = None
+    hint: BuilderText | None = None
     unit: str | None = None
     json_schema: str | dict[str, Any] | None = None
     number_limits: int | None = field(default=None, metadata={"minimum": 1})
@@ -429,7 +429,7 @@ class ExecutionActivity:
     """
 
     id: str
-    label: str
+    label: BuilderText
     state: ExecutionActivityState
     kind: ExecutionActivityKind = "stage"
     parent_id: str | None = None
@@ -471,12 +471,12 @@ class UserItem(_Card):
 
 
 @dataclass
-class DecisionItem(_Card):
+class DecisionItem(_Card, BuilderPresentation):
     """Right-aligned bubble: a committed-choice summary."""
 
     kind: ClassVar[CardKind] = CardKind.DECISION
 
-    text: str
+    text: BuilderText
 
 
 @dataclass
@@ -484,31 +484,31 @@ class InteractionResponseField:
     """One immutable, human-readable row in a submitted form receipt."""
 
     key: str
-    label: str
+    label: BuilderText
     value: Any
-    display_value: str
+    display_value: BuilderText
 
 
 @dataclass
-class InteractionResponseItem(_Card):
+class InteractionResponseItem(_Card, BuilderPresentation):
     """Durable snapshot of a submitted choice, form, or resource selection."""
 
     kind: ClassVar[CardKind] = CardKind.INTERACTION_RESPONSE
 
     interaction_kind: Literal["choice", "form", "resource"]
-    question: str
-    answer: str = ""
+    question: BuilderText
+    answer: BuilderText = ""
     fields: list[InteractionResponseField] = field(default_factory=list)
     submitted_data: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
-class NoticeItem(_Card):
-    """A neutral/informational system notice."""
+class NoticeItem(_Card, BuilderPresentation):
+    """Legacy notice payload retained only for reading persisted history."""
 
     kind: ClassVar[CardKind] = CardKind.NOTICE
 
-    text: str
+    text: BuilderText
     tone: str = "neutral"
 
 
@@ -537,7 +537,7 @@ class PreflightContextCard(_Card):
 
 
 @dataclass
-class AssistantTurnItem(_Card):
+class AssistantTurnItem(_Card, BuilderPresentation):
     """The streamable unit (spec §4.2). ``stage_id`` is the PcState this
     turn ran in; ``cards`` lists which cards (in order) this turn attaches.
     ``card_state`` is ``None`` or ``"invalidated"`` (frozen after task exit).
@@ -549,23 +549,24 @@ class AssistantTurnItem(_Card):
     stage_id: str
     execution: ExecutionProgress
     reasoning_text: str | None = None
-    reply_text: str | None = None
+    reply_text: BuilderText | None = None
+    reply_mode: Literal["stream", "complete"] = "stream"
     cards: list[str] = field(default_factory=list)
     card_state: str | None = None
 
 
 @dataclass
-class PlanCard(_Card):
+class PlanCard(_Card, BuilderPresentation):
     """Final approval plan. ``items`` are ordered, human-readable steps."""
 
     kind: ClassVar[CardKind] = CardKind.PLAN
 
-    title: str
+    title: BuilderText
     items: list[str] = field(default_factory=list)
 
 
 @dataclass
-class FormCard(_Card):
+class FormCard(_Card, BuilderPresentation):
     """Editable, re-submittable input card. ``variant`` in
     build_requirements|edit_rules|testdata.
     """
@@ -573,26 +574,26 @@ class FormCard(_Card):
     kind: ClassVar[CardKind] = CardKind.FORM
 
     variant: str
-    title: str = ""
-    description: str = ""
+    title: BuilderText = ""
+    description: BuilderText = ""
     fields: list[FormField] = field(default_factory=list)
     values: dict = field(default_factory=dict)
     frozen: bool = False
 
 
 @dataclass
-class ResourceSelectCard(_Card):
+class ResourceSelectCard(_Card, BuilderPresentation):
     """Resource discovery: multi-select ``recommended`` resources."""
 
     kind: ClassVar[CardKind] = CardKind.RESOURCE_SELECT
 
-    title: str = ""
-    description: str = ""
+    title: BuilderText = ""
+    description: BuilderText = ""
     recommended: list[ResourceOption] = field(default_factory=list)
 
 
 @dataclass
-class TestResultCard(_Card):
+class TestResultCard(_Card, BuilderPresentation):
     """Minimal test/verify result shown after a run completes."""
 
     # Not a pytest test class; ``__test__`` (unannotated, so not a dataclass
@@ -602,7 +603,7 @@ class TestResultCard(_Card):
     kind: ClassVar[CardKind] = CardKind.TEST_RESULT
 
     status: Literal["succeeded", "failed"]
-    failure_reason: str | None = None
+    failure_reason: BuilderText | None = None
     # The Dify workflow run these results came from, so a client can reopen
     # the run on the canvas later. Persisted because SSE does not survive a
     # page reload. "" when no run backs the card.
@@ -615,7 +616,7 @@ class TestResultCard(_Card):
     ) = None
     terminal_outputs: dict[str, Any] | None = None
     executed_node_ids: list[str] = field(default_factory=list)
-    review_note: str | None = None
+    review_note: BuilderText | None = None
     execution_mode: Literal["restricted", "mock", "confirmed_tool"] | None = None
     safety_outcome: (
         Literal[
@@ -812,12 +813,10 @@ class AgentMessageEventData(_SseEventData):
 
 @dataclass
 class ConversationItemAppendedEventData(_SseEventData):
-    """One durable non-assistant conversation item appended by a command.
+    """One durable conversation item appended by a command.
 
-    Assistant text is intentionally excluded: its preallocated sequence and
-    content already arrive through ``agent_message``. The persisted
-    ``assistant_turn`` remains available from the history endpoint for reload
-    and recovery only.
+    Complete Builder replies arrive here after commit. Native streamed replies
+    arrive through ``agent_message`` and are not emitted a second time.
     """
 
     sse_event: ClassVar[str] = "conversation_item_appended"
@@ -871,6 +870,7 @@ class ProgressEventData(_SseEventData):
     revision: int
     status: ExecutionProgressStatus
     activity: ExecutionActivity | None
+    reply_language: str = ""
     kind: Literal["progress"] = "progress"
 
 

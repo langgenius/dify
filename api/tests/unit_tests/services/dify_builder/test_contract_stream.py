@@ -24,6 +24,7 @@ SUPPORTED_WORKFLOW_PAYLOADS = [
 def _view(**overrides) -> dict:
     return {
         "session_id": "s1",
+        "reply_language": "",
         "version": 1,
         "canvas_read_only": False,
         "run_status": "processing",
@@ -101,6 +102,7 @@ def test_stream_projects_incremental_events_and_drops_internal_fields():
         "kind": "progress",
         "session_id": "s1",
         "operation_id": "operation-1",
+        "reply_language": "zh-Hans",
         "stage_id": "build.execution",
         "span_id": "internal-span",
         "at_version": 2,
@@ -177,6 +179,7 @@ def test_stream_projects_incremental_events_and_drops_internal_fields():
             "data": {
                 "session_id": "s1",
                 "operation_id": "operation-1",
+                "reply_language": "zh-Hans",
                 "at_version": 2,
                 "revision": 1,
                 "status": "running",

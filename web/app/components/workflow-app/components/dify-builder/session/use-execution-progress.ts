@@ -1,6 +1,9 @@
 'use client'
 
-import type { DifyBuilderProgressEventData } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type {
+  DifyBuilderProgressEventData,
+  DifyBuilderProgressSnapshotEventData,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { DifyBuilderExecutionProgress } from '../types'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
@@ -11,10 +14,22 @@ import {
   difyBuilderSessionViewAtom,
 } from './state'
 
+type ProgressUpdate = DifyBuilderProgressEventData | DifyBuilderProgressSnapshotEventData
+
 const reduceExecutionProgress = (
   current: DifyBuilderExecutionProgress | null,
-  progress: DifyBuilderProgressEventData,
+  progress: ProgressUpdate,
 ): DifyBuilderExecutionProgress => {
+  if ('execution' in progress) {
+    return {
+      sessionId: progress.session_id,
+      operationId: progress.operation_id,
+      atVersion: progress.at_version,
+      revision: progress.revision,
+      replyLanguage: progress.reply_language,
+      execution: progress.execution,
+    }
+  }
   const continuesOperation =
     current?.sessionId === progress.session_id &&
     current.operationId === progress.operation_id &&
@@ -35,6 +50,7 @@ const reduceExecutionProgress = (
     operationId: progress.operation_id,
     atVersion: progress.at_version,
     revision: progress.revision,
+    replyLanguage: progress.reply_language,
     execution: {
       status: progress.status,
       activities,
@@ -42,7 +58,7 @@ const reduceExecutionProgress = (
   }
 }
 
-/** Reduces ordered activity deltas separately from the durable SessionView. */
+/** Restores full progress, then reduces newer deltas separately from durable SessionView. */
 export const useDifyBuilderExecutionProgress = () => {
   const store = useStore()
   const setExecutionProgress = useSetAtom(difyBuilderExecutionProgressAtom)
@@ -61,7 +77,7 @@ export const useDifyBuilderExecutionProgress = () => {
   )
 
   const enqueue = useCallback(
-    (progress: DifyBuilderProgressEventData) => {
+    (progress: ProgressUpdate) => {
       const view = store.get(difyBuilderSessionViewAtom)
       const activeCommand = store.get(difyBuilderActiveCommandAtom)
       if (

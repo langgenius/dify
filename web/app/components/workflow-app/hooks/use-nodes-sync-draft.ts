@@ -4,7 +4,7 @@ import type {
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
-import { ORPCError } from '@orpc/client'
+import { safe } from '@orpc/client'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
@@ -26,9 +26,8 @@ import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normaliz
 import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
-import { syncWorkflowDraft } from '@/service/workflow'
 
 const shouldSkipDraftSync = (
   appId: string | undefined,
@@ -257,27 +256,35 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           lastSave.hash === currentHash
         if (currentHash !== baseParams.params.hash && !canUseLastSave) return null
 
-        const postParams = {
-          url: baseParams.url,
-          params: {
-            ...baseParams.params,
-            hash: (canUseLastSave ? lastSave.hash : baseParams.params.hash) || null,
-            ...(force ? { force: true } : {}),
-            ...(options?.environmentVariablePatch
-              ? {
-                  environment_variable_patch: {
-                    environment_variables: options.environmentVariablePatch.environmentVariables,
-                    deleted_environment_variable_ids:
-                      options.environmentVariablePatch.deletedEnvironmentVariableIds,
-                  },
-                }
-              : {}),
-          },
+        const body = {
+          ...baseParams.params,
+          hash: (canUseLastSave ? lastSave.hash : baseParams.params.hash) || null,
+          ...(force ? { force: true } : {}),
+          ...(options?.environmentVariablePatch
+            ? {
+                environment_variable_patch: {
+                  environment_variables: options.environmentVariablePatch.environmentVariables,
+                  deleted_environment_variable_ids:
+                    options.environmentVariablePatch.deletedEnvironmentVariableIds,
+                },
+              }
+            : {}),
         }
 
-        const res = await syncWorkflowDraft(postParams)
-        if (!isCurrent() || workflowStore.getState().syncWorkflowDraftHash !== currentHash)
+        const [error, res, isDefined] = await safe(
+          consoleClient.apps.byAppId.workflows.draft.post(
+            { params: { app_id: baseParams.appId }, body },
+            { context: { silent: true } },
+          ),
+        )
+        if (!isCurrent()) return null
+        if (error) {
+          if (isDefined && error.code === 'draft_workflow_not_sync')
+            workflowStore.getState().setWorkflowDraftConflict(true)
+          callback?.onError?.()
           return null
+        }
+        if (workflowStore.getState().syncWorkflowDraftHash !== currentHash) return null
         workflowStore.getState().setLastSavedWorkflowDraft({
           appId: baseParams.appId,
           generation: baseParams.generation,
@@ -288,17 +295,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         workflowStore.getState().markWorkflowDraftSaved(baseParams.localRevision)
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
-      } catch (error: unknown) {
-        if (!isCurrent()) return null
-
-        if (
-          error instanceof ORPCError &&
-          error.status === 409 &&
-          error.code === 'draft_workflow_not_sync'
-        )
-          workflowStore.getState().setWorkflowDraftConflict(true)
-        callback?.onError?.()
-        return null
       } finally {
         callback?.onSettled?.()
       }

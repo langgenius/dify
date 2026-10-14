@@ -2281,19 +2281,11 @@
   "web/app/components/rag-pipeline/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/hooks/use-pipeline-init.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
@@ -4116,7 +4108,7 @@
   },
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
     "@tanstack/query/prefer-query-options": {
-      "count": 4
+      "count": 2
     }
   },
   "web/features/agent-v2/agent-detail/logs/__tests__/page.spec.tsx": {

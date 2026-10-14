@@ -3,13 +3,19 @@
 import * as z from 'zod'
 
 /**
- * DifyBuilderSubmitActionPayload
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
  */
-export const zDifyBuilderSubmitActionPayload = z.object({
-  action_id: z.string().min(1),
-  base_app_revision: z.string().min(1),
-  base_version: z.int(),
-  payload: z.record(z.string(), z.unknown()).optional(),
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
 })
 
 /**
@@ -222,7 +228,6 @@ export const zPhase = z.enum([
 export const zRecoveryRef = z.object({
   can_continue: z.boolean(),
   can_restart: z.boolean(),
-  message: z.string(),
   recovery_class: z.string(),
 })
 
@@ -458,23 +463,36 @@ export const zDifyBuilderErrorEventResponse = z.object({
 export const zActionKind = z.enum(['automatic', 'destructive', 'primary', 'secondary'])
 
 /**
- * DifyBuilderActionResponse
+ * DifyBuilderReceiptFieldSnapshot
  */
-export const zDifyBuilderActionResponse = z.object({
-  id: z.string(),
-  kind: zActionKind,
+export const zDifyBuilderReceiptFieldSnapshot = z.object({
+  display_value: z.string(),
+  key: z.string().min(1),
   label: z.string(),
 })
 
 /**
- * Action
+ * DifyBuilderReceiptSnapshot
+ *
+ * Localized display only; submitted values remain in action.payload.
  */
-export const zAction = z.object({
-  canvas_event: z.string().nullish(),
-  id: z.string(),
-  kind: zActionKind,
-  label: z.string(),
-  next_state: z.string().nullish(),
+export const zDifyBuilderReceiptSnapshot = z.object({
+  answer: z.string().optional().default(''),
+  fields: z.array(zDifyBuilderReceiptFieldSnapshot).optional(),
+  interaction_kind: z.enum(['choice', 'form', 'resource']),
+  question: z.string(),
+  reply_language: z.string().min(1).max(35),
+})
+
+/**
+ * DifyBuilderSubmitActionPayload
+ */
+export const zDifyBuilderSubmitActionPayload = z.object({
+  action_id: z.string().min(1),
+  base_app_revision: z.string().min(1),
+  base_version: z.int(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+  receipt_snapshot: zDifyBuilderReceiptSnapshot.nullish(),
 })
 
 /**
@@ -496,41 +514,6 @@ export const zDifyBuilderUserConversationItemResponse = z.object({
 })
 
 /**
- * DecisionItem
- */
-export const zDecisionItem = z.object({
-  text: z.string(),
-})
-
-/**
- * DifyBuilderDecisionConversationItemResponse
- */
-export const zDifyBuilderDecisionConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('decision'),
-  payload: zDecisionItem,
-  seq: z.int(),
-})
-
-/**
- * NoticeItem
- */
-export const zNoticeItem = z.object({
-  text: z.string(),
-  tone: z.string().optional().default('neutral'),
-})
-
-/**
- * DifyBuilderNoticeConversationItemResponse
- */
-export const zDifyBuilderNoticeConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('notice'),
-  payload: zNoticeItem,
-  seq: z.int(),
-})
-
-/**
  * RunContextCard
  */
 export const zRunContextCard = z.object({
@@ -548,74 +531,6 @@ export const zDifyBuilderRunContextConversationItemResponse = z.object({
   at_version: z.int(),
   kind: z.literal('run_context'),
   payload: zRunContextCard,
-  seq: z.int(),
-})
-
-/**
- * PlanCard
- */
-export const zPlanCard = z.object({
-  items: z.array(z.string()).optional(),
-  title: z.string(),
-})
-
-/**
- * DifyBuilderPlanConversationItemResponse
- */
-export const zDifyBuilderPlanConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('plan'),
-  payload: zPlanCard,
-  seq: z.int(),
-})
-
-/**
- * TestResultCard
- */
-export const zTestResultCard = z.object({
-  action_reason_code: z.string().nullish(),
-  action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
-  blocked_node_ids: z.array(z.string()).optional(),
-  consent_id: z.string().nullish(),
-  dify_run_id: z.string().optional().default(''),
-  executed_node_ids: z.array(z.string()).optional(),
-  execution_mode: z.enum(['confirmed_tool', 'mock', 'restricted']).nullish(),
-  failure_reason: z.string().nullish(),
-  outcome: z
-    .enum([
-      'execution_failed',
-      'execution_succeeded_needs_review',
-      'execution_unknown',
-      'required_output_unresolved',
-    ])
-    .nullish(),
-  policy_version: z
-    .enum(['builder-confirmed-gmail-read-v1', 'builder-json-parse-v1', 'builder-restricted-v1'])
-    .nullish(),
-  review_note: z.string().nullish(),
-  safety_outcome: z
-    .enum([
-      'confirmed_tool_completed',
-      'execution_blocked',
-      'execution_evidence_unknown',
-      'native_failed',
-      'restricted_execution_completed',
-      'simulation_completed',
-      'unsupported_safe_execution',
-    ])
-    .nullish(),
-  simulated_node_ids: z.array(z.string()).optional(),
-  status: z.enum(['failed', 'succeeded']),
-  terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
- * DifyBuilderTestResultConversationItemResponse
- */
-export const zDifyBuilderTestResultConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('test_result'),
-  payload: zTestResultCard,
   seq: z.int(),
 })
 
@@ -696,11 +611,405 @@ export const zDifyBuilderCanvasEventResponse = z.object({
 })
 
 /**
+ * BuilderCopyId
+ */
+export const zBuilderCopyId = z.enum([
+  'actions.applyTheFix',
+  'actions.approveChanges',
+  'actions.approveFix',
+  'actions.approvePlan',
+  'actions.confirmResources',
+  'actions.continue',
+  'actions.continueAdjusting',
+  'actions.discardThisChangePlan',
+  'actions.finish',
+  'actions.fixAgain',
+  'actions.keepDraft',
+  'actions.publish',
+  'actions.publishFix',
+  'actions.reCheck',
+  'actions.reject',
+  'actions.restartFromCurrentDraft',
+  'actions.retry',
+  'actions.revert',
+  'actions.reviewDraftChanges',
+  'actions.runAffectedPathTests',
+  'actions.runAffectedTests',
+  'actions.runTest',
+  'actions.runTests',
+  'actions.runValidation',
+  'actions.send',
+  'actions.submit',
+  'actions.submitRequirements',
+  'actions.submitRules',
+  'actions.tryAgain',
+  'build.applyFailed',
+  'build.completedDraft',
+  'build.generationFailed',
+  'build.graphApplied',
+  'build.graphCreated',
+  'build.invalidGraph',
+  'build.plan.ready',
+  'build.requirements.defaultsFilled',
+  'confirmed.completed',
+  'confirmed.completedNote',
+  'confirmed.failed',
+  'confirmed.notCompleted',
+  'confirmed.unknown',
+  'decision.howShouldBuilderContinue',
+  'decision.howShouldBuilderContinueAfterTheRevert',
+  'decision.howShouldBuilderProceedWithThisFix',
+  'decision.howShouldBuilderRecover',
+  'decision.isThisChangePlanReadyToApply',
+  'decision.isThisWorkflowPlanReadyToApply',
+  'decision.whatShouldBuilderDoNext',
+  'decision.whatShouldBuilderDoWithTheAppliedFix',
+  'decision.whatShouldBuilderDoWithTheBuiltWorkflow',
+  'decision.whatShouldBuilderDoWithTheProposedRepair',
+  'decision.whatShouldBuilderDoWithTheUpdatedWorkflow',
+  'decision.whatShouldHappenToTheseChanges',
+  'decision.whatShouldHappenToThisFix',
+  'decision.whatShouldHappenToThisWorkflow',
+  'diagnosis.checklistComplete',
+  'diagnosis.complete',
+  'edit.adjust',
+  'edit.adjustWithoutTargets',
+  'edit.applied',
+  'edit.completedDraft',
+  'edit.ineffectiveProposal',
+  'edit.inspected',
+  'edit.inspectedWithoutTargets',
+  'edit.noEffectiveChanges',
+  'edit.plan.ready',
+  'forms.editRules.description',
+  'forms.editRules.title',
+  'forms.goal',
+  'forms.requirements.description',
+  'forms.requirements.title',
+  'forms.testData.description',
+  'forms.testData.title',
+  'forms.userMessage',
+  'json.failed',
+  'labels.appliedTheFixReadyToRetest',
+  'labels.approvedTheChangePlan',
+  'labels.approvedThePlan',
+  'labels.buildPlan',
+  'labels.changePlan',
+  'labels.checklist',
+  'labels.checklistStillFailingReDiagnosing',
+  'labels.chooseOneOptionToContinue',
+  'labels.choseToPublish',
+  'labels.confirmedResources',
+  'labels.couldnTApplyTheFix',
+  'labels.couldnTApplyTheWorkflow',
+  'labels.executionFailed',
+  'labels.executionSucceededOutputNeedsReview',
+  'labels.finishedTheRepairAttempt',
+  'labels.keptTheDraft',
+  'labels.keptTheDraftDespiteTheFailure',
+  'labels.noChangesWereProposed',
+  'labels.noRepairAvailable',
+  'labels.nothingWasApplied',
+  'labels.reApproveToApplyTheChange',
+  'labels.recommendedResources',
+  'labels.rejectedTheProposedRepair',
+  'labels.requestedARevert',
+  'labels.restartingThePlan',
+  'labels.restorePoint',
+  'labels.retryingTheRepair',
+  'labels.revisedPlan',
+  'labels.submittedEditRules',
+  'labels.submittedRequirements',
+  'labels.theChangeWouldnTDoWhatYouAsked',
+  'labels.theWorkflowCanTStart',
+  'model.changed',
+  'model.configurationUnavailable',
+  'operation.failed',
+  'progress.analyzeTheRequestedChange',
+  'progress.applyTheApprovedRepair',
+  'progress.applyTheChangePlan',
+  'progress.applyTheRepairToTheCanvas',
+  'progress.applyTheWorkflowToTheCanvas',
+  'progress.assessRepairRisk',
+  'progress.bindSelectedResourcesToThePlan',
+  'progress.createANewPreEditCheckpoint',
+  'progress.createAPreBuildCheckpoint',
+  'progress.createAPreEditCheckpoint',
+  'progress.diagnoseTheConfigurationIssue',
+  'progress.diagnoseTheFailedPath',
+  'progress.diagnoseTheFailedWorkflow',
+  'progress.diagnoseTheRootCause',
+  'progress.draftTheChangePlan',
+  'progress.draftTheWorkflowPlan',
+  'progress.evaluateTheTestResult',
+  'progress.evaluateValidationResults',
+  'progress.findCompatibleResources',
+  'progress.generateAffectedPathTestInputs',
+  'progress.generateTestInputs',
+  'progress.generateTheWorkflowGraph',
+  'progress.generateValidationInputs',
+  'progress.highlightEditTargets',
+  'progress.inspectChecklistFindings',
+  'progress.inspectTheCurrentWorkflow',
+  'progress.inspectTheWorkflowAndNodeOutputs',
+  'progress.loadTheFailedRun',
+  'progress.prepareASafeRepair',
+  'progress.prepareAffectedPathTests',
+  'progress.prepareCanvasChanges',
+  'progress.prepareRepairContext',
+  'progress.prepareRequirementFields',
+  'progress.prepareResourceRecommendations',
+  'progress.prepareTheConfirmedToolTest',
+  'progress.prepareTheImpactSummary',
+  'progress.prepareTheWorkflowTest',
+  'progress.prepareToRetestAffectedPaths',
+  'progress.prepareToRetestTheWorkflow',
+  'progress.prepareValidationInputs',
+  'progress.proposeASafeRepair',
+  'progress.publishTheNewWorkflow',
+  'progress.publishTheRepairedWorkflow',
+  'progress.publishTheUpdatedWorkflow',
+  'progress.rebuildTheChangePlan',
+  'progress.rebuildTheWorkflowPlan',
+  'progress.recordTheConfirmedTestResult',
+  'progress.reviewConfirmedEditRules',
+  'progress.reviewConfirmedRequirements',
+  'progress.reviseTheWorkflowPlan',
+  'progress.runAffectedWorkflowPaths',
+  'progress.runConfirmedToolTest',
+  'progress.runTheRepairedWorkflow',
+  'progress.runTheWorkflow',
+  'progress.summarizeTheAppliedChanges',
+  'progress.understandTheRequestedWorkflow',
+  'progress.validateChangesAgainstTheCurrentCanvas',
+  'publish.buildComplete',
+  'publish.complete',
+  'publish.editComplete',
+  'publish.verificationRequired',
+  'receipts.noResourcesSelected',
+  'receipts.submittedForm',
+  'recovery.continuing',
+  'recovery.restarted',
+  'repair.applied',
+  'repair.appliedFallback',
+  'repair.changesApplied',
+  'repair.configurationUpdated',
+  'repair.invalidGraph',
+  'repair.noSafeFound',
+  'repair.proposed',
+  'repair.proposedFix',
+  'repair.reason',
+  'repair.riskNote',
+  'repair.staleProposal',
+  'replies.aRequiredOutputReferenceWasUnresolved',
+  'replies.bindJSONParseTextFromA',
+  'replies.builderCannotSafelyTestThisTool',
+  'replies.builderCannotSafelyTestThisTool2',
+  'replies.builderCouldnTProduceAUsable',
+  'replies.builderDoesNotYetHaveSafe',
+  'replies.editTemplateVariablesToUseUnique',
+  'replies.executionOutcomeIsUnknownRunAgainBeforePublishing',
+  'replies.executionSafetyRequiresReviewOrRevised',
+  'replies.iCouldnTApplyTheChange',
+  'replies.iCouldnTApplyTheWorkflow',
+  'replies.iCouldnTDetermineTheTestSOutcomeTwiceInARowSeeTheNotice',
+  'replies.iCouldnTGenerateAValid',
+  'replies.iCouldnTProduceAUsable',
+  'replies.iDidnTApplyAnythingThe',
+  'replies.iDidnTApplyTheChange',
+  'replies.iDidnTApplyTheChange2',
+  'replies.iDidnTApplyTheWorkflow',
+  'replies.iFilledInTestInputsEditThemIfYouLikeThenRunTheTest',
+  'replies.installTheQualifiedJSONProcessVersion',
+  'replies.noAutomaticFixFoundTryAgainOrFinishThisSession',
+  'replies.noChangesSinceYouLastLeftResumingWhereYouWere',
+  'replies.noEffectiveChangesWereNeededThe',
+  'replies.noFixIsStagedForThisFailureKeepTheDraftOrRevert',
+  'replies.noWorkspaceResourcesMatchedThisPlanContinuingWithoutAny',
+  'replies.notStatedInYourRequestAddItIfYouHaveOne',
+  'replies.onlyNodeSettingsChangedSinceYouLeftContinueOrRestart',
+  'replies.otherPathsAndGoalAcceptanceWere',
+  'replies.otherPathsAndGoalAcceptanceWereNotVerified',
+  'replies.provideTestInputsOrUseMockDataToRunTheAffectedPathTest',
+  'replies.provideTestInputsOrUseMockDataToRunValidation',
+  'replies.putThisJSONContentInA',
+  'replies.reduceJSONParseInputOrOutput',
+  'replies.reduceTemplateSizeOrSelectedText',
+  'replies.reviewTheRulesContinueAdjustingApprove',
+  'replies.setJSONParseContentAndFilter',
+  'replies.templateSupportsScalarTextIfElif',
+  'replies.theInstalledJSONProcessVersionChanged',
+  'replies.theNodesThisTaskWasWorking',
+  'replies.theRunFailedOnItsInputsProvideTestDataAndRetry',
+  'replies.theRunFinishedButReachedNo',
+  'replies.theTestFinishedWithoutProducingAnyOutputSeeTheNotice',
+  'replies.theTestSOutcomeCouldnT',
+  'replies.theTestSOutcomeCouldnT2',
+  'replies.theWorkflowStructureChangedButThe',
+  'replies.tryAgainToFindARepairOrFinishThisSession',
+  'replies.useASupportedJSONPathSelection',
+  'replies.useTemplateInputsFromStartScalars',
+  'resources.description',
+  'resources.title',
+  'test.failedFallback',
+  'test.invalidInputs',
+  'test.noDetailedError',
+  'test.policyReview',
+  'values.empty',
+  'values.no',
+  'values.yes',
+])
+
+/**
+ * BuilderCopy
+ */
+export const zBuilderCopy = z.object({
+  id: zBuilderCopyId,
+  params: z.record(z.string(), z.union([z.string(), z.int(), z.number()])).optional(),
+  type: z.literal('copy').optional().default('copy'),
+})
+
+/**
+ * BuilderTextParts
+ */
+export const zBuilderTextParts = z.object({
+  parts: z.array(z.union([z.string(), zBuilderCopy])),
+  type: z.literal('parts').optional().default('parts'),
+})
+
+/**
+ * DifyBuilderActionResponse
+ */
+export const zDifyBuilderActionResponse = z.object({
+  id: z.string(),
+  kind: zActionKind,
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+})
+
+/**
+ * Action
+ */
+export const zAction = z.object({
+  canvas_event: z.string().nullish(),
+  id: z.string(),
+  kind: zActionKind,
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+  next_state: z.string().nullish(),
+})
+
+/**
+ * DecisionItem
+ */
+export const zDecisionItem = z.object({
+  reply_language: z.string().optional().default(''),
+  text: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+})
+
+/**
+ * DifyBuilderDecisionConversationItemResponse
+ */
+export const zDifyBuilderDecisionConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('decision'),
+  payload: zDecisionItem,
+  seq: z.int(),
+})
+
+/**
+ * NoticeItem
+ */
+export const zNoticeItem = z.object({
+  reply_language: z.string().optional().default(''),
+  text: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+  tone: z.string().optional().default('neutral'),
+})
+
+/**
+ * DifyBuilderNoticeConversationItemResponse
+ */
+export const zDifyBuilderNoticeConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('notice'),
+  payload: zNoticeItem,
+  seq: z.int(),
+})
+
+/**
+ * PlanCard
+ */
+export const zPlanCard = z.object({
+  items: z.array(z.string()).optional(),
+  reply_language: z.string().optional().default(''),
+  title: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+})
+
+/**
+ * DifyBuilderPlanConversationItemResponse
+ */
+export const zDifyBuilderPlanConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('plan'),
+  payload: zPlanCard,
+  seq: z.int(),
+})
+
+/**
+ * TestResultCard
+ */
+export const zTestResultCard = z.object({
+  action_reason_code: z.string().nullish(),
+  action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
+  blocked_node_ids: z.array(z.string()).optional(),
+  consent_id: z.string().nullish(),
+  dify_run_id: z.string().optional().default(''),
+  executed_node_ids: z.array(z.string()).optional(),
+  execution_mode: z.enum(['confirmed_tool', 'mock', 'restricted']).nullish(),
+  failure_reason: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
+  outcome: z
+    .enum([
+      'execution_failed',
+      'execution_succeeded_needs_review',
+      'execution_unknown',
+      'required_output_unresolved',
+    ])
+    .nullish(),
+  policy_version: z
+    .enum(['builder-confirmed-gmail-read-v1', 'builder-json-parse-v1', 'builder-restricted-v1'])
+    .nullish(),
+  reply_language: z.string().optional().default(''),
+  review_note: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
+  safety_outcome: z
+    .enum([
+      'confirmed_tool_completed',
+      'execution_blocked',
+      'execution_evidence_unknown',
+      'native_failed',
+      'restricted_execution_completed',
+      'simulation_completed',
+      'unsupported_safe_execution',
+    ])
+    .nullish(),
+  simulated_node_ids: z.array(z.string()).optional(),
+  status: z.enum(['failed', 'succeeded']),
+  terminal_outputs: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * DifyBuilderTestResultConversationItemResponse
+ */
+export const zDifyBuilderTestResultConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('test_result'),
+  payload: zTestResultCard,
+  seq: z.int(),
+})
+
+/**
  * DifyBuilderExecutionActivityResponse
  */
 export const zDifyBuilderExecutionActivityResponse = z.object({
   id: z.string(),
-  label: z.string(),
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
   parent_id: z.string().nullish(),
   state: z.enum(['active', 'done', 'failed', 'stopped']),
 })
@@ -712,6 +1021,7 @@ export const zDifyBuilderProgressEventData = z.object({
   activity: zDifyBuilderExecutionActivityResponse.nullable(),
   at_version: z.int(),
   operation_id: z.string(),
+  reply_language: z.string().optional().default(''),
   revision: z.int(),
   session_id: z.string(),
   status: z.enum(['completed', 'error', 'running', 'stopped']),
@@ -760,12 +1070,34 @@ export const zDifyBuilderAgentMessageEventResponse = z.object({
 })
 
 /**
+ * DifyBuilderProgressSnapshotEventData
+ *
+ * Complete observed activity state before subsequent live progress deltas.
+ */
+export const zDifyBuilderProgressSnapshotEventData = z.object({
+  at_version: z.int(),
+  execution: zDifyBuilderExecutionProgressResponse,
+  operation_id: z.string(),
+  reply_language: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderProgressSnapshotEventResponse
+ */
+export const zDifyBuilderProgressSnapshotEventResponse = z.object({
+  data: zDifyBuilderProgressSnapshotEventData,
+  event: z.literal('progress_snapshot'),
+})
+
+/**
  * OptionInput
  */
 export const zOptionInput = z.object({
   max_length: z.int().optional().default(100),
   min_length: z.int().optional().default(0),
-  placeholder: z.string().optional().default(''),
+  placeholder: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
   required: z.boolean().optional().default(true),
 })
 
@@ -774,11 +1106,11 @@ export const zOptionInput = z.object({
  */
 export const zCardOption = z.object({
   canvas_event: z.string().nullish(),
-  description: z.string().optional().default(''),
+  description: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
   id: z.string(),
   input: zOptionInput.nullish(),
   is_default: z.boolean().optional().default(false),
-  label: z.string(),
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
   next_state: z.string().nullish(),
   tone: z.string().optional().default('neutral'),
 })
@@ -788,10 +1120,10 @@ export const zCardOption = z.object({
  */
 export const zDecision = z.object({
   default_option_id: z.string().optional().default(''),
-  description: z.string().optional().default(''),
+  description: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
   options: z.array(zCardOption).optional(),
   submit: zAction.nullish(),
-  title: z.string(),
+  title: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
 })
 
 /**
@@ -849,9 +1181,9 @@ export const zDifyBuilderCommandFinishedEventResponse = z.object({
  * InteractionResponseField
  */
 export const zInteractionResponseField = z.object({
-  display_value: z.string(),
+  display_value: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
   key: z.string(),
-  label: z.string(),
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
   value: z.unknown(),
 })
 
@@ -859,10 +1191,11 @@ export const zInteractionResponseField = z.object({
  * InteractionResponseItem
  */
 export const zInteractionResponseItem = z.object({
-  answer: z.string().optional().default(''),
+  answer: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
   fields: z.array(zInteractionResponseField).optional(),
   interaction_kind: z.enum(['choice', 'form', 'resource']),
-  question: z.string(),
+  question: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
+  reply_language: z.string().optional().default(''),
   submitted_data: z.record(z.string(), z.unknown()).optional(),
 })
 
@@ -915,14 +1248,14 @@ export const zFormField = z.object({
   allowed_file_types: z.array(z.string()).optional(),
   allowed_file_upload_methods: z.array(z.string()).optional(),
   default: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
-  hint: z.string().nullish(),
+  hint: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
   json_schema: z.union([z.string(), z.record(z.string(), z.unknown())]).nullish(),
   key: z.string(),
-  label: z.string(),
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
   max_length: z.int().nullish(),
   number_limits: z.int().nullish(),
   options: z.array(z.string()).optional(),
-  placeholder: z.string().nullish(),
+  placeholder: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
   required: z.boolean().optional().default(false),
   type: z.string(),
   unit: z.string().nullish(),
@@ -932,10 +1265,11 @@ export const zFormField = z.object({
  * FormCard
  */
 export const zFormCard = z.object({
-  description: z.string().optional().default(''),
+  description: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
   fields: z.array(zFormField).optional(),
   frozen: z.boolean().optional().default(false),
-  title: z.string().optional().default(''),
+  reply_language: z.string().optional().default(''),
+  title: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
   values: z.record(z.string(), z.unknown()).optional(),
   variant: z.string(),
 })
@@ -965,9 +1299,10 @@ export const zResourceOption = z.object({
  * ResourceSelectCard
  */
 export const zResourceSelectCard = z.object({
-  description: z.string().optional().default(''),
+  description: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
   recommended: z.array(zResourceOption).optional(),
-  title: z.string().optional().default(''),
+  reply_language: z.string().optional().default(''),
+  title: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).optional().default(''),
 })
 
 /**
@@ -978,40 +1313,6 @@ export const zDifyBuilderResourceSelectConversationItemResponse = z.object({
   kind: z.literal('resource_select'),
   payload: zResourceSelectCard,
   seq: z.int(),
-})
-
-/**
- * DifyBuilderConversationItemAppendedEventData
- */
-export const zDifyBuilderConversationItemAppendedEventData = z.object({
-  command_id: z.string(),
-  item: z.discriminatedUnion('kind', [
-    zDifyBuilderUserConversationItemResponse.extend({ kind: z.literal('user') }),
-    zDifyBuilderDecisionConversationItemResponse.extend({ kind: z.literal('decision') }),
-    zDifyBuilderInteractionResponseConversationItemResponse.extend({
-      kind: z.literal('interaction_response'),
-    }),
-    zDifyBuilderNoticeConversationItemResponse.extend({ kind: z.literal('notice') }),
-    zDifyBuilderRunContextConversationItemResponse.extend({ kind: z.literal('run_context') }),
-    zDifyBuilderPreflightContextConversationItemResponse.extend({
-      kind: z.literal('preflight_context'),
-    }),
-    zDifyBuilderPlanConversationItemResponse.extend({ kind: z.literal('plan') }),
-    zDifyBuilderFormConversationItemResponse.extend({ kind: z.literal('form') }),
-    zDifyBuilderResourceSelectConversationItemResponse.extend({
-      kind: z.literal('resource_select'),
-    }),
-    zDifyBuilderTestResultConversationItemResponse.extend({ kind: z.literal('test_result') }),
-  ]),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderConversationItemAppendedEventResponse
- */
-export const zDifyBuilderConversationItemAppendedEventResponse = z.object({
-  data: zDifyBuilderConversationItemAppendedEventData,
-  event: z.literal('conversation_item_appended'),
 })
 
 /**
@@ -1258,7 +1559,7 @@ export const zWorkflowStreamEventLiteralHumanInputFormTimeoutData = z.object({
 export const zExecutionActivity = z.object({
   id: z.string(),
   kind: z.enum(['node', 'stage']).optional().default('stage'),
-  label: z.string(),
+  label: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
   parent_id: z.string().nullish(),
   state: z.enum(['active', 'done', 'failed', 'stopped']),
 })
@@ -1279,7 +1580,9 @@ export const zAssistantTurnItem = z.object({
   cards: z.array(z.string()).optional(),
   execution: zExecutionProgress,
   reasoning_text: z.string().nullish(),
-  reply_text: z.string().nullish(),
+  reply_language: z.string().optional().default(''),
+  reply_mode: z.enum(['complete', 'stream']).optional().default('stream'),
+  reply_text: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
   stage_id: z.string(),
   turn_id: z.string(),
 })
@@ -1360,6 +1663,41 @@ export const zDifyBuilderConversationPageResponse = z.object({
   first_seq: z.int().nullable(),
   has_more: z.boolean(),
   last_seq: z.int().nullable(),
+})
+
+/**
+ * DifyBuilderConversationItemAppendedEventData
+ */
+export const zDifyBuilderConversationItemAppendedEventData = z.object({
+  command_id: z.string(),
+  item: z.discriminatedUnion('kind', [
+    zDifyBuilderUserConversationItemResponse.extend({ kind: z.literal('user') }),
+    zDifyBuilderDecisionConversationItemResponse.extend({ kind: z.literal('decision') }),
+    zDifyBuilderInteractionResponseConversationItemResponse.extend({
+      kind: z.literal('interaction_response'),
+    }),
+    zDifyBuilderNoticeConversationItemResponse.extend({ kind: z.literal('notice') }),
+    zDifyBuilderRunContextConversationItemResponse.extend({ kind: z.literal('run_context') }),
+    zDifyBuilderPreflightContextConversationItemResponse.extend({
+      kind: z.literal('preflight_context'),
+    }),
+    zDifyBuilderAssistantTurnConversationItemResponse.extend({ kind: z.literal('assistant_turn') }),
+    zDifyBuilderPlanConversationItemResponse.extend({ kind: z.literal('plan') }),
+    zDifyBuilderFormConversationItemResponse.extend({ kind: z.literal('form') }),
+    zDifyBuilderResourceSelectConversationItemResponse.extend({
+      kind: z.literal('resource_select'),
+    }),
+    zDifyBuilderTestResultConversationItemResponse.extend({ kind: z.literal('test_result') }),
+  ]),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderConversationItemAppendedEventResponse
+ */
+export const zDifyBuilderConversationItemAppendedEventResponse = z.object({
+  data: zDifyBuilderConversationItemAppendedEventData,
+  event: z.literal('conversation_item_appended'),
 })
 
 /**
@@ -1911,6 +2249,7 @@ export const zDifyBuilderStreamEventResponse = z.discriminatedUnion('event', [
   }),
   zDifyBuilderReasoningEventResponse.extend({ event: z.literal('reasoning') }),
   zDifyBuilderProgressEventResponse.extend({ event: z.literal('progress') }),
+  zDifyBuilderProgressSnapshotEventResponse.extend({ event: z.literal('progress_snapshot') }),
   zDifyBuilderCommandFinishedEventResponse.extend({ event: z.literal('command_finished') }),
   zDifyBuilderErrorEventResponse.extend({ event: z.literal('error') }),
 ])

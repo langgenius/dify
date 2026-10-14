@@ -2,15 +2,17 @@ import type { PreflightContextCard as PreflightContextCardData } from '@dify/con
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DifyBuilderCard } from '../cards/card-shell'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 
 export const PreflightContextCard = memo(
   ({ payload, invalidated }: { payload: PreflightContextCardData; invalidated: boolean }) => {
-    const { t } = useTranslation(['workflow'])
+    const locale = useDifyBuilderInteractionLocale()
+    const { t } = useTranslation(['difyBuilder'], { lng: locale })
 
     return (
       <DifyBuilderCard
-        category={t(($) => $['difyBuilder.cardCategory.checks'], { ns: 'workflow' })}
-        headline={t(($) => $['difyBuilder.checklistIssues'], { ns: 'workflow' })}
+        category={t(($) => $['cardCategory.checks'], { ns: 'difyBuilder' })}
+        headline={t(($) => $.checklistIssues, { ns: 'difyBuilder' })}
         invalidated={invalidated}
         meta={String(payload.issue_count)}
         status={payload.issue_count > 0 ? { state: 'blocked' } : undefined}
@@ -27,13 +29,13 @@ export const PreflightContextCard = memo(
               if (issue.unconnected)
                 messages.push({
                   key: 'unconnected',
-                  text: t(($) => $['common.needConnectTip'], { ns: 'workflow' }),
+                  text: t(($) => $['preflight.needConnection'], { ns: 'difyBuilder' }),
                 })
               if (issue.plugin_missing)
                 messages.push({
                   key: 'plugin-missing',
-                  text: t(($) => $['nodes.common.pluginsNotInstalled'], {
-                    ns: 'workflow',
+                  text: t(($) => $['preflight.pluginMissing'], {
+                    ns: 'difyBuilder',
                     count: 1,
                   }),
                 })

@@ -13,6 +13,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
@@ -24,7 +25,6 @@ import { commonQueryKeys } from '@/service/use-common'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
-import { getInviteErrorCode } from './invite-error'
 import { RoleSelector } from './role-selector'
 
 type InviteModalProps = {
@@ -37,23 +37,31 @@ type InviteFormValues = {
   emails: string
   role: string
 }
+// The documented invite errors the form presents on the field that caused them.
+type InviteFieldErrorCode = 'invalid_role' | 'limit_exceeded'
 type InviteFormProps = {
   isEmailSetup: boolean
   isPending: boolean
-  error: unknown
+  errorCode: InviteFieldErrorCode | null
+  hasError: boolean
   onSubmit: (emails: string[], role: string) => void
   onDismissError: () => void
 }
 
-function InviteForm({ isEmailSetup, isPending, error, onSubmit, onDismissError }: InviteFormProps) {
+function InviteForm({
+  isEmailSetup,
+  isPending,
+  errorCode,
+  hasError,
+  onSubmit,
+  onDismissError,
+}: InviteFormProps) {
   const { t } = useTranslation(['workspaceMembers'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const submitButtonRef = useRef<HTMLButtonElement>(null)
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
-  // The request owns its failure; the form only decides where to present it.
-  const errorCode = error ? getInviteErrorCode(error) : null
   const fieldErrors: Partial<Record<InviteFieldName, string>> | undefined =
     errorCode === 'limit_exceeded'
       ? { emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' }) }
@@ -61,7 +69,9 @@ function InviteForm({ isEmailSetup, isPending, error, onSubmit, onDismissError }
         ? { role: t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' }) }
         : undefined
   const formError =
-    error && !fieldErrors ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }) : null
+    hasError && !fieldErrors
+      ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
+      : null
   // A limit of 0 means unlimited.
   const memberLimit = features?.workspace_members.enabled
     ? features.workspace_members
@@ -196,7 +206,9 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
         <InviteForm
           isEmailSetup={isEmailSetup}
           isPending={isPending}
-          error={error}
+          // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
+          errorCode={isDefinedError(error) ? error.code : null}
+          hasError={!!error}
           onSubmit={(emails, role) => mutate({ body: { emails, role, language: locale } })}
           onDismissError={reset}
         />

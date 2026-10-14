@@ -9,6 +9,7 @@ import {
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { DifyBuilderCard } from '../cards/card-shell'
+import { useBuilderText } from '../copy/use-builder-text'
 import { difyBuilderAppIdAtom } from '../store'
 import { TestResultNativeOutputs, TestResultRunDetails } from './test-result-native-run'
 import { TestResultOutputs } from './test-result-outputs'
@@ -20,7 +21,8 @@ export const TestResultCard = ({
   payload: TestResultPayload
   invalidated: boolean
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { locale, renderText } = useBuilderText(payload.reply_language)
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const appId = useAtomValue(difyBuilderAppIdAtom)
   const outcome =
     payload.outcome ??
@@ -28,26 +30,22 @@ export const TestResultCard = ({
   const succeeded = outcome === 'execution_succeeded_needs_review'
   const headline =
     outcome === 'required_output_unresolved'
-      ? t(($) => $['difyBuilder.testResult.requiredOutputUnresolved'], { ns: 'workflow' })
+      ? t(($) => $['testResult.requiredOutputUnresolved'], { ns: 'difyBuilder' })
       : outcome === 'execution_unknown'
-        ? t(($) => $['difyBuilder.testResult.executionUnknown'], { ns: 'workflow' })
+        ? t(($) => $['testResult.executionUnknown'], { ns: 'difyBuilder' })
         : undefined
-  const outputsLabel = t(($) => $['difyBuilder.testResult.terminalOutputs'], { ns: 'workflow' })
+  const outputsLabel = t(($) => $['testResult.terminalOutputs'], { ns: 'difyBuilder' })
 
   return (
     <DifyBuilderCard
-      category={t(($) => $['difyBuilder.cardCategory.test'], { ns: 'workflow' })}
+      category={t(($) => $['cardCategory.test'], { ns: 'difyBuilder' })}
       headline={headline}
       invalidated={invalidated}
       status={{
         state: succeeded ? 'done' : 'failed',
-        label: t(
-          ($) =>
-            succeeded
-              ? $['difyBuilder.testResult.statusPassed']
-              : $['difyBuilder.testResult.statusFailed'],
-          { ns: 'workflow' },
-        ),
+        label: t(($) => (succeeded ? $['testResult.statusPassed'] : $['testResult.statusFailed']), {
+          ns: 'difyBuilder',
+        }),
         className: succeeded ? 'text-util-colors-green-green-700' : undefined,
         icon: (
           <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
@@ -62,7 +60,7 @@ export const TestResultCard = ({
     >
       <div className="flex min-w-0 flex-col gap-2 system-xs-regular text-text-secondary">
         {payload.failure_reason && (
-          <p className="wrap-anywhere whitespace-pre-wrap">{payload.failure_reason}</p>
+          <p className="wrap-anywhere whitespace-pre-wrap">{renderText(payload.failure_reason)}</p>
         )}
         <ScrollArea className="max-h-80 min-w-0 rounded-sm">
           <ScrollAreaViewport
@@ -79,14 +77,14 @@ export const TestResultCard = ({
                   key={`${appId}:${payload.dify_run_id}`}
                   appId={appId}
                   runId={payload.dify_run_id}
-                  failureReason={payload.failure_reason}
+                  failureReason={renderText(payload.failure_reason)}
                 />
               ) : (
                 <p>
                   {outcome === 'execution_failed' && !payload.dify_run_id
-                    ? t(($) => $['difyBuilder.testResult.noOutputs'], { ns: 'workflow' })
-                    : t(($) => $['difyBuilder.testResult.outputsUnavailable'], {
-                        ns: 'workflow',
+                    ? t(($) => $['testResult.noOutputs'], { ns: 'difyBuilder' })
+                    : t(($) => $['testResult.outputsUnavailable'], {
+                        ns: 'difyBuilder',
                       })}
                 </p>
               )}

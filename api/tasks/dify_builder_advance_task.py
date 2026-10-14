@@ -55,11 +55,13 @@ from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, is_terminal
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from services.dify_builder import app_naming, progress_bus, session_lock
-from services.dify_builder.agent.localize import Localizer
+from services.dify_builder import app_naming, progress_bus, progress_snapshot, session_lock
+from services.dify_builder.agent.localize import LanguageDetector
 from services.dify_builder.agent_factory import build_dify_builder_agent
+from services.dify_builder.copy_ids import BuilderCopyId
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError
+from services.dify_builder.presentation import copy_text
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
@@ -138,7 +140,9 @@ def _persist_failed_state(
         turn_id=command_id,
         stage_id=str(session.current_state),
         execution=ExecutionProgress(status="error"),
-        reply_text="The operation could not be completed. Restart from the current draft to continue.",
+        reply_text=copy_text(BuilderCopyId.OPERATION_FAILED),
+        reply_mode="complete",
+        reply_language=context.reply_language,
     ).to_item(seq=context.next_seq, at_version=at_version)
     context.next_seq += 1
     context.last_command_id = command_id
@@ -293,6 +297,24 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             if progress.activity is not None:
                 progress_activities[progress.activity.id] = replace(progress.activity)
             last_progress = progress
+            assert actor is not None
+            try:
+                progress_snapshot.save(
+                    progress_snapshot.ProgressSnapshot(
+                        session_id=session_id,
+                        operation_id=progress.operation_id,
+                        at_version=progress.at_version,
+                        revision=progress.revision,
+                        reply_language=progress.reply_language,
+                        execution=ExecutionProgress(
+                            status=progress.status, activities=list(progress_activities.values())
+                        ),
+                    ),
+                    tenant_id=actor.tenant_id,
+                    owner=owner,
+                )
+            except Exception:
+                logger.exception("dify_builder progress snapshot save failed for session %s", session_id)
             try:
                 progress_bus.publish(session_id, asdict(progress))
             except Exception:
@@ -304,9 +326,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                     progress.operation_id,
                 )
 
-        # `model_or_none` is part of the DifyBuilderAgent protocol; the Localizer
-        # uses it as its model provider (None -> reply-language localization is a no-op).
-        localizer = Localizer(agent.model_or_none)
+        language_detector = LanguageDetector(agent.model_or_none)
 
         def rename_app(proposed: str) -> str:
             assert actor is not None
@@ -330,9 +350,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             emit_progress=emit_progress,
             emit_reasoning=emit_reasoning,
             # A confirmed outcome is deterministic status metadata: no model call.
-            detect_language=None if confirmed else localizer.detect_language,
-            localize_items=None if confirmed else localizer.localize_items,
-            prepare_ui_copy=None if confirmed else localizer.prepare_ui_copy,
+            detect_language=None if confirmed else language_detector.detect_language,
             rename_app=None if confirmed else rename_app,
             command_id=action.command_id,
         )

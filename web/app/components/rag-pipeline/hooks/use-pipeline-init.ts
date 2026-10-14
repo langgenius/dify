@@ -56,7 +56,7 @@ export const usePipelineInit = () => {
       setRagPipelineVariables?.(res.rag_pipeline_variables || [])
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ORPCError && datasetId) {
         if (error.code === 'draft_workflow_not_exist') {
           workflowStore.setState({

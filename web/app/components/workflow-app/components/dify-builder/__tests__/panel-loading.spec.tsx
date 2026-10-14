@@ -1,14 +1,15 @@
-import type { ResourceKey } from 'i18next'
 import type { ConversationItem, SessionView } from '../types'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import dynamic from 'next/dist/shared/lib/app-dynamic'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import englishCommon from '@/i18n/locales/en-US/common.json'
+import englishBuilder from '@/i18n/locales/en-US/dify-builder.json'
 import englishWorkflowAgent from '@/i18n/locales/en-US/workflow-agent.json'
 import englishWorkflow from '@/i18n/locales/en-US/workflow.json'
 import chineseCommon from '@/i18n/locales/zh-Hans/common.json'
+import chineseBuilder from '@/i18n/locales/zh-Hans/dify-builder.json'
 import chineseWorkflowAgent from '@/i18n/locales/zh-Hans/workflow-agent.json'
 import chineseWorkflow from '@/i18n/locales/zh-Hans/workflow.json'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -55,11 +56,13 @@ const translations = {
   'en-US': {
     common: englishCommon,
     workflow: englishWorkflow,
+    difyBuilder: englishBuilder,
     workflowAgent: englishWorkflowAgent,
   },
   'zh-Hans': {
     common: chineseCommon,
     workflow: chineseWorkflow,
+    difyBuilder: chineseBuilder,
     workflowAgent: chineseWorkflowAgent,
   },
 }
@@ -110,7 +113,13 @@ const renderPanel = (locale: keyof typeof translations, cached = false) => {
         resource={Object.fromEntries(
           Object.entries(translations).map(([language, resources]) => [
             language,
-            cached ? resources : { common: resources.common, workflow: resources.workflow },
+            cached
+              ? resources
+              : {
+                  common: resources.common,
+                  workflow: resources.workflow,
+                  difyBuilder: resources.difyBuilder,
+                },
           ]),
         )}
       >
@@ -146,72 +155,29 @@ describe('DifyBuilderPanel translation loading', () => {
   })
 
   it.each(['en-US', 'zh-Hans'] as const)(
-    'keeps the panel and conversation visible while the %s requirements translations load',
+    'renders %s requirements from Builder resources without loading workflow translations',
     async (locale) => {
-      let finishLoading!: () => void
-      const pending = new Promise<void>((resolve) => {
-        finishLoading = resolve
-      })
-      mocks.loadResource.mockImplementation(
-        async (
-          language: keyof typeof translations,
-          namespace: string,
-        ): Promise<{ default: ResourceKey }> => {
-          if (namespace !== 'workflowAgent') throw new Error(`Unexpected namespace: ${namespace}`)
-          await pending
-          return { default: translations[language].workflowAgent }
-        },
-      )
       const store = renderPanel(locale)
       const copy = translations[locale]
-      expect(
-        await screen.findByRole('complementary', { name: copy.workflow['difyBuilder.panelTitle'] }),
-      ).toBeVisible()
-      expect(mocks.loadResource).not.toHaveBeenCalled()
-
+      await screen.findByRole('complementary', { name: copy.difyBuilder.panelTitle })
       showRequirements(store)
-
-      await waitFor(() => expect(mocks.loadResource).toHaveBeenCalledWith(locale, 'workflowAgent'))
-      expect(
-        screen.getByRole('complementary', { name: copy.workflow['difyBuilder.panelTitle'] }),
-      ).toBeVisible()
-      expect(
-        screen.getByRole('heading', { name: copy.workflow['difyBuilder.panelTitle'] }),
-      ).toBeVisible()
-      const log = screen.getByRole('log', { name: copy.workflow['difyBuilder.panelTitle'] })
-      expect(within(log).getByText('Translate documents')).toBeVisible()
-      expect(screen.getByRole('status', { name: copy.common.loading })).toBeVisible()
-      expect(screen.queryByRole('textbox', { name: 'Goal' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: copy.common['operation.close'] })).toBeEnabled()
-      expect(mocks.closePanel).not.toHaveBeenCalled()
-
-      await act(async () => {
-        finishLoading()
-        await pending
-      })
-
       expect(await screen.findByRole('textbox', { name: 'Goal' })).toHaveValue(
         'Translate documents',
       )
-      expect(
-        screen.getByRole('complementary', { name: copy.workflow['difyBuilder.panelTitle'] }),
-      ).toBeVisible()
-      expect(within(log).getByText('Translate documents')).toBeVisible()
       expect(screen.queryByRole('status', { name: copy.common.loading })).not.toBeInTheDocument()
+      expect(mocks.loadResource).not.toHaveBeenCalled()
       expect(mocks.closePanel).not.toHaveBeenCalled()
     },
   )
 
   it('shows cached requirements immediately without replacing the panel with a loading state', async () => {
     const store = renderPanel('en-US', true)
-    await screen.findByRole('complementary', { name: englishWorkflow['difyBuilder.panelTitle'] })
+    await screen.findByRole('complementary', { name: englishBuilder.panelTitle })
 
     showRequirements(store)
 
     expect(screen.getByRole('textbox', { name: 'Goal' })).toHaveValue('Translate documents')
-    expect(
-      screen.getByRole('complementary', { name: englishWorkflow['difyBuilder.panelTitle'] }),
-    ).toBeVisible()
+    expect(screen.getByRole('complementary', { name: englishBuilder.panelTitle })).toBeVisible()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(mocks.loadResource).not.toHaveBeenCalled()
     expect(mocks.closePanel).not.toHaveBeenCalled()

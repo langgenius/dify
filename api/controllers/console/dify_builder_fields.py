@@ -31,6 +31,7 @@ from core.dify_builder.contract import (
 from core.dify_builder.real_call_consent import ConsentState
 from fields.base import ResponseModel
 from fields.workflow_stream_fields import WorkflowStreamPayload
+from services.dify_builder.presentation import BuilderText
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ClientTurnId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -98,8 +99,26 @@ class DifyBuilderCreateSessionPayload(
     """Create a Build, Edit, failed-run Fix, or checklist Fix session."""
 
 
+class DifyBuilderReceiptFieldSnapshot(DifyBuilderPayload):
+    key: NonEmptyString
+    label: str
+    display_value: str
+
+
+class DifyBuilderReceiptSnapshot(DifyBuilderPayload):
+    """Localized display only; submitted values remain in action.payload."""
+
+    interaction_kind: Literal["choice", "form", "resource"]
+    reply_language: Annotated[str, StringConstraints(min_length=1, max_length=35)]
+    # Display metadata must not impose limits absent from action.payload.
+    question: str
+    answer: str = ""
+    fields: list[DifyBuilderReceiptFieldSnapshot] = Field(default_factory=list)
+
+
 class DifyBuilderSubmitActionPayload(DifyBuilderPayload):
     action_id: NonEmptyString
+    receipt_snapshot: DifyBuilderReceiptSnapshot | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     base_version: StrictInt
     base_app_revision: NonEmptyString
@@ -225,9 +244,8 @@ DifyBuilderConversationItem = Annotated[
     Field(discriminator="kind"),
 ]
 
-# Live item events intentionally exclude assistant_turn. Assistant text has a
-# dedicated streaming contract with a preallocated sequence; allowing it here
-# would reintroduce a second, conflicting text source for the frontend.
+# Complete assistant presentation arrives as a committed item. Native streamed
+# assistant text is restricted to agent_message by the event validator.
 DifyBuilderAppendedConversationItem = Annotated[
     DifyBuilderUserConversationItemResponse
     | DifyBuilderDecisionConversationItemResponse
@@ -235,6 +253,7 @@ DifyBuilderAppendedConversationItem = Annotated[
     | DifyBuilderNoticeConversationItemResponse
     | DifyBuilderRunContextConversationItemResponse
     | DifyBuilderPreflightContextConversationItemResponse
+    | DifyBuilderAssistantTurnConversationItemResponse
     | DifyBuilderPlanConversationItemResponse
     | DifyBuilderFormConversationItemResponse
     | DifyBuilderResourceSelectConversationItemResponse
@@ -251,7 +270,7 @@ class DifyBuilderActiveInteractionResponse(ResponseModel):
 
 class DifyBuilderActionResponse(ResponseModel):
     id: str
-    label: str
+    label: BuilderText
     kind: ActionKind
 
 
@@ -337,7 +356,7 @@ class DifyBuilderCanvasEventResponse(ResponseModel):
 
 class DifyBuilderExecutionActivityResponse(ResponseModel):
     id: str
-    label: str
+    label: BuilderText
     state: ExecutionActivityState
     parent_id: str | None = None
 
@@ -372,6 +391,12 @@ class DifyBuilderConversationItemAppendedEventData(ResponseModel):
     command_id: str
     item: DifyBuilderAppendedConversationItem
 
+    @model_validator(mode="after")
+    def complete_assistant_only(self):
+        if self.item.kind == "assistant_turn" and self.item.payload.reply_mode != "complete":
+            raise ValueError("streamed assistant turns use agent_message")
+        return self
+
 
 class DifyBuilderConversationItemAppendedEventResponse(ResponseModel):
     event: Literal["conversation_item_appended"]
@@ -398,11 +423,28 @@ class DifyBuilderProgressEventData(ResponseModel):
     revision: int
     status: ExecutionProgressStatus
     activity: DifyBuilderExecutionActivityResponse | None
+    reply_language: str = ""
 
 
 class DifyBuilderProgressEventResponse(ResponseModel):
     event: Literal["progress"]
     data: DifyBuilderProgressEventData
+
+
+class DifyBuilderProgressSnapshotEventData(ResponseModel):
+    """Complete observed activity state before subsequent live progress deltas."""
+
+    session_id: str
+    operation_id: str
+    at_version: int
+    revision: int
+    reply_language: str
+    execution: DifyBuilderExecutionProgressResponse
+
+
+class DifyBuilderProgressSnapshotEventResponse(ResponseModel):
+    event: Literal["progress_snapshot"]
+    data: DifyBuilderProgressSnapshotEventData
 
 
 class DifyBuilderCommandFinishedEventResponse(ResponseModel):
@@ -432,6 +474,7 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderConversationItemAppendedEventResponse
             | DifyBuilderReasoningEventResponse
             | DifyBuilderProgressEventResponse
+            | DifyBuilderProgressSnapshotEventResponse
             | DifyBuilderCommandFinishedEventResponse
             | DifyBuilderErrorEventResponse,
             Field(discriminator="event"),

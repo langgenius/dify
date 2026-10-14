@@ -108,9 +108,27 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
-}))
+// Stand in for the draft sync request at the client boundary. Calls are recorded as the
+// request they send (endpoint and body), and rejections pass through the console link's
+// contract error validation, as they do in production.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { apps } = await import('@dify/contracts/api/console/apps/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ apps })
+  const post = (input: { params: { app_id: string }; body: unknown }) =>
+    validate({
+      context: {},
+      input,
+      path: ['apps', 'byAppId', 'workflows', 'draft', 'post'],
+      next: () =>
+        mockSyncWorkflowDraft({
+          url: `/apps/${input.params.app_id}/workflows/draft`,
+          params: input.body,
+        }),
+    })
+  return { ...actual, consoleClient: { apps: { byAppId: { workflows: { draft: { post } } } } } }
+})
 
 vi.mock('@/service/fetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/fetch')>()
@@ -615,6 +633,8 @@ describe('useNodesSyncDraft', () => {
   it('pauses all save entry points after a draft conflict without refreshing the canvas', async () => {
     const error = createHttpError(new Response(null, { status: 409 }), {
       code: 'draft_workflow_not_sync',
+      message: 'Workflow not synced.',
+      status: 409,
     })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
@@ -636,6 +656,8 @@ describe('useNodesSyncDraft', () => {
   it('pauses saves even when the caller disabled automatic refresh', async () => {
     const error = createHttpError(new Response(null, { status: 409 }), {
       code: 'draft_workflow_not_sync',
+      message: 'Workflow not synced.',
+      status: 409,
     })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
@@ -652,7 +674,11 @@ describe('useNodesSyncDraft', () => {
 
   it('drops queued saves after a conflict and settles both callers', async () => {
     mockSyncWorkflowDraft.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'draft_workflow_not_sync',
+        message: 'Workflow not synced.',
+        status: 409,
+      }),
     )
     const first = { onError: vi.fn(), onSettled: vi.fn() }
     const second = { onError: vi.fn(), onSettled: vi.fn() }
@@ -704,7 +730,11 @@ describe('useNodesSyncDraft', () => {
     workflowStoreState.workflowDraftGeneration += 1
     workflowStoreState.syncWorkflowDraftHash = 'reloaded-hash'
     rejectSync(
-      createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'draft_workflow_not_sync',
+        message: 'Workflow not synced.',
+        status: 409,
+      }),
     )
 
     expect(await pending).toBeNull()
@@ -1037,7 +1067,11 @@ describe('useNodesSyncDraft', () => {
       ).rejects.toThrow('workflow.draftConflict.message')
 
       rejectSave(
-        createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'draft_workflow_not_sync',
+          message: 'Workflow not synced.',
+          status: 409,
+        }),
       )
       await saving
       await preparing

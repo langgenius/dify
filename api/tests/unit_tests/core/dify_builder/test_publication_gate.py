@@ -15,6 +15,7 @@ from tests.unit_tests.core.dify_builder.fakes import (
     saved_test_context,
     successful_verification,
 )
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 FLOWS = [
     (handlers_build, EntryMode.BUILD, PcState.BUILD_REVIEW, "publish_workflow", "run_test"),
@@ -207,7 +208,7 @@ def test_verification_unbound_success_reply_requires_retest(flow):
         or module.handle_verify
     )
     result = handler(env, turn, session, saved_test_context(env.repo, session.id))
-    reply = next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn")
+    reply = next(english_text(item.payload["reply_text"]) for item in result.items if item.kind == "assistant_turn")
     assert "Execution safety requires review" in reply
     assert result.context.staged_repair == []
 

@@ -55,6 +55,7 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
+from services.app_storage_cleanup_service import cleanup_app_storage
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,9 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
+        # Preserve ownership records until storage cleanup succeeds, so retries
+        # can still locate files. External I/O runs outside DB transactions.
+        cleanup_app_storage(tenant_id, app_id)
         # Delete related data
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)

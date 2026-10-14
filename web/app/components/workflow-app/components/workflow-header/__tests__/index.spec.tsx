@@ -82,6 +82,7 @@ describe('WorkflowHeader', () => {
       interrupted: true,
       phase: 'publish',
       run_status: 'processing',
+      reply_language: '',
       session_id: 'session-1',
       version: 1,
     })

@@ -108,7 +108,7 @@ describe('Create app feedback', () => {
       renderEntry(builder)
       if (builder) {
         await openStarter(user)
-        await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+        await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
       } else {
         await selectWorkflow(user)
       }
@@ -122,7 +122,7 @@ describe('Create app feedback', () => {
         const input = screen.getByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
         expect(input).toHaveValue('Original prompt')
         expect(input).toHaveAccessibleDescription('Creation unavailable')
-        await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }))
+        await user.click(screen.getByRole('button', { name: 'difyBuilder.messageSend' }))
       } else {
         await selectWorkflow(user)
       }

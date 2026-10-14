@@ -2,6 +2,7 @@
 
 import type {
   DifyBuilderCanvasEventData,
+  DifyBuilderReceiptSnapshot,
   DifyBuilderStreamEventResponse,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
@@ -366,7 +367,7 @@ export function useDifyBuilderSessionController(
           return false
         }
 
-        if (event.event === 'progress') {
+        if (event.event === 'progress' || event.event === 'progress_snapshot') {
           outcome.sessionId = event.data.session_id
           executionProgress.enqueue(event.data)
           return false
@@ -376,7 +377,19 @@ export function useDifyBuilderSessionController(
           if (outcome.commandId && event.data.command_id !== outcome.commandId) return false
           outcome.sessionId = event.data.session_id
           if (store.get(difyBuilderActiveSessionIdAtom) !== event.data.session_id) return false
-          setConversation((current) => mergeConversation(current, [event.data.item]))
+          const item = event.data.item
+          setConversation((current) =>
+            mergeConversation(current, [
+              item.kind === 'assistant_turn' &&
+              !current.some((candidate) => candidate.seq === item.seq)
+                ? { ...item, receivedAt: Date.now() }
+                : item,
+            ]),
+          )
+          if (item.kind === 'assistant_turn') {
+            executionProgress.clearThroughVersion(event.data.session_id, item.at_version)
+            reasoningBuffer.clearThroughVersion(event.data.session_id, item.at_version)
+          }
           confirmLocalUserMessage(event.data.session_id, [event.data.item])
           return false
         }
@@ -526,6 +539,12 @@ export function useDifyBuilderSessionController(
         try {
           const view = await getSession(sessionId, controller.signal)
           if (controller.signal.aborted) return latestOutcome
+          traceRef.current.append({
+            dir: 'in',
+            kind: 'session_snapshot',
+            payload: view,
+            version: view.version,
+          })
           const stateApplied = applySessionView(view)
           if (isActiveView(view)) {
             setActiveCommand({
@@ -557,6 +576,11 @@ export function useDifyBuilderSessionController(
           }
           if (!isActiveView(view)) return latestOutcome
 
+          traceRef.current.append({
+            dir: 'out',
+            kind: 'session_reconnect',
+            payload: { session_id: sessionId },
+          })
           const events = await getSessionStream(sessionId, controller.signal)
           latestOutcome = await consumeStream(events, controller, sessionId)
           if (latestOutcome.terminalEvent === 'command_finished') return latestOutcome
@@ -883,6 +907,11 @@ export function useDifyBuilderSessionController(
         await preparation
         if (controller.signal.aborted) return false
         setActiveSessionId(normalizedSessionId)
+        traceRef.current.append({
+          dir: 'out',
+          kind: 'session_restore',
+          payload: { session_id: normalizedSessionId },
+        })
         if (store.get(difyBuilderSessionViewAtom)?.session_id !== normalizedSessionId)
           runEvents?.reset()
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
@@ -1029,7 +1058,11 @@ export function useDifyBuilderSessionController(
   }, [continueRetest, runEvents])
 
   const runAction = useCallback(
-    async (actionId: string, payload: Record<string, unknown> = {}) => {
+    async (
+      actionId: string,
+      payload: Record<string, unknown> = {},
+      receiptSnapshot?: DifyBuilderReceiptSnapshot,
+    ) => {
       const view = store.get(difyBuilderSessionViewAtom)
       if (!view || store.get(difyBuilderSessionBusyAtom)) return false
       const succeeded = await runCommand({
@@ -1043,6 +1076,7 @@ export function useDifyBuilderSessionController(
             view.version,
             view.app_revision?.current ?? '',
             signal,
+            receiptSnapshot,
           ),
         trace: {
           kind: 'action',

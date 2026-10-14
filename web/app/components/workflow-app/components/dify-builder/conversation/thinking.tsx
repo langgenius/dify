@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 
 type ThinkingProps = {
   text?: string | null
@@ -55,7 +56,8 @@ const ThinkingDetails = ({
 
 export const Thinking = memo(
   ({ text, isStreaming = false, onVisibleContentChange }: ThinkingProps) => {
-    const { t } = useTranslation(['common'])
+    const locale = useDifyBuilderInteractionLocale()
+    const { t } = useTranslation(['common'], { lng: locale })
     if (!text?.trim()) return null
     const label = isStreaming
       ? t(($) => $['chat.thinking'], { ns: 'common' })

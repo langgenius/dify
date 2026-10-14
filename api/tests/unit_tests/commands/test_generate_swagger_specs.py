@@ -352,9 +352,18 @@ def test_generate_specs_document_dify_builder_json_reads_and_typed_sse_operation
     session_schema = payload["components"]["schemas"]["DifyBuilderSessionViewResponse"]
     assert "conversation" not in session_schema["properties"]
     assert {"active_interaction", "conversation_last_seq"} <= session_schema["properties"].keys()
-    stream_schema = json.dumps(payload["components"]["schemas"]["DifyBuilderStreamEventResponse"])
-    assert "command_started" in stream_schema
-    assert "snapshot" not in stream_schema
+    stream_schema = payload["components"]["schemas"]["DifyBuilderStreamEventResponse"]
+    stream_events = stream_schema["discriminator"]["mapping"]
+    assert "command_started" in stream_events
+    assert stream_events["progress_snapshot"] == "#/components/schemas/DifyBuilderProgressSnapshotEventResponse"
+    assert "snapshot" not in stream_events
+    progress_snapshot_schema = payload["components"]["schemas"]["DifyBuilderProgressSnapshotEventData"]
+    assert {"session_id", "operation_id", "at_version", "revision", "reply_language", "execution"} <= set(
+        progress_snapshot_schema["required"]
+    )
+    assert progress_snapshot_schema["properties"]["execution"] == {
+        "$ref": "#/components/schemas/DifyBuilderExecutionProgressResponse"
+    }
 
     serialized_request_schemas = json.dumps(
         {
@@ -425,7 +434,8 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     assert pipeline_operation["operationId"] == "run_pipeline"
 
     chat_error_content = chat_operation["responses"]["401"]["content"]
-    assert chat_error_content == {"application/json": {}}
+    # No business error on chat-messages answers 401, so it keeps the open error body.
+    assert chat_error_content == {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
     chat_success_content = chat_operation["responses"]["200"]["content"]
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}

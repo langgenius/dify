@@ -5,7 +5,6 @@ Uses a toy two-state registry rather than the real fix-flow handlers
 (handlers land in Task 6/7).
 """
 
-import json
 import logging
 from collections.abc import Callable
 from datetime import datetime
@@ -17,9 +16,8 @@ from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
 from core.dify_builder.runner import Env, Handler, Runner, StepResult
 from core.dify_builder.state import PcState
-from services.dify_builder.agent import localize as localize_mod
-from services.dify_builder.agent.localize import Localizer
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 def _actor() -> Actor:
@@ -239,6 +237,8 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
             {
                 "turn_id": "turn-1",
                 "stage_id": "fix.await_approval",
+                "reply_mode": "stream",
+                "reply_language": "",
                 "execution": {"status": "completed", "activities": []},
                 "reasoning_text": None,
                 "reply_text": "reply 1: Make the change smaller",
@@ -272,7 +272,7 @@ def test_message_appends_user_and_assistant_turns_without_advancing_waiting_stat
     assert [(event.item.kind, event.item.seq) for event in item_events] == [("user", 0)]
 
 
-def test_deterministic_assistant_copy_streams_in_chunks_and_finishes_before_items():
+def test_complete_assistant_reply_emits_once_only_after_commit():
     env, repo = _new_env()
     session = _session()
     repo.create_session(session, DifyBuilderContext(), [])
@@ -310,27 +310,12 @@ def test_deterministic_assistant_copy_streams_in_chunks_and_finishes_before_item
         Turn(action=Action(kind="request_fix", base_version=1), actor=_actor()),
     )
 
-    message_events = [entry[1] for entry in timeline if isinstance(entry[1], AgentMessageEventData)]
-    deltas = [event for event in message_events if not event.done]
-    assert len(deltas) > 1
-    assert "".join(event.delta for event in deltas) == reply
-    assert all(
-        version == 1
-        for _kind, event, version in timeline
-        if isinstance(event, AgentMessageEventData) and not event.done
-    )
-
-    finished = message_events[-1]
-    assert finished.done is True
-    assert finished.delta == ""
-    assert finished.text_bytes == len(reply.encode("utf-8"))
-    assert timeline[-2] == ("message", finished, 2)
-    assert timeline[-1][0] == "item"
-    assert timeline[-1][2] == 2
-
+    assert not any(isinstance(event, AgentMessageEventData) for _kind, event, _version in timeline)
+    assert [(event.item.kind, version) for _kind, event, version in timeline] == [("assistant_turn", 2), ("notice", 2)]
+    assert timeline[0][1].item.payload["reply_mode"] == "complete"
     items = repo.list_conversation(session.id)
     assert [item.kind for item in items] == ["assistant_turn", "notice"]
-    assert items[0].payload["reply_text"] == reply
+    assert english_text(items[0].payload["reply_text"]) == reply
 
 
 def test_message_streams_and_persists_reasoning_independently_from_answer():
@@ -368,7 +353,7 @@ def test_message_streams_and_persists_reasoning_independently_from_answer():
 
     assistant = repo.list_conversation(session.id)[-1]
     assert assistant.payload["reasoning_text"] == "Check the current approval gate."
-    assert assistant.payload["reply_text"] == "reply 1: Explain"
+    assert english_text(assistant.payload["reply_text"]) == "reply 1: Explain"
     assert reasoning_events[0].delta == "Check the current approval gate."
     assert reasoning_events[0].span_id == "respond-to-message"
     assert reasoning_events[0].session_id == session.id
@@ -390,7 +375,6 @@ def test_message_persists_the_streamed_text_without_a_second_localization():
 
     env, repo = _new_env()
     env.agent = MismatchedAgent()
-    env.localize_items = localize
     messages = []
     env.emit_message = messages.append
     session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
@@ -411,7 +395,7 @@ def test_message_persists_the_streamed_text_without_a_second_localization():
     streamed_text = "".join(message.delta for message in messages if not message.done)
     assistant = repo.list_conversation(session.id)[-1]
     assert streamed_text == "Streamed answer"
-    assert assistant.payload["reply_text"] == streamed_text
+    assert english_text(assistant.payload["reply_text"]) == streamed_text
     assert messages[-1].done is True
     assert messages[-1].seq == assistant.seq
 
@@ -435,7 +419,11 @@ def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempoten
     )
     out = runner.advance(s.id, Turn(action=second, actor=_actor()))
 
-    replies = [item.payload["reply_text"] for item in repo.list_conversation(s.id) if item.kind == "assistant_turn"]
+    replies = [
+        english_text(item.payload["reply_text"])
+        for item in repo.list_conversation(s.id)
+        if item.kind == "assistant_turn"
+    ]
     assert replies == ["reply 1: First", "reply 3: Second"]
     version_before_retry = out.version
     items_before_retry = repo.list_conversation(s.id)
@@ -460,8 +448,9 @@ def test_message_cognition_receives_prior_turns_and_completed_retry_is_idempoten
 def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest.MonkeyPatch):
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
-    history = [ConversationItem(seq=seq, kind="notice", payload={"text": f"History {seq}"}) for seq in range(40)]
-    repo.create_session(s, DifyBuilderContext(next_seq=40), history)
+    history = [ConversationItem(seq=seq, kind="user", payload={"text": f"History {seq}"}) for seq in range(40)]
+    history += [ConversationItem(seq=seq, kind="notice", payload={"text": "Legacy notice"}) for seq in range(40, 80)]
+    repo.create_session(s, DifyBuilderContext(next_seq=80), history)
     received_history: list[ConversationItem] = []
 
     def respond(_state, _context, recent, _graph, _text, _on_delta=None):
@@ -487,7 +476,8 @@ def test_message_cognition_reads_only_bounded_recent_history(monkeypatch: pytest
     )
 
     assert len(received_history) == 24
-    assert [item.seq for item in received_history] == list(range(17, 41))
+    assert [item.seq for item in received_history] == [*range(17, 40), 80]
+    assert not any(item.kind == "notice" for item in received_history)
 
 
 def test_message_retry_resumes_after_user_half_committed():
@@ -517,19 +507,12 @@ def test_message_retry_resumes_after_user_half_committed():
     assert completed.version == 3
     items = repo.list_conversation(s.id)
     assert [item.kind for item in items] == ["user", "assistant_turn"]
-    assert items[-1].payload["reply_text"] == "Recovered reply"
+    assert english_text(items[-1].payload["reply_text"]) == "Recovered reply"
 
 
-def test_localized_message_retry_keeps_catalog_colliding_client_turn_id_and_raw_text(monkeypatch):
-    monkeypatch.setattr(localize_mod, "_TRANSLATION_CACHE", {})
-
-    def translate(_model, *, system, user):  # noqa: ARG001
-        return {index: "目标" if source == "Goal" else source for index, source in json.loads(user).items()}
-
-    monkeypatch.setattr(localize_mod.llm, "invoke_json", translate)
+def test_message_retry_keeps_catalog_colliding_client_turn_id_and_raw_text():
     env, repo = _new_env()
     env.detect_language = lambda _text: "zh-Hans"
-    env.localize_items = Localizer(lambda: object()).localize_items
     session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
     repo.create_session(session, DifyBuilderContext(), [])
     action = Action(
@@ -659,7 +642,7 @@ def test_fail_persists_terminal_assistant_message():
     items = repo.list_conversation(session.id)
     assert [(item.kind, item.at_version) for item in items] == [("assistant_turn", 2)]
     assert items[0].payload["execution"]["status"] == "error"
-    assert "Restart from the current draft" in items[0].payload["reply_text"]
+    assert "Restart from the current draft" in english_text(items[0].payload["reply_text"])
 
 
 def test_fail_refuses_to_overwrite_a_newer_non_terminal_session_head():
@@ -779,7 +762,6 @@ def test_confirmed_action_runs_working_handler_without_waiting_transition_or_mod
         raise AssertionError("confirmed outcome must not localize with a model")
 
     env.detect_language = no_detection
-    env.localize_items = no_localization
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     repo.create_session(
         s,

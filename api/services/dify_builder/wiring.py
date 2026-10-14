@@ -9,7 +9,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator, Sequence
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
@@ -30,6 +30,7 @@ from models import App, TenantAccountJoin, TenantAccountRole
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_policy_service import check_app_permissions
+from services.dify_builder.progress_snapshot import ProgressSnapshot
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
@@ -474,6 +475,7 @@ def _progress_event(raw: bytes) -> tuple[str, object] | None:
         return kind, {
             "session_id": data.get("session_id", ""),
             "operation_id": data.get("operation_id", ""),
+            "reply_language": data.get("reply_language", ""),
             "at_version": data.get("at_version", 0),
             "revision": data.get("revision", 0),
             "status": data.get("status", "running"),
@@ -529,6 +531,8 @@ def stream_advance_frames(
     emit_command_started: bool = True,
     command_id: str = "",
     initial_items: Sequence[ConversationItem] = (),
+    read_session_view: Callable[[], dict[str, object]] | None = None,
+    initial_progress: ProgressSnapshot | None = None,
 ) -> Iterator[str]:
     """Emit a bounded command handshake, then relay incremental progress.
 
@@ -538,7 +542,11 @@ def stream_advance_frames(
     use the JSON conversation endpoint only when the terminal sequence
     watermark exposes a missing event. Settle-only calls yield just the
     handshake unless ``emit_command_finished_when_settled`` is requested. The
-    stream is bounded by ``_MAX_STREAM_SECONDS``.
+    stream is bounded by ``_MAX_STREAM_SECONDS``. Reconnect calls supply
+    ``read_session_view`` to recover a settled or interrupted command on an
+    idle heartbeat when its terminal broadcast was missed.
+    ``initial_progress`` restores the current worker's ordered activity state
+    before consuming the already-established live subscription.
 
     Returns a ``_ClosingFrameStream`` (not a bare generator) so the eagerly
     activated ``subscription`` is closed even when the WSGI server closes the
@@ -580,6 +588,18 @@ def stream_advance_frames(
                 return
             if subscription is None:
                 return
+            if initial_progress is not None and initial_progress.at_version > view_dict["version"]:
+                yield _event_frame(
+                    "progress_snapshot",
+                    {
+                        "session_id": initial_progress.session_id,
+                        "operation_id": initial_progress.operation_id,
+                        "at_version": initial_progress.at_version,
+                        "revision": initial_progress.revision,
+                        "reply_language": initial_progress.reply_language,
+                        "execution": _public_execution(dataclasses.asdict(initial_progress.execution)),
+                    },
+                )
             deadline = time.monotonic() + _MAX_STREAM_SECONDS
             while time.monotonic() < deadline:
                 try:
@@ -587,6 +607,17 @@ def stream_advance_frames(
                 except SubscriptionClosedError:
                     return
                 if raw is None:
+                    if read_session_view is not None:
+                        latest = read_session_view()
+                        if latest["run_status"] != "processing" or latest["interrupted"]:
+                            yield _event_frame(
+                                "command_finished",
+                                {
+                                    **_public_session_view(latest, include_last_command_id=False),
+                                    "command_id": latest["last_command_id"],
+                                },
+                            )
+                            return
                     yield ": keep-alive\n\n"
                     continue
                 progress_event = _progress_event(raw)

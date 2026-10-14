@@ -41,6 +41,7 @@ from core.dify_builder.state import PcState, canvas_read_only
 from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -204,7 +205,7 @@ def test_full_fix_flow_request_fix_to_publish_success_on_sql_repo(repo: SqlDifyB
     assert any(item.kind == "assistant_turn" and item.payload.get("reply_text") for item in conv)
     assert any(item.kind == "test_result" for item in conv)
     assert conv[-1].kind == "assistant_turn"
-    assert str(conv[-1].payload["reply_text"]).startswith("Published workflow version ")
+    assert english_text(conv[-1].payload["reply_text"]).startswith("Published workflow version ")
 
 
 def test_full_fix_flow_stale_base_version_raises_conflict_on_sql_repo(repo: SqlDifyBuilderRepository) -> None:

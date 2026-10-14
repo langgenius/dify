@@ -32,12 +32,14 @@ import dataclasses
 import functools
 import logging
 from collections.abc import Callable, Iterator
+from typing import cast
 
-from flask import Response, request
+from flask import Flask, Response, current_app, request
 from flask_restx import Resource
 from pydantic import ValidationError
 from sqlalchemy.orm import scoped_session
 from werkzeug.exceptions import BadRequest
+from werkzeug.local import LocalProxy
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -57,7 +59,7 @@ from core.dify_builder.real_call_consent import ConsentReceipt
 from extensions.ext_database import db
 from libs.helper import dump_response
 from libs.login import login_required
-from services.dify_builder import progress_bus
+from services.dify_builder import progress_bus, progress_snapshot
 from services.dify_builder.service import resolve_submitted_action
 from services.dify_builder.wiring import (
     build_real_call_consent_service,
@@ -226,6 +228,7 @@ def _action(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
         return {"code": "bad_request"}, 400
     action = Action(
         kind=resolve_submitted_action(payload.action_id, payload.payload),
+        receipt_snapshot=payload.receipt_snapshot.model_dump() if payload.receipt_snapshot is not None else None,
         payload=payload.payload,
         base_version=payload.base_version,
         base_app_revision=payload.base_app_revision,
@@ -297,12 +300,25 @@ def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
     subscription = progress_bus.subscribe(session_id)
     try:
         view = service.get_session_view(session_id, actor)
+        snapshot = (
+            progress_snapshot.read(tenant_id=actor.tenant_id, session_id=session_id)
+            if view.run_status == "processing" and not view.interrupted
+            else None
+        )
     except Exception as exc:  # re-raised below if not a known dify_builder error
         subscription.close()
         mapped = dify_builder_error_response(exc)
         if mapped is None:
             raise
         return mapped
+
+    app = cast(LocalProxy[Flask], current_app)._get_current_object()
+
+    def read_session_view() -> dict[str, object]:
+        # Each heartbeat owns a short app context; the authenticated request
+        # and its SQL session must not stay open while the stream waits.
+        with app.app_context():
+            return session_view_to_dict(service.get_session_view(session_id, actor))
 
     return Response(
         stream_advance_frames(
@@ -312,6 +328,8 @@ def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
             emit_command_finished_when_settled=True,
             emit_command_started=False,
             command_id=view.last_command_id,
+            read_session_view=read_session_view,
+            initial_progress=snapshot,
         ),
         mimetype="text/event-stream",
         headers=_SSE_HEADERS,

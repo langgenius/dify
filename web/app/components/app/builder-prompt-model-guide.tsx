@@ -29,7 +29,7 @@ type ModelGuideState = Pick<
 >
 
 function ModelGuideContent({ modelStatus, isCheckingModel, retryModelCheck }: ModelGuideState) {
-  const { t } = useTranslation(['app', 'workflow', 'common'])
+  const { t } = useTranslation(['app', 'workflow', 'common', 'difyBuilder'])
   const permissions = useAtomValue(workspacePermissionKeysAtom)
   const isLoadingPermissions = useAtomValue(workspacePermissionKeysLoadingAtom)
   const canConfigure =
@@ -44,9 +44,9 @@ function ModelGuideContent({ modelStatus, isCheckingModel, retryModelCheck }: Mo
       </PopoverTitle>
       <PopoverDescription role="status" className="system-sm-regular text-text-secondary">
         {modelStatus === 'loading'
-          ? t(($) => $['difyBuilder.modelLoading'], { ns: 'workflow' })
+          ? t(($) => $.modelLoading, { ns: 'difyBuilder' })
           : modelStatus === 'error'
-            ? t(($) => $['difyBuilder.modelLoadFailed'], { ns: 'workflow' })
+            ? t(($) => $.modelLoadFailed, { ns: 'difyBuilder' })
             : t(($) => $['newApp.optimizeModelRequired'], { ns: 'app' })}
         {modelStatus === 'unavailable' && !isLoadingPermissions && !canConfigure && (
           <> {t(($) => $['newApp.optimizeModelContactAdmin'], { ns: 'app' })}</>

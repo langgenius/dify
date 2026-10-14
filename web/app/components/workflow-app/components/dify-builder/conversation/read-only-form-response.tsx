@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useBuilderText } from '../copy/use-builder-text'
 import { FILE_FIELD_TYPES, toFileEntities } from './form-values'
 
 type ResponseField = NonNullable<
@@ -24,10 +25,13 @@ const MULTILINE_TYPES = new Set(['textarea', 'paragraph', 'json', 'json_object']
 export const ReadOnlyFormResponse = ({
   fields,
   sourceFields,
+  replyLanguage,
 }: {
   fields: ResponseField[]
+  replyLanguage?: string
   sourceFields?: FormField[]
 }) => {
+  const { renderText } = useBuilderText(replyLanguage)
   const sourceFieldsByKey = new Map(sourceFields?.map((field) => [field.key, field]) ?? [])
 
   return (
@@ -41,7 +45,7 @@ export const ReadOnlyFormResponse = ({
             <Field key={field.key} name={field.key}>
               <FieldLabel className="flex items-center gap-2">
                 <Checkbox checked={field.value === true} disabled />
-                <span>{field.label}</span>
+                <span>{renderText(field.label)}</span>
               </FieldLabel>
             </Field>
           )
@@ -54,9 +58,9 @@ export const ReadOnlyFormResponse = ({
                 value={typeof field.value === 'string' && field.value ? field.value : null}
                 readOnly
               >
-                <SelectLabel>{field.label}</SelectLabel>
+                <SelectLabel>{renderText(field.label)}</SelectLabel>
                 <SelectTrigger>
-                  <SelectValue>{() => field.display_value}</SelectValue>
+                  <SelectValue>{() => renderText(field.display_value)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {(sourceField?.options ?? []).map((option) => (
@@ -75,7 +79,9 @@ export const ReadOnlyFormResponse = ({
           const files = toFileEntities(field.value)
           return (
             <fieldset key={field.key} className="m-0 min-w-0 border-0 p-0">
-              <legend className="mb-1 system-xs-medium text-text-secondary">{field.label}</legend>
+              <legend className="mb-1 system-xs-medium text-text-secondary">
+                {renderText(field.label)}
+              </legend>
               <ul className="flex min-h-8 flex-col gap-1 rounded-lg bg-components-input-bg-normal px-3 py-1.75 system-sm-regular text-components-input-text-filled">
                 {files.length > 0 ? (
                   files.map((file) => (
@@ -85,7 +91,7 @@ export const ReadOnlyFormResponse = ({
                     </li>
                   ))
                 ) : (
-                  <li>{field.display_value}</li>
+                  <li>{renderText(field.display_value)}</li>
                 )}
               </ul>
             </fieldset>
@@ -97,11 +103,11 @@ export const ReadOnlyFormResponse = ({
           (typeof field.value === 'string' && field.value.includes('\n')) ||
           (typeof field.value === 'object' && field.value !== null)
         const isNumber = type === 'number' && typeof field.value === 'number'
-        const value = isNumber ? String(field.value) : field.display_value
+        const value = isNumber ? String(field.value) : renderText(field.display_value)
 
         return (
           <Field key={field.key} name={field.key}>
-            <FieldLabel>{field.label}</FieldLabel>
+            <FieldLabel>{renderText(field.label)}</FieldLabel>
             {isMultiline ? (
               <Textarea
                 value={value}

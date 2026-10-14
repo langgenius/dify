@@ -9,6 +9,7 @@ import json
 import logging
 import re
 from collections.abc import Callable, Sequence
+from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
@@ -25,6 +26,8 @@ from services.dify_builder import preflight
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
+from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.presentation import copy_text
 from services.dify_builder.tool_setup import reconcile_generated_tool_setup
 from services.workflow_generator_service import WorkflowGeneratorService
 
@@ -200,13 +203,11 @@ _FIELD_NAME_SEPARATORS = re.compile(r"[\s_\-:：*]+")
 
 
 # Shown on a requirements field that arrived empty, so it reads as a question
-# the Builder is asking rather than a box someone forgot to fill. Lives in
-# ``strings.PLAIN`` so the Localizer translates it with the rest of the card.
-BLANK_FIELD_HINT = "Not stated in your request — add it if you have one."
+# Fixed blank-field explanations carry a presentation ID rather than translated prose.
 
 
 def _explain_blank_fields(fields: list[Any], values: dict[str, Any]) -> list[Any]:
-    """Attach ``BLANK_FIELD_HINT`` to every field that ends up without a value.
+    """Attach fixed hint metadata to every field that ends up without a value.
 
     A field is blank either because the model had nothing to offer or because
     ``_scrub_invented_defaults`` blanked an invented credential ON PURPOSE.
@@ -223,7 +224,12 @@ def _explain_blank_fields(fields: list[Any], values: dict[str, Any]) -> list[Any
         if not blank or field_spec.get("hint"):
             explained.append(field_spec)
             continue
-        explained.append({**field_spec, "hint": BLANK_FIELD_HINT})
+        explained.append(
+            {
+                **field_spec,
+                "hint_copy": asdict(copy_text(BuilderCopyId.REPLIES_NOT_STATED_IN_YOUR_REQUEST_ADD_IT_IF_YOU_HAVE_ONE)),
+            }
+        )
     return explained
 
 
@@ -303,7 +309,15 @@ def propose_app_name(
 
 def _degraded_form(goal_text: str) -> dict[str, Any]:
     return {
-        "fields": [{"key": "goal", "label": "Goal", "type": "textarea", "options": []}],
+        "fields": [
+            {
+                "key": "goal",
+                "label": "Goal",
+                "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
+                "type": "textarea",
+                "options": [],
+            }
+        ],
         "values": {"goal": goal_text},
     }
 

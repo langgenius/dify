@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * CustomizedPipelineTemplatePayload
  */
 export const zCustomizedPipelineTemplatePayload = z.object({
@@ -24,6 +40,18 @@ export const zSimpleDataResponse = z.object({
 export const zRagPipelineDatasetImportPayload = z.object({
   yaml_content: z.string(),
 })
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * PipelineTemplateDetailResponse
@@ -55,6 +83,18 @@ export const zRagPipelineImportPayload = z.object({
 })
 
 /**
+ * PipelineNotFoundError
+ *
+ * Pipeline not found.
+ */
+export const zPipelineNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pipeline_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * RagPipelineOpaqueResponse
  */
 export const zRagPipelineOpaqueResponse = z.unknown()
@@ -77,6 +117,18 @@ export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unkno
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
 
 /**
+ * DraftWorkflowNotExistError
+ *
+ * Draft workflow need to be initialized.
+ */
+export const zDraftWorkflowNotExistError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_exist'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * DraftWorkflowSyncPayload
  */
 export const zDraftWorkflowSyncPayload = z.object({
@@ -96,6 +148,18 @@ export const zRagPipelineWorkflowSyncResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * DraftWorkflowNotSyncError
+ *
+ * Workflow graph might have been modified, please refresh and resubmit.
+ */
+export const zDraftWorkflowNotSyncError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_sync'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * DatasourceNodeRunPayload
@@ -146,6 +210,18 @@ export const zDraftWorkflowRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
   start_node_id: z.string(),
 })
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * WorkflowDraftVariablePatchPayload

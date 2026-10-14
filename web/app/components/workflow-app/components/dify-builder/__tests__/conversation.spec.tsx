@@ -246,7 +246,7 @@ describe('DifyBuilderConversation test data form', () => {
     await user.paste('{"name":')
 
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('workflow.errorMsg.invalidJson')
+    expect(alert).toHaveTextContent('difyBuilder.validation.invalidJson')
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input).toHaveAttribute('aria-describedby', alert.id)
     expect(onActionValidityChange).toHaveBeenLastCalledWith('provide_testdata', false)
@@ -266,19 +266,19 @@ describe('DifyBuilderConversation test data form', () => {
       name: 'option outside the available choices',
       field: { key: 'locale', label: 'Locale', type: 'select', options: ['en', 'zh'] },
       value: 'fr',
-      message: 'workflow.difyBuilder.validation.invalidOption',
+      message: 'difyBuilder.validation.invalidOption',
     },
     {
       name: 'text above the field limit',
       field: { key: 'topic', label: 'Topic', type: 'text', max_length: 3 },
       value: 'long',
-      message: 'workflow.difyBuilder.validation.maxLength',
+      message: 'difyBuilder.validation.maxLength',
     },
     {
       name: 'non-text value in a text field',
       field: { key: 'topic', label: 'Topic', type: 'text' },
       value: 123,
-      message: 'workflow.difyBuilder.validation.invalidValue',
+      message: 'difyBuilder.validation.invalidValue',
     },
     {
       name: 'too many uploaded files',
@@ -287,12 +287,12 @@ describe('DifyBuilderConversation test data form', () => {
         { type: 'document', transfer_method: 'local_file', upload_file_id: 'file-1' },
         { type: 'document', transfer_method: 'local_file', upload_file_id: 'file-2' },
       ],
-      message: 'workflow.difyBuilder.validation.maxFiles',
+      message: 'difyBuilder.validation.maxFiles',
     },
   ])('uses localized validation for $name', ({ field, value, message }) => {
     renderForm([field as FormField], { [field.key]: value })
 
-    fireEvent.submit(screen.getByRole('form', { name: 'workflow.difyBuilder.cardCategory.form' }))
+    fireEvent.submit(screen.getByRole('form', { name: 'difyBuilder.cardCategory.form' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent(message)
   })
@@ -552,7 +552,7 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
+    const log = screen.getByRole('log', { name: 'difyBuilder.panelTitle' })
     expect(within(log).getByText('Refine the workflow')).toBeInTheDocument()
     expect(within(log).getByText('**Updated plan**')).toBeInTheDocument()
     expect(within(log).queryAllByRole('button')).toHaveLength(0)
@@ -636,13 +636,11 @@ describe('DifyBuilderConversation test data form', () => {
       </Provider>,
     )
 
-    const log = screen.getByRole('log', { name: 'workflow.difyBuilder.panelTitle' })
+    const log = screen.getByRole('log', { name: 'difyBuilder.panelTitle' })
     expect(log).toHaveAttribute('aria-live', 'polite')
     expect(log).toHaveAttribute('aria-relevant', 'additions')
     expect(within(log).getByRole('heading', { name: 'common.you' })).toBeInTheDocument()
-    expect(
-      within(log).getByRole('heading', { name: 'workflow.difyBuilder.panelTitle' }),
-    ).toBeInTheDocument()
+    expect(within(log).getByRole('heading', { name: 'difyBuilder.panelTitle' })).toBeInTheDocument()
     expect(log).toContainElement(screen.getByText('The plan is ready.'))
     expect(log).not.toContainElement(screen.getByText('Streaming reply'))
   })
@@ -667,12 +665,12 @@ describe('DifyBuilderConversation test data form', () => {
       </Provider>,
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent('workflow.common.running')
+    expect(screen.getByRole('status')).toHaveTextContent('difyBuilder.running')
   })
 
   it.each([
-    ['ready', 'workflow.difyBuilder.resourceReady'],
-    ['missing_config', 'workflow.difyBuilder.resourceNeedsAuthorization'],
+    ['ready', 'difyBuilder.resourceReady'],
+    ['missing_config', 'difyBuilder.resourceNeedsAuthorization'],
   ] as const)(
     'shows %s readiness and submits resource IDs without a conflict policy',
     async (readiness, readinessLabel) => {
@@ -1132,7 +1130,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(
       screen.getByText('Updated the answer configuration. The change is ready for review.'),
     ).toBeInTheDocument()
-    expect(screen.queryByText('workflow.difyBuilder.changes')).not.toBeInTheDocument()
+    expect(screen.queryByText('difyBuilder.changes')).not.toBeInTheDocument()
   })
 
   it('renders preflight findings with Builder-owned checklist styling', () => {
@@ -1165,15 +1163,13 @@ describe('DifyBuilderConversation test data form', () => {
     )
 
     const card = screen.getByRole('article', {
-      name: 'workflow.difyBuilder.cardCategory.checks',
+      name: 'difyBuilder.cardCategory.checks',
     })
     expect(within(card).getByRole('heading', { level: 4, name: 'Answer' })).toBeInTheDocument()
     expect(within(card).getByText('answer')).toBeInTheDocument()
     expect(within(card).getByText('Model is required')).toBeInTheDocument()
-    expect(within(card).getByText('workflow.common.needConnectTip')).toBeInTheDocument()
-    expect(
-      within(card).getByText(/^workflow\.nodes\.common\.pluginsNotInstalled/),
-    ).toBeInTheDocument()
+    expect(within(card).getByText('difyBuilder.preflight.needConnection')).toBeInTheDocument()
+    expect(within(card).getByText(/^difyBuilder\.preflight\.pluginMissing/)).toBeInTheDocument()
   })
 
   it('does not render a Thinking section for execution progress alone', () => {
@@ -1292,7 +1288,7 @@ describe('DifyBuilderConversation test data form', () => {
 
     const heading = screen.getByRole('heading', { level: 3, name: 'Build a support workflow' })
     const card = heading.closest('article')
-    expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.plan')
+    expect(card).toHaveTextContent('difyBuilder.cardCategory.plan')
     expect(card).not.toHaveTextContent('v1')
     expect(card).toHaveTextContent('Collect the question')
     expect(card?.querySelector('[data-card-status]')).not.toBeInTheDocument()
@@ -1318,10 +1314,10 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    const card = screen.getByRole('article', { name: 'workflow.difyBuilder.cardCategory.test' })
-    expect(card).toHaveTextContent('workflow.difyBuilder.cardCategory.test')
+    const card = screen.getByRole('article', { name: 'difyBuilder.cardCategory.test' })
+    expect(card).toHaveTextContent('difyBuilder.cardCategory.test')
     expect(card).toHaveTextContent('One node returned an error.')
-    expect(card).toHaveTextContent('workflow.difyBuilder.testResult.statusFailed')
+    expect(card).toHaveTextContent('difyBuilder.testResult.statusFailed')
   })
 
   it('renders historical success with unavailable final outputs', () => {
@@ -1340,9 +1336,9 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    const card = screen.getByRole('article', { name: 'workflow.difyBuilder.cardCategory.test' })
-    expect(card).toHaveTextContent('workflow.difyBuilder.testResult.statusPassed')
-    expect(card).toHaveTextContent('workflow.difyBuilder.testResult.outputsUnavailable')
+    const card = screen.getByRole('article', { name: 'difyBuilder.cardCategory.test' })
+    expect(card).toHaveTextContent('difyBuilder.testResult.statusPassed')
+    expect(card).toHaveTextContent('difyBuilder.testResult.outputsUnavailable')
   })
 
   it('shows escaped final outputs without review boilerplate or execution IDs', () => {
@@ -1375,23 +1371,23 @@ describe('DifyBuilderConversation test data form', () => {
         ]}
       />,
     )
-    const card = screen.getByRole('article', { name: 'workflow.difyBuilder.cardCategory.test' })
-    expect(card).toHaveTextContent('workflow.difyBuilder.testResult.statusPassed')
+    const card = screen.getByRole('article', { name: 'difyBuilder.cardCategory.test' })
+    expect(card).toHaveTextContent('difyBuilder.testResult.statusPassed')
     const outputs = within(card).getByRole('region', {
-      name: 'workflow.difyBuilder.testResult.terminalOutputs',
+      name: 'difyBuilder.testResult.terminalOutputs',
     })
     for (const value of ['null', 'false', '0', '\"\"', '[]', '{}', '<script>alert(1)</script>'])
       expect(within(outputs).getByText(value, { exact: true })).toBeInTheDocument()
     expect(card.querySelector('script')).toBeNull()
     for (const removed of [
-      'workflow.difyBuilder.testResult.executionSucceeded',
-      'workflow.difyBuilder.testResult.terminalOutputs',
-      'workflow.difyBuilder.testResult.rawOutputs',
-      'workflow.difyBuilder.testResult.reviewRequired',
+      'difyBuilder.testResult.executionSucceeded',
+      'difyBuilder.testResult.terminalOutputs',
+      'difyBuilder.testResult.rawOutputs',
+      'difyBuilder.testResult.reviewRequired',
       'Inspect the answer against the requested goal.',
-      'workflow.difyBuilder.testResult.scopeLimit',
-      'workflow.difyBuilder.testResult.observedNodes',
-      'workflow.difyBuilder.testResult.runId',
+      'difyBuilder.testResult.scopeLimit',
+      'difyBuilder.testResult.observedNodes',
+      'difyBuilder.testResult.runId',
       'start-1',
       'end-1',
       'run-modern',
@@ -1420,11 +1416,9 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
     expect(
-      screen.getByRole('region', { name: 'workflow.difyBuilder.testResult.terminalOutputs' }),
-    ).toHaveTextContent('workflow.difyBuilder.testResult.noOutputs')
-    expect(
-      screen.queryByText('workflow.difyBuilder.testResult.outputsUnavailable'),
-    ).not.toBeInTheDocument()
+      screen.getByRole('region', { name: 'difyBuilder.testResult.terminalOutputs' }),
+    ).toHaveTextContent('difyBuilder.testResult.noOutputs')
+    expect(screen.queryByText('difyBuilder.testResult.outputsUnavailable')).not.toBeInTheDocument()
   })
 
   it.each([undefined, null])(
@@ -1448,12 +1442,10 @@ describe('DifyBuilderConversation test data form', () => {
           ]}
         />,
       )
+      expect(screen.getByText('difyBuilder.testResult.outputsUnavailable')).toBeInTheDocument()
       expect(
-        screen.getByText('workflow.difyBuilder.testResult.outputsUnavailable'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('region', { name: 'workflow.difyBuilder.testResult.terminalOutputs' }),
-      ).toHaveTextContent('workflow.difyBuilder.testResult.outputsUnavailable')
+        screen.getByRole('region', { name: 'difyBuilder.testResult.terminalOutputs' }),
+      ).toHaveTextContent('difyBuilder.testResult.outputsUnavailable')
     },
   )
 
@@ -1483,18 +1475,18 @@ describe('DifyBuilderConversation test data form', () => {
     )
     if (heading)
       expect(
-        screen.getByRole('heading', { name: `workflow.difyBuilder.testResult.${heading}` }),
+        screen.getByRole('heading', { name: `difyBuilder.testResult.${heading}` }),
       ).toBeInTheDocument()
     else
       expect(
         screen.queryByRole('heading', {
-          name: 'workflow.difyBuilder.testResult.executionFailed',
+          name: 'difyBuilder.testResult.executionFailed',
         }),
       ).not.toBeInTheDocument()
     expect(screen.getByText('Details for inspection')).toBeInTheDocument()
-    expect(screen.getByText('workflow.difyBuilder.testResult.statusFailed')).toBeInTheDocument()
+    expect(screen.getByText('difyBuilder.testResult.statusFailed')).toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'workflow.difyBuilder.testResult.executionSucceeded' }),
+      screen.queryByRole('heading', { name: 'difyBuilder.testResult.executionSucceeded' }),
     ).not.toBeInTheDocument()
   })
 })
