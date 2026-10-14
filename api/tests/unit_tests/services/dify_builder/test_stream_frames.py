@@ -280,34 +280,6 @@ def test_reconnect_stream_skips_handshake_and_emits_settled_state():
     ]
 
 
-def test_stream_advance_frames_emits_synchronously_persisted_items_individually():
-    items = [
-        ConversationItem(seq=0, at_version=1, kind="user", payload={"text": "Build it"}),
-        ConversationItem(seq=1, at_version=2, kind="form", payload={"variant": "build_requirements"}),
-        ConversationItem(seq=2, at_version=2, kind="assistant_turn", payload={"reply_text": "private"}),
-    ]
-
-    frames = list(
-        wiring.stream_advance_frames(
-            _view(version=2, run_status="waiting_input", conversation_last_seq=1),
-            None,
-            expect_advance=False,
-            command_id="command-1",
-            initial_items=items,
-            emit_command_finished_when_settled=True,
-        )
-    )
-
-    assert [_event(frame)["event"] for frame in frames] == [
-        "command_started",
-        "conversation_item_appended",
-        "conversation_item_appended",
-        "command_finished",
-    ]
-    assert [_event(frame)["data"].get("item", {}).get("seq") for frame in frames] == [None, 0, 1, None]
-    assert all("kind" not in _event(frame)["data"] for frame in frames)
-
-
 @pytest.mark.parametrize(
     "settled",
     [
@@ -358,6 +330,34 @@ def test_reconnect_keeps_watching_while_the_worker_is_active():
     assert subscription.closed is True
 
 
+def test_stream_advance_frames_emits_synchronously_persisted_items_individually():
+    items = [
+        ConversationItem(seq=0, at_version=1, kind="user", payload={"text": "Build it"}),
+        ConversationItem(seq=1, at_version=2, kind="form", payload={"variant": "build_requirements"}),
+        ConversationItem(seq=2, at_version=2, kind="assistant_turn", payload={"reply_text": "private"}),
+    ]
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(version=2, run_status="waiting_input", conversation_last_seq=1),
+            None,
+            expect_advance=False,
+            command_id="command-1",
+            initial_items=items,
+            emit_command_finished_when_settled=True,
+        )
+    )
+
+    assert [_event(frame)["event"] for frame in frames] == [
+        "command_started",
+        "conversation_item_appended",
+        "conversation_item_appended",
+        "command_finished",
+    ]
+    assert [_event(frame)["data"].get("item", {}).get("seq") for frame in frames] == [None, 0, 1, None]
+    assert all("kind" not in _event(frame)["data"] for frame in frames)
+
+
 @pytest.mark.parametrize(
     ("at_version", "expected_events"),
     [(2, ["progress_snapshot", "command_finished"]), (1, ["command_finished"])],
@@ -370,6 +370,7 @@ def test_reconnect_restores_progress_before_live_events_without_replaying_commit
         operation_id="operation-1",
         at_version=at_version,
         revision=5,
+        reply_language="zh-Hans",
         execution=ExecutionProgress(
             status="running",
             activities=[
@@ -396,5 +397,5 @@ def test_reconnect_restores_progress_before_live_events_without_replaying_commit
             {"id": "inspect", "label": "Inspect workflow", "state": "done", "parent_id": None},
             {"id": "plan", "label": "Generate plan", "state": "active", "parent_id": None},
         ]
-        assert data["revision"] == 5
+        assert (data["revision"], data["reply_language"]) == (5, "zh-Hans")
     assert subscription.closed

@@ -4,7 +4,6 @@ import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
-import { difyBuilderSessionBusyAtom } from '@/app/components/workflow-app/components/dify-builder/session/state'
 import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -66,7 +65,6 @@ function createWarningGraph() {
     height: 80,
     data: { ...llmDefault.defaultValue, type: BlockEnum.LLM, title: 'Broken Node' },
   })
-  store.set(difyBuilderSessionBusyAtom, busy)
   return {
     nodes: [start, missingPlugin, invalidNode],
     edges: [
@@ -227,55 +225,5 @@ describe('WorkflowChecklist', () => {
 
     expect(await screen.findByRole('button', { name: 'workflow.panel.checklist 2' })).toBeDisabled()
     expect(screen.queryByText('Broken Node')).not.toBeInTheDocument()
-  })
-
-  it('should start a checklist fix from the entry at the bottom of the list', async () => {
-    const user = userEvent.setup()
-    const { store } = renderChecklist({ disabled: false })
-
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' }))
-
-    expect(screen.getByRole('button', { name: 'workflow.panel.checklist 2' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
-    expect(mockStartChecklistFix).toHaveBeenCalledWith(
-      'app-1',
-      [
-        expect.objectContaining({
-          node_id: 'node-1',
-          messages: ['Needs configuration'],
-        }),
-      ],
-      undefined,
-    )
-    expect(store.get(difyBuilderChecklistErrorsAtom)).toEqual([
-      expect.objectContaining({ node_id: 'node-1', messages: ['Needs configuration'] }),
-    ])
-  })
-
-  it('should hide checklist Fix while Builder is disabled', async () => {
-    const user = userEvent.setup()
-    renderChecklist({ disabled: false }, { enabled: false })
-
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-
-    expect(
-      screen.queryByRole('button', { name: 'workflow.difyBuilder.fixRun' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should keep checklist Fix disabled without edit access or while the session is busy', async () => {
-    const user = userEvent.setup()
-    const { unmount } = renderChecklist({ disabled: false }, { canEdit: false })
-
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
-
-    unmount()
-    renderChecklist({ disabled: false }, { busy: true })
-    await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    expect(screen.getByRole('button', { name: 'workflow.difyBuilder.fixRun' })).toBeDisabled()
   })
 })

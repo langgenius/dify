@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 import { TestResultOutputs } from './test-result-outputs'
 
 const TracingPanel = dynamic(() => import('@/app/components/workflow/run/tracing-panel'))
@@ -13,7 +14,8 @@ const TracingPanel = dynamic(() => import('@/app/components/workflow/run/tracing
 type NativeRunProps = { appId: string; runId: string }
 
 const RunLoading = () => {
-  const { t } = useTranslation(['common'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   return (
     <SkeletonContainer role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
       <SkeletonRectangle aria-hidden className="h-4 w-full" />
@@ -23,12 +25,11 @@ const RunLoading = () => {
 }
 
 const RunLoadError = ({ retry }: { retry: () => void }) => {
-  const { t } = useTranslation(['workflow', 'common'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   return (
     <div className="flex flex-col items-start gap-2">
-      <p role="alert">
-        {t(($) => $['difyBuilder.testResult.resultLoadFailed'], { ns: 'workflow' })}
-      </p>
+      <p role="alert">{t(($) => $['testResult.resultLoadFailed'], { ns: 'difyBuilder' })}</p>
       <Button size="small" variant="secondary" onClick={retry}>
         {t(($) => $['operation.retry'], { ns: 'common' })}
       </Button>
@@ -74,11 +75,12 @@ const NativeRunTracing = ({ appId, runId }: NativeRunProps) => {
 }
 
 export const TestResultRunDetails = ({ appId, runId }: NativeRunProps) => {
-  const { t } = useTranslation(['workflow'])
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
   return (
     <Collapsible className="rounded-lg border border-components-panel-border bg-components-panel-bg p-1">
       <CollapsibleTrigger className="group/run-details flex min-h-8 w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-start system-sm-medium text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover data-panel-open:text-text-primary">
-        <span>{t(($) => $['difyBuilder.testResult.runDetails'], { ns: 'workflow' })}</span>
+        <span>{t(($) => $['testResult.runDetails'], { ns: 'difyBuilder' })}</span>
         <span
           aria-hidden
           className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform duration-150 group-data-panel-open/run-details:rotate-90 motion-reduce:transition-none"

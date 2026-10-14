@@ -144,7 +144,7 @@ describe('DifyBuilderModelSelector', () => {
     const user = userEvent.setup()
     renderSelector({ configuredDefault: null })
 
-    await user.click(screen.getByRole('button', { name: 'common.modelProvider.model' }))
+    await user.click(screen.getByRole('button', { name: 'modelProvider.modelProvider.model' }))
 
     expect(
       screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }),
@@ -171,13 +171,17 @@ describe('DifyBuilderModelSelector', () => {
         })),
       })
 
-      expect(screen.getByRole('button', { name: 'common.modelProvider.model' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'modelProvider.modelProvider.model' }),
+      ).toBeInTheDocument()
     },
   )
 
   it('selects the system default after it loads', async () => {
     const { queryClient } = renderSelector({ defaultLoading: true })
-    expect(screen.getByRole('button', { name: 'common.modelProvider.model' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.model' }),
+    ).toBeInTheDocument()
 
     await act(async () => {
       queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
@@ -221,15 +225,11 @@ describe('DifyBuilderModelSelector', () => {
       })
 
       expect(screen.getByRole('button', { name: userModel.name })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'difyBuilder.messageSend' })).toBeDisabled()
+      expect(screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })).toBeEnabled()
       expect(
-        screen.getByRole('button', { name: 'workflow.difyBuilder.messageSend' }),
-      ).toBeDisabled()
-      expect(
-        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
-      ).toBeEnabled()
-      expect(
-        screen.getByRole('textbox', { name: 'workflow.difyBuilder.messagePlaceholder' }),
-      ).toHaveAccessibleDescription('workflow.workflowGenerator.modelRequired')
+        screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' }),
+      ).toHaveAccessibleDescription('difyBuilder.modelRequired')
     },
   )
 })

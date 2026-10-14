@@ -21,9 +21,8 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
-from services.dify_builder.agent import localize as localize_module
-from services.dify_builder.agent.localize import Localizer
 from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _session
+from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
 def refused_run(reason):
@@ -57,11 +56,11 @@ def refused_run(reason):
         pytest.param("template_execution_limit", ("template", "size"), id="limit"),
     ],
 )
-def test_known_template_refusal_is_actionable_and_localizes_only_presentation(monkeypatch, reason, scope_terms):
+def test_known_template_refusal_has_actionable_scene_without_native_content(reason, scope_terms):
     run = refused_run(reason)
     card = result_card(run)
     assert card.failure_reason is not None
-    message = card.failure_reason.lower()
+    message = english_text(card.failure_reason).lower()
     assert all(term in message for term in scope_terms)
     assert any(action in message for action in ("edit", "reduce", "use", "change"))
     assert any(phrase in message for phrase in ("not run", "did not run", "not executed"))
@@ -71,28 +70,8 @@ def test_known_template_refusal_is_actionable_and_localizes_only_presentation(mo
     assert card.terminal_outputs is None
     assert "SECRET-" not in json.dumps(asdict(card))
 
-    original_reason = card.failure_reason
-    original_note = card.review_note
-    translations = {original_reason: "测试未运行。请修改模板后重试。", original_note: "其他路径尚未验证。"}
-    localize_module._TRANSLATION_CACHE.clear()
-
-    def translate(_model, *, system, user):
-        assert "BCP-47 code zh-Hans" in system
-        request = json.loads(user)
-        assert "SECRET-" not in user
-        return {index: translations.get(source, source) for index, source in request.items()}
-
-    monkeypatch.setattr(localize_module.llm, "invoke_json", translate)
-    try:
-        item = card.to_item(seq=1, at_version=1)
-        localized = Localizer(lambda: object()).localize_items([item], "zh-Hans")[0]
-        assert localized.payload["failure_reason"] == "测试未运行。请修改模板后重试。"
-        assert localized.payload["safety_outcome"] == "unsupported_safe_execution"
-        assert localized.payload["dify_run_id"] == ""
-        assert localized.payload["executed_node_ids"] == []
-        assert localized.payload["terminal_outputs"] is None
-    finally:
-        localize_module._TRANSLATION_CACHE.clear()
+    assert asdict(card.failure_reason)["type"] == "copy"
+    assert asdict(card.failure_reason)["params"] == {}
 
 
 def test_unknown_policy_reason_uses_fixed_sanitized_fallback():
@@ -107,11 +86,11 @@ def test_unknown_policy_reason_uses_fixed_sanitized_fallback():
 
 def test_generic_missing_coverage_keeps_workflow_editable():
     card = result_card(refused_run("unsupported_node_implementation"))
-    assert card.failure_reason == (
+    assert english_text(card.failure_reason) == (
         "Builder does not yet have safe-test support for a node in this workflow. "
         "The draft can still be edited; this test did not run. Automatic repair and publication are blocked."
     )
-    assert "use supported nodes" not in card.failure_reason
+    assert "use supported nodes" not in english_text(card.failure_reason)
 
 
 @pytest.mark.parametrize(
@@ -132,9 +111,9 @@ def test_generic_missing_coverage_keeps_workflow_editable():
 def test_json_coverage_refusal_uses_only_static_actionable_copy(reason, expected_phrase):
     card = result_card(refused_run(reason))
     assert card.failure_reason is not None
-    assert expected_phrase in card.failure_reason
-    assert "did not run" in card.failure_reason
-    assert "Automatic repair and publication are blocked" in card.failure_reason
+    assert expected_phrase in english_text(card.failure_reason)
+    assert "did not run" in english_text(card.failure_reason)
+    assert "Automatic repair and publication are blocked" in english_text(card.failure_reason)
     assert "SECRET-" not in json.dumps(asdict(card))
     assert card.terminal_outputs is None
 

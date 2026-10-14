@@ -141,7 +141,7 @@ describe('Builder test results', () => {
       render(<TestResultCard payload={payload} invalidated={false} />)
 
       const outputs = screen.getByRole('region', {
-        name: 'workflow.difyBuilder.testResult.terminalOutputs',
+        name: 'difyBuilder.testResult.terminalOutputs',
       })
       expect(within(outputs).getByText('Processed three records.')).toBeVisible()
       if (status === 'failed') expect(screen.getByText('The next step timed out.')).toBeVisible()
@@ -149,13 +149,11 @@ describe('Builder test results', () => {
         screen.queryByRole('heading', {
           name:
             status === 'succeeded'
-              ? 'workflow.difyBuilder.testResult.executionSucceeded'
-              : 'workflow.difyBuilder.testResult.executionFailed',
+              ? 'difyBuilder.testResult.executionSucceeded'
+              : 'difyBuilder.testResult.executionFailed',
         }),
       ).not.toBeInTheDocument()
-      expect(
-        screen.queryByText('workflow.difyBuilder.testResult.terminalOutputs'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('difyBuilder.testResult.terminalOutputs')).not.toBeInTheDocument()
     },
   )
 
@@ -170,13 +168,13 @@ describe('Builder test results', () => {
     }
     render(<TestResultCard payload={{ status: 'failed', terminal_outputs }} invalidated={false} />)
     const outputs = screen.getByRole('region', {
-      name: 'workflow.difyBuilder.testResult.terminalOutputs',
+      name: 'difyBuilder.testResult.terminalOutputs',
     })
 
     for (const value of ['0', 'false', 'null', '""', '[]'])
       expect(within(outputs).getByText(value, { exact: true })).toBeVisible()
     expect(within(outputs).getByText(/^\{\s*"locale": "zh"\s*\}$/)).toBeVisible()
-    expect(screen.queryByText('workflow.difyBuilder.testResult.rawOutputs')).not.toBeInTheDocument()
+    expect(screen.queryByText('difyBuilder.testResult.rawOutputs')).not.toBeInTheDocument()
   })
 
   it.each(['succeeded', 'failed'] as const)(
@@ -184,11 +182,11 @@ describe('Builder test results', () => {
     (status) => {
       render(<TestResultCard payload={{ status, terminal_outputs: {} }} invalidated={false} />)
       const outputs = screen.getByRole('region', {
-        name: 'workflow.difyBuilder.testResult.terminalOutputs',
+        name: 'difyBuilder.testResult.terminalOutputs',
       })
-      expect(within(outputs).getByText('workflow.difyBuilder.testResult.noOutputs')).toBeVisible()
+      expect(within(outputs).getByText('difyBuilder.testResult.noOutputs')).toBeVisible()
       expect(
-        screen.queryByText('workflow.difyBuilder.testResult.outputsUnavailable'),
+        screen.queryByText('difyBuilder.testResult.outputsUnavailable'),
       ).not.toBeInTheDocument()
     },
   )
@@ -200,7 +198,7 @@ describe('Builder test results', () => {
         invalidated={false}
       />,
     )
-    expect(screen.getByText('workflow.difyBuilder.testResult.noOutputs')).toBeVisible()
+    expect(screen.getByText('difyBuilder.testResult.noOutputs')).toBeVisible()
     expect(screen.getByText('Launch failed.')).toBeVisible()
   })
 
@@ -213,7 +211,7 @@ describe('Builder test results', () => {
       />,
     )
     const outputs = screen.getByRole('region', {
-      name: 'workflow.difyBuilder.testResult.terminalOutputs',
+      name: 'difyBuilder.testResult.terminalOutputs',
     })
     expect(within(outputs).getByText(report, { normalizer: (text) => text })).toBeVisible()
   })
@@ -311,11 +309,11 @@ describe('Builder test results', () => {
     renderNativeResult({ status: 'failed', dify_run_id: 'run-1' })
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'workflow.difyBuilder.testResult.resultLoadFailed',
+      'difyBuilder.testResult.resultLoadFailed',
     )
-    expect(screen.queryByText('workflow.difyBuilder.testResult.noOutputs')).not.toBeInTheDocument()
+    expect(screen.queryByText('difyBuilder.testResult.noOutputs')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(await screen.findByText('workflow.difyBuilder.testResult.noOutputs')).toBeVisible()
+    expect(await screen.findByText('difyBuilder.testResult.noOutputs')).toBeVisible()
   })
 
   it('restores each historical card from its own run even when responses arrive out of order', async () => {
@@ -367,7 +365,7 @@ describe('Builder test results', () => {
       }),
     )
 
-    const cards = screen.getAllByRole('article', { name: 'workflow.difyBuilder.cardCategory.test' })
+    const cards = screen.getAllByRole('article', { name: 'difyBuilder.cardCategory.test' })
     expect(await within(cards[0]!).findByText('Older result.')).toBeVisible()
     expect(within(cards[0]!).queryByText('Newer result.')).not.toBeInTheDocument()
     expect(within(cards[1]!).getByText('Newer result.')).toBeVisible()
@@ -388,7 +386,7 @@ describe('Builder test results', () => {
     renderNativeResult({ status: 'failed', dify_run_id: 'run-1', terminal_outputs: {} })
 
     const trigger = screen.getByRole('button', {
-      name: 'workflow.difyBuilder.testResult.runDetails',
+      name: 'difyBuilder.testResult.runDetails',
     })
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(mocks.executions).not.toHaveBeenCalled()
