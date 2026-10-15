@@ -390,11 +390,11 @@ class RedisRunStore(RunEventSink):
             ),
         )
         result = cast(int, result)
-        if int(result) == -1:
+        if result == -1:
             raise RunNotFoundError(claim.run_id)
-        if int(result) == -2:
+        if result == -2:
             raise NativeContinuationConflict("continuation cancelled or claim changed")
-        return int(result) == 1
+        return result == 1
 
     async def get_run(self, run_id: str) -> RunRecord:
         """Return one run record or raise ``RunNotFoundError``."""

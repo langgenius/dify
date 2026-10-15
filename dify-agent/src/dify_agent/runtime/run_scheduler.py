@@ -166,6 +166,7 @@ class RunScheduler:
         self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
         self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self.active_tasks = {}
+        self._active_continuation_claims: dict[str, ContinuationClaim] = {}
         self.stopping = False
         self.services = services
         self.runner_factory = runner_factory
@@ -190,6 +191,11 @@ class RunScheduler:
                 run_id=run_id, expected_generation=request.expected_generation, idempotency_key=request.idempotency_key
             )
             if run_id in self.active_tasks:
+                # The local task may be a continuation paused before its Redis
+                # start CAS. It already owns this claim; waiting for that task
+                # would hold admission/shutdown until the whole run finishes.
+                if self._active_continuation_claims.get(run_id) == claim:
+                    return claim
                 record = await self.store.get_run(run_id)
                 if record.native_dispatch_started:
                     return claim
@@ -232,7 +238,8 @@ class RunScheduler:
                 self._run_continuation(record, claim, prepared), name=f"dify-agent-continue-{claim.claim_id}"
             )
             self.active_tasks[run_id] = task
-            task.add_done_callback(lambda _task: self._discard_active_run(run_id))
+            self._active_continuation_claims[run_id] = claim
+            task.add_done_callback(lambda completed: self._discard_active_run(run_id, completed))
             return claim
 
     async def _run_continuation(
@@ -283,7 +290,7 @@ class RunScheduler:
                 self._run_record(record, request, native_prepared=prepared), name=f"dify-agent-run-{record.run_id}"
             )
             self.active_tasks[record.run_id] = task
-            task.add_done_callback(lambda _task, run_id=record.run_id: self._discard_active_run(run_id))
+            task.add_done_callback(lambda completed, run_id=record.run_id: self._discard_active_run(run_id, completed))
             return record
 
     async def cancel_run(self, run_id: str, request: CancelRunRequest) -> CancelRunResponse:
@@ -455,8 +462,11 @@ class RunScheduler:
             agent_observability=self.agent_observability,
         )
 
-    def _discard_active_run(self, run_id: str) -> None:
-        _ = self.active_tasks.pop(run_id, None)
+    def _discard_active_run(self, run_id: str, task: asyncio.Task[None]) -> None:
+        # A previous generation's callback cannot discard its replacement.
+        if self.active_tasks.get(run_id) is task:
+            _ = self.active_tasks.pop(run_id, None)
+            _ = self._active_continuation_claims.pop(run_id, None)
 
     @staticmethod
     async def _cancel_and_wait(task: asyncio.Task[object]) -> None:

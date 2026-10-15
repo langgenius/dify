@@ -533,3 +533,132 @@ def test_continuation_cannot_relabel_pending_approval_as_external_result():
     checkpoint = continuation().capture_wait(NativeApprovalSuspended(pending()))
     with pytest.raises(NativePolicyStopped):
         validate_deferred_results(checkpoint, DeferredToolResults(calls={"call-1": {"ok": True}}))
+
+
+def test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdown():
+    """Local scheduling race only; Redis CAS atomicity remains a separate CI test."""
+    from dify_agent.protocol.native_testing import ContinueRunRequest, ContinuationClaim, NativeTestCapabilities
+    from dify_agent.runtime.event_sink import RunFinalizationResult
+    from dify_agent.runtime.native_continuation import PreparedContinuation
+    from dify_agent.runtime.run_scheduler import RunScheduler
+    from dify_agent.server.schemas import RunRecord
+
+    async def exercise():
+        checkpoint = continuation().capture_wait(NativeApprovalSuspended(pending()))
+        claim = ContinuationClaim(run_id="run-1", generation=1, idempotency_key="continue-1", claim_id="claim-1")
+        before_cas = asyncio.Event()
+        release_cas = asyncio.Event()
+        native_started = asyncio.Event()
+        native_cleanup = asyncio.Event()
+        release_execution = asyncio.Event()
+        ordinary_finished = asyncio.Event()
+        executions = []
+
+        class Store:
+            started = False
+
+            async def get_checkpoint(self, run_id):
+                return checkpoint
+
+            async def claim_continuation(self, **kwargs):
+                return claim
+
+            async def get_run(self, run_id):
+                return RunRecord(
+                    run_id=run_id, status="running" if self.started else "waiting", native_dispatch_started=self.started
+                )
+
+            async def start_continuation(self, incoming):
+                assert incoming == claim
+                before_cas.set()
+                await release_cas.wait()
+                if self.started:
+                    return False
+                self.started = True
+                return True
+
+            async def create_run(self):
+                return RunRecord(run_id="ordinary-1", status="running")
+
+            async def wait_for_cancellation(self, run_id):
+                await asyncio.Event().wait()
+
+            async def get_cancellation_intent(self, run_id):
+                return None
+
+            async def finalize_run(self, event):
+                return RunFinalizationResult(applied=True, status="failed")
+
+        class Owner:
+            capabilities = NativeTestCapabilities(
+                protocol_version=1,
+                features={"pending-call-v1", "policy-gate-v1", "test-scope-v1", "child-continuation-v1"},
+            )
+
+            async def restore(self, *, checkpoint):
+                request = CreateRunRequest(
+                    composition={"layers": []},
+                    execution_mode="builder_test",
+                    native_test_ref=REF,
+                    native_test_protocol_version=1,
+                    session_snapshot=checkpoint.session_snapshot,
+                )
+                return PreparedContinuation(
+                    request=request,
+                    continuation=continuation(),
+                    deferred_tool_results=DeferredToolResults(approvals={"call-1": ToolApproved()}),
+                )
+
+        class Runner:
+            terminal_session_snapshot = None
+            terminal_usage = None
+
+            def __init__(self, run_id):
+                self.run_id = run_id
+
+            async def run(self):
+                executions.append(self.run_id)
+                if self.run_id == "ordinary-1":
+                    ordinary_finished.set()
+                    return
+                native_started.set()
+                try:
+                    await release_execution.wait()
+                finally:
+                    native_cleanup.set()
+
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=Store(),
+                services=Services(client, client),
+                native_owner=Owner(),
+                shutdown_grace_seconds=0,
+                runner_factory=lambda record, request: Runner(record.run_id),
+            )
+            request = ContinueRunRequest(ref=REF, expected_generation=0, idempotency_key="continue-1")
+            try:
+                assert await scheduler.continue_run("run-1", request) == claim
+                await asyncio.wait_for(before_cas.wait(), timeout=1)
+                # The same local claim must be acknowledged while CAS is paused.
+                assert await asyncio.wait_for(scheduler.continue_run("run-1", request), timeout=0.5) == claim
+                assert not native_started.is_set()
+                ordinary = await asyncio.wait_for(
+                    scheduler.create_run(CreateRunRequest(composition={"layers": []})), timeout=0.5
+                )
+                assert ordinary.run_id == "ordinary-1"
+                await asyncio.wait_for(ordinary_finished.wait(), timeout=0.5)
+                release_cas.set()
+                await asyncio.wait_for(native_started.wait(), timeout=0.5)
+                assert not release_execution.is_set()
+                assert await asyncio.wait_for(scheduler.continue_run("run-1", request), timeout=0.5) == claim
+                await asyncio.wait_for(scheduler.shutdown(), timeout=0.5)
+                assert native_cleanup.is_set()
+                assert executions.count("run-1") == 1
+                assert executions.count("ordinary-1") == 1
+                assert scheduler.active_tasks == {}
+            finally:
+                release_cas.set()
+                release_execution.set()
+                await scheduler.shutdown()
+
+    asyncio.run(exercise())
