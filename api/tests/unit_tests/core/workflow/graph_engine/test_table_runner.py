@@ -487,7 +487,7 @@ class TableTestRunner:
                 f"Actual: {[e.__name__ for e in actual_event_types]}"
             )
 
-        for i, (expected_type, actual_type) in enumerate(zip(expected_sequence, actual_event_types)):
+        for i, (expected_type, actual_type) in enumerate(zip(expected_sequence, actual_event_types, strict=False)):
             if expected_type != actual_type:
                 return False, (
                     f"Event mismatch at position {i}. "

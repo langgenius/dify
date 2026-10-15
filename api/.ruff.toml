@@ -59,19 +59,15 @@ select = [
 
 ignore = [
     "E402",    # module-import-not-at-top-of-file
-    "E711",    # none-comparison
     "E712",    # true-false-comparison
-    "E722",    # bare-except
     "F821",    # undefined-name
     "F841",    # unused-variable
     "FURB113", # repeated-append
     "UP007",   # non-pep604-annotation
-    "UP032",   # f-string
     "B026",    # star-arg-unpacking-after-keyword-arg
     "B901",    # allow return in yield
     "B903",    # class-as-data-structure
     "B904",    # raise-without-from-inside-except
-    "B905",    # zip-without-explicit-strict
     "N806",    # non-lowercase-variable-in-function
     "N815",    # mixed-case-variable-in-class-scope
     "PT011",   # pytest-raises-too-broad
@@ -79,7 +75,6 @@ ignore = [
     "SIM103",  # needless-bool
     "SIM105",  # suppressible-exception
     "SIM108",  # if-else-block-instead-of-if-exp
-    "SIM113",  # enumerate-for-loop
     "SIM117",  # multiple-with-statements
     "TID252",  # allow relative imports from parent modules
 ]

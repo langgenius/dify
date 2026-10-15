@@ -103,7 +103,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         docs = []
         current_doc: list[str] = []
         total = 0
-        for d, _len in zip(splits, lengths):
+        for d, _len in zip(splits, lengths, strict=False):
             if total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size:
                 if total > self._chunk_size:
                     logger.warning(
@@ -268,7 +268,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator
         s_lens = self._length_function(splits)
-        for s, s_len in zip(splits, s_lens):
+        for s, s_len in zip(splits, s_lens, strict=False):
             if s_len < self._chunk_size:
                 _good_splits.append(s)
                 _good_splits_lengths.append(s_len)
