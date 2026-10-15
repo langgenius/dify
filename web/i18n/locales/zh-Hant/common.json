@@ -168,7 +168,6 @@
   "operation.create": "建立",
   "operation.deSelectAll": "全不選",
   "operation.delete": "刪除",
-  "operation.deleteConfirmTitle": "刪除？",
   "operation.download": "下載",
   "operation.downloadFailed": "下載失敗。請稍後再試。",
   "operation.downloadSuccess": "下載完成。",

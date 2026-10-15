@@ -168,7 +168,6 @@
   "operation.create": "Crea",
   "operation.deSelectAll": "Deseleziona tutto",
   "operation.delete": "Elimina",
-  "operation.deleteConfirmTitle": "Eliminare?",
   "operation.download": "Scarica",
   "operation.downloadFailed": "Download non riuscito. Per favore riprova più tardi.",
   "operation.downloadSuccess": "Download completato.",

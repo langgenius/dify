@@ -168,7 +168,6 @@
   "operation.create": "Создать",
   "operation.deSelectAll": "Снять выделение со всех",
   "operation.delete": "Удалить",
-  "operation.deleteConfirmTitle": "Удалить?",
   "operation.download": "Скачать",
   "operation.downloadFailed": "Скачивание не удалось. Пожалуйста, попробуйте еще раз позже.",
   "operation.downloadSuccess": "Загрузка завершена.",

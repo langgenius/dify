@@ -168,7 +168,6 @@
   "operation.create": "Oluştur",
   "operation.deSelectAll": "Hepsini Seçme",
   "operation.delete": "Sil",
-  "operation.deleteConfirmTitle": "Silinsin mi?",
   "operation.download": "İndir",
   "operation.downloadFailed": "İndirme başarısız oldu. Lütfen daha sonra tekrar deneyin.",
   "operation.downloadSuccess": "İndirme Tamamlandı.",
