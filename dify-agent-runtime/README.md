@@ -131,3 +131,88 @@ than falling back to it.
 - Go 1.26
 - `modernc.org/sqlite` (pure-Go SQLite driver, no CGO required)
 - tmux (runtime dependency, not a build dependency)
+
+## Isolated native test scopes
+
+The ordinary `/v1/jobs` service retains its existing behavior. A separate
+`serve --native-test-supervisor` instance exposes authenticated scope creation,
+inspection, destruction, and `/v1/test-scopes/{scope_id}/jobs/...`. Native scope
+requests pin `scope_id`, positive `generation`, `binding_ref`, immutable
+`base_snapshot_ref` and `input_file_refs`, capability digest, deadline, finite
+limits, and bounded network targets. References resolve under administrator
+supplied immutable roots; clients never supply mount paths. Every scoped job
+operation requires the control bearer, `X-Scope-Generation`, and `X-Scope-Token`.
+Inspection requires control authority and matching generation and returns a
+fresh transport handle for the existing physical owner. Creation never replaces
+an existing scope, even after its worker is lost. Tokens are excluded from Agent
+checkpoint serialization. Keep the control signing/auth token stable across a
+retained scope's lifetime.
+
+The Linux supervisor requires a dedicated unprivileged UID, user/mount/PID/net
+namespaces, Landlock, active seccomp filtering, the enforcing
+`dify-native-test-supervisor` AppArmor profile, and a finite delegated cgroup-v2
+subtree with cpu, memory, pids and cgroup.kill. Missing primitives reject setup
+before submitted instructions. The native worker reuses the existing SQLite,
+tmux and runner job owner; native catalog commits use FULL durability. A private
+worker control socket is authenticated with a scope-specific token. Its namespace
+worker survives control-service restart; process PID/start-time and durable
+scope/generation identity must still match. Lost workers are never recreated.
+
+Each submitted job enters a separate mount/PID namespace and chroot, drops its
+capabilities, sets no-new-privileges and must successfully apply Landlock. Its
+filesystem contains read-only image binaries/base/inputs, an isolated writable
+Home/workspace, and finite tmpfs storage. The root contains no control/broker
+socket, parent `/proc`, or supervisor state. Scope cgroups bound CPU, memory,
+swap and descendants. Job FD/file limits, aggregate input/network accounting,
+bounded output spool, finite job capacity and wall deadline provide additional
+limits. Output overflow fails the job and terminates the namespace tree.
+
+Network namespaces have no direct route. When explicitly requested, a loopback
+proxy uses a worker-only Unix broker channel authenticated by kernel peer PID
+and UID. The broker resolves and pins approved hosts/ports at creation, denies
+private/metadata addresses unless an administrator explicitly names an exact
+mediator IP:port, persists aggregate byte budgets, and bounds connection count
+and time. The authority permits bounded TCP to those pinned endpoints, including
+opaque CONNECT traffic; it does not claim to inspect each application operation
+inside a script. Destruction closes broker connections, uses cgroup.kill, waits
+for populated=0 and removes storage. Failed cleanup quarantines capacity.
+
+Deployment source is in `docker/native-test-supervisor.service`,
+`docker/native-test-start.sh`, `docker/native-test-seccomp.json` and
+`docker/native-test-apparmor.profile`. Only the host administrator/systemd
+provisions the dedicated subtree and profile. The startup script runs as the
+unprivileged supervisor UID. The systemd unit actually installs the syscall
+allowlist; OCI deployments must explicitly apply the shipped JSON. Ubuntu24.04
+needs the profile-specific `userns,` rule in
+`/etc/apparmor.d/dify-native-userns`; Ubuntu22.04 leaves that optional include
+absent. Parse and enforce the target profile; never substitute privileged mode,
+a Docker socket, broad host cgroup access or a globally disabled LSM.
+
+For local Agent settings, `DIFY_AGENT_RUNTIME_BACKEND=local` remains selected.
+`DIFY_AGENT_LOCAL_NATIVE_TEST_ENDPOINT` and
+`DIFY_AGENT_LOCAL_NATIVE_TEST_AUTH_TOKEN` select only this private supervisor;
+ordinary shellctl keeps its original endpoint/token. The native settings never
+advertise protocol capabilities by themselves. The actual Linux integration
+suite (`make integration-native-test`) requires the provisioned supervisor and
+synthetic canary and fails rather than skipping missing prerequisites. Unit
+coverage alone does not qualify these isolation capabilities.
+
+The image includes all four canonical deployment files under
+`/usr/share/dify-native/`. For a host-systemd deployment, the administrator installs
+`native-test-start.sh` as `/usr/local/libexec/dify-native-start`, the unit as
+`/etc/systemd/system/dify-native.service`, loads the AppArmor profile and provides
+its root-owned EnvironmentFile. Copying these artifacts into an OCI image does
+not activate them. Host-systemd integration and native OCI image/deployment
+qualification are separate gates.
+
+`disk_bytes` caps the writable payload tmpfs shared by Home, workspace and scratch.
+The separate protected spool has a ceiling of input + output + 1 MiB; each of at
+most 64 lifetime admitted jobs has a read-only script tmpfs capped at input +
+4 KiB. Input is cumulatively charged before admission and output is cumulatively
+reserved in the existing worker SQLite catalog before PTY/stdout/stderr writes;
+deleting jobs or reopening streams does not refund either budget. Network reads
+and writes reserve bytes before transfer (short reads may conservatively charge
+extra), and each dial consumes an additional connection unit. Worker proxy
+connections are capped at four and 60 seconds. Job-only seccomp denies new
+namespaces, mounts and capability changes after trusted setup, including through
+clone flags; clone3 returns ENOSYS to allow libc's ordinary-thread clone fallback.

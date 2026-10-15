@@ -64,6 +64,10 @@ RUN apt-get update \
 
 RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
 
+# Reviewed deployment profiles are shipped with the same runtime artifact.
+# The container/systemd owner must enforce them explicitly; copying is not activation.
+COPY docker/native-test-seccomp.json docker/native-test-apparmor.profile docker/native-test-supervisor.service docker/native-test-start.sh /usr/share/dify-native/
+
 # Go binaries
 COPY --from=go-builder /bin/shellctl /usr/local/bin/shellctl
 COPY --from=go-builder /bin/shellctl-sanitize-pty /usr/local/bin/shellctl-sanitize-pty

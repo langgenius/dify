@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -126,7 +127,7 @@ func TestInitSchemaAtLatestVersionIsIdempotent(t *testing.T) {
 func TestInitSchemaRejectsNewerDatabaseWithoutDDL(t *testing.T) {
 	db := openTestDB(t, t.TempDir())
 	defer func() { _ = db.Close() }()
-	if _, err := db.db.Exec("PRAGMA user_version = 2"); err != nil {
+	if _, err := db.db.Exec(fmt.Sprintf("PRAGMA user_version = %d", latestSchemaVersion+1)); err != nil {
 		t.Fatalf("set future schema version: %v", err)
 	}
 
@@ -429,4 +430,41 @@ func strPtr(s string) *string {
 
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
+}
+
+func TestNativeScopeIdentityRejectsRebinding(t *testing.T) {
+	db := openTestDB(t, t.TempDir())
+	defer db.Close()
+	if err := db.InitSchema(); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.BindNativeScope("scope-one", 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.BindNativeScope("scope-two", 1); err == nil {
+		t.Fatal("runtime job catalog rebound to another scope")
+	}
+	if err := db.BindNativeScope("scope-one", 2); err == nil {
+		t.Fatal("runtime job catalog rebound to another generation")
+	}
+	if err := db.BindNativeScope("scope-one", 1); err != nil {
+		t.Fatal(err)
+	}
+}
+func TestNativeCatalogUsesFullDurabilityBeforeJobAdmission(t *testing.T) {
+	db := openTestDB(t, t.TempDir())
+	defer db.Close()
+	if err := db.InitSchema(); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.EnableNativeDurability(); err != nil {
+		t.Fatal(err)
+	}
+	var synchronous int
+	if err := db.db.QueryRow("PRAGMA synchronous").Scan(&synchronous); err != nil {
+		t.Fatal(err)
+	}
+	if synchronous != 2 {
+		t.Fatalf("native effect identity is not fsynced: %d", synchronous)
+	}
 }

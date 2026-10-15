@@ -2,6 +2,16 @@ name: Sandbox Runtime Tests
 
 on:
   workflow_call:
+    inputs:
+      native_scope:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      native_scope:
+        description: Qualify isolated native scopes on the ephemeral Linux runner
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -88,6 +98,72 @@ jobs:
 
       - name: Run integration tests
         run: make integration-test
+
+      - name: Build native supervisor fixture binaries
+        if: inputs.native_scope
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/native-runtime-bin"
+          for entry in shellctl runner runner-exit sanitize-pty; do
+            binary="shellctl-$entry"
+            if [ "$entry" = shellctl ]; then binary=shellctl; fi
+            CGO_ENABLED=0 go build -o "$RUNNER_TEMP/native-runtime-bin/$binary" "./cmd/$entry"
+          done
+
+      - name: Provision delegated native supervisor
+        if: inputs.native_scope
+        run: bash ../.github/scripts/builder-native-runtime-ci.sh provision "$RUNNER_TEMP/native-runtime-bin" "$PWD/docker"
+
+      - name: Run real native scope tests
+        if: inputs.native_scope
+        run: |
+          set -euo pipefail
+          . ./.integration-state
+          export SHELLCTL_GO_URL="http://localhost:$HOST_PORT"
+          export SHELLCTL_TEST_TOKEN="$AUTH_TOKEN"
+          export SHELLCTL_GO_URL_NO_ISOLATION="http://localhost:$HOST_PORT_NOISO"
+          export SHELLCTL_TEST_TOKEN_NO_ISOLATION="$AUTH_TOKEN_NOISO"
+          go test -race -tags=integration,native_scope ./tests -run '^TestNativeScope(Real|Broker|Output)' -count=1 -timeout=300s -json | tee "$RUNNER_TEMP/native-runtime-tests.jsonl"
+          go test -race -tags=integration,native_scope ./tests -run '^TestNativeScopeRestartPrepare$' -count=1 -timeout=120s -json | tee "$RUNNER_TEMP/native-runtime-restart-prepare.jsonl"
+
+      - name: Restart manager while retaining native worker
+        if: inputs.native_scope
+        run: bash ../.github/scripts/builder-native-runtime-ci.sh restart
+
+      - name: Resume same job after manager restart
+        if: inputs.native_scope
+        run: |
+          set -euo pipefail
+          . ./.integration-state
+          export SHELLCTL_GO_URL="http://localhost:$HOST_PORT"
+          export SHELLCTL_TEST_TOKEN="$AUTH_TOKEN"
+          export SHELLCTL_GO_URL_NO_ISOLATION="http://localhost:$HOST_PORT_NOISO"
+          export SHELLCTL_TEST_TOKEN_NO_ISOLATION="$AUTH_TOKEN_NOISO"
+          go test -race -tags=integration,native_scope ./tests -run '^TestNativeScopeRestartResume$' -count=1 -timeout=120s -json | tee "$RUNNER_TEMP/native-runtime-restart-resume.jsonl"
+
+      - name: Verify complete native case inventory
+        if: inputs.native_scope
+        run: python3 ../.github/scripts/verify-native-runtime-results.py "$RUNNER_TEMP"
+
+      - name: Dump native supervisor evidence
+        if: always() && inputs.native_scope
+        run: bash ../.github/scripts/builder-native-runtime-ci.sh logs > "$RUNNER_TEMP/native-runtime-fixture.log" 2>&1
+
+      - name: Upload native runtime evidence
+        if: always() && inputs.native_scope
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-runtime-evidence
+          path: |
+            ${{ runner.temp }}/native-runtime-tests.jsonl
+            ${{ runner.temp }}/native-runtime-restart-prepare.jsonl
+            ${{ runner.temp }}/native-runtime-restart-resume.jsonl
+            ${{ runner.temp }}/native-runtime-fixture.log
+          if-no-files-found: error
+
+      - name: Stop native supervisor fixture
+        if: always() && inputs.native_scope
+        run: bash ../.github/scripts/builder-native-runtime-ci.sh cleanup
 
       - name: Dump container logs on failure
         if: failure()

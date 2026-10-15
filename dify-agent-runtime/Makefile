@@ -146,3 +146,9 @@ sync-e2b-template-prod:
 
 benchmark:
 	go test ./benchmarks/ -bench . -run '^$$' -benchtime 40x
+
+# Requires the normally provisioned rootless native supervisor and synthetic
+# canary. Restart prepare/resume are separate CI phases around systemd restart.
+.PHONY: integration-native-test
+integration-native-test:
+	go test -tags=integration,native_scope ./tests -run '^TestNativeScope(Real|Broker|Output)' -v
