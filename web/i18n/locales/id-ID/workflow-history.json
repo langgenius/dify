@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "ID disalin ke clipboard",
   "versionHistory.action.deleteDeployedVersionError": "Versi alur kerja ini telah diterapkan, atau sedang diterapkan, ke satu atau beberapa lingkungan. Batalkan penerapan dari semua lingkungan sebelum menghapus versi.",
   "versionHistory.action.deleteFailure": "Gagal menghapus versi",
-  "versionHistory.action.deleteSuccess": "Versi dihapus",
   "versionHistory.action.restoreFailure": "Gagal memulihkan versi",
   "versionHistory.action.restoreInProgress": "{{userName}} sedang memulihkan ke versi {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Versi dipulihkan",

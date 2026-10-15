@@ -57,9 +57,9 @@ const VarReferencePicker: FC<Props> = ({ readonly, className, value, onChange })
                   <SelectItem<VarType>
                     key={type}
                     value={type}
-                    className="h-7.5 rounded-lg pr-2 pl-3 text-[13px] text-text-primary"
+                    className="h-7.5 text-[13px] text-text-primary"
                   >
-                    <SelectItemText className="px-0 capitalize">{type}</SelectItemText>
+                    <SelectItemText className="capitalize">{type}</SelectItemText>
                     <SelectItemIndicator />
                   </SelectItem>
                 ))}

@@ -1,22 +1,25 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
+import type { ReactNode } from 'react'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
-import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  Combobox,
-  ComboboxInput,
-  ComboboxInputGroup,
-  ComboboxItem,
-  ComboboxItemText,
-  ComboboxList,
-  ComboboxStatus,
-} from '@langgenius/dify-ui/combobox'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useQuery } from '@tanstack/react-query'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuFilterProvider,
+  DropdownMenuInput,
+  DropdownMenuInputGroup,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuList,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useState } from 'react'
+import { createContext, use, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
@@ -28,21 +31,61 @@ import BlockIcon from '../block-icon'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
 
-export function AgentSelectorContent({
-  open,
-  onOpenChange,
-  onSelect,
-  onStartFromScratch,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+// The filter query doubles as the server search keyword, so the root keeps it controlled and the
+// content reads it from here.
+const SearchTextContext = createContext('')
+
+// A menu of roster agents. Choosing one is an action for the host, inserting a node or switching a
+// node's binding; the menu holds no selection of its own. Compose `AgentSelectorMenuTrigger` and
+// `AgentSelectorMenuContent` inside it.
+export function AgentSelectorMenu({ children }: { children: ReactNode }) {
+  const [searchText, setSearchText] = useState('')
+
+  return (
+    <DropdownMenuFilterProvider filter={null} value={searchText} onValueChange={setSearchText}>
+      <DropdownMenu>
+        <SearchTextContext value={searchText}>{children}</SearchTextContext>
+      </DropdownMenu>
+    </DropdownMenuFilterProvider>
+  )
+}
+
+export const AgentSelectorMenuTrigger = DropdownMenuTrigger
+
+type AgentSelectorMenuContentProps = {
+  placement?: DropdownMenuContentProps['placement']
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch?: () => void
-}) {
+}
+
+export function AgentSelectorMenuContent({
+  placement = 'bottom-end',
+  onSelect,
+  onStartFromScratch,
+}: AgentSelectorMenuContentProps) {
+  const { t } = useTranslation(['agentRoster'])
+
+  return (
+    <DropdownMenuContent
+      placement={placement}
+      sideOffset={4}
+      aria-label={t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
+      className="w-60"
+    >
+      <AgentSelectorList onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
+    </DropdownMenuContent>
+  )
+}
+
+// Mounted only while the menu is open, so the search runs on demand.
+function AgentSelectorList({
+  onSelect,
+  onStartFromScratch,
+}: Pick<AgentSelectorMenuContentProps, 'onSelect' | 'onStartFromScratch'>) {
   const { t } = useTranslation(['workflow', 'common', 'agentRoster'])
   const appId = useHooksStore((s) => s.configsMap?.flowId)
-  const [searchText, setSearchText] = useState('')
-  const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
+  const searchText = use(SearchTextContext)
+  const keyword = useDebounce(searchText.trim(), { wait: 300 })
   const agentsQuery = useQuery({
     ...consoleQuery.agent.inviteOptions.get.queryOptions({
       input: {
@@ -50,114 +93,122 @@ export function AgentSelectorContent({
           limit: AGENT_SELECTOR_PAGE_SIZE,
           page: 1,
           ...(appId ? { app_id: appId } : {}),
-          ...(debouncedSearchText ? { keyword: debouncedSearchText } : {}),
+          ...(keyword ? { keyword } : {}),
         },
       },
     }),
     staleTime: 0,
+    // A new keyword keeps the previous results on screen instead of flashing the skeleton.
+    placeholderData: keepPreviousData,
   })
   const agents = agentsQuery.data?.data ?? []
-  const handleInputValueChange = (nextSearchText: string, details: ComboboxChangeEventDetails) => {
-    if (details.reason !== 'item-press') setSearchText(nextSearchText)
-  }
-  const handleValueChange = (agent: AgentInviteOptionResponse | null) => {
-    if (!agent) return
-    if (!agent.active_config_snapshot_id) {
-      toast.error(t(($) => $['nodes.agent.modelNotSelected'], { ns: 'workflow' }))
-      return
-    }
-
-    onSelect(toAgentRosterNodeData(agent))
-  }
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) onOpenChange(false)
-  }
   const isLoading = agentsQuery.isPending
   const statusText = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : agentsQuery.isError
       ? t(($) => $['roster.loadingError'], { ns: 'agentRoster' })
       : agents.length === 0
-        ? debouncedSearchText
+        ? keyword
           ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
           : t(($) => $['roster.empty'], { ns: 'agentRoster' })
         : null
+
+  const handleSelect = (agent: AgentInviteOptionResponse) => {
+    if (!agent.active_config_snapshot_id) {
+      toast.error(t(($) => $['nodes.agent.modelNotSelected'], { ns: 'workflow' }))
+      return
+    }
+    onSelect(toAgentRosterNodeData(agent))
+  }
+
   return (
-    <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
-      <Combobox<AgentInviteOptionResponse>
-        filter={null}
-        inline
-        inputValue={searchText}
-        items={agents}
-        itemToStringLabel={(agent) => agent.name}
-        itemToStringValue={(agent) => agent.id}
-        open={open}
-        value={null}
-        onInputValueChange={handleInputValueChange}
-        onOpenChange={handleOpenChange}
-        onValueChange={handleValueChange}
-      >
-        <div className="bg-components-panel-bg-blur p-2 pb-1">
-          <ComboboxInputGroup className="h-8 min-h-8 px-2">
-            <span
-              aria-hidden
-              className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-            />
-            <ComboboxInput
-              aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
-              placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], {
-                ns: 'agentRoster',
-              })}
-              className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
-            />
-          </ComboboxInputGroup>
-        </div>
-        <ComboboxStatus className="system-xs-regular">{statusText}</ComboboxStatus>
-        {isLoading ? (
-          <div className="max-h-54 overflow-hidden p-1">
-            <AgentSelectorLoadingSkeleton />
-          </div>
-        ) : (
-          <ComboboxList className="max-h-54 p-1 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-state-accent-solid focus-visible:outline-solid">
-            {!agentsQuery.isError &&
-              agents.map((agent) => <AgentSelectorItem key={agent.id} agent={agent} />)}
-          </ComboboxList>
+    <>
+      <DropdownMenuInputGroup>
+        <span
+          aria-hidden
+          className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+        />
+        <DropdownMenuInput
+          aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
+          placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentRoster' })}
+        />
+      </DropdownMenuInputGroup>
+      {/* A persistent live region announces reliably. The skeleton already shows loading, so that
+          status is announced but not displayed. */}
+      <div
+        role="status"
+        className={cn(
+          'px-3 py-2 system-sm-regular text-text-tertiary empty:p-0',
+          isLoading && 'sr-only',
         )}
-        <div className="border-t border-divider-subtle p-1">
-          {onStartFromScratch && (
-            <Button
-              variant="ghost"
-              size="medium"
-              className="h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary"
-              onClick={onStartFromScratch}
-            >
-              <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
-              <span className="min-w-0 flex-1 truncate">
-                {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentRoster' })}
-              </span>
-            </Button>
+      >
+        {statusText}
+      </div>
+      {/* The agents scroll inside the list so the footer actions stay in view. The scroller is kept
+          out of the tab order: the menu owns focus and Tab closes it. */}
+      <DropdownMenuList className="flex max-h-none flex-col overflow-visible">
+        <div
+          tabIndex={-1}
+          className={cn(
+            'max-h-54 min-h-0 overflow-y-auto overscroll-contain outline-hidden',
+            agentsQuery.isPlaceholderData && 'opacity-60',
           )}
-          <Link
-            href="/agents"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants({ variant: 'ghost', size: 'medium' }),
-              'h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary',
-            )}
-            onClick={() => onOpenChange(false)}
-          >
-            <span
-              aria-hidden
-              className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
-            />
-            <span className="min-w-0 flex-1 truncate">
-              {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentRoster' })}
-            </span>
-          </Link>
+        >
+          {isLoading ? (
+            <AgentSelectorLoadingSkeleton />
+          ) : (
+            !agentsQuery.isError &&
+            agents.map((agent) => (
+              <DropdownMenuItem
+                key={agent.id}
+                closeOnClick={Boolean(agent.active_config_snapshot_id)}
+                className="h-auto gap-2 py-1.5 pr-3 pl-2"
+                onClick={() => handleSelect(agent)}
+              >
+                <span aria-hidden className="shrink-0">
+                  <AppIcon
+                    size="small"
+                    iconType={agent.icon_type}
+                    icon={agent.icon ?? undefined}
+                    background={agent.icon_background}
+                    imageUrl={agent.icon ?? undefined}
+                  />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate system-sm-medium text-text-secondary">
+                    {agent.name}
+                  </span>
+                  <span className="truncate system-xs-regular text-text-tertiary">
+                    {agent.role || agent.description}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+            ))
+          )}
         </div>
-      </Combobox>
-    </div>
+        <DropdownMenuSeparator className="shrink-0" />
+        {onStartFromScratch && (
+          <DropdownMenuItem className="shrink-0" onClick={onStartFromScratch}>
+            <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
+            <span className="min-w-0 flex-1 truncate">
+              {t(($) => $['roster.nodeSelector.startFromScratch'], { ns: 'agentRoster' })}
+            </span>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuLinkItem
+          className="shrink-0"
+          render={<Link href="/agents" target="_blank" rel="noopener noreferrer" />}
+        >
+          <span
+            aria-hidden
+            className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
+          />
+          <span className="min-w-0 flex-1 truncate">
+            {t(($) => $['roster.nodeSelector.manageInAgentConsole'], { ns: 'agentRoster' })}
+          </span>
+        </DropdownMenuLinkItem>
+      </DropdownMenuList>
+    </>
   )
 }
 
@@ -198,36 +249,6 @@ function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNod
   }
 }
 
-function AgentSelectorAvatar({ agent }: { agent: AgentInviteOptionResponse }) {
-  return (
-    <AppIcon
-      size="small"
-      iconType={agent.icon_type}
-      icon={agent.icon ?? undefined}
-      background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
-    />
-  )
-}
-
-function AgentSelectorItem({ agent }: { agent: AgentInviteOptionResponse }) {
-  return (
-    <ComboboxItem value={agent} className="grid-cols-[1fr] gap-0 py-1.5 pr-3 pl-2">
-      <ComboboxItemText className="flex items-center gap-2 px-0">
-        <span aria-hidden className="shrink-0">
-          <AgentSelectorAvatar agent={agent} />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate system-sm-medium text-text-secondary">{agent.name}</span>
-          <span className="truncate system-xs-regular text-text-tertiary">
-            {agent.role || agent.description}
-          </span>
-        </span>
-      </ComboboxItemText>
-    </ComboboxItem>
-  )
-}
-
 export function AgentBlockItem({
   block,
   onSelect,
@@ -237,58 +258,40 @@ export function AgentBlockItem({
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch: () => void
 }) {
-  const { t } = useTranslation(['workflow', 'navigation', 'agentRoster'])
-  const [open, setOpen] = useState(false)
-  const handleSelect = (agent: AgentRosterNodeData) => {
-    setOpen(false)
-    onSelect(agent)
-  }
+  const { t } = useTranslation(['navigation'])
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <AgentSelectorMenu>
+      <AgentSelectorMenuTrigger
         openOnHover
         render={
           <Button
             variant="ghost"
             size="medium"
             className="w-full justify-start gap-0 px-3 text-left data-popup-open:bg-state-base-hover"
-          >
-            <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-            <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
-              {block.metaData.title}
-            </span>
-            <Badge
-              size="xs"
-              variant="dimm"
-              text={t(($) => $['menus.status'], { ns: 'navigation' })}
-              className="ml-2 shrink-0"
-            />
-            <span
-              aria-hidden
-              className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-tertiary"
-            />
-          </Button>
+          />
         }
-      />
-      <PopoverContent
-        placement="right-start"
-        sideOffset={4}
-        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <PopoverTitle className="sr-only">
-          {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
-        </PopoverTitle>
-        <AgentSelectorContent
-          open={open}
-          onOpenChange={setOpen}
-          onSelect={handleSelect}
-          onStartFromScratch={() => {
-            setOpen(false)
-            onStartFromScratch()
-          }}
+        <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
+        <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
+          {block.metaData.title}
+        </span>
+        <Badge
+          size="xs"
+          variant="dimm"
+          text={t(($) => $['menus.status'], { ns: 'navigation' })}
+          className="ml-2 shrink-0"
         />
-      </PopoverContent>
-    </Popover>
+        <span
+          aria-hidden
+          className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-tertiary"
+        />
+      </AgentSelectorMenuTrigger>
+      <AgentSelectorMenuContent
+        placement="right-start"
+        onSelect={onSelect}
+        onStartFromScratch={onStartFromScratch}
+      />
+    </AgentSelectorMenu>
   )
 }

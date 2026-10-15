@@ -3,7 +3,6 @@
   "action.delete": "Удалить плагин",
   "action.deleteContentLeft": "Вы хотели бы удалить",
   "action.deleteContentRight": "Плагин?",
-  "action.deleteSuccess": "Плагин успешно удалён",
   "action.pluginInfo": "Информация о плагине",
   "allCategories": "Все категории",
   "auth.addApi": "Добавьте API-ключ",

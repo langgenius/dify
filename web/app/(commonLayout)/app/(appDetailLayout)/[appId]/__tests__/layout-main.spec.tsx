@@ -33,14 +33,6 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
 
 vi.mock('@/next/navigation', () => mockNavigation)
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (url: string) => {
-    const response = await mockAppResponse(url)
-    return response instanceof Response ? response : Response.json(response)
-  },
-}))
-
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -84,6 +76,10 @@ describe('AppDetailLayout', () => {
       replace: mockReplace,
     })
     mockAppResponse.mockResolvedValue(createAppDetail())
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const response = await mockAppResponse(input instanceof Request ? input.url : String(input))
+      return response instanceof Response ? response : Response.json(response)
+    })
     useStore.getState().setAppDetail()
   })
 

@@ -1,11 +1,12 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAvatarInitial } from '@/utils/avatar'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
 import { MentionInput } from './mention-input'
 
@@ -178,12 +179,10 @@ export const CommentInput: FC<CommentInputProps> = memo(
           >
             <div className="relative aspect-square h-8 w-8 shrink-0 rounded-tl-full rounded-tr-full rounded-br-full bg-primary-500 p-0.5">
               <div className="flex size-full items-center justify-center overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-components-panel-bg-blur p-0.5">
-                <Avatar
-                  avatar={userProfile.avatar_url}
-                  name={userProfile.name}
-                  size="sm"
-                  className="block size-full rounded-full"
-                />
+                <Avatar size="sm" className="block size-full rounded-full" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                  <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                </Avatar>
               </div>
             </div>
           </IconButton>

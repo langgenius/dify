@@ -95,6 +95,7 @@ from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from controllers.openapi.human_input_form import CheckFormSurface
 from enums import DeploymentEdition, WebAppAccessMode
+from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import BearerAuthenticator, ResolvedRow, sha256_hex
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
@@ -102,7 +103,6 @@ from models.model import App, EndUser
 from models.oauth import OAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.feature_entities import LicenseStatus, SystemFeatureModel
-from services.rbac_resource_service import RBACResourceService
 from services.system_feature_service import SystemFeatureService
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -853,9 +853,12 @@ def _matrix_app() -> Flask:
 
 
 @pytest.fixture
-def matrix_app(_matrix_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
+def matrix_app(
+    _matrix_app: Flask, monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
+) -> Iterator[Flask]:
     """Keep rate-limit overrides and the admission probe scoped to each case."""
 
+    monkeypatch.setitem(_matrix_app.extensions, "application_services", account_application_services)
     monkeypatch.setattr(
         rate_limit_module,
         "LIMIT_BEARER_PER_TOKEN",
@@ -1118,8 +1121,6 @@ def _run_case(
                 side_effect=_end_user,
             )
         )
-        stack.enter_context(patch.object(RBACResourceService, "get_app_agent_binding", return_value=None))
-        stack.enter_context(patch.object(RBACResourceService, "get_app_maintainer", return_value=None))
         stack.enter_context(
             patch(
                 "services.enterprise.rbac_service.RBACService.CheckAccess.check",
@@ -1265,10 +1266,11 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
     "description": "Error",
     "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorBody"}}},
 }
-"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`."""
+"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`, and what
+`ExternalApi` adds to every other operation."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
-    ("get", "/_catalog"): frozenset({"200"}),
+    ("get", "/_catalog"): frozenset({"200", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
@@ -1288,14 +1290,19 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
-    # The five device-flow rows are the only operations with no `default`: they
-    # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
-    # so no `ErrorBody` schema is registered for them.
-    ("post", "/oauth/device/approve"): frozenset({"200"}),
-    ("post", "/oauth/device/code"): frozenset({"200"}),
-    ("post", "/oauth/device/deny"): frozenset({"200"}),
-    ("get", "/oauth/device/lookup"): frozenset({"200"}),
-    ("post", "/oauth/device/token"): frozenset({"200"}),
+    # The catalog and the five device-flow rows document their 200 with a raw
+    # `openapi_ns.response` rather than `@returns`; `ExternalApi` still gives them the
+    # `default` error every operation documents, with the same `ErrorBody` schema.
+    # Approve and deny run Console account admission; its setup and account-initialization
+    # errors are generic on that surface (handled centrally by the client), so the guards
+    # document nothing and the open `default` error covers them. Code, token, approve and
+    # deny declare the RFC 8628-style `DeviceFlowErrorResponse` for the statuses their flow
+    # errors use.
+    ("post", "/oauth/device/approve"): frozenset({"200", "404", "409", "503", "default"}),
+    ("post", "/oauth/device/code"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/device/deny"): frozenset({"200", "404", "409", "503", "default"}),
+    ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
+    ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),

@@ -32,6 +32,7 @@ from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfinite
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.agent.errors import AgentVersionNotFoundError
@@ -74,6 +75,7 @@ register_response_schema_models(
 
 @web_ns.route("/messages")
 class MessageListApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Get Message List")
     @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
     @web_ns.doc(params=query_params_from_model(MessageListQuery))
@@ -82,7 +84,6 @@ class MessageListApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -117,6 +118,7 @@ class MessageListApi(WebApiResource):
 
 @web_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(WebApiResource):
+    @error_responses(AppUnavailableError, MessageFeedbackRatingRequiredError)
     @web_ns.doc("Create Message Feedback")
     @web_ns.doc(description="Submit feedback (like/dislike) for a specific message.")
     @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
@@ -175,6 +177,15 @@ class MessageFeedbackApi(WebApiResource):
 
 @web_ns.route("/messages/<uuid:message_id>/more-like-this")
 class MessageMoreLikeThisApi(WebApiResource):
+    @error_responses(
+        AppMoreLikeThisDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @web_ns.doc("Generate More Like This")
     @web_ns.doc(description="Generate a new completion similar to an existing message (completion apps only).")
     @web_ns.doc(params=query_params_from_model(MessageMoreLikeThisQuery))
@@ -242,6 +253,16 @@ class MessageMoreLikeThisApi(WebApiResource):
 
 @web_ns.route("/messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(WebApiResource):
+    @error_responses(
+        AgentVersionNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[SuggestedQuestionsResponse.__name__])
     @web_ns.doc("Get Suggested Questions")
     @web_ns.doc(

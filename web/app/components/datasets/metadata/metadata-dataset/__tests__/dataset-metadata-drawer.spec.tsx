@@ -198,7 +198,7 @@ describe('DatasetMetadataDrawer', () => {
       )!.toBeInTheDocument()
     })
 
-    it('should call onAdd and show success toast when metadata is added', async () => {
+    it('should call onAdd when metadata is added', async () => {
       const onAdd = vi.fn().mockResolvedValue({})
       render(<DatasetMetadataDrawer {...defaultProps} onAdd={onAdd} />)
 
@@ -214,14 +214,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onAdd).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 
@@ -287,14 +279,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 

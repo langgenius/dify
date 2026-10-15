@@ -42,7 +42,7 @@ const InputTypeSelectField = ({
         disabled={disabled}
         onValueChange={handleInputTypeChange}
       >
-        <SelectTrigger id={field.name} className="gap-x-0.5 px-2">
+        <SelectTrigger id={field.name} className="gap-x-0.5 pl-2">
           <Trigger option={selected} />
         </SelectTrigger>
         <SelectContent className="w-92 bg-components-panel-bg-blur shadow-shadow-shadow-5">

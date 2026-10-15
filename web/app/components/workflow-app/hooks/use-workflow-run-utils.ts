@@ -453,9 +453,8 @@ export const runTriggerDebug = async ({
     } catch (error) {
       if (controller.signal.aborted) return
 
-      if (error instanceof Response) {
-        const data = (await error.clone().json()) as Record<string, unknown>
-        const errorMessage = typeof data?.error === 'string' ? data.error : ''
+      if (error instanceof Error) {
+        const errorMessage = error.message
         toast.error(errorMessage)
         clearAbortController()
         setWorkflowRunningData(createFailedWorkflowState(errorMessage))

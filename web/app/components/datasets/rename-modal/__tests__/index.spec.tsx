@@ -538,19 +538,6 @@ describe('RenameDatasetModal', () => {
         expect(handleClose).toHaveBeenCalledTimes(1)
       })
     })
-
-    it('should show success toast after successful save', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
-      })
-    })
   })
 
   describe('Error Handling', () => {
@@ -729,7 +716,9 @@ describe('RenameDatasetModal', () => {
       })
 
       // Should not throw error when onSuccess is undefined
-      expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
+      await waitFor(() => {
+        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should maintain callback identity across renders', async () => {
@@ -1237,7 +1226,9 @@ describe('RenameDatasetModal', () => {
       })
 
       // After success, the modal closes, but if it didn't, button would be re-enabled
-      expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
+      await waitFor(() => {
+        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should re-enable save button after failed save', async () => {

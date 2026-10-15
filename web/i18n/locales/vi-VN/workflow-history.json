@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "ID được sao chép vào khay nhớ tạm",
   "versionHistory.action.deleteDeployedVersionError": "Phiên bản quy trình làm việc này đã được triển khai hoặc đang được triển khai tới một hay nhiều môi trường. Hãy hủy triển khai khỏi tất cả môi trường trước khi xóa phiên bản.",
   "versionHistory.action.deleteFailure": "Xóa phiên bản thất bại",
-  "versionHistory.action.deleteSuccess": "Phiên bản đã bị xóa",
   "versionHistory.action.restoreFailure": "Không thể khôi phục phiên bản",
   "versionHistory.action.restoreInProgress": "{{userName}} đang khôi phục về phiên bản {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Phiên bản đã được khôi phục",

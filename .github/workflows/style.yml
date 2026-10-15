@@ -97,6 +97,20 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_spec_mock.py
 
+      - name: Run No New Base Model Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_base_model.py --base-rev "$GUARD_BASE_REV"
+
+      - name: Run No New Test Doubles Guard
+        if: inputs.run-python-style || inputs.run-dify-agent-style
+        # A PR event can retain an older base SHA after its target branch advances.
+        # Checkout tests the merge commit. Its first parent is the tested target revision.
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_test_doubles.py --base-rev "$GUARD_BASE_REV"
+
       - name: Run Type Checks
         if: inputs.run-python-style
         env:
@@ -177,7 +191,7 @@ jobs:
     name: Web Style
     if: ${{ always() && !inputs.skip-checks && (!inputs.classification-succeeded || inputs.run-web-style) }}
     needs: [web-build, web-style-checks]
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04
     permissions: {}
     steps:
       - name: Verify web checks

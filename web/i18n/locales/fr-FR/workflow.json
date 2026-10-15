@@ -528,7 +528,6 @@
   "singleRun.testRun": "Exécution de test",
   "snippet.confirm": "Confirmer",
   "snippet.createDialogTitle": "Créer un extrait",
-  "snippet.createSuccess": "Extrait créé",
   "snippet.descriptionLabel": "Description (Facultatif)",
   "snippet.descriptionPlaceholder": "Décrivez brièvement votre extrait",
   "snippet.nameLabel": "Nom de l'extrait",

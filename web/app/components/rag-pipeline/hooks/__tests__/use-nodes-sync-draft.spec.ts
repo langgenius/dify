@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -27,9 +28,27 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  syncWorkflowDraft: (params: unknown) => mockSyncWorkflowDraft(params),
-}))
+// Stand in for the draft sync request at the client boundary: record the request it sends
+// and validate rejections against the contract, as the console link does.
+vi.mock('@/service/console', async () => {
+  const { rag } = await import('@dify/contracts/api/console/rag/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ rag })
+  const post = (input: { params: { pipeline_id: string }; body: unknown }) =>
+    validate({
+      context: {},
+      input,
+      path: ['rag', 'pipelines', 'byPipelineId', 'workflows', 'draft', 'post'],
+      next: () =>
+        mockSyncWorkflowDraft({
+          url: `/rag/pipelines/${input.params.pipeline_id}/workflows/draft`,
+          params: input.body,
+        }),
+    })
+  return {
+    consoleClient: { rag: { pipelines: { byPipelineId: { workflows: { draft: { post } } } } } },
+  }
+})
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
 vi.mock('../use-pipeline-refresh-draft', () => ({
@@ -421,10 +440,11 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-        bodyUsed: false,
-      }
+      const mockJsonError = createHttpError(new Response(null, { status: 409 }), {
+        code: 'draft_workflow_not_sync',
+        message: 'Workflow not synced.',
+        status: 409,
+      })
       mockSyncWorkflowDraft.mockRejectedValue(mockJsonError)
 
       const { result } = renderHook(() => useNodesSyncDraft())
@@ -444,10 +464,11 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const mockJsonError = {
-        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-        bodyUsed: false,
-      }
+      const mockJsonError = createHttpError(new Response(null, { status: 409 }), {
+        code: 'draft_workflow_not_sync',
+        message: 'Workflow not synced.',
+        status: 409,
+      })
       mockSyncWorkflowDraft.mockRejectedValue(mockJsonError)
 
       const { result } = renderHook(() => useNodesSyncDraft())
