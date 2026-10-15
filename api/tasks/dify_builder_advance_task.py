@@ -56,6 +56,7 @@ from core.dify_builder.state import PcState, is_terminal
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.dify_builder import app_naming, progress_bus, progress_snapshot, session_lock
+from services.dify_builder.action_policy import requires_app_revision
 from services.dify_builder.agent.localize import LanguageDetector
 from services.dify_builder.agent_factory import build_dify_builder_agent
 from services.dify_builder.copy_ids import BuilderCopyId
@@ -355,7 +356,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             command_id=action.command_id,
         )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())
-        if action.base_app_revision:
+        if action.base_app_revision and requires_app_revision(action):
             _graph, current_app_revision = dify.read_graph(loaded_session.app_id, actor)
             if action.base_app_revision != current_app_revision:
                 raise ConflictError(f"stale app revision for app {loaded_session.app_id}")
