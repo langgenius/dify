@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from services.tracing.normalization import normalize_agent_span, order_spans, remap_outer_trace, safe_attributes
 from services.tracing.provider_common import token_usage, usd_cost
@@ -199,3 +200,19 @@ def test_order_spans_rejects_orphans_cycles_and_conflicting_ids() -> None:
         )
     with pytest.raises(ValueError, match="Conflicting"):
         order_spans("root", [root, root.model_copy(update={"name": "other"})])
+
+
+def test_managed_external_parent_is_preserved_as_explicit_link_when_content_off() -> None:
+    trace = CanonicalTrace(
+        trace_id="old",
+        session_id="session",
+        root_span_id="workflow",
+        spans=(span("workflow", None, CanonicalSpanKind.CHAIN),),
+        external_parent=ParentTraceContext(
+            parent_workflow_run_id="outer-workflow", parent_node_execution_id="outer-tool"
+        ),
+    )
+    remapped = remap_outer_trace(trace, trace_id="1" * 32, capture_content=False, agent_message=False)
+    assert remapped.external_parent is None
+    assert remapped.spans[0].metadata["linked_parent_workflow_run_id"] == "outer-workflow"
+    assert remapped.spans[0].metadata["linked_parent_node_execution_id"] == "outer-tool"

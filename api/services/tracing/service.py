@@ -10,7 +10,7 @@ from typing import Any, Literal
 from dify_agent.layers.execution_context import ApplicationTracingContext
 from dify_agent.protocol.tracing import AgentTraceBatch
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.ops.entities.trace_entity import BaseTraceInfo, MessageTraceInfo, WorkflowTraceInfo
@@ -19,11 +19,12 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder, RepositoryWorkflowExecutionLoader
 from extensions.ext_database import db
-from models import Account, App, AppMode, Conversation, Message, WorkflowNodeExecutionModel, WorkflowRun
+from models import Account, App, AppMode, Conversation, Message, Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from models.application_trace import ApplicationTraceRun
 from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
 from services.tracing.normalization import normalize_agent_span, order_spans, remap_outer_trace, sanitize
 from services.tracing.provider_dispatch import TraceExportUncertainError, export_trace, provider_capabilities
+from services.tracing.runtime_bridge import workflow_has_agent_v2
 
 logger = logging.getLogger(__name__)
 
@@ -145,94 +146,149 @@ class ApplicationTracingService:
                 )
         return run
 
-    def capture_terminal(self, info: BaseTraceInfo) -> bool:
-        """Persist the complete business envelope before the old queue deletes it.
+    def _managed_owner(
+        self, session: Session, app: App, message: Message | None = None, workflow_run_id: str | None = None
+    ) -> bool:
+        """Honor frozen owners first; ordinary workflows retain legacy tracing."""
+        if message is not None:
+            if self._run_for_source(
+                tenant_id=app.tenant_id, app_id=app.id, source_kind="message", source_id=message.id
+            ):
+                return True
+            workflow_run_id = message.workflow_run_id or workflow_run_id
+        if app.mode == AppMode.AGENT:
+            return True
+        if workflow_run_id:
+            workflow = session.scalar(
+                select(WorkflowRun).where(
+                    WorkflowRun.id == workflow_run_id,
+                    WorkflowRun.app_id == app.id,
+                    WorkflowRun.tenant_id == app.tenant_id,
+                )
+            )
+            if workflow is not None:
+                if self.repository.source_run(
+                    tenant_id=app.tenant_id, app_id=app.id, source_kind="workflow", source_id=workflow.id
+                ):
+                    return True
+                return workflow_has_agent_v2(workflow.graph)
+        if app.mode == AppMode.ADVANCED_CHAT:
+            # Naming may run before Message.workflow_run_id is populated. Use
+            # the owned app workflow; an unknown snapshot fails closed.
+            workflow = (
+                session.scalar(
+                    select(Workflow).where(
+                        Workflow.id == app.workflow_id, Workflow.app_id == app.id, Workflow.tenant_id == app.tenant_id
+                    )
+                )
+                if app.workflow_id
+                else None
+            )
+            return workflow is None or workflow_has_agent_v2(workflow.graph)
+        return False
 
-        An existing managed run remains owned here even if tracing is disabled or
-        its credentials are edited while the application is executing.
-        """
+    def _capture_auxiliary(self, info: BaseTraceInfo) -> bool:
+        """Resolve real business owners even when message_id is a workflow-log ID."""
+        actual_message_id = info.message_data.id if isinstance(info.message_data, Message) else None
+        message_ids = [actual_message_id, info.metadata.get("message_id"), info.message_id]
+        with self.repository.sessions() as session:
+            for message_id in message_ids:
+                if not isinstance(message_id, str):
+                    continue
+                owner = session.execute(
+                    select(Message, App).join(App, App.id == Message.app_id).where(Message.id == message_id)
+                ).first()
+                if owner is not None:
+                    message, app = owner
+                    return self._managed_owner(session, app, message)
+            conversation_id = info.metadata.get("conversation_id")
+            if isinstance(conversation_id, str):
+                app = session.scalar(
+                    select(App)
+                    .join(Conversation, Conversation.app_id == App.id)
+                    .where(Conversation.id == conversation_id)
+                )
+                if app is not None:
+                    message = session.scalar(
+                        select(Message)
+                        .where(Message.conversation_id == conversation_id, Message.app_id == app.id)
+                        .order_by(Message.created_at.desc())
+                        .limit(1)
+                    )
+                    return self._managed_owner(session, app, message)
+            workflow_run_id = info.metadata.get("workflow_run_id")
+            if isinstance(workflow_run_id, str):
+                app = session.scalar(
+                    select(App)
+                    .join(WorkflowRun, WorkflowRun.app_id == App.id)
+                    .where(WorkflowRun.id == workflow_run_id, WorkflowRun.tenant_id == App.tenant_id)
+                )
+                if app is not None:
+                    return self._managed_owner(session, app, workflow_run_id=workflow_run_id)
+        return False
+
+    def _link_managed_parent(self, info: WorkflowTraceInfo, tenant_id: str) -> None:
+        """A legacy child cannot await a parent exported by a different pipeline."""
+        parent_run_id, parent_node_id = info.resolved_parent_context
+        if not parent_run_id:
+            return
+        with self.repository.sessions() as session:
+            parent = session.scalar(
+                select(ApplicationTraceRun)
+                .join(WorkflowRun, WorkflowRun.id == ApplicationTraceRun.source_id)
+                .join(App, App.id == WorkflowRun.app_id)
+                .where(
+                    ApplicationTraceRun.source_kind == "workflow",
+                    ApplicationTraceRun.source_id == parent_run_id,
+                    ApplicationTraceRun.app_id == WorkflowRun.app_id,
+                    ApplicationTraceRun.tenant_id == tenant_id,
+                    WorkflowRun.tenant_id == tenant_id,
+                    App.tenant_id == tenant_id,
+                )
+            )
+        if parent is None:
+            return
+        metadata = dict(info.metadata)
+        metadata.pop("parent_trace_context", None)
+        metadata["linked_parent_workflow_run_id"] = parent_run_id
+        if parent_node_id:
+            metadata["linked_parent_node_execution_id"] = parent_node_id
+        metadata["linked_parent_application_trace_id"] = parent.id
+        metadata["linked_parent_trace_id"] = parent.trace_id
+        info.metadata = metadata
+
+    def capture_terminal(self, info: BaseTraceInfo) -> bool:
+        """Hand managed traces to durable collection while preserving legacy scope."""
         if isinstance(info, WorkflowTraceInfo):
             app_id = str(info.metadata.get("app_id", ""))
             source_id, source_kind = info.workflow_run_id, "workflow"
-        elif isinstance(info, MessageTraceInfo) and info.message_data is not None:
+        elif isinstance(info, MessageTraceInfo) and isinstance(info.message_data, Message):
             app_id = info.message_data.app_id
             source_id, source_kind = info.message_data.id, "message"
         else:
-            # SDK observations already cover the Agent runtime. Suppress legacy
-            # helper events for managed owners so content-off does not leak via
-            # conversation naming/moderation or create orphan legacy traces.
-            message_id = info.message_id
-            workflow_id = info.metadata.get("workflow_run_id")
-            with self.repository.sessions() as session:
-                if message_id:
-                    owner_mode = session.scalar(
-                        select(App.mode).join(Message, Message.app_id == App.id).where(Message.id == message_id)
-                    )
-                    if owner_mode in {AppMode.AGENT, AppMode.ADVANCED_CHAT}:
-                        return True
-                conversation_id = info.metadata.get("conversation_id")
-                if isinstance(conversation_id, str):
-                    owner_mode = session.scalar(
-                        select(App.mode)
-                        .join(Conversation, Conversation.app_id == App.id)
-                        .where(Conversation.id == conversation_id)
-                    )
-                    if owner_mode in {AppMode.AGENT, AppMode.ADVANCED_CHAT}:
-                        return True
-                if message_id and session.scalar(
-                    select(ApplicationTraceRun.id)
-                    .join(Message, Message.id == ApplicationTraceRun.source_id)
-                    .join(App, App.id == Message.app_id)
-                    .where(
-                        ApplicationTraceRun.source_kind == "message",
-                        ApplicationTraceRun.source_id == message_id,
-                        ApplicationTraceRun.app_id == Message.app_id,
-                        ApplicationTraceRun.tenant_id == App.tenant_id,
-                    )
-                    .limit(1)
-                ):
-                    return True
-                if isinstance(workflow_id, str) and session.scalar(
-                    select(ApplicationTraceRun.id)
-                    .join(WorkflowRun, WorkflowRun.id == ApplicationTraceRun.source_id)
-                    .join(App, App.id == WorkflowRun.app_id)
-                    .where(
-                        ApplicationTraceRun.source_kind == "workflow",
-                        ApplicationTraceRun.source_id == workflow_id,
-                        ApplicationTraceRun.app_id == WorkflowRun.app_id,
-                        ApplicationTraceRun.tenant_id == App.tenant_id,
-                        WorkflowRun.tenant_id == App.tenant_id,
-                    )
-                    .limit(1)
-                ):
-                    return True
-                if isinstance(workflow_id, str) and session.scalar(
-                    select(WorkflowRun.id)
-                    .join(App, App.id == WorkflowRun.app_id)
-                    .where(
-                        WorkflowRun.id == workflow_id,
-                        WorkflowRun.tenant_id == App.tenant_id,
-                    )
-                    .limit(1)
-                ):
-                    return True
-            return False
+            return self._capture_auxiliary(info)
         with self.repository.sessions() as session:
             app = session.scalar(select(App).where(App.id == app_id))
-        if app is None:
-            return False
-        tenant_id = app.tenant_id
-        run = self._run_for_source(tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id)
+            if app is None:
+                return False
+            message = (
+                session.scalar(select(Message).where(Message.id == source_id, Message.app_id == app_id))
+                if source_kind == "message"
+                else None
+            )
+            managed = self._managed_owner(session, app, message, source_id if source_kind == "workflow" else None)
+        run = self._run_for_source(tenant_id=app.tenant_id, app_id=app.id, source_kind=source_kind, source_id=source_id)
         if run is not None and source_kind == "message" and run.source_kind == "workflow":
-            # Chatflow emits both WORKFLOW_TRACE and MESSAGE_TRACE. Its message
-            # root is already part of the complete workflow tree.
+            # Chatflow emits both events; the message is already in the workflow tree.
             return True
         if run is None:
-            if app.mode not in {AppMode.AGENT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+            if not managed:
+                if isinstance(info, WorkflowTraceInfo):
+                    self._link_managed_parent(info, app.tenant_id)
                 return False
             run = self.repository.record_initialization_failure(
-                tenant_id=tenant_id,
-                app_id=app_id,
+                tenant_id=app.tenant_id,
+                app_id=app.id,
                 source_kind=source_kind,
                 source_id=source_id,
             )
