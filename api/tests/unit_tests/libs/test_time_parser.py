@@ -62,7 +62,7 @@ class TestGetTimeThreshold:
         """Test getting threshold for days."""
         before = datetime.now(UTC)
         result = get_time_threshold("7d")
-        datetime.now(UTC)
+ 
 
         assert result is not None
         # Result should be approximately 7 days ago
@@ -74,7 +74,7 @@ class TestGetTimeThreshold:
         """Test getting threshold for hours."""
         before = datetime.now(UTC)
         result = get_time_threshold("4h")
-        datetime.now(UTC)
+ 
 
         assert result is not None
         expected = before - timedelta(hours=4)
