@@ -55,8 +55,8 @@ Pass `focusableWhenDisabled={false}` only when a loading button should opt into 
 behavior and may leave the tab order.
 
 Pass `focusableWhenDisabled` on a `disabled` button only when focus must still land on it, for
-example as the return target of a closing surface. Expose the unavailable reason through
-`aria-describedby`; a tooltip alone does not reach keyboard and touch users.
+example as the return target of a closing surface or so a tooltip explaining the unavailable
+state can be reached from the keyboard.
 
 ### Accessible loading feedback
 
