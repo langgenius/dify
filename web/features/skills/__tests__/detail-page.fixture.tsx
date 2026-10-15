@@ -96,10 +96,6 @@ vi.mock('@/app/components/base/markdown', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
-}))
-
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
   default: ({ compact = false }: { compact?: boolean }) => (
     <button type="button" aria-label={compact ? 'compact-account-section' : 'account-section'}>

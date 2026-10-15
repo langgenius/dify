@@ -209,19 +209,7 @@ export function WebAppAccessCard({
         headingLevel={3}
         title={t(($) => $['agentDetail.access.webApp.title'])}
         description={t(($) => $['agentDetail.access.webApp.description'])}
-        icon={
-          icon ? (
-            <AppIcon
-              size="large"
-              iconType={icon.icon_type}
-              icon={icon.icon}
-              background={icon.icon_background}
-              imageUrl={icon.icon_url}
-            />
-          ) : (
-            'i-ri-window-line'
-          )
-        }
+        icon={icon ? <AppIcon size="large" icon={icon} /> : 'i-ri-window-line'}
         status={status}
         statusLabel={statusLabel}
         switchDisabled={isLoading || !canManageWebApp}

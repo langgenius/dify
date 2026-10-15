@@ -29,12 +29,7 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
   const appBasicInfo = app.app
   const appName = appBasicInfo?.name ?? ''
   const appMode = appBasicInfo?.mode ?? ''
-  const appIconType =
-    appBasicInfo?.icon_type === 'image' ||
-    appBasicInfo?.icon_type === 'emoji' ||
-    appBasicInfo?.icon_type === 'link'
-      ? appBasicInfo.icon_type
-      : null
+
   const canViewApp = deploymentEdition === 'CLOUD'
   const isClickable = canViewApp || canCreate
   const handleTryApp = () => {
@@ -82,13 +77,7 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
       )}
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appIconType}
-            icon={appBasicInfo?.icon ?? undefined}
-            background={appBasicInfo?.icon_background ?? undefined}
-            imageUrl={appBasicInfo?.icon_url ?? undefined}
-          />
+          <AppIcon size="large" icon={appBasicInfo} />
           <AppTypeIcon
             wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-sm"
             className="size-3"

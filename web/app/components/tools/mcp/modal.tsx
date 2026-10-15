@@ -1,9 +1,11 @@
 'use client'
+
 import type { FC } from 'react'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -211,24 +213,39 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
                 render={
                   <IconButton
                     aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
-                    className="group/edit-icon size-14 rounded-2xl p-0"
+                    className="group/edit-icon relative size-14 rounded-2xl p-0"
                   >
-                    <IconPickerIcon
-                      innerIcon={
-                        shouldUseMcpIconForAppIcon(
-                          state.appIcon.type,
-                          state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
-                        ) ? (
-                          <span
-                            aria-hidden
-                            className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
-                          />
-                        ) : undefined
-                      }
-                      size="xxl"
-                      className="relative rounded-2xl"
-                      showEditIcon
-                    />
+                    <>
+                      {shouldUseMcpIconForAppIcon(
+                        state.appIcon.type,
+                        state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
+                      ) ? (
+                        <Avatar
+                          aria-hidden="true"
+                          className="size-14 rounded-2xl border-[0.5px] border-divider-regular"
+                        >
+                          <AvatarFallback
+                            className="text-text-primary-on-surface"
+                            style={{
+                              background:
+                                state.appIcon.type === 'emoji'
+                                  ? state.appIcon.background || '#FFEAD5'
+                                  : '#FFEAD5',
+                            }}
+                          >
+                            <span className="i-custom-vender-other-mcp size-8" />
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <IconPickerIcon size="xxl" />
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                      >
+                        <span className="i-ri-edit-line size-8 text-text-primary-on-surface" />
+                      </span>
+                    </>
                   </IconButton>
                 }
               />
