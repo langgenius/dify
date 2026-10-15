@@ -54,9 +54,9 @@ pending state only to `loading`; keep independent availability conditions in `di
 Pass `focusableWhenDisabled={false}` only when a loading button should opt into native disabled
 behavior and may leave the tab order.
 
-Pass `focusableWhenDisabled` on a `disabled` button only when focus must still land on it, for
-example as the return target of a closing surface or so a tooltip explaining the unavailable
-state can be reached from the keyboard.
+Pass `focusableWhenDisabled` on a `disabled` button only when focus must still land on it. That
+holds for the return target of a closing surface, and for a control whose tooltip explains why it
+is unavailable.
 
 ### Accessible loading feedback
 

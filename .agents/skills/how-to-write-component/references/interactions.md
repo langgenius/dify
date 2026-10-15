@@ -20,10 +20,8 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 - Keep menu and dialog surfaces as siblings when a menu command opens a dialog. Mount the dialog outside popup content.
 - Use the [overlay contract] to determine content lifetime and preserve the Root's closing lifecycle. Follow [state ownership] for draft placement and semantic identity; portal placement alone does not locate the state owner.
 - Place query subscriptions and mutation observers at the owner whose lifetime matches when they should run. Mounted-session work may belong inside content; work that must start or stop exactly with `open` needs an explicit open-state condition.
-- A Suspense boundary inside popup content gives a query the content lifetime. Call the suspense query in a content component under that boundary; do not add a forwarding layer or gate the query input on `open`.
-- The owner whose `onOpenChange` cancels dismissal during a pending request owns that mutation and passes its state and result down. Do not locate a mutation through context or by scanning the mutation cache.
-- A surface that shows an async outcome renders from the mutation result; the only state it adds is the open flag. Do not copy the result into local state or clear it on close.
-- When the element that opened a surface may be gone once the action succeeds, give `finalFocus` a stable target and decide it in the success callback, before the surface starts closing.
+- Data inside a surface follows its owner's mount, not the `open` flag. A query declared in popup content under a Suspense boundary takes the content lifetime; a result the surface displays stays with its owner until that owner unmounts.
+- Anything read while a surface closes, such as the return-focus target, must come from an owner that outlives the close. The element that opened the surface may unmount with its data, and a per-call mutation callback is dropped when its component unmounts.
 - Prefer primitive-owned open state unless another owner must observe or coordinate it. Analytics callbacks and local cleanup alone do not require a controlled root.
 
 [overlay contract]: ../../../../packages/dify-ui/docs/overlays.md
