@@ -1,3 +1,5 @@
+'use client'
+
 import { isCancelledError } from '@tanstack/react-query'
 import { getI18n } from 'react-i18next'
 import { getErrorMessage } from '@/utils/error-message'
