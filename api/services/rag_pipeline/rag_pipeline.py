@@ -1467,7 +1467,7 @@ class RagPipelineService:
 
     def get_recommended_plugins(self, type: str, current_user: Account, current_tenant_id: str) -> dict[str, Any]:
         # Query active recommended plugins
-        stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
+        stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active.is_(True))
         if type and type != "all":
             stmt = stmt.where(PipelineRecommendedPlugin.type == type)
 
