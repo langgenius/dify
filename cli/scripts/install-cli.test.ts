@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -446,6 +446,24 @@ describe('install-cli.sh install_binary', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  // A shared install must stay readable by other users, whatever the installer's umask.
+  it.skipIf(process.platform === 'win32')(
+    'installs a 0600 source as mode 0755 under umask 077',
+    () => {
+      const dir = mkdtempSync(join(tmpdir(), 'difyctl-install-'))
+      try {
+        const src = join(dir, 'new')
+        const dest = join(dir, 'bin-difyctl')
+        writeFileSync(src, 'new build', { mode: 0o600 })
+        const r = runLib(`umask 077; install_binary "${src}" "${dest}"`)
+        expect(r.code).toBe(0)
+        expect(statSync(dest).mode & 0o777).toBe(0o755)
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    },
+  )
 
   it('dies without touching the old binary when the folder is not writable', () => {
     const r = runLib('install_binary /nonexistent/src /nonexistent-dir/difyctl')

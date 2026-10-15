@@ -10,7 +10,7 @@ Start from an export of the app's draft. A new Workflow app's export is empty. A
   - if-else: each case's `case_id`, plus `false` for else;
   - question classifier: each class's `id`;
   - human input: each `user_actions` id, plus `__timeout`;
-  - `error_strategy: fail-branch`: `source` for success, `fail-branch` for failure.
+  - `error_strategy: fail-branch` adds a `fail-branch` handle for failure. Success still leaves by the node's usual handles: `source`, or the branch handles above.
 - Give every branch an edge, including `false` and `__timeout`.
 - End node output names must be unique across all End nodes.
 - A node id is any unique string. Never change the id of an existing node.
