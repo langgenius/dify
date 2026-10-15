@@ -99,6 +99,9 @@ const OnlineDocuments = ({
         },
       },
       {
+        onError: (message) => {
+          toast.error(message)
+        },
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
           const { setDocumentsData } = dataSourceStore.getState()
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])

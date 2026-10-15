@@ -23,6 +23,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -107,7 +108,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
       } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+        // The mutation reports the failure; retain the current form and input.
       }
     },
     [dataset, exportPipelineConfig, t],
@@ -140,6 +141,8 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
       )
       invalidDatasetList()
       replace('/datasets')
+    } catch (error) {
+      notifyError(error)
     } finally {
       setShowConfirmDelete(false)
     }

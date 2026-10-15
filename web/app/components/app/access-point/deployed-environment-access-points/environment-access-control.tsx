@@ -6,6 +6,7 @@ import type {
   AccessControlSubjectsStatus,
 } from '@/app/components/app/app-access-control/specific-groups-or-members'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
+import { safe } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -104,26 +105,30 @@ function EnvironmentAccessControlContainer({
     )
       return
 
-    await updateAccessModeMutation.mutateAsync({
-      params,
-      body: {
-        access_mode: accessMode,
-        ...(accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS
-          ? {
-              subjects: [
-                ...subjects.groups.map((group) => ({
-                  subject_id: group.id,
-                  subject_type: SubjectType.GROUP,
-                })),
-                ...subjects.members.map((member) => ({
-                  subject_id: member.id,
-                  subject_type: SubjectType.ACCOUNT,
-                })),
-              ],
-            }
-          : {}),
-      },
-    })
+    const [requestError] = await safe(
+      updateAccessModeMutation.mutateAsync({
+        params,
+        body: {
+          access_mode: accessMode,
+          ...(accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS
+            ? {
+                subjects: [
+                  ...subjects.groups.map((group) => ({
+                    subject_id: group.id,
+                    subject_type: SubjectType.GROUP,
+                  })),
+                  ...subjects.members.map((member) => ({
+                    subject_id: member.id,
+                    subject_type: SubjectType.ACCOUNT,
+                  })),
+                ],
+              }
+            : {}),
+        },
+      }),
+    )
+    if (requestError) return
+
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm()
   }

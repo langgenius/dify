@@ -125,7 +125,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id: tenantId } })
       globalThis.location.reload()
     } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      // The mutation reports the failure; retain the current form and input.
     }
   }
 

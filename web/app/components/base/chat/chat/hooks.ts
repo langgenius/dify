@@ -22,6 +22,7 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -68,7 +69,6 @@ type SendCallback = {
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
-  onNotifyError?: IOtherOptions['onNotifyError']
   isPublicAPI?: boolean
 }
 
@@ -192,7 +192,7 @@ export const useChat = (
     inputsForm: InputForm[]
   },
   prevChatTree?: ChatItemInTree[],
-  stopChat?: (taskId: string) => void,
+  stopChat?: (taskId: string) => Promise<unknown> | void,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
   initialConversationId?: string,
@@ -527,7 +527,8 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
+    if (stopChat && taskIdRef.current && !pausedStateRef.current)
+      void Promise.resolve(stopChat(taskIdRef.current)).catch(notifyError)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
@@ -585,9 +586,8 @@ export const useChat = (
         onGetSuggestedQuestions,
         onConversationComplete,
         onSendSettled,
-        onNotifyError,
         isPublicAPI,
-      }: SendCallback,
+      }: SendCallback = {},
     ) => {
       const hasActiveSubscription =
         workflowEventsSubscriptionActiveRef.current &&
@@ -609,7 +609,6 @@ export const useChat = (
       }
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -784,9 +783,10 @@ export const useChat = (
             responseItem.content = messageReplace.answer
           })
         },
-        onError() {
+        onError(message) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          notifyError(new Error(message))
           handleResponding(false)
           settleSend(true)
         },
@@ -1095,9 +1095,8 @@ export const useChat = (
         onConversationComplete,
         onUnhandledEvent,
         onSendSettled,
-        onNotifyError,
         isPublicAPI,
-      }: SendCallback,
+      }: SendCallback = {},
     ) => {
       setSuggestedQuestions([])
 
@@ -1197,7 +1196,6 @@ export const useChat = (
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
@@ -1485,9 +1483,10 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError() {
+        onError(message) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          notifyError(new Error(message))
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({

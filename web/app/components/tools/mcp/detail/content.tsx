@@ -15,6 +15,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { safe } from '@orpc/client'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -71,7 +72,9 @@ const MCPDetailContent: FC<Props> = ({
   const handleUpdateTools = useCallback(async () => {
     hideUpdateConfirm()
     if (!canManageMCP || !detail) return
-    await updateTools(detail.id)
+    const [requestError] = await safe(updateTools(detail.id))
+    if (requestError) return
+
     invalidateMCPTools(detail.id)
     invalidateAllMCPTools()
     onUpdate()

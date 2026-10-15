@@ -33,7 +33,6 @@ import { consoleQuery } from '@/service/console'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
 import DSLImportWarningDescription from './dsl-import-warning-description'
@@ -98,10 +97,13 @@ function CreateFromDSLModal({
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const [importError, setImportError] = useState<unknown>()
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({ onError: setImportError }),
   )
   const importMutation = useMutation({
+    onMutate: () => setImportError(undefined),
+    onError: setImportError,
     mutationFn: async (source: ImportSource) => {
       if (
         source.type === CreateFromDSLModalTab.FROM_FILE &&
@@ -124,9 +126,7 @@ function CreateFromDSLModal({
     },
   })
   const confirmImportMutation = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({ onError: setImportError }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -238,12 +238,7 @@ function CreateFromDSLModal({
 
       response = await importMutation.mutateAsync(source)
     } catch (error) {
-      toast.error(
-        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-        {
-          description: getErrorMessage(error),
-        },
-      )
+      setImportError(error)
       return
     }
     await handleImportResponse(response)
@@ -258,12 +253,7 @@ function CreateFromDSLModal({
         params: { import_id: pendingImport.id },
       })
     } catch (error) {
-      toast.error(
-        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-        {
-          description: getErrorMessage(error),
-        },
-      )
+      setImportError(error)
       return
     }
 
@@ -319,6 +309,13 @@ function CreateFromDSLModal({
                 <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
               </IconButton>
             </div>
+            {importError != null && (
+              <div role="alert" className="px-6 text-text-destructive">
+                {importError instanceof Error
+                  ? importError.message
+                  : t(($) => $['newApp.appCreateFailed'], { ns: 'app' })}
+              </div>
+            )}
             <Form<ImportFormValues>
               onFormSubmit={handleSubmit}
               onKeyDown={(event) => {
@@ -422,6 +419,13 @@ function CreateFromDSLModal({
       </Dialog>
       {pendingImport && (
         <DSLConfirmModal
+          errorMessage={
+            importError == null
+              ? undefined
+              : importError instanceof Error
+                ? importError.message
+                : t(($) => $['newApp.appCreateFailed'], { ns: 'app' })
+          }
           versions={{
             importedVersion: pendingImport.importedVersion,
             systemVersion: pendingImport.systemVersion,

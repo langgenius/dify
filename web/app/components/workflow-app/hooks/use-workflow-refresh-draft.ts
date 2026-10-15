@@ -66,7 +66,12 @@ export const useWorkflowRefreshDraft = () => {
           setIsWorkflowDataLoaded(true)
           return true
         })
-        .catch(() => {
+        .catch((error) => {
+          if (
+            (!options?.shouldApply || options.shouldApply()) &&
+            refreshSequence === refreshSequenceRef.current
+          )
+            workflowStore.getState().setDraftSyncError(error)
           if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(true)
           return false
         })

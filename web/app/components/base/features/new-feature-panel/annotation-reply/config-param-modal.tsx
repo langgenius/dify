@@ -10,6 +10,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
@@ -69,14 +70,19 @@ const ConfigParamModal: FC<Props> = ({
       return
     }
     setLoading(true)
-    await onSave(
-      {
-        embedding_provider_name: embeddingModel.providerName,
-        embedding_model_name: embeddingModel.modelName,
-      },
-      annotationConfig.score_threshold,
-    )
-    setLoading(false)
+    try {
+      await onSave(
+        {
+          embedding_provider_name: embeddingModel.providerName,
+          embedding_model_name: embeddingModel.modelName,
+        },
+        annotationConfig.score_threshold,
+      )
+    } catch (error) {
+      notifyError(error)
+    } finally {
+      setLoading(false)
+    }
   }
   return (
     <Dialog

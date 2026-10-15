@@ -1,4 +1,5 @@
 'use client'
+
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -11,6 +12,7 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
@@ -102,7 +104,7 @@ export default function CheckCode() {
         router.replace(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      notifyError(error)
     }
   }
 

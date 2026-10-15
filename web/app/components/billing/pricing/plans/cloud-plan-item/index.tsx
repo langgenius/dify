@@ -1,4 +1,5 @@
 'use client'
+
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
@@ -14,6 +15,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
@@ -89,52 +91,56 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
           }[plan]
 
   const runPlanAction = async () => {
-    if (isPlanActionPending || isEducationDiscountLoading) return
-
-    if (!billing || isPlanDisabled) return
-
-    setIsPlanActionPending(true)
     try {
-      if (isCurrentSubscription) {
+      if (isPlanActionPending || isEducationDiscountLoading) return
+
+      if (!billing || isPlanDisabled) return
+
+      setIsPlanActionPending(true)
+      try {
+        if (isCurrentSubscription) {
+          if (!canManageBilling) {
+            toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
+            return
+          }
+
+          await openAsyncWindow(
+            async () => {
+              const { url } = await consoleClient.billing.invoices.get()
+              if (url) return url
+              throw new Error('Failed to open billing page')
+            },
+            {
+              onError: (err) => {
+                toast.error(err.message || String(err))
+              },
+            },
+          )
+          return
+        }
+
+        if (isFreePlan) return
+
         if (!canManageBilling) {
           toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
           return
         }
 
-        await openAsyncWindow(
-          async () => {
-            const { url } = await consoleClient.billing.invoices.get()
-            if (url) return url
-            throw new Error('Failed to open billing page')
-          },
-          {
-            onError: (err) => {
-              toast.error(err.message || String(err))
-            },
-          },
-        )
-        return
+        if (isEducationDiscountEligible && isEducationDiscountSupportedPlan) {
+          await handleEducationDiscount()
+          return
+        }
+
+        const { url } = await consoleClient.billing.subscription.get({
+          query: { plan, interval: billingInterval },
+        })
+        // Adb Block additional tracking block the gtag, so we need to redirect directly
+        window.location.href = url
+      } finally {
+        setIsPlanActionPending(false)
       }
-
-      if (isFreePlan) return
-
-      if (!canManageBilling) {
-        toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
-        return
-      }
-
-      if (isEducationDiscountEligible && isEducationDiscountSupportedPlan) {
-        await handleEducationDiscount()
-        return
-      }
-
-      const { url } = await consoleClient.billing.subscription.get({
-        query: { plan, interval: billingInterval },
-      })
-      // Adb Block additional tracking block the gtag, so we need to redirect directly
-      window.location.href = url
-    } finally {
-      setIsPlanActionPending(false)
+    } catch (error) {
+      notifyError(error)
     }
   }
   const handlePlanButtonClick = async () => {

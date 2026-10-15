@@ -10,6 +10,7 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { notifyError } from '@/app/notifications/error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
@@ -49,16 +50,20 @@ function Splash({ children }: PropsWithChildren) {
   }, [redirectUrl, searchParams])
 
   const backToHome = useCallback(async () => {
-    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
-    const address = loginRedirect?.address || resolveWebAppAddress()
-    if (!address || (isWebAppSigninPath(pathname) && !loginRedirect)) {
-      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
-      return
-    }
+    try {
+      const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+      const address = loginRedirect?.address || resolveWebAppAddress()
+      if (!address || (isWebAppSigninPath(pathname) && !loginRedirect)) {
+        replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
+        return
+      }
 
-    await webAppLogout(address)
-    const url = getSigninUrl()
-    router.replace(url)
+      await webAppLogout(address)
+      const url = getSigninUrl()
+      router.replace(url)
+    } catch (error) {
+      notifyError(error)
+    }
   }, [getSigninUrl, pathname, redirectUrl, router])
 
   const [isLoading, setIsLoading] = useState(true)

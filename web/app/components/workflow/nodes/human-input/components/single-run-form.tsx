@@ -1,4 +1,5 @@
 'use client'
+
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
@@ -21,6 +22,7 @@ import {
   initializeInputs,
   splitByOutputVar,
 } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { notifyError } from '@/app/notifications/error'
 
 type Props = Readonly<{
   nodeName: string
@@ -55,8 +57,13 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
 
   const submit = async (actionID: string) => {
     setIsSubmitting(true)
-    await onSubmit?.({ inputs, action: actionID })
-    setIsSubmitting(false)
+    try {
+      await onSubmit?.({ inputs, action: actionID })
+    } catch (error) {
+      notifyError(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

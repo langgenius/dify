@@ -314,7 +314,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
   const { currentModel, setConfigureModel } = useAgentOrchestrateModelOptions()
   const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
-  const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
+  const { saveError, saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
     baseConfig: agentSoulConfig,
     currentModel,
@@ -678,21 +678,30 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={false}
           bottomAction={
-            buildDraft.isActive ? (
-              <AgentBuildDraftBar
-                changeSummary={buildDraft.changeSummary}
-                changesCount={buildDraft.changesCount}
-                disabled={buildDraftActionsDisabled}
-                isApplying={isApplyingInlineBuildDraft}
-                isDiscarding={isDiscardingBuildDraft}
-                onApply={() => {
-                  void applyInlineBuildDraft()
-                }}
-                onDiscard={() => {
-                  void discardInlineBuildDraft()
-                }}
-              />
-            ) : undefined
+            <>
+              {saveError != null && (
+                <div role="alert" className="p-3 text-text-destructive">
+                  {saveError instanceof Error
+                    ? saveError.message
+                    : t(($) => $['api.actionFailed'], { ns: 'common' })}
+                </div>
+              )}
+              {buildDraft.isActive ? (
+                <AgentBuildDraftBar
+                  changeSummary={buildDraft.changeSummary}
+                  changesCount={buildDraft.changesCount}
+                  disabled={buildDraftActionsDisabled}
+                  isApplying={isApplyingInlineBuildDraft}
+                  isDiscarding={isDiscardingBuildDraft}
+                  onApply={() => {
+                    void applyInlineBuildDraft()
+                  }}
+                  onDiscard={() => {
+                    void discardInlineBuildDraft()
+                  }}
+                />
+              ) : undefined}
+            </>
           }
           headerAction={
             onSaveInlineToRoster ? (

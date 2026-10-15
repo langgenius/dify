@@ -2,6 +2,7 @@ import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { safe } from '@orpc/client'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +10,7 @@ import { useAutoGenModel } from '@/app/components/app/configuration/config/auto-
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'
@@ -104,10 +106,18 @@ export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGene
     useGenerateStructuredOutputRules()
 
   const generateSchema = useCallback(async () => {
-    const { output, error } = await generateStructuredOutputRules({
-      instruction,
-      model_config: resolvedModel,
-    })
+    const [requestError, response] = await safe(
+      generateStructuredOutputRules({
+        instruction,
+        model_config: resolvedModel,
+      }),
+    )
+    if (requestError) {
+      setSchema(null)
+      setView(GENERATOR_VIEWS.promptEditor)
+      return
+    }
+    const { output, error } = response
     if (error) {
       toast.error(error)
       setSchema(null)
@@ -121,7 +131,12 @@ export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGene
     setView(GENERATOR_VIEWS.result)
     const output = await generateSchema()
     if (output === undefined) return
-    setSchema(JSON.parse(output))
+    try {
+      setSchema(JSON.parse(output))
+    } catch (error) {
+      notifyError(error)
+      setView(GENERATOR_VIEWS.promptEditor)
+    }
   }, [generateSchema])
 
   const goBackToPromptEditor = () => {
@@ -131,7 +146,12 @@ export function JsonSchemaGenerator({ onApply, crossAxisOffset }: JsonSchemaGene
   const handleRegenerate = useCallback(async () => {
     const output = await generateSchema()
     if (output === undefined) return
-    setSchema(JSON.parse(output))
+    try {
+      setSchema(JSON.parse(output))
+    } catch (error) {
+      notifyError(error)
+      setView(GENERATOR_VIEWS.promptEditor)
+    }
   }, [generateSchema])
 
   const handleApply = () => {

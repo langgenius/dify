@@ -125,17 +125,10 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
     }
   }
 
-  const notifyImportError = async (error: unknown) => {
-    toast.error(
-      t(($) => $['common.importFailure'], { ns: 'workflow' }),
-      {
-        description: getErrorMessage(error),
-      },
-    )
-  }
+  const [importError, setImportError] = useState<unknown>()
 
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({ onError: setImportError }),
   )
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -155,15 +148,14 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         },
       })
     },
-    onError: notifyImportError,
+    onError: setImportError,
     onSettled: async (response) => {
       if (response) await handleImportResponse(response)
     },
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
-      onError: (error) => notifyImportError(error),
+      onError: setImportError,
       onSettled: async (response) => {
         if (response) await handleImportResponse(response)
       },
@@ -194,6 +186,12 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         }}
       >
         <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
+          {importError != null && (
+            <div role="alert" className="text-text-destructive">
+              {getErrorMessage(importError) ??
+                t(($) => $['common.importFailure'], { ns: 'workflow' })}
+            </div>
+          )}
           <div className="mb-3 flex items-center justify-between">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $.importApp, { ns: 'app' })}
@@ -270,6 +268,12 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         }}
       >
         <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
+          {importError != null && (
+            <div role="alert" className="text-text-destructive">
+              {getErrorMessage(importError) ??
+                t(($) => $['common.importFailure'], { ns: 'workflow' })}
+            </div>
+          )}
           <div className="flex flex-col items-start gap-2 self-stretch pb-4">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}

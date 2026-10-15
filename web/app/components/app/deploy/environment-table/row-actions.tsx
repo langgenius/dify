@@ -122,7 +122,7 @@ export function EnvironmentRowActions({
       await onUndeploy(row)
       setShowUndeployConfirm(false)
     } catch {
-      // The request layer reports the error; keep the dialog open so the user can retry.
+      // The mutation reports the error; keep the dialog open so the user can retry.
     } finally {
       setIsUndeploying(false)
     }

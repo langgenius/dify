@@ -48,7 +48,7 @@ const EmbeddingProcess = ({
   indexingType,
   retrievalMethod,
 }: EmbeddingProcessProps) => {
-  const { t } = useTranslation(['billing', 'datasetCreation', 'datasetDocuments'])
+  const { t } = useTranslation(['billing', 'datasetCreation', 'datasetDocuments', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -60,14 +60,21 @@ const EmbeddingProcess = ({
     [],
   )
   const [shouldPoll, setShouldPoll] = useState(true)
-  const { mutateAsync: fetchIndexingStatus } = useIndexingStatusBatch({ datasetId, batchId })
+  const [pollingError, setPollingError] = useState<Error | null>(null)
+  const { mutate: fetchIndexingStatus } = useIndexingStatusBatch(
+    { datasetId, batchId },
+    { onError: setPollingError },
+  )
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>
+    let active = true
 
-    const fetchData = async () => {
-      await fetchIndexingStatus(undefined, {
+    const fetchData = () => {
+      fetchIndexingStatus(undefined, {
         onSuccess: (res) => {
+          if (!active) return
+          setPollingError(null)
           const indexingStatusDetailList = res.data
           setIndexingStatusDetail(indexingStatusDetailList)
           const isCompleted = indexingStatusDetailList.every((indexingStatusDetail) =>
@@ -76,7 +83,7 @@ const EmbeddingProcess = ({
           if (isCompleted) setShouldPoll(false)
         },
         onSettled: () => {
-          if (shouldPoll) timeoutId = setTimeout(fetchData, 2500)
+          if (active && shouldPoll) timeoutId = setTimeout(fetchData, 2500)
         },
       })
     }
@@ -84,6 +91,7 @@ const EmbeddingProcess = ({
     fetchData()
 
     return () => {
+      active = false
       clearTimeout(timeoutId)
     }
   }, [shouldPoll])
@@ -155,6 +163,11 @@ const EmbeddingProcess = ({
   return (
     <>
       <div className="flex flex-col gap-y-3">
+        {pollingError && (
+          <div role="alert" className="text-text-destructive">
+            {pollingError.message || t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </div>
+        )}
         <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
           {(isEmbeddingWaiting || isEmbedding) && (
             <>

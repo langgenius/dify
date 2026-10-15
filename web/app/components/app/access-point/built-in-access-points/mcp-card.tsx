@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { safe } from '@orpc/client'
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -137,7 +138,9 @@ export function MCPAccessPointCard({
 
   const handleRegenerate = async () => {
     if (!canManageAccessPoint || !detail?.id) return
-    await refreshServerCode(appInfo.id)
+    const [requestError] = await safe(refreshServerCode(appInfo.id))
+    if (requestError) return
+
     invalidateServerDetail(appInfo.id)
     setShowRegenerate(false)
   }

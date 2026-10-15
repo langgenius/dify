@@ -1,5 +1,6 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
 import type { NodeRunResult } from '@/types/workflow'
+import { safe } from '@orpc/client'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
@@ -7,6 +8,7 @@ import {
   useDataSourceStore,
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { notifyError } from '@/app/notifications/error'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
 import { useInvalidLastRun } from '@/service/use-workflow'
@@ -95,7 +97,11 @@ const useBeforeRunForm = ({
     }
 
     // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(FlowType.ragPipeline, flowId, nodeId)
+    const [error, vars] = await safe(fetchNodeInspectVars(FlowType.ragPipeline, flowId, nodeId))
+    if (error) {
+      notifyError(error)
+      return
+    }
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(nodeId, vars, nodes)
@@ -104,7 +110,7 @@ const useBeforeRunForm = ({
 
   const { mutateAsync: handleDatasourceSingleRun, isPending } = useDatasourceSingleRun()
 
-  const handleRun = () => {
+  const handleRun = async () => {
     let datasourceInfo: Record<string, any> = {}
     const { currentCredentialId: credentialId } = dataSourceStore.getState()
     if (datasourceType === DatasourceType.localFile) {
@@ -149,44 +155,27 @@ const useBeforeRunForm = ({
         credential_id: credentialId,
       }
     }
-    let hasError = false
-    handleDatasourceSingleRun(
-      {
+    const [error, data] = await safe(
+      handleDatasourceSingleRun({
         pipeline_id: flowId,
         start_node_id: nodeId,
         start_node_title: datasourceNodeData.title,
         datasource_type: datasourceType,
         datasource_info: datasourceInfo,
-      },
-      {
-        onError: () => {
-          hasError = true
-          invalidLastRun()
-          if (isPausedRef.current) return
-          handleNodeDataUpdate({
-            id: nodeId,
-            data: {
-              ...payload,
-              _isSingleRun: false,
-              _singleRunningStatus: NodeRunningStatus.Failed,
-            },
-          })
-        },
-        onSettled: (data) => {
-          updateRunResult(data!)
-          if (!hasError && !isPausedRef.current) {
-            handleNodeDataUpdate({
-              id: nodeId,
-              data: {
-                ...payload,
-                _isSingleRun: false,
-                _singleRunningStatus: NodeRunningStatus.Succeeded,
-              },
-            })
-          }
-        },
-      },
+      }),
     )
+    if (error) invalidLastRun()
+    if (data) await updateRunResult(data)
+    if (!isPausedRef.current) {
+      handleNodeDataUpdate({
+        id: nodeId,
+        data: {
+          ...payload,
+          _isSingleRun: false,
+          _singleRunningStatus: error ? NodeRunningStatus.Failed : NodeRunningStatus.Succeeded,
+        },
+      })
+    }
   }
 
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()

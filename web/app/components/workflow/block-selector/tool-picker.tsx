@@ -1,4 +1,5 @@
 'use client'
+
 import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ReactElement } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
@@ -15,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { notifyError } from '@/app/notifications/error'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
@@ -134,11 +136,15 @@ export function ToolPickerContent({
   ] = useBoolean(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await createCustomCollection(data)
-    hideEditCustomCollectionModal()
-    invalidateCustomTools()
+      await createCustomCollection(data)
+      hideEditCustomCollectionModal()
+      invalidateCustomTools()
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   if (isShowEditCollectionToolModal && canManageTools) {

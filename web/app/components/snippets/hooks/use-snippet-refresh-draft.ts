@@ -40,6 +40,7 @@ export const useSnippetRefreshDraft = (snippetId: string) => {
           setDraftUpdatedAt(response.updated_at)
           onSuccess?.(response)
         })
+        .catch((error) => workflowStore.getState().setDraftSyncError(error))
         .finally(() => {
           setIsSyncingWorkflowDraft(false)
         })

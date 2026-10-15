@@ -15,6 +15,7 @@ type IndexingStatusPollingResult = {
   statusList: IndexingStatusResponse[]
   isEmbedding: boolean
   isEmbeddingCompleted: boolean
+  error: unknown
 }
 
 const isStatusCompleted = (status: string): boolean =>
@@ -31,6 +32,7 @@ export const useIndexingStatusPolling = ({
   datasetId,
   batchId,
 }: IndexingStatusPollingParams): IndexingStatusPollingResult => {
+  const [error, setError] = useState<unknown>()
   const [statusList, setStatusList] = useState<IndexingStatusResponse[]>([])
   const isStopPollingRef = useRef(false)
 
@@ -41,7 +43,10 @@ export const useIndexingStatusPolling = ({
 
     const fetchStatus = async (): Promise<IndexingStatusResponse[]> => {
       const response = await fetchIndexingStatusBatch({ datasetId, batchId })
-      setStatusList(response.data)
+      if (!isStopPollingRef.current) {
+        setStatusList(response.data)
+        setError(undefined)
+      }
       return response.data
     }
 
@@ -54,8 +59,9 @@ export const useIndexingStatusPolling = ({
           isStopPollingRef.current = true
           return
         }
-      } catch {
-        // Continue polling on error
+      } catch (error) {
+        if (!isStopPollingRef.current) setError(error)
+        // Keep the last known progress while retrying.
       }
 
       if (!isStopPollingRef.current) {
@@ -80,6 +86,7 @@ export const useIndexingStatusPolling = ({
   const isEmbeddingCompleted = statusList.length > 0 && isAllCompleted(statusList)
 
   return {
+    error,
     statusList,
     isEmbedding,
     isEmbeddingCompleted,

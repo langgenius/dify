@@ -36,7 +36,7 @@ const OnlineDrive = ({
   onCredentialChange,
 }: OnlineDriveProps) => {
   const docLink = useDocLink()
-  const [isInitialMount, setIsInitialMount] = useState(true)
+  const isInitialMount = useRef(true)
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const {
@@ -79,7 +79,7 @@ const OnlineDrive = ({
       dataSourceStore.getState()
     setIsLoading(true)
     isLoadingRef.current = true
-    ssePost(
+    await ssePost(
       datasourceNodeRunURL,
       {
         body: {
@@ -94,6 +94,12 @@ const OnlineDrive = ({
         },
       },
       {
+        onError: (message) => {
+          toast.error(message)
+          // oxlint-disable-next-line eslint-react/set-state-in-effect -- SSE invokes this callback after the network response, outside the initiating effect.
+          setIsLoading(false)
+          isLoadingRef.current = false
+        },
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
           const {
             setOnlineDriveFileList,
@@ -111,11 +117,13 @@ const OnlineDrive = ({
           isTruncated.current = newIsTruncated
           currentNextPageParametersRef.current = newNextPageParameters
           setHasBucket(newHasBucket)
+          // oxlint-disable-next-line eslint-react/set-state-in-effect -- SSE invokes this callback after the network response, outside the initiating effect.
           setIsLoading(false)
           isLoadingRef.current = false
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           toast.error(error.error)
+          // oxlint-disable-next-line eslint-react/set-state-in-effect -- SSE invokes this callback after the network response, outside the initiating effect.
           setIsLoading(false)
           isLoadingRef.current = false
         },
@@ -125,10 +133,10 @@ const OnlineDrive = ({
 
   useEffect(() => {
     if (!currentCredentialId) return
-    if (isInitialMount) {
+    if (isInitialMount.current) {
       // Only fetch files on initial mount if fileList is empty
       if (onlineDriveFileList.length === 0) getOnlineDriveFiles()
-      setIsInitialMount(false)
+      isInitialMount.current = false
     } else {
       getOnlineDriveFiles()
     }

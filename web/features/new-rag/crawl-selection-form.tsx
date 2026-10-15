@@ -220,10 +220,14 @@ function ReadyCrawlSelectionForm({
     undefined,
   )
   const updatePolicy = useMutation(
-    consoleQuery.knowledgeFs.putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.mutationOptions(),
+    consoleQuery.knowledgeFs.putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.mutationOptions({
+      onError: () => setSubmitError(true),
+    }),
   )
   const selectPages = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection.mutationOptions(),
+    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection.mutationOptions(
+      { onError: () => setSubmitError(true) },
+    ),
   )
   const allSelected =
     bulkSelectablePages.length > 0 &&
@@ -597,7 +601,6 @@ export function CrawlSelectionForm({
   const { t } = useTranslation(['dataset'])
   const policyQuery = useQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.queryOptions({
-      context: { silent: true },
       input: { params: { id: knowledgeSpaceId, sourceId: source.id } },
       retry: false,
     }),

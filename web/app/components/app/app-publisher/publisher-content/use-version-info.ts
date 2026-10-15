@@ -51,9 +51,7 @@ export function useVersionInfo({
           )
           invalidateAppWorkflow(appId)
         },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
-        },
+
         onSettled: () => {
           setIsOpen(false)
         },

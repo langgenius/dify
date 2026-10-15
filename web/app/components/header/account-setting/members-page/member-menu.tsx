@@ -63,7 +63,7 @@ const MemberMenu = ({
     setAssignModalOpen(true)
   }, [])
 
-  const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
+  const { mutate: updateRolesOfMember } = useUpdateRolesOfMember()
 
   const handleAssignRolesSubmit = useCallback(
     (roles: Role[]) => {

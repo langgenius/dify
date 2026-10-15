@@ -81,8 +81,12 @@ const toBatchDocumentsIdParams = (documentIds: string[] | string) => {
   return ids.map((id) => `document_id=${id}`).join('&')
 }
 
-const useDocumentBatchAction = (action: DocumentActionType) => {
+const useDocumentBatchAction = (
+  action: DocumentActionType,
+  options: { onError?: (error: Error) => void } = {},
+) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
       return patch<CommonResponse>(
         `/datasets/${datasetId}/documents/status/${action}/batch?${toBatchDocumentsIdParams(documentId || documentIds!)}`,
@@ -91,24 +95,25 @@ const useDocumentBatchAction = (action: DocumentActionType) => {
   })
 }
 
-export const useDocumentEnable = () => {
-  return useDocumentBatchAction(DocumentActionType.enable)
+export const useDocumentEnable = (options: { onError?: (error: Error) => void } = {}) => {
+  return useDocumentBatchAction(DocumentActionType.enable, options)
 }
 
-export const useDocumentDisable = () => {
-  return useDocumentBatchAction(DocumentActionType.disable)
+export const useDocumentDisable = (options: { onError?: (error: Error) => void } = {}) => {
+  return useDocumentBatchAction(DocumentActionType.disable, options)
 }
 
-export const useDocumentArchive = () => {
-  return useDocumentBatchAction(DocumentActionType.archive)
+export const useDocumentArchive = (options: { onError?: (error: Error) => void } = {}) => {
+  return useDocumentBatchAction(DocumentActionType.archive, options)
 }
 
-export const useDocumentUnArchive = () => {
-  return useDocumentBatchAction(DocumentActionType.unArchive)
+export const useDocumentUnArchive = (options: { onError?: (error: Error) => void } = {}) => {
+  return useDocumentBatchAction(DocumentActionType.unArchive, options)
 }
 
-export const useDocumentDelete = () => {
+export const useDocumentDelete = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
       return del<CommonResponse>(
         `/datasets/${datasetId}/documents?${toBatchDocumentsIdParams(documentId || documentIds!)}`,
@@ -117,16 +122,18 @@ export const useDocumentDelete = () => {
   })
 }
 
-export const useSyncDocument = () => {
+export const useSyncDocument = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
       return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
     },
   })
 }
 
-export const useDocumentSummary = () => {
+export const useDocumentSummary = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
       return post<CommonResponse>(`/datasets/${datasetId}/documents/generate-summary`, {
         body: {
@@ -137,8 +144,9 @@ export const useDocumentSummary = () => {
   })
 }
 
-export const useSyncWebsite = () => {
+export const useSyncWebsite = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
       return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
     },
@@ -180,8 +188,9 @@ export const useInvalidDocumentDetail = () => {
   return useInvalid(useDocumentDetailKey)
 }
 
-export const useDocumentPause = () => {
+export const useDocumentPause = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
       if (!datasetId || !documentId) throw new Error('datasetId and documentId are required')
       return pauseDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
@@ -189,8 +198,9 @@ export const useDocumentPause = () => {
   })
 }
 
-export const useDocumentResume = () => {
+export const useDocumentResume = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
       if (!datasetId || !documentId) throw new Error('datasetId and documentId are required')
       return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
@@ -198,8 +208,9 @@ export const useDocumentResume = () => {
   })
 }
 
-export const useDocumentDownload = () => {
+export const useDocumentDownload = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
       if (!datasetId || !documentId) throw new Error('datasetId and documentId are required')
       return fetchDocumentDownloadUrl({
@@ -210,8 +221,9 @@ export const useDocumentDownload = () => {
   })
 }
 
-export const useDocumentDownloadZip = () => {
+export const useDocumentDownloadZip = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentIds }: DocumentDownloadZipRequest) => {
       if (!datasetId || !documentIds?.length)
         throw new Error('datasetId and documentIds are required')
@@ -220,8 +232,9 @@ export const useDocumentDownloadZip = () => {
   })
 }
 
-export const useDocumentBatchRetryIndex = () => {
+export const useDocumentBatchRetryIndex = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation({
+    ...options,
     mutationFn: ({ datasetId, documentIds }: { datasetId: string; documentIds: string[] }) => {
       return post<CommonResponse>(`/datasets/${datasetId}/retry`, {
         body: {

@@ -1,5 +1,6 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
 import type { DataSet } from '@/models/datasets'
+import { safe } from '@orpc/client'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from '@/app/notifications'
@@ -32,7 +33,7 @@ const useEditDatasetMetadata = ({
     }
   }, [])
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
-  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutateAsync: doAddMetaData } = useCreateMetaData(datasetId)
   const { checkName } = useCheckMetadataName()
   const handleAddMetaData = useCallback(
     async (payload: BuiltInMetadataItem) => {
@@ -45,7 +46,7 @@ const useEditDatasetMetadata = ({
     },
     [checkName, doAddMetaData],
   )
-  const { mutate: doRenameMetaData } = useRenameMeta(datasetId)
+  const { mutateAsync: doRenameMetaData } = useRenameMeta(datasetId)
   const handleRename = useCallback(
     async (payload: MetadataItemWithValueLength) => {
       const errorMsg = checkName(payload.name).errorMsg
@@ -83,7 +84,8 @@ const useEditDatasetMetadata = ({
     builtInMetaData: builtInMetaData?.fields,
     builtInEnabled,
     setBuiltInEnabled: async (enable: boolean) => {
-      await toggleBuiltInStatus(enable)
+      const [error] = await safe(toggleBuiltInStatus(enable))
+      if (error) return
       setBuiltInEnabled(enable)
     },
   }

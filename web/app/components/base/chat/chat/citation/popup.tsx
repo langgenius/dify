@@ -1,6 +1,7 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { safe } from '@orpc/client'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
@@ -31,7 +32,9 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
     const documentId = data.documentId || data.sources?.[0]?.document_id
     if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
-    const res = await downloadDocument({ datasetId, documentId })
+    const [requestError, res] = await safe(downloadDocument({ datasetId, documentId }))
+    if (requestError) return
+
     if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
   }
 

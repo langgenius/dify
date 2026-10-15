@@ -7,6 +7,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
@@ -62,9 +63,14 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     )
   }
   const sendEmail = async () => {
-    const res = await sendOwnerEmail({})
-    startCount()
-    if (res.data) setStepToken(res.data)
+    try {
+      const res = await sendOwnerEmail({})
+      startCount()
+      if (res.data) setStepToken(res.data)
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
@@ -87,7 +93,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       await sendEmail()
       setStep(STEP.verify)
     } catch {
-      // The base service layer already surfaces the backend error (e.g. rate-limit) as a toast.
+      // The sendEmail action reports the error and leaves this step available for retry.
     }
   }
   const handleVerifyOriginEmail = async () => {

@@ -1,10 +1,12 @@
 'use client'
+
 import type { CustomCollectionBackend } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { notifyError } from '@/app/notifications/error'
 import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
 import CreateEntryCard from './create-entry-card'
@@ -19,11 +21,15 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
   const [isShowEditCustomCollectionModal, setIsShowEditCustomCollectionModal] = useState(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await createCustomCollection(data)
-    setIsShowEditCustomCollectionModal(false)
-    onRefreshData()
+      await createCustomCollection(data)
+      setIsShowEditCustomCollectionModal(false)
+      onRefreshData()
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   return {

@@ -12,7 +12,9 @@ export function useAccessPointActions(appId: string, canManageAccessPoint: boole
   const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const { mutateAsync: updateSiteConfig } = useMutation(
-    consoleQuery.apps.byAppId.site.post.mutationOptions(),
+    consoleQuery.apps.byAppId.site.post.mutationOptions({
+      onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+    }),
   )
   const refreshAppDetail = useCallback(
     () =>
@@ -33,14 +35,7 @@ export function useAccessPointActions(appId: string, canManageAccessPoint: boole
           body: params,
         }),
       )
-      toast(
-        t(($) => $[`actionMsg.${error ? 'modifiedUnsuccessfully' : 'modifiedSuccessfully'}`], {
-          ns: 'common',
-        }) as string,
-        {
-          type: error ? 'error' : 'success',
-        },
-      )
+      if (!error) toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       return !error
     },
     [appId, canManageAccessPoint, t, updateSiteConfig],

@@ -1,4 +1,5 @@
 'use client'
+
 import type { FormActions } from '@langgenius/dify-ui/form'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,6 +16,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import { useCountDown } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { notifyError } from '@/app/notifications/error'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -86,7 +88,7 @@ const ChangePasswordForm = () => {
         setShowSuccess(true)
         setLeftTime(AUTO_REDIRECT_TIME)
       } catch (error) {
-        console.error(error)
+        notifyError(error)
       } finally {
         setIsSubmitting(false)
       }

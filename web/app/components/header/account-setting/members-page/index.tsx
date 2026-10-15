@@ -3,6 +3,7 @@ import type { MemberInviteResponse } from '@dify/contracts/api/console/workspace
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { safe } from '@orpc/client'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
@@ -82,23 +83,15 @@ const MembersPage = () => {
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
-  const handleAssignRolesSubmit = (roles: Role[]) => {
+  const handleAssignRolesSubmit = async (roles: Role[]) => {
     const roleIds = systemFeatures.rbac_enabled
       ? roles.map((role) => role.id)
       : roles.slice(0, 1).map((role) => role.id)
 
-    updateRolesOfMember(
-      {
-        memberId: detailsMember!.id,
-        roleIds,
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-          refetch()
-        },
-      },
-    )
+    const [error] = await safe(updateRolesOfMember({ memberId: detailsMember!.id, roleIds }))
+    if (error) return
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+    refetch()
   }
 
   const handleTransferOwnership = useCallback(() => {

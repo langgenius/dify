@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { PluginDeclaration } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { safe } from '@orpc/client'
 import { RiLoader2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -53,7 +54,11 @@ const Installed: FC<Props> = ({
   }, [hasInstalled])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
-  const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
+  const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal({
+    onError: (error) => {
+      onFailed(error.message)
+    },
+  })
 
   const { check, stop } = checkTaskStatus()
 
@@ -73,7 +78,9 @@ const Installed: FC<Props> = ({
         await uninstallPlugin(installedInfoPayload.installedId, { preserveCredentials: true })
       }
 
-      const response = await installPackageFromLocal(uniqueIdentifier)
+      const [requestError, response] = await safe(installPackageFromLocal(uniqueIdentifier))
+      if (requestError) return
+
       const { all_installed, task_id } = response
       handleInstallTaskStart(response)
       const taskId = task_id

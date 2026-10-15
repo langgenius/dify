@@ -79,10 +79,14 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const { mutateAsync: convertToWorkflow } = useMutation(
-    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions(),
+    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({
+      onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
+    }),
   )
   const { mutateAsync: deleteOriginalApp } = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
+    }),
   )
 
   const goStart = async () => {
@@ -115,7 +119,7 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
         { isRbacEnabled },
       )
     } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      // The mutation reports the failure; retain the current form and input.
     }
   }
 

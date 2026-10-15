@@ -3,6 +3,7 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { VersionHistory } from '@/types/workflow'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { safe } from '@orpc/client'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
@@ -284,7 +285,6 @@ export const VersionHistoryPanel = ({
         await emitRestoreComplete(item, true)
         await emitWorkflowUpdate()
       } catch {
-        toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
         await emitRestoreComplete(item, false, 'restore failed')
       } finally {
         resetWorkflowVersionHistory()
@@ -311,20 +311,13 @@ export const VersionHistoryPanel = ({
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await deleteWorkflow(deleteVersionUrl?.(id) || '', {
-        onSuccess: () => {
-          setDeleteConfirmOpen(false)
-          resetWorkflowVersionHistory()
-          deleteAllInspectVars()
-          invalidAllLastRun()
-        },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }))
-        },
-        onSettled: () => {
-          setDeleteConfirmOpen(false)
-        },
-      })
+      const [error] = await safe(deleteWorkflow(deleteVersionUrl?.(id) || ''))
+      if (error) return
+
+      setDeleteConfirmOpen(false)
+      resetWorkflowVersionHistory()
+      deleteAllInspectVars()
+      invalidAllLastRun()
     },
     [
       deleteWorkflow,
@@ -341,34 +334,20 @@ export const VersionHistoryPanel = ({
   const handleUpdateWorkflow = useCallback(
     async (params: { id?: string; title: string; releaseNotes: string }) => {
       const { id, ...rest } = params
-      await updateWorkflow(
-        {
+      const [error] = await safe(
+        updateWorkflow({
           ...(configsMap?.flowType === FlowType.appFlow && configsMap.flowId
             ? { appId: configsMap.flowId, appMode }
             : {}),
           url: updateVersionUrl?.(id || '') || '',
           ...rest,
-        },
-        {
-          onSuccess: () => {
-            setEditModalOpen(false)
-            if (
-              id === latestVersionId &&
-              configsMap?.flowType === FlowType.appFlow &&
-              configsMap.flowId
-            )
-              invalidateAppWorkflow(configsMap.flowId)
-          },
-          onError: () => {
-            toast.error(
-              t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
-            )
-          },
-          onSettled: () => {
-            setEditModalOpen(false)
-          },
-        },
+        }),
       )
+      if (error) return
+
+      setEditModalOpen(false)
+      if (id === latestVersionId && configsMap?.flowType === FlowType.appFlow && configsMap.flowId)
+        invalidateAppWorkflow(configsMap.flowId)
     },
     [
       appMode,

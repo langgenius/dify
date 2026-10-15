@@ -171,12 +171,8 @@ const ModelLoadBalancingModal = ({
           )?.error || t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
         )
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
-      )
+    } catch {
+      // The mutation reports the failure; retain the current form and input.
     } finally {
       setLoading(false)
     }

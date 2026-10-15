@@ -1,6 +1,7 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel, SegmentsResponse, SegmentUpdater } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
+import { safe } from '@orpc/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -203,21 +204,13 @@ export const useSegmentListData = (
     async (enable: boolean, segId?: string) => {
       const operationApi = enable ? enableSegment : disableSegment
       const targetIds = segId ? [segId] : selectedSegmentIds
-      await operationApi(
-        { datasetId, documentId, segmentIds: targetIds },
-        {
-          onSuccess: () => {
-            // A single segment is toggled from its switch, which already shows the result.
-            if (!segId)
-              toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            updateSegmentsInCache(targetIds, (seg) => ({ ...seg, enabled: enable }))
-            refreshChunkListWithStatusChanged()
-          },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-          },
-        },
-      )
+      const [error] = await safe(operationApi({ datasetId, documentId, segmentIds: targetIds }))
+      if (error) return
+
+      // A single segment is toggled from its switch, which already shows the result.
+      if (!segId) toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      updateSegmentsInCache(targetIds, (seg) => ({ ...seg, enabled: enable }))
+      refreshChunkListWithStatusChanged()
     },
     [
       datasetId,
@@ -233,19 +226,12 @@ export const useSegmentListData = (
   const onDelete = useCallback(
     async (segId?: string) => {
       const targetIds = segId ? [segId] : selectedSegmentIds
-      await deleteSegment(
-        { datasetId, documentId, segmentIds: targetIds },
-        {
-          onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            resetList()
-            if (!segId) clearSelection()
-          },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-          },
-        },
-      )
+      const [error] = await safe(deleteSegment({ datasetId, documentId, segmentIds: targetIds }))
+      if (error) return
+
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      resetList()
+      if (!segId) clearSelection()
     },
     [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, clearSelection, t],
   )
@@ -291,34 +277,36 @@ export const useSegmentListData = (
       params.summary = summary ?? ''
       if (needRegenerate) params.regenerate_child_chunks = needRegenerate
       eventEmitter?.emit('update-segment')
-      await updateSegment(
-        { datasetId, documentId, segmentId, body: params },
-        {
-          onSuccess(res) {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            if (!needRegenerate) onCloseSegmentDetail()
-            updateSegmentInCache(segmentId, (seg) => ({
-              ...seg,
-              answer: res.data.answer,
-              content: res.data.content,
-              sign_content: res.data.sign_content,
-              keywords: res.data.keywords,
-              attachments: res.data.attachments,
-              summary: res.data.summary,
-              word_count: res.data.word_count,
-              hit_count: res.data.hit_count,
-              enabled: res.data.enabled,
-              updated_at: res.data.updated_at,
-              child_chunks: res.data.child_chunks,
-            }))
-            refreshChunkListDataWithDetailChanged()
-            eventEmitter?.emit('update-segment-success')
-          },
-          onSettled() {
-            eventEmitter?.emit('update-segment-done')
-          },
-        },
+      const [error, res] = await safe(
+        updateSegment({ datasetId, documentId, segmentId, body: params }),
       )
+      if (error) {
+        eventEmitter?.emit('update-segment-done')
+
+        return
+      }
+      try {
+        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+        if (!needRegenerate) onCloseSegmentDetail()
+        updateSegmentInCache(segmentId, (seg) => ({
+          ...seg,
+          answer: res.data.answer,
+          content: res.data.content,
+          sign_content: res.data.sign_content,
+          keywords: res.data.keywords,
+          attachments: res.data.attachments,
+          summary: res.data.summary,
+          word_count: res.data.word_count,
+          hit_count: res.data.hit_count,
+          enabled: res.data.enabled,
+          updated_at: res.data.updated_at,
+          child_chunks: res.data.child_chunks,
+        }))
+        refreshChunkListDataWithDetailChanged()
+        eventEmitter?.emit('update-segment-success')
+      } finally {
+        eventEmitter?.emit('update-segment-done')
+      }
     },
     [
       datasetId,

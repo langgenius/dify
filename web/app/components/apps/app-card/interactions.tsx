@@ -326,12 +326,6 @@ export function AppCardInteractions({
             setActiveDialog(null)
             setConfirmDeleteInput('')
           },
-          onError: (error) => {
-            const message = error instanceof Error ? error.message : ''
-            toast.error(
-              `${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`,
-            )
-          },
         },
       )
     } catch (error) {
@@ -420,8 +414,8 @@ export function AppCardInteractions({
           },
         })
         setActiveDialog(null)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
+      } catch {
+        // The mutation reports the failure; retain the current form and input.
       }
     },
     [app.id, t, updateApp],
@@ -459,7 +453,6 @@ export function AppCardInteractions({
               isRbacEnabled,
             })
           },
-          onError: () => toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' })),
         },
       )
     } catch {
@@ -490,25 +483,9 @@ export function AppCardInteractions({
       if (isTogglingStar) return
 
       const mutateStar = pressed ? starApp : unstarApp
-      try {
-        mutateStar(
-          { params: { app_id: app.id } },
-          {
-            onError: (error) =>
-              toast.error(
-                error instanceof Error
-                  ? error.message
-                  : t(($) => $['studio.starFailed'], { ns: 'app' }),
-              ),
-          },
-        )
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : t(($) => $['studio.starFailed'], { ns: 'app' }),
-        )
-      }
+      mutateStar({ params: { app_id: app.id } })
     },
-    [app.id, isTogglingStar, starApp, t, unstarApp],
+    [app.id, isTogglingStar, starApp, unstarApp],
   )
 
   const shouldShowEditOption = appACLCapabilities.canEdit

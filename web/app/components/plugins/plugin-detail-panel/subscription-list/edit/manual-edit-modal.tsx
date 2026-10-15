@@ -11,9 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
-import { toast } from '@/app/notifications'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
-import { getErrorMessage } from '@/utils/error-message'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
@@ -85,12 +83,6 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         onSuccess: () => {
           refetch?.()
           onClose()
-        },
-        onError: (error: unknown) => {
-          toast.error(
-            getErrorMessage(error) ??
-              t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' }),
-          )
         },
       },
     )

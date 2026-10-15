@@ -5,6 +5,7 @@ import type { VisionSettings } from '@/types/app'
 import { produce } from 'immer'
 import { useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
+import { notifyError } from '@/app/notifications/error'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 
@@ -59,22 +60,27 @@ export const createModelChangeHandler =
     mode?: string
     features?: string[]
   }) => {
-    if (isAdvancedMode) {
-      if (nextModelMode === ModelModeType.completion) {
-        if (mode !== AppModeEnum.COMPLETION) {
-          if (
-            !completionPromptConfig.prompt?.text ||
-            !completionPromptConfig.conversation_histories_role.assistant_prefix ||
-            !completionPromptConfig.conversation_histories_role.user_prefix
-          )
+    try {
+      if (isAdvancedMode) {
+        if (nextModelMode === ModelModeType.completion) {
+          if (mode !== AppModeEnum.COMPLETION) {
+            if (
+              !completionPromptConfig.prompt?.text ||
+              !completionPromptConfig.conversation_histories_role.assistant_prefix ||
+              !completionPromptConfig.conversation_histories_role.user_prefix
+            )
+              await migrateToDefaultPrompt(true, ModelModeType.completion)
+          } else if (!completionPromptConfig.prompt?.text) {
             await migrateToDefaultPrompt(true, ModelModeType.completion)
-        } else if (!completionPromptConfig.prompt?.text) {
-          await migrateToDefaultPrompt(true, ModelModeType.completion)
+          }
         }
-      }
 
-      if (nextModelMode === ModelModeType.chat && chatPromptLength === 0)
-        await migrateToDefaultPrompt(true, ModelModeType.chat)
+        if (nextModelMode === ModelModeType.chat && chatPromptLength === 0)
+          await migrateToDefaultPrompt(true, ModelModeType.chat)
+      }
+    } catch (error) {
+      notifyError(error)
+      return
     }
 
     setModelConfig(

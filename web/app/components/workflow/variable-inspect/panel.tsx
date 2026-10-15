@@ -7,6 +7,7 @@ import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { notifyError } from '@/app/notifications/error'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
@@ -157,7 +158,7 @@ const Panel: FC = () => {
     if (currentFocusNodeId && currentVarId && !isLoading) {
       const targetNode = nodesWithInspectVars.find((node) => node.nodeId === currentFocusNodeId)
       if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
+        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!).catch(notifyError)
     }
   }, [
     currentFocusNodeId,

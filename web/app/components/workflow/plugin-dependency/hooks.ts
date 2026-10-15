@@ -11,7 +11,13 @@ export const usePluginDependencies = () => {
   const { t } = useTranslation(['common'])
   const { mutateAsync: checkWorkflowDependencies } = useMutation(
     consoleQuery.apps.imports.byAppId.checkDependencies.get.mutationOptions({
-      context: { silent: true },
+      onError: (error) => {
+        usePluginDependenciesStore.getState().setDependencies([])
+        toast.error(
+          t(($) => $.error, { ns: 'common' }),
+          { description: getErrorMessage(error) },
+        )
+      },
     }),
   )
   const { mutateAsync: checkPipelineDependencies } = useCheckPipelineDependencies()
@@ -19,13 +25,12 @@ export const usePluginDependencies = () => {
   const handleCheckPluginDependencies = useCallback(
     async (id: string, isPipeline = false) => {
       const { setDependencies } = usePluginDependenciesStore.getState()
-      if (isPipeline) {
-        const { leaked_dependencies } = await checkPipelineDependencies(id)
-        setDependencies(leaked_dependencies)
-        return true
-      }
-
       try {
+        if (isPipeline) {
+          const { leaked_dependencies } = await checkPipelineDependencies(id)
+          setDependencies(leaked_dependencies)
+          return true
+        }
         const { leaked_dependencies } = await checkWorkflowDependencies({ params: { app_id: id } })
         setDependencies(
           (leaked_dependencies ?? []).map((dependency) => ({
@@ -35,14 +40,8 @@ export const usePluginDependencies = () => {
           })),
         )
         return true
-      } catch (error) {
+      } catch {
         setDependencies([])
-        toast.error(
-          t(($) => $.error, { ns: 'common' }),
-          {
-            description: getErrorMessage(error),
-          },
-        )
         return false
       }
     },

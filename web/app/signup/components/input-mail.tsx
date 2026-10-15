@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import { safe } from '@orpc/client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -34,7 +35,9 @@ export default function SignupEmailForm({ onSuccess }: Props) {
 
   const handleSubmit = async (email: string) => {
     if (isPending) return
-    const res = await submitMail({ email, language: locale })
+    const [requestError, res] = await safe(submitMail({ email, language: locale }))
+    if (requestError) return
+
     if ((res as MailSendResponse).result === 'success')
       onSuccess(email, (res as MailSendResponse).data)
   }

@@ -164,8 +164,12 @@ const handlePublicStreamResponseError = async (
   } catch {}
 
   if (data) {
-    if (handleWebAppAuthorizationError(data)) return
+    if (handleWebAppAuthorizationError(data)) {
+      await reportStreamResponseError(response, onError)
+      return
+    }
     if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
+      await reportStreamResponseError(response, onError)
       requiredWebSSOLogin()
       return
     }
@@ -736,6 +740,7 @@ export const ssePost = async (
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
+                if (abortController.signal.aborted) return
                 ssePost(url, fetchOptions, otherOptions)
               })
               .catch((err) => {
@@ -891,6 +896,7 @@ export const sseGet = async (
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
+                if (abortController.signal.aborted) return
                 sseGet(url, fetchOptions, otherOptions)
               })
               .catch((err) => {
@@ -1114,7 +1120,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && !silent) {
+      if (code === 'init_validate_failed') {
         toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
@@ -1141,11 +1147,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }
-      if (!silent) {
-        toast.error(message)
-        return Promise.reject(err)
-      }
-      jumpTo(buildSigninUrlWithRedirect())
+      if (!silent) toast.error(message)
       return Promise.reject(err)
     } else {
       return Promise.reject(err)

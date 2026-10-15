@@ -56,13 +56,13 @@ type MCPModalConfirmPayload = {
 type DuplicateAppModalProps = {
   data?: ToolWithProvider
   show: boolean
-  onConfirm: (info: MCPModalConfirmPayload) => void
+  onConfirm: (info: MCPModalConfirmPayload) => Promise<void> | void
   onHide: () => void
 }
 
 type MCPModalContentProps = {
   data?: ToolWithProvider
-  onConfirm: (info: MCPModalConfirmPayload) => void
+  onConfirm: (info: MCPModalConfirmPayload) => Promise<void> | void
   onHide: () => void
 }
 
@@ -113,27 +113,33 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
       {} as Record<string, string>,
     )
 
-    await onConfirm({
-      server_url: originalServerUrl === state.url ? '[__HIDDEN__]' : state.url.trim(),
-      name: state.name,
-      icon_type: state.appIcon.type,
-      icon: state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId,
-      icon_background: state.appIcon.type === 'emoji' ? state.appIcon.background : undefined,
-      server_identifier: state.serverIdentifier.trim(),
-      headers: Object.keys(formattedHeaders).length > 0 ? formattedHeaders : undefined,
-      is_dynamic_registration: state.isDynamicRegistration,
-      authentication: {
-        client_id: state.clientID,
-        client_secret: state.credentials,
-      },
-      configuration: {
-        timeout: state.timeout || 30,
-        sse_read_timeout: state.sseReadTimeout || 300,
-      },
-      // Edit-mode data may carry idp_token; clamp to off when SSO is no
-      // longer available so a stale row can't keep forwarding configured.
-      identity_mode: state.forwardUserIdentity && isForwardIdentitySupported ? 'idp_token' : 'off',
-    })
+    try {
+      await onConfirm({
+        server_url: originalServerUrl === state.url ? '[__HIDDEN__]' : state.url.trim(),
+        name: state.name,
+        icon_type: state.appIcon.type,
+        icon: state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId,
+        icon_background: state.appIcon.type === 'emoji' ? state.appIcon.background : undefined,
+        server_identifier: state.serverIdentifier.trim(),
+        headers: Object.keys(formattedHeaders).length > 0 ? formattedHeaders : undefined,
+        is_dynamic_registration: state.isDynamicRegistration,
+        authentication: {
+          client_id: state.clientID,
+          client_secret: state.credentials,
+        },
+        configuration: {
+          timeout: state.timeout || 30,
+          sse_read_timeout: state.sseReadTimeout || 300,
+        },
+        // Edit-mode data may carry idp_token; clamp to off when SSO is no
+        // longer available so a stale row can't keep forwarding configured.
+        identity_mode:
+          state.forwardUserIdentity && isForwardIdentitySupported ? 'idp_token' : 'off',
+      })
+    } catch {
+      // The mutation owns feedback. Keep the entered configuration available for retry.
+      return
+    }
     if (isCreate) onHide()
   }
 

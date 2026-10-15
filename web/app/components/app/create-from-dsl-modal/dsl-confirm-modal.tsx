@@ -18,6 +18,7 @@ type DSLConfirmModalProps = {
   onConfirm: () => void
   confirmDisabled?: boolean
   confirmLoading?: boolean
+  errorMessage?: string
 }
 
 function DSLConfirmModal({
@@ -26,6 +27,7 @@ function DSLConfirmModal({
   onConfirm,
   confirmDisabled = false,
   confirmLoading = false,
+  errorMessage,
 }: DSLConfirmModalProps) {
   const { t } = useTranslation(['app'])
 
@@ -58,6 +60,11 @@ function DSLConfirmModal({
             </div>
           </AlertDialogDescription>
         </div>
+        {errorMessage && (
+          <div role="alert" className="px-6 text-text-destructive">
+            {errorMessage}
+          </div>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={confirmLoading}>
             {t(($) => $['newApp.Cancel'], { ns: 'app' })}

@@ -19,8 +19,17 @@ const toErrorMessage = (error: unknown) => {
   return undefined
 }
 
-export const useSilentMarketplaceInstall = () => {
-  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+export const useSilentMarketplaceInstall = (
+  onRequestFailed?: (uniqueIdentifier: string, error: string | undefined) => void,
+) => {
+  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace(
+    onRequestFailed
+      ? {
+          onError: (error, uniqueIdentifier) =>
+            onRequestFailed(uniqueIdentifier, toErrorMessage(error)),
+        }
+      : undefined,
+  )
   const { refreshPluginList } = useRefreshPluginList()
 
   const install = useCallback(

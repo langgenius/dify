@@ -47,8 +47,8 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
       language,
     })
 
-  const { mutateAsync: createWorkspaceRole } = useCreateWorkspaceRole()
-  const { mutateAsync: updateWorkspaceRole } = useUpdateWorkspaceRole()
+  const { mutate: createWorkspaceRole } = useCreateWorkspaceRole()
+  const { mutate: updateWorkspaceRole } = useUpdateWorkspaceRole()
 
   const openCreate = useCallback(() => {
     setModalState({ mode: 'create' })

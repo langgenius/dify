@@ -96,7 +96,6 @@ import {
   refreshSkillDetailAfterConflict,
   runSkillFileMutation,
   setSkillDetailCache,
-  showSkillErrorToast,
   skillFileHotkeys,
   skillFileMenuPopupClassName,
   toFileTree,
@@ -314,14 +313,19 @@ export function FileTree({
     setSidebarWidth(nextWidth)
   }
 
+  const [fileError, setFileError] = useState<unknown>()
   const fileMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
+      onError: setFileError,
+      onMutate: () => setFileError(undefined),
+      onSuccess: () => setFileError(undefined),
     }),
   )
   const fileCheckMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.check.post.mutationOptions({
-      context: { silent: true },
+      onError: setFileError,
+      onMutate: () => setFileError(undefined),
+      onSuccess: () => setFileError(undefined),
     }),
   )
   const tree = toFileTree(files)
@@ -359,10 +363,7 @@ export function FileTree({
         options.onSuccess?.(nextDetail)
       })
       .catch((error) => {
-        showSkillErrorToast(
-          error,
-          t(($) => $['skillManagement.detail.fileOperationFailed']),
-        )
+        setFileError(error)
       })
   }
 
@@ -481,8 +482,8 @@ export function FileTree({
       })
       setUploadReviewItems(reviewItems)
       setUploadReviewOpen(true)
-    } catch {
-      toast.error(t(($) => $['skillManagement.detail.uploadCheckFailed']))
+    } catch (error) {
+      setFileError(error)
     }
   }
 
@@ -604,6 +605,8 @@ export function FileTree({
       }
     }
 
+    // Upload failures are presented by their queue and aggregate result.
+    setFileError(undefined)
     if (successCount > 0) {
       setSkillDetailCache(queryClient, skillId, latestDetail)
       invalidateSkillDetail(queryClient, skillId)
@@ -611,9 +614,10 @@ export function FileTree({
     }
 
     if (failedCount > 0) {
-      toast.error(
-        t(($) => $['skillManagement.detail.uploadFilesFailedStatus'], { count: failedCount }),
-      )
+      if (!cancelUploadRef.current)
+        toast.error(
+          t(($) => $['skillManagement.detail.uploadFilesFailedStatus'], { count: failedCount }),
+        )
       return
     }
 
@@ -822,10 +826,7 @@ export function FileTree({
       setSelectedPaths(movedTargetPaths)
       if (lastTargetPath) onSelect(lastTargetPath, latestDetail.files)
     } catch (error) {
-      showSkillErrorToast(
-        error,
-        t(($) => $['skillManagement.detail.fileOperationFailed']),
-      )
+      setFileError(error)
     }
   }
 
@@ -927,10 +928,7 @@ export function FileTree({
       setSelectedPaths(copiedTargetPaths)
       if (lastTargetPath) onSelect(lastTargetPath, latestDetail.files)
     } catch (error) {
-      showSkillErrorToast(
-        error,
-        t(($) => $['skillManagement.detail.fileOperationFailed']),
-      )
+      setFileError(error)
     }
   }
 
@@ -1185,6 +1183,13 @@ export function FileTree({
           )}
           style={{ width: collapsed ? skillSidebarMinWidth : sidebarWidth }}
         >
+          {fileError != null && !isUploading && (
+            <div role="alert" className="p-2 text-text-destructive">
+              {fileError instanceof Error
+                ? fileError.message
+                : t(($) => $['skillManagement.detail.saveFailed'])}
+            </div>
+          )}
           {!collapsed && (
             <div
               role="separator"

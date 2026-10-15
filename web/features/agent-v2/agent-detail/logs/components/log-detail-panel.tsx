@@ -12,7 +12,6 @@ import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 
@@ -63,27 +62,22 @@ export function AgentLogDetailPanel({
       })
     : []
   const handleFeedback: OnFeedback = async (messageId, feedback) => {
-    try {
-      await feedbackMutation.mutateAsync({
-        params: { agent_id: agentId },
-        body: {
-          message_id: messageId,
-          rating: feedback.rating,
-          content: feedback.content,
-        },
-      })
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.logs.get.key(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
-        }),
-      ])
-    } catch (error) {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      throw error
-    }
+    await feedbackMutation.mutateAsync({
+      params: { agent_id: agentId },
+      body: {
+        message_id: messageId,
+        rating: feedback.rating,
+        content: feedback.content,
+      },
+    })
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.agent.byAgentId.logs.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
+      }),
+    ])
   }
 
   return (

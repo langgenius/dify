@@ -181,14 +181,7 @@ export const TagSelector = ({
             },
           )
         },
-        onError: () => {
-          toast.error(
-            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
-            {
-              id: toastId,
-            },
-          )
-        },
+
         onSettled: () => {
           onTagsChange?.()
         },
@@ -224,9 +217,6 @@ export const TagSelector = ({
           onSuccess: () => {
             toast.success(t(($) => $['tag.created'], { ns: 'common' }))
             setInputValue('')
-          },
-          onError: () => {
-            toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
           },
         },
       )

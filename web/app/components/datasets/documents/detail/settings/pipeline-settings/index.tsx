@@ -1,6 +1,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
+import { safe } from '@orpc/client'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -101,21 +102,19 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
       const datasourceInfoList: Record<string, any>[] = []
       const documentInfo = lastRunData.datasource_info
       datasourceInfoList.push(documentInfo)
-      await runPublishedPipeline(
-        {
+      const [error, res] = await safe(
+        runPublishedPipeline({
           pipeline_id: pipelineId!,
           inputs: data,
           start_node_id: lastRunData.datasource_node_id,
           datasource_type: lastRunData.datasource_type,
           datasource_info_list: datasourceInfoList,
           is_preview: true,
-        },
-        {
-          onSuccess: (res) => {
-            setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
-          },
-        },
+        }),
       )
+      if (error) return
+
+      setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
     },
     [lastRunData, pipelineId, runPublishedPipeline],
   )
@@ -128,8 +127,8 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
       const datasourceInfoList: Record<string, any>[] = []
       const documentInfo = lastRunData.datasource_info
       datasourceInfoList.push(documentInfo)
-      await runPublishedPipeline(
-        {
+      const [error] = await safe(
+        runPublishedPipeline({
           pipeline_id: pipelineId!,
           inputs: data,
           start_node_id: lastRunData.datasource_node_id,
@@ -137,15 +136,13 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
           datasource_info_list: datasourceInfoList,
           original_document_id: documentId,
           is_preview: false,
-        },
-        {
-          onSuccess: () => {
-            invalidDocumentList()
-            invalidDocumentDetail()
-            push(`/datasets/${datasetId}/documents`)
-          },
-        },
+        }),
       )
+      if (error) return
+
+      invalidDocumentList()
+      invalidDocumentDetail()
+      push(`/datasets/${datasetId}/documents`)
     },
     [
       datasetId,

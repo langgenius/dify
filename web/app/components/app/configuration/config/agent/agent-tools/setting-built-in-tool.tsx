@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -29,6 +30,7 @@ import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { notifyError } from '@/app/notifications/error'
 import { getPluginLanguage } from '@/i18n/metadata'
 import {
   fetchBuiltInToolList,
@@ -88,17 +90,17 @@ const SettingBuiltInTool: FC<Props> = ({
     ;(async () => {
       setIsLoading(true)
       try {
-        const list = await new Promise<Tool[]>((resolve) => {
-          ;(async function () {
-            if (isModel) resolve(await fetchModelToolList(collection.name))
-            else if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
-            else if (collection.type === CollectionType.workflow)
-              resolve(await fetchWorkflowToolList(collection.id))
-            else resolve(await fetchCustomToolList(collection.name))
-          })()
-        })
+        const list = await (isModel
+          ? fetchModelToolList(collection.name)
+          : isBuiltIn
+            ? fetchBuiltInToolList(collection.name)
+            : collection.type === CollectionType.workflow
+              ? fetchWorkflowToolList(collection.id)
+              : fetchCustomToolList(collection.name))
         setTools(list)
-      } catch {}
+      } catch (error) {
+        notifyError(error)
+      }
       setIsLoading(false)
     })()
     // oxlint-disable-next-line react/exhaustive-deps

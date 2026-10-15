@@ -1,4 +1,5 @@
 'use client'
+
 import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
 import type { SiteInfo } from '@/models/share'
 import {
@@ -17,6 +18,7 @@ import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { notifyError } from '@/app/notifications/error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -38,8 +40,12 @@ function MenuDropdown({ data, placement, hideLogout }: Props) {
   const { t } = useTranslation(['common', 'share'])
 
   const handleLogout = async () => {
-    await webAppLogout(resolveWebAppAddress())
-    router.replace(`/webapp-signin?redirect_url=${pathname}`)
+    try {
+      await webAppLogout(resolveWebAppAddress())
+      router.replace(`/webapp-signin?redirect_url=${pathname}`)
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   const { theme, setTheme } = useTheme()

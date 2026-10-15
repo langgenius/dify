@@ -78,7 +78,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     [canManageRoles, copyRole, role.id],
   )
 
-  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
+  const { mutate: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
 
   const openDeleteConfirm = useCallback(() => {
     if (!canManageRoles) return

@@ -14,7 +14,6 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { ORPCError } from '@orpc/client'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -169,11 +168,8 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
       await updatePassword.mutateAsync({ body: password })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       actionsRef.current?.close()
-    } catch (error) {
-      // HTTP error notifications are owned by the request layer.
-      // Only report a failure that never produced a response.
-      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
-        toast.error(error.message)
+    } catch {
+      // The mutation reports the failure; retain the current form and input.
     }
   }
 

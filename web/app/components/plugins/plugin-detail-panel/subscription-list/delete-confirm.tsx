@@ -50,13 +50,6 @@ export const DeleteConfirm = (props: Props) => {
         refetch?.()
         onClose(true)
       },
-      onError: (error: unknown) => {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t(($) => $[`${tPrefix}.error`], { ns: 'pluginTrigger', name: currentName }),
-        )
-      },
     })
   }
 

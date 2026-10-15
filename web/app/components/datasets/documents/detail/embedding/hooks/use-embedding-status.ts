@@ -120,7 +120,7 @@ export const usePauseIndexing = ({
     mutationKey: [NAME_SPACE, 'pause', datasetId, documentId],
     mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,
-    onError,
+    ...(onError ? { onError } : {}),
   })
 }
 
@@ -134,6 +134,6 @@ export const useResumeIndexing = ({
     mutationKey: [NAME_SPACE, 'resume', datasetId, documentId],
     mutationFn: () => resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,
-    onError,
+    ...(onError ? { onError } : {}),
   })
 }

@@ -12,6 +12,7 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { notifyError } from '@/app/notifications/error'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import { useInvalidToolsByType } from '@/service/use-tools'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
@@ -45,10 +46,14 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const invalidToolsByType = useInvalidToolsByType(provider_type)
   const handleSaveAuth = useCallback(
     async (value: any) => {
-      await updateBuiltInToolCredential(currCollection?.name as string, value)
+      try {
+        await updateBuiltInToolCredential(currCollection?.name as string, value)
 
-      invalidToolsByType()
-      setShowSetAuth(false)
+        invalidToolsByType()
+        setShowSetAuth(false)
+      } catch (error) {
+        notifyError(error)
+      }
     },
     [currCollection?.name, invalidToolsByType],
   )

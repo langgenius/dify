@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { MetaData } from '../types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -17,6 +18,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -100,7 +102,7 @@ const Action: FC<Props> = ({
         onDelete()
       }
     } catch (error) {
-      console.error('uninstallPlugin error', error)
+      notifyError(error)
     } finally {
       hideDeleting()
     }

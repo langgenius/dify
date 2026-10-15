@@ -5,6 +5,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
+import { notifyError } from '@/app/notifications/error'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AppSourceType, sendCompletionMessage, sendWorkflowMessage } from '@/service/share'
@@ -158,7 +159,8 @@ export const useResultSender = ({
           completionChunks.push(chunk)
           runState.setCompletionRes(completionChunks.join(''))
         },
-        onCompleted: () => {
+        onCompleted: (hasError) => {
+          if (isEnd || hasError) return
           if (isTimeout) {
             notify({
               type: 'warning',
@@ -177,7 +179,9 @@ export const useResultSender = ({
           completionChunks = [messageReplace.answer]
           runState.setCompletionRes(completionChunks.join(''))
         },
-        onError: () => {
+        onError: (message) => {
+          if (isEnd) return
+          isEnd = true
           if (isTimeout) {
             notify({
               type: 'warning',
@@ -186,6 +190,7 @@ export const useResultSender = ({
             return
           }
 
+          notifyError(new Error(message))
           runState.setRespondingFalse()
           runState.resetRunState()
           onCompleted(runState.getCompletionRes(), taskId, false)

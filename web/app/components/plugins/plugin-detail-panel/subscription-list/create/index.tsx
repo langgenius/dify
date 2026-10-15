@@ -240,11 +240,6 @@ export const CreateSubscriptionButton = ({
               }
             })
           },
-          onError: () => {
-            toast.error(
-              t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
-            )
-          },
         })
       } else {
         showClientSettingsModal()

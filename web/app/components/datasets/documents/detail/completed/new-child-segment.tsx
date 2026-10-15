@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { safe } from '@orpc/client'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -58,34 +59,36 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     params.content = content
 
     setLoading(true)
-    await addChildSegment(
-      { datasetId, documentId, segmentId: chunkId, body: params },
-      {
-        onSuccess(res) {
-          toast.success(
-            t(($) => $['segment.childChunkAdded'], { ns: 'datasetDocuments' }),
-            {
-              actionProps: isFullDocMode
-                ? {
-                    children: t(($) => $['operation.view'], { ns: 'common' }),
-                    onClick: viewNewlyAddedChildChunk,
-                  }
-                : undefined,
-            },
-          )
-          handleCancel('add')
-          setContent('')
-          if (isFullDocMode) {
-            onSave()
-          } else {
-            onSave(res.data)
-          }
-        },
-        onSettled() {
-          setLoading(false)
-        },
-      },
+    const [error, res] = await safe(
+      addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params }),
     )
+    if (error) {
+      setLoading(false)
+
+      return
+    }
+    try {
+      toast.success(
+        t(($) => $['segment.childChunkAdded'], { ns: 'datasetDocuments' }),
+        {
+          actionProps: isFullDocMode
+            ? {
+                children: t(($) => $['operation.view'], { ns: 'common' }),
+                onClick: viewNewlyAddedChildChunk,
+              }
+            : undefined,
+        },
+      )
+      handleCancel('add')
+      setContent('')
+      if (isFullDocMode) {
+        onSave()
+      } else {
+        onSave(res.data)
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   const count = content.length

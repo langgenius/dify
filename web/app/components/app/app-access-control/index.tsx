@@ -6,6 +6,7 @@ import type {
   AccessControlSubjectsStatus,
 } from './specific-groups-or-members'
 import type { Subject } from '@/models/access-control'
+import { safe } from '@orpc/client'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -89,7 +90,11 @@ function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlPro
       ]
     }
 
-    await updateAccessModeMutation.mutateAsync({ body: { appId: app.id, ...submitData } })
+    const [requestError] = await safe(
+      updateAccessModeMutation.mutateAsync({ body: { appId: app.id, ...submitData } }),
+    )
+    if (requestError) return
+
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
   }

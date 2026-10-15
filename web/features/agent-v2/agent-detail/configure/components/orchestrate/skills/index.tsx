@@ -489,7 +489,26 @@ export function AgentSkills() {
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
-    useMutation(consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions())
+    useMutation(
+      consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions({
+        onError: (error) => {
+          const errorCode = getSkillErrorCode(error)
+          if (errorCode === 'too_many_agent_skills') {
+            toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']))
+            return
+          }
+          if (errorCode === 'skill_name_conflict') {
+            toast.error(
+              tSkill(($) => $['skillManagement.errors.nameConflict'], {
+                name: getSkillErrorDetailString(error, 'name') ?? '',
+              }),
+            )
+            return
+          }
+          toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
+        },
+      }),
+    )
   const workspaceSkills = agentSkillBindingsQuery.data?.data ?? []
   const boundSkillIds =
     agentSkillBindingsQuery.data?.skill_ids ?? workspaceSkills.map((skill) => skill.id)
@@ -521,24 +540,6 @@ export function AgentSkills() {
           },
         },
         {
-          onError: (error) => {
-            const errorCode = getSkillErrorCode(error)
-            if (errorCode === 'too_many_agent_skills') {
-              toast.error(
-                t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
-              )
-              return
-            }
-            if (errorCode === 'skill_name_conflict') {
-              toast.error(
-                tSkill(($) => $['skillManagement.errors.nameConflict'], {
-                  name: getSkillErrorDetailString(error, 'name') ?? '',
-                }),
-              )
-              return
-            }
-            toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
-          },
           onSuccess: () => {
             invalidateAgentSkillBindings()
             void queryClient.invalidateQueries({

@@ -42,7 +42,17 @@ export function SkillDisplayNameEditor({
   const [draftName, setDraftName] = useState(detail.display_name)
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
+      onError: (error) => {
+        if (getErrorCode(error) === 'skill_name_conflict') {
+          toast.error(
+            t(($) => $['skillManagement.errors.nameConflict'], {
+              name: getErrorDetailString(error, 'name') ?? '',
+            }),
+          )
+        } else {
+          toast.error(t(($) => $['skillManagement.detail.saveFailed']))
+        }
+      },
     }),
   )
   const saving = metadataMutation.isPending
@@ -100,18 +110,8 @@ export function SkillDisplayNameEditor({
       })
       setDraftName(nextDisplayName)
       onEditingChange(false)
-    } catch (error) {
-      setDraftName(displayName)
-
-      if (getErrorCode(error) === 'skill_name_conflict') {
-        toast.error(
-          t(($) => $['skillManagement.errors.nameConflict'], {
-            name: getErrorDetailString(error, 'name') ?? '',
-          }),
-        )
-      } else {
-        toast.error(t(($) => $['skillManagement.detail.saveFailed']))
-      }
+    } catch {
+      // The mutation reports the failure; preserve the typed name.
     } finally {
       submittingRef.current = false
     }

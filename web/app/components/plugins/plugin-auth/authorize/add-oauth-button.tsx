@@ -102,7 +102,7 @@ const AddOAuthButton = ({
       openOAuthPopup(authorization_url, () => onUpdate?.())
       return true
     } catch {
-      // The request layer surfaces the error. Keep the current UI state so the
+      // The mutation surfaces the error. Keep the current UI state so the
       // user can retry without losing their visibility selection.
       return false
     }

@@ -1,4 +1,5 @@
 'use client'
+
 import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
@@ -6,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
   fetchMembersOAuth2SSOUrl,
@@ -46,6 +48,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(notifyError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -54,6 +57,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(notifyError)
         .finally(() => {
           setIsLoading(false)
         })
@@ -62,6 +66,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
         .then((res) => {
           router.push(res.url)
         })
+        .catch(notifyError)
         .finally(() => {
           setIsLoading(false)
         })

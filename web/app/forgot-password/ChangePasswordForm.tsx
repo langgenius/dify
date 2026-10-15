@@ -1,4 +1,5 @@
 'use client'
+
 import type { FormActions } from '@langgenius/dify-ui/form'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,6 +15,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { notifyError } from '@/app/notifications/error'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
@@ -65,7 +67,8 @@ const ChangePasswordForm = () => {
           },
         })
         setShowSuccess(true)
-      } catch {
+      } catch (error) {
+        notifyError(error)
         await revalidateToken()
       } finally {
         setIsSubmitting(false)

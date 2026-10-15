@@ -5,6 +5,7 @@ import type { StepTwoProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { safe } from '@orpc/client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -231,7 +232,7 @@ const StepTwo: FC<StepTwoProps> = ({
       segmentation.summaryIndexSetting,
     )
     if (!params) return
-    await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
+    await safe(creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig))
   }, [canCreateDocument, creation, segmentation, indexing, currentDocForm, docLanguage])
 
   const handlePickerChange = useCallback(

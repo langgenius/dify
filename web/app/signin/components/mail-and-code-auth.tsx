@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import { notifyError } from '@/app/notifications/error'
 import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -53,7 +54,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         shouldResetTurnstile = false
       }
     } catch (error) {
-      console.error(error)
+      notifyError(error)
     } finally {
       setLoading(false)
       if (shouldResetTurnstile) {

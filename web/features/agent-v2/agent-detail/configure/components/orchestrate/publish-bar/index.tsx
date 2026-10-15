@@ -41,6 +41,7 @@ type PublishBarMode =
 type AgentConfigurePublishBarProps = {
   agentId: string
   agentName?: string | null
+  saveError?: unknown
   isPublishing?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   onPublish?: () => Promise<AgentConfigurePublishResult | false>
@@ -86,6 +87,7 @@ function PublishShortcut() {
 export function AgentConfigurePublishBar({
   agentId,
   agentName,
+  saveError,
   isPublishing = false,
   selectedVersionSnapshot,
   onPublish,
@@ -137,9 +139,7 @@ export function AgentConfigurePublishBar({
           agent_id: agentId,
         },
       },
-      context: {
-        silent: true,
-      },
+
       enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
     })
   useQuery(workflowReferencesQueryOptions)
@@ -318,6 +318,11 @@ export function AgentConfigurePublishBar({
       open={isConfirmingImpact}
       className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >
+      {saveError != null && (
+        <div role="alert" className="p-2 text-text-destructive">
+          {saveError instanceof Error ? saveError.message : tCommon(($) => $['api.actionFailed'])}
+        </div>
+      )}
       {/* Mount the live region before its message so assistive technology observes the update. */}
       <span role="status" aria-atomic="true" className="sr-only">
         {publishBarMode.status === 'success'

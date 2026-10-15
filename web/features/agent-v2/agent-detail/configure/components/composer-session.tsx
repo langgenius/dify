@@ -345,7 +345,7 @@ function AgentConfigurePageComposerContent({
     [rebaseComposerDraft],
   )
   const [currentModel, setConfigureModel] = useAtom(agentComposerModelAtom)
-  const { isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
+  const { saveError, isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
     agentName: agentQuery.data?.name,
     baseConfig: agentSoulConfig,
@@ -478,6 +478,7 @@ function AgentConfigurePageComposerContent({
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}
           currentModel={currentModel}
+          saveError={saveError}
           isPublishing={isPublishing}
           readOnly={
             !capabilities.canEdit ||

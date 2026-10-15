@@ -124,9 +124,27 @@ export const useCommonModalState = ({
   const autoCommonParametersFormRef = useRef<FormRefObject>(null)
   const apiKeyCredentialsFormRef = useRef<FormRefObject>(null)
 
+  const apiKeyCredentialsSchema = useMemo<SchemaItem[]>(() => {
+    const rawSchema =
+      detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
+    return toSchemaWithTooltip(rawSchema) as SchemaItem[]
+  }, [detail?.declaration?.trigger?.subscription_constructor?.credentials_schema])
+
   // Mutations
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } =
-    useVerifyAndUpdateTriggerSubscriptionBuilder()
+    useVerifyAndUpdateTriggerSubscriptionBuilder({
+      onError: (error, variables) => {
+        const errorMessage =
+          parsePluginErrorMessage(error) ||
+          t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
+        apiKeyCredentialsFormRef.current?.setFields([
+          {
+            name: getFirstFieldName(variables.credentials ?? {}, apiKeyCredentialsSchema),
+            errors: [errorMessage],
+          },
+        ])
+      },
+    })
   const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
   const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
@@ -135,12 +153,6 @@ export const useCommonModalState = ({
   const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || []
   const autoCommonParametersSchema =
     detail?.declaration.trigger?.subscription_constructor?.parameters || []
-
-  const apiKeyCredentialsSchema = useMemo<SchemaItem[]>(() => {
-    const rawSchema =
-      detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
-    return toSchemaWithTooltip(rawSchema) as SchemaItem[]
-  }, [detail?.declaration?.trigger?.subscription_constructor?.credentials_schema])
 
   // Log data for manual mode
   const { data: logData } = useTriggerSubscriptionBuilderLogs(
@@ -162,15 +174,7 @@ export const useCommonModalState = ({
             subscriptionBuilderId: builderId,
             properties,
           },
-          {
-            onError: (error: unknown) => {
-              const errorMessage =
-                parsePluginErrorMessage(error) ||
-                t(($) => $['modal.errors.updateFailed'], { ns: 'pluginTrigger' })
-              console.error('Failed to update subscription builder:', error)
-              toast.error(errorMessage)
-            },
-          },
+          {},
         )
       }, 500),
     [updateBuilder, t],
@@ -257,17 +261,6 @@ export const useCommonModalState = ({
           toast.success(t(($) => $['modal.apiKey.verify.success'], { ns: 'pluginTrigger' }))
           setCurrentStep(ApiKeyStep.Configuration)
         },
-        onError: (error: unknown) => {
-          const errorMessage =
-            parsePluginErrorMessage(error) ||
-            t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
-          apiKeyCredentialsFormRef.current?.setFields([
-            {
-              name: credentialFieldName,
-              errors: [errorMessage],
-            },
-          ])
-        },
       },
     )
   }, [apiKeyCredentialsSchema, detail?.provider, subscriptionBuilder?.id, verifyCredentials, t])
@@ -296,12 +289,6 @@ export const useCommonModalState = ({
       onSuccess: () => {
         onClose()
         refetch?.()
-      },
-      onError: (error: unknown) => {
-        const errorMessage =
-          parsePluginErrorMessage(error) ||
-          t(($) => $['subscription.createFailed'], { ns: 'pluginTrigger' })
-        toast.error(errorMessage)
       },
     })
   }, [

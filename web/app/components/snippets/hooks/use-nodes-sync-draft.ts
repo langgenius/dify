@@ -115,6 +115,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
       )
       try {
         if (error) {
+          workflowStore.getState().setDraftSyncError(error)
           if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
             handleRefreshWorkflowDraft(onRefresh)
           callback?.onError?.()

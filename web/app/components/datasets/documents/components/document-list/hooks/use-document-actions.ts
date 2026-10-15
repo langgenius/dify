@@ -44,13 +44,27 @@ export const useDocumentActions = ({
 }: UseDocumentActionsOptions) => {
   const { t } = useTranslation(['common'])
 
-  const { mutateAsync: archiveDocument } = useDocumentArchive()
-  const { mutateAsync: generateSummary } = useDocumentSummary()
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
-  const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
-  const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
+  const { mutateAsync: archiveDocument } = useDocumentArchive({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: generateSummary } = useDocumentSummary({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: enableDocument } = useDocumentEnable({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: disableDocument } = useDocumentDisable({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: deleteDocument } = useDocumentDelete({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip({
+    onError: () => toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' })),
+  })
 
   type SupportedActionType =
     | typeof DocumentActionType.archive
@@ -85,8 +99,6 @@ export const useDocumentActions = ({
           if (actionName === DocumentActionType.delete) onClearSelection()
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           onUpdate()
-        } else {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
         }
       }
     },
@@ -101,8 +113,6 @@ export const useDocumentActions = ({
       onClearSelection()
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate()
-    } else {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }, [retryIndexDocument, datasetId, selectedIds, onClearSelection, onUpdate, t])
 
@@ -112,7 +122,8 @@ export const useDocumentActions = ({
     const [e, blob] = await asyncRunSafe(
       requestDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }),
     )
-    if (e || !blob) {
+    if (e) return
+    if (!blob) {
       toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
       return
     }

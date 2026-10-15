@@ -1,4 +1,5 @@
 'use client'
+
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -7,6 +8,7 @@ import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/lo
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
@@ -23,35 +25,39 @@ const ExternalMemberSSOAuth = () => {
   const protocol = systemFeatures.webapp_auth.sso_config.protocol
 
   const handleSSOLogin = useCallback(async () => {
-    if (protocol === null) return
+    try {
+      if (protocol === null) return
 
-    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
-    if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
-      return
-    }
+      const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
+      if (!loginRedirect) {
+        replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
+        return
+      }
 
-    switch (protocol) {
-      case zSsoProtocol.enum.saml: {
-        const samlRes = await fetchWebSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
-        router.push(samlRes.url)
-        break
+      switch (protocol) {
+        case zSsoProtocol.enum.saml: {
+          const samlRes = await fetchWebSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
+          router.push(samlRes.url)
+          break
+        }
+        case zSsoProtocol.enum.oidc: {
+          const oidcRes = await fetchWebOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
+          router.push(oidcRes.url)
+          break
+        }
+        case zSsoProtocol.enum.oauth2: {
+          const oauth2Res = await fetchWebOAuth2SSOUrl(
+            loginRedirect.appCode,
+            loginRedirect.target.href,
+          )
+          router.push(oauth2Res.url)
+          break
+        }
+        default:
+          toast.error('SSO protocol is not supported.')
       }
-      case zSsoProtocol.enum.oidc: {
-        const oidcRes = await fetchWebOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
-        router.push(oidcRes.url)
-        break
-      }
-      case zSsoProtocol.enum.oauth2: {
-        const oauth2Res = await fetchWebOAuth2SSOUrl(
-          loginRedirect.appCode,
-          loginRedirect.target.href,
-        )
-        router.push(oauth2Res.url)
-        break
-      }
-      default:
-        toast.error('SSO protocol is not supported.')
+    } catch (error) {
+      notifyError(error)
     }
   }, [protocol, redirectUrl, router])
 

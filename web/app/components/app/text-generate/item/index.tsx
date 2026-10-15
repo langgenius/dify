@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
@@ -14,6 +15,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import {
@@ -102,12 +104,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { config } = useChatContext()
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback(
-      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
-      appSourceType,
-      installedAppId,
-    )
-    setChildFeedback(childFeedback)
+    try {
+      await updateFeedback(
+        { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
+        appSourceType,
+        installedAppId,
+      )
+      setChildFeedback(childFeedback)
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
@@ -139,13 +145,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
-    setCompletionRes(res.answer)
-    setChildFeedback({
-      rating: null,
-    })
-    setChildMessageId(res.id)
-    stopQuerying()
+    try {
+      const res: any = await fetchMoreLikeThis(messageId as string, appSourceType, installedAppId)
+      setCompletionRes(res.answer)
+      setChildFeedback({
+        rating: null,
+      })
+      setChildMessageId(res.id)
+    } catch (error) {
+      notifyError(error)
+    } finally {
+      stopQuerying()
+    }
   }
 
   useEffect(() => {
@@ -165,12 +176,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [isLoading])
 
   const handleOpenLog = async () => {
-    if (!onOpenLog) return
-    const data = await fetchTextGenerationMessage({
-      appId: params.appId as string,
-      messageId: messageId!,
-    })
-    onOpenLog(buildPromptLogItem(data))
+    try {
+      if (!onOpenLog) return
+      const data = await fetchTextGenerationMessage({
+        appId: params.appId as string,
+        messageId: messageId!,
+      })
+      onOpenLog(buildPromptLogItem(data))
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')

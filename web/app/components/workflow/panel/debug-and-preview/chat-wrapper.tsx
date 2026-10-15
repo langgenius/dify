@@ -41,7 +41,7 @@ const ChatWrapper = ({
   const startVariables = startNode?.data.variables
   const { appId } = useParams<{ appId: string }>()
   const queryClient = useQueryClient()
-  const { mutateAsync: stopChat } = useMutation(
+  const { mutate: stopChat } = useMutation(
     consoleQuery.apps.byAppId.chatMessages.byTaskId.stop.post.mutationOptions(),
   )
   const workflowStore = useWorkflowStore()

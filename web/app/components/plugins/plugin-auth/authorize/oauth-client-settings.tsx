@@ -105,7 +105,7 @@ const OAuthClientSettings = ({
       const isSaved = await handleConfirm()
       if (isSaved) await onRequestAuthorization?.()
     } catch {
-      // The request layer reports the save error. Keep settings open and stop
+      // The mutation reports the save error. Keep settings open and stop
       // before opening the permission dialog.
     }
   }, [handleConfirm, onRequestAuthorization])

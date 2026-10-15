@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { InstallPackageResponse, Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { safe } from '@orpc/client'
 import { RiLoader2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -56,8 +57,12 @@ const Installed: FC<Props> = ({
   const installedVersion = installedInfoPayload?.installedVersion
   const hasInstalled = !!installedVersion
 
-  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
-  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
+  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace({
+    onError: (error) => onFailed(error.message),
+  })
+  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace({
+    onError: (error) => onFailed(error.message),
+  })
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { check, stop } = checkTaskStatus()
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
@@ -80,17 +85,23 @@ const Installed: FC<Props> = ({
       let isInstalled
       let installResponse: InstallPackageResponse | undefined
       if (hasInstalled) {
-        const response = await updatePackageFromMarketPlace({
-          original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
-          new_plugin_unique_identifier: uniqueIdentifier,
-        })
+        const [requestError, response] = await safe(
+          updatePackageFromMarketPlace({
+            original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
+            new_plugin_unique_identifier: uniqueIdentifier,
+          }),
+        )
+        if (requestError) return
+
         installResponse = response
         const { all_installed, task_id } = response
         handleInstallTaskStart(response)
         taskId = task_id
         isInstalled = all_installed
       } else {
-        const response = await installPackageFromMarketPlace(uniqueIdentifier)
+        const [requestError, response] = await safe(installPackageFromMarketPlace(uniqueIdentifier))
+        if (requestError) return
+
         installResponse = response
         const { all_installed, task_id } = response
         handleInstallTaskStart(response)

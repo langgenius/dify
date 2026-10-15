@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { toast } from '@/app/notifications'
+import { getErrorMessage } from '@/utils/error-message'
 import { usePluginStore } from '../../store'
 import {
   ClientTypeEnum,
@@ -49,6 +50,7 @@ export const OAuthClientSettingsModal = ({
     clientFormRef,
     oauthClientSchema,
     confirmButtonText,
+    verificationError,
     handleRemove,
     handleSave,
   } = oauthClientSettings
@@ -138,6 +140,12 @@ export const OAuthClientSettingsModal = ({
               />
             )}
           </div>
+          {verificationError != null && (
+            <div role="alert" className="px-6 text-text-destructive">
+              {getErrorMessage(verificationError) ||
+                t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </div>
+          )}
           <div data-testid="modal-footer" className="flex shrink-0 justify-between p-6 pt-5">
             <div>
               {showRemoveButton && (

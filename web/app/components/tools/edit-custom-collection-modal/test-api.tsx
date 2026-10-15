@@ -25,6 +25,7 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { AuthType } from '@/app/components/tools/types'
+import { notifyError } from '@/app/notifications/error'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { testAPIAvailable } from '@/service/tools'
 import ConfigCredentials from './config-credentials'
@@ -67,9 +68,14 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
       schema: customCollection.schema,
       parameters: parametersValue,
     }
-    const res = (await testAPIAvailable(data)) as any
-    setResult(res.error || res.result)
-    setTesting(false)
+    try {
+      const res = (await testAPIAvailable(data)) as any
+      setResult(res.error || res.result)
+    } catch (error) {
+      notifyError(error)
+    } finally {
+      setTesting(false)
+    }
   }
 
   return (

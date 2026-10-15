@@ -1,10 +1,12 @@
 import type { Snippet as SnippetContract } from '@/types/snippet'
+import { safe } from '@orpc/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { consoleQuery } from '@/service/console'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
@@ -26,9 +28,12 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
       const canPublish = await handleCheckBeforePublish()
       if (!canPublish) return
 
-      const publishedWorkflow = await publishSnippetMutation.mutateAsync({
-        params: { snippetId },
-      })
+      const [error, publishedWorkflow] = await safe(
+        publishSnippetMutation.mutateAsync({
+          params: { snippetId },
+        }),
+      )
+      if (error) return false
       queryClient.setQueryData<SnippetContract | undefined>(
         consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.key({
           type: 'query',
@@ -43,7 +48,7 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
       toast.success(t(($) => $.publishSuccess))
       return true
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t(($) => $.publishFailed))
+      notifyError(error)
       return false
     }
   }, [

@@ -4,6 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { safe } from '@orpc/client'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -72,7 +73,9 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
 
       if (description.trim()) payload.description = description
 
-      await createMCPServer(payload)
+      const [requestError] = await safe(createMCPServer(payload))
+      if (requestError) return
+
       invalidateMCPServerDetail(appID)
       onHide()
     } else {
@@ -88,7 +91,9 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
         description,
       }
 
-      await updateMCPServer(payload)
+      const [requestError] = await safe(updateMCPServer(payload))
+      if (requestError) return
+
       invalidateMCPServerDetail(appID)
       onHide()
     }

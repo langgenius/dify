@@ -4,6 +4,7 @@ import type {
   SegmentDetailModel,
   SegmentUpdater,
 } from '@/models/datasets'
+import { safe } from '@orpc/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -130,26 +131,21 @@ export const useChildSegmentData = (
   const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
   const onDeleteChildChunk = useCallback(
     async (segmentIdParam: string, childChunkId: string) => {
-      await deleteChildSegment(
-        { datasetId, documentId, segmentId: segmentIdParam, childChunkId },
-        {
-          onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            if (parentMode === 'paragraph') {
-              // Update parent segment's child_chunks in cache
-              updateSegmentInCache(segmentIdParam, (seg) => ({
-                ...seg,
-                child_chunks: seg.child_chunks?.filter((chunk) => chunk.id !== childChunkId),
-              }))
-            } else {
-              resetChildList()
-            }
-          },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-          },
-        },
+      const [error] = await safe(
+        deleteChildSegment({ datasetId, documentId, segmentId: segmentIdParam, childChunkId }),
       )
+      if (error) return
+
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      if (parentMode === 'paragraph') {
+        // Update parent segment's child_chunks in cache
+        updateSegmentInCache(segmentIdParam, (seg) => ({
+          ...seg,
+          child_chunks: seg.child_chunks?.filter((chunk) => chunk.id !== childChunkId),
+        }))
+      } else {
+        resetChildList()
+      }
     },
     [
       datasetId,
@@ -170,43 +166,51 @@ export const useChildSegmentData = (
       }
       params.content = content
       eventEmitter?.emit('update-child-segment')
-      await updateChildSegment(
-        { datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params },
-        {
-          onSuccess: (res) => {
-            onCloseChildSegmentDetail()
-            if (parentMode === 'paragraph') {
-              // Update parent segment's child_chunks in cache
-              updateSegmentInCache(segmentIdParam, (seg) => ({
-                ...seg,
-                child_chunks: seg.child_chunks?.map((childSeg) =>
-                  childSeg.id === childChunkId
-                    ? {
-                        ...childSeg,
-                        content: res.data.content,
-                        type: res.data.type,
-                        word_count: res.data.word_count,
-                        updated_at: res.data.updated_at,
-                      }
-                    : childSeg,
-                ),
-              }))
-              refreshChunkListDataWithDetailChanged()
-            } else {
-              updateChildSegmentInCache(childChunkId, (chunk) => ({
-                ...chunk,
-                content: res.data.content,
-                type: res.data.type,
-                word_count: res.data.word_count,
-                updated_at: res.data.updated_at,
-              }))
-            }
-          },
-          onSettled: () => {
-            eventEmitter?.emit('update-child-segment-done')
-          },
-        },
+      const [error, res] = await safe(
+        updateChildSegment({
+          datasetId,
+          documentId,
+          segmentId: segmentIdParam,
+          childChunkId,
+          body: params,
+        }),
       )
+      if (error) {
+        eventEmitter?.emit('update-child-segment-done')
+
+        return
+      }
+      try {
+        onCloseChildSegmentDetail()
+        if (parentMode === 'paragraph') {
+          // Update parent segment's child_chunks in cache
+          updateSegmentInCache(segmentIdParam, (seg) => ({
+            ...seg,
+            child_chunks: seg.child_chunks?.map((childSeg) =>
+              childSeg.id === childChunkId
+                ? {
+                    ...childSeg,
+                    content: res.data.content,
+                    type: res.data.type,
+                    word_count: res.data.word_count,
+                    updated_at: res.data.updated_at,
+                  }
+                : childSeg,
+            ),
+          }))
+          refreshChunkListDataWithDetailChanged()
+        } else {
+          updateChildSegmentInCache(childChunkId, (chunk) => ({
+            ...chunk,
+            content: res.data.content,
+            type: res.data.type,
+            word_count: res.data.word_count,
+            updated_at: res.data.updated_at,
+          }))
+        }
+      } finally {
+        eventEmitter?.emit('update-child-segment-done')
+      }
     },
     [
       datasetId,

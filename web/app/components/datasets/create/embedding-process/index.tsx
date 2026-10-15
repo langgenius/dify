@@ -16,6 +16,7 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { getErrorMessage } from '@/utils/error-message'
 import IndexingProgressItem from './indexing-progress-item'
 import RuleDetail from './rule-detail'
 import UpgradeBanner from './upgrade-banner'
@@ -92,6 +93,7 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
+  const { t } = useTranslation(['common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -103,7 +105,7 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
   // Polling hook for indexing status
-  const { statusList, isEmbedding, isEmbeddingCompleted } = useIndexingStatusPolling({
+  const { statusList, isEmbedding, isEmbeddingCompleted, error } = useIndexingStatusPolling({
     datasetId,
     batchId,
   })
@@ -128,6 +130,11 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   return (
     <>
       <div className="flex flex-col gap-y-3">
+        {error != null && (
+          <div role="alert" className="text-text-destructive">
+            {getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </div>
+        )}
         <StatusHeader isEmbedding={isEmbedding} isCompleted={isEmbeddingCompleted} />
 
         {vectorSpaceAdmissionError?.estimated_vector_space_mb != null &&

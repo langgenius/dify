@@ -1,6 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { safe } from '@orpc/client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -49,10 +50,13 @@ const Card = ({ apiEnabled }: CardProps) => {
 
   const onToggle = useCallback(
     async (state: boolean) => {
-      let result: 'success' | 'fail'
-      if (state) result = (await enableDatasetServiceApi(datasetId ?? '')).result
-      else result = (await disableDatasetServiceApi(datasetId ?? '')).result
-      if (result === 'success') mutateDatasetRes?.()
+      const [error, response] = await safe(
+        state
+          ? enableDatasetServiceApi(datasetId ?? '')
+          : disableDatasetServiceApi(datasetId ?? ''),
+      )
+      if (error) return
+      if (response.result === 'success') mutateDatasetRes?.()
     },
     [datasetId, enableDatasetServiceApi, mutateDatasetRes, disableDatasetServiceApi],
   )

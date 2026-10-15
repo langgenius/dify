@@ -22,6 +22,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { notifyError } from '@/app/notifications/error'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { useFileUploadConfig } from '@/service/use-common'
@@ -195,7 +196,12 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const handlePromptModeChange = useCallback(
     async (nextMode: PromptMode) => {
       if (nextMode === PromptMode.advanced) {
-        await migrateToDefaultPrompt()
+        try {
+          await migrateToDefaultPrompt()
+        } catch (error) {
+          notifyError(error)
+          return
+        }
         setCanReturnToSimpleMode(true)
       }
       setPromptMode(nextMode)

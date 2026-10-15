@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { Collection } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -23,6 +24,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
@@ -52,14 +54,16 @@ const ConfigCredential: FC<Props> = ({
   const [tempCredential, setTempCredential] = React.useState<any>({})
   const [isLoading, setIsLoading] = React.useState(false)
   useEffect(() => {
-    fetchBuiltInToolCredentialSchema(collectionName).then(async (res) => {
-      const toolCredentialSchemas = toolCredentialToFormSchemas(res)
-      const credentialValue = await fetchBuiltInToolCredential(collectionName)
-      setTempCredential(credentialValue)
-      const defaultCredentials = addDefaultValue(credentialValue, toolCredentialSchemas)
-      setCredentialSchema(toolCredentialSchemas)
-      setTempCredential(defaultCredentials)
-    })
+    fetchBuiltInToolCredentialSchema(collectionName)
+      .then(async (res) => {
+        const toolCredentialSchemas = toolCredentialToFormSchemas(res)
+        const credentialValue = await fetchBuiltInToolCredential(collectionName)
+        setTempCredential(credentialValue)
+        const defaultCredentials = addDefaultValue(credentialValue, toolCredentialSchemas)
+        setCredentialSchema(toolCredentialSchemas)
+        setTempCredential(defaultCredentials)
+      })
+      .catch(notifyError)
   }, [])
 
   const handleSave = async () => {

@@ -44,6 +44,7 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
+import { notifyError } from '@/app/notifications/error'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
@@ -137,64 +138,82 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     setIsDetailLoading(true)
-    const res = await fetchCustomCollection(collection.name)
-    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
-      if (res.credentials.api_key_value)
-        res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+    try {
+      const res = await fetchCustomCollection(collection.name)
+      if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+        if (res.credentials.api_key_value)
+          res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+      }
+      setCustomCollection({
+        ...res,
+        labels: collection.labels,
+        provider: collection.name,
+      })
+    } finally {
+      setIsDetailLoading(false)
     }
-    setCustomCollection({
-      ...res,
-      labels: collection.labels,
-      provider: collection.name,
-    })
-    setIsDetailLoading(false)
   }, [canManageTools, collection.labels, collection.name])
 
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await updateCustomCollection(data)
-    onRefreshData()
-    await getCustomProvider()
-    // Use fresh data from form submission to avoid race condition with collection.labels
-    setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
-    setIsShowEditCustomCollectionModal(false)
+      await updateCustomCollection(data)
+      onRefreshData()
+      await getCustomProvider()
+      // Use fresh data from form submission to avoid race condition with collection.labels
+      setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
+      setIsShowEditCustomCollectionModal(false)
+    } catch (error) {
+      notifyError(error)
+    }
   }
   const doRemoveCustomToolCollection = async () => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await removeCustomCollection(collection?.name as string)
-    onRefreshData()
-    setIsShowEditCustomCollectionModal(false)
+      await removeCustomCollection(collection?.name as string)
+      onRefreshData()
+      setIsShowEditCustomCollectionModal(false)
+    } catch (error) {
+      notifyError(error)
+    }
   }
   // workflow provider
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
-    const res = await fetchWorkflowToolDetail(collection.id)
-    const payload = {
-      ...res,
-      parameters:
-        res.tool?.parameters.map((item) => {
-          return {
-            name: item.name,
-            description: item.llm_description,
-            form: item.form,
-            required: item.required,
-            type: item.type,
-          }
-        }) || [],
-      labels: res.tool?.labels || [],
+    try {
+      const res = await fetchWorkflowToolDetail(collection.id)
+      const payload = {
+        ...res,
+        parameters:
+          res.tool?.parameters.map((item) => {
+            return {
+              name: item.name,
+              description: item.llm_description,
+              form: item.form,
+              required: item.required,
+              type: item.type,
+            }
+          }) || [],
+        labels: res.tool?.labels || [],
+      }
+      setCustomCollection(payload)
+    } finally {
+      setIsDetailLoading(false)
     }
-    setCustomCollection(payload)
-    setIsDetailLoading(false)
   }, [collection.id])
   const removeWorkflowToolProvider = async () => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await deleteWorkflowTool(collection.id)
-    onRefreshData()
-    setWorkflowToolDrawerOpen(false)
+      await deleteWorkflowTool(collection.id)
+      onRefreshData()
+      setWorkflowToolDrawerOpen(false)
+    } catch (error) {
+      notifyError(error)
+    }
   }
   const updateWorkflowToolProvider = async (
     data: WorkflowToolProviderRequest &
@@ -203,13 +222,17 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         workflow_tool_id: string
       }>,
   ) => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await saveWorkflowToolProvider(data)
-    invalidateAllWorkflowTools()
-    onRefreshData()
-    getWorkflowToolProvider()
-    setWorkflowToolDrawerOpen(false)
+      await saveWorkflowToolProvider(data)
+      invalidateAllWorkflowTools()
+      onRefreshData()
+      await getWorkflowToolProvider()
+      setWorkflowToolDrawerOpen(false)
+    } catch (error) {
+      notifyError(error)
+    }
   }
   const onClickCustomToolDelete = () => {
     setDeleteAction('customTool')
@@ -243,13 +266,17 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
-    } catch {}
+    } catch (error) {
+      notifyError(error)
+    }
     setIsDetailLoading(false)
   }, [collection.name, collection.type])
 
   useEffect(() => {
-    if (collection.type === CollectionType.custom && canManageTools) getCustomProvider()
-    if (collection.type === CollectionType.workflow) getWorkflowToolProvider()
+    if (collection.type === CollectionType.custom && canManageTools)
+      void getCustomProvider().catch(notifyError)
+    if (collection.type === CollectionType.workflow)
+      void getWorkflowToolProvider().catch(notifyError)
     getProviderToolList()
   }, [
     canManageTools,
@@ -507,18 +534,26 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     collection={collection}
                     onCancel={() => setShowSettingAuth(false)}
                     onSaved={async (value) => {
-                      if (!canSaveCredentialSettings) return
+                      try {
+                        if (!canSaveCredentialSettings) return
 
-                      await updateBuiltInToolCredential(collection.name, value)
-                      await onRefreshData()
-                      setShowSettingAuth(false)
+                        await updateBuiltInToolCredential(collection.name, value)
+                        await onRefreshData()
+                        setShowSettingAuth(false)
+                      } catch (error) {
+                        notifyError(error)
+                      }
                     }}
                     onRemove={async () => {
-                      if (!canManageCredential) return
+                      try {
+                        if (!canManageCredential) return
 
-                      await removeBuiltInToolCredential(collection.name)
-                      await onRefreshData()
-                      setShowSettingAuth(false)
+                        await removeBuiltInToolCredential(collection.name)
+                        await onRefreshData()
+                        setShowSettingAuth(false)
+                      } catch (error) {
+                        notifyError(error)
+                      }
                     }}
                     readonly={!canSaveCredentialSettings}
                   />

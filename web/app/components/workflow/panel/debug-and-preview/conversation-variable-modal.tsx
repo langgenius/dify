@@ -1,4 +1,5 @@
 'use client'
+
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
@@ -14,6 +15,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useStore } from '@/app/components/workflow/store'
+import { notifyError } from '@/app/notifications/error'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 
@@ -34,23 +36,27 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
   >({})
 
   const getChatVarLatestValues = useCallback(async () => {
-    if (conversationID && varList.length > 0) {
-      const res = await fetchCurrentValueOfConversationVariable({
-        url: `/apps/${appID}/conversation-variables`,
-        params: { conversation_id: conversationID },
-      })
-      if (res.data.length > 0) {
-        const valueMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.value
-          return acc
-        }, {})
-        setLatestValueMap(valueMap)
-        const timestampMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.updated_at
-          return acc
-        }, {})
-        setLatestValueTimestampMap(timestampMap)
+    try {
+      if (conversationID && varList.length > 0) {
+        const res = await fetchCurrentValueOfConversationVariable({
+          url: `/apps/${appID}/conversation-variables`,
+          params: { conversation_id: conversationID },
+        })
+        if (res.data.length > 0) {
+          const valueMap = res.data.reduce((acc: any, cur) => {
+            acc[cur.id] = cur.value
+            return acc
+          }, {})
+          setLatestValueMap(valueMap)
+          const timestampMap = res.data.reduce((acc: any, cur) => {
+            acc[cur.id] = cur.updated_at
+            return acc
+          }, {})
+          setLatestValueTimestampMap(timestampMap)
+        }
       }
+    } catch (error) {
+      notifyError(error)
     }
   }, [appID, conversationID, varList.length])
 

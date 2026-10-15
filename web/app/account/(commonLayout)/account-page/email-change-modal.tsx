@@ -176,9 +176,14 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
         new_email: mail.trim(),
         token: lastToken,
       })
-      await logout()
     } catch (error) {
       toast.error(`Error changing email: ${getErrorMessage(error) ?? ''}`)
+      return
+    }
+    try {
+      await logout()
+    } catch {
+      // Logout owns its mutation feedback and cancellation policy.
     }
   }
 

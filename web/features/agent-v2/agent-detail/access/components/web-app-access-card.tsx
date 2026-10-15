@@ -198,7 +198,6 @@ export function WebAppAccessCard({
       toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       return true
     } catch {
-      toast.error(tCommon(($) => $['actionMsg.modifiedUnsuccessfully']))
       return false
     }
   }

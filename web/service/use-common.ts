@@ -154,7 +154,7 @@ export const useLogout = ({ redirectTo = '/signin' }: { redirectTo?: string } = 
       onMutate: () => {
         // A cancelled native beforeunload prompt would otherwise leave this document
         // alive after the server has logged out. Obtain consent before ending the session.
-        if (!confirmPageLeave()) throw new Error('Logout cancelled')
+        if (!confirmPageLeave()) throw new DOMException('Logout cancelled', 'AbortError')
       },
       onSuccess: () => {
         // Registration markers and Analytics identity can survive a page reload,
@@ -260,7 +260,7 @@ export const useModelParameterRules = (provider?: string, model?: string, enable
     queryFn: () =>
       get<{ data: ModelParameterRule[] }>(
         `/workspaces/current/model-providers/${provider}/models/parameter-rules`,
-        { params: { model }, silent: true },
+        { params: { model } },
       ),
     enabled: !!provider && !!model && (enabled ?? true),
   })

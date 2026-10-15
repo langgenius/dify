@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { safe } from '@orpc/client'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -124,7 +125,7 @@ const MCPList = ({
       ...form,
       provider_id: editingProvider.id,
     })) as MutationResult
-    if (res.result !== 'success') return
+    if ((res as MutationResult).result !== 'success') return
 
     await refetch() // update list
     setCurrentProviderID(editingProvider.id)
@@ -141,8 +142,10 @@ const MCPList = ({
   const handleDeleteConfirm = async () => {
     if (!canManageMCP || !deletingProvider) return
 
-    const res = (await deleteMCP(deletingProvider.id)) as MutationResult
-    if (res.result !== 'success') return
+    const [requestError, res] = await safe(deleteMCP(deletingProvider.id))
+    if (requestError) return
+
+    if ((res as MutationResult).result !== 'success') return
 
     await refetch()
     setCurrentProviderID(undefined)

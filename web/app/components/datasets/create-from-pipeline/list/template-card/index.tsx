@@ -9,12 +9,14 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { safe } from '@orpc/client'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
@@ -62,23 +64,17 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
     }
-    await createDataset(request, {
-      onSuccess: async (newDataset) => {
-        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
-        invalidDatasetList()
-        if (newDataset.pipeline_id)
-          await handleCheckPluginDependencies(newDataset.pipeline_id, true)
-        trackEvent('create_datasets_with_pipeline', {
-          template_name: pipeline.name,
-          template_id: pipeline.id,
-          template_type: type,
-        })
-        push(`/datasets/${newDataset.dataset_id}/pipeline`)
-      },
-      onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
-      },
+    const [error, newDataset] = await safe(createDataset(request))
+    if (error) return
+    toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+    invalidDatasetList()
+    if (newDataset.pipeline_id) await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+    trackEvent('create_datasets_with_pipeline', {
+      template_name: pipeline.name,
+      template_id: pipeline.id,
+      template_type: type,
     })
+    push(`/datasets/${newDataset.dataset_id}/pipeline`)
   }, [
     getPipelineTemplateInfo,
     createDataset,
@@ -103,16 +99,15 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
 
   const handleExportDSL = useCallback(async () => {
     if (isExporting) return
-    await exportPipelineDSL(pipeline.id, {
-      onSuccess: (res) => {
-        const blob = new Blob([res.data], { type: 'application/yaml' })
-        downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
-        toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
-      },
-      onError: () => {
-        toast.error(t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }))
-      },
-    })
+    const [error, res] = await safe(exportPipelineDSL(pipeline.id))
+    if (error) return
+    try {
+      const blob = new Blob([res.data], { type: 'application/yaml' })
+      downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
+      toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
+    } catch (error) {
+      notifyError(error)
+    }
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
 
   const handleDelete = useCallback(() => {
@@ -127,12 +122,10 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
 
   const onConfirmDelete = useCallback(async () => {
-    await deletePipeline(pipeline.id, {
-      onSuccess: () => {
-        invalidCustomizedTemplateList()
-        setShowConfirmDelete(false)
-      },
-    })
+    const [error] = await safe(deletePipeline(pipeline.id))
+    if (error) return
+    invalidCustomizedTemplateList()
+    setShowConfirmDelete(false)
   }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
 
   return (

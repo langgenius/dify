@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import {
   fetchTracingConfig as doFetchTracingConfig,
   fetchTracingStatus,
@@ -46,13 +47,17 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
   const [tracingStatus, setTracingStatus] = useState<TracingStatus | null>(null)
   const enabled = tracingStatus?.enabled || false
   const handleTracingStatusChange = async (tracingStatus: TracingStatus, noToast?: boolean) => {
-    await updateTracingStatus({ appId, body: tracingStatus })
-    setTracingStatus(tracingStatus)
-    if (!noToast) {
-      toast(
-        t(($) => $['api.success'], { ns: 'common' }),
-        { type: 'success' },
-      )
+    try {
+      await updateTracingStatus({ appId, body: tracingStatus })
+      setTracingStatus(tracingStatus)
+      if (!noToast) {
+        toast(
+          t(($) => $['api.success'], { ns: 'common' }),
+          { type: 'success' },
+        )
+      }
+    } catch (error) {
+      notifyError(error)
     }
   }
 
@@ -213,10 +218,14 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
 
   useEffect(() => {
     ;(async () => {
-      const tracingStatus = await fetchTracingStatus({ appId })
-      setTracingStatus(tracingStatus)
-      await fetchTracingConfig()
-      setLoaded()
+      try {
+        const tracingStatus = await fetchTracingStatus({ appId })
+        setTracingStatus(tracingStatus)
+        await fetchTracingConfig()
+        setLoaded()
+      } catch (error) {
+        notifyError(error)
+      }
     })()
   }, [])
 

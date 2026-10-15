@@ -20,6 +20,7 @@ import ConfigParamModal from '@/app/components/base/features/new-feature-panel/a
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -93,7 +94,7 @@ const Annotation: FC<Props> = (props) => {
   }
 
   useEffect(() => {
-    if (isChatApp) fetchAnnotationConfig()
+    if (isChatApp) void fetchAnnotationConfig().catch(notifyError)
   }, [])
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
@@ -105,17 +106,21 @@ const Annotation: FC<Props> = (props) => {
   }
 
   const fetchList = async (page = 1) => {
-    setIsLoading(true)
     try {
-      const { data, total }: any = await fetchAnnotationList(appDetail.id, {
-        page,
-        limit,
-        keyword: debouncedQueryParams.keyword || '',
-      })
-      setList(data as AnnotationItem[])
-      setTotal(total)
-    } finally {
-      setIsLoading(false)
+      setIsLoading(true)
+      try {
+        const { data, total }: any = await fetchAnnotationList(appDetail.id, {
+          page,
+          limit,
+          keyword: debouncedQueryParams.keyword || '',
+        })
+        setList(data as AnnotationItem[])
+        setTotal(total)
+      } finally {
+        setIsLoading(false)
+      }
+    } catch (error) {
+      notifyError(error)
     }
   }
 
@@ -131,10 +136,14 @@ const Annotation: FC<Props> = (props) => {
   }
 
   const handleRemove = async (id: string) => {
-    await delAnnotation(appDetail.id, id)
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-    fetchList()
-    setControlUpdateList(Date.now())
+    try {
+      await delAnnotation(appDetail.id, id)
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      fetchList()
+      setControlUpdateList(Date.now())
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   const handleBatchDelete = async () => {
@@ -199,23 +208,27 @@ const Annotation: FC<Props> = (props) => {
                     disabled={!annotationConfig?.enabled && isAnnotationQuotaUnavailable}
                     size="md"
                     onCheckedChange={async (value) => {
-                      if (value) {
-                        if (isAnnotationQuotaUnavailable) return
-                        if (isAnnotationFull) {
-                          setIsShowAnnotationFullModal(true)
-                          setControlRefreshSwitch(Date.now())
-                          return
+                      try {
+                        if (value) {
+                          if (isAnnotationQuotaUnavailable) return
+                          if (isAnnotationFull) {
+                            setIsShowAnnotationFullModal(true)
+                            setControlRefreshSwitch(Date.now())
+                            return
+                          }
+                          setIsShowEdit(true)
+                        } else {
+                          const { job_id: jobId }: any = await updateAnnotationStatus(
+                            appDetail.id,
+                            AnnotationEnableStatus.disable,
+                            annotationConfig?.embedding_model,
+                            annotationConfig?.score_threshold,
+                          )
+                          await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
+                          await fetchAnnotationConfig()
                         }
-                        setIsShowEdit(true)
-                      } else {
-                        const { job_id: jobId }: any = await updateAnnotationStatus(
-                          appDetail.id,
-                          AnnotationEnableStatus.disable,
-                          annotationConfig?.embedding_model,
-                          annotationConfig?.score_threshold,
-                        )
-                        await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
-                        await fetchAnnotationConfig()
+                      } catch (error) {
+                        notifyError(error)
                       }
                     }}
                   ></Switch>
@@ -314,27 +327,31 @@ const Annotation: FC<Props> = (props) => {
               setIsShowEdit(false)
             }}
             onSave={async (embeddingModel, score) => {
-              if (
-                embeddingModel.embedding_model_name !==
-                  annotationConfig?.embedding_model?.embedding_model_name ||
-                embeddingModel.embedding_provider_name !==
-                  annotationConfig?.embedding_model?.embedding_provider_name
-              ) {
-                const { job_id: jobId }: any = await updateAnnotationStatus(
-                  appDetail.id,
-                  AnnotationEnableStatus.enable,
-                  embeddingModel,
-                  score,
-                )
-                await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
-              }
-              const annotationId = await fetchAnnotationConfig()
-              if (score !== annotationConfig?.score_threshold)
-                await updateAnnotationScore(appDetail.id, annotationId, score)
+              try {
+                if (
+                  embeddingModel.embedding_model_name !==
+                    annotationConfig?.embedding_model?.embedding_model_name ||
+                  embeddingModel.embedding_provider_name !==
+                    annotationConfig?.embedding_model?.embedding_provider_name
+                ) {
+                  const { job_id: jobId }: any = await updateAnnotationStatus(
+                    appDetail.id,
+                    AnnotationEnableStatus.enable,
+                    embeddingModel,
+                    score,
+                  )
+                  await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
+                }
+                const annotationId = await fetchAnnotationConfig()
+                if (score !== annotationConfig?.score_threshold)
+                  await updateAnnotationScore(appDetail.id, annotationId, score)
 
-              await fetchAnnotationConfig()
-              toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-              setIsShowEdit(false)
+                await fetchAnnotationConfig()
+                toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+                setIsShowEdit(false)
+              } catch (error) {
+                notifyError(error)
+              }
             }}
             annotationConfig={annotationConfig!}
           />

@@ -11,7 +11,9 @@ type UseSnippetDSLOptions = {
 
 export const useSnippetDSL = ({ snippetId, snippetName }: UseSnippetDSLOptions) => {
   const { t } = useTranslation(['snippet'])
-  const exportSnippetMutation = useExportSnippetMutation()
+  const exportSnippetMutation = useExportSnippetMutation({
+    onError: () => toast.error(t(($) => $.exportFailed, { ns: 'snippet' })),
+  })
 
   const handleExportDSL = useCallback(
     async (include = false, workflowId?: string) => {
@@ -24,7 +26,7 @@ export const useSnippetDSL = ({ snippetId, snippetName }: UseSnippetDSLOptions) 
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${snippetName}.yml` })
       } catch {
-        toast.error(t(($) => $.exportFailed))
+        // The mutation reports the failure; retain the current form and input.
       }
     },
     [exportSnippetMutation, snippetId, snippetName, t],

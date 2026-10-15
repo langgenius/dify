@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type {
   AliyunConfig,
@@ -29,6 +30,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -184,16 +186,20 @@ const ProviderConfigModal: FC<Props> = ({
   ] = useBoolean(false)
 
   const handleRemove = useCallback(async () => {
-    await removeTracingConfig({
-      appId,
-      provider: type,
-    })
-    toast(
-      t(($) => $['api.remove'], { ns: 'common' }),
-      { type: 'success' },
-    )
-    onRemoved()
-    hideRemoveConfirm()
+    try {
+      await removeTracingConfig({
+        appId,
+        provider: type,
+      })
+      toast(
+        t(($) => $['api.remove'], { ns: 'common' }),
+        { type: 'success' },
+      )
+      onRemoved()
+      hideRemoveConfirm()
+    } catch (error) {
+      notifyError(error)
+    }
   }, [hideRemoveConfirm, appId, type, t, onRemoved])
 
   const handleConfigChange = useCallback(

@@ -86,11 +86,14 @@ export default function OAuthAuthorize() {
       input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
-      context: { silent: true },
     }),
   )
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(
-    consoleQuery.oauth.provider.authorize.post.mutationOptions(),
+    consoleQuery.oauth.provider.authorize.post.mutationOptions({
+      onError: (error) => {
+        toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${error.message}`)
+      },
+    }),
   )
   const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
   const signInUrl = `/signin?redirect_url=${encodeURIComponent(returnUrl)}`
@@ -124,7 +127,7 @@ export default function OAuthAuthorize() {
       if (isLoggedIn) await logout()
       else router.push(signInUrl)
     } catch {
-      // The request layer reports logout failures; keep the current session on this page.
+      // The mutation reports logout failures; keep the current session on this page.
     }
   }
 
@@ -133,9 +136,8 @@ export default function OAuthAuthorize() {
     try {
       const { code } = await authorize({ body: { client_id: clientId } })
       globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
+    } catch {
+      // The authorization mutation reports failure and keeps the consent form open.
     }
   }
 

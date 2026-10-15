@@ -6,6 +6,7 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { safe } from '@orpc/client'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -70,12 +71,11 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
       },
       description,
     }
-    await updatePipeline(request, {
-      onSuccess: () => {
-        invalidCustomizedTemplateList()
-        onClose()
-      },
-    })
+    const [error] = await safe(updatePipeline(request))
+    if (error) return
+
+    invalidCustomizedTemplateList()
+    onClose()
   }, [
     name,
     appIcon,

@@ -12,6 +12,7 @@ import ConfigParamModal from '@/app/components/base/features/new-feature-panel/a
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { notifyError } from '@/app/notifications/error'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -66,7 +67,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
   const handleSwitch = useCallback(
     (enabled: boolean) => {
       if (enabled) setIsShowAnnotationConfigInit(true)
-      else handleDisableAnnotation(annotationReply?.embedding_model as any)
+      else void handleDisableAnnotation(annotationReply?.embedding_model as any).catch(notifyError)
     },
     [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit],
   )

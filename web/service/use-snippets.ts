@@ -271,8 +271,9 @@ export const useIncrementSnippetUseCountMutation = () => {
   })
 }
 
-export const useExportSnippetMutation = () => {
+export const useExportSnippetMutation = (options: { onError?: (error: Error) => void } = {}) => {
   return useMutation<string, Error, { snippetId: string; include?: boolean; workflowId?: string }>({
+    ...options,
     mutationFn: ({ snippetId, include = false, workflowId }) => {
       return customizedSnippetsClient.bySnippetId.export.get({
         params: { snippet_id: snippetId },

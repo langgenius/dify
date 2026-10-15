@@ -13,7 +13,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ImageIconInput } from '@/app/components/base/icon-picker/image-input'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
-import { toast } from '@/app/notifications'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -43,8 +42,8 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
       try {
         await updateProfile({ body: { avatar: uploadedFileId } })
         setIsShowAvatarPicker(false)
-      } catch (e) {
-        toast.error((e as Error).message)
+      } catch {
+        // The mutation reports the failure; retain the current form and input.
       }
     },
     [updateProfile],
@@ -54,8 +53,8 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
     try {
       await updateProfile({ body: { avatar: '' } })
       setIsShowDeleteConfirm(false)
-    } catch (e) {
-      toast.error((e as Error).message)
+    } catch {
+      // The mutation reports the failure; retain the current form and input.
     }
   }, [updateProfile])
 

@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
 import { memo } from 'react'
-import { toast } from '@/app/components/app/configuration/toast'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
@@ -122,9 +121,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
       })
     }
 
-    handleSend(`apps/${appId}/completion-messages`, data, {
-      onNotifyError: (message) => toast.error(message),
-    })
+    handleSend(`apps/${appId}/completion-messages`, data)
   }
 
   const { eventEmitter } = useEventEmitterContextContext()

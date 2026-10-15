@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
 import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
@@ -18,6 +19,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '#i18n'
+import { notifyError } from '@/app/notifications/error'
 import { LanguagesSupported } from '@/i18n/language'
 import { fetchExportAnnotationList } from '@/service/annotation'
 import { consoleQuery } from '@/service/console'
@@ -134,8 +136,12 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   const [list, setList] = useState<AnnotationItemBasic[]>([])
 
   const fetchList = React.useCallback(async () => {
-    const { data }: any = await fetchExportAnnotationList(appId)
-    setList(data as AnnotationItemBasic[])
+    try {
+      const { data }: any = await fetchExportAnnotationList(appId)
+      setList(data as AnnotationItemBasic[])
+    } catch (error) {
+      notifyError(error)
+    }
   }, [appId])
 
   useEffect(() => {

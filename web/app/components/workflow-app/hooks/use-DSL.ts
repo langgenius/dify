@@ -26,6 +26,11 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
+    onError: (error) =>
+      toast.error(
+        t(($) => $.exportAppFailed, { ns: 'app' }),
+        { description: getErrorMessage(error) },
+      ),
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
       if (!appDetail) return false
 
@@ -59,10 +64,6 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       try {
         return await exportWorkflow({ include, workflowId })
       } catch (error) {
-        toast.error(
-          t(($) => $.exportAppFailed, { ns: 'app' }),
-          { description: getErrorMessage(error) },
-        )
         return false
       }
     },
@@ -72,10 +73,9 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const exportCheck = useCallback(async () => {
     if (!appDetail) return
     try {
-      const { items } = await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get(
-        { params: { app_id: appDetail.id } },
-        { context: { silent: true } },
-      )
+      const { items } = await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get({
+        params: { app_id: appDetail.id },
+      })
       const list = items.filter((env) => env.value_type === 'secret')
       if (list.length === 0) {
         await handleExportDSL()

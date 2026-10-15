@@ -2,6 +2,7 @@
 
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { safe } from '@orpc/client'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -54,7 +55,11 @@ const Loaded: React.FC<LoadedProps> = ({
   const hasInstalled = !!installedVersion
 
   const [isInstalling, setIsInstalling] = React.useState(false)
-  const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
+  const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub({
+    onError: (error) => {
+      onFailed(error.message)
+    },
+  })
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const { check } = checkTaskStatus()
 
@@ -98,12 +103,16 @@ const Loaded: React.FC<LoadedProps> = ({
           taskId = task_id
           isInstalled = all_installed
         } else {
-          const response = await installPackageFromGitHub({
-            repoUrl: `${owner}/${repo}`,
-            selectedVersion,
-            selectedPackage,
-            uniqueIdentifier,
-          })
+          const [requestError, response] = await safe(
+            installPackageFromGitHub({
+              repoUrl: `${owner}/${repo}`,
+              selectedVersion,
+              selectedPackage,
+              uniqueIdentifier,
+            }),
+          )
+          if (requestError) return
+
           const { all_installed, task_id } = response
           handleInstallTaskStart(response)
 

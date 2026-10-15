@@ -9,6 +9,7 @@ import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflo
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { notifyError } from '@/app/notifications/error'
 import { ssePost } from '@/service/base'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
@@ -155,7 +156,7 @@ export const useSnippetRun = (snippetId: string) => {
             onWorkflowFinished?.(params)
           },
           onError: (params) => {
-            handleWorkflowFailed()
+            handleWorkflowFailed(params)
             invalidateRunHistory(runHistoryUrl)
 
             onError?.(params)
@@ -259,7 +260,10 @@ export const useSnippetRun = (snippetId: string) => {
     (taskId: string) => {
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
 
-      if (taskId) stopWorkflowRun(`/snippets/${snippetId}/workflow-runs/tasks/${taskId}/stop`)
+      if (taskId)
+        stopWorkflowRun(`/snippets/${snippetId}/workflow-runs/tasks/${taskId}/stop`).catch(
+          notifyError,
+        )
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
 

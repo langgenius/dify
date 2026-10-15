@@ -1,5 +1,6 @@
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import type { FullDocumentDetail } from '@/models/datasets'
+import { safe } from '@orpc/client'
 import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -57,15 +58,19 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   )
   const hasData = list.length > 0
   const handleSave = async () => {
-    await mutateAsync({
-      dataset_id: datasetId,
-      metadata_list: [
-        {
-          document_id: documentId,
-          metadata_list: tempList,
-        },
-      ],
-    })
+    const [requestError] = await safe(
+      mutateAsync({
+        dataset_id: datasetId,
+        metadata_list: [
+          {
+            document_id: documentId,
+            metadata_list: tempList,
+          },
+        ],
+      }),
+    )
+    if (requestError) return
+
     setIsEdit(false)
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
   }

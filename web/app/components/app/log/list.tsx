@@ -51,6 +51,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -637,11 +638,16 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
-      body: { message_id: mid, rating, content: content ?? undefined },
-    })
-    conversationDetailMutate()
+    try {
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appDetail.id}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
+      conversationDetailMutate()
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
@@ -691,10 +697,15 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
-      body: { message_id: mid, rating, content: content ?? undefined },
-    })
+    try {
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appDetail.id}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {

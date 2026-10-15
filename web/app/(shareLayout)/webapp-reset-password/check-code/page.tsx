@@ -1,4 +1,5 @@
 'use client'
+
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
@@ -7,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
@@ -56,7 +58,7 @@ export default function CheckCode() {
         router.replace(`/webapp-reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      notifyError(error)
     }
   }
 

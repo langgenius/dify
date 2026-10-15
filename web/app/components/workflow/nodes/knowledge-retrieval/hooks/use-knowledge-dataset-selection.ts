@@ -3,6 +3,7 @@ import type { KnowledgeRetrievalNodeType } from '../types'
 import type { DataSet } from '@/models/datasets'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { notifyError } from '@/app/notifications/error'
 import { fetchDatasets } from '@/service/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { getMultipleRetrievalConfig, getSelectedDatasetsMode } from '../utils'
@@ -35,24 +36,28 @@ const useKnowledgeDatasetSelection = ({
 
   useEffect(() => {
     void (async () => {
-      const currentInputs = inputRef.current
-      const datasetIds = currentInputs.dataset_ids
-      if (datasetIds.length > 0) {
-        const { data: dataSetsWithDetail } = await fetchDatasets({
-          url: '/datasets',
-          params: {
-            page: 1,
-            ids: datasetIds,
-          },
-        })
-        setSelectedDatasets(dataSetsWithDetail)
-      }
+      try {
+        const currentInputs = inputRef.current
+        const datasetIds = currentInputs.dataset_ids
+        if (datasetIds.length > 0) {
+          const { data: dataSetsWithDetail } = await fetchDatasets({
+            url: '/datasets',
+            params: {
+              page: 1,
+              ids: datasetIds,
+            },
+          })
+          setSelectedDatasets(dataSetsWithDetail)
+        }
 
-      const nextInputs = produce(currentInputs, (draft) => {
-        draft.dataset_ids = datasetIds
-      })
-      setInputs(nextInputs)
-      setSelectedDatasetsLoaded(true)
+        const nextInputs = produce(currentInputs, (draft) => {
+          draft.dataset_ids = datasetIds
+        })
+        setInputs(nextInputs)
+        setSelectedDatasetsLoaded(true)
+      } catch (error) {
+        notifyError(error)
+      }
     })()
   }, [inputRef, setInputs])
 

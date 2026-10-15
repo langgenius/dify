@@ -3,6 +3,7 @@ import type { CodeNodeType, OutputVar } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { notifyError } from '@/app/notifications/error'
 import { fetchNodeDefault, fetchPipelineNodeDefault } from '@/service/workflow'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
@@ -24,16 +25,20 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   useEffect(() => {
     if (appId) {
       ;(async () => {
-        const { config: javaScriptConfig } = (await fetchNodeDefault(appId, BlockEnum.Code, {
-          code_language: CodeLanguage.javascript,
-        })) as any
-        const { config: pythonConfig } = (await fetchNodeDefault(appId, BlockEnum.Code, {
-          code_language: CodeLanguage.python3,
-        })) as any
-        setAllLanguageDefault({
-          [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
-          [CodeLanguage.python3]: pythonConfig as CodeNodeType,
-        } as any)
+        try {
+          const { config: javaScriptConfig } = (await fetchNodeDefault(appId, BlockEnum.Code, {
+            code_language: CodeLanguage.javascript,
+          })) as any
+          const { config: pythonConfig } = (await fetchNodeDefault(appId, BlockEnum.Code, {
+            code_language: CodeLanguage.python3,
+          })) as any
+          setAllLanguageDefault({
+            [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
+            [CodeLanguage.python3]: pythonConfig as CodeNodeType,
+          } as any)
+        } catch (error) {
+          notifyError(error)
+        }
       })()
     }
   }, [appId])
@@ -41,20 +46,24 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   useEffect(() => {
     if (pipelineId) {
       ;(async () => {
-        const { config: javaScriptConfig } = (await fetchPipelineNodeDefault(
-          pipelineId,
-          BlockEnum.Code,
-          { code_language: CodeLanguage.javascript },
-        )) as any
-        const { config: pythonConfig } = (await fetchPipelineNodeDefault(
-          pipelineId,
-          BlockEnum.Code,
-          { code_language: CodeLanguage.python3 },
-        )) as any
-        setAllLanguageDefault({
-          [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
-          [CodeLanguage.python3]: pythonConfig as CodeNodeType,
-        } as any)
+        try {
+          const { config: javaScriptConfig } = (await fetchPipelineNodeDefault(
+            pipelineId,
+            BlockEnum.Code,
+            { code_language: CodeLanguage.javascript },
+          )) as any
+          const { config: pythonConfig } = (await fetchPipelineNodeDefault(
+            pipelineId,
+            BlockEnum.Code,
+            { code_language: CodeLanguage.python3 },
+          )) as any
+          setAllLanguageDefault({
+            [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
+            [CodeLanguage.python3]: pythonConfig as CodeNodeType,
+          } as any)
+        } catch (error) {
+          notifyError(error)
+        }
       })()
     }
   }, [pipelineId])

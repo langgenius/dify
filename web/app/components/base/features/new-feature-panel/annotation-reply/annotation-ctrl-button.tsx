@@ -8,6 +8,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useModalContext } from '@/context/modal-context'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { addAnnotation } from '@/service/annotation'
@@ -54,13 +55,17 @@ const AnnotationCtrlButton: FC<Props> = ({
       setShowAnnotationFullModal()
       return
     }
-    const res = await addAnnotation(appId, {
-      message_id: messageId,
-      question: query,
-      answer,
-    })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
-    onAdded(res.id, res.account?.name ?? '')
+    try {
+      const res = await addAnnotation(appId, {
+        message_id: messageId,
+        question: query,
+        answer,
+      })
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
+      onAdded(res.id, res.account?.name ?? '')
+    } catch (error) {
+      notifyError(error)
+    }
   }
   return (
     <>

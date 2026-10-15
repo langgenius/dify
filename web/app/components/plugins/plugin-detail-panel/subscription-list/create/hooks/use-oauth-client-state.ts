@@ -16,7 +16,6 @@ import {
   useInitiateTriggerOAuth,
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
-import { getErrorMessage } from '@/utils/error-message'
 
 export const AuthorizationStatusEnum = {
   Pending: 'pending',
@@ -48,6 +47,7 @@ type UseOAuthClientStateReturn = {
   clientType: ClientTypeEnum
   setClientType: (type: ClientTypeEnum) => void
   authorizationStatus: AuthorizationStatusEnum | undefined
+  verificationError: unknown
 
   // Refs
   clientFormRef: React.RefObject<FormRefObject | null>
@@ -83,7 +83,11 @@ export const useOAuthClientState = ({
 
   // Mutations
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
-  const { mutate: verifyBuilder } = useVerifyAndUpdateTriggerSubscriptionBuilder()
+  const { mutate: verifyBuilder, error: verificationError } =
+    useVerifyAndUpdateTriggerSubscriptionBuilder({
+      // Verification can fail while the external authorization is still pending.
+      onError: () => setAuthorizationStatus(AuthorizationStatusEnum.Pending),
+    })
   const { mutate: configureOAuth } = useConfigureTriggerOAuth()
   const { mutate: deleteOAuth } = useDeleteTriggerOAuth()
 
@@ -125,7 +129,6 @@ export const useOAuthClientState = ({
       },
       onError: () => {
         setAuthorizationStatus(AuthorizationStatusEnum.Failed)
-        toast.error(t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }))
       },
     })
   }, [providerName, initiateOAuth, onOpenChange, showOAuthCreateModal, t])
@@ -136,12 +139,6 @@ export const useOAuthClientState = ({
       onSuccess: () => {
         onOpenChange(false)
         toast.success(t(($) => $['modal.oauth.remove.success'], { ns: 'pluginTrigger' }))
-      },
-      onError: (error: unknown) => {
-        toast.error(
-          getErrorMessage(error) ??
-            t(($) => $['modal.oauth.remove.failed'], { ns: 'pluginTrigger' }),
-        )
       },
     })
   }, [providerName, deleteOAuth, onOpenChange, t])
@@ -216,9 +213,6 @@ export const useOAuthClientState = ({
               clearInterval(pollInterval)
             }
           },
-          onError: () => {
-            // Continue polling on error - auth might still be in progress
-          },
         },
       )
     }, POLL_INTERVAL_MS)
@@ -230,6 +224,7 @@ export const useOAuthClientState = ({
     clientType,
     setClientType,
     authorizationStatus,
+    verificationError,
     clientFormRef,
     oauthClientSchema,
     confirmButtonText,

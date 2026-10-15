@@ -5,6 +5,7 @@ import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { notifyError } from '@/app/notifications/error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
@@ -59,9 +60,13 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   }, [searchParams, pathname])
 
   const backToHome = useCallback(async () => {
-    await webAppLogout(resolveWebAppAddress())
-    const url = getSigninUrl()
-    router.replace(url)
+    try {
+      await webAppLogout(resolveWebAppAddress())
+      const url = getSigninUrl()
+      router.replace(url)
+    } catch (error) {
+      notifyError(error)
+    }
   }, [getSigninUrl, router])
 
   if (appInfoError) {

@@ -19,6 +19,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const workflowStore = useWorkflowStore()
   const { mutateAsync: exportPipeline, isPending: isExporting } = useMutation({
+    onError: () => toast.error(t(($) => $.exportFailed, { ns: 'app' })),
     mutationFn: async (include: boolean) => {
       const { pipelineId, knowledgeName } = workflowStore.getState()
       if (!pipelineId) return false
@@ -34,10 +35,10 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         return false
       }
 
-      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get(
-        { params: { pipeline_id: pipelineId }, query: { include_secret: String(include) } },
-        { context: { silent: true } },
-      )
+      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get({
+        params: { pipeline_id: pipelineId },
+        query: { include_secret: String(include) },
+      })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
       return true
@@ -50,7 +51,6 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       try {
         return await exportPipeline(include)
       } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
         return false
       }
     },

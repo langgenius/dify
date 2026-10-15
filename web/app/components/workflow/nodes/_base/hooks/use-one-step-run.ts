@@ -8,6 +8,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import { safe } from '@orpc/client'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -48,6 +49,7 @@ import {
 } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
 import {
@@ -319,7 +321,12 @@ const useOneStepRun = <T>({
       }
 
       // run fail may also update the inspect vars when the node set the error default output.
-      const vars = await fetchNodeInspectVars(flowType, flowId!, id)
+      const [error, vars] = await safe(fetchNodeInspectVars(flowType, flowId!, id))
+      if (error) {
+        updateNodeInspectRunningState(id, false)
+        notifyError(error)
+        return
+      }
       const { getNodes } = store.getState()
       const nodes = getNodes()
       appendNodeInspectVars(id, vars, nodes)
@@ -868,8 +875,9 @@ const useOneStepRun = <T>({
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
-            onError: () => {
+            onError: (message) => {
               if (isPausedRef.current) return
+              notifyError(new Error(message))
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -968,8 +976,9 @@ const useOneStepRun = <T>({
               _loopResult = newLoopRunResult
               setLoopRunResult(newLoopRunResult)
             },
-            onError: () => {
+            onError: (message) => {
               if (isPausedRef.current) return
+              notifyError(new Error(message))
               handleNodeDataUpdate({
                 id,
                 data: {

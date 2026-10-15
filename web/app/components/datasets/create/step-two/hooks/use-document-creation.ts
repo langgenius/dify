@@ -219,23 +219,12 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     ) => {
       if (datasetId && !isSetting && !canCreateDocument) return
 
-      if (!datasetId) {
-        await createFirstDocumentMutation.mutateAsync(params, {
-          onSuccess(data) {
-            updateIndexingTypeCache?.(indexType)
-            updateResultCache?.(data)
-            updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
-          },
-        })
-      } else {
-        await createDocumentMutation.mutateAsync(params, {
-          onSuccess(data) {
-            updateIndexingTypeCache?.(indexType)
-            updateResultCache?.(data)
-            updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
-          },
-        })
-      }
+      const data = await (datasetId
+        ? createDocumentMutation.mutateAsync(params)
+        : createFirstDocumentMutation.mutateAsync(params))
+      updateIndexingTypeCache?.(indexType)
+      updateResultCache?.(data)
+      updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
       mutateDatasetRes?.()
       invalidDatasetList()
       trackEvent('create_datasets', {

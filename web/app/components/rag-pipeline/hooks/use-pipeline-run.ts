@@ -9,6 +9,7 @@ import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflo
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { notifyError } from '@/app/notifications/error'
 import { ssePost } from '@/service/base'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
@@ -158,7 +159,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
             if (onWorkflowFinished) onWorkflowFinished(params)
           },
           onError: (params) => {
-            handleWorkflowFailed()
+            handleWorkflowFailed(params)
             invalidateRunHistory(runHistoryUrl)
 
             if (onError) onError(params)
@@ -259,9 +260,19 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
   const handleStopRun = useCallback(
     (taskId: string) => {
-      const { pipelineId } = workflowStore.getState()
+      const { pipelineId, workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
 
-      stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
+      if (workflowRunningData) {
+        setWorkflowRunningData(
+          produce(workflowRunningData, (draft) => {
+            draft.result.status = WorkflowRunningStatus.Stopped
+          }),
+        )
+      }
+
+      stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`).catch(
+        notifyError,
+      )
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
 

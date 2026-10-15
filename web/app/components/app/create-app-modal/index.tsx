@@ -140,12 +140,8 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         workspacePermissionKeys,
         isRbacEnabled,
       })
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-      )
+    } catch {
+      // The mutation reports the failure; retain the current form and input.
     } finally {
       creatingRef.current = false
       setIsCreating(false)

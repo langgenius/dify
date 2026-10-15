@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
+import { getErrorMessage } from '@/utils/error-message'
 
 function EditingTitle() {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow', 'common'])
   const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const draftSyncError = useStore((state) => state.draftSyncError)
   const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)
   const publishedAt = useStore((state) => state.publishedAt)
   const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
@@ -18,13 +20,19 @@ function EditingTitle() {
       aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
       className="flex h-4.5 min-w-75 items-center system-xs-regular whitespace-nowrap text-text-tertiary"
     >
-      {!!draftUpdatedAt && (
-        <span className="flex items-center gap-1">
-          <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
-          <time dateTime={new Date(draftUpdatedAt).toISOString()}>
-            {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
-          </time>
+      {draftSyncError ? (
+        <span className="text-text-destructive">
+          {getErrorMessage(draftSyncError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
         </span>
+      ) : (
+        !!draftUpdatedAt && (
+          <span className="flex items-center gap-1">
+            <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
+            <time dateTime={new Date(draftUpdatedAt).toISOString()}>
+              {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
+            </time>
+          </span>
+        )
       )}
       <span aria-hidden="true" className="mx-1 flex items-center">
         ·

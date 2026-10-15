@@ -61,9 +61,15 @@ const StatusItem = ({
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   const statusItem = DOC_INDEX_STATUS_MAP[localStatus]
   const { enabled = false, archived = false, id = '' } = detail || {}
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: enableDocument } = useDocumentEnable({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: disableDocument } = useDocumentDisable({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: deleteDocument } = useDocumentDelete({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
   const onOperate = async (operationName: OperationName) => {
     if (!canEdit) return
 
@@ -81,8 +87,6 @@ const StatusItem = ({
     )
     if (!e) {
       onUpdate?.(operationName)
-    } else {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }
   const { run: handleSwitch } = useDebounceFn(

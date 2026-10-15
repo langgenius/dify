@@ -8,6 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { safe } from '@orpc/client'
 import { memo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -66,7 +67,9 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
   const changeCredentialIdRef = useRef<string | undefined>(undefined)
   const { mutateAsync: getPluginOAuthUrl } = useGetDataSourceOAuthUrl(pluginPayload.provider)
   const handleOAuth = useCallback(async () => {
-    const { authorization_url } = await getPluginOAuthUrl(changeCredentialIdRef.current)
+    const [requestError, response] = await safe(getPluginOAuthUrl(changeCredentialIdRef.current))
+    if (requestError) return
+    const { authorization_url } = response
 
     if (authorization_url) {
       openOAuthPopup(authorization_url, handleAuthUpdate)

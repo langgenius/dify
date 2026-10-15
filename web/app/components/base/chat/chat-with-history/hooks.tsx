@@ -14,6 +14,7 @@ import {
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { changeLanguage } from '@/i18n/client'
@@ -514,17 +515,25 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   }, [invalidateShareConversations])
   const handlePinConversation = useCallback(
     async (conversationId: string) => {
-      await pinConversation(appSourceType, appId, conversationId)
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
-      handleUpdateConversationList()
+      try {
+        await pinConversation(appSourceType, appId, conversationId)
+        toast.success(t(($) => $['api.success'], { ns: 'common' }))
+        handleUpdateConversationList()
+      } catch (error) {
+        notifyError(error)
+      }
     },
     [appSourceType, appId, t, handleUpdateConversationList],
   )
   const handleUnpinConversation = useCallback(
     async (conversationId: string) => {
-      await unpinConversation(appSourceType, appId, conversationId)
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
-      handleUpdateConversationList()
+      try {
+        await unpinConversation(appSourceType, appId, conversationId)
+        toast.success(t(($) => $['api.success'], { ns: 'common' }))
+        handleUpdateConversationList()
+      } catch (error) {
+        notifyError(error)
+      }
     },
     [appSourceType, appId, t, handleUpdateConversationList],
   )
@@ -537,6 +546,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         await delConversation(appSourceType, appId, conversationId)
         toast.success(t(($) => $['api.success'], { ns: 'common' }))
         onSuccess()
+      } catch (error) {
+        notifyError(error)
+        return
       } finally {
         setConversationDeleting(false)
       }
@@ -575,6 +587,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           }),
         )
         onSuccess()
+      } catch (error) {
+        notifyError(error)
       } finally {
         setConversationRenaming(false)
       }
@@ -592,14 +606,18 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   )
   const handleFeedback: OnFeedback = useCallback(
     async (messageId, feedback) => {
-      await updateFeedback(
-        {
-          url: `/messages/${messageId}/feedbacks`,
-          body: { rating: feedback.rating, content: feedback.content },
-        },
-        appSourceType,
-        appId,
-      )
+      try {
+        await updateFeedback(
+          {
+            url: `/messages/${messageId}/feedbacks`,
+            body: { rating: feedback.rating, content: feedback.content },
+          },
+          appSourceType,
+          appId,
+        )
+      } catch (error) {
+        notifyError(error)
+      }
     },
     [appSourceType, appId],
   )

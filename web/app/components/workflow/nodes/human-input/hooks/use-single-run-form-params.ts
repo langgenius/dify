@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { notifyError } from '@/app/notifications/error'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
@@ -117,7 +118,12 @@ const useSingleRunFormParams = ({
 
   const handleShowGeneratedForm = async (formValue: Record<string, string>) => {
     setShowGeneratedForm(true)
-    await handleFetchFormContent(formValue)
+    try {
+      await handleFetchFormContent(formValue)
+    } catch (error) {
+      setShowGeneratedForm(false)
+      notifyError(error)
+    }
   }
 
   const handleHideGeneratedForm = () => {

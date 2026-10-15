@@ -45,7 +45,12 @@ function OpenMarketplaceDetailDialog({
   src: string
   title: string
 }) {
-  const { install } = useSilentMarketplaceInstall()
+  const installFailureHandlers = useRefWithInit(
+    () => new Map<string, (error: string | undefined) => void>(),
+  )
+  const { install } = useSilentMarketplaceInstall((uniqueIdentifier, error) => {
+    installFailureHandlers.current.get(uniqueIdentifier)?.(error)
+  })
   const timeoutIdsRef = useRefWithInit(() => new Set<number>())
 
   useEffect(
@@ -79,6 +84,7 @@ function OpenMarketplaceDetailDialog({
 
       const timeoutId = window.setTimeout(() => {
         timeoutIdsRef.current.delete(timeoutId)
+        installFailureHandlers.current.delete(uniqueIdentifier)
         settle({
           type: MARKETPLACE_INSTALL_STATUS_MESSAGE_TYPE,
           pluginUniqueIdentifier: uniqueIdentifier,
@@ -87,9 +93,18 @@ function OpenMarketplaceDetailDialog({
       }, SILENT_INSTALL_TIMEOUT_MS)
       timeoutIdsRef.current.add(timeoutId)
 
+      installFailureHandlers.current.set(uniqueIdentifier, (error) => {
+        settle({
+          type: MARKETPLACE_INSTALL_STATUS_MESSAGE_TYPE,
+          pluginUniqueIdentifier: uniqueIdentifier,
+          status: 'failed',
+          error,
+        })
+      })
       void install(plugin).then((result) => {
         window.clearTimeout(timeoutId)
         timeoutIdsRef.current.delete(timeoutId)
+        installFailureHandlers.current.delete(uniqueIdentifier)
         settle({
           type: MARKETPLACE_INSTALL_STATUS_MESSAGE_TYPE,
           pluginUniqueIdentifier: uniqueIdentifier,

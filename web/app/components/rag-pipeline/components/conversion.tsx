@@ -8,6 +8,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { safe } from '@orpc/client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -46,23 +47,17 @@ const Conversion = () => {
     [currentUserId, dataset?.maintainer, dataset?.permission_keys, workspacePermissionKeys],
   )
   const canConvertDataset = datasetACLCapabilities.canEdit
-  const handleConvert = useCallback(() => {
+  const handleConvert = useCallback(async () => {
     if (!canConvertDataset || !datasetId) return
-
-    convert(datasetId as string, {
-      onSuccess: (res) => {
-        if (res.status === 'success') {
-          toast.success(t(($) => $['conversion.successMessage'], { ns: 'datasetPipeline' }))
-          setShowConfirmModal(false)
-          invalidDatasetDetail()
-        } else if (res.status === 'failed') {
-          toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
-        }
-      },
-      onError: () => {
-        toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
-      },
-    })
+    const [error, res] = await safe(convert(datasetId as string))
+    if (error) return
+    if (res.status === 'success') {
+      toast.success(t(($) => $['conversion.successMessage'], { ns: 'datasetPipeline' }))
+      setShowConfirmModal(false)
+      invalidDatasetDetail()
+    } else if (res.status === 'failed') {
+      toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
+    }
   }, [canConvertDataset, convert, datasetId, invalidDatasetDetail, t])
   const handleShowConfirmModal = useCallback(() => {
     if (!canConvertDataset) return

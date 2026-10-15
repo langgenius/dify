@@ -1,4 +1,5 @@
 import type { AppImportPayload, Import } from '@dify/contracts/api/console/apps/types.gen'
+import { safe } from '@orpc/client'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { createElement, useCallback, useRef, useState } from 'react'
@@ -6,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -28,11 +30,23 @@ export const useImportDSL = () => {
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { push } = useRouter()
   const { mutateAsync: importApp } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({
+      onError: (error) => {
+        toast.error(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          { description: getErrorMessage(error) },
+        )
+      },
+    }),
   )
   const { mutateAsync: confirmImport } = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
+      onError: (error) => {
+        toast.error(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          { description: getErrorMessage(error) },
+        )
+      },
     }),
   )
   const actionInFlightRef = useRef(false)
@@ -57,7 +71,11 @@ export const useImportDSL = () => {
       setIsFetching(true)
 
       try {
-        const response = await importApp({ body: payload })
+        const [error, response] = await safe(importApp({ body: payload }))
+        if (error) {
+          onFailed?.()
+          return
+        }
 
         if (!response) return
 
@@ -123,12 +141,7 @@ export const useImportDSL = () => {
           onFailed?.()
         }
       } catch (error) {
-        toast.error(
-          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          {
-            description: getErrorMessage(error),
-          },
-        )
+        notifyError(error)
         onFailed?.()
       } finally {
         actionInFlightRef.current = false
@@ -158,9 +171,15 @@ export const useImportDSL = () => {
       setIsFetching(true)
 
       try {
-        const response = await confirmImport({
-          params: { import_id: importIdRef.current },
-        })
+        const [error, response] = await safe(
+          confirmImport({
+            params: { import_id: importIdRef.current },
+          }),
+        )
+        if (error) {
+          onFailed?.()
+          return
+        }
 
         const { status, app_id, app_mode, permission_keys } = response
         if (status === DSLImportStatus.FAILED) {
@@ -212,12 +231,7 @@ export const useImportDSL = () => {
           }
         }
       } catch (error) {
-        toast.error(
-          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          {
-            description: getErrorMessage(error),
-          },
-        )
+        notifyError(error)
         onFailed?.()
       } finally {
         actionInFlightRef.current = false

@@ -338,9 +338,11 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     null,
   )
   const archiveMonth = formatMonth(archive.year, archive.month)
+  const [deleteFailed, setDeleteFailed] = useState(false)
   const deleteArchiveMutation = useMutation(
     consoleQuery.workflowRunArchives.byYear.byMonth.delete.mutationOptions({
-      context: { silent: true },
+      onError: () => setDeleteFailed(true),
+      onMutate: () => setDeleteFailed(false),
     }),
   )
   const isDeletionActive = isDeletingStatus(archive.deletion_status)
@@ -373,7 +375,11 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const createDownloadMutation = useMutation(
-    consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({
+      onError: () => {
+        toast.error(t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }))
+      },
+    }),
   )
   const currentTask = taskQuery.data ?? cachedTask
   const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
@@ -415,9 +421,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
               ? t(($) => $['archives.action.downloadReady'], { ns: 'appLog' })
               : t(($) => $['archives.action.prepareStarted'], { ns: 'appLog' }),
           )
-        },
-        onError: () => {
-          toast.error(t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }))
         },
       },
     )
@@ -530,7 +533,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
                       {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
                     </AlertDialogDescription>
-                    {deleteArchiveMutation.isError && (
+                    {deleteFailed && (
                       <div role="alert" className="system-sm-regular text-text-destructive">
                         {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
                       </div>

@@ -7,6 +7,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { notifyError } from '@/app/notifications/error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useParams } from '@/next/navigation'
@@ -126,8 +127,6 @@ export const useWorkflowComment = () => {
         params: { app_id: appId },
       })
       setComments(response.data)
-    } catch (error) {
-      console.error('Failed to fetch comments:', error)
     } finally {
       setCommentsLoading(false)
     }
@@ -138,15 +137,18 @@ export const useWorkflowComment = () => {
     if (!appId || !isCollaborationEnabled) return
 
     const unsubscribe = collaborationManager.onCommentsUpdate(() => {
-      loadComments()
-      if (activeCommentIdRef.current) refreshActiveComment(activeCommentIdRef.current)
+      const commentId = activeCommentIdRef.current
+      void Promise.all([
+        loadComments(),
+        ...(commentId ? [refreshActiveComment(commentId)] : []),
+      ]).catch(notifyError)
     })
 
     return unsubscribe
   }, [appId, isCollaborationEnabled, loadComments, refreshActiveComment])
 
   useEffect(() => {
-    loadComments()
+    void loadComments().catch(notifyError)
   }, [loadComments])
 
   const handleCommentSubmit = useCallback(
@@ -245,9 +247,8 @@ export const useWorkflowComment = () => {
         setPendingComment(null)
         setCommentQuickAdd(false)
       } catch (error) {
+        notifyError(error)
         console.error('Failed to create comment:', error)
-        setPendingComment(null)
-        setCommentQuickAdd(false)
       }
     },
     [
@@ -355,6 +356,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        notifyError(error)
         console.error('Failed to resolve comment:', error)
       } finally {
         setActiveCommentLoading(false)
@@ -398,6 +400,7 @@ export const useWorkflowComment = () => {
           activeCommentIdRef.current = null
         }
       } catch (error) {
+        notifyError(error)
         console.error('Failed to delete comment:', error)
       } finally {
         setActiveCommentLoading(false)
@@ -458,6 +461,7 @@ export const useWorkflowComment = () => {
         })
         collaborationManager.emitCommentsUpdate(appId)
       } catch (error) {
+        notifyError(error)
         console.error('Failed to update comment position:', error)
         setComments(previousComments)
 
@@ -508,6 +512,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        notifyError(error)
         console.error('Failed to update comment:', error)
       }
     },
@@ -532,6 +537,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        notifyError(error)
         console.error('Failed to create reply:', error)
       } finally {
         setReplySubmitting(false)
@@ -563,6 +569,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        notifyError(error)
         console.error('Failed to update reply:', error)
       } finally {
         setReplyUpdating(false)
@@ -586,6 +593,7 @@ export const useWorkflowComment = () => {
         await refreshActiveComment(commentId)
         await loadComments()
       } catch (error) {
+        notifyError(error)
         console.error('Failed to delete reply:', error)
       } finally {
         setActiveCommentLoading(false)

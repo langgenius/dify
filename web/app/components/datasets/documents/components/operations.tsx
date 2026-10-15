@@ -102,17 +102,39 @@ const Operations = ({
   const [deleting, setDeleting] = useState(false)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const router = useRouter()
-  const { mutateAsync: archiveDocument } = useDocumentArchive()
-  const { mutateAsync: unArchiveDocument } = useDocumentUnArchive()
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
-  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
-  const { mutateAsync: syncDocument } = useSyncDocument()
-  const { mutateAsync: syncWebsite } = useSyncWebsite()
-  const { mutateAsync: generateSummary } = useDocumentSummary()
-  const { mutateAsync: pauseDocument } = useDocumentPause()
-  const { mutateAsync: resumeDocument } = useDocumentResume()
+  const { mutateAsync: archiveDocument } = useDocumentArchive({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: unArchiveDocument } = useDocumentUnArchive({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: enableDocument } = useDocumentEnable({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: disableDocument } = useDocumentDisable({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: deleteDocument } = useDocumentDelete({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload({
+    onError: () => toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: syncDocument } = useSyncDocument({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: syncWebsite } = useSyncWebsite({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: generateSummary } = useDocumentSummary({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: pauseDocument } = useDocumentPause({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
+  const { mutateAsync: resumeDocument } = useDocumentResume({
+    onError: () => toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })),
+  })
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived
   const canShowSummaryAction = canEdit && !archived && isNonCloudEdition
@@ -190,8 +212,6 @@ const Operations = ({
         if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
           onSelectedIdChange(selectedIds.filter((selectedId) => selectedId !== id))
         onUpdate(operationName)
-      } else {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       }
       if (operationName === DocumentActionType.delete) setDeleting(false)
     },
@@ -256,7 +276,8 @@ const Operations = ({
     const [e, res] = await asyncRunSafe<DocumentDownloadResponse>(
       downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
     )
-    if (e || !res?.url) {
+    if (e) return
+    if (!res?.url) {
       toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
       return
     }

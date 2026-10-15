@@ -25,14 +25,6 @@ type ExportWorkflowAppDslInput = Pick<ExportAppDslInput, 'appId' | 'appName'>
 
 type ExportAppDslResult = { status: 'downloaded' } | { status: 'failed' }
 
-type ExportAppDslMessages = {
-  loading: string
-  success: string
-  error: string
-  packageSuccess: string
-  packageError: string
-}
-
 export type ExportWorkflowAppDslResult =
   | ExportAppDslResult
   | {
@@ -41,10 +33,9 @@ export type ExportWorkflowAppDslResult =
     }
 
 async function getSecretEnvironmentVariables(appId: string) {
-  const { items } = await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get(
-    { params: { app_id: appId } },
-    { context: { silent: true } },
-  )
+  const { items } = await consoleClient.apps.byAppId.workflows.draft.environmentVariables.get({
+    params: { app_id: appId },
+  })
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
 }
 
@@ -56,18 +47,15 @@ export async function exportAppDslFile({
   versionId,
   format,
 }: ExportAppDslInput) {
-  const response = await consoleClient.apps.byAppId.export.get(
-    {
-      params: { app_id: appId },
-      query: {
-        include_secret: includeSecret,
-        ...(workflowId ? { workflow_id: workflowId } : {}),
-        ...(versionId ? { version_id: versionId } : {}),
-        ...(format && { format }),
-      },
+  const response = await consoleClient.apps.byAppId.export.get({
+    params: { app_id: appId },
+    query: {
+      include_secret: includeSecret,
+      ...(workflowId ? { workflow_id: workflowId } : {}),
+      ...(versionId ? { version_id: versionId } : {}),
+      ...(format && { format }),
     },
-    { context: { silent: true } },
-  )
+  })
 
   if (response instanceof Blob) {
     const name = response instanceof File ? response.name : undefined
@@ -83,24 +71,6 @@ export async function exportAppDslFile({
     fileName: `${appName}.yml`,
   })
   return 'yaml' as const
-}
-
-async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMessages) {
-  await toast.promise(exportAppDslFile(input), {
-    loading: {
-      title: messages.loading,
-    },
-    success: (format) => ({
-      title: format === 'ifpkg' ? messages.packageSuccess : messages.success,
-      timeout: 3000,
-    }),
-    error: (error) => ({
-      title: input.format === 'yaml' ? messages.error : messages.packageError,
-      description: getErrorMessage(error),
-    }),
-  })
-
-  return { status: 'downloaded' } as const
 }
 
 function useExportAppDslMessages() {
@@ -120,14 +90,41 @@ function useExportAppDslMessages() {
 export function useExportAppDsl() {
   const messages = useExportAppDslMessages()
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: (input: ExportAppDslInput): Promise<ExportAppDslResult> =>
-      downloadAppDsl(input, messages),
+    mutationFn: exportAppDslFile,
+    onMutate: (input) => {
+      let resolve!: (format: 'yaml' | 'ifpkg') => void
+      let reject!: (error: unknown) => void
+      const feedback = new Promise<'yaml' | 'ifpkg'>((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise
+        reject = rejectPromise
+      })
+      // Mutation callbacks settle the same progress toast, including after unmount.
+      void toast
+        .promise(feedback, {
+          loading: { title: messages.loading },
+          success: (format) => ({
+            title: format === 'ifpkg' ? messages.packageSuccess : messages.success,
+            timeout: 3000,
+          }),
+          error: (error) => ({
+            title: input.format === 'yaml' ? messages.error : messages.packageError,
+            description: getErrorMessage(error),
+          }),
+        })
+        .catch(() => {
+          // The promise toast presents the rejection; mutateAsync still rejects separately.
+        })
+      return { resolve, reject }
+    },
+    onSuccess: (format, _input, feedback) => feedback?.resolve(format),
+    onError: (error, _input, feedback) => feedback?.reject(error),
   })
 
   const exportAppDsl = useCallback(
     async (input: ExportAppDslInput): Promise<ExportAppDslResult> => {
       try {
-        return await mutateAsync(input)
+        await mutateAsync(input)
+        return { status: 'downloaded' }
       } catch {
         return { status: 'failed' }
       }
@@ -144,39 +141,27 @@ export function useExportAppDsl() {
 /** Checks Workflow and Advanced Chat secrets before exporting their DSL. */
 export function useExportWorkflowAppDsl() {
   const messages = useExportAppDslMessages()
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: async (input: ExportWorkflowAppDslInput): Promise<ExportWorkflowAppDslResult> => {
-      let secretEnvList: EnvironmentVariableItemResponse[]
-      try {
-        secretEnvList = await getSecretEnvironmentVariables(input.appId)
-      } catch (error) {
-        toast.error(messages.packageError, { description: getErrorMessage(error) })
-        throw error
-      }
-
-      if (secretEnvList.length > 0)
-        return {
-          status: 'confirmation-required',
-          secretEnvList,
-        }
-
-      return downloadAppDsl(input, messages)
+  const { exportAppDsl, isExporting } = useExportAppDsl()
+  const { mutateAsync: checkSecrets, isPending } = useMutation({
+    mutationFn: (input: ExportWorkflowAppDslInput) => getSecretEnvironmentVariables(input.appId),
+    onError: (error) => {
+      toast.error(messages.packageError, { description: getErrorMessage(error) })
     },
   })
 
   const exportWorkflowAppDsl = useCallback(
     async (input: ExportWorkflowAppDslInput): Promise<ExportWorkflowAppDslResult> => {
+      let secretEnvList: EnvironmentVariableItemResponse[]
       try {
-        return await mutateAsync(input)
+        secretEnvList = await checkSecrets(input)
       } catch {
         return { status: 'failed' }
       }
+      if (secretEnvList.length > 0) return { status: 'confirmation-required', secretEnvList }
+      return exportAppDsl(input)
     },
-    [mutateAsync],
+    [checkSecrets, exportAppDsl],
   )
 
-  return {
-    exportWorkflowAppDsl,
-    isExporting: isPending,
-  }
+  return { exportWorkflowAppDsl, isExporting: isPending || isExporting }
 }

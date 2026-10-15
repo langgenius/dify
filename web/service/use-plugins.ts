@@ -47,6 +47,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
+import { notifyError } from '@/app/notifications/error'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
@@ -860,9 +861,10 @@ export const useVersionListOfPlugin = (pluginID: string, enabled = true) => {
   })
 }
 
-export const useInstallPackageFromLocal = () => {
+export const useInstallPackageFromLocal = (options?: { onError?: (error: Error) => void }) => {
   const queryClient = useQueryClient()
   return useMutation({
+    ...options,
     mutationFn: (uniqueIdentifier: string) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
         body: { plugin_unique_identifiers: [uniqueIdentifier] },
@@ -874,9 +876,10 @@ export const useInstallPackageFromLocal = () => {
   })
 }
 
-export const useInstallPackageFromGitHub = () => {
+export const useInstallPackageFromGitHub = (options?: { onError?: (error: Error) => void }) => {
   const queryClient = useQueryClient()
   return useMutation({
+    ...options,
     mutationFn: ({
       repoUrl,
       selectedVersion,
@@ -920,7 +923,6 @@ export const useInstallOrUpdate = ({
   onSuccess?: (res: InstallStatusResponse[]) => void
 }) => {
   const queryClient = useQueryClient()
-  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
 
   return useMutation({
     mutationFn: (data: {
@@ -1052,10 +1054,16 @@ export const useInstallOrUpdate = ({
                 taskId = task_id
                 isFinishedInstallation = all_installed
               } else {
-                const response = await updatePackageFromMarketPlace({
-                  original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
-                  new_plugin_unique_identifier: uniqueIdentifier,
-                })
+                const response = await post<InstallPackageResponse>(
+                  '/workspaces/current/plugin/upgrade/marketplace',
+                  {
+                    body: {
+                      original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
+                      new_plugin_unique_identifier: uniqueIdentifier,
+                    },
+                  },
+                )
+                upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
                 isFinishedInstallation = all_installed
@@ -1197,7 +1205,8 @@ export const useMutationPluginPermissionSettings = ({
 
       return { previousPermission, hadPreviousPermission }
     },
-    onError: (_error, _payload, context) => {
+    onError: (error, _payload, context) => {
+      notifyError(error)
       if (context?.hadPreviousPermission)
         queryClient.setQueryData(usePluginPermissionSettingsKey, context.previousPermission)
       else queryClient.removeQueries({ queryKey: usePluginPermissionSettingsKey })
@@ -1240,7 +1249,8 @@ export const useMutationPluginAutoUpgradeSettings = ({
 
       return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
     },
-    onError: (_error, _payload, context) => {
+    onError: (error, _payload, context) => {
+      notifyError(error)
       // Roll back the category this save started for; the caller may have moved to another one.
       if (!context) return
       if (context.hadPreviousAutoUpgrade)
@@ -1335,7 +1345,8 @@ export const useMutationReferenceSettings = ({
         shouldUpdateAutoUpgrade,
       }
     },
-    onError: (_error, _payload, context) => {
+    onError: (error, _payload, context) => {
+      notifyError(error)
       if (context?.shouldUpdatePermission && context.hadPreviousPermission)
         queryClient.setQueryData(usePluginPermissionSettingsKey, context.previousPermission)
       else if (context?.shouldUpdatePermission)

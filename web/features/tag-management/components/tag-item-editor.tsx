@@ -23,8 +23,20 @@ type TagItemEditorProps = {
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation(['common'])
-  const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
-  const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
+  const updateTagMutation = useMutation(
+    consoleQuery.tags.byTagId.patch.mutationOptions({
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
+  const deleteTagMutation = useMutation(
+    consoleQuery.tags.byTagId.delete.mutationOptions({
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
   const [isEditing, setIsEditing] = useState(false)
   const editTag = (tagId: string, name: string) => {
     if (name === tag.name) {
@@ -51,10 +63,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
           setIsEditing(false)
           onTagsChange?.()
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-          setIsEditing(false)
-        },
       },
     )
   }
@@ -72,9 +80,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
         onSuccess: () => {
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           onTagsChange?.()
-        },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
         },
       },
     )

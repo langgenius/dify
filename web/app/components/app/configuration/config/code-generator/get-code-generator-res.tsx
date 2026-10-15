@@ -15,6 +15,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { notifyError } from '@/app/notifications/error'
 import { consoleQuery } from '@/service/console'
 import { generateRule } from '@/service/debug'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
@@ -168,6 +169,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
       } else {
         addVersion(res)
       }
+    } catch (error) {
+      notifyError(error)
     } finally {
       setLoadingFalse()
     }

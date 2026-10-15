@@ -1,5 +1,6 @@
 import type { WorkspaceCustomConfigPayload } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent } from 'react'
+import { safe } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -79,23 +80,31 @@ const useWebAppBrand = () => {
     )
   }
   const handleApply = async () => {
-    await persistWorkspaceBrand({
-      remove_webapp_brand: webappBrandRemoved,
-      replace_webapp_logo: fileId,
-    })
+    const [requestError] = await safe(
+      persistWorkspaceBrand({
+        remove_webapp_brand: webappBrandRemoved,
+        replace_webapp_logo: fileId,
+      }),
+    )
+    if (requestError) return
+
     setFileId('')
     setImgKey(Date.now())
   }
   const handleRestore = async () => {
-    await persistWorkspaceBrand({
-      remove_webapp_brand: false,
-      replace_webapp_logo: '',
-    })
+    await safe(
+      persistWorkspaceBrand({
+        remove_webapp_brand: false,
+        replace_webapp_logo: '',
+      }),
+    )
   }
   const handleSwitch = async (checked: boolean) => {
-    await persistWorkspaceBrand({
-      remove_webapp_brand: checked,
-    })
+    await safe(
+      persistWorkspaceBrand({
+        remove_webapp_brand: checked,
+      }),
+    )
   }
   const handleCancel = () => {
     setFileId('')

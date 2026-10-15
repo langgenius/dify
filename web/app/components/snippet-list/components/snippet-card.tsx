@@ -58,7 +58,9 @@ const SnippetCard = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const updateSnippetMutation = useUpdateSnippetMutation()
-  const exportSnippetMutation = useExportSnippetMutation()
+  const exportSnippetMutation = useExportSnippetMutation({
+    onError: () => toast.error(t(($) => $.exportFailed, { ns: 'snippet' })),
+  })
   const deleteSnippetMutation = useDeleteSnippetMutation()
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
@@ -98,7 +100,7 @@ const SnippetCard = ({
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     } catch {
-      toast.error(t(($) => $.exportFailed))
+      // The mutation reports the failure; retain the current form and input.
     }
   }
 
@@ -111,9 +113,6 @@ const SnippetCard = ({
         onSuccess: () => {
           setIsDeleteDialogOpen(false)
           onRefresh?.()
-        },
-        onError: (error) => {
-          toast.error(error instanceof Error ? error.message : t(($) => $.deleteFailed))
         },
       },
     )
@@ -132,9 +131,6 @@ const SnippetCard = ({
         onSuccess: () => {
           setIsEditDialogOpen(false)
           onRefresh?.()
-        },
-        onError: (error) => {
-          toast.error(error instanceof Error ? error.message : t(($) => $.editFailed))
         },
       },
     )

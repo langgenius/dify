@@ -13,6 +13,7 @@ import type {
   PublishedPipelineRunPreviewResponse,
   PublishedPipelineRunResponse,
 } from '@/models/pipeline'
+import { safe } from '@orpc/client'
 import { useCallback, useRef } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { DatasourceType } from '@/models/pipeline'
@@ -160,21 +161,19 @@ export const useDatasourceActions = ({
       if (!datasource || !pipelineId) return
 
       const datasourceInfoList = buildPreviewDatasourceInfo()
-      await runPublishedPipeline(
-        {
+      const [error, res] = await safe(
+        runPublishedPipeline({
           pipeline_id: pipelineId,
           inputs: data,
           start_node_id: datasource.nodeId,
           datasource_type: datasourceType as DatasourceType,
           datasource_info_list: datasourceInfoList,
           is_preview: true,
-        },
-        {
-          onSuccess: (res) => {
-            setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
-          },
-        },
+        }),
       )
+      if (error) return
+
+      setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
     },
     [
       datasource,
@@ -194,27 +193,25 @@ export const useDatasourceActions = ({
       if (!datasource || !pipelineId) return
 
       const datasourceInfoList = buildProcessDatasourceInfo()
-      await runPublishedPipeline(
-        {
+      const [error, res] = await safe(
+        runPublishedPipeline({
           pipeline_id: pipelineId,
           inputs: data,
           start_node_id: datasource.nodeId,
           datasource_type: datasourceType as DatasourceType,
           datasource_info_list: datasourceInfoList,
           is_preview: false,
-        },
-        {
-          onSuccess: (res) => {
-            setBatchId((res as PublishedPipelineRunResponse).batch || '')
-            setDocuments((res as PublishedPipelineRunResponse).documents || [])
-            handleNextStep()
-            trackEvent('dataset_document_added', {
-              data_source_type: datasourceType,
-              indexing_technique: 'pipeline',
-            })
-          },
-        },
+        }),
       )
+      if (error) return
+
+      setBatchId((res as PublishedPipelineRunResponse).batch || '')
+      setDocuments((res as PublishedPipelineRunResponse).documents || [])
+      handleNextStep()
+      trackEvent('dataset_document_added', {
+        data_source_type: datasourceType,
+        indexing_technique: 'pipeline',
+      })
     },
     [
       canProcess,

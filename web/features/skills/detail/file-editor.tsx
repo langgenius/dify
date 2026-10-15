@@ -182,7 +182,7 @@ export function FileEditor({
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
   const { isPending: isSavingDraft, mutateAsync: saveDraftFile } = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
+      onError: () => setSaveStatus('error'),
     }),
   )
   const filePath = file?.path

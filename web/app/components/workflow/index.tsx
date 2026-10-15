@@ -47,6 +47,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -578,10 +579,14 @@ export const Workflow: FC<WorkflowProps> = memo(
     const [vars, setVars] = useState<VarInInspect[]>([])
     useEffect(() => {
       ;(async () => {
-        if (!configsMap?.flowType || !configsMap?.flowId) return
-        const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
-        setVars(data)
-        setIsLoadedVars(true)
+        try {
+          if (!configsMap?.flowType || !configsMap?.flowId) return
+          const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
+          setVars(data)
+          setIsLoadedVars(true)
+        } catch (error) {
+          notifyError(error)
+        }
       })()
     }, [configsMap?.flowType, configsMap?.flowId])
     useEffect(() => {

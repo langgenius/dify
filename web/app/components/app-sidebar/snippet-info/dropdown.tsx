@@ -47,7 +47,9 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const updateSnippetMutation = useUpdateSnippetMutation()
-  const exportSnippetMutation = useExportSnippetMutation()
+  const exportSnippetMutation = useExportSnippetMutation({
+    onError: () => toast.error(t(($) => $.exportFailed, { ns: 'snippet' })),
+  })
   const deleteSnippetMutation = useDeleteSnippetMutation()
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
@@ -73,7 +75,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     } catch {
-      toast.error(t(($) => $.exportFailed))
+      // The mutation reports the failure; retain the current form and input.
     }
   }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 
@@ -91,9 +93,6 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           onSuccess: () => {
             setIsEditDialogOpen(false)
           },
-          onError: (error) => {
-            toast.error(error instanceof Error ? error.message : t(($) => $.editFailed))
-          },
         },
       )
     },
@@ -110,9 +109,6 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           toast.success(t(($) => $.deleted))
           setIsDeleteDialogOpen(false)
           replace('/snippets')
-        },
-        onError: (error) => {
-          toast.error(error instanceof Error ? error.message : t(($) => $.deleteFailed))
         },
       },
     )

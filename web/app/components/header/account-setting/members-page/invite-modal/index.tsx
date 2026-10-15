@@ -169,9 +169,16 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
   const locale = useLocale()
   const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
-  const { mutate, reset, isPending, error } = useMutation(
+  const [hasError, setHasError] = useState(false)
+  const {
+    mutate,
+    error,
+    reset: resetMutation,
+    isPending,
+  } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
+      onError: () => setHasError(true),
+
       onSuccess: (response) => {
         // The request alone decides success; seat and member refreshes run in the background.
         void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
@@ -181,6 +188,11 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
       },
     }),
   )
+
+  const reset = () => {
+    setHasError(false)
+    resetMutation()
+  }
 
   return (
     <Dialog
@@ -208,7 +220,7 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
           isPending={isPending}
           // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
           errorCode={isDefinedError(error) ? error.code : null}
-          hasError={!!error}
+          hasError={hasError}
           onSubmit={(emails, role) => mutate({ body: { emails, role, language: locale } })}
           onDismissError={reset}
         />

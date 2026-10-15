@@ -38,7 +38,13 @@ export const TagManagementModal = ({
       enabled: show && canManageTags,
     }),
   )
-  const createTagMutation = useMutation(consoleQuery.tags.post.mutationOptions())
+  const createTagMutation = useMutation(
+    consoleQuery.tags.post.mutationOptions({
+      onError: () => {
+        toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
+      },
+    }),
+  )
   const [name, setName] = useState<string>('')
 
   const createNewTag = () => {
@@ -57,9 +63,6 @@ export const TagManagementModal = ({
         onSuccess: () => {
           toast.success(t(($) => $['tag.created'], { ns: 'common' }))
           setName('')
-        },
-        onError: () => {
-          toast.error(t(($) => $['tag.failed'], { ns: 'common' }))
         },
       },
     )

@@ -191,7 +191,12 @@ function IconPickerSession({
   }, [open])
 
   const upload = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.files.upload.post.mutationOptions({
+      onError: () =>
+        setPreparationError(
+          t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+        ),
+    }),
   )
   const uploading = preparing || upload.isPending
   const uploadError =

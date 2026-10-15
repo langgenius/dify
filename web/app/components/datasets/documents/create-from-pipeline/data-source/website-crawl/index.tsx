@@ -126,6 +126,10 @@ const WebsiteCrawl = ({
           },
         },
         {
+          onError: (message) => {
+            setCrawlErrorMessage(message)
+            setStep(CrawlStep.finished)
+          },
           onDataSourceNodeProcessing: (data: DataSourceNodeProcessingResponse) => {
             setTotalNum(data.total ?? 0)
             setCrawledNum(data.completed ?? 0)

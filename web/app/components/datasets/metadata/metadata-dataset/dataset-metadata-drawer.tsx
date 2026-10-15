@@ -29,6 +29,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { safe } from '@orpc/client'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
@@ -46,9 +47,9 @@ type Props = Readonly<{
   isBuiltInEnabled: boolean
   onIsBuiltInEnabledChange: (value: boolean) => void
   onClose: () => void
-  onAdd: (payload: BuiltInMetadataItem) => void
-  onRename: (payload: MetadataItemWithValueLength) => void
-  onRemove: (metaDataId: string) => void
+  onAdd: (payload: BuiltInMetadataItem) => Promise<void>
+  onRename: (payload: MetadataItemWithValueLength) => Promise<void>
+  onRemove: (metaDataId: string) => Promise<void>
 }>
 
 type ItemProps = {
@@ -184,7 +185,8 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const [open, setOpen] = useState(false)
   const handleAdd = useCallback(
     async (data: BuiltInMetadataItem) => {
-      await onAdd(data)
+      const [error] = await safe(onAdd(data))
+      if (error) return
       setOpen(false)
     },
     [onAdd],
@@ -193,10 +195,13 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const handleRenamed = useCallback(async () => {
     const item = userMetadata.find((p) => p.id === currPayload?.id)
     if (item) {
-      await onRename({
-        ...item,
-        name: templeName,
-      })
+      const [error] = await safe(
+        onRename({
+          ...item,
+          name: templeName,
+        }),
+      )
+      if (error) return
     }
     setIsShowRenameModal(false)
   }, [userMetadata, currPayload?.id, onRename, templeName])
@@ -204,7 +209,8 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const handleDelete = useCallback(
     (payload: MetadataItemWithValueLength) => {
       return async () => {
-        await onRemove(payload.id)
+        const [error] = await safe(onRemove(payload.id))
+        if (error) return
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       }
     },

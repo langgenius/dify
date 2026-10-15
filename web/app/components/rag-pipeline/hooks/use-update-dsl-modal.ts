@@ -1,4 +1,5 @@
 import type { MouseEventHandler } from 'react'
+import { safe } from '@orpc/client'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
@@ -84,7 +85,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         notifyError()
         return
       }
-      updateWorkflow(pipelineId)
+      await updateWorkflow(pipelineId)
       onImport?.()
       const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
       toast(
@@ -117,16 +118,19 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const handleImport: MouseEventHandler = useCallback(async () => {
     const { pipelineId } = workflowStore.getState()
     if (isCreatingRef.current) return
-    isCreatingRef.current = true
     if (!currentFile) return
+    isCreatingRef.current = true
     try {
       if (!pipelineId || !fileContent) return
       setLoading(true)
-      const response = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: fileContent,
-        pipeline_id: pipelineId,
-      })
+      const [requestError, response] = await safe(
+        importDSL({
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: fileContent,
+          pipeline_id: pipelineId,
+        }),
+      )
+      if (requestError) return
       const { id, status, pipeline_id, imported_dsl_version, current_dsl_version } = response
       if (isCompletedStatus(status)) await completeImport(pipeline_id, status)
       else if (status === DSLImportStatus.PENDING)
@@ -134,8 +138,10 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       else notifyError(response.error)
     } catch (error) {
       notifyError(getErrorMessage(error)?.trim() || undefined)
+    } finally {
+      isCreatingRef.current = false
+      setLoading(false)
     }
-    isCreatingRef.current = false
   }, [
     currentFile,
     fileContent,
@@ -148,7 +154,9 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const onUpdateDSLConfirm: MouseEventHandler = useCallback(async () => {
     if (!importId) return
     try {
-      const { status, pipeline_id, error } = await importDSLConfirm(importId)
+      const [requestError, response] = await safe(importDSLConfirm(importId))
+      if (requestError) return
+      const { status, pipeline_id, error } = response
       if (status === DSLImportStatus.COMPLETED) {
         await completeImport(pipeline_id)
         return

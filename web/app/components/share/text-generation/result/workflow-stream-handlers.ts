@@ -286,8 +286,11 @@ export const createWorkflowStreamHandlers = ({
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
   let hasStartedResumeStream = false
+  let settled = false
 
   const finishWithFailure = () => {
+    if (settled) return
+    settled = true
     setRespondingFalse()
     resetRunState()
     onCompleted(getCompletionRes(), taskId, false)
@@ -295,6 +298,8 @@ export const createWorkflowStreamHandlers = ({
   }
 
   const finishWithSuccess = () => {
+    if (settled) return
+    settled = true
     setRespondingFalse()
     resetRunState()
     setMessageId(tempMessageId)
@@ -304,6 +309,21 @@ export const createWorkflowStreamHandlers = ({
 
   const otherOptions: IOtherOptions = {
     isPublicAPI,
+    onError: (message) => {
+      if (settled) return
+      if (/^AbortError(?::|$)/.test(message)) {
+        settled = true
+        setRespondingFalse()
+        resetRunState()
+        markEnded()
+        return
+      }
+      setWorkflowProcessData(
+        applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed, message),
+      )
+      notify({ type: 'error', message })
+      finishWithFailure()
+    },
     onWorkflowStarted: ({ workflow_run_id, task_id }) => {
       const workflowProcessData = getWorkflowProcessData()
       if (workflowProcessData?.tracing.length) {
@@ -347,8 +367,10 @@ export const createWorkflowStreamHandlers = ({
       setWorkflowProcessData(finishWorkflowNode(getWorkflowProcessData(), data))
     },
     onWorkflowFinished: ({ data }) => {
+      if (settled) return
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (isTimedOut()) {
+        settled = true
         const finishedStatus =
           workflowStatus === WorkflowRunningStatus.Stopped
             ? WorkflowRunningStatus.Stopped
@@ -378,8 +400,9 @@ export const createWorkflowStreamHandlers = ({
         return
       }
 
-      if (data.error) {
-        notify({ type: 'error', message: data.error })
+      if (data.error || workflowStatus === WorkflowRunningStatus.Failed) {
+        const message = data.error || t(($) => $['api.actionFailed'], { ns: 'common' })
+        notify({ type: 'error', message })
         setWorkflowProcessData(
           applyWorkflowFinishedState(
             getWorkflowProcessData(),

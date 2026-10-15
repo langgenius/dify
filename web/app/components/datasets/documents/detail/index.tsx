@@ -6,6 +6,7 @@ import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { safe } from '@orpc/client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -90,49 +91,37 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
-    await checkSegmentBatchImportProgress(
-      { jobID },
-      {
-        onSuccess: (res) => {
-          setImportStatus(res.job_status)
-          if (
-            res.job_status === segmentImportStatus.waiting ||
-            res.job_status === segmentImportStatus.processing
-          )
-            setTimeout(() => checkProcess(res.job_id), 2500)
-          if (res.job_status === segmentImportStatus.error)
-            toast.error(`${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}`)
-        },
-        onError: (e) => {
-          const message = 'message' in e ? `: ${e.message}` : ''
-          toast.error(
-            `${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`,
-          )
-        },
-      },
+    const [error, res] = await safe(checkSegmentBatchImportProgress({ jobID }))
+    if (error) {
+      setImportStatus(segmentImportStatus.error)
+      return
+    }
+
+    setImportStatus(res.job_status)
+    if (
+      res.job_status === segmentImportStatus.waiting ||
+      res.job_status === segmentImportStatus.processing
     )
+      setTimeout(() => checkProcess(res.job_id), 2500)
+    if (res.job_status === segmentImportStatus.error)
+      toast.error(`${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}`)
   }
 
   const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
   const runBatch = async (csv: FileItem) => {
-    await segmentBatchImport(
-      {
+    const [error, res] = await safe(
+      segmentBatchImport({
         url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
         body: { upload_file_id: csv.file.id! },
-      },
-      {
-        onSuccess: (res) => {
-          setImportStatus(res.job_status)
-          checkProcess(res.job_id)
-        },
-        onError: (e) => {
-          const message = 'message' in e ? `: ${e.message}` : ''
-          toast.error(
-            `${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}${message}`,
-          )
-        },
-      },
+      }),
     )
+    if (error) {
+      setImportStatus(segmentImportStatus.error)
+      return
+    }
+
+    setImportStatus(res.job_status)
+    checkProcess(res.job_id)
   }
 
   const {

@@ -225,7 +225,13 @@ export function AgentFileUploadDialog({
   const { t } = useTranslation(['agentV2', 'common'])
   const { t: tCommon } = useTranslation(['common'])
   const [file, setFile] = useState<File>()
-  const uploadFileMutation = useMutation(consoleQuery.files.upload.post.mutationOptions())
+  const uploadFileMutation = useMutation(
+    consoleQuery.files.upload.post.mutationOptions({
+      onError: () => {
+        toast.error(t(($) => $['agentDetail.configure.files.upload.failed']))
+      },
+    }),
+  )
   const commitAgentFileMutation = useMutation(
     consoleQuery.agent.byAgentId.config.files.post.mutationOptions(),
   )
@@ -241,7 +247,6 @@ export function AgentFileUploadDialog({
     uploadedFile: FileResponse,
     options: {
       onSuccess: (committedFile: AgentConfigFileUploadResponse) => void
-      onError: () => void
     },
   ) => {
     const body = {
@@ -299,13 +304,7 @@ export function AgentFileUploadDialog({
               setFile(undefined)
               onOpenChange(false)
             },
-            onError: () => {
-              toast.error(t(($) => $['agentDetail.configure.files.upload.failed']))
-            },
           })
-        },
-        onError: () => {
-          toast.error(t(($) => $['agentDetail.configure.files.upload.failed']))
         },
       },
     )

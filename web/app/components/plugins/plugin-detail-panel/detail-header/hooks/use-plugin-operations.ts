@@ -6,6 +6,7 @@ import { useCallback } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/error'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
@@ -119,15 +120,20 @@ export const usePluginOperations = ({
     if (!canDeletePlugin) return
 
     modalStates.showDeleting()
-    const res = await uninstallPlugin(id)
-    modalStates.hideDeleting()
+    try {
+      const res = await uninstallPlugin(id)
 
-    if (res.success) {
-      modalStates.hideDeleteConfirm()
-      handlePluginUpdated(true)
-      refreshPluginList({ category })
+      if (res.success) {
+        modalStates.hideDeleteConfirm()
+        handlePluginUpdated(true)
+        refreshPluginList({ category })
 
-      trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
+        trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
+      }
+    } catch (error) {
+      notifyError(error)
+    } finally {
+      modalStates.hideDeleting()
     }
   }, [
     canDeletePlugin,

@@ -46,6 +46,7 @@ type AgentOrchestratePanelProps = {
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
+  saveError?: unknown
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
@@ -72,6 +73,7 @@ export function AgentOrchestratePanel({
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
+  saveError,
   isPublishing,
   className,
   readOnly = false,
@@ -100,6 +102,7 @@ export function AgentOrchestratePanel({
       <AgentConfigurePublishBar
         agentId={agentId}
         agentName={agentName}
+        saveError={saveError}
         isPublishing={isPublishing}
         selectedVersionSnapshot={selectedVersionSnapshot}
         onPublish={onPublish}

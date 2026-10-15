@@ -3,6 +3,7 @@ import type { FileEntity } from '@/app/components/datasets/common/image-uploader
 import type { SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { safe } from '@orpc/client'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -92,32 +93,32 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         .map((item) => item.uploadedId!)
 
     setLoading(true)
-    await addSegment(
-      { datasetId, documentId, body: params },
-      {
-        onSuccess() {
-          toast.success(
-            t(($) => $['segment.chunkAdded'], { ns: 'datasetDocuments' }),
-            {
-              actionProps: {
-                children: t(($) => $['operation.view'], { ns: 'common' }),
-                onClick: viewNewlyAddedChunk,
-              },
-            },
-          )
-          handleCancel('add')
-          setQuestion('')
-          setAnswer('')
-          setAttachments([])
-          setImageUploaderKey(Date.now())
-          setKeywords([])
-          onSave()
+    const [error] = await safe(addSegment({ datasetId, documentId, body: params }))
+    if (error) {
+      setLoading(false)
+
+      return
+    }
+    try {
+      toast.success(
+        t(($) => $['segment.chunkAdded'], { ns: 'datasetDocuments' }),
+        {
+          actionProps: {
+            children: t(($) => $['operation.view'], { ns: 'common' }),
+            onClick: viewNewlyAddedChunk,
+          },
         },
-        onSettled() {
-          setLoading(false)
-        },
-      },
-    )
+      )
+      handleCancel('add')
+      setQuestion('')
+      setAnswer('')
+      setAttachments([])
+      setImageUploaderKey(Date.now())
+      setKeywords([])
+      onSave()
+    } finally {
+      setLoading(false)
+    }
   }, [
     docForm,
     keywords,

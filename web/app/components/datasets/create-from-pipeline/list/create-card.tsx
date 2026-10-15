@@ -1,3 +1,4 @@
+import { safe } from '@orpc/client'
 import { RiAddCircleLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -16,22 +17,18 @@ const CreateCard = () => {
   const invalidDatasetList = useInvalidDatasetList()
 
   const handleCreate = useCallback(async () => {
-    await createEmptyDataset(undefined, {
-      onSuccess: (data) => {
-        if (data) {
-          const { id } = data
-          toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
-          invalidDatasetList()
-          trackEvent('create_datasets_from_scratch', {
-            dataset_id: id,
-          })
-          push(`/datasets/${id}/pipeline`)
-        }
-      },
-      onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
-      },
-    })
+    const [error, data] = await safe(createEmptyDataset(undefined))
+    if (error) return
+
+    if (data) {
+      const { id } = data
+      toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+      invalidDatasetList()
+      trackEvent('create_datasets_from_scratch', {
+        dataset_id: id,
+      })
+      push(`/datasets/${id}/pipeline`)
+    }
   }, [createEmptyDataset, push, invalidDatasetList, t])
 
   return (

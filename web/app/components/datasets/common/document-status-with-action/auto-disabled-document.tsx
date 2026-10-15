@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { safe } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -23,7 +24,9 @@ const AutoDisabledDocument: FC<Props> = ({ datasetId }) => {
   if (!documentIds?.length || isLoading) return null
 
   const handleEnableDocuments = async () => {
-    await enableDocument({ datasetId, documentIds })
+    const [requestError] = await safe(enableDocument({ datasetId, documentIds }))
+    if (requestError) return
+
     invalidDisabledDocument()
     toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }

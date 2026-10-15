@@ -78,7 +78,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
       } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+        // The mutation reports the failure; retain the current form and input.
       } finally {
         setExporting(false)
       }
@@ -98,7 +98,6 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
           },
           staleTime: 0,
           retry: false,
-          context: { silent: true },
         }),
       )
       const message = isUsedByApp

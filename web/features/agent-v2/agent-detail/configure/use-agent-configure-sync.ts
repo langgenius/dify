@@ -10,7 +10,7 @@ import { mutationOptions, useMutation, useQueryClient } from '@tanstack/react-qu
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
@@ -63,6 +63,7 @@ export function useAgentConfigureSync({
   const toolPresentation = useAgentToolPresentation(toolPresentationIdentities, toolProviderCatalog)
   const queryClient = useQueryClient()
   const store = useStore()
+  const [saveError, setSaveError] = useState<unknown>()
   const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
   const enabledRef = useRef(enabled)
@@ -103,26 +104,18 @@ export function useAgentConfigureSync({
   }, [store])
 
   const { mutateAsync: saveComposerDraft } = useMutation(
-    consoleQuery.agent.byAgentId.composer.put.mutationOptions({
-      context: {
-        silent: true,
-      },
-    }),
+    consoleQuery.agent.byAgentId.composer.put.mutationOptions({ onError: setSaveError }),
   )
   const { mutateAsync: saveComposerDraftOnPageClose } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
+      onError: setSaveError,
       context: {
         keepalive: true,
-        silent: true,
       },
     }),
   )
   const { mutateAsync: publishAgent } = useMutation(
-    consoleQuery.agent.byAgentId.publish.post.mutationOptions({
-      context: {
-        silent: true,
-      },
-    }),
+    consoleQuery.agent.byAgentId.publish.post.mutationOptions({ onError: setSaveError }),
   )
 
   const applySavedDraft = useCallback(
@@ -137,6 +130,7 @@ export function useAgentConfigureSync({
     }) => {
       if (saveSequence < latestAppliedSaveSequenceRef.current) return
 
+      setSaveError(undefined)
       latestAppliedSaveSequenceRef.current = saveSequence
       setSavedDraft(draftBaseline)
       lastAutosavedDraftKeyRef.current = draftKey
@@ -149,12 +143,12 @@ export function useAgentConfigureSync({
       configSnapshot,
       draftBaseline,
       publish = false,
-      silent = true,
+      autosave = true,
     }: {
       configSnapshot: AgentSoulConfig
       draftBaseline: AgentSoulConfigFormState
       publish?: boolean
-      silent?: boolean
+      autosave?: boolean
     }) => {
       const permissions = getCurrentPermissions()
       if (
@@ -178,10 +172,9 @@ export function useAgentConfigureSync({
             },
           })
         } catch (error) {
-          // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
-          if (!silent) {
-            if (publish) throw error
-            throw new Error('Failed to save agent composer draft.')
+          // Autosave keeps the local draft intact; explicit commands must stop at this boundary.
+          if (!autosave) {
+            throw error
           }
 
           return false
@@ -276,7 +269,7 @@ export function useAgentConfigureSync({
           configSnapshot,
           draftBaseline,
           publish: true,
-          silent: false,
+          autosave: false,
         })
       },
     }),
@@ -317,7 +310,7 @@ export function useAgentConfigureSync({
       await saveComposer({
         configSnapshot,
         draftBaseline: draft,
-        silent: false,
+        autosave: false,
       })
     } catch (error) {
       toast.error(tCommon(($) => $['api.actionFailed']))
@@ -477,9 +470,6 @@ export function useAgentConfigureSync({
         app_mode: 'agent-v2',
       })
       return { kind: published.publication_kind, draft }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : tCommon(($) => $['api.actionFailed']))
-      throw error
     } finally {
       publishInFlightRef.current = false
       if (enabledRef.current && store.get(isAgentComposerDirtyAtom)) debouncedSaveDraft()
@@ -499,6 +489,7 @@ export function useAgentConfigureSync({
   ])
 
   return {
+    saveError,
     isPublishing,
     publishDraft,
     saveDraft,

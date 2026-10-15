@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   agentSoulConfigToFormState,
@@ -82,11 +82,16 @@ export function useWorkflowInlineAgentConfigureSync({
   const enabledRef = useRef(enabled)
   const onDraftSavedRef = useRef(onDraftSaved)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
+  const [saveError, setSaveError] = useState<unknown>()
   const { mutateAsync: saveAppComposer } = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
+      onError: setSaveError,
+    }),
   )
   const { mutateAsync: saveSnippetComposer } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(
+      { onError: setSaveError },
+    ),
   )
 
   useEffect(() => {
@@ -164,6 +169,7 @@ export function useWorkflowInlineAgentConfigureSync({
           composerState,
         )
       }
+      setSaveError(undefined)
       setSavedDraft(agentSoulConfigToFormState(composerState.agent_soul))
       lastAutosavedDraftKeyRef.current = savedDraftKey
       onDraftSavedRef.current?.(composerState)
@@ -174,7 +180,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
   useEffect(() => {
     latestDraftSaveRef.current = () => {
-      void saveComposer(getAgentSoulDraft())
+      void saveComposer(getAgentSoulDraft()).catch(setSaveError)
     }
   }, [getAgentSoulDraft, saveComposer])
 
@@ -229,6 +235,7 @@ export function useWorkflowInlineAgentConfigureSync({
   }, [autoSaveEnabled, debouncedSaveDraft])
 
   return {
+    saveError,
     saveAgentSoulConfig,
     saveDraft,
   }

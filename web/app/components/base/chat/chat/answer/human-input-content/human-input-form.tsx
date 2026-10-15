@@ -1,10 +1,12 @@
 'use client'
+
 import type { HumanInputFieldValue } from './field-renderer'
 import type { HumanInputFormProps } from './type'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
+import { notifyError } from '@/app/notifications/error'
 import ContentItem from './content-item'
 import {
   getButtonStyle,
@@ -36,11 +38,16 @@ const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
     inputs: Record<string, HumanInputFieldValue>,
   ) => {
     setIsSubmitting(true)
-    await onSubmit?.(formToken, {
-      inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
-      action: actionID,
-    })
-    setIsSubmitting(false)
+    try {
+      await onSubmit?.(formToken, {
+        inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
+        action: actionID,
+      })
+    } catch (error) {
+      notifyError(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const isActionDisabled =
