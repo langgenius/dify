@@ -77,7 +77,7 @@ class MarkdownExtractor(BaseExtractor):
         markdown_tups.append((current_header, current_text))
 
         markdown_tups = [
-            (re.sub(r"#", "", key).strip() if key else None, re.sub(r"<.*?>", "", value))
+            (re.sub(r"^#+\s*", "", key).strip() if key else None, re.sub(r"<.*?>", "", value))
             for key, value in markdown_tups
         ]
 
