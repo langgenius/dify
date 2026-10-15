@@ -45,20 +45,6 @@ export type PopupProps = {
   mlflowConfig: MLflowConfig | null
   databricksConfig: DatabricksConfig | null
   tencentConfig: TencentConfig | null
-  onConfigUpdated: (
-    provider: TracingProvider,
-    payload:
-      | ArizeConfig
-      | PhoenixConfig
-      | LangSmithConfig
-      | LangFuseConfig
-      | OpikConfig
-      | WeaveConfig
-      | AliyunConfig
-      | TencentConfig
-      | MLflowConfig
-      | DatabricksConfig,
-  ) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -79,7 +65,6 @@ const ConfigPopup: FC<PopupProps> = ({
   mlflowConfig,
   databricksConfig,
   tencentConfig,
-  onConfigUpdated,
   onConfigRemoved,
 }) => {
   const { t } = useTranslation(['app'])
@@ -106,26 +91,6 @@ const ConfigPopup: FC<PopupProps> = ({
       }
     },
     [onChooseProvider],
-  )
-
-  const handleConfigUpdated = useCallback(
-    (
-      payload:
-        | ArizeConfig
-        | PhoenixConfig
-        | LangSmithConfig
-        | LangFuseConfig
-        | OpikConfig
-        | WeaveConfig
-        | AliyunConfig
-        | MLflowConfig
-        | DatabricksConfig
-        | TencentConfig,
-    ) => {
-      onConfigUpdated(currentProvider!, payload)
-      hideConfigModal()
-    },
-    [currentProvider, hideConfigModal, onConfigUpdated],
   )
 
   const handleConfigRemoved = useCallback(() => {
@@ -444,7 +409,7 @@ const ConfigPopup: FC<PopupProps> = ({
           type={currentProvider!}
           payload={configuredProviderConfig()}
           onCancel={hideConfigModal}
-          onSaved={handleConfigUpdated}
+          onSaved={hideConfigModal}
           onChosen={onChooseProvider}
           onRemoved={handleConfigRemoved}
         />

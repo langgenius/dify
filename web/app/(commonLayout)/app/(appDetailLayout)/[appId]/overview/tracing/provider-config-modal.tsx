@@ -24,12 +24,13 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/console'
 import { docURL } from './config'
 import Field from './field'
 import { TracingProvider } from './type'
@@ -51,19 +52,7 @@ type Props = Readonly<{
     | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (
-    payload:
-      | ArizeConfig
-      | PhoenixConfig
-      | LangSmithConfig
-      | LangFuseConfig
-      | OpikConfig
-      | WeaveConfig
-      | AliyunConfig
-      | MLflowConfig
-      | DatabricksConfig
-      | TencentConfig,
-  ) => void
+  onSaved: () => void
   onChosen: (provider: TracingProvider) => void
 }>
 
@@ -148,7 +137,6 @@ const ProviderConfigModal: FC<Props> = ({
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const isEdit = !!payload
   const isAdd = !isEdit
-  const [isSaving, setIsSaving] = useState(false)
   const [config, setConfig] = useState<
     | ArizeConfig
     | PhoenixConfig
@@ -183,18 +171,46 @@ const ProviderConfigModal: FC<Props> = ({
     { set: setIsRemoveDialogOpen, setTrue: showRemoveConfirm, setFalse: hideRemoveConfirm },
   ] = useBoolean(false)
 
-  const handleRemove = useCallback(async () => {
-    await removeTracingConfig({
-      appId,
-      provider: type,
-    })
+  const handleSaved = () => {
     toast(
-      t(($) => $['api.remove'], { ns: 'common' }),
+      t(($) => $['api.success'], { ns: 'common' }),
       { type: 'success' },
     )
-    onRemoved()
-    hideRemoveConfirm()
-  }, [hideRemoveConfirm, appId, type, t, onRemoved])
+    onSaved()
+  }
+  const createConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({
+      onSuccess: () => {
+        handleSaved()
+        onChosen(type)
+      },
+    }),
+  )
+  const updateConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({
+      onSuccess: handleSaved,
+    }),
+  )
+  const removeConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({
+      onSuccess: () => {
+        toast(
+          t(($) => $['api.remove'], { ns: 'common' }),
+          { type: 'success' },
+        )
+        onRemoved()
+        hideRemoveConfirm()
+      },
+    }),
+  )
+  const isSaving = createConfig.isPending || updateConfig.isPending
+
+  const handleRemove = () => {
+    removeConfig.mutate({
+      params: { app_id: appId },
+      query: { tracing_provider: type },
+    })
+  }
 
   const handleConfigChange = useCallback(
     (key: string) => {
@@ -322,32 +338,19 @@ const ProviderConfigModal: FC<Props> = ({
 
     return errorMessage
   }, [config, t, type])
-  const handleSave = useCallback(async () => {
+  const handleSave = () => {
     if (isSaving) return
     const errorMessage = checkValid()
     if (errorMessage) {
       toast(errorMessage, { type: 'error' })
       return
     }
-    const action = isEdit ? updateTracingConfig : addTracingConfig
-    try {
-      await action({
-        appId,
-        body: {
-          tracing_provider: type,
-          tracing_config: config,
-        },
-      })
-      toast(
-        t(($) => $['api.success'], { ns: 'common' }),
-        { type: 'success' },
-      )
-      onSaved(config)
-      if (isAdd) onChosen(type)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [appId, checkValid, config, isAdd, isEdit, isSaving, onChosen, onSaved, t, type])
+    const mutation = isEdit ? updateConfig : createConfig
+    mutation.mutate({
+      params: { app_id: appId },
+      body: { tracing_provider: type, tracing_config: config },
+    })
+  }
 
   // Defer onCancel to onOpenChangeComplete so the dialog's exit animation
   // (scale/opacity transition) can finish before the parent unmounts this modal.
@@ -859,7 +862,7 @@ const ProviderConfigModal: FC<Props> = ({
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={handleRemove}>
+              <AlertDialogConfirmButton onClick={handleRemove} loading={removeConfig.isPending}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogFooter>

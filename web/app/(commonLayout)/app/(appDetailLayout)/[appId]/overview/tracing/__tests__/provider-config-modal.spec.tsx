@@ -13,16 +13,26 @@ import type {
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import ConfigBtn from '../config-button'
 import ProviderConfigModal from '../provider-config-modal'
 import { TracingProvider } from '../type'
 
-vi.mock('@/service/apps', () => ({
-  addTracingConfig: vi.fn(),
-  removeTracingConfig: vi.fn(),
-  updateTracingConfig: vi.fn(),
+const { request } = vi.hoisted(() => ({
+  request:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
+vi.mock('@/service/base', () => ({ request }))
+
+const expectRequest = async (method: string, body?: unknown) => {
+  expect(request).toHaveBeenCalledOnce()
+  const sent = request.mock.calls[0]![2].request
+  expect(sent.method).toBe(method)
+  expect(new URL(sent.url).pathname).toMatch(/\/apps\/app-id\/trace-config$/)
+  if (body) expect(await sent.clone().json()).toEqual(body)
+  else expect(new URL(sent.url).searchParams.get('tracing_provider')).toBe(TracingProvider.langfuse)
+}
 
 vi.mock('@/app/notifications', () => ({
   toast: vi.fn(),
@@ -271,11 +281,11 @@ const renderConfigButton = () => {
       mlflowConfig={null}
       databricksConfig={null}
       tencentConfig={null}
-      onConfigUpdated={vi.fn()}
       onConfigRemoved={vi.fn()}
     >
       <button type="button">Open tracing</button>
     </ConfigBtn>,
+    { wrapper: createQueryClientWrapper(createTestQueryClient()) },
   )
 }
 
@@ -303,6 +313,7 @@ const renderProviderConfigModal = ({
       onChosen={callbacks.onChosen}
       onRemoved={callbacks.onRemoved}
     />,
+    { wrapper: createQueryClientWrapper(createTestQueryClient()) },
   )
 
   return callbacks
@@ -311,9 +322,11 @@ const renderProviderConfigModal = ({
 describe('ProviderConfigModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(addTracingConfig).mockResolvedValue({ result: 'success' })
-    vi.mocked(updateTracingConfig).mockResolvedValue({ result: 'success' })
-    vi.mocked(removeTracingConfig).mockResolvedValue({ result: 'success' })
+    request.mockImplementation(async (_url, _init, { request: sent }) =>
+      sent.method === 'DELETE'
+        ? new Response(null, { status: 204 })
+        : Response.json({ result: 'success' }),
+    )
   })
 
   describe('Nested Overlay Behavior', () => {
@@ -380,16 +393,11 @@ describe('ProviderConfigModal', () => {
       await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
       await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
 
-      await waitFor(() => {
-        expect(addTracingConfig).toHaveBeenCalledWith({
-          appId: 'app-id',
-          body: {
-            tracing_provider: TracingProvider.langfuse,
-            tracing_config: validConfigs[TracingProvider.langfuse],
-          },
-        })
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('POST', {
+        tracing_provider: TracingProvider.langfuse,
+        tracing_config: validConfigs[TracingProvider.langfuse],
       })
-      expect(callbacks.onSaved).toHaveBeenCalledWith(validConfigs[TracingProvider.langfuse])
       expect(callbacks.onChosen).toHaveBeenCalledWith(TracingProvider.langfuse)
       expect(toast).toHaveBeenCalledWith('common.api.success', { type: 'success' })
     })
@@ -405,19 +413,51 @@ describe('ProviderConfigModal', () => {
 
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-        await waitFor(() => {
-          expect(updateTracingConfig).toHaveBeenCalledWith({
-            appId: 'app-id',
-            body: {
-              tracing_provider: provider,
-              tracing_config: validConfigs[provider],
-            },
-          })
+        await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+        await expectRequest('PATCH', {
+          tracing_provider: provider,
+          tracing_config: validConfigs[provider],
         })
-        expect(callbacks.onSaved).toHaveBeenCalledWith(validConfigs[provider])
         expect(callbacks.onChosen).not.toHaveBeenCalled()
       },
     )
+
+    it('keeps the draft on failure, prevents duplicate saves while pending, and allows retry', async () => {
+      const user = userEvent.setup()
+      let resolveResponse!: (response: Response) => void
+      request.mockReturnValueOnce(
+        new Promise<Response>((resolve) => {
+          resolveResponse = resolve
+        }),
+      )
+      const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const callbacks = renderProviderConfigModal({
+        payload: validConfigs[TracingProvider.langfuse],
+      })
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://draft.langfuse.com')
+      const save = screen.getByRole('button', { name: 'common.operation.save' })
+
+      try {
+        await user.click(save)
+        await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+        await user.click(save)
+        expect(request).toHaveBeenCalledOnce()
+        resolveResponse(Response.json({ message: 'Config rejected' }, { status: 400 }))
+
+        await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
+        expect(host).toHaveValue('https://draft.langfuse.com')
+        expect(callbacks.onSaved).not.toHaveBeenCalled()
+        expect(callbacks.onChosen).not.toHaveBeenCalled()
+
+        await user.click(save)
+        await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+        expect(request).toHaveBeenCalledTimes(2)
+      } finally {
+        logError.mockRestore()
+      }
+    })
 
     it.each(invalidConfigCases)(
       'should reject $provider config when $missingField is missing',
@@ -430,7 +470,7 @@ describe('ProviderConfigModal', () => {
 
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-        expect(updateTracingConfig).not.toHaveBeenCalled()
+        expect(request).not.toHaveBeenCalled()
         expect(toast).toHaveBeenCalledWith(expect.stringContaining(missingField), { type: 'error' })
       },
     )
@@ -473,13 +513,8 @@ describe('ProviderConfigModal', () => {
 
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-      await waitFor(() => {
-        expect(removeTracingConfig).toHaveBeenCalledWith({
-          appId: 'app-id',
-          provider: TracingProvider.langfuse,
-        })
-      })
-      expect(callbacks.onRemoved).toHaveBeenCalledTimes(1)
+      await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce())
+      await expectRequest('DELETE')
       expect(toast).toHaveBeenCalledWith('common.api.remove', { type: 'success' })
     })
 
@@ -493,7 +528,7 @@ describe('ProviderConfigModal', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(removeTracingConfig).not.toHaveBeenCalled()
+      expect(request).not.toHaveBeenCalled()
       expect(
         screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
       ).toBeInTheDocument()
