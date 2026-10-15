@@ -11,6 +11,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+from flask import Flask
+
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -67,6 +71,14 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 )
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.workflow_test_utils import build_test_graph_init_params
+from repositories.entities.workflow_execution import WorkflowExecution
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 class _RepoRecorder:
@@ -679,22 +691,36 @@ def test_terminal_failure_batches_only_unfinished_nodes_per_source(
 
 
 class TestWorkflowPersistenceLayer:
-    def test_start_freezes_tracing_only_after_workflow_save(self, monkeypatch: pytest.MonkeyPatch):
+    def test_start_freezes_tracing_only_after_workflow_save(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
         layer, workflow_repo, _, _ = _make_layer(extras={"trace_session_id": "external-session"})
-        calls = []
+        calls: list[tuple[str, str, str, str, object]] = []
 
-        def freeze(entity, *, workflow_id, workflow_run_id, conversation_id, graph_data):
-            assert workflow_repo.saved
+        def freeze(
+            entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+            *,
+            workflow_id: str,
+            workflow_run_id: str,
+            conversation_id: object,
+            graph_data: object,
+        ) -> None:
+            assert workflow_repo.synchronously_saved
             assert graph_data == {"nodes": [], "edges": []}
-            assert workflow_repo.saved[-1].id_ == workflow_run_id
+            saved_execution = workflow_repo.synchronously_saved[-1]
+            assert isinstance(saved_execution, WorkflowExecution)
+            assert saved_execution.id_ == workflow_run_id
             calls.append(
                 (entity.app_config.app_id, entity.app_config.tenant_id, workflow_id, workflow_run_id, conversation_id)
             )
 
-        monkeypatch.setattr("services.workflow_persistence.freeze_workflow_run", freeze)
-        layer._handle_graph_run_started()
-        assert calls == [("app", "tenant", "workflow-id", "run-id", "conv-id")]
+        monkeypatch.setattr(RuntimeApplicationTracingHooks, "freeze_workflow_run", staticmethod(freeze))
+        hooks = RuntimeApplicationTracingHooks()
+        app = Flask(__name__)
+        bind_application_tracing_hooks(app, hooks)
 
+        with app.app_context():
+            layer._handle_graph_run_started()
+        assert calls == [("app", "tenant", "workflow-id", "run-id", "conv-id")]
 
     def test_get_execution_id_requires_system_variable(self):
         layer, _, _, _ = _make_layer(build_system_variables())

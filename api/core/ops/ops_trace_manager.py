@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.config_entity import (
     BaseTracingConfig,
     TracingProviderEnum,
@@ -1480,9 +1481,10 @@ class TraceQueueManager:
         self.trace_instance = None
         self._application_tracing_enabled = False
         if dify_config.OPS_AGENT_TRACE_ENABLED:
-            from services.tracing.runtime_bridge import queue_enabled_at_start
-
-            self._application_tracing_enabled = queue_enabled_at_start(app_id)
+            tracing_hooks = application_tracing_hooks()
+            self._application_tracing_enabled = (
+                tracing_hooks.queue_enabled_at_start(app_id) if tracing_hooks is not None else False
+            )
         else:
             self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore

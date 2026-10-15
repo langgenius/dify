@@ -23,6 +23,7 @@ from celery.exceptions import Retry
 from flask import current_app
 
 from configs import dify_config
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
 from core.ops.entities.trace_entity import trace_info_info_map
 from core.ops.exceptions import RetryableTraceDispatchError
@@ -75,10 +76,10 @@ def process_trace_tasks(self, file_info):
 
         application_trace_captured = False
         if dify_config.OPS_AGENT_TRACE_ENABLED:
-            from services.tracing.runtime_bridge import capture_terminal
-
             with current_app.app_context():
-                application_trace_captured = capture_terminal(trace_info)
+                tracing_hooks = application_tracing_hooks()
+                if tracing_hooks is not None:
+                    application_trace_captured = tracing_hooks.capture_terminal(trace_info)
 
         from extensions.ext_enterprise_telemetry import is_enabled as is_ee_telemetry_enabled
 

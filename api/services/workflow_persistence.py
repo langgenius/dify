@@ -12,6 +12,7 @@ from typing import Any, override
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from core.helper.trace_id_helper import ParentTraceContext
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -48,7 +49,6 @@ from graphon.enums import (
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from repositories.entities.workflow_execution import WorkflowExecution
-from services.tracing.runtime_bridge import freeze_workflow_run
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
 )
@@ -201,13 +201,15 @@ class WorkflowPersistenceLayer(Layer):
 
         self._workflow_execution_repository.save_synchronously(workflow_execution)
         self._workflow_execution = workflow_execution
-        freeze_workflow_run(
-            self._application_generate_entity,
-            workflow_id=self._workflow_info.workflow_id,
-            workflow_run_id=execution_id,
-            conversation_id=self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value),
-            graph_data=self._workflow_info.graph_data,
-        )
+        tracing_hooks = application_tracing_hooks()
+        if tracing_hooks is not None:
+            tracing_hooks.freeze_workflow_run(
+                self._application_generate_entity,
+                workflow_id=self._workflow_info.workflow_id,
+                workflow_run_id=execution_id,
+                conversation_id=self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value),
+                graph_data=self._workflow_info.graph_data,
+            )
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()
