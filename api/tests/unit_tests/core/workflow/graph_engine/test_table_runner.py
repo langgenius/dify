@@ -624,19 +624,22 @@ class TableTestRunner:
             Formatted report string
         """
         report = []
-        report.append("=" * 80)
-        report.append("TEST SUITE REPORT")
-        report.append("=" * 80)
-        report.append("")
-
-        # Summary
-        report.append("SUMMARY:")
-        report.append(f"  Total Tests: {suite_result.total_tests}")
-        report.append(f"  Passed: {suite_result.passed_tests}")
-        report.append(f"  Failed: {suite_result.failed_tests}")
-        report.append(f"  Success Rate: {suite_result.success_rate:.1f}%")
-        report.append(f"  Total Time: {suite_result.total_execution_time:.2f}s")
-        report.append("")
+        report.extend(
+            [
+                "=" * 80,
+                "TEST SUITE REPORT",
+                "=" * 80,
+                "",
+                # Summary
+                "SUMMARY:",
+                f"  Total Tests: {suite_result.total_tests}",
+                f"  Passed: {suite_result.passed_tests}",
+                f"  Failed: {suite_result.failed_tests}",
+                f"  Success Rate: {suite_result.success_rate:.1f}%",
+                f"  Total Time: {suite_result.total_execution_time:.2f}s",
+                "",
+            ]
+        )
 
         # Failed tests details
         failed_results = suite_result.get_failed_results()

@@ -273,43 +273,44 @@ class BaiduVector(BaseVector):
 
             # Construct field schema
             fields = []
-            fields.append(
-                Field(
-                    VDBField.PRIMARY_KEY,
-                    FieldType.STRING,
-                    primary_key=True,
-                    partition_key=True,
-                    auto_increment=False,
-                    not_null=True,
+            fields.extend(
+                (
+                    Field(
+                        VDBField.PRIMARY_KEY,
+                        FieldType.STRING,
+                        primary_key=True,
+                        partition_key=True,
+                        auto_increment=False,
+                        not_null=True,
+                    ),
+                    Field(VDBField.CONTENT_KEY, FieldType.TEXT, not_null=False),
+                    Field(VDBField.METADATA_KEY, FieldType.JSON, not_null=False),
+                    Field(VDBField.VECTOR, FieldType.FLOAT_VECTOR, not_null=True, dimension=dimension),
                 )
             )
-            fields.append(Field(VDBField.CONTENT_KEY, FieldType.TEXT, not_null=False))
-            fields.append(Field(VDBField.METADATA_KEY, FieldType.JSON, not_null=False))
-            fields.append(Field(VDBField.VECTOR, FieldType.FLOAT_VECTOR, not_null=True, dimension=dimension))
 
             # Construct vector index params
             indexes = []
-            indexes.append(
-                VectorIndex(
-                    index_name=self.vector_index,
-                    index_type=index_type,
-                    field=VDBField.VECTOR,
-                    metric_type=metric_type,
-                    params=HNSWParams(m=16, efconstruction=200),
-                    auto_build=True,
-                    auto_build_index_policy=AutoBuildRowCountIncrement(
-                        row_count_increment=self._client_config.auto_build_row_count_increment,
-                        row_count_increment_ratio=self._client_config.auto_build_row_count_increment_ratio,
+            indexes.extend(
+                [
+                    VectorIndex(
+                        index_name=self.vector_index,
+                        index_type=index_type,
+                        field=VDBField.VECTOR,
+                        metric_type=metric_type,
+                        params=HNSWParams(m=16, efconstruction=200),
+                        auto_build=True,
+                        auto_build_index_policy=AutoBuildRowCountIncrement(
+                            row_count_increment=self._client_config.auto_build_row_count_increment,
+                            row_count_increment_ratio=self._client_config.auto_build_row_count_increment_ratio,
+                        ),
                     ),
-                )
-            )
-
-            # Filtering index
-            indexes.append(
-                FilteringIndex(
-                    index_name=self.filtering_index,
-                    fields=[VDBField.METADATA_KEY],
-                )
+                    # Filtering index
+                    FilteringIndex(
+                        index_name=self.filtering_index,
+                        fields=[VDBField.METADATA_KEY],
+                    ),
+                ]
             )
 
             # Get analyzer and parse_mode from config
