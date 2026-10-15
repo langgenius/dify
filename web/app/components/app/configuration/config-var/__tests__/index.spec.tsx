@@ -23,6 +23,11 @@ type SubscriptionEvent = {
 
 let subscriptionCallback: ((event: SubscriptionEvent) => void) | null = null
 
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({}),
+}))
+
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {

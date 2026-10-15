@@ -1,18 +1,23 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import answerDefault from '@/app/components/workflow/nodes/answer/default'
 import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
 import { generateNewNode } from '@/app/components/workflow/utils'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { t } = useTranslation(['workflow'])
 
   const createStartNode = () => {
@@ -84,7 +89,7 @@ export const useWorkflowTemplate = () => {
       edges: [startToLlmEdge, llmToAnswerEdge],
     }
   }
-  if (appDetail?.mode === AppModeEnum.WORKFLOW) {
+  if (appDetail.mode === AppModeEnum.WORKFLOW) {
     const { newNode: startPlaceholderNode } = generateNewNode({
       data: {
         ...startPlaceholderDefault.defaultValue,
