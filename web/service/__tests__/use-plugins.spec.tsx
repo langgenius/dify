@@ -78,13 +78,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const { mockInvalidateAllBuiltInTools } = vi.hoisted(() => ({
-  mockInvalidateAllBuiltInTools: vi.fn(),
-}))
-
-vi.mock('../use-tools', () => ({
-  useInvalidateAllBuiltInTools: () => mockInvalidateAllBuiltInTools,
-}))
+const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
 
 const createQueryClient = () =>
   new QueryClient({
@@ -1065,6 +1059,7 @@ describe('useInvalidateInstalledPluginList', () => {
 
     queryClient.setQueryData(modelInstalledIdsKey, { plugin_ids: ['langgenius/openai'] })
     queryClient.setQueryData(toolInstalledIdsKey, { plugin_ids: ['langgenius/google'] })
+    queryClient.setQueryData(builtInToolsKey, [])
 
     const { result: listResult, unmount } = renderHook(
       () => ({
@@ -1107,11 +1102,12 @@ describe('useInvalidateInstalledPluginList', () => {
     expect(toolCategoryQueries[0]?.state.isInvalidated).toBe(false)
     expect(queryClient.getQueryState(modelInstalledIdsKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(toolInstalledIdsKey)?.isInvalidated).toBe(false)
-    expect(mockInvalidateAllBuiltInTools).not.toHaveBeenCalled()
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(false)
   })
 
   it('also invalidates built-in tools for the tool category', async () => {
     const queryClient = createQueryClient()
+    queryClient.setQueryData(builtInToolsKey, [])
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
 
     const { result } = renderHook(
@@ -1132,7 +1128,7 @@ describe('useInvalidateInstalledPluginList', () => {
       await result.current.invalidate(PluginCategoryEnum.tool)
     })
 
-    expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledOnce()
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
   })
 })
 
