@@ -71,6 +71,8 @@ export type LocalFile<T> = Readonly<{
   read: () => Promise<T | null>
   write: (doc: T) => Promise<void>
   remove: () => Promise<void>
+  /** Remove the file only while it still holds a document `matches` accepts. */
+  removeIf: (matches: (doc: T) => boolean) => Promise<void>
 }>
 
 /** Tolerant read (bad value → default + notice; unusable file → null); write replaces the whole file. */
@@ -85,5 +87,10 @@ export function localFile<S extends z.ZodType>(
     read: () => readTolerant(store, schema, notice),
     write: async (doc) => store.setTyped(schema.parse(doc)),
     remove: () => store.rm(),
+    removeIf: (matches) =>
+      store.rmIf((doc) => {
+        const parsed = schema.safeParse(doc)
+        return parsed.success && matches(parsed.data)
+      }),
   }
 }

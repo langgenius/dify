@@ -44,6 +44,8 @@ export type DifyMock = {
   lastRequest: LastRequest | null
   /** Number of requests received, including GET _catalog */
   requestCount: number
+  /** Runs before each device-token poll is answered: lets a test act while a resume waits. */
+  onDeviceTokenPoll: (hook: () => void) => void
 }
 
 const TOKEN_RE = /^Bearer\s+dfo[ae]_[\w-]+$/
@@ -263,6 +265,7 @@ export type MockState = {
   lastImportBody: Record<string, unknown> | null
   lastRequest: LastRequest | null
   requestCount: number
+  beforeDeviceToken?: () => void
 }
 
 async function readMultipartRunBody(
@@ -801,6 +804,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   })
 
   app.post('/openapi/v1/oauth/device/token', async (c) => {
+    state?.beforeDeviceToken?.()
     const scenario = getScenario()
     if (scenario === 'denied')
       return c.json({ error: 'access_denied', error_description: 'user rejected' }, { status: 400 })
@@ -895,6 +899,9 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         },
         get requestCount() {
           return state.requestCount
+        },
+        onDeviceTokenPoll(hook) {
+          state.beforeDeviceToken = hook
         },
       })
     })
