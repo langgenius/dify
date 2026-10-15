@@ -232,13 +232,14 @@ class AppApiStatusPayload(BaseModel):
 class AppTracePayload(BaseModel):
     enabled: bool = Field(..., description="Enable or disable tracing")
     tracing_provider: str | None = Field(default=None, description="Tracing provider")
+    capture_content: bool = Field(default=False, description="Include prompt, output and tool content in new traces")
+    capture_agent: bool = Field(default=True, description="Capture Agent internals when deployment support is enabled")
 
-    @field_validator("tracing_provider")
-    @classmethod
-    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
-        if info.data.get("enabled") and not value:
+    @model_validator(mode="after")
+    def validate_tracing_provider(self) -> "AppTracePayload":
+        if self.enabled and not self.tracing_provider:
             raise ValueError("tracing_provider is required when enabled is True")
-        return value
+        return self
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
