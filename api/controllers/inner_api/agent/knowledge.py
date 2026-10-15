@@ -41,7 +41,7 @@ class AgentKnowledgePrepareApi(Resource):
                 "message": "Invalid knowledge command or execution context.",
             }, 400
         except KnowledgeFsError as exc:
-            return {"code": exc.code, "message": exc.message}, exc.status_code
+            return {"code": exc.code, "message": exc.message, "status": exc.status_code}, exc.status_code
         except (
             KnowledgeFSAppAdmissionError,
             KnowledgeFSProductNotFoundError,
@@ -92,7 +92,7 @@ class AgentKnowledgeInvestigationApi(Resource):
         except ValidationError:
             return {"code": "KNOWLEDGE_INVALID_REQUEST", "message": "Invalid investigation."}, 400
         except KnowledgeFsError as exc:
-            return {"code": exc.code, "message": exc.message}, exc.status_code
+            return {"code": exc.code, "message": exc.message, "status": exc.status_code}, exc.status_code
         except (
             AgentConfigServiceError,
             KnowledgeFSAppAdmissionError,
