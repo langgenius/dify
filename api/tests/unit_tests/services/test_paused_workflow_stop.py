@@ -142,7 +142,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
             assert node is not None
             assert node.status == WorkflowNodeExecutionStatus.FAILED
             assert node.finished_at == datetime(2026, 10, 10, 0, 1)
-            assert node.process_data_dict["__dify_retry_history"][0]["error"] == "retry failed"
+            assert node.process_data_dict == {"__dify_retry_history": [{"retry_index": 1, "error": "retry failed"}]}
         calls.append("retire")
         return ["workspace-1"]
 

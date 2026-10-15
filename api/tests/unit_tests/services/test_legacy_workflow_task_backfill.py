@@ -18,10 +18,10 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
-from models.workflow import WorkflowPause, WorkflowRun
+from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskControlService, AppTaskService
 from tests.unit_tests.services.test_app_task_service import _StopRedis
@@ -272,7 +272,7 @@ def test_backfill_reads_every_page_even_as_previous_pages_leave_the_query(
         expected[run.id] = context.get_generate_entity().task_id
 
     assert backfill_service.backfill_legacy_workflow_task_ids() == 101
-    assert dict(sqlite_session.execute(select(WorkflowRun.id, WorkflowRun.task_id)).all()) == expected
+    assert dict(sqlite_session.execute(select(WorkflowRun.id, WorkflowRun.task_id)).tuples().all()) == expected
 
 
 def test_snapshot_storage_reads_do_not_hold_a_database_transaction(
