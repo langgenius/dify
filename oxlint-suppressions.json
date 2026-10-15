@@ -4060,14 +4060,6 @@
       "count": 1
     }
   },
-  "web/service/datasets.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/service/debug.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -4089,46 +4081,24 @@
       "count": 2
     }
   },
-  "web/service/knowledge/use-create-dataset.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-dataset.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/knowledge/use-dataset.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 8
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/knowledge/use-document.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 4
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/knowledge/use-metadata.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 8
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/knowledge/use-segment.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/log.ts": {
