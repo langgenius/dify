@@ -33,6 +33,7 @@ overrides:
   '@next/env': 16.4.1
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
+  fflate@>=0.7.0 <0.7.5: 0.7.5
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.1.1: ^4.1.2
   picomatch@>=4.0.0 <4.0.4: 4.0.7
