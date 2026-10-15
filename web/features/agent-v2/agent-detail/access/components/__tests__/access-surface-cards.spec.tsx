@@ -360,11 +360,15 @@ function createDeferredPromise<T>() {
 
 describe('Agent access surface cards', () => {
   beforeEach(() => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
     vi.clearAllMocks()
     mocks.agentDetailQueryFn.mockResolvedValue(createAgent())
     mocks.getUserCanAccess.mockResolvedValue({ result: true })
     mocks.accessSubjectsQueryFn.mockResolvedValue({ groups: [], members: [] })
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   describe('Web app access', () => {
     it('disables Open when the user cannot access the backing Web App', async () => {

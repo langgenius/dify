@@ -2964,7 +2964,7 @@
   },
   "web/app/components/workflow/nodes/agent/__tests__/integration.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 17
+      "count": 16
     }
   },
   "web/app/components/workflow/nodes/agent/default.ts": {

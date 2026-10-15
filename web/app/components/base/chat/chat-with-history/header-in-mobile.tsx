@@ -102,14 +102,7 @@ const HeaderInMobile = () => {
           <div className="flex grow items-center justify-center">
             {!currentConversationId && (
               <>
-                <AppIcon
-                  className="mr-2"
-                  size="tiny"
-                  icon={appData?.site.icon}
-                  iconType={appData?.site.icon_type}
-                  imageUrl={appData?.site.icon_url}
-                  background={appData?.site.icon_background}
-                />
+                <AppIcon className="mr-2" size="tiny" icon={appData?.site} />
                 <div className="truncate system-md-semibold text-text-secondary">
                   {appData?.site.title}
                 </div>
