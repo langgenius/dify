@@ -123,6 +123,15 @@ case ${1:-} in
     systemctl --version
     systemctl show --property=Version
     sudo systemctl show "$unit" --property=User,Group,Delegate,DelegateSubgroup,CPUQuotaPerSecUSec,MemoryMax,TasksMax,NoNewPrivileges,AppArmorProfile,ControlGroup,SystemCallFilter,SystemCallErrorNumber
+    # Inspect inherited image submounts without dumping mount sources/options,
+    # process arguments, environment, or service credentials.
+    native_manager_pid=$(systemctl show "$unit" --property=MainPID --value) || native_manager_pid=
+    if [[ $native_manager_pid =~ ^[0-9]+$ && $native_manager_pid -gt 1 ]]; then
+      printf 'Native manager image mount points and VFS flags\n'
+      sudo awk '$5 ~ /^\/(usr|bin|sbin|lib|lib64|etc\/ssl)(\/|$)/ && count++ < 128 {
+        print $5, $6
+      }' "/proc/$native_manager_pid/mountinfo" || true
+    fi
     for group in /sys/fs/cgroup/system.slice/dify-native.service{,/manager,/scopes}; do
       for file in cgroup.type cgroup.procs cgroup.subtree_control cgroup.events; do
         printf '%s\n' "$group/$file"
