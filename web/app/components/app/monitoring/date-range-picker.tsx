@@ -40,7 +40,9 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
         </DatePickerTrigger>
         <DatePickerContent />
       </DatePicker>
-      <span aria-hidden="true">–</span>
+      <span aria-hidden="true" className="shrink-0 system-sm-regular text-text-tertiary">
+        -
+      </span>
       <DatePicker
         value={end.format('YYYY-MM-DD')}
         minDate={start.format('YYYY-MM-DD')}
