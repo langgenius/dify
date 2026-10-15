@@ -7,10 +7,6 @@ export type CommonResponse = {
   result: 'success' | 'fail'
 }
 
-export type InitValidateStatusResponse = {
-  status: 'finished' | 'not_started'
-}
-
 export type Member = AccountWithRoleResponse
 
 export type DataSourceNotionPage = {

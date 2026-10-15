@@ -1,5 +1,4 @@
 import type { ReactElement } from 'react'
-import type { InitValidateStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleClient } from '@/service/console'
@@ -46,7 +45,7 @@ const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
-  } as InitValidateStatusResponse)
+  })
 }
 
 describe('InstallForm', () => {

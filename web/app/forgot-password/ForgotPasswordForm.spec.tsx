@@ -1,4 +1,3 @@
-import type { InitValidateStatusResponse } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -34,7 +33,7 @@ const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
-  } as InitValidateStatusResponse)
+  })
 }
 
 describe('ForgotPasswordForm', () => {
@@ -180,7 +179,7 @@ describe('ForgotPasswordForm', () => {
     })
     mockFetchInitValidateStatus.mockResolvedValue({
       status: 'not_started',
-    } as InitValidateStatusResponse)
+    })
 
     render(<ForgotPasswordForm />)
 

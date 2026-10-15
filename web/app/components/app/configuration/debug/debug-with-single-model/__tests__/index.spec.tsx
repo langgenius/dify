@@ -99,7 +99,6 @@ vi.mock('@/service/base', () => ({
   get: vi.fn(() => Promise.resolve({ data: {} })),
   del: vi.fn(() => Promise.resolve({ data: {} })),
   patch: vi.fn(() => Promise.resolve({ data: {} })),
-  put: vi.fn(() => Promise.resolve({ data: {} })),
 }))
 
 vi.mock('@/service/fetch', () => ({
