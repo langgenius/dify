@@ -303,3 +303,87 @@ def test_process_trace_tasks_deletes_payload_and_counts_exhausted_retryable_disp
     mock_retry.assert_not_called()
     mock_delete.assert_called_once_with("ops_trace/app-id/file-id.json")
     mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
+
+
+def test_managed_application_capture_receives_restored_info_and_preserves_enterprise(monkeypatch: pytest.MonkeyPatch):
+    from core.ops.entities.trace_entity import MessageTraceInfo
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    legacy = MagicMock()
+    enterprise = MagicMock()
+    modules = _install_trace_manager(
+        legacy, enterprise_enabled=True, enterprise_trace_cls=MagicMock(return_value=enterprise)
+    )
+    lookup = MagicMock(side_effect=AssertionError("managed traces must not instantiate legacy providers"))
+    modules["core.ops.ops_trace_manager"].OpsTraceManager.get_ops_trace_instance = lookup
+    payload = json.dumps(
+        {
+            "trace_info_type": "MessageTraceInfo",
+            "trace_info": {
+                "metadata": {},
+                "message_id": "message-id",
+                "conversation_model": "agent",
+                "conversation_mode": "agent",
+                "message_tokens": 0,
+                "answer_tokens": 0,
+                "total_tokens": 0,
+            },
+        }
+    )
+    with (
+        patch.dict(sys.modules, modules),
+        patch("tasks.ops_trace_task.current_app", FakeCurrentApp()),
+        patch("tasks.ops_trace_task.storage.load", return_value=payload),
+        patch("tasks.ops_trace_task.storage.delete") as deleted,
+        patch("services.tracing.runtime_bridge.capture_terminal", return_value=True) as captured,
+    ):
+        _run_task({"app_id": "app-id", "file_id": "file-id"})
+    restored = captured.call_args.args[0]
+    assert isinstance(restored, MessageTraceInfo)
+    assert restored.message_id == "message-id"
+    enterprise.trace.assert_called_once_with(restored)
+    lookup.assert_not_called()
+    legacy.trace.assert_not_called()
+    deleted.assert_called_once()
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_nonmanaged_task_uses_legacy_and_disabled_gate_never_calls_collector(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool
+):
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=enabled)
+    legacy = MagicMock()
+    with (
+        patch.dict(sys.modules, _install_trace_manager(legacy)),
+        patch("tasks.ops_trace_task.current_app", FakeCurrentApp()),
+        patch("tasks.ops_trace_task.storage.load", return_value=_make_payload()),
+        patch("tasks.ops_trace_task.storage.delete"),
+        patch("services.tracing.runtime_bridge.capture_terminal", return_value=False) as captured,
+    ):
+        _run_task({"app_id": "app-id", "file_id": "file-id"})
+    assert captured.call_count == int(enabled)
+    legacy.trace.assert_called_once_with({})
+
+
+def test_capture_persistence_failure_preserves_payload_without_legacy_export(monkeypatch: pytest.MonkeyPatch):
+    from tests.unit_tests.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    legacy = MagicMock()
+    with (
+        patch.dict(sys.modules, _install_trace_manager(legacy)),
+        patch("tasks.ops_trace_task.current_app", FakeCurrentApp()),
+        patch("tasks.ops_trace_task.storage.load", return_value=_make_payload()),
+        patch("tasks.ops_trace_task.storage.delete") as deleted,
+        patch(
+            "services.tracing.runtime_bridge.capture_terminal", side_effect=RetryableTraceDispatchError("database busy")
+        ),
+        patch.object(process_trace_tasks, "retry", side_effect=Retry()),
+        pytest.raises(Retry),
+    ):
+        _run_task({"app_id": "app-id", "file_id": "file-id"})
+    legacy.trace.assert_not_called()
+    deleted.assert_not_called()
