@@ -483,7 +483,7 @@ def test_trace_app_config_maps_missing_app_to_404(
         ),
         pytest.param(
             "post",
-            AppTracingConfigInvalidConfigurationError(field_errors={"host": ["URL must start with https://"]}),
+            AppTracingConfigInvalidConfigurationError(),
             InvalidTracingConfigError,
             400,
             "invalid_tracing_config",
@@ -491,7 +491,7 @@ def test_trace_app_config_maps_missing_app_to_404(
         ),
         pytest.param(
             "patch",
-            AppTracingConfigInvalidConfigurationError(field_errors={"host": ["URL must start with https://"]}),
+            AppTracingConfigInvalidConfigurationError(),
             InvalidTracingConfigError,
             400,
             "invalid_tracing_config",
@@ -575,14 +575,11 @@ def test_trace_app_config_maps_application_errors_at_the_controller_boundary(
 
     assert exc_info.value.code == expected_status
     assert exc_info.value.error_code == expected_code
-    expected_body: dict[str, object] = {
+    assert exc_info.value.data == {
         "code": expected_code,
         "message": exc_info.value.description,
         "status": expected_status,
     }
-    if isinstance(service_error, AppTracingConfigInvalidConfigurationError):
-        expected_body["details"] = {"field_errors": service_error.field_errors}
-    assert exc_info.value.data == expected_body
 
 
 @pytest.mark.parametrize("method_name", ["get", "post", "patch", "delete"])

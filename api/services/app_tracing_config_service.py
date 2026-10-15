@@ -115,9 +115,8 @@ class AppTracingConfigProviderUnavailableError(AppTracingConfigError):
 class AppTracingConfigInvalidConfigurationError(AppTracingConfigError):
     """The submitted provider configuration does not match its schema."""
 
-    def __init__(self, *, field_errors: dict[str, list[str]]) -> None:
+    def __init__(self) -> None:
         super().__init__("Invalid tracing configuration")
-        self.field_errors = field_errors
 
 
 class AppTracingConfigVerificationFailedError(AppTracingConfigError):

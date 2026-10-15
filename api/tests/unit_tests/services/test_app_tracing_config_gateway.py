@@ -233,17 +233,13 @@ def test_prepare_new_config_rejects_invalid_schema_before_verification(
     monkeypatch.setattr(gateway_module, "provider_config_map", {"arize": _provider_entry()})
 
     with patch.object(gateway_module, "OpsTraceManager") as manager:
-        with pytest.raises(AppTracingConfigInvalidConfigurationError) as caught:
+        with pytest.raises(AppTracingConfigInvalidConfigurationError):
             OpsTraceManagerGateway().prepare_new_config(
                 workspace_id="workspace-1",
                 tracing_provider="arize",
-                tracing_config={"endpoint": {"secret": "submitted-credential"}, "project": None},
+                tracing_config={"endpoint": {"invalid": "value"}},
             )
 
-    assert caught.value.field_errors == {
-        "endpoint": ["Input should be a valid string"],
-        "project": ["Input should be a valid string"],
-    }
     manager.check_trace_config_is_effective.assert_not_called()
     manager.encrypt_tracing_config.assert_not_called()
 
@@ -299,18 +295,14 @@ def test_prepare_updated_config_validates_schema_before_encryption(monkeypatch: 
     monkeypatch.setattr(gateway_module, "provider_config_map", {"arize": _provider_entry()})
 
     with patch.object(gateway_module, "OpsTraceManager") as manager:
-        with pytest.raises(AppTracingConfigInvalidConfigurationError) as caught:
+        with pytest.raises(AppTracingConfigInvalidConfigurationError):
             OpsTraceManagerGateway().prepare_updated_config(
                 workspace_id="workspace-1",
                 tracing_provider="arize",
-                tracing_config={"endpoint": {"secret": "submitted-credential"}, "project": None},
+                tracing_config={"endpoint": {"invalid": "value"}},
                 current_tracing_config={"api_key": "old-encrypted"},
             )
 
-    assert caught.value.field_errors == {
-        "endpoint": ["Input should be a valid string"],
-        "project": ["Input should be a valid string"],
-    }
     manager.encrypt_tracing_config.assert_not_called()
     manager.decrypt_tracing_config.assert_not_called()
     manager.check_trace_config_is_effective.assert_not_called()

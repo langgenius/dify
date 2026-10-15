@@ -22343,12 +22343,6 @@ The Roster Agent package is invalid.
 | ---- | ---- | ----------- | -------- |
 | InvalidRosterAgentPackageError |  | The Roster Agent package is invalid. |  |
 
-#### InvalidTracingConfigDetails
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| field_errors | object |  | Yes |
-
 #### InvalidTracingConfigError
 
 The tracing configuration is invalid.

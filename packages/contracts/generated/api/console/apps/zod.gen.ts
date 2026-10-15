@@ -820,6 +820,18 @@ export const zTraceConfigPayload = z.object({
 })
 
 /**
+ * InvalidTracingConfigError
+ *
+ * The tracing configuration is invalid.
+ */
+export const zInvalidTracingConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_tracing_config'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * TracingConfigVerificationFailedError
  *
  * The tracing configuration could not be verified.
@@ -1935,26 +1947,6 @@ export const zTextToSpeechVoiceResponse = z.object({
  * Available voices
  */
 export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
-
-/**
- * InvalidTracingConfigDetails
- */
-export const zInvalidTracingConfigDetails = z.object({
-  field_errors: z.record(z.string(), z.array(z.string())),
-})
-
-/**
- * InvalidTracingConfigError
- *
- * The tracing configuration is invalid.
- */
-export const zInvalidTracingConfigError = zErrorResponse.and(
-  z.object({
-    code: z.literal('invalid_tracing_config'),
-    details: zInvalidTracingConfigDetails.optional(),
-    status: z.literal(400),
-  }),
-)
 
 /**
  * SimpleAccountResponse

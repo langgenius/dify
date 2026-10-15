@@ -196,7 +196,7 @@ class TraceAppConfigApi(Resource):
         except AppTracingConfigProviderUnavailableError as error:
             raise TracingProviderUnavailableError() from error
         except AppTracingConfigInvalidConfigurationError as error:
-            raise InvalidTracingConfigError(field_errors=error.field_errors) from error
+            raise InvalidTracingConfigError() from error
         except AppTracingConfigVerificationFailedError as error:
             raise TracingConfigVerificationFailedError() from error
         except AppTracingConfigProcessingError as error:
@@ -256,7 +256,7 @@ class TraceAppConfigApi(Resource):
         except AppTracingConfigProviderUnavailableError as error:
             raise TracingProviderUnavailableError() from error
         except AppTracingConfigInvalidConfigurationError as error:
-            raise InvalidTracingConfigError(field_errors=error.field_errors) from error
+            raise InvalidTracingConfigError() from error
         except AppTracingConfigVerificationFailedError as error:
             raise TracingConfigVerificationFailedError() from error
         except AppTracingConfigProcessingError as error:

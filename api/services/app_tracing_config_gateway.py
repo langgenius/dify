@@ -167,13 +167,7 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         try:
             return config_class.model_validate(tracing_config)
         except ValidationError as error:
-            field_errors: dict[str, list[str]] = {}
-            # Provider configs are flat. Only expose field messages, never submitted credentials or error context.
-            for issue in error.errors(include_input=False, include_context=False, include_url=False):
-                location = issue["loc"]
-                if len(location) == 1 and isinstance(location[0], str) and location[0] in config_class.model_fields:
-                    field_errors.setdefault(location[0], []).append(issue["msg"])
-            raise AppTracingConfigInvalidConfigurationError(field_errors=field_errors) from error
+            raise AppTracingConfigInvalidConfigurationError from error
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:

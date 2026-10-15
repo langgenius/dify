@@ -878,7 +878,6 @@ export type TraceConfigPayload = {
 
 export type InvalidTracingConfigError = ErrorResponse & {
   code: 'invalid_tracing_config'
-  details?: InvalidTracingConfigDetails
   status: 400
 }
 
@@ -2127,12 +2126,6 @@ export type UserSatisfactionRateStatisticItem = {
 export type TextToSpeechVoiceResponse = {
   name: string
   value: string
-}
-
-export type InvalidTracingConfigDetails = {
-  field_errors: {
-    [key: string]: Array<string>
-  }
 }
 
 export type WorkflowAppLogPartialResponse = {
