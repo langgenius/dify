@@ -10,14 +10,17 @@ from typing import Annotated, Literal, Protocol, Self
 
 from pydantic import Field, TypeAdapter, field_validator, model_validator
 
+from services.dify_builder.native_testing.approval_contracts import NativeApprovalProposal
 from services.dify_builder.native_testing.contracts import (
     CheckpointRef,
+    EffectIntent,
     FiniteJSON,
     FrozenDTO,
     JsonValue,
     NativeTestContextRef,
     OperationKey,
     WaitReason,
+    operation_digest,
 )
 
 _FINITE_JSON = TypeAdapter(FiniteJSON)
@@ -71,6 +74,25 @@ class NodeJournalState(FrozenDTO):
     cursor: NonNegativeInt
     operation_keys: tuple[OperationKey, ...]
     result_refs: tuple[str, ...]
+    # Private execution material; never use an immutable result slot for inputs.
+    # Empty keeps old checkpoints readable, but cannot authorize a decision.
+    intents: tuple[EffectIntent, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_intent_owners(self) -> Self:
+        keys = {operation_digest(key) for key in self.operation_keys}
+        if len(keys) != len(self.operation_keys):
+            raise ValueError("duplicate journal operation identity")
+        for key in self.operation_keys:
+            if key.invocation_id != self.invocation_id or key.occurrence_path != self.occurrence_path:
+                raise ValueError("journal operation owner mismatch")
+        seen: set[str] = set()
+        for intent in self.intents:
+            identity = operation_digest(intent.key)
+            if identity not in keys or identity in seen:
+                raise ValueError("journal intent identity mismatch")
+            seen.add(identity)
+        return self
 
 
 class NativeCheckpointPayload(FrozenDTO):
@@ -85,6 +107,25 @@ class NativeCheckpointPayload(FrozenDTO):
     node_journals: tuple[NodeJournalState, ...]
     child_refs: tuple[NativeTestContextRef, ...]
     input_result_refs: tuple[str, ...]
+    approval_proposals: tuple[NativeApprovalProposal, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_unique_operation_identities(self) -> Self:
+        seen: set[str] = set()
+        for journal in self.node_journals:
+            for key in journal.operation_keys:
+                identity = operation_digest(key)
+                if identity in seen:
+                    raise ValueError("duplicate checkpoint operation identity")
+                seen.add(identity)
+        intent_keys = {operation_digest(intent.key) for journal in self.node_journals for intent in journal.intents}
+        proposals: set[str] = set()
+        for proposal in self.approval_proposals:
+            identity = operation_digest(proposal.key)
+            if identity not in intent_keys or identity in proposals:
+                raise ValueError("approval proposal intent identity mismatch")
+            proposals.add(identity)
+        return self
 
     @field_validator("generate_entity_json", "graph_runtime_state_json", "response_stream_filter_json")
     @classmethod

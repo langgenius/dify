@@ -649,7 +649,7 @@ jobs:
 
               import pytest
 
-              EXPECTED = {'tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api': {'test_native_console_unauthenticated_is_rejected': 1, 'test_native_console_invalid_csrf_is_rejected': 1, 'test_decision_cannot_replace_effect_parameters': 1}}
+              EXPECTED = {'tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api': {'test_native_console_unauthenticated_is_rejected': 1, 'test_native_console_invalid_csrf_is_rejected': 1, 'test_decision_cannot_replace_effect_parameters': 1, 'test_protected_checkpoint_roundtrip_disclosure_and_same_key_receipt': 1, 'test_same_key_different_decision_conflicts_without_dispatch': 1, 'test_stale_scope_and_version_cannot_approve': 2, 'test_current_resource_rotation_cannot_approve': 1, 'test_frozen_two_call_proposal_cannot_authorize_third_call': 1, 'test_cross_session_request_is_not_visible': 1, 'test_old_checkpoint_without_full_intent_fails_closed': 1, 'test_current_test_run_permission_is_required': 1, 'test_actual_child_permission_revocation_blocks_root_public_receipt': 1, 'test_generation_changes_after_protected_read_cannot_write_grant': 1, 'test_auth_start_persists_compiled_context_and_replays_without_second_admission': 1, 'test_cancel_without_cleanup_ack_reports_cancelling': 1, 'test_cleanup_ack_cannot_erase_unknown_dispatched_effect': 1, 'test_resume_reuses_same_durable_dispatch': 1, 'test_approval_cannot_replace_configuration_or_native_form': 2, 'test_expired_frozen_proposal_cannot_approve': 1}}
               REPORT = "builder-native-console.xml"
               code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_native_console_api.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-console.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
               problems = []
@@ -950,16 +950,14 @@ jobs:
           from pathlib import Path
           import pytest
 
-          files = [
-              "api/tests/unit_tests/services/dify_builder/native_testing/test_contracts.py",
-              "api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_contracts.py",
-              "api/tests/unit_tests/services/dify_builder/native_testing/test_authorization.py",
-              "api/tests/unit_tests/services/dify_builder/native_testing/test_lifecycle.py",
-              "api/tests/unit_tests/services/dify_builder/native_testing/test_context_binding.py",
-              "api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_bridge.py",
-              "api/tests/unit_tests/services/dify_builder/native_testing/test_native_execution.py",
-          ]
-          new_expected = {'tests.unit_tests.services.dify_builder.native_testing.test_context_binding': {'test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply': 1,
+          files = ['api/tests/unit_tests/services/dify_builder/native_testing/test_contracts.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_contracts.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_authorization.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_lifecycle.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_context_binding.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_bridge.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_native_execution.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_public_contracts.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_pending_intents.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_pending_decision_guard.py', 'api/tests/unit_tests/services/dify_builder/native_testing/test_api_service.py', 'api/tests/unit_tests/controllers/console/test_builder_native_testing_routes.py']
+          new_expected = {'tests.unit_tests.controllers.console.test_builder_native_testing_routes': {'test_native_route_requires_csrf': 1,
+                                                                                       'test_native_route_requires_signed_login': 1,
+                                                                                       'test_native_routes_reject_invalid_payload_before_composition': 4,
+                                                                                       'test_native_sse_reconnect_skips_unchanged_public_snapshot': 1,
+                                                                                       'test_native_sse_snapshot_has_reconnect_cursor_and_no_private_payload': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_api_service': {'test_missing_qualification_refuses_start_before_admission': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_context_binding': {'test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply': 1,
                                                                                           'test_agent_selection_uses_exact_confirmed_opaque_identity': 1,
                                                                                           'test_compiled_admission_recheck_rejects_local_changes_without_writing': 4,
                                                                                           'test_compiler_reads_actual_owner_snapshot_and_finalizes_digest': 1,
@@ -984,6 +982,19 @@ jobs:
                                                                                            'test_resume_reloads_state_each_time': 1,
                                                                                            'test_run_uses_reloaded_typed_snapshot_and_exact_native_run_id': 1,
                                                                                            'test_worker_rejects_marker_before_payload_logger_or_ordinary_runner': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_pending_decision_guard': {'test_guard_rejects_changed_generation_checkpoint_key_intent_scope_and_owner': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_pending_intents': {'test_checkpoint_preserves_typed_frozen_intent_without_using_result_slot': 1,
+                                                                                          'test_checkpoint_proposals_require_complete_matching_intent_and_unique_key': 1,
+                                                                                          'test_checkpoint_refuses_repeated_operation_identity_across_journals': 1,
+                                                                                          'test_journal_refuses_duplicate_intents': 1,
+                                                                                          'test_journal_refuses_foreign_or_unclaimed_intent_key': 3,
+                                                                                          'test_old_checkpoint_journal_reads_with_empty_intents': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_public_contracts': {'test_decision_cannot_replace_parameters_or_expand_grant': 6,
+                                                                                           'test_each_public_command_roundtrips_only_its_contract': 1,
+                                                                                           'test_public_ids_use_shared_strict_utf8_bounds': 4,
+                                                                                           'test_public_receipt_has_no_private_execution_fields': 1,
+                                                                                           'test_start_rejects_caller_authority': 8,
+                                                                                           'test_start_version_is_strict_bounded_integer': 5},
            'tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge': {'test_factory_preserves_bridge_on_runtime_clone_and_checks_owners': 1,
                                                                                          'test_marked_factory_requires_bridge_before_eager_model_setup': 1,
                                                                                          'test_missing_occurrence_fails_before_collaborator_construction': 1,
@@ -1015,7 +1026,7 @@ jobs:
                   problems.append(f"native unit module inventory mismatch: {modules}")
           for module, functions in new_expected.items():
               if dict(new_actual[module]) != functions:
-                  problems.append(f"NW2 function inventory mismatch: {module}: {dict(new_actual[module])}")
+                  problems.append(f"native function inventory mismatch: {module}: {dict(new_actual[module])}")
           for problem in problems:
               print(f"COMPLETENESS {problem}", flush=True)
           print(f"COLLECTED native units: {len(seen)} unique cases", flush=True)

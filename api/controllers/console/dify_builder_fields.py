@@ -42,6 +42,9 @@ IdempotencyKey = Annotated[str, StringConstraints(min_length=1, max_length=128)]
 ReasonCode = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,127}$")]
 
 
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+
+
 class DifyBuilderPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -464,6 +467,17 @@ class DifyBuilderErrorEventResponse(ResponseModel):
     data: DifyBuilderErrorEventData
 
 
+class DifyBuilderNativeExecutionEventData(ResponseModel):
+    session_id: str
+    cursor: ScopeDigest
+    receipt: NativeTestPublicReceipt
+
+
+class DifyBuilderNativeExecutionEventResponse(ResponseModel):
+    event: Literal["native_execution"]
+    data: DifyBuilderNativeExecutionEventData
+
+
 class DifyBuilderStreamEventResponse(
     RootModel[
         Annotated[
@@ -476,7 +490,8 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderProgressEventResponse
             | DifyBuilderProgressSnapshotEventResponse
             | DifyBuilderCommandFinishedEventResponse
-            | DifyBuilderErrorEventResponse,
+            | DifyBuilderErrorEventResponse
+            | DifyBuilderNativeExecutionEventResponse,
             Field(discriminator="event"),
         ]
     ]
@@ -662,3 +677,9 @@ class DifyBuilderRealCallForbiddenResponse(
     ]
 ):
     """Every HTTP 403 body a real-call consent route can return."""
+
+
+class DifyBuilderNativeTestResponse(ResponseModel):
+    """Strict public native receipt; domain DTO also owns generated schemas."""
+
+    data: NativeTestPublicReceipt

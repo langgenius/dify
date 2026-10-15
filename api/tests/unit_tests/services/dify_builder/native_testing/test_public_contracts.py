@@ -13,13 +13,24 @@ def contracts():
 
 
 def start():
-    return dict(schema_version="builder-native-test-v1", test_input_id="input", expected_version=1,
-                mode="native", idempotency_key="start-1")
+    return {
+        "schema_version": "builder-native-test-v1",
+        "test_input_id": "input",
+        "expected_version": 1,
+        "mode": "native",
+        "idempotency_key": "start-1",
+    }
 
 
 def decision():
-    return dict(schema_version="builder-native-test-v1", pending_operation_id="pending", decision="confirm",
-                scope_digest="a" * 64, expected_version=1, idempotency_key="decision-1")
+    return {
+        "schema_version": "builder-native-test-v1",
+        "pending_operation_id": "pending",
+        "decision": "confirm",
+        "scope_digest": "a" * 64,
+        "expected_version": 1,
+        "idempotency_key": "decision-1",
+    }
 
 
 @pytest.mark.parametrize("extra", ["actor", "tenant_id", "ref", "permit", "graph", "parameters", "result", "budget"])
@@ -52,10 +63,15 @@ def test_decision_cannot_replace_parameters_or_expand_grant(extra):
 
 def test_each_public_command_roundtrips_only_its_contract():
     c = contracts()
-    for model, body in ((c.NativeTestStartPayload, start()), (c.NativeTestDecisionPayload, decision()),
-                        (c.NativeTestResumePayload, dict(schema_version="builder-native-test-v1", expected_generation=0,
-                                                        idempotency_key="resume-1")),
-                        (c.NativeTestCancelPayload, dict(schema_version="builder-native-test-v1", idempotency_key="cancel-1"))):
+    for model, body in (
+        (c.NativeTestStartPayload, start()),
+        (c.NativeTestDecisionPayload, decision()),
+        (
+            c.NativeTestResumePayload,
+            {"schema_version": "builder-native-test-v1", "expected_generation": 0, "idempotency_key": "resume-1"},
+        ),
+        (c.NativeTestCancelPayload, {"schema_version": "builder-native-test-v1", "idempotency_key": "cancel-1"}),
+    ):
         assert model.model_validate(body).model_dump(mode="json") == body
         with pytest.raises(ValidationError):
             model.model_validate({**body, "context_digest": "b" * 64})
@@ -65,7 +81,17 @@ def test_public_receipt_has_no_private_execution_fields():
     c = contracts()
     schema = c.NativeTestPublicReceipt.model_json_schema()
     assert set(schema["properties"]) == {
-        "schema_version", "request_id", "generation", "version", "status", "wait_reason", "native_run_id",
-        "native_status", "pending", "outcome", "evidence_refs",
+        "schema_version",
+        "request_id",
+        "generation",
+        "version",
+        "status",
+        "wait_reason",
+        "native_run_id",
+        "native_status",
+        "pending",
+        "outcome",
+        "evidence_refs",
+        "cancellation",
     }
     assert schema["additionalProperties"] is False

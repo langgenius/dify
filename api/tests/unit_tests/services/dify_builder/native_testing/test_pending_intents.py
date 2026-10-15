@@ -8,16 +8,30 @@ from services.dify_builder.native_testing.runtime_contracts import NativeCheckpo
 
 
 def effect():
-    return EffectIntent(key=OperationKey(invocation_id="inv", occurrence_path=("node", "0"), cursor=0),
-                        kind="tool", resource_ref="mail.read", implementation_revision="v1", account_ref="account",
-                        target={"mailbox": "inbox"}, parameters={"limit": True}, input_digest="a" * 64,
-                        capability_digest="b" * 64)
+    return EffectIntent(
+        key=OperationKey(invocation_id="inv", occurrence_path=("node", "0"), cursor=0),
+        kind="tool",
+        resource_ref="mail.read",
+        implementation_revision="v1",
+        account_ref="account",
+        target={"mailbox": "inbox"},
+        parameters={"limit": True},
+        input_digest="a" * 64,
+        capability_digest="b" * 64,
+    )
 
 
 def journal():
     intent = effect()
-    return dict(invocation_id="inv", occurrence_path=("node", "0"), input_result_ref="input-result",
-                input_digest="a" * 64, cursor=0, operation_keys=(intent.key,), result_refs=())
+    return {
+        "invocation_id": "inv",
+        "occurrence_path": ("node", "0"),
+        "input_result_ref": "input-result",
+        "input_digest": "a" * 64,
+        "cursor": 0,
+        "operation_keys": (intent.key,),
+        "result_refs": (),
+    }
 
 
 def test_old_checkpoint_journal_reads_with_empty_intents():
@@ -49,7 +63,57 @@ def test_journal_refuses_duplicate_intents():
 def test_checkpoint_refuses_repeated_operation_identity_across_journals():
     value = NodeJournalState(**journal())
     with pytest.raises(ValidationError):
-        NativeCheckpointPayload(schema_version="1", native_run_id="run", generation=0,
-                                generate_entity_json="{}", graph_runtime_state_json="{}",
-                                response_stream_filter_json="{}", node_journals=(value, value),
-                                child_refs=(), input_result_refs=())
+        NativeCheckpointPayload(
+            schema_version="1",
+            native_run_id="run",
+            generation=0,
+            generate_entity_json="{}",
+            graph_runtime_state_json="{}",
+            response_stream_filter_json="{}",
+            node_journals=(value, value),
+            child_refs=(),
+            input_result_refs=(),
+        )
+
+
+def test_checkpoint_proposals_require_complete_matching_intent_and_unique_key():
+    import importlib.util
+    from datetime import UTC, datetime, timedelta
+
+    name = "services.dify_builder.native_testing.approval_contracts"
+    assert importlib.util.find_spec(name) is not None, "frozen approval proposal owner missing"
+    m = __import__(name, fromlist=["NativeApprovalProposal"])
+    intent = effect()
+    proposal = m.NativeApprovalProposal(
+        key=intent.key,
+        terms=m.NativeApprovalTerms(
+            max_calls=2,
+            max_dispatches=2,
+            max_cost_units=4,
+            expires_at=(datetime.now(UTC) + timedelta(minutes=5)).isoformat(),
+        ),
+    )
+    values = {
+        "schema_version": "1",
+        "native_run_id": "run",
+        "generation": 0,
+        "generate_entity_json": "{}",
+        "graph_runtime_state_json": "{}",
+        "response_stream_filter_json": "{}",
+        "child_refs": (),
+        "input_result_refs": (),
+    }
+    with pytest.raises(ValidationError):
+        NativeCheckpointPayload(
+            **values, node_journals=(NodeJournalState(**journal()),), approval_proposals=(proposal,)
+        )
+    with pytest.raises(ValidationError):
+        NativeCheckpointPayload(
+            **values,
+            node_journals=(NodeJournalState(**journal(), intents=(intent,)),),
+            approval_proposals=(proposal, proposal),
+        )
+    payload = NativeCheckpointPayload(
+        **values, node_journals=(NodeJournalState(**journal(), intents=(intent,)),), approval_proposals=(proposal,)
+    )
+    assert NativeCheckpointPayload.model_validate_json(payload.model_dump_json()).approval_proposals == (proposal,)

@@ -36,6 +36,7 @@ from services.dify_builder.native_testing.contracts import (
     RecordedResult,
     operation_digest,
 )
+from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
 from services.dify_builder.native_testing.repository import (
     BudgetReservation,
     NativeBinding,
@@ -290,9 +291,12 @@ class EffectAuthorizationService:
         max_dispatches: int,
         max_cost_units: int,
         expires_at: datetime,
+        pending_guard: PendingDecisionGuard | None = None,
     ) -> str:
         """Internal C04 command boundary; caller authenticates explicit user confirmation.
 
+        Public API callers must supply pending_guard; existing trusted internal
+        ledger callers omit it and retain their original command contract.
         Existing grants are immutable, including limits and expiry. Repeated
         decisions are idempotent; a retry cannot mint a new quota allowance.
         """
@@ -306,6 +310,16 @@ class EffectAuthorizationService:
                 raise BuilderExecutionPolicyError("invalid_native_grant")
             binding = self._binding(session, owned, intent)
             digest = _scope_digest(intent, binding)
+            if pending_guard is not None:
+                terms = pending_guard.terms
+                if (max_calls, max_dispatches, max_cost_units, expires_at) != (
+                    terms.max_calls,
+                    terms.max_dispatches,
+                    terms.max_cost_units,
+                    datetime.fromisoformat(terms.expires_at),
+                ):
+                    raise BuilderExecutionPolicyError("native_pending_conflict")
+                pending_guard.recheck(session=session, owned=owned, intent=intent, scope_digest=digest)
             grant = session.scalar(
                 select(NativeEffectGrant).where(
                     NativeEffectGrant.tenant_id == owned.tenant_id,
@@ -323,6 +337,8 @@ class EffectAuthorizationService:
             if grant is not None:
                 if any(getattr(grant, name) != value for name, value in fields.items()):
                     raise BuilderExecutionPolicyError("native_grant_conflict")
+                if pending_guard is not None:
+                    pending_guard.save(session=session, request_id=ref.request_id)
                 return grant.id
             grant = NativeEffectGrant(
                 tenant_id=owned.tenant_id,
@@ -336,6 +352,8 @@ class EffectAuthorizationService:
             )
             session.add(grant)
             session.flush()
+            if pending_guard is not None:
+                pending_guard.save(session=session, request_id=ref.request_id)
             return grant.id
 
     def _permit_ref(self, permit: DispatchPermit) -> NativeTestContextRef:

@@ -100,7 +100,12 @@ COVERAGE = {
 def test_checkpoint_roundtrip_preserves_recovery_state_and_input_references():
     checkpoint = NativeCheckpointPayload.model_validate(CHECKPOINT)
     restored = NativeCheckpointPayload.model_validate_json(checkpoint.model_dump_json())
-    assert restored.model_dump(mode="json") == CHECKPOINT
+    expected = {
+        **CHECKPOINT,
+        "approval_proposals": [],
+        "node_journals": [{**journal, "intents": []} for journal in CHECKPOINT["node_journals"]],
+    }
+    assert restored.model_dump(mode="json") == expected
     assert restored.node_journals[0].operation_keys[0].cursor == 0
     assert restored.input_result_refs == ("inputs-1",)
 
@@ -285,6 +290,7 @@ def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dep
         "typing",
         "pydantic",
         "services.dify_builder.native_testing.contracts",
+        "services.dify_builder.native_testing.approval_contracts",
     }
 
 

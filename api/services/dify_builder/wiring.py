@@ -29,7 +29,9 @@ from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.execution_contracts import canonical_digest
 from services.dify_builder.execution_policy_service import check_app_permissions
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.progress_snapshot import ProgressSnapshot
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
@@ -533,6 +535,8 @@ def stream_advance_frames(
     initial_items: Sequence[ConversationItem] = (),
     read_session_view: Callable[[], dict[str, object]] | None = None,
     initial_progress: ProgressSnapshot | None = None,
+    native_receipts: Callable[[], tuple[NativeTestPublicReceipt, ...]] | None = None,
+    native_cursor: str = "",
 ) -> Iterator[str]:
     """Emit a bounded command handshake, then relay incremental progress.
 
@@ -552,8 +556,29 @@ def stream_advance_frames(
     activated ``subscription`` is closed even when the WSGI server closes the
     response body without ever iterating it -- see _ClosingFrameStream."""
 
+    native_seen: set[str] = {native_cursor} if native_cursor else set()
+
+    def native_frames() -> Iterator[str]:
+        if native_receipts is None:
+            return
+        for receipt in native_receipts():
+            public = NativeTestPublicReceipt.model_validate(receipt.model_dump(mode="json")).model_dump(mode="json")
+            cursor = canonical_digest(public)
+            if cursor not in native_seen:
+                native_seen.add(cursor)
+                yield f"id: {cursor}\n" + _event_frame(
+                    "native_execution",
+                    {
+                        "session_id": view_dict.get("session_id", ""),
+                        "cursor": cursor,
+                        "receipt": public,
+                    },
+                )
+
     def _frames() -> Generator[str]:
         try:
+            yield from native_frames()
+
             if emit_command_started:
                 yield _event_frame(
                     "command_started",
@@ -607,6 +632,7 @@ def stream_advance_frames(
                 except SubscriptionClosedError:
                     return
                 if raw is None:
+                    yield from native_frames()
                     if read_session_view is not None:
                         latest = read_session_view()
                         if latest["run_status"] != "processing" or latest["interrupted"]:
@@ -641,3 +667,23 @@ def stream_advance_frames(
                 subscription.close()
 
     return _ClosingFrameStream(_frames(), subscription)
+
+
+def build_native_test_api_service(*, actor: Actor):
+    """Real durable API owners; capability launch stays gated until qualified.
+
+    NW3 and the capability lanes must supply admission, metadata, disclosure and
+    runtime owners here together. No unqualified adapter is selected by a public
+    body or silently substituted with the ordinary Workflow runtime.
+    """
+    from services.dify_builder.native_testing.api_service import NativeTestApiService
+
+    return NativeTestApiService(
+        session_factory=sessionmaker(bind=db.engine, expire_on_commit=False),
+        actor=actor,
+        resolver=None,
+        admission=None,
+        resolution=None,
+        runtime=None,
+        disclosure=None,
+    )

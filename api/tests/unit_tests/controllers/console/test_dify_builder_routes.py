@@ -145,10 +145,13 @@ def test_session_stream_delegates_to_reconnect_stream(monkeypatch):
     stream = MagicMock(return_value=Response(_frames(), mimetype="text/event-stream", headers=mod._SSE_HEADERS))
     monkeypatch.setattr(mod, "_stream", stream)
 
-    response = unwrap(mod.DifyBuilderSessionStreamApi.get)(object(), "ten-1", _account(), "s1")
+    with Flask(__name__).test_request_context():
+        response = unwrap(mod.DifyBuilderSessionStreamApi.get)(object(), "ten-1", _account(), "s1")
 
     _assert_event_stream(response)
-    stream.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
+    stream.assert_called_once_with(
+        "s1", Actor(account_id="acc-1", tenant_id="ten-1"), native_version=None, native_cursor=""
+    )
 
 
 def test_conversation_get_validates_query_and_returns_json_page(monkeypatch):

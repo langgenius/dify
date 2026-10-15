@@ -38,7 +38,7 @@ from flask import Flask, Response, current_app, request
 from flask_restx import Resource
 from pydantic import ValidationError
 from sqlalchemy.orm import scoped_session
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
 from werkzeug.local import LocalProxy
 
 from controllers.common.schema import (
@@ -60,8 +60,17 @@ from extensions.ext_database import db
 from libs.helper import dump_response
 from libs.login import login_required
 from services.dify_builder import progress_bus, progress_snapshot
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.public_contracts import (
+    NativeTestCancelPayload,
+    NativeTestDecisionPayload,
+    NativeTestResumePayload,
+    NativeTestStartPayload,
+)
 from services.dify_builder.service import resolve_submitted_action
 from services.dify_builder.wiring import (
+    build_native_test_api_service,
     build_real_call_consent_service,
     build_service,
     dify_builder_error_response,
@@ -83,6 +92,7 @@ from .dify_builder_fields import (
     DifyBuilderCreateSessionPayload,
     DifyBuilderErrorResponse,
     DifyBuilderExecuteRealCallPayload,
+    DifyBuilderNativeTestResponse,
     DifyBuilderPrepareRealCallPayload,
     DifyBuilderRealCallConsentResponse,
     DifyBuilderRealCallForbiddenResponse,
@@ -95,8 +105,13 @@ from .dify_builder_fields import (
 
 logger = logging.getLogger(__name__)
 
+
 register_schema_models(
     console_ns,
+    NativeTestStartPayload,
+    NativeTestDecisionPayload,
+    NativeTestResumePayload,
+    NativeTestCancelPayload,
     DifyBuilderCreateSessionPayload,
     DifyBuilderConversationListQuery,
     DifyBuilderSubmitActionPayload,
@@ -107,6 +122,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    DifyBuilderNativeTestResponse,
     DifyBuilderConversationPageResponse,
     DifyBuilderSessionViewResponse,
     DifyBuilderStreamEventResponse,
@@ -284,7 +300,9 @@ def _conversation(session_id: str, query_args, actor: Actor) -> dict | tuple[dic
     return dump_response(DifyBuilderConversationPageResponse, page)
 
 
-def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
+def _stream(
+    session_id: str, actor: Actor, *, native_version: str | None = None, native_cursor: str = ""
+) -> Response | tuple[dict, int]:
     service = build_service()
     try:
         service.authorize_session(session_id, actor)
@@ -313,6 +331,13 @@ def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
         return mapped
 
     app = cast(LocalProxy[Flask], current_app)._get_current_object()
+    if native_version not in (None, "builder-native-test-v1"):
+        subscription.close()
+        raise BadRequest("Invalid native test stream version.")
+
+    def read_native_receipts():
+        with app.app_context():
+            return build_native_test_api_service(actor=actor).snapshots(actor=actor, session_id=session_id)
 
     def read_session_view() -> dict[str, object]:
         # Each heartbeat owns a short app context; the authenticated request
@@ -330,6 +355,8 @@ def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
             command_id=view.last_command_id,
             read_session_view=read_session_view,
             initial_progress=snapshot,
+            native_receipts=read_native_receipts if native_version is not None else None,
+            native_cursor=native_cursor,
         ),
         mimetype="text/event-stream",
         headers=_SSE_HEADERS,
@@ -513,6 +540,15 @@ class DifyBuilderConversationApi(Resource):
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/stream")
 class DifyBuilderSessionStreamApi(Resource):
+    @console_ns.doc(
+        params={
+            "native_tests": {
+                "in": "query",
+                "enum": ["builder-native-test-v1"],
+                "description": "Include durable native execution snapshots with reconnect cursors",
+            }
+        }
+    )
     @typed_event_stream_response(console_ns, DifyBuilderStreamEventResponse)
     @console_ns.response(
         200,
@@ -528,7 +564,12 @@ class DifyBuilderSessionStreamApi(Resource):
     @with_current_tenant_id
     @dify_builder_required
     def get(self, current_tenant_id, current_user, session_id):
-        return _stream(session_id, _actor(current_user, current_tenant_id))
+        return _stream(
+            session_id,
+            _actor(current_user, current_tenant_id),
+            native_version=request.args.get("native_tests"),
+            native_cursor=request.headers.get("Last-Event-ID", ""),
+        )
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/actions")
@@ -681,3 +722,142 @@ class DifyBuilderAgentPingApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user):
         return _ping(request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+def _native_command(*, actor: Actor, session_id: str, command: str, payload_model=None, request_id=None):
+    """Transport-only strict parsing; never include raw validation/owner errors."""
+    kwargs = {"actor": actor, "session_id": session_id}
+    if request_id is not None:
+        kwargs["request_id"] = request_id
+    if payload_model is not None:
+        try:
+            payload = payload_model.model_validate(request.get_json(silent=True))
+        except ValidationError:
+            raise BadRequest("Invalid native test request.") from None
+        kwargs.update(payload.model_dump(exclude={"schema_version"}))
+    try:
+        receipt = getattr(build_native_test_api_service(actor=actor), command)(**kwargs)
+    except (BuilderExecutionPolicyError, NativeContextUnavailable) as error:
+        if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
+            raise NotFound("Native test not found.") from None
+        if error.reason_code == "execution_permission_denied":
+            raise Forbidden("Native test permission denied.") from None
+        if error.reason_code in {
+            "native_runtime_unavailable",
+            "native_profile_unavailable",
+            "native_binding_unavailable",
+            "native_disclosure_unavailable",
+        }:
+            raise ServiceUnavailable("Native test capability unavailable.") from None
+        raise Conflict("Native test state conflict.") from None
+    return dump_response(DifyBuilderNativeTestResponse, {"data": receipt})
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests")
+class DifyBuilderNativeTestsApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestStartPayload.__name__])
+    @console_ns.response(
+        200, "Native test admission receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            command="start",
+            payload_model=NativeTestStartPayload,
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>")
+class DifyBuilderNativeTestApi(Resource):
+    @console_ns.response(200, "Current native test receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id), session_id=session_id, request_id=request_id, command="get"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/decisions")
+class DifyBuilderNativeTestDecisionsApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestDecisionPayload.__name__])
+    @console_ns.response(200, "Saved native test decision", console_ns.models[DifyBuilderNativeTestResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            request_id=request_id,
+            command="decide",
+            payload_model=NativeTestDecisionPayload,
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/resume")
+class DifyBuilderNativeTestResumeApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestResumePayload.__name__])
+    @console_ns.response(
+        200, "Native test continuation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            request_id=request_id,
+            command="resume",
+            payload_model=NativeTestResumePayload,
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/cancel")
+class DifyBuilderNativeTestCancelApi(Resource):
+    @console_ns.expect(console_ns.models[NativeTestCancelPayload.__name__])
+    @console_ns.response(
+        200, "Native test cancellation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, request_id):
+        return _native_command(
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            request_id=request_id,
+            command="cancel",
+            payload_model=NativeTestCancelPayload,
+        )
