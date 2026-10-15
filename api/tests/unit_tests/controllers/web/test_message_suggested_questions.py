@@ -137,7 +137,9 @@ def harness(
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(app)
     event.listen(db.session.session_factory, "after_begin", track_session)
-    queries = SuggestedQuestionsQuery(session_factory=read_factory, repository_factory=MessageRepository)
+    queries = SuggestedQuestionsQuery(
+        session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
+    )
     services = _Services(MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()))
     app.extensions["application_services"] = services
     api = ExternalApi(app)
