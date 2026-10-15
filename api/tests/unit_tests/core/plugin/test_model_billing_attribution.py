@@ -1,10 +1,11 @@
 """Exercise backwards invocation through the real hosted quota owner, with no external I/O."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
+from pydantic import BaseModel
 
 from configs import dify_config
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -31,7 +32,6 @@ from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResul
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
-from graphon.model_runtime.model_providers.base.ai_model import AIModel
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
@@ -40,7 +40,7 @@ from models.provider import ProviderType
 from services.billing_service import BillingService
 from tests.unit_tests.knowledge_fs_core_fakes import Marker
 
-_MODEL_TYPE_CLASSES: dict[ModelType, type[AIModel]] = {
+_MODEL_TYPE_CLASSES: dict[ModelType, type[LargeLanguageModel] | type[TextEmbeddingModel] | type[RerankModel]] = {
     ModelType.LLM: LargeLanguageModel,
     ModelType.TEXT_EMBEDDING: TextEmbeddingModel,
     ModelType.RERANK: RerankModel,
@@ -139,11 +139,11 @@ def _hosted_bundle(model_type: ModelType) -> ProviderModelBundle:
     ids=["indexing", "retrieval", "answer", "legacy-plugin"],
 )
 def test_model_invocation_preserves_billing_origin(
-    payload_type,
+    payload_type: type[BaseModel],
     invoke_method: Callable[..., object],
     provider_method: str,
     model_type: ModelType,
-    body: dict,
+    body: dict[str, object],
     created_by: str | None,
     config_overrides: Callable[..., None],
 ) -> None:
@@ -153,9 +153,9 @@ def test_model_invocation_preserves_billing_origin(
     payload = payload_type.model_validate(
         {"provider": "langgenius/openai/openai", "model": "selected-model", **body, **metadata}
     )
-    requests: list[tuple[str, dict]] = []
+    requests: list[tuple[str, dict[str, object]]] = []
 
-    def billing_transport(method: str, endpoint: str, *, json: dict) -> dict:
+    def billing_transport(method: str, endpoint: str, *, json: dict[str, object]) -> dict[str, object]:
         assert method == "POST"
         requests.append((endpoint, json))
         if endpoint == "/quota/reserve":
@@ -183,7 +183,10 @@ def test_model_invocation_preserves_billing_origin(
         response = invoke_method("synthetic-end-user", _tenant(), payload)
         assert get_credit_usage_metadata() is None
         if model_type == ModelType.LLM:
-            assert list(response)[0].delta.message.content == "OK"
+            assert isinstance(response, Iterator)
+            first_chunk = list(response)[0]
+            assert isinstance(first_chunk, LLMResultChunk)
+            assert first_chunk.delta.message.content == "OK"
 
     assert [endpoint for endpoint, _ in requests] == ["/quota/reserve", "/quota/commit"]
     expected_metadata = {

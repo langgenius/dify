@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from dataclasses import dataclass, field
 from unittest.mock import patch
 
@@ -398,7 +398,7 @@ def test_online_drive_metadata_and_binary_survive_the_inner_event_stream() -> No
         }
     )
 
-    def responses():
+    def responses() -> Generator[OnlineDriveBrowseFilesResponse | OnlineDriveDownloadMessage]:
         yield browse
         yield blob
         yield chunk

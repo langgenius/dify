@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
@@ -21,6 +22,13 @@ from services.knowledge_fs.app_binding_management import (
 )
 from services.knowledge_fs.product_dto import KnowledgeFSAppBindingPayload
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
+
+
+class _BindingSyncArgs(TypedDict, closed=True):
+    tenant_id: str
+    actor_account_id: str
+    app_id: str
+    control_space_ids: list[str]
 
 
 class ProductAuthorization:
@@ -444,7 +452,12 @@ def test_agent_sync_preserves_workflow_channel_and_rolls_back_with_publish(bindi
     service = _service(binding_session)
     space = binding_session.scalar(select(KnowledgeFSControlSpace))
     assert space is not None
-    args = {"tenant_id": "tenant-1", "actor_account_id": "owner-1", "app_id": "app-1", "control_space_ids": [space.id]}
+    args: _BindingSyncArgs = {
+        "tenant_id": "tenant-1",
+        "actor_account_id": "owner-1",
+        "app_id": "app-1",
+        "control_space_ids": [space.id],
+    }
     service.sync_workflow_bindings(**args)
     service.sync_agent_bindings(**args, session=binding_session)
     assert len(list(binding_session.scalars(select(AppKnowledgeFSSpaceJoin)))) == 2
@@ -453,7 +466,8 @@ def test_agent_sync_preserves_workflow_channel_and_rolls_back_with_publish(bindi
         KnowledgeFSAppSpaceJoinType.WORKFLOW
     ]
     service.sync_agent_bindings(**args)
-    service.sync_agent_bindings(**{**args, "control_space_ids": []})
+    cleared: _BindingSyncArgs = {**args, "control_space_ids": []}
+    service.sync_agent_bindings(**cleared)
     rows = {row.join_type: row for row in binding_session.scalars(select(AppKnowledgeFSSpaceJoin))}
     assert rows[KnowledgeFSAppSpaceJoinType.WORKFLOW].status is KnowledgeFSAppSpaceJoinStatus.ACTIVE
     assert rows[KnowledgeFSAppSpaceJoinType.AGENT].status is KnowledgeFSAppSpaceJoinStatus.REVOKED

@@ -14,12 +14,16 @@ from commands.knowledge_fs import _cutover_service, _read_jsonl, knowledge_fs_co
 from models.knowledge_fs import (
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
+    KnowledgeFSDeleteCommandPayload,
     KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
 )
 from services.knowledge_fs.cleanup import CleanupCompletionReport, CleanupStartReport
 from services.knowledge_fs.control_space_commands import KnowledgeFSDeletionIntentResult
-from services.knowledge_fs.control_space_management import KnowledgeFSControlSpaceDryRunReport
+from services.knowledge_fs.control_space_management import (
+    KnowledgeFSControlSpaceDryRunReport,
+    KnowledgeFSControlSpaceRegistration,
+)
 from services.knowledge_fs.cutover import (
     CutoverBackfillReport,
     QuarantineResolutionReport,
@@ -63,7 +67,13 @@ def _deletion_outbox(control_space: KnowledgeFSControlSpace, operation_id: str) 
         operation_id=operation_id,
         idempotency_key="delete:one",
         operation=KnowledgeFSLifecycleOperation.DELETE,
-        command_payload={},
+        command_payload=KnowledgeFSDeleteCommandPayload(
+            schema_version=1,
+            idempotency_key="delete:one",
+            expected_revision=0,
+            knowledge_space_id=None,
+            provisioning_key="provision-1",
+        ),
         expected_control_space_version=0,
     )
 
@@ -103,7 +113,7 @@ class _ObservationCutoverService:
 class _ManagementService:
     registered: KnowledgeFSControlSpace
     repaired: KnowledgeFSControlSpace
-    registrations: list[object] = field(default_factory=list)
+    registrations: list[KnowledgeFSControlSpaceRegistration] = field(default_factory=list)
     repair_calls: list[dict[str, object]] = field(default_factory=list)
     dry_run_tenants: list[str | None] = field(default_factory=list)
 
@@ -111,7 +121,7 @@ class _ManagementService:
         self.dry_run_tenants.append(tenant_id)
         return _Report(total=1, by_state={"active": 1})
 
-    def register(self, registration: object) -> tuple[KnowledgeFSControlSpace, bool]:
+    def register(self, registration: KnowledgeFSControlSpaceRegistration) -> tuple[KnowledgeFSControlSpace, bool]:
         self.registrations.append(registration)
         return self.registered, True
 
@@ -784,12 +794,12 @@ def test_observation_command_enforces_mutually_exclusive_start_and_completion_mo
 
 def test_legacy_check_returns_a_process_failure_when_any_cutover_gate_is_open() -> None:
     runner = CliRunner()
-    passing = {
+    passing: dict[str, object] = {
         "legacy_dependency_ready": True,
         "open_issues": 0,
         "unresolved_cutover_quarantine": 0,
     }
-    failing_reports = (
+    failing_reports: tuple[dict[str, object], ...] = (
         {**passing, "legacy_dependency_ready": False},
         {**passing, "open_issues": 1},
         {**passing, "unresolved_cutover_quarantine": 1},

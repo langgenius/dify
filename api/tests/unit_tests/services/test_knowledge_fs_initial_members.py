@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from pydantic import ValidationError
 from sqlalchemy import delete, func, select
@@ -14,7 +16,9 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpacePermissionStatus,
     KnowledgeFSControlSpaceVisibility,
     KnowledgeFSExternalAccessPolicy,
+    KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
+    KnowledgeFSProvisionCommandPayload,
 )
 from repositories.sqlalchemy_knowledge_fs_lifecycle_outbox_repository import (
     SQLAlchemyKnowledgeFSLifecycleOutboxRepository,
@@ -44,6 +48,11 @@ def _intent() -> KnowledgeFSProvisionIntent:
         visibility=KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS,
         member_account_ids=("member-2", "member-1"),
     )
+
+
+def _provision_payload(outbox: KnowledgeFSLifecycleOutbox) -> KnowledgeFSProvisionCommandPayload:
+    assert outbox.operation is KnowledgeFSLifecycleOperation.PROVISION
+    return cast(KnowledgeFSProvisionCommandPayload, outbox.command_payload)
 
 
 def _seed_members(session: Session) -> None:
@@ -123,8 +132,9 @@ def test_initial_members_and_visibility_are_committed_with_the_space_and_outbox(
     assert replay.control_space.id == result.control_space.id
     assert replay.outbox.id == result.outbox.id
     assert result.outbox.expected_control_space_version == result.control_space.resource_version == 0
-    assert result.outbox.command_payload["initial_visibility"] == "partial_members"
-    assert result.outbox.command_payload["initial_member_account_ids"] == ["member-1", "member-2"]
+    command_payload = _provision_payload(result.outbox)
+    assert command_payload["initial_visibility"] == "partial_members"
+    assert command_payload["initial_member_account_ids"] == ["member-1", "member-2"]
     permissions = list(sqlite_session.scalars(select(KnowledgeFSControlSpacePermission)))
     assert {permission.account_id: permission.role for permission in permissions} == {
         "owner-1": KnowledgeFSControlSpacePermissionRole.OWNER,
@@ -198,22 +208,27 @@ def test_creation_replay_does_not_restore_revoked_members_or_initial_visibility(
 
 
 @pytest.mark.parametrize(
-    "changes",
+    ("visibility", "member_account_ids"),
     [
-        {"member_account_ids": ("member-1",)},
-        {"visibility": KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS, "member_account_ids": ()},
-        {"visibility": KnowledgeFSControlSpaceVisibility.ONLY_ME, "member_account_ids": ()},
+        (KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS, ("member-1",)),
+        (KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS, ()),
+        (KnowledgeFSControlSpaceVisibility.ONLY_ME, ()),
     ],
 )
 def test_creation_replay_cannot_change_initial_access(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], changes: dict[str, object]
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    visibility: KnowledgeFSControlSpaceVisibility,
+    member_account_ids: tuple[str, ...],
 ) -> None:
     _seed_members(sqlite_session)
     service = KnowledgeFSControlSpaceCommandService(sqlite_session_factory)
     service.create_provision_intent(_intent())
 
     with pytest.raises(KnowledgeFSControlSpaceIntentConflictError, match="different initial access"):
-        service.create_provision_intent(_intent()._replace(**changes))
+        service.create_provision_intent(
+            _intent()._replace(visibility=visibility, member_account_ids=member_account_ids)
+        )
 
     assert sqlite_session.scalar(select(func.count()).select_from(KnowledgeFSControlSpacePermission)) == 3
     assert sqlite_session.scalar(select(func.count()).select_from(KnowledgeFSLifecycleOutbox)) == 1
@@ -228,11 +243,10 @@ def test_legacy_creation_replay_keeps_current_access_and_rejects_added_members(
     result = service.create_provision_intent(private_intent)
     command = sqlite_session.get(KnowledgeFSLifecycleOutbox, result.outbox.id)
     assert command is not None
-    command.command_payload = {
-        key: value
-        for key, value in command.command_payload.items()
-        if key not in {"initial_visibility", "initial_member_account_ids"}
-    }
+    legacy_payload = _provision_payload(command).copy()
+    del legacy_payload["initial_visibility"]
+    del legacy_payload["initial_member_account_ids"]
+    command.command_payload = legacy_payload
     sqlite_session.commit()
 
     replay = service.create_provision_intent(
