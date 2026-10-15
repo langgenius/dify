@@ -20,7 +20,7 @@ from dataclasses import KW_ONLY, InitVar, dataclass, field
 from datetime import datetime, timezone
 from typing import cast
 
-from opentelemetry.trace import Span, get_current_span
+from opentelemetry.trace import Span, StatusCode, get_current_span
 
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -248,6 +248,22 @@ class DifyStreamedResponse(StreamedResponse):
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        try:
+            async for event in self._iterate_gateway_events():
+                yield event
+        except BaseException as error:
+            # Some instrumentation versions end the chat span without marking
+            # errors raised while consuming an asynchronous response. Keep the
+            # actual model call consistent with the failed Agent envelope.
+            try:
+                if self._model_span.is_recording():
+                    self._model_span.set_status(StatusCode.ERROR, "Model request did not complete")
+                    self._model_span.set_attribute("error.type", type(error).__name__)
+            except Exception:
+                logger.debug("Unable to record model trace failure")
+            raise
+
+    async def _iterate_gateway_events(self) -> AsyncIterator[ModelResponseStreamEvent]:
         chunk_sequence = 0
         async for chunk in self.chunks:
             self._observe_trace_usage(chunk)
