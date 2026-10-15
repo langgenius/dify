@@ -59,3 +59,10 @@ def test_dict_to_workflow_run_prefers_stored_active_duration(elapsed_time: str) 
     model = _dict_to_workflow_run({**_BASE, "started_at": _START, "finished_at": _FINISH, "elapsed_time": elapsed_time})
 
     assert model.elapsed_time == float(elapsed_time)
+
+
+@pytest.mark.parametrize("elapsed_time", [None, "null"])
+def test_dict_to_workflow_run_defaults_legacy_unfinished_duration_to_zero(elapsed_time: str | None) -> None:
+    model = _dict_to_workflow_run({**_BASE, "elapsed_time": elapsed_time})
+
+    assert model.elapsed_time == 0.0

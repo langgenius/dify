@@ -14,6 +14,42 @@ from tasks.workflow_execution_tasks import save_workflow_execution_task
 TABLES = (WorkflowRun,)
 
 
+def test_legacy_celery_payload_preserves_timestamp_based_duration(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    execution_id = str(uuid4())
+    graph: dict[str, object] = {}
+    inputs: dict[str, object] = {}
+    payload = {
+        "id_": execution_id,
+        "workflow_id": str(uuid4()),
+        "workflow_version": "1",
+        "workflow_type": WorkflowType.WORKFLOW.value,
+        "graph": graph,
+        "inputs": inputs,
+        "status": WorkflowExecutionStatus.SUCCEEDED.value,
+        "started_at": "2026-01-01T00:00:00",
+        "finished_at": "2026-01-01T00:00:15",
+    }
+
+    assert (
+        save_workflow_execution_task.run(
+            execution_data=payload,
+            tenant_id=str(uuid4()),
+            app_id=str(uuid4()),
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            creator_user_id=str(uuid4()),
+            creator_user_role=CreatorUserRole.ACCOUNT.value,
+        )
+        is True
+    )
+
+    with sqlite_session_factory() as session:
+        stored = session.get(WorkflowRun, execution_id)
+        assert stored is not None
+        assert stored.elapsed_time == 15.0
+
+
 def test_celery_roundtrip_preserves_accumulated_duration_on_create_update_and_redelivery(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
