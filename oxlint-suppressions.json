@@ -4016,11 +4016,6 @@
       "count": 1
     }
   },
-  "web/service/__tests__/use-pipeline.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-app-access-control.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4140,9 +4135,6 @@
   "web/service/use-datasource.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 3
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/use-flow.ts": {
@@ -4153,9 +4145,6 @@
   "web/service/use-pipeline.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 8
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/use-plugins-auth.ts": {

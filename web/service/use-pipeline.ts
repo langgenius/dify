@@ -31,7 +31,8 @@ import type {
 } from '@/models/pipeline'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { DatasourceType } from '@/models/pipeline'
-import { del, get, patch, post } from './base'
+import { consoleClient } from './console'
+import { narrowResponse } from './console/narrow-response'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'
@@ -41,7 +42,9 @@ export const usePipelineTemplateList = (params: PipelineTemplateListParams, enab
   return useQuery<PipelineTemplateListResponse>({
     queryKey: [...PipelineTemplateListQueryKeyPrefix, params],
     queryFn: () => {
-      return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
+      return narrowResponse<PipelineTemplateListResponse>(
+        consoleClient.rag.pipeline.templates.get({ query: params }),
+      )
     },
     enabled,
   })
@@ -56,11 +59,14 @@ export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, ena
   return useQuery<PipelineTemplateByIdResponse>({
     queryKey: [NAME_SPACE, 'template', type, template_id],
     queryFn: () => {
-      return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${template_id}`, {
-        params: {
-          type,
-        },
-      })
+      return narrowResponse<PipelineTemplateByIdResponse>(
+        consoleClient.rag.pipeline.templates.byTemplateId.get({
+          params: { template_id },
+          query: {
+            type,
+          },
+        }),
+      )
     },
     enabled,
     staleTime: 0,
@@ -78,11 +84,11 @@ export const useUpdateTemplateInfo = (
     mutationKey: [NAME_SPACE, 'template-update'],
     mutationFn: (request: UpdateTemplateInfoRequest) => {
       const { template_id, ...rest } = request
-      return patch<UpdateTemplateInfoResponse>(
-        `/rag/pipeline/customized/templates/${template_id}`,
-        {
+      return narrowResponse<UpdateTemplateInfoResponse>(
+        consoleClient.rag.pipeline.customized.templates.byTemplateId.patch({
+          params: { template_id },
           body: rest,
-        },
+        }),
       )
     },
     ...mutationOptions,
@@ -95,7 +101,11 @@ export const useDeleteTemplate = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'template-delete'],
     mutationFn: (templateId: string) => {
-      return del<DeleteTemplateResponse>(`/rag/pipeline/customized/templates/${templateId}`)
+      return narrowResponse<DeleteTemplateResponse>(
+        consoleClient.rag.pipeline.customized.templates.byTemplateId.delete({
+          params: { template_id: templateId },
+        }),
+      )
     },
     ...mutationOptions,
   })
@@ -107,7 +117,11 @@ export const useExportTemplateDSL = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'template-dsl-export'],
     mutationFn: (templateId: string) => {
-      return post<ExportTemplateDSLResponse>(`/rag/pipeline/customized/templates/${templateId}`)
+      return narrowResponse<ExportTemplateDSLResponse>(
+        consoleClient.rag.pipeline.customized.templates.byTemplateId.post({
+          params: { template_id: templateId },
+        }),
+      )
     },
     ...mutationOptions,
   })
@@ -119,10 +133,8 @@ export const useImportPipelineDSL = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import'],
     mutationFn: (request: ImportPipelineDSLRequest) => {
-      return post<ImportPipelineDSLResponse>(
-        '/rag/pipelines/imports',
-        { body: request },
-        { silent: true },
+      return narrowResponse<ImportPipelineDSLResponse>(
+        consoleClient.rag.pipelines.imports.post({ body: request }, { context: { silent: true } }),
       )
     },
     ...mutationOptions,
@@ -135,10 +147,11 @@ export const useImportPipelineDSLConfirm = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import-confirm'],
     mutationFn: (importId: string) => {
-      return post<ImportPipelineDSLConfirmResponse>(
-        `/rag/pipelines/imports/${importId}/confirm`,
-        {},
-        { silent: true },
+      return narrowResponse<ImportPipelineDSLConfirmResponse>(
+        consoleClient.rag.pipelines.imports.byImportId.confirm.post(
+          { params: { import_id: importId } },
+          { context: { silent: true } },
+        ),
       )
     },
     ...mutationOptions,
@@ -151,8 +164,10 @@ export const useCheckPipelineDependencies = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'check-dependencies'],
     mutationFn: (pipelineId: string) => {
-      return get<PipelineCheckDependenciesResponse>(
-        `/rag/pipelines/imports/${pipelineId}/check-dependencies`,
+      return narrowResponse<PipelineCheckDependenciesResponse>(
+        consoleClient.rag.pipelines.imports.byPipelineId.checkDependencies.get({
+          params: { pipeline_id: pipelineId },
+        }),
       )
     },
     ...mutationOptions,
@@ -167,13 +182,13 @@ export const useDraftPipelineProcessingParams = (
   return useQuery<PipelineProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'draft-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return get<PipelineProcessingParamsResponse>(
-        `/rag/pipelines/${pipeline_id}/workflows/draft/processing/parameters`,
-        {
-          params: {
+      return narrowResponse<PipelineProcessingParamsResponse>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get({
+          params: { pipeline_id },
+          query: {
             node_id,
           },
-        },
+        }),
       )
     },
     staleTime: 0,
@@ -186,13 +201,13 @@ export const usePublishedPipelineProcessingParams = (params: PipelineProcessingP
   return useQuery<PipelineProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'published-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return get<PipelineProcessingParamsResponse>(
-        `/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`,
-        {
-          params: {
+      return narrowResponse<PipelineProcessingParamsResponse>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.published.processing.parameters.get({
+          params: { pipeline_id },
+          query: {
             node_id,
           },
-        },
+        }),
       )
     },
     staleTime: 0,
@@ -205,8 +220,10 @@ export const usePublishedPipelineInfo = (pipelineId: string) => {
   return useQuery<PublishedPipelineInfoResponse | null>({
     queryKey: [...publishedPipelineInfoQueryKeyPrefix, pipelineId],
     queryFn: () => {
-      return get<PublishedPipelineInfoResponse | null>(
-        `/rag/pipelines/${pipelineId}/workflows/publish`,
+      return narrowResponse<PublishedPipelineInfoResponse | null>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.publish.get({
+          params: { pipeline_id: pipelineId },
+        }),
       )
     },
     enabled: !!pipelineId,
@@ -224,15 +241,15 @@ export const useRunPublishedPipeline = (
     mutationKey: [NAME_SPACE, 'run-published-pipeline'],
     mutationFn: (request: PublishedPipelineRunRequest) => {
       const { pipeline_id: pipelineId, is_preview, ...rest } = request
-      return post<PublishedPipelineRunPreviewResponse | PublishedPipelineRunResponse>(
-        `/rag/pipelines/${pipelineId}/workflows/published/run`,
-        {
+      return narrowResponse<PublishedPipelineRunPreviewResponse | PublishedPipelineRunResponse>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.published.run.post({
+          params: { pipeline_id: pipelineId },
           body: {
             ...rest,
             is_preview,
             response_mode: 'blocking',
           },
-        },
+        }),
       )
     },
     ...mutationOptions,
@@ -247,13 +264,13 @@ export const useDraftPipelinePreProcessingParams = (
   return useQuery<PipelinePreProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'draft-pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return get<PipelinePreProcessingParamsResponse>(
-        `/rag/pipelines/${pipeline_id}/workflows/draft/pre-processing/parameters`,
-        {
-          params: {
+      return narrowResponse<PipelinePreProcessingParamsResponse>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get({
+          params: { pipeline_id },
+          query: {
             node_id,
           },
-        },
+        }),
       )
     },
     staleTime: 0,
@@ -269,13 +286,13 @@ export const usePublishedPipelinePreProcessingParams = (
   return useQuery<PipelinePreProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'published-pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return get<PipelinePreProcessingParamsResponse>(
-        `/rag/pipelines/${pipeline_id}/workflows/published/pre-processing/parameters`,
-        {
-          params: {
+      return narrowResponse<PipelinePreProcessingParamsResponse>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.published.preProcessing.parameters.get({
+          params: { pipeline_id },
+          query: {
             node_id,
           },
-        },
+        }),
       )
     },
     staleTime: 0,
@@ -287,8 +304,11 @@ export const useExportPipelineDSL = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'export-pipeline-dsl'],
     mutationFn: ({ pipelineId, include = false }: { pipelineId: string; include?: boolean }) => {
-      return get<ExportTemplateDSLResponse>(
-        `/rag/pipelines/${pipelineId}/exports?include_secret=${include}`,
+      return narrowResponse<ExportTemplateDSLResponse>(
+        consoleClient.rag.pipelines.byPipelineId.exports.get({
+          params: { pipeline_id: pipelineId },
+          query: { include_secret: String(include) },
+        }),
       )
     },
   })
@@ -308,7 +328,8 @@ export const usePublishAsCustomizedPipeline = () => {
       icon_info: IconInfo
       description?: string
     }) => {
-      return post(`/rag/pipelines/${pipelineId}/customized/publish`, {
+      return consoleClient.rag.pipelines.byPipelineId.customized.publish.post({
+        params: { pipeline_id: pipelineId },
         body: {
           name,
           icon_info,
@@ -324,8 +345,10 @@ export const usePipelineExecutionLog = (params: PipelineExecutionLogRequest) => 
   return useQuery<PipelineExecutionLogResponse>({
     queryKey: [NAME_SPACE, 'pipeline-execution-log', dataset_id, document_id],
     queryFn: () => {
-      return get<PipelineExecutionLogResponse>(
-        `/datasets/${dataset_id}/documents/${document_id}/pipeline-execution-log`,
+      return narrowResponse<PipelineExecutionLogResponse>(
+        consoleClient.datasets.byDatasetId.documents.byDocumentId.pipelineExecutionLog.get({
+          params: { dataset_id, document_id },
+        }),
       )
     },
     staleTime: 0,
@@ -337,19 +360,21 @@ export const usePreviewOnlineDocument = () => {
     mutationKey: [NAME_SPACE, 'preview-online-document'],
     mutationFn: (params: OnlineDocumentPreviewRequest) => {
       const { pipelineId, datasourceNodeId, workspaceID, pageID, pageType, credentialId } = params
-      return post<OnlineDocumentPreviewResponse>(
-        `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${datasourceNodeId}/preview`,
-        {
-          body: {
-            datasource_type: DatasourceType.onlineDocument,
-            credential_id: credentialId,
-            inputs: {
-              workspace_id: workspaceID,
-              page_id: pageID,
-              type: pageType,
+      return narrowResponse<OnlineDocumentPreviewResponse>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post(
+          {
+            params: { pipeline_id: pipelineId, node_id: datasourceNodeId },
+            body: {
+              datasource_type: DatasourceType.onlineDocument,
+              credential_id: credentialId,
+              inputs: {
+                workspace_id: workspaceID,
+                page_id: pageID,
+                type: pageType,
+              },
             },
           },
-        },
+        ),
       )
     },
   })
@@ -359,7 +384,11 @@ export const useConvertDatasetToPipeline = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'convert-dataset-to-pipeline'],
     mutationFn: (datasetId: string) => {
-      return post<ConversionResponse>(`/rag/pipelines/transform/datasets/${datasetId}`)
+      return narrowResponse<ConversionResponse>(
+        consoleClient.rag.pipelines.transform.datasets.byDatasetId.post({
+          params: { dataset_id: datasetId },
+        }),
+      )
     },
   })
 }
@@ -375,11 +404,11 @@ export const useDatasourceSingleRun = (
     mutationKey: [NAME_SPACE, 'datasource-node-single-run'],
     mutationFn: (params: DatasourceNodeSingleRunRequest) => {
       const { pipeline_id: pipelineId, ...rest } = params
-      return post<DatasourceNodeSingleRunResponse>(
-        `/rag/pipelines/${pipelineId}/workflows/draft/datasource/variables-inspect`,
-        {
+      return narrowResponse<DatasourceNodeSingleRunResponse>(
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post({
+          params: { pipeline_id: pipelineId },
           body: rest,
-        },
+        }),
       )
     },
     ...mutationOptions,

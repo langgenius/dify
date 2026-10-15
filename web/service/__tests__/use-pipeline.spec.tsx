@@ -3,15 +3,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { post } from '../base'
+import { consoleClient } from '../console'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '../use-pipeline'
 
-vi.mock('../base', () => ({
-  post: vi.fn(),
-  get: vi.fn(),
-  patch: vi.fn(),
-  del: vi.fn(),
+vi.mock('../console', () => ({
+  consoleClient: {
+    rag: {
+      pipelines: {
+        imports: {
+          post: vi.fn(),
+          byImportId: { confirm: { post: vi.fn() } },
+        },
+      },
+    },
+  },
 }))
+
+const importPost = vi.mocked(consoleClient.rag.pipelines.imports.post)
+const confirmPost = vi.mocked(consoleClient.rag.pipelines.imports.byImportId.confirm.post)
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -29,14 +38,16 @@ const createWrapper = () => {
 describe('use-pipeline imports', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(post).mockResolvedValue({
+    const importResult = {
       id: 'import-id',
       status: DSLImportStatus.COMPLETED,
       pipeline_id: 'pipeline-id',
       dataset_id: 'dataset-id',
       current_dsl_version: '0.1.0',
       imported_dsl_version: '0.1.0',
-    })
+    }
+    importPost.mockResolvedValue(importResult as never)
+    confirmPost.mockResolvedValue(importResult as never)
   })
 
   it('should import pipeline DSL silently so callers can own error toasts', async () => {
@@ -50,7 +61,7 @@ describe('use-pipeline imports', () => {
       await result.current.mutateAsync(request)
     })
 
-    expect(post).toHaveBeenCalledWith('/rag/pipelines/imports', { body: request }, { silent: true })
+    expect(importPost).toHaveBeenCalledWith({ body: request }, { context: { silent: true } })
   })
 
   it('should confirm pipeline DSL import silently so callers can own error toasts', async () => {
@@ -60,10 +71,9 @@ describe('use-pipeline imports', () => {
       await result.current.mutateAsync('import-id')
     })
 
-    expect(post).toHaveBeenCalledWith(
-      '/rag/pipelines/imports/import-id/confirm',
-      {},
-      { silent: true },
+    expect(confirmPost).toHaveBeenCalledWith(
+      { params: { import_id: 'import-id' } },
+      { context: { silent: true } },
     )
   })
 })
