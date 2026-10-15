@@ -27,7 +27,6 @@ inside its function body, so the patched value is what it sees.
 from __future__ import annotations
 
 import importlib
-from collections.abc import Iterator
 
 import pytest
 from flask import Blueprint
@@ -55,7 +54,7 @@ def _probe_view() -> tuple[str, int]:
 
 
 @pytest.fixture
-def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Blueprint]]:
+def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> dict[str, Blueprint]:
     """Replace each production blueprint singleton with a fresh, unregistered copy.
 
     Mirrors the production `name` and `url_prefix` so the gate can still

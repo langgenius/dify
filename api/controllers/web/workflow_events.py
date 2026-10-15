@@ -19,6 +19,7 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from extensions.ext_database import db
+from libs.external_api import error_responses
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
@@ -30,6 +31,7 @@ register_response_schema_model(web_ns, EventStreamResponse)
 class WorkflowEventsApi(WebApiResource):
     """API for getting workflow execution events after resume."""
 
+    @error_responses(InvalidArgumentError)
     @web_ns.response(200, "SSE event stream", web_ns.models[EventStreamResponse.__name__])
     def get(self, app_model: App, end_user: EndUser, task_id: str):
         """

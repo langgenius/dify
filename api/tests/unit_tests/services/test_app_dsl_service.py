@@ -929,12 +929,9 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
 
 
 def test_append_workflow_export_data_reports_missing_selected_workflow(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    sqlite_session: Session,
 ) -> None:
     workflow_id = "11111111-1111-4111-8111-111111111111"
-    workflow_service = Mock()
-    workflow_service.get_draft_workflow.return_value = None
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
     app = _app(app_id="app-1", tenant_id="tenant-1")
 
     with pytest.raises(WorkflowNotFoundError, match=f"Workflow version not found. Workflow ID: {workflow_id}"):
@@ -942,7 +939,7 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
             export_data={},
             app_model=app,
             include_secret=False,
-            session=unbound_session,
+            session=sqlite_session,
             workflow_id=workflow_id,
         )
 
@@ -1058,3 +1055,93 @@ def test_missing_app_section_names_the_keys_that_were_present(
     assert result.error.startswith("Missing app data in YAML content.")
     assert result.error.endswith(f"(found: {found}).")
     assert not unbound_session.in_transaction()
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_import_creation_marker_tracks_persisted_app(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool, overwrite: bool
+) -> None:
+    account = _account(account_id=_CALLER_ID, tenant_id=_TENANT_ID)
+    target = _persist_overwrite_target(sqlite_session) if overwrite else None
+    data = yaml.safe_dump(
+        {
+            "version": CURRENT_APP_DSL_VERSION,
+            "kind": "app",
+            "app": {"name": "Imported", "mode": "workflow"},
+            "workflow": {"graph": {"nodes": [], "edges": []}, "features": {}},
+        }
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock())
+    service = AppDslService(sqlite_session)
+    if confirmed:
+        pending = PendingData(
+            tenant_id=_TENANT_ID,
+            account_id=_CALLER_ID,
+            import_mode="yaml-content",
+            yaml_content=data,
+            app_id=_OVERWRITE_APP_ID if overwrite else None,
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+        result = service.confirm_import(import_id="pending", account=account)
+    else:
+        result = service.import_app(
+            account=account,
+            import_mode="yaml-content",
+            yaml_content=data,
+            app_id=_OVERWRITE_APP_ID if overwrite else None,
+        )
+    assert result.status == ImportStatus.COMPLETED, result.error
+    assert result.app_created is (not overwrite)
+    assert sqlite_session.get(App, result.app_id) is not None
+    assert "app_created" not in result.model_dump()
+    assert "app_created" not in result.model_json_schema(mode="serialization")["properties"]
+
+
+@pytest.mark.parametrize("mode", list(AppMode) + [None])
+def test_import_creator_access_only_initializes_ordinary_apps(
+    mode: AppMode | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from services.app_dsl_service import initialize_imported_app_creator_access
+    from services.entities.dsl_entities import Import
+
+    sync = Mock()
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync)
+    result = Import(id="import", status=ImportStatus.COMPLETED, app_id="app", app_mode=mode, app_created=True)
+    initialize_imported_app_creator_access(result, tenant_id="tenant", account_id="creator")
+    assert sync.call_count == (
+        1
+        if mode in {AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}
+        else 0
+    )
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+def test_failed_import_does_not_report_creation(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool
+) -> None:
+    data = "version: " + CURRENT_APP_DSL_VERSION + "\nkind: app\napp: {name: Broken, mode: chat}\n"
+    service = AppDslService(sqlite_session)
+    if confirmed:
+        pending = PendingData(
+            tenant_id="tenant-1", account_id="account-1", import_mode="yaml-content", yaml_content=data
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+        result = service.confirm_import(import_id="pending", account=_account())
+    else:
+        result = service.import_app(account=_account(), import_mode="yaml-content", yaml_content=data)
+    assert result.status == ImportStatus.FAILED
+    assert not result.app_created
+
+
+def test_pending_import_does_not_report_creation_or_cache_marker(
+    unbound_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cache)
+    result = AppDslService(unbound_session).import_app(
+        account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL
+    )
+    assert result.status == ImportStatus.PENDING
+    assert not result.app_created
+    assert "app_created" not in cache.call_args.args[2]

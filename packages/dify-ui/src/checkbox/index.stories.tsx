@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { CheckboxProps } from '.'
 import * as React from 'react'
 import { Checkbox, CheckboxSkeleton } from '.'
 
@@ -39,7 +40,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function CheckboxDemo(args: Partial<React.ComponentProps<typeof Checkbox>>) {
+function CheckboxDemo(args: Partial<CheckboxProps>) {
   const [checked, setChecked] = React.useState(args.checked ?? false)
 
   return (

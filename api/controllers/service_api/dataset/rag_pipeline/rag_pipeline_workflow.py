@@ -15,6 +15,7 @@ from controllers.common.errors import (
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
+    UnsupportedFileTypeError,
 )
 from controllers.common.fields import WorkflowBlockingResponse
 from controllers.common.schema import (
@@ -35,12 +36,12 @@ from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
-from services.errors.file import UnsupportedFileTypeError
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -262,6 +263,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @error_responses(PipelineRunError)
     @service_api_ns.doc(
         summary="Run Pipeline",
         description=(
@@ -335,6 +337,9 @@ class PipelineRunApi(DatasetApiResource):
 class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
     """Resource for uploading a file to a knowledgebase pipeline."""
 
+    @error_responses(
+        FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, TooManyFilesError, UnsupportedFileTypeError
+    )
     @service_api_ns.doc(
         summary="Upload Pipeline File",
         description="Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.",

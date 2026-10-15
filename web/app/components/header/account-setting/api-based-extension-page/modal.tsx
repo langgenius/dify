@@ -10,7 +10,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 
@@ -68,7 +67,6 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
         },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             onSaved()
           },
         },

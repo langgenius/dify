@@ -528,7 +528,6 @@
   "singleRun.testRun": "Тестовий запуск",
   "snippet.confirm": "Підтвердити",
   "snippet.createDialogTitle": "Створити фрагмент",
-  "snippet.createSuccess": "Фрагмент створено",
   "snippet.descriptionLabel": "Опис (необов'язково)",
   "snippet.descriptionPlaceholder": "Коротко опишіть свій фрагмент",
   "snippet.nameLabel": "Назва фрагмента",

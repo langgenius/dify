@@ -62,72 +62,30 @@ class TestWaterCrawlExceptions:
 
 
 class TestBaseAPIClient:
-    def test_init_session_builds_expected_headers(self, monkeypatch: pytest.MonkeyPatch):
-        captured = {}
+    @pytest.mark.parametrize("stream", [False, True])
+    def test_request_preserves_headers_and_timeouts(self, monkeypatch: pytest.MonkeyPatch, stream: bool) -> None:
+        requests: list[httpx.Request] = []
 
-        def fake_client(**kwargs):
-            captured.update(kwargs)
-            return "session"
+        def respond(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, stream=httpx.ByteStream(b"response"))
 
-        monkeypatch.setattr(client_module.httpx, "Client", fake_client)
+        with httpx.Client(transport=httpx.MockTransport(respond)) as proxy_client:
+            monkeypatch.setattr(client_module.ssrf_proxy, "_get_ssrf_client", lambda _verify: proxy_client)
+            client = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev")
+            response = client._request("GET", "/v1/items", query_params={"a": 1}, stream=stream)
 
-        client = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev")
-
-        assert client.session == "session"
-        assert captured["headers"]["X-API-Key"] == "k"
-        assert captured["headers"]["User-Agent"] == "WaterCrawl-Plugin"
-        assert captured["timeout"] is not None
-        assert captured["timeout"].connect is not None
-        assert captured["timeout"].read is not None
-
-    def test_init_session_uses_bounded_default_timeout(self):
-        # Regression: the session was built with timeout=None, which disables
-        # httpx's timeouts entirely, so a stalled WaterCrawl endpoint would hang
-        # the calling worker forever. Regular requests must keep a bounded timeout.
-        session = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev").session
-
-        assert session._timeout.connect is not None
-        assert session._timeout.read is not None
-
-    def test_request_stream_and_non_stream_paths(self, monkeypatch: pytest.MonkeyPatch):
-        class FakeSession:
-            def __init__(self):
-                self.request_calls = []
-                self.build_calls = []
-                self.send_calls = []
-
-            def request(self, method, url, params=None, json=None, **kwargs):
-                self.request_calls.append((method, url, params, json, kwargs))
-                return "non-stream-response"
-
-            def build_request(self, method, url, params=None, json=None, timeout=None):
-                req = (method, url, params, json, timeout)
-                self.build_calls.append(req)
-                return req
-
-            def send(self, request, stream=False, **kwargs):
-                self.send_calls.append((request, stream, kwargs))
-                return "stream-response"
-
-        fake_session = FakeSession()
-        monkeypatch.setattr(BaseAPIClient, "init_session", lambda self: fake_session)
-
-        client = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev")
-
-        assert client._request("GET", "/v1/items", query_params={"a": 1}) == "non-stream-response"
-        assert fake_session.request_calls[0][1] == "https://watercrawl.dev/v1/items"
-
-        assert client._request("GET", "/v1/items", stream=True) == "stream-response"
-        assert fake_session.build_calls
-        assert fake_session.send_calls[0][1] is True
-        # the streaming request keeps an unbounded read (the SSE status stream can
-        # stay open for the whole crawl) while still capping the connection
-        stream_timeout = fake_session.build_calls[0][4]
-        assert stream_timeout.read is None
-        assert stream_timeout.connect is not None
+            assert response.is_stream_consumed is not stream
+            assert requests[0].url == "https://watercrawl.dev/v1/items?a=1"
+            assert requests[0].headers["X-API-Key"] == "k"
+            assert requests[0].headers["User-Agent"] == "WaterCrawl-Plugin"
+            timeout = requests[0].extensions["timeout"]
+            assert timeout["connect"] == (10.0 if stream else 5.0)
+            assert timeout["read"] == (None if stream else 30.0)
+            response.close()
+            assert response.is_closed
 
     def test_http_method_helpers_delegate_to_request(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(BaseAPIClient, "init_session", lambda self: MagicMock())
         client = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev")
 
         calls = []
@@ -299,7 +257,7 @@ class TestWaterCrawlAPIClient:
             captured.update(kwargs)
             return response
 
-        monkeypatch.setattr(client_module.httpx, "get", fake_get)
+        monkeypatch.setattr(client_module.ssrf_proxy, "get", fake_get)
 
         result = client.download_result({"result": "https://example.com/result.json"})
 

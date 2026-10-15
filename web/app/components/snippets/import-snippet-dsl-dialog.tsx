@@ -15,6 +15,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -145,11 +146,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const snippetId = getImportedSnippetId(response)
 
       onClose()
-      toast.success(t(($) => $.importSuccess, { ns: 'snippet' }))
 
       if (snippetId) push(`/snippets/${snippetId}/orchestrate`)
     },
-    [onClose, push, t],
+    [onClose, push],
   )
 
   const handleImportResponse = useCallback(
@@ -189,7 +189,9 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      // HTTP error notifications are owned by the request layer.
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }, [
     canCreateAndModifySnippet,
@@ -207,7 +209,9 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const response = await confirmSnippetImportMutation.mutateAsync({ importId })
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      // HTTP error notifications are owned by the request layer.
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
 

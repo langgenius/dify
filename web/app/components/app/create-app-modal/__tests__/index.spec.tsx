@@ -97,7 +97,7 @@ const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
-const { mockToastSuccess, mockToastError } = toastMocks
+const { mockToastError } = toastMocks
 
 let appQuota = { size: 0, limit: 1 }
 
@@ -136,7 +136,7 @@ describe('CreateAppModal', () => {
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
 
-  it('creates an app, notifies success, and fires callbacks', async () => {
+  it('creates an app and fires callbacks', async () => {
     const mockApp = createAppDetailFixture({
       mode: AppModeEnum.ADVANCED_CHAT,
       maintainer: 'user-1',
@@ -163,7 +163,6 @@ describe('CreateAppModal', () => {
       source: 'studio_blank',
       appMode: AppModeEnum.ADVANCED_CHAT,
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
@@ -419,7 +418,7 @@ describe('CreateAppModal', () => {
 
     resolveCreate?.(createAppDetailFixture({ id: 'slow-app', mode: AppModeEnum.ADVANCED_CHAT }))
     await waitFor(() => {
-      expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
+      expect(mockGetRedirection).toHaveBeenCalledTimes(1)
     })
   })
 })

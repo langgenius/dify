@@ -21,6 +21,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -29,9 +30,6 @@ type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
 }
-
-const isNotFoundError = (error: unknown) =>
-  typeof error === 'object' && error !== null && 'status' in error && error.status === 404
 
 const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
   if (pathname.endsWith('/workflow') || pathname.endsWith('/configuration'))

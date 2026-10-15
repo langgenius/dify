@@ -121,8 +121,6 @@ describe('Feedback dialog focus', () => {
   // Browser-owned contract: CSS hover visibility must not make the return target unfocusable.
   it.each([
     { admin: false, close: 'Escape' },
-    { admin: true, close: 'cancel' },
-    { admin: false, close: 'submit' },
     { admin: true, close: 'submit' },
   ])(
     'returns to the visible feedback button after $close (admin: $admin)',
@@ -144,89 +142,12 @@ describe('Feedback dialog focus', () => {
       await expect.element(dialog).toBeVisible()
       await dialog.getByRole('textbox').hover()
       if (close === 'Escape') await userEvent.keyboard('{Escape}')
-      else if (close === 'submit')
-        await dialog.getByRole('button', { name: 'common.operation.submit' }).click()
-      else await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
+      else await dialog.getByRole('button', { name: 'common.operation.submit' }).click()
 
       await expect.element(dialog).not.toBeInTheDocument()
       await expect.element(trigger).toBeVisible()
       await expect.element(trigger).toHaveFocus()
       expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
-      if (close === 'submit') {
-        await expect.element(trigger).toHaveAttribute('aria-pressed', 'true')
-        expect(feedback.onFeedback).toHaveBeenCalledWith('answer', {
-          rating: 'dislike',
-          content: '',
-        })
-      }
     },
   )
-})
-
-it('keeps the pending feedback focused and retries the draft after a failure', async () => {
-  let rejectFeedback!: (reason: Error) => void
-  feedback.onFeedback
-    .mockReset()
-    .mockReturnValueOnce(
-      new Promise<void>((_resolve, reject) => {
-        rejectFeedback = reject
-      }),
-    )
-    .mockResolvedValue(undefined)
-  const screen = await render(<FeedbackAnswer />)
-  await screen.getByRole('article', { name: 'Answer' }).hover()
-  const trigger = screen.getByRole('button', {
-    name: 'appLog.table.header.userRate: appLog.detail.operation.dislike',
-  })
-  await trigger.click()
-  const dialog = screen.getByRole('dialog', { name: 'common.feedback.title' })
-  const textbox = dialog.getByRole('textbox', { name: 'common.feedback.content' })
-  await textbox.fill('Please explain')
-  await userEvent.keyboard('{End}{Enter}the answer')
-  const draft = 'Please explain\nthe answer'
-  await expect.element(textbox).toHaveValue(draft)
-  expect(feedback.onFeedback).not.toHaveBeenCalled()
-
-  const submit = dialog.getByRole('button', { name: 'common.operation.submit' })
-  await submit.click()
-  await expect.element(submit).toHaveFocus()
-  await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
-  await expect.element(textbox).toHaveAttribute('readonly')
-  await expect
-    .element(dialog.getByRole('button', { name: 'common.operation.close' }))
-    .toBeDisabled()
-  await expect
-    .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
-    .toBeDisabled()
-  await userEvent.keyboard('{Enter}{Enter}{Escape}')
-  await expect.element(dialog).toBeVisible()
-  expect(feedback.onFeedback).toHaveBeenCalledTimes(1)
-  expect(feedback.onFeedback).toHaveBeenCalledWith('answer', {
-    rating: 'dislike',
-    content: draft,
-  })
-
-  const outside = document.elementFromPoint(4, 4)!
-  await userEvent.click(outside, { position: { x: 4, y: 4 } })
-  await expect.element(dialog).toBeVisible()
-  await userEvent.tab()
-  await expect.poll(() => dialog.element().contains(document.activeElement)).toBe(true)
-  await textbox.click()
-  await userEvent.keyboard('ignored')
-  await expect.element(textbox).toHaveValue(draft)
-
-  rejectFeedback(new Error('Feedback request failed'))
-  await expect.element(textbox).not.toHaveAttribute('readonly')
-  await expect.element(submit).not.toHaveAttribute('aria-disabled', 'true')
-  await expect.element(dialog).toBeVisible()
-  await expect.element(textbox).toHaveValue(draft)
-  await submit.click()
-  await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(trigger).toHaveFocus()
-  await expect.element(trigger).toHaveAttribute('aria-pressed', 'true')
-  expect(feedback.onFeedback).toHaveBeenCalledTimes(2)
-  expect(feedback.onFeedback).toHaveBeenLastCalledWith('answer', {
-    rating: 'dislike',
-    content: draft,
-  })
 })

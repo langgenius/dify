@@ -30,8 +30,9 @@ from fields.base import ResponseModel
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response
-from machinery.context import ServiceApiEndUserContext, ServiceApiRequestContext
+from machinery.context import AppRequestContext, ServiceApiEndUserContext
 from models.enums import FeedbackRating
 from models.model import AppMode
 from services.agent.errors import AgentVersionNotFoundError
@@ -88,6 +89,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
+    @error_responses(AppUnavailableError, NotChatAppError)
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(
         summary="List Conversation Messages",
@@ -158,6 +160,7 @@ class MessageListApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
+    @error_responses(AppUnavailableError, MessageFeedbackRatingRequiredError)
     @expect_with_user(service_api_ns, MessageFeedbackPayload)
     @service_api_ns.response(
         HTTPStatus.OK, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__]
@@ -224,6 +227,7 @@ class MessageFeedbackApi(Resource):
 
 @service_api_ns.route("/app/feedbacks")
 class AppGetFeedbacksApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc("get_app_feedbacks")
     @service_api_ns.doc(
         summary="List App Feedbacks",
@@ -252,7 +256,7 @@ class AppGetFeedbacksApi(Resource):
     )
     @service_api_app_admission
     @model_validate(FeedbackListQuery)
-    def get(self, query_args: FeedbackListQuery, context: ServiceApiRequestContext) -> dict[str, object]:
+    def get(self, query_args: FeedbackListQuery, context: AppRequestContext) -> dict[str, object]:
         """Get all feedbacks for the application.
 
         Returns paginated list of all feedback submitted for messages in this app.
@@ -271,6 +275,16 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(
         summary="Get Next Suggested Questions",

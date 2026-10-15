@@ -91,7 +91,7 @@ jobs:
   chromium-full:
     name: Chromium Full (${{ matrix.shard }}/3)
     if: ${{ !inputs.run-external-runtime }}
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -172,7 +172,7 @@ jobs:
   webkit-smoke:
     name: WebKit Browser Smoke
     if: ${{ !inputs.run-external-runtime }}
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 45
     env:
       E2E_ADMIN_EMAIL: e2e-admin@example.com

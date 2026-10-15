@@ -182,7 +182,7 @@ def test_dispatch_human_input_email_task_sanitizes_subject(
 
 
 def test_parse_recipient_payload_reads_email_and_type():
-    payload = json.dumps({"email": "user@example.com", "TYPE": RecipientType.EMAIL_MEMBER.value})
+    payload = json.dumps({"email": "user@example.com", "TYPE": RecipientType.EMAIL_MEMBER})
 
     assert task_module._parse_recipient_payload(payload) == ("user@example.com", RecipientType.EMAIL_MEMBER)
 
@@ -191,9 +191,9 @@ def test_parse_recipient_payload_reads_email_and_type():
     "payload",
     [
         "not json",
-        json.dumps({"TYPE": RecipientType.EMAIL_MEMBER.value}),
+        json.dumps({"TYPE": RecipientType.EMAIL_MEMBER}),
         json.dumps({"email": "user@example.com", "TYPE": "unknown-channel"}),
-        json.dumps({"email": 42, "TYPE": RecipientType.EMAIL_MEMBER.value}),
+        json.dumps({"email": 42, "TYPE": RecipientType.EMAIL_MEMBER}),
     ],
 )
 def test_parse_recipient_payload_rejects_unusable_payloads(payload: str):

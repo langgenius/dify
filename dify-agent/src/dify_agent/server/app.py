@@ -7,10 +7,8 @@ rather than request handlers, so client disconnects do not cancel the agent
 runtime. Redis persists run records and per-run event streams with configured
 retention. Optional provider accounting is exposed as a separate one-shot HTTP
 endpoint driven by Celery Beat; it starts no tasks during lifespan startup and
-adds no reporting to business operations. Redis is not used as a run job queue. Agenton layers and providers
-stay state-only: they borrow the lifespan-owned clients through the runner and
-receive runtime-backend and Shell settings through provider construction rather
-than reading environment variables themselves. The standard server mounts the
+adds no reporting to business operations. Redis is not used as a run job queue. Modules borrow lifespan-owned services through run dependencies; their JSON
+configuration and state never retain live infrastructure. The standard server mounts the
 HTTP Agent Stub router. Process-level platform Logfire instrumentation is
 configured at app construction time. Logfire-platform export is token-gated;
 standard OTLP export follows the SDK environment configuration, including
@@ -29,7 +27,7 @@ from redis.asyncio import Redis
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.runtime.compositor_factory import create_default_layer_providers
+from dify_agent.runtime.context import Services
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.observability import configure_agent_observability, configure_server_observability
@@ -67,16 +65,6 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
     runtime_backend_profile = resolved_settings.build_runtime_backend_profile()
-    layer_providers = create_default_layer_providers(
-        plugin_daemon_url=resolved_settings.plugin_daemon_url,
-        plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
-        inner_api_url=resolved_settings.inner_api_url,
-        inner_api_key=resolved_settings.inner_api_key or "",
-        runtime_backend_profile=runtime_backend_profile,
-        shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
-        agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
-        agent_stub_token_factory=agent_stub_token_factory,
-    )
     binding_file_service = (
         BindingFileService(
             execution_bindings=runtime_backend_profile.execution_bindings,
@@ -117,14 +105,23 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         )
         scheduler = RunScheduler(
             store=store,
-            plugin_daemon_http_client=plugin_daemon_http_client,
-            dify_api_http_client=dify_api_inner_http_client,
+            services=Services(
+                plugin_daemon_http_client=plugin_daemon_http_client,
+                dify_api_http_client=dify_api_inner_http_client,
+                plugin_daemon_url=resolved_settings.plugin_daemon_url,
+                plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
+                inner_api_url=resolved_settings.inner_api_url,
+                inner_api_key=resolved_settings.inner_api_key or "",
+                runtime_backend_profile=runtime_backend_profile,
+                shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
+                agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
+                agent_stub_token_factory=agent_stub_token_factory,
+            ),
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
             stream_text_delta_coalescing_enabled=resolved_settings.stream_text_delta_coalescing_enabled,
             stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
             stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
-            layer_providers=layer_providers,
             agent_observability=agent_observability,
         )
         state["store"] = store

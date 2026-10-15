@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import after mock
 import { renameDocumentName } from '@/service/datasets'
+import { createHttpError } from '@/service/http-error'
 import RenameModal from '../rename-modal'
 
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
@@ -125,7 +126,6 @@ describe('RenameModal', () => {
       await waitFor(() => {
         expect(handleSaved).toHaveBeenCalledTimes(1)
         expect(handleClose).toHaveBeenCalledTimes(1)
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
@@ -160,7 +160,7 @@ describe('RenameModal', () => {
 
   describe('Error Handling', () => {
     it('should handle API error gracefully', async () => {
-      const error = new Error('API Error')
+      const error = createHttpError(new Response(null, { status: 500 }), { message: 'API Error' })
       mockRenameDocumentName.mockRejectedValueOnce(error)
       const handleSaved = vi.fn()
       const handleClose = vi.fn()
@@ -174,7 +174,7 @@ describe('RenameModal', () => {
         // onSaved and onClose should not be called on error
         expect(handleSaved).not.toHaveBeenCalled()
         expect(handleClose).not.toHaveBeenCalled()
-        expect(mockToastError).toHaveBeenCalledWith('Error: API Error')
+        expect(mockToastError).toHaveBeenCalledWith('API Error')
       })
     })
   })

@@ -70,9 +70,6 @@ function posixAtomicReplace(src: string, dst: string): void {
 }
 
 function win32AtomicReplace(src: string, dst: string): void {
-  try {
-    fs.unlinkSync(dst)
-  } catch {}
   fs.renameSync(src, dst)
 }
 
