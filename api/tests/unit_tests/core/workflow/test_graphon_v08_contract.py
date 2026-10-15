@@ -326,7 +326,8 @@ def test_host_context_does_not_replace_engine_file_adapter_on_any_segment():
                 assert peek_workflow_file_runtime() is adapter
 
 
-def test_historical_v2_loop_snapshot_resumes_with_dify_scoped_factory(monkeypatch):
+@pytest.mark.parametrize("flask_capture", [False, True])
+def test_historical_v2_loop_snapshot_resumes_with_dify_scoped_factory(monkeypatch, flask_capture):
     import json
     from pathlib import Path
 
@@ -393,7 +394,39 @@ def test_historical_v2_loop_snapshot_resumes_with_dify_scoped_factory(monkeypatc
         init_params=build_test_graph_init_params(workflow_id="workflow", graph_config=config), runtime_state=state
     )
     graph = Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
-    events = list(Engine(graph=graph, runtime_state=state, workers=2).run())
+    import contextvars
+
+    from flask import Flask
+
+    from context.execution_context import ExecutionContext
+    from context.flask_app_context import FlaskExecutionContext
+    from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+    from graphon.engine.layer import Layer
+    from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
+    from services.workflow.execution_lifecycle import WorkflowExecutionContextLayer
+
+    host = DifyWorkflowFileRuntime(file_access_controller=Mock())
+    fresh = DifyWorkflowFileRuntime(file_access_controller=Mock())
+    with use_workflow_file_runtime(host):
+        captured = contextvars.copy_context()
+    capture = (
+        FlaskExecutionContext(Flask(__name__), captured) if flask_capture else ExecutionContext(context_vars=captured)
+    )
+    monkeypatch.setattr("services.workflow.execution_lifecycle.capture_current_context", lambda: capture)
+    seen = []
+
+    class Observe(Layer):
+        def on_node_run_start(self, node):
+            seen.append((node.id, peek_workflow_file_runtime() is fresh))
+
+    engine = Engine(graph=graph, runtime_state=state, workers=1, file_runtime=fresh)
+    engine.add_layer(WorkflowExecutionContextLayer())
+    engine.add_layer(Observe())
+    with use_workflow_file_runtime(None):
+        events = list(engine.run())
+        assert peek_workflow_file_runtime() is None
+    assert sum(node_id == "human-input" for node_id, _ in seen) == 2
+    assert all(is_fresh for _, is_fresh in seen)
     assert isinstance(events[-1], GraphRunSucceededEvent)
     assert events[-1].outputs == {"rounds": 3, "seed": "fixed"}
     children = [

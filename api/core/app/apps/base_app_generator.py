@@ -13,7 +13,12 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+    get_current_file_access_scope,
+)
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -97,11 +102,31 @@ class BaseAppGenerator:
         response_stream: Generator[ResponseT],
         worker_thread: threading.Thread,
     ) -> Generator[ResponseT]:
-        """Keep the producer owned by the response stream until both finish."""
-        try:
-            yield from response_stream
-        finally:
-            BaseAppGenerator._join_worker_thread(worker_thread)
+        """Capture rendering ownership now; restore it for every lazy step and close."""
+        from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
+
+        file_runtime = peek_workflow_file_runtime()
+        file_scope = get_current_file_access_scope()
+
+        def consume() -> Generator[ResponseT]:
+            nonlocal file_scope
+            try:
+                while True:
+                    with use_workflow_file_runtime(file_runtime), bind_file_access_scope(file_scope):
+                        try:
+                            item = next(response_stream)
+                            file_scope = get_current_file_access_scope()
+                        except StopIteration:
+                            return
+                    yield item
+            finally:
+                try:
+                    with use_workflow_file_runtime(file_runtime), bind_file_access_scope(file_scope):
+                        response_stream.close()
+                finally:
+                    BaseAppGenerator._join_worker_thread(worker_thread)
+
+        return consume()
 
     @staticmethod
     @contextmanager

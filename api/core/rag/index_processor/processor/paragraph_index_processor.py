@@ -492,9 +492,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             # Add images first
             for file in image_files:
                 try:
-                    file_content = file_manager.to_prompt_message_content(
-                        file, image_detail_config=ImagePromptMessageContent.DETAIL.LOW
-                    )
+                    from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+
+                    with bind_dify_workflow_file_runtime():
+                        file_content = file_manager.to_prompt_message_content(
+                            file, image_detail_config=ImagePromptMessageContent.DETAIL.LOW
+                        )
                     prompt_message_contents.append(file_content)
                 except Exception:
                     logger.warning("Failed to convert image file to prompt message content", exc_info=True)

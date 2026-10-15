@@ -664,11 +664,18 @@ class DifyNodeFactory(NodeFactory):
             validator = self._validate_restricted_raw_config
         elif context is not None:
             raise BuilderExecutionPolicyError("unsupported_execution_policy")
+
+        def validate_raw_binding(_adapted: Mapping[str, Any], node_class: type[Node] | None) -> None:
+            # Admission binds persisted input, before legacy Tool/HITL DTO adaptation.
+            # Still check the actual resolved class at both validation checkpoints.
+            if validator is not None:
+                validator(node_config, node_class)
+
         _, _, node_class, _ = _validated_node_config(
             adapt_node_config_for_graph(node_config),
             resolve_node_class=self._resolve_node_class,
             validate_resolved_node_data=self._validate_resolved_node_data,
-            pre_validate_node_data=validator,
+            pre_validate_node_data=validate_raw_binding if validator is not None else None,
         )
         return node_class.execution_type
 

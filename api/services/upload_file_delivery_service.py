@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import NamedTuple, Protocol
 
 from constants import IMAGE_EXTENSIONS
+from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
 from graphon.file import helpers as file_helpers
 from services.errors.file import UnsupportedFileTypeError
 
@@ -55,13 +56,14 @@ class UploadFileDeliveryService:
         nonce: str,
         sign: str,
     ) -> UploadFileDelivery:
-        if not file_helpers.verify_image_signature(
-            upload_file_id=file_id,
-            timestamp=timestamp,
-            nonce=nonce,
-            sign=sign,
-        ):
-            raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
+        with bind_dify_workflow_file_runtime():
+            if not file_helpers.verify_image_signature(
+                upload_file_id=file_id,
+                timestamp=timestamp,
+                nonce=nonce,
+                sign=sign,
+            ):
+                raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
 
         file = self._get_file(file_id=file_id)
         self._ensure_image(file=file)
@@ -78,13 +80,14 @@ class UploadFileDeliveryService:
         nonce: str,
         sign: str,
     ) -> UploadFileDelivery:
-        if not file_helpers.verify_file_signature(
-            upload_file_id=file_id,
-            timestamp=timestamp,
-            nonce=nonce,
-            sign=sign,
-        ):
-            raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
+        with bind_dify_workflow_file_runtime():
+            if not file_helpers.verify_file_signature(
+                upload_file_id=file_id,
+                timestamp=timestamp,
+                nonce=nonce,
+                sign=sign,
+            ):
+                raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
 
         file = self._get_file(file_id=file_id)
         return UploadFileDelivery(

@@ -157,7 +157,10 @@ def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
     icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
     if icon_type_value.lower() != IconType.IMAGE:
         return None
-    return file_helpers.get_signed_file_url(icon)
+    from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+
+    with bind_dify_workflow_file_runtime():
+        return file_helpers.get_signed_file_url(icon)
 
 
 def build_avatar_url(avatar: str | None) -> str | None:
@@ -165,7 +168,10 @@ def build_avatar_url(avatar: str | None) -> str | None:
         return None
     if avatar.startswith(("http://", "https://")):
         return avatar
-    return file_helpers.get_signed_file_url(avatar)
+    from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+
+    with bind_dify_workflow_file_runtime():
+        return file_helpers.get_signed_file_url(avatar)
 
 
 class TimestampField(fields.Raw):
