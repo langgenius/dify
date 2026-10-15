@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from dify_agent.layers.execution_context import ApplicationTracingContext
 
@@ -73,6 +73,24 @@ def prepare_agent_app(context: AgentAppRuntimeBuildContext) -> ApplicationTracin
     except Exception as error:
         _log_failure("agent_app", error)
         return None
+
+
+def capture_agent_app_terminal(
+    *,
+    tenant_id: str,
+    app_id: str,
+    message_id: str,
+    outcome: Literal["succeeded", "failed", "cancelled"],
+    output: str | None,
+) -> None:
+    if not dify_config.OPS_AGENT_TRACE_ENABLED:
+        return
+    try:
+        _service().capture_agent_app_terminal(
+            tenant_id=tenant_id, app_id=app_id, message_id=message_id, outcome=outcome, output=output
+        )
+    except Exception as error:
+        _log_failure("agent_app_terminal", error)
 
 
 def prepare_workflow_agent(
