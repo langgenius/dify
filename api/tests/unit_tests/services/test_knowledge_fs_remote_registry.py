@@ -9,6 +9,7 @@ from services import knowledge_fs_capability
 from services.knowledge_fs import lifecycle_remote_http, remote_registry
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.knowledge_fs_core_fakes import Marker
+from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedLifecycleRemote
 
 
 def test_configured_lifecycle_remote_assembles_capability_v2_http_client(
@@ -71,7 +72,7 @@ def test_lifecycle_remote_assembly_fails_closed_without_endpoint_or_capability_i
 def test_explicit_lifecycle_remote_factory_remains_available_for_isolated_process_tests(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    remote = Marker("remote")
+    remote = UnexpectedLifecycleRemote()
     monkeypatch.setattr(remote_registry, "_remote_factory", None)
 
     remote_registry.configure_knowledge_fs_lifecycle_remote_factory(lambda: remote)

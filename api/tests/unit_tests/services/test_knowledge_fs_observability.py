@@ -33,12 +33,20 @@ class _FakeInstrument:
         self.log.append(call)
 
 
+@dataclass(frozen=True)
+class _GaugeRegistration:
+    name: str
+    callbacks: tuple[Callable[[object], Iterable[Observation]], ...]
+    description: str
+    unit: str
+
+
 @dataclass
 class _FakeMeter:
     log: list[RecordedCall] = field(default_factory=list)
     counters: dict[str, _FakeInstrument] = field(default_factory=dict)
     histograms: dict[str, _FakeInstrument] = field(default_factory=dict)
-    gauge_calls: list[RecordedCall] = field(default_factory=list)
+    gauge_calls: list[_GaugeRegistration] = field(default_factory=list)
 
     def create_counter(self, name: str, *, description: str, unit: str) -> _FakeInstrument:
         self.log.append(RecordedCall(args=(name,), kwargs={"description": description, "unit": unit}))
@@ -56,9 +64,10 @@ class _FakeMeter:
         description: str,
         unit: str,
     ) -> object:
-        call = RecordedCall(args=(name,), kwargs={"callbacks": callbacks, "description": description, "unit": unit})
-        self.gauge_calls.append(call)
-        self.log.append(call)
+        self.gauge_calls.append(_GaugeRegistration(name=name, callbacks=callbacks, description=description, unit=unit))
+        self.log.append(
+            RecordedCall(args=(name,), kwargs={"callbacks": callbacks, "description": description, "unit": unit})
+        )
         return object()
 
 
@@ -129,9 +138,9 @@ def test_control_space_current_state_gauge_uses_bounded_states_and_is_best_effor
 
     assert len(meter.gauge_calls) == 1
     gauge_call = meter.gauge_calls[0]
-    assert gauge_call.args == ("dify.knowledge_fs.control_spaces",)
-    assert gauge_call.kwargs["unit"] == "{space}"
-    callback = gauge_call.kwargs["callbacks"][0]
+    assert gauge_call.name == "dify.knowledge_fs.control_spaces"
+    assert gauge_call.unit == "{space}"
+    callback = gauge_call.callbacks[0]
     observations = tuple(callback(object()))
     assert [(observation.value, observation.attributes) for observation in observations] == [
         (3, {"aggregation_scope": "global_database_snapshot", "state": "provisioning"}),
@@ -139,7 +148,7 @@ def test_control_space_current_state_gauge_uses_bounded_states_and_is_best_effor
         (1, {"aggregation_scope": "global_database_snapshot", "state": "error"}),
     ]
 
-    assert "aggregate replica series with max, never sum" in gauge_call.kwargs["description"]
+    assert "aggregate replica series with max, never sum" in gauge_call.description
 
     counts_error.append(RuntimeError("database unavailable"))
     assert tuple(callback(object())) == ()

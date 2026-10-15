@@ -11,6 +11,7 @@ from flask import Flask, current_app
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.entities import AppAdditionalFeatures
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata, WorkflowTaskState
 from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
@@ -23,6 +24,11 @@ from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, Conversation, MessageAnnotation, MessageFile
 from tests.unit_tests.model_factories import make_app, make_conversation
+
+
+@dataclass(frozen=True)
+class _AppConfigWithFeatures:
+    additional_features: AppAdditionalFeatures
 
 
 @dataclass(frozen=True)
@@ -547,10 +553,10 @@ class TestMessageCycleManagerOptimization:
     def test_knowledge_receipts_survive_message_metadata_without_collapsing_same_document(self, message_cycle_manager):
         from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
 
-        message_cycle_manager._application_generate_entity.app_config = SimpleNamespace(
-            additional_features=SimpleNamespace(show_retrieve_source=True)
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithFeatures(
+            additional_features=AppAdditionalFeatures(show_retrieve_source=True)
         )
-        message_cycle_manager._task_state = SimpleNamespace(metadata=TaskStateMetadata())
+        message_cycle_manager._task_state = WorkflowTaskState(metadata=TaskStateMetadata())
         sources = [
             RetrievalSourceMetadata(
                 dataset_id="space",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -27,6 +27,14 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.nodes.llm.entities import ModelConfig
 from services.knowledge_fs.product_dto import KnowledgeFSMetadataFieldResponse
+
+
+@dataclass(frozen=True)
+class _ModelConfigEntity:
+    """The prompt and invocation settings the extractor reads from the resolved model config."""
+
+    stop: list[str]
+    parameters: dict[str, object] = field(default_factory=dict)
 
 
 def _field(name: str, field_type: str) -> KnowledgeFSMetadataFieldResponse:
@@ -61,7 +69,7 @@ def test_intersect_metadata_fields_keeps_only_fields_shared_with_identical_types
 
 
 def test_build_metadata_filter_prompt_mirrors_legacy_chat_and_completion_templates() -> None:
-    model_config = SimpleNamespace(stop=["</json>"])
+    model_config = _ModelConfigEntity(stop=["</json>"])
 
     chat_messages, chat_stop = build_metadata_filter_prompt(
         model_config=model_config,  # type: ignore[arg-type]
@@ -206,7 +214,7 @@ def test_extractor_invokes_the_configured_model_with_the_legacy_prompt_and_credi
         '{"metadata_map": [{"metadata_field_name": "department", "metadata_field_value": "finance", '
         '"comparison_operator": "="}]}'
     )
-    model_config_entity = SimpleNamespace(parameters={"temperature": 0.2}, stop=["END"])
+    model_config_entity = _ModelConfigEntity(parameters={"temperature": 0.2}, stop=["END"])
     fetched: list[dict[str, object]] = []
 
     def fake_fetch_model_config(**kwargs: object) -> tuple[object, object]:

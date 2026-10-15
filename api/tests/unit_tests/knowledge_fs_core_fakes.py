@@ -8,6 +8,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from services.knowledge_fs.observability import (
     KnowledgeFSBatchStatusMetric,
     KnowledgeFSCapabilityIssuanceMetric,
@@ -100,3 +102,39 @@ class RecordingOperationalMetrics:
 
     def register_control_space_state_gauge(self, read_counts: Callable[[], Mapping[str, int]]) -> None:
         self.gauge_readers.append(read_counts)
+
+
+def llm_schema(*, features: list[ModelFeature]) -> AIModelEntity:
+    return AIModelEntity(
+        model="model",
+        label=I18nObject(en_US="model"),
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+        features=features,
+    )
+
+
+@dataclass
+class SchemaModelInstance:
+    schema: AIModelEntity
+
+    def get_model_schema(self) -> AIModelEntity:
+        return self.schema
+
+
+@dataclass
+class RecordingModelFactory:
+    """Stands in for DifyModelFactory and records the constructor context and model lookups."""
+
+    schema: AIModelEntity
+    run_contexts: list[object] = field(default_factory=list)
+    model_lookups: list[tuple[str, str]] = field(default_factory=list)
+
+    def __call__(self, *, run_context: object) -> RecordingModelFactory:
+        self.run_contexts.append(run_context)
+        return self
+
+    def init_model_instance(self, provider: str, model: str) -> SchemaModelInstance:
+        self.model_lookups.append((provider, model))
+        return SchemaModelInstance(self.schema)

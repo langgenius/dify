@@ -1,5 +1,7 @@
 import json
-from unittest.mock import MagicMock, patch
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -16,6 +18,7 @@ from core.datasource.entities.datasource_entities import (
 from core.plugin.backwards_invocation.datasource import PluginDatasourceBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeDatasource
 from models.account import Tenant
+from tests.unit_tests.knowledge_fs_core_fakes import Marker
 
 
 def _tenant() -> Tenant:
@@ -24,10 +27,67 @@ def _tenant() -> Tenant:
     return tenant
 
 
-def _tenant() -> Tenant:
-    tenant = Tenant(name="Test workspace")
-    tenant.id = "tenant-1"
-    return tenant
+@dataclass
+class _RuntimeState:
+    credentials: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass
+class _FakeDatasource:
+    """Bound datasource plugin double that records each operation call and yields canned messages."""
+
+    provider_type: DatasourceProviderType
+    messages: list[object] = field(default_factory=list)
+    runtime: _RuntimeState = field(default_factory=_RuntimeState)
+    calls: list[tuple[str, dict[str, object]]] = field(default_factory=list)
+
+    def datasource_provider_type(self) -> DatasourceProviderType:
+        return self.provider_type
+
+    def _record(self, operation: str, kwargs: dict[str, object]) -> Iterator[object]:
+        self.calls.append((operation, kwargs))
+        return iter(self.messages)
+
+    def get_website_crawl(self, **kwargs: object) -> Iterator[object]:
+        return self._record("get_website_crawl", kwargs)
+
+    def get_online_document_pages(self, **kwargs: object) -> Iterator[object]:
+        return self._record("get_online_document_pages", kwargs)
+
+    def get_online_document_page_content(self, **kwargs: object) -> Iterator[object]:
+        return self._record("get_online_document_page_content", kwargs)
+
+    def online_drive_browse_files(self, **kwargs: object) -> Iterator[object]:
+        return self._record("online_drive_browse_files", kwargs)
+
+    def online_drive_download_file(self, **kwargs: object) -> Iterator[object]:
+        return self._record("online_drive_download_file", kwargs)
+
+
+@dataclass(frozen=True)
+class _ProviderEntity:
+    provider_type: DatasourceProviderType
+
+
+@dataclass
+class _FakeController:
+    entity: _ProviderEntity
+    datasource: _FakeDatasource | None = None
+    need_credentials: bool = True
+    requested_datasources: list[str] = field(default_factory=list)
+    validations: list[dict[str, object]] = field(default_factory=list)
+
+    def get_datasource(self, datasource_name: str) -> _FakeDatasource:
+        self.requested_datasources.append(datasource_name)
+        assert self.datasource is not None
+        return self.datasource
+
+    def validate_credentials(self, **kwargs: object) -> None:
+        self.validations.append(kwargs)
+
+
+def _controller(datasource: _FakeDatasource) -> _FakeController:
+    return _FakeController(entity=_ProviderEntity(datasource.provider_type), datasource=datasource)
 
 
 def datasource_payload(**overrides: object) -> RequestInvokeDatasource:
@@ -58,14 +118,8 @@ def test_request_rejects_operation_and_datasource_type_mismatch() -> None:
 def test_invoke_online_document_uses_dify_bound_runtime_and_credential() -> None:
     payload = datasource_payload()
     message = OnlineDocumentPagesMessage(result=[])
-    runtime = MagicMock()
-    runtime.runtime.credentials = dict[str, object]()
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
-    runtime.get_online_document_pages.return_value = iter([message])
-    controller = MagicMock()
-    controller.entity.provider_type = DatasourceProviderType.ONLINE_DOCUMENT
-    controller.need_credentials = True
-    controller.get_datasource.return_value = runtime
+    runtime = _FakeDatasource(DatasourceProviderType.ONLINE_DOCUMENT, messages=[message])
+    controller = _controller(runtime)
 
     with (
         patch(
@@ -98,11 +152,17 @@ def test_invoke_online_document_uses_dify_bound_runtime_and_credential() -> None
         credential_id="credential-1",
     )
     assert runtime.runtime.credentials == {"token": "resolved-by-dify"}
-    runtime.get_online_document_pages.assert_called_once_with(
-        user_id="user-1",
-        datasource_parameters={"cursor": "next"},
-        provider_type=DatasourceProviderType.ONLINE_DOCUMENT,
-    )
+    assert controller.requested_datasources == ["notion_datasource"]
+    assert runtime.calls == [
+        (
+            "get_online_document_pages",
+            {
+                "user_id": "user-1",
+                "datasource_parameters": {"cursor": "next"},
+                "provider_type": DatasourceProviderType.ONLINE_DOCUMENT,
+            },
+        )
+    ]
 
 
 def test_validate_credentials_uses_resolved_provider_controller() -> None:
@@ -110,11 +170,8 @@ def test_validate_credentials_uses_resolved_provider_controller() -> None:
         datasource_parameters={},
         operation="validate_credentials",
     )
-    runtime = MagicMock()
-    controller = MagicMock()
-    controller.entity.provider_type = DatasourceProviderType.ONLINE_DOCUMENT
-    controller.need_credentials = True
-    controller.get_datasource.return_value = runtime
+    runtime = _FakeDatasource(DatasourceProviderType.ONLINE_DOCUMENT)
+    controller = _controller(runtime)
 
     with (
         patch(
@@ -135,10 +192,8 @@ def test_validate_credentials_uses_resolved_provider_controller() -> None:
         )
 
     assert result == [{"result": True}]
-    controller.validate_credentials.assert_called_once_with(
-        user_id="user-1",
-        credentials={"token": "resolved-by-dify"},
-    )
+    assert controller.validations == [{"user_id": "user-1", "credentials": {"token": "resolved-by-dify"}}]
+    assert runtime.calls == []
 
 
 def test_invoke_website_crawl_uses_the_bound_datasource_plugin() -> None:
@@ -149,15 +204,9 @@ def test_invoke_website_crawl_uses_the_bound_datasource_plugin() -> None:
         operation="get_website_crawl",
         provider="langgenius/firecrawl_datasource/firecrawl",
     )
-    message = MagicMock()
-    runtime = MagicMock()
-    runtime.runtime.credentials = dict[str, object]()
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.WEBSITE_CRAWL
-    runtime.get_website_crawl.return_value = iter([message])
-    controller = MagicMock()
-    controller.entity.provider_type = DatasourceProviderType.WEBSITE_CRAWL
-    controller.need_credentials = True
-    controller.get_datasource.return_value = runtime
+    message = Marker("datasource-message")
+    runtime = _FakeDatasource(DatasourceProviderType.WEBSITE_CRAWL, messages=[message])
+    controller = _controller(runtime)
 
     with (
         patch(
@@ -179,11 +228,16 @@ def test_invoke_website_crawl_uses_the_bound_datasource_plugin() -> None:
 
     assert result == [message]
     assert runtime.runtime.credentials == {"api_key": "resolved-by-dify"}
-    runtime.get_website_crawl.assert_called_once_with(
-        user_id="user-1",
-        datasource_parameters={"url": "https://example.com"},
-        provider_type=DatasourceProviderType.WEBSITE_CRAWL,
-    )
+    assert runtime.calls == [
+        (
+            "get_website_crawl",
+            {
+                "user_id": "user-1",
+                "datasource_parameters": {"url": "https://example.com"},
+                "provider_type": DatasourceProviderType.WEBSITE_CRAWL,
+            },
+        )
+    ]
 
 
 def test_invoke_online_document_content_builds_the_dify_request_entity() -> None:
@@ -193,15 +247,9 @@ def test_invoke_online_document_content_builds_the_dify_request_entity() -> None
         operation="get_online_document_page_content",
         page=page,
     )
-    message = MagicMock()
-    runtime = MagicMock()
-    runtime.runtime.credentials = dict[str, object]()
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DOCUMENT
-    runtime.get_online_document_page_content.return_value = iter([message])
-    controller = MagicMock()
-    controller.entity.provider_type = DatasourceProviderType.ONLINE_DOCUMENT
-    controller.need_credentials = True
-    controller.get_datasource.return_value = runtime
+    message = Marker("datasource-message")
+    runtime = _FakeDatasource(DatasourceProviderType.ONLINE_DOCUMENT, messages=[message])
+    controller = _controller(runtime)
 
     with (
         patch(
@@ -222,11 +270,16 @@ def test_invoke_online_document_content_builds_the_dify_request_entity() -> None
         )
 
     assert result == [message]
-    runtime.get_online_document_page_content.assert_called_once_with(
-        user_id="user-1",
-        datasource_parameters=page,
-        provider_type=DatasourceProviderType.ONLINE_DOCUMENT,
-    )
+    assert runtime.calls == [
+        (
+            "get_online_document_page_content",
+            {
+                "user_id": "user-1",
+                "datasource_parameters": page,
+                "provider_type": DatasourceProviderType.ONLINE_DOCUMENT,
+            },
+        )
+    ]
 
 
 @pytest.mark.parametrize(
@@ -260,18 +313,9 @@ def test_invoke_online_drive_builds_typed_dify_requests(
         provider="langgenius/google_drive/google_drive",
         request=request_data,
     )
-    message = MagicMock()
-    runtime = MagicMock()
-    runtime.runtime.credentials = dict[str, object]()
-    runtime.datasource_provider_type.return_value = DatasourceProviderType.ONLINE_DRIVE
-    {
-        "online_drive_browse_files": runtime.online_drive_browse_files,
-        "online_drive_download_file": runtime.online_drive_download_file,
-    }[method_name].return_value = iter([message])
-    controller = MagicMock()
-    controller.entity.provider_type = DatasourceProviderType.ONLINE_DRIVE
-    controller.need_credentials = True
-    controller.get_datasource.return_value = runtime
+    message = Marker("datasource-message")
+    runtime = _FakeDatasource(DatasourceProviderType.ONLINE_DRIVE, messages=[message])
+    controller = _controller(runtime)
 
     with (
         patch(
@@ -292,13 +336,12 @@ def test_invoke_online_drive_builds_typed_dify_requests(
         )
 
     assert result == [message]
-    call = {
-        "online_drive_browse_files": runtime.online_drive_browse_files,
-        "online_drive_download_file": runtime.online_drive_download_file,
-    }[method_name].call_args
-    assert call.kwargs["user_id"] == "user-1"
-    assert call.kwargs["provider_type"] == DatasourceProviderType.ONLINE_DRIVE
-    assert call.kwargs["request"] == request_type.model_validate(request_data)
+    assert len(runtime.calls) == 1
+    called_operation, call_kwargs = runtime.calls[0]
+    assert called_operation == method_name
+    assert call_kwargs["user_id"] == "user-1"
+    assert call_kwargs["provider_type"] == DatasourceProviderType.ONLINE_DRIVE
+    assert call_kwargs["request"] == request_type.model_validate(request_data)
 
 
 def test_online_drive_metadata_and_binary_survive_the_inner_event_stream() -> None:
@@ -397,10 +440,7 @@ def test_online_drive_metadata_and_binary_survive_the_inner_event_stream() -> No
 
 def test_invoke_rejects_missing_required_credential() -> None:
     payload = datasource_payload()
-    controller = MagicMock()
-    controller.entity.provider_type = DatasourceProviderType.ONLINE_DOCUMENT
-    controller.need_credentials = True
-    controller.get_datasource.return_value = MagicMock()
+    controller = _controller(_FakeDatasource(DatasourceProviderType.ONLINE_DOCUMENT))
 
     with (
         patch(
@@ -424,8 +464,7 @@ def test_invoke_rejects_missing_required_credential() -> None:
 
 def test_invoke_rejects_provider_declaration_type_mismatch() -> None:
     payload = datasource_payload()
-    controller = MagicMock()
-    controller.entity.provider_type = DatasourceProviderType.ONLINE_DRIVE
+    controller = _FakeController(entity=_ProviderEntity(DatasourceProviderType.ONLINE_DRIVE))
 
     with (
         patch(

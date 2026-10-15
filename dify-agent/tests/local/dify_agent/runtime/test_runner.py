@@ -504,11 +504,16 @@ async def test_empty_current_user_content_fails_before_model_io(monkeypatch, use
 @pytest.mark.anyio
 @pytest.mark.parametrize("failed", [False, True])
 async def test_quality_report_follows_final_run_event(monkeypatch, failed):
+    from dataclasses import dataclass
     from unittest.mock import AsyncMock
 
     from dify_agent.runtime.runner import RunSuccessOutcome
 
-    module = SimpleNamespace(publish_investigation=AsyncMock())
+    @dataclass(frozen=True)
+    class QualityReportModule:
+        publish_investigation: AsyncMock
+
+    module = QualityReportModule(publish_investigation=AsyncMock())
     async with httpx.AsyncClient() as client:
         services = Services(client, client)
         runner = AgentRunRunner(sink=InMemoryRunEventSink(), request=request(), run_id="quality-run", services=services)

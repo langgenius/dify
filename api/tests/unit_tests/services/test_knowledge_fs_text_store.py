@@ -21,7 +21,7 @@ from services.knowledge_fs.text_store_native import (
     WeaviateTextStore,
     lexical_sparse_vector,
 )
-from services.knowledge_fs.vector_store import VectorStoreUnavailableError
+from services.knowledge_fs.vector_store import VectorResult, VectorStoreUnavailableError
 from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
 from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
 from tests.unit_tests.knowledge_fs_core_fakes import Marker
@@ -32,9 +32,10 @@ SCOPE = {"tenant_id": A, "knowledge_space_id": B, "index_version": "fts-v1"}
 
 @dataclass(frozen=True)
 class _StaticTextClient:
-    result: dict
+    result: VectorResult
 
-    def execute(self, _payload: TextPayload) -> dict:
+    def execute(self, payload: TextPayload) -> VectorResult:
+        assert isinstance(payload, TextPayload)
         return self.result
 
 
