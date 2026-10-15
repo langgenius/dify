@@ -39,7 +39,7 @@ from graphon.variables import (
 )
 from graphon.variables.segments import ArrayObjectSegment
 from graphon.variables.template_resolution import convert_template
-from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
+from services.knowledge.retrieval.ports import DatasetRetriever
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -74,7 +74,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        retrieval: DatasetRetrieval,
+        retrieval: DatasetRetriever,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -162,7 +162,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 error_type=type(e).__name__,
                 llm_usage=usage,
             )
-        # Temporary handle all exceptions from DatasetRetrieval class here.
+        # Temporary handle all exceptions from the retrieval implementation here.
         except Exception as e:
             logger.warning(e, exc_info=True)
             return NodeRunResult(

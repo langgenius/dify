@@ -2,17 +2,18 @@ import logging
 from unittest.mock import Mock, call, create_autospec
 
 import pytest
-from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import CreatorUserRole, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
 from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
 from services.app.generation.input_adapter import AppInputAdapter
 from services.app.generation.response import convert_to_event_stream
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.execution.generation_service import consume_stream, join_worker
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
@@ -33,19 +34,25 @@ def _workflow_run(*, graph: str | None) -> WorkflowRun:
 
 
 def test_restore_workflow_run_graph(sqlite_session: Session):
-    workflow = Workflow(id="workflow-1", tenant_id="tenant-1", app_id="app-1", graph='{"nodes": [{"id": "edited"}]}')
+    workflow = make_workflow(
+        workflow_id="workflow-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        graph='{"nodes": [{"id": "edited"}]}',
+    )
     workflow_run = _workflow_run(graph='{"nodes": [{"id": "paused"}]}')
     sqlite_session.add(workflow_run)
     sqlite_session.commit()
 
-    WorkflowRuntimeContextRepository(sessionmaker(bind=sqlite_session.get_bind())).restore_graph(
-        workflow=workflow,
+    snapshot = workflow_snapshot(workflow)
+    restored = WorkflowRuntimeContextRepository(sessionmaker(bind=sqlite_session.get_bind())).restore_graph(
+        workflow=snapshot,
         workflow_run_id="run-id",
     )
 
     assert sqlite_session.get(WorkflowRun, "run-id") is workflow_run
-    assert workflow.graph == '{"nodes": [{"id": "paused"}]}'
-    assert not inspect(workflow).attrs.graph.history.has_changes()
+    assert restored.graph == '{"nodes": [{"id": "paused"}]}'
+    assert snapshot.graph == '{"nodes": [{"id": "edited"}]}'
 
 
 @pytest.mark.parametrize(
@@ -63,7 +70,9 @@ def test_restore_workflow_run_graph_requires_persisted_snapshot(
 
     with pytest.raises(WorkflowNotFoundError):
         WorkflowRuntimeContextRepository(sessionmaker(bind=sqlite_session.get_bind())).restore_graph(
-            workflow=Workflow(id="workflow-1", tenant_id="tenant-1", app_id="app-1", graph="{}"),
+            workflow=workflow_snapshot(
+                make_workflow(workflow_id="workflow-1", tenant_id="tenant-1", app_id="app-1", graph="{}")
+            ),
             workflow_run_id=workflow_run_id,
         )
 

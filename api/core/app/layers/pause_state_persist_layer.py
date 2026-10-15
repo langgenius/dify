@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self, override
+from typing import TYPE_CHECKING, Annotated, Literal, Self, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine
@@ -13,8 +15,10 @@ from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from services.workflow.execution.adapters.human_input_events import enrich_graph_pause_reasons
+
+if TYPE_CHECKING:
+    from services.human_input.ports import HumanInputFormReader
 
 
 # Wrapper types for `WorkflowAppGenerateEntity` and
@@ -79,6 +83,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         self,
         session_factory: Engine | sessionmaker[Session],
         generate_entity: WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity,
+        human_form_reader: HumanInputFormReader,
         state_owner_user_id: str,
         response_stream_filter: ResponseStreamFilter,
     ):
@@ -86,6 +91,9 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
 
         The `state_owner_user_id` is used when creating state file for pause.
         It generally should id of the creator of workflow.
+
+        `human_form_reader` must use the same persistence wiring as the workflow
+        runtime so pause-reason enrichment reads the forms created by this run.
 
         `response_stream_filter` must be the exact same instance that
         `WorkflowEntry` is using to stream this run's events — this layer
@@ -98,6 +106,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         self._session_maker = session_factory
         self._state_owner_user_id = state_owner_user_id
         self._generate_entity = generate_entity
+        self._human_form_reader = human_form_reader
         self._response_stream_filter = response_stream_filter
 
     def _get_repo(self) -> APIWorkflowRunRepository:
@@ -152,7 +161,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         # here so repository/model layers only handle Dify-owned pause reasons.
         pause_reasons = enrich_graph_pause_reasons(
             reasons=event.reasons,
-            form_repository=HumanInputFormSubmissionRepository(),
+            form_repository=self._human_form_reader,
             variable_pool=self.graph_runtime_state.variable_pool,
         )
         repo = self._get_repo()
