@@ -558,7 +558,6 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
             name: w.name,
             role: getScenario() === 'resource-token' ? '' : w.role,
             status: w.status,
-            current: w.is_current,
           }))
     const total = rows.length
     const hasMore = page * limit < total
@@ -570,6 +569,12 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       data: rows.slice((page - 1) * limit, page * limit),
       hints: nextPageHints(OpId.WorkspaceList, c.req.query(), page, limit, hasMore),
     })
+  })
+
+  app.get('/openapi/v1/workspaces/:wsId', (c) => {
+    const ws = WORKSPACES.find((w) => w.id === c.req.param('wsId'))
+    if (ws === undefined) return errorResponse(ServerErrorCode.NotFound, 'workspace not found', 404)
+    return c.json({ id: ws.id, name: ws.name, role: ws.role, status: ws.status, created_at: null })
   })
 
   // Reachable only under the `catalog-changed` scenario: the op that catalog v2 adds.

@@ -30,7 +30,7 @@ The token goes to the OS keyring by default. On Linux without a DBus session, di
 
 ## Workspace
 
-`difyctl get workspace` lists your workspaces. `difyctl use workspace <id>` pins one; later commands fill `workspace_id` from it. `DIFY_WORKSPACE_ID` overrides the pin for one call.
+`difyctl get workspace` lists your workspaces. `difyctl use workspace <id>` pins one on this device; later commands fill `workspace_id` from it. The pin is difyctl's own: it does not change the workspace open in the web console. `difyctl describe workspace` with no id shows the pinned workspace. `DIFY_WORKSPACE_ID` overrides the pin for one call.
 
 ## Files
 
