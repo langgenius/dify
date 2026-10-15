@@ -617,10 +617,13 @@ class TestFormatVariableReferenceErrors:
         for index in range(11):
             producer_id = f"p{index:02d}"
             consumer_id = f"c{index:02d}"
-            nodes.append(_node(producer_id, "tool", f"Producer {index:02d}"))
-            nodes.append(_node(consumer_id, "llm", f"Consumer {index:02d}", selector=[producer_id, "text"]))
-            edges.append(_edge("router", producer_id, "true"))
-            edges.append(_edge("router", consumer_id, "false"))
+            nodes.extend(
+                (
+                    _node(producer_id, "tool", f"Producer {index:02d}"),
+                    _node(consumer_id, "llm", f"Consumer {index:02d}", selector=[producer_id, "text"]),
+                )
+            )
+            edges.extend((_edge("router", producer_id, "true"), _edge("router", consumer_id, "false")))
         issues = validate_variable_references({"nodes": nodes, "edges": edges})
         assert len(issues) == 11
         message = format_variable_reference_errors(issues)

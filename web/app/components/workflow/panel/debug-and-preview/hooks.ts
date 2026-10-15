@@ -1,3 +1,4 @@
+import type { SuggestedQuestionsResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
@@ -29,12 +30,11 @@ import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
-type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
   onGetSuggestedQuestions?: (
     responseItemId: string,
-    getAbortController: GetAbortController,
-  ) => Promise<any>
+    onCancel: (cancel: () => void) => void,
+  ) => Promise<SuggestedQuestionsResponse>
 }
 export const useChat = (
   config: any,
@@ -59,7 +59,7 @@ export const useChat = (
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
-  const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
+  const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
   const store = useStoreApi()
 
@@ -185,8 +185,7 @@ export const useChat = (
     if (stopChat && taskIdRef.current) stopChat(taskIdRef.current)
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)
-    if (suggestedQuestionsAbortControllerRef.current)
-      suggestedQuestionsAbortControllerRef.current.abort()
+    cancelSuggestedQuestionsRef.current?.()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
   }, [handleResponding, setIterTimes, setLoopTimes, stopChat])
 
@@ -394,10 +393,9 @@ export const useChat = (
               onGetSuggestedQuestions
             ) {
               try {
-                const { data }: any = await onGetSuggestedQuestions(
+                const { data } = await onGetSuggestedQuestions(
                   responseItem.id,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (cancel) => (cancelSuggestedQuestionsRef.current = cancel),
                 )
                 setSuggestedQuestions(data)
               } catch {
@@ -779,10 +777,9 @@ export const useChat = (
               onGetSuggestedQuestions
             ) {
               try {
-                const { data }: any = await onGetSuggestedQuestions(
+                const { data } = await onGetSuggestedQuestions(
                   messageId,
-                  (newAbortController) =>
-                    (suggestedQuestionsAbortControllerRef.current = newAbortController),
+                  (cancel) => (cancelSuggestedQuestionsRef.current = cancel),
                 )
                 setSuggestedQuestions(data)
               } catch {

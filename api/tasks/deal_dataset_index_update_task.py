@@ -24,7 +24,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
     :param action: action
     Usage: deal_dataset_index_update_task.delay(dataset_id, action)
     """
-    logging.info(click.style("Start deal dataset index update: {}".format(dataset_id), fg="green"))
+    logging.info(click.style(f"Start deal dataset index update: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
@@ -212,7 +212,7 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
             end_at = time.perf_counter()
             logging.info(
                 click.style(
-                    "Deal dataset vector index: {} latency: {}".format(dataset_id, end_at - start_at),
+                    f"Deal dataset vector index: {dataset_id} latency: {end_at - start_at}",
                     fg="green",
                 )
             )

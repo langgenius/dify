@@ -1,5 +1,5 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { TracingConfig, TracingStatus, WebhookTriggerResponse } from '@/models/app'
+import type { TracingConfig, TracingStatus } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import { del, get, patch, post } from './base'
 
@@ -16,21 +16,6 @@ export const updateTracingStatus = ({
   body: Record<string, any>
 }): Promise<CommonResponse> => {
   return post<CommonResponse>(`/apps/${appId}/trace`, { body })
-}
-
-// Webhook Trigger
-export const fetchWebhookUrl = ({
-  appId,
-  nodeId,
-}: {
-  appId: string
-  nodeId: string
-}): Promise<WebhookTriggerResponse> => {
-  return get<WebhookTriggerResponse>(
-    `apps/${appId}/workflows/triggers/webhook`,
-    { params: { node_id: nodeId } },
-    { silent: true },
-  )
 }
 
 export const fetchTracingConfig = ({
