@@ -13,24 +13,22 @@ const mockFileUploadConfigRefetch = vi.fn()
 const mockWorkflowRefetch = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({
-    data: mockAppDetailData,
-    isError: false,
-    isFetching: false,
-    refetch: mockAppRefetch,
-  }),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: {
-      file_size_limit: 15,
-      image_file_size_limit: 10,
-    },
-    isError: mockFileUploadConfigIsError,
-    isFetching: mockFileUploadConfigIsFetching,
-    refetch: mockFileUploadConfigRefetch,
-  }),
+  // The file upload limits come from their own query; every other query is the app detail.
+  useQuery: (options: { queryKey?: unknown[] }) =>
+    Array.isArray(options.queryKey?.[0]) &&
+    options.queryKey[0].join('.') === 'console.files.upload.get'
+      ? {
+          data: { file_size_limit: 15, image_file_size_limit: 10 },
+          isError: mockFileUploadConfigIsError,
+          isFetching: mockFileUploadConfigIsFetching,
+          refetch: mockFileUploadConfigRefetch,
+        }
+      : {
+          data: mockAppDetailData,
+          isError: false,
+          isFetching: false,
+          refetch: mockAppRefetch,
+        },
 }))
 
 vi.mock('@/service/use-workflow', () => ({

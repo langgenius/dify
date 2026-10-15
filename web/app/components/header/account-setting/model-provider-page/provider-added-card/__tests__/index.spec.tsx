@@ -5,7 +5,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -51,6 +51,7 @@ vi.mock('@/service/console', () => ({
     workspaces: {
       current: {
         modelProviders: {
+          get: { key: () => [['console', 'workspaces', 'current', 'modelProviders', 'get']] },
           summary: { get: { key: () => ['model-provider-summary'] } },
           byProvider: {
             models: {
@@ -280,7 +281,7 @@ describe('ProviderAddedCard', () => {
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-provider-summary'] })
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: commonQueryKeys.modelProviderDetails,
+      queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
     })
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
 

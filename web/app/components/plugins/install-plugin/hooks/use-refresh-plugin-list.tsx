@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import {
   useInvalidateCheckInstalled,
@@ -104,7 +103,9 @@ const useRefreshPluginList = () => {
         queryClient.invalidateQueries({
           queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
         })
-        queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+        })
         refetchLLMModelList()
         refetchEmbeddingModelList()
         refetchRerankModelList()

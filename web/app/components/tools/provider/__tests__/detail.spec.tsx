@@ -1,10 +1,11 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
+import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
@@ -37,11 +38,12 @@ const render = (ui: ReactElement) => {
     ],
     plugins: {},
   })
-  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
-    data: [{ provider: 'model-collection-id' }],
+  queryClient.setQueryData(modelProviderDetailsQueryOptions().queryKey, {
+    // Only the provider id is read when opening the model modal.
+    data: [{ provider: 'model-collection-id' } as ModelProvider],
   })
   void queryClient.invalidateQueries({
-    queryKey: commonQueryKeys.modelProviderDetails,
+    queryKey: modelProviderDetailsQueryOptions().queryKey,
     exact: true,
     refetchType: 'none',
   })

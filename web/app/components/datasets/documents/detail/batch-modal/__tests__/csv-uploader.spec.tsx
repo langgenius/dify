@@ -4,6 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { Theme } from '@/types/app'
 import CSVUploader from '../csv-uploader'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: { file_size_limit: 15 },
+    }),
+  })
+})
+
 // Mock upload service
 const mockUpload = vi.fn()
 vi.mock('@/service/base', () => ({
@@ -11,11 +20,6 @@ vi.mock('@/service/base', () => ({
 }))
 
 // Mock useFileUploadConfig
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15 },
-  }),
-}))
 
 // Mock useTheme
 vi.mock('@/hooks/use-theme', () => ({

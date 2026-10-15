@@ -2,7 +2,7 @@ import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/w
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { commonQueryKeys } from '@/service/use-common'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import ModelAuthDropdown from '../index'
@@ -233,6 +233,8 @@ describe('ModelAuthDropdown', () => {
       fireEvent.click(screen.getByRole('button', { name: /addApiKey/i }))
 
       expect(await screen.findByRole('status')).toBeInTheDocument()
+      // The console client loads its contract segment before the first request starts.
+      await waitFor(() => expect(resolveFirstRequest).toBeDefined())
       await act(async () => {
         resolveFirstRequest?.(new Response(null, { status: 500 }))
       })
@@ -379,7 +381,7 @@ describe('ModelAuthDropdown', () => {
       fireEvent.click(screen.getByRole('button', { name: /config/i }))
       await waitFor(() => expect(screen.getByText('Key 1')).toBeInTheDocument())
 
-      rendered.queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+      rendered.queryClient.setQueryData(modelProviderDetailsQueryOptions().queryKey, {
         data: [nextProvider],
       })
 

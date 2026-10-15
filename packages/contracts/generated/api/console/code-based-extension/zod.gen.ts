@@ -3,14 +3,6 @@
 import * as z from 'zod'
 
 /**
- * CodeBasedExtensionResponse
- */
-export const zCodeBasedExtensionResponse = z.object({
-  data: z.unknown(),
-  module: z.string(),
-})
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -24,6 +16,23 @@ export const zErrorResponse = z.object({
   message: z.string(),
   params: z.string().optional(),
   status: z.int(),
+})
+
+/**
+ * CodeBasedExtensionItemResponse
+ */
+export const zCodeBasedExtensionItemResponse = z.object({
+  form_schema: z.array(z.record(z.string(), z.unknown())).nullish(),
+  label: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string(),
+})
+
+/**
+ * CodeBasedExtensionResponse
+ */
+export const zCodeBasedExtensionResponse = z.object({
+  data: z.array(zCodeBasedExtensionItemResponse),
+  module: z.string(),
 })
 
 export const zGetCodeBasedExtensionQuery = z.object({

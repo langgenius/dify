@@ -48,14 +48,6 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  commonQueryKeys: {
-    modelProviders: ['model-providers'],
-    modelProviderDetails: ['model-provider-details'],
-    defaultModel: (type: string) => ['default-model', type],
-  },
-}))
-
 vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: vi.fn((selector) => {
     const state = { setShowModelModal: vi.fn() }
@@ -717,7 +709,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
     })
 
@@ -1020,7 +1012,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
@@ -1168,7 +1160,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),

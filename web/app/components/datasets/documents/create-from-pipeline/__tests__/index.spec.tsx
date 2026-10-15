@@ -3,6 +3,15 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import CreateFromPipeline from '../index'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: { file_size_limit: 15, batch_count_limit: 5 },
+    }),
+  })
+})
+
 const mockPlan = {
   usage: { vectorSpace: 50 },
   total: { vectorSpace: 100 },
@@ -86,12 +95,6 @@ vi.mock('@/next/navigation', () => ({
     push: vi.fn(),
     replace: mockRouterReplace,
     back: vi.fn(),
-  }),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15, batch_count_limit: 5 },
   }),
 }))
 

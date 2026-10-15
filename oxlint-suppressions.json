@@ -4034,11 +4034,6 @@
       "count": 1
     }
   },
-  "web/service/annotation.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/annotation.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -4171,7 +4166,7 @@
   },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 8
+      "count": 1
     },
     "dify/require-disable-directive-description": {
       "count": 1

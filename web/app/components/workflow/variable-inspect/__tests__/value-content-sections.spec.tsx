@@ -2,6 +2,7 @@ import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { VarType } from '@/app/components/workflow/types'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { VarInInspectType } from '@/types/workflow'
 import {
   BoolArraySection,
@@ -49,15 +50,16 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 describe('value-content sections', () => {
-  const createFileUploadConfig = (): FileUploadConfigResponse => ({
-    batch_count_limit: 10,
-    image_file_batch_limit: 10,
-    single_chunk_attachment_limit: 10,
-    attachment_image_file_size_limit: 2,
-    file_size_limit: 15,
-    file_upload_limit: 5,
-    workflow_file_upload_limit: 5,
-  })
+  const createFileUploadConfig = (): FileUploadConfigResponse =>
+    createFileUploadConfigFixture({
+      batch_count_limit: 10,
+      image_file_batch_limit: 10,
+      single_chunk_attachment_limit: 10,
+      attachment_image_file_size_limit: 2,
+      file_size_limit: 15,
+      file_upload_limit: 5,
+      workflow_file_upload_limit: 5,
+    })
 
   const createVar = (overrides: Partial<VarInInspect>): VarInInspect =>
     ({

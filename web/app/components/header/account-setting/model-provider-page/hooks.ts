@@ -24,9 +24,9 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
 import { getModelLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { useExpandModelProviderList } from './atoms'
 import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from './declarations'
+import { modelProviderDetailsQueryOptions } from './utils'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -225,7 +225,9 @@ export const useUpdateModelProviders = () => {
     queryClient.invalidateQueries({
       queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
     })
-    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+    })
   }, [queryClient])
 
   return updateModelProviders

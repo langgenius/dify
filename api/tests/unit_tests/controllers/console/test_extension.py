@@ -120,7 +120,7 @@ def extensions_service() -> Iterator[MagicMock]:
 
 
 def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    service_result = [{"entrypoint": "main:agent"}]
+    service_result = [{"name": "custom_tool", "label": {"en-US": "Custom tool"}, "form_schema": []}]
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(
         "controllers.console.extension.CodeBasedExtensionService.get_code_based_extension",

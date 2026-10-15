@@ -9,6 +9,18 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AppModeEnum } from '@/types/app'
 import { AppSelector } from '../index'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: undefined,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    }),
+  })
+})
+
 const apps = [
   {
     id: 'app-1',
@@ -42,67 +54,62 @@ const apps = [
 const mockAppDetailQuery = vi.hoisted(() => vi.fn())
 const mockUseAppWorkflow = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      get: {
-        infiniteOptions: ({
-          input,
-          getNextPageParam,
-          initialPageParam,
-          placeholderData,
-        }: {
-          input: (pageParam: number) => { query: { name?: string } }
-          getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
-          initialPageParam: number
-          placeholderData: unknown
-        }) => ({
-          queryKey: ['apps', input(1).query],
-          queryFn: ({ pageParam = initialPageParam }: { pageParam?: number }) => {
-            const query = input(Number(pageParam)).query
-            const keyword = query.name?.toLowerCase() ?? ''
-            const filteredApps = keyword
-              ? apps.filter((app) => app.name.toLowerCase().includes(keyword))
-              : apps
-
-            return {
-              data: filteredApps,
-              has_more: false,
-              page: Number(pageParam),
-            }
-          },
-          getNextPageParam,
-          initialPageParam,
-          placeholderData,
-        }),
-      },
-      byAppId: {
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      files: { upload: { get: consoleOperationStub('files.upload.get') } },
+      apps: {
         get: {
-          queryOptions: ({ input }: { input: unknown }) => {
-            const appId =
-              typeof input === 'object' && input && 'params' in input
-                ? (input.params as { app_id: string }).app_id
-                : undefined
-            return {
-              queryKey: ['apps', appId],
-              queryFn: () => mockAppDetailQuery(appId),
-              enabled: !!appId,
-            }
+          infiniteOptions: ({
+            input,
+            getNextPageParam,
+            initialPageParam,
+            placeholderData,
+          }: {
+            input: (pageParam: number) => { query: { name?: string } }
+            getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
+            initialPageParam: number
+            placeholderData: unknown
+          }) => ({
+            queryKey: ['apps', input(1).query],
+            queryFn: ({ pageParam = initialPageParam }: { pageParam?: number }) => {
+              const query = input(Number(pageParam)).query
+              const keyword = query.name?.toLowerCase() ?? ''
+              const filteredApps = keyword
+                ? apps.filter((app) => app.name.toLowerCase().includes(keyword))
+                : apps
+
+              return {
+                data: filteredApps,
+                has_more: false,
+                page: Number(pageParam),
+              }
+            },
+            getNextPageParam,
+            initialPageParam,
+            placeholderData,
+          }),
+        },
+        byAppId: {
+          get: {
+            queryOptions: ({ input }: { input: unknown }) => {
+              const appId =
+                typeof input === 'object' && input && 'params' in input
+                  ? (input.params as { app_id: string }).app_id
+                  : undefined
+              return {
+                queryKey: ['apps', appId],
+                queryFn: () => mockAppDetailQuery(appId),
+                enabled: !!appId,
+              }
+            },
           },
         },
       },
     },
-  },
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: undefined,
-    isError: false,
-    isFetching: false,
-    refetch: vi.fn(),
-  }),
-}))
+  }
+})
 
 vi.mock('@/service/use-workflow', () => ({
   useAppWorkflow: (appId: string) => mockUseAppWorkflow(appId),

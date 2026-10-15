@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
@@ -28,7 +28,6 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
-import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
 
 function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileNode {
@@ -52,7 +51,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
   const { t } = useTranslation(['agentV2'])
   const { t: tAppDebug } = useTranslation(['appDebug'])
   const { t: tCommon } = useTranslation(['common'])
-  const { data: fileUploadConfig } = useFileUploadConfig()
+  const { data: fileUploadConfig } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
     useFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)

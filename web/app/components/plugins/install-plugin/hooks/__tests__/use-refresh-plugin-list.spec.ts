@@ -4,7 +4,6 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { PluginCategoryEnum } from '../../../types'
 import useRefreshPluginList from '../use-refresh-plugin-list'
 
@@ -52,7 +51,7 @@ const strategyKeys = [
 ]
 const providerKeys = [
   current.modelProviders.summary.get.key(),
-  commonQueryKeys.modelProviderDetails,
+  consoleQuery.workspaces.current.modelProviders.get.key(),
 ]
 const datasourceKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
 const unrelatedKey = consoleQuery.account.profile.get.key()

@@ -1,4 +1,5 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { I18nText } from '@/i18n/language'
 import type { Model } from '@/types/app'
@@ -55,20 +56,7 @@ export const DataSourceProvider = {
 } as const
 export type DataSourceProvider = (typeof DataSourceProvider)[keyof typeof DataSourceProvider]
 
-export type FileUploadConfigResponse = {
-  batch_count_limit: number
-  image_file_size_limit?: number | string // default is 10MB
-  image_file_batch_limit: number // default is 10, for dataset attachment upload only
-  single_chunk_attachment_limit: number // default is 10, for dataset attachment upload only
-  attachment_image_file_size_limit: number // default is 2MB, for dataset attachment upload only
-  file_size_limit: number // default is 15MB
-  knowledge_file_size_limit?: number // current workspace's knowledge upload limit in MB
-  audio_file_size_limit?: number // default is 50MB
-  video_file_size_limit?: number // default is 100MB
-  skill_file_size_limit?: number // default is 50MB
-  workflow_file_upload_limit?: number // default is 10
-  file_upload_limit: number // default is 5
-}
+export type FileUploadConfigResponse = UploadConfig
 
 export type CodeBasedExtensionForm = {
   type: string

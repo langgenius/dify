@@ -12,8 +12,11 @@ import type {
   CredentialFormSchemaTextInput,
   ModelItem,
   ModelParameterRule,
+  ModelProvider,
   TypeWithI18N,
 } from './declarations'
+import { queryOptions, skipToken } from '@tanstack/react-query'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import openaiLogo from './assets/openai-small.svg'
 import tongyiLogo from './assets/tongyi.svg'
@@ -220,3 +223,30 @@ export const normalizeModelParameterRule = (rule: ParameterRule): ModelParameter
   use_template: rule.use_template ?? undefined,
   options: rule.options,
 })
+
+export const modelParameterRulesQueryOptions = ({
+  provider,
+  model,
+  enabled = true,
+}: {
+  provider?: string
+  model?: string
+  enabled?: boolean
+}) =>
+  consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.queryOptions({
+    input: provider && model && enabled ? { params: { provider }, query: { model } } : skipToken,
+    context: { silent: true },
+    select: (response) => ({ data: response.data.map(normalizeModelParameterRule) }),
+  })
+
+// Credential schemas are untyped JSON in the console API response; ModelProvider is the
+// UI's narrowed view of the provider list.
+export const modelProviderDetailsQueryOptions = () =>
+  queryOptions({
+    // Keeps the provider-list prefix so contract invalidations still reach the UI view.
+    queryKey: [...consoleQuery.workspaces.current.modelProviders.get.key(), 'ui-details'],
+    queryFn: async () =>
+      (await consoleClient.workspaces.current.modelProviders.get({})) as unknown as {
+        data: ModelProvider[]
+      },
+  })

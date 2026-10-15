@@ -21,7 +21,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useFileUploadConfig } from '@/service/use-common'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
@@ -78,7 +77,7 @@ const CreateFormPipeline = () => {
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(
     pipelineId || '',
   )
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
 
   const fileUploadConfig = useMemo(
     () => ({

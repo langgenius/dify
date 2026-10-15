@@ -11,7 +11,6 @@ import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum, Resolution } from '@/types/app'
 
@@ -179,7 +178,7 @@ export function useAppInputsFormSchema({
 }: UseAppInputsFormSchemaParams): UseAppInputsFormSchemaResult {
   const isBasicApp = isBasicAppMode(appDetail.mode)
 
-  const fileUploadConfigQuery = useFileUploadConfig()
+  const fileUploadConfigQuery = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { data: fileUploadConfig } = fileUploadConfigQuery
   const appQuery = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({

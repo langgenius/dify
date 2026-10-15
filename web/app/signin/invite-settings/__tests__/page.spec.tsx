@@ -1,14 +1,18 @@
+import type { useQuery } from '@tanstack/react-query'
 import type { MockedFunction } from 'vite-plus/test'
-import { useQuery } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
-import { useInvitationCheck } from '@/service/use-common'
 import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
+
+const { mockInvitationCheckHook, mockProfileQuery } = vi.hoisted(() => ({
+  mockInvitationCheckHook: vi.fn(),
+  mockProfileQuery: vi.fn(),
+}))
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
@@ -27,7 +31,12 @@ vi.mock('@tanstack/react-query', async () => {
     await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
-    useQuery: vi.fn(),
+    // The invitation check is answered separately from the account profile query.
+    useQuery: (options: { queryKey: unknown[] }) =>
+      Array.isArray(options.queryKey[0]) &&
+      options.queryKey[0].join('.') === 'console.activate.check.get'
+        ? mockInvitationCheckHook(options)
+        : mockProfileQuery(options),
     useQueryClient: vi.fn(() => ({
       resetQueries: vi.fn(),
     })),
@@ -71,10 +80,6 @@ vi.mock('@/service/console', async (importOriginal) => ({
   },
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useInvitationCheck: vi.fn(),
-}))
-
 vi.mock('@/utils/timezone', () => ({
   getBrowserTimezone: vi.fn(),
   timezones: [
@@ -90,10 +95,8 @@ const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockActivateMember = vi.mocked(consoleClient.activate.post)
-const mockUseQuery = vi.mocked(useQuery)
-const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<
-  typeof useInvitationCheck
->
+const mockUseQuery = mockProfileQuery
+const mockUseInvitationCheck = mockInvitationCheckHook
 const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
   typeof getBrowserTimezone
 >
@@ -122,7 +125,7 @@ describe('InviteSettingsPage', () => {
         },
       },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useInvitationCheck>)
+    } as unknown as ReturnType<typeof mockInvitationCheckHook>)
     mockUseQuery.mockReturnValue({
       data: {
         profile: {
@@ -157,7 +160,7 @@ describe('InviteSettingsPage', () => {
         },
       },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useInvitationCheck>)
+    } as unknown as ReturnType<typeof mockInvitationCheckHook>)
 
     render(<InviteSettingsPage />)
 
@@ -232,7 +235,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useInvitationCheck>)
+      } as unknown as ReturnType<typeof mockInvitationCheckHook>)
 
       render(<InviteSettingsPage />)
 
@@ -261,7 +264,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useInvitationCheck>)
+      } as unknown as ReturnType<typeof mockInvitationCheckHook>)
 
       render(<InviteSettingsPage />)
 
@@ -291,7 +294,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useInvitationCheck>)
+      } as unknown as ReturnType<typeof mockInvitationCheckHook>)
 
       render(<InviteSettingsPage />)
 

@@ -16,6 +16,15 @@ import { AppModeEnum, ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: undefined,
+    }),
+  })
+})
+
 let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
 
 const createRouteAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
@@ -110,12 +119,6 @@ vi.mock('nuqs', async (importOriginal) => {
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: undefined,
-  }),
-}))
-
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   default: () => 'desktop',
@@ -191,6 +194,7 @@ vi.mock('@/service/console', async () => {
     ...actual,
     consoleQuery: {
       ...actual.consoleQuery,
+      files: actual.consoleQuery.files,
       account: actual.consoleQuery.account,
       apps: {
         byAppId: {

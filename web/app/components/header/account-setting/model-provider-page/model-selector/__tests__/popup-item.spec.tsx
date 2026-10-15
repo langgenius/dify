@@ -4,13 +4,13 @@ import type {
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement, ReactNode } from 'react'
-import type { DefaultModel } from '../../declarations'
+import type { DefaultModel, ModelProvider } from '../../declarations'
 import type { ModelSelectorPreviewPayload } from '../popup-item'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
@@ -178,8 +178,9 @@ const createPopupItemNode = (node: ReactElement) => node
 
 const renderPopupItem = (node: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
-    data: [makeProvider()],
+  queryClient.setQueryData(modelProviderDetailsQueryOptions().queryKey, {
+    // Only the fields the popup reads are seeded.
+    data: [makeProvider() as unknown as ModelProvider],
   })
   queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
     ...mockProviderSummary(),
