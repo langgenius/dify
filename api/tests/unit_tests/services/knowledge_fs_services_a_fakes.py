@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import NamedTuple
@@ -38,7 +38,7 @@ class UnusedSessionFactory:
         self.opened = 0
 
     @contextmanager
-    def __call__(self) -> Iterator[UnusedSession]:
+    def __call__(self) -> Generator[UnusedSession]:
         self.opened += 1
         yield UnusedSession()
 
