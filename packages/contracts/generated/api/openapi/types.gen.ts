@@ -1463,7 +1463,6 @@ export type WorkflowWebAppPatch = {
 
 export type WorkspaceDetailResponse = {
   created_at?: string | null
-  current: boolean
   id: string
   name: string
   role: string
@@ -1491,7 +1490,6 @@ export type WorkspacePayload = {
 }
 
 export type WorkspaceSummaryResponse = {
-  current: boolean
   id: string
   name: string
   role: string
@@ -4002,26 +4000,3 @@ export type GetWorkspacesByWorkspaceIdToolsResponses = {
 
 export type GetWorkspacesByWorkspaceIdToolsResponse =
   GetWorkspacesByWorkspaceIdToolsResponses[keyof GetWorkspacesByWorkspaceIdToolsResponses]
-
-export type PostWorkspacesByWorkspaceIdSwitchData = {
-  body?: never
-  path: {
-    workspace_id: string
-  }
-  query?: never
-  url: '/workspaces/{workspace_id}:switch'
-}
-
-export type PostWorkspacesByWorkspaceIdSwitchErrors = {
-  default: ErrorBody
-}
-
-export type PostWorkspacesByWorkspaceIdSwitchError =
-  PostWorkspacesByWorkspaceIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdSwitchErrors]
-
-export type PostWorkspacesByWorkspaceIdSwitchResponses = {
-  200: WorkspaceDetailResponse
-}
-
-export type PostWorkspacesByWorkspaceIdSwitchResponse =
-  PostWorkspacesByWorkspaceIdSwitchResponses[keyof PostWorkspacesByWorkspaceIdSwitchResponses]

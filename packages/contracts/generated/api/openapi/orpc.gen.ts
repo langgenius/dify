@@ -246,8 +246,6 @@ import {
   zPostWorkspacesByWorkspaceIdPluginsInstallBody,
   zPostWorkspacesByWorkspaceIdPluginsInstallPath,
   zPostWorkspacesByWorkspaceIdPluginsInstallResponse,
-  zPostWorkspacesByWorkspaceIdSwitchPath,
-  zPostWorkspacesByWorkspaceIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsBody,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse,
@@ -2137,21 +2135,6 @@ export const tools = {
   get: get47,
 }
 
-export const post30 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesByWorkspaceIdSwitch',
-    path: '/workspaces/{workspace_id}:switch',
-    tags: ['openapi'],
-  })
-  .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
-  .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
-
-export const switch_ = {
-  post: post30,
-}
-
 export const get48 = oc
   .route({
     inputStructure: 'detailed',
@@ -2175,7 +2158,6 @@ export const byWorkspaceId = {
   plugins: plugins2,
   toolProviders,
   tools,
-  switch: switch_,
 }
 
 export const get49 = oc

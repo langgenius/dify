@@ -1823,20 +1823,6 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [POST] /workspaces/{workspace_id}:switch
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| workspace_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
 ---
 ### Schemas
 
@@ -3605,7 +3591,6 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | string |  | No |
-| current | boolean |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
 | role | string |  | Yes |
@@ -3643,7 +3628,6 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| current | boolean |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
 | role | string |  | Yes |

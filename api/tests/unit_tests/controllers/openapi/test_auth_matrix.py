@@ -269,7 +269,6 @@ ROUTES: tuple[Route, ...] = (
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.describe", "GET", "/workspaces/{workspace_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
-    Route("workspaces.switch", "POST", "/workspaces/{workspace_id}:switch", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.members.list", "GET", "/workspaces/{workspace_id}/members", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "workspaces.members.invite",
@@ -2070,7 +2069,6 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/workspaces/{workspace_id}/members"): frozenset({"201", "422", "default"}),
     ("delete", "/workspaces/{workspace_id}/members/{member_id}"): frozenset({"200", "default"}),
     ("patch", "/workspaces/{workspace_id}/members/{member_id}"): frozenset({"200", "422", "default"}),
-    ("post", "/workspaces/{workspace_id}:switch"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/webapp/workflow"): frozenset({"200", "default"}),
     ("patch", "/apps/{app_id}/webapp/workflow"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/webapp:reset"): frozenset({"200", "default"}),

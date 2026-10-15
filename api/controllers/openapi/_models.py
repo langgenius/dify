@@ -204,7 +204,6 @@ class WorkspaceSummaryResponse(BaseModel):
     name: str
     role: str
     status: str
-    current: bool
 
 
 class WorkspaceListResponse(PaginationEnvelope[WorkspaceSummaryResponse]):
@@ -222,7 +221,6 @@ class WorkspaceDetailResponse(BaseModel):
     name: str
     role: str
     status: str
-    current: bool
     created_at: str | None = None
 
 

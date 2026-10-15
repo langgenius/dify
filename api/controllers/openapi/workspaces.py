@@ -57,7 +57,6 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
-    WorkspaceNotLinkedError,
 )
 from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRecord, WorkspaceSnapshot
 
@@ -87,9 +86,7 @@ class WorkspacesApi(Resource):
     def get(self, ctx: Context, *, query: WorkspaceListQuery):
         if isinstance(ctx.subject, ResourceAccessSubject):
             tenant = ctx.workspace
-            item = WorkspaceSummaryResponse(
-                id=str(tenant.id), name=tenant.name, role="", status=tenant.status, current=True
-            )
+            item = WorkspaceSummaryResponse(id=str(tenant.id), name=tenant.name, role="", status=tenant.status)
             return WorkspaceListResponse.page_of([item], query=query)
         rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
         return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
@@ -114,33 +111,6 @@ class WorkspaceByIdApi(Resource):
             raise NotFound("workspace not found")
 
         return _workspace_detail(row)
-
-
-@openapi_ns.route("/workspaces/<string:workspace_id>:switch")
-class WorkspaceSwitchApi(Resource):
-    """Server-side switch — equivalent to the console's POST /workspaces/switch."""
-
-    @endpoint(
-        op="switch.workspace",
-        kind=Kind.OBJECT,
-        summary="Server-side current workspace switch (shared with the web console)",
-        examples=(Example(title="Make a workspace current on the server", input={"workspace_id": "<workspace_id>"}),),
-        internal=True,
-        requirements=(
-            CheckSubject(allowed=(AccountSubject,)),
-            CheckScope(Scope.WORKSPACE_READ),
-            CheckWorkspaceMember(),
-        ),
-        returns=(200, WorkspaceDetailResponse, "Workspace detail"),
-    )
-    def post(self, ctx: Context, workspace_id: str):
-        try:
-            workspace = application_services().workspaces.management.switch_membership(
-                str(ctx.subject.account_id), workspace_id
-            )
-        except WorkspaceNotLinkedError:
-            raise NotFound("workspace not found") from None
-        return _workspace_detail(workspace)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members")
@@ -320,7 +290,6 @@ def _workspace_summary(tenant: WorkspaceSnapshot) -> WorkspaceSummaryResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
     )
 
 
@@ -330,6 +299,5 @@ def _workspace_detail(tenant: WorkspaceSnapshot) -> WorkspaceDetailResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
         created_at=tenant.created_at.isoformat() if tenant.created_at else None,
     )

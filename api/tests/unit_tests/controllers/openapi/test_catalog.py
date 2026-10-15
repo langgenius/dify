@@ -117,7 +117,6 @@ def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -
     assert ops["upload.console_app.file"]["bind"]["file"] == "file"
     assert ops["get.console_app"]["bind"]["page"] == "query"
     assert ops["get.run.event"]["bind"]["continue_on_pause"] == "query"
-    assert ops["switch.workspace"]["internal"] is True
 
 
 def test_input_schemas_are_flat_shallow_and_described(ops: dict[str, CatalogOp]) -> None:

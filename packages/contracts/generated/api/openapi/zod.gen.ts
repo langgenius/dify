@@ -2056,7 +2056,6 @@ export const zWorkflowWebAppPatch = z.object({
  */
 export const zWorkspaceDetailResponse = z.object({
   created_at: z.string().nullish(),
-  current: z.boolean(),
   id: z.string(),
   name: z.string(),
   role: z.string(),
@@ -2113,7 +2112,6 @@ export const zDeviceTokenResponse = z.object({
  * WorkspaceSummaryResponse
  */
 export const zWorkspaceSummaryResponse = z.object({
-  current: z.boolean(),
   id: z.string(),
   name: z.string(),
   role: z.string(),
@@ -3247,12 +3245,3 @@ export const zGetWorkspacesByWorkspaceIdToolsQuery = z.object({
  * Tools
  */
 export const zGetWorkspacesByWorkspaceIdToolsResponse = zToolListResponse
-
-export const zPostWorkspacesByWorkspaceIdSwitchPath = z.object({
-  workspace_id: z.string(),
-})
-
-/**
- * Workspace detail
- */
-export const zPostWorkspacesByWorkspaceIdSwitchResponse = zWorkspaceDetailResponse
