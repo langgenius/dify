@@ -565,7 +565,7 @@ class TestEdgeCases:
         params = {
             "string": "test_string",
             "integer": 42,
-            "float": 3.14159,
+            "float": float("3.14159"),
             "boolean_true": True,
             "boolean_false": False,
             "null_value": None,

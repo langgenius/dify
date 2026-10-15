@@ -2613,11 +2613,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/hooks/use-auto-generate-webhook-url.ts": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks/use-checklist.ts": {
     "dify/no-app-store-imports": {
       "count": 1
@@ -3505,11 +3500,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/trigger-webhook/__tests__/use-config.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -3517,11 +3507,6 @@
   },
   "web/app/components/workflow/nodes/trigger-webhook/components/parameter-table.tsx": {
     "typescript/no-non-null-asserted-optional-chain": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/trigger-webhook/use-config.ts": {
-    "dify/no-app-store-imports": {
       "count": 1
     }
   },
@@ -3604,15 +3589,7 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/chat-record/__tests__/index.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/chat-record/index.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -3620,7 +3597,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 7
     }
   },
   "web/app/components/workflow/panel/chat-record/user-input.tsx": {
@@ -3673,16 +3650,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/__tests__/chat-wrapper.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/panel/debug-and-preview/__tests__/components.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks.spec.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -3690,7 +3657,7 @@
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-resume.spec.ts": {
     "typescript/no-explicit-any": {
-      "count": 69
+      "count": 68
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-send.spec.ts": {
@@ -3700,7 +3667,7 @@
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-stop-restart.spec.ts": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 13
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/misc.spec.ts": {
@@ -3719,9 +3686,6 @@
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 5
     }
@@ -3736,7 +3700,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 11
+      "count": 8
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/user-input.tsx": {

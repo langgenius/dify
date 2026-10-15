@@ -113,8 +113,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     document_context_list.append(sign_segment_content(segment, session=session))
             if self.return_resource:
                 context_list: list[RetrievalSourceMetadata] = []
-                resource_number = 1
-                for segment in sorted_segments:
+                for resource_number, segment in enumerate(sorted_segments, start=1):
                     dataset = session.get(Dataset, segment.dataset_id)
                     document_stmt = select(Document).where(
                         Document.id == segment.document_id,
@@ -146,7 +145,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         else:
                             source.content = segment.content
                         context_list.append(source)
-                    resource_number += 1
 
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(context_list)
