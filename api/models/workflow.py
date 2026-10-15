@@ -57,14 +57,13 @@ from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipel
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
-from ._workflow_exc import NodeNotFoundError, WorkflowDataError
-
 if TYPE_CHECKING:
     from .model import AppMode
 
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
+from errors.workflow import NodeNotFoundError, WorkflowDataError
 from factories import variable_factory
 from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 from libs import helper
