@@ -2052,6 +2052,7 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
