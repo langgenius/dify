@@ -1,7 +1,7 @@
-"""Workflow persistence layer for GraphEngine.
+"""Workflow persistence layer for Engine.
 
 This layer mirrors the former ``WorkflowCycleManager`` responsibilities by
-listening to ``GraphEngineEvent`` instances directly and persisting workflow
+listening to ``EngineEvent`` instances directly and persisting workflow
 and node execution state via the injected repositories.
 
 The design keeps domain persistence concerns inside the engine thread, while
@@ -24,17 +24,9 @@ from core.workflow.node_execution_process_data import preserve_workflow_agent_bi
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities import WorkflowExecution, WorkflowNodeExecution, WorkflowStartReason
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-    WorkflowType,
-)
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import (
-    GraphEngineEvent,
+from graphon.engine.layer import Layer
+from graphon.engine_events import (
+    EngineEvent,
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -48,8 +40,17 @@ from graphon.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution, WorkflowStartReason
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+    WorkflowType,
+)
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
+from services.workflow.event_ancestry import WorkflowEventAncestry
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
 )
@@ -80,8 +81,8 @@ class _NodeRuntimeSnapshot:
     created_at: datetime
 
 
-class WorkflowPersistenceLayer(GraphEngineLayer):
-    """GraphEngine layer that persists workflow and node execution state."""
+class WorkflowPersistenceLayer(Layer):
+    """Engine layer that persists workflow and node execution state."""
 
     def __init__(
         self,
@@ -95,6 +96,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         super().__init__()
         self._application_generate_entity = application_generate_entity
         self._workflow_info = workflow_info
+        self._event_ancestry = WorkflowEventAncestry(workflow_info.graph_data)
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._trace_manager = trace_manager
@@ -103,9 +105,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
         self._node_snapshots: dict[str, _NodeRuntimeSnapshot] = {}
         self._node_sequence: int = 0
+        self._pending_pause: GraphRunPausedEvent | None = None
 
     # ------------------------------------------------------------------
-    # GraphEngineLayer lifecycle
+    # Layer lifecycle
     # ------------------------------------------------------------------
     @override
     def on_graph_start(self) -> None:
@@ -113,9 +116,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._node_execution_cache.clear()
         self._node_snapshots.clear()
         self._node_sequence = 0
+        self._pending_pause = None
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: EngineEvent) -> None:
         match event:
             case GraphRunStartedEvent():
                 self._handle_graph_run_started(event)
@@ -128,7 +132,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             case GraphRunAbortedEvent():
                 self._handle_graph_run_aborted(event)
             case GraphRunPausedEvent():
-                self._handle_graph_run_paused(event)
+                self._pending_pause = event
             case NodeRunRetryEvent():
                 self._handle_node_retry(event)
             case NodeRunStartedEvent():
@@ -141,6 +145,17 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 self._handle_node_exception(event)
             case NodeRunPauseRequestedEvent():
                 self._handle_node_pause_requested(event)
+
+    def persist_paused_state(self) -> None:
+        """Commit PAUSED only after the recoverable runtime/filter snapshot exists."""
+        if self._pending_pause is not None:
+            self._handle_graph_run_paused(self._pending_pause)
+            self._pending_pause = None
+
+    def fail_pause_persistence(self, error: Exception) -> None:
+        if self._pending_pause is not None:
+            self._pending_pause = None
+            self._handle_graph_run_failed(GraphRunFailedEvent(error=str(error)))
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:
@@ -227,8 +242,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution = self._get_workflow_execution()
 
         metadata = {
-            WorkflowNodeExecutionMetadataKey.ITERATION_ID: event.in_iteration_id,
-            WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: self._event_ancestry.resolve(
+                event.container_id
+            ).iteration_id,
+            WorkflowNodeExecutionMetadataKey.LOOP_ID: self._event_ancestry.resolve(event.container_id).loop_id,
         }
 
         domain_execution = WorkflowNodeExecution(
@@ -256,8 +273,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             node_id=event.node_id,
             title=event.node_title,
             predecessor_node_id=event.predecessor_node_id,
-            iteration_id=event.in_iteration_id,
-            loop_id=event.in_loop_id,
+            iteration_id=self._event_ancestry.resolve(event.container_id).iteration_id,
+            loop_id=self._event_ancestry.resolve(event.container_id).loop_id,
             created_at=event.start_at,
         )
         self._node_snapshots[event.id] = snapshot
@@ -415,7 +432,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _populate_completion_statistics(self, execution: WorkflowExecution, *, update_finished: bool = True) -> None:
         if update_finished:
             execution.finished_at = naive_utc_now()
-        runtime_state = self.graph_runtime_state
+        runtime_state = self.runtime_state
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
         execution.outputs = execution.outputs or runtime_state.outputs
@@ -501,5 +518,5 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._trace_manager.add_trace_task(trace_task)
 
     def _system_variables(self) -> Mapping[str, Any]:
-        runtime_state = self.graph_runtime_state
+        runtime_state = self.runtime_state
         return runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)

@@ -26,7 +26,7 @@ _COMMAND_KEY = f"workflow:{_TASK_ID}:commands"
 
 @dataclass
 class _StopRedis(RedisClientWrapper):
-    """In-memory Redis boundary; task policy and GraphEngine serialization stay real."""
+    """In-memory Redis boundary; task policy and Engine serialization stay real."""
 
     values: dict[str, bytes] = field(default_factory=dict)
     commands: dict[str, list[str]] = field(default_factory=dict)
@@ -93,13 +93,13 @@ def global_redis(monkeypatch: pytest.MonkeyPatch) -> Generator[_StopRedis]:
     redis = _StopRedis(
         read_error=AssertionError("Must use the injected Redis for ownership reads"),
         flag_error=AssertionError("Must use the injected Redis for stop flags"),
-        command_error=AssertionError("Must use the injected Redis for GraphEngine commands"),
+        command_error=AssertionError("Must use the injected Redis for Engine commands"),
     )
     monkeypatch.setattr(queue_module, "redis_client", redis)
     monkeypatch.setattr(coordinator_module, "redis_client", redis)
     monkeypatch.setattr(task_module, "redis_client", redis)
     yield redis
-    # GraphEngine catches Redis failures, so a trap exception alone would not fail the test.
+    # Engine catches Redis failures, so a trap exception alone would not fail the test.
     assert redis.reads == []
     assert redis.operations == []
 
@@ -112,7 +112,7 @@ def _assert_stop_flag(redis: _StopRedis) -> None:
 def _assert_graph_command(redis: _StopRedis) -> None:
     assert set(redis.commands) == {_COMMAND_KEY}
     assert [json.loads(command) for command in redis.commands[_COMMAND_KEY]] == [
-        {"command_type": "abort", "payload": None, "reason": "User requested stop"}
+        {"command_type": "abort", "reason": "User requested stop"}
     ]
     assert redis.expirations[_COMMAND_KEY] == 3600
     assert redis.values[f"{_COMMAND_KEY}:pending"] == b"1"
@@ -231,7 +231,7 @@ def test_graph_redis_failure_is_swallowed_after_legacy_flag(unchecked: bool, cap
     _assert_stop_flag(redis)
     assert redis.operations == ["legacy_flag", "graph_command"]
     assert redis.commands == {}
-    assert "Failed to send graph engine command AbortCommand" in caplog.text
+    assert "Failed to send stop command for workflow task" in caplog.text
 
 
 def test_ownership_read_failure_propagates_without_either_stop_signal() -> None:

@@ -1,7 +1,7 @@
 import logging
 import threading
 from collections.abc import Generator, Mapping, Sequence
-from contextlib import AbstractContextManager, nullcontext
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
@@ -104,27 +104,31 @@ class BaseAppGenerator:
             BaseAppGenerator._join_worker_thread(worker_thread)
 
     @staticmethod
+    @contextmanager
     def _bind_file_access_scope(
         *,
         tenant_id: str,
         user: Account | EndUser,
         invoke_from: InvokeFrom,
-    ) -> AbstractContextManager[None]:
-        """Bind request-scoped file ownership markers for downstream file lookups."""
+    ) -> Generator[None]:
+        """Bind the file adapter and request ownership for downstream file lookups."""
+        from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
 
-        user_id = getattr(user, "id", None)
-        if not isinstance(user_id, str) or not user_id:
-            return nullcontext()
-
-        user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
-        return bind_file_access_scope(
-            FileAccessScope(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                user_from=user_from,
-                invoke_from=invoke_from,
-            )
-        )
+        with bind_dify_workflow_file_runtime():
+            user_id = getattr(user, "id", None)
+            if not isinstance(user_id, str) or not user_id:
+                yield
+                return
+            user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
+            with bind_file_access_scope(
+                FileAccessScope(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    user_from=user_from,
+                    invoke_from=invoke_from,
+                )
+            ):
+                yield
 
     def _prepare_user_inputs(
         self,

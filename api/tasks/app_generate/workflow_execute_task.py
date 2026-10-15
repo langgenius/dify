@@ -25,10 +25,10 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Wor
 from core.dify_builder.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.filters import ResponseStreamFilter
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from libs.helper import to_timestamp
@@ -526,7 +526,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
     if generate_entity.builder_execution is not None:
         raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
-    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     conversation = None
@@ -619,7 +619,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                     conversation=conversation,
                     message=message,
                     generate_entity=generate_entity,
-                    graph_runtime_state=graph_runtime_state,
+                    runtime_state=runtime_state,
                     response_stream_filter=response_stream_filter,
                     session_factory=session_factory,
                     pause_state_config=pause_config,
@@ -633,7 +633,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
                 workflow=workflow,
                 user=user,
                 generate_entity=generate_entity,
-                graph_runtime_state=graph_runtime_state,
+                runtime_state=runtime_state,
                 response_stream_filter=response_stream_filter,
                 session_factory=session_factory,
                 pause_state_config=pause_config,
@@ -652,7 +652,7 @@ def _resume_advanced_chat(
     conversation: Conversation,
     message: Message,
     generate_entity: AdvancedChatAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -694,7 +694,7 @@ def _resume_advanced_chat(
             application_generate_entity=resumed_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
             session=session,
@@ -720,7 +720,7 @@ def _resume_workflow(
     workflow: Workflow,
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
-    graph_runtime_state: GraphRuntimeState,
+    runtime_state: RuntimeState,
     response_stream_filter: ResponseStreamFilter,
     session_factory: sessionmaker,
     pause_state_config: PauseStateLayerConfig,
@@ -759,7 +759,7 @@ def _resume_workflow(
             workflow=workflow,
             user=user,
             application_generate_entity=resumed_generate_entity,
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=runtime_state,
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             pause_state_config=pause_state_config,

@@ -1,0 +1,197 @@
+{
+  "container_frames": [
+    {
+      "errors": [],
+      "frame_id": "9e82f3b8-9649-4184-ba6b-a515232b0b8d:loop:1",
+      "index": 1,
+      "kind": "loop",
+      "parent_invocation_id": "9e82f3b8-9649-4184-ba6b-a515232b0b8d",
+      "reached_break": false,
+      "root_node_id": "loop-start",
+      "runtime_data": {
+        "graph_edge_states": {
+          "edge_0": "unknown",
+          "edge_1": "taken",
+          "edge_2": "unknown"
+        },
+        "graph_node_states": {
+          "end": "unknown",
+          "human-input": "unknown",
+          "loop": "unknown",
+          "loop-start": "taken",
+          "start": "unknown"
+        },
+        "llm_usage": {
+          "completion_price": "0.0",
+          "completion_price_unit": "0.0",
+          "completion_tokens": 0,
+          "completion_unit_price": "0.0",
+          "currency": "USD",
+          "latency": 0.0,
+          "prompt_price": "0.0",
+          "prompt_price_unit": "0.0",
+          "prompt_tokens": 0,
+          "prompt_unit_price": "0.0",
+          "time_to_first_token": null,
+          "time_to_generate": null,
+          "total_price": "0.0",
+          "total_tokens": 0
+        },
+        "node_run_steps": 2,
+        "outputs": {},
+        "variable_pool": "parent"
+      },
+      "started_at": "2026-08-27T08:23:14.448861"
+    }
+  ],
+  "container_runs": [
+    {
+      "completed_count": 1,
+      "duration_map": {
+        "0": 0.207418
+      },
+      "frame_id": "root",
+      "inputs": {
+        "loop_count": {
+          "value": 3,
+          "value_type": "integer"
+        },
+        "seed": {
+          "value": "fixed",
+          "value_type": "string"
+        }
+      },
+      "invocation_id": "9e82f3b8-9649-4184-ba6b-a515232b0b8d",
+      "kind": "loop",
+      "loop_count": 3,
+      "loop_node_ids": [
+        "loop-start",
+        "human-input"
+      ],
+      "loop_variable_selectors": {
+        "seed": [
+          "loop",
+          "seed"
+        ]
+      },
+      "node_id": "loop",
+      "outputs": {
+        "loop_round": {
+          "value": 1,
+          "value_type": "integer"
+        },
+        "seed": {
+          "value": "fixed",
+          "value_type": "string"
+        }
+      },
+      "reached_break": false,
+      "root_node_id": "loop-start",
+      "started_at": "2026-08-27T08:23:14.236615",
+      "usage": {
+        "completion_price": "0.0",
+        "completion_price_unit": "0.0",
+        "completion_tokens": 0,
+        "completion_unit_price": "0.0",
+        "currency": "USD",
+        "latency": 0.0,
+        "prompt_price": "0.0",
+        "prompt_price_unit": "0.0",
+        "prompt_tokens": 0,
+        "prompt_unit_price": "0.0",
+        "time_to_first_token": null,
+        "time_to_generate": null,
+        "total_price": "0.0",
+        "total_tokens": 0
+      },
+      "variable_map": {
+        "0": {
+          "seed": {
+            "value": "fixed",
+            "value_type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "deferred_ready_tasks": "{\"version\":\"2.0\",\"items\":[{\"kind\":\"start\",\"frame_id\":\"9e82f3b8-9649-4184-ba6b-a515232b0b8d:loop:1\",\"node_id\":\"human-input\"}]}",
+  "graph_edge_states": {
+    "edge_0": "taken",
+    "edge_1": "unknown",
+    "edge_2": "unknown"
+  },
+  "graph_execution": "{\"version\":\"2.0\",\"workflow_id\":\"workflow\",\"started\":true,\"completed\":false,\"aborted\":false,\"paused\":true,\"pause_reasons\":[{\"TYPE\":\"hitl_required\",\"session_id\":\"session-human-input\",\"node_id\":\"human-input\",\"node_title\":\"Approve loop round\"}],\"error\":null,\"exceptions_count\":0,\"node_executions\":[{\"frame_id\":\"9e82f3b8-9649-4184-ba6b-a515232b0b8d:loop:0\",\"node_id\":\"human-input\",\"retry_count\":0,\"execution_id\":\"6823d407-1221-41f3-bfc5-152b1d31dd1a\"},{\"frame_id\":\"9e82f3b8-9649-4184-ba6b-a515232b0b8d:loop:0\",\"node_id\":\"loop-start\",\"retry_count\":0,\"execution_id\":\"61025756-664d-4eec-ac4c-2d9192bde71b\"},{\"frame_id\":\"9e82f3b8-9649-4184-ba6b-a515232b0b8d:loop:1\",\"node_id\":\"human-input\",\"retry_count\":0,\"execution_id\":\"dae5bd52-4804-4ea6-aac8-3525575c9aba\"},{\"frame_id\":\"9e82f3b8-9649-4184-ba6b-a515232b0b8d:loop:1\",\"node_id\":\"loop-start\",\"retry_count\":0,\"execution_id\":\"14382cdb-6911-41d9-868b-e4a3aa62b497\"},{\"frame_id\":\"root\",\"node_id\":\"loop\",\"retry_count\":0,\"execution_id\":\"82c1ad39-f19a-4461-9336-f7b006dc8e62\"},{\"frame_id\":\"root\",\"node_id\":\"start\",\"retry_count\":0,\"execution_id\":\"3c6d3743-0587-4436-ace2-27928843574a\"}]}",
+  "graph_node_states": {
+    "end": "unknown",
+    "human-input": "unknown",
+    "loop": "taken",
+    "loop-start": "unknown",
+    "start": "taken"
+  },
+  "llm_usage": {
+    "completion_price": "0.0",
+    "completion_price_unit": "0.0",
+    "completion_tokens": 0,
+    "completion_unit_price": "0.0",
+    "currency": "USD",
+    "latency": 0.0,
+    "prompt_price": "0.0",
+    "prompt_price_unit": "0.0",
+    "prompt_tokens": 0,
+    "prompt_unit_price": "0.0",
+    "time_to_first_token": null,
+    "time_to_generate": null,
+    "total_price": "0.0",
+    "total_tokens": 0
+  },
+  "node_run_steps": 2,
+  "outputs": {},
+  "ready_queue": "{\"version\":\"2.0\",\"items\":[]}",
+  "start_at": 0.0,
+  "variable_pool": {
+    "variable_dictionary": {
+      "human-input": {},
+      "loop": {
+        "seed": {
+          "description": "",
+          "id": "6d80870e-f604-498b-9b0e-868304832a2d",
+          "name": "seed",
+          "selector": [
+            "loop",
+            "seed"
+          ],
+          "value": "fixed",
+          "value_type": "string"
+        }
+      },
+      "loop-start": {},
+      "start": {
+        "sys.workflow_execution_id": {
+          "description": "",
+          "id": "635d8f1f-4fb5-435b-9f49-c3081f3249c6",
+          "name": "sys.workflow_execution_id",
+          "selector": [
+            "start",
+            "sys.workflow_execution_id"
+          ],
+          "value": "workflow-execution",
+          "value_type": "string"
+        }
+      },
+      "sys": {
+        "workflow_execution_id": {
+          "description": "",
+          "id": "6bb2de5b-8cdd-4397-957c-b7eafaf87543",
+          "name": "workflow_execution_id",
+          "selector": [
+            "sys",
+            "workflow_execution_id"
+          ],
+          "value": "workflow-execution",
+          "value_type": "string"
+        }
+      }
+    }
+  },
+  "version": "2.0"
+}

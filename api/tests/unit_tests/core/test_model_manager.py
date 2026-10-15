@@ -509,3 +509,38 @@ def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LB
 
         config = lb_model_manager.fetch_next()
         assert config == config3
+
+
+def test_quota_managed_tts_closes_provider_on_early_consumer_close() -> None:
+    from graphon.model_runtime.protocols.tts_runtime import TTSChunk
+
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    reservation = MagicMock()
+    lifecycle = []
+
+    def provider_stream():
+        try:
+            yield TTSChunk(data=b"audio", mime_type="audio/wav")
+            raise AssertionError("unrequested provider consumption")
+        finally:
+            lifecycle.append("closed")
+
+    # Keep the provider alive independently: reference counting must not own cleanup.
+    provider = provider_stream()
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve,
+        patch.object(ModelInstance, "invoke_tts", return_value=provider) as invoke,
+    ):
+        response = model_instance.invoke_tts(content_text="hello")
+        reserve.assert_not_called()
+        invoke.assert_not_called()
+        assert next(response).data == b"audio"
+        reservation.commit.assert_called_once_with()
+        response.close()
+        assert lifecycle == ["closed"]
+        reservation.release.assert_called_once_with()

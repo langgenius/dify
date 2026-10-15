@@ -15,8 +15,8 @@ from opentelemetry.trace import StatusCode
 
 from core.app.workflow.layers.observability import ObservabilityLayer
 from extensions.otel.semconv import DifySpanAttributes
+from graphon.engine_events import GraphRunAbortedEvent
 from graphon.enums import BuiltinNodeTypes
-from graphon.graph_events import GraphRunAbortedEvent
 
 
 @pytest.fixture(autouse=True)
@@ -280,10 +280,10 @@ class TestObservabilityLayerGraphLifecycle:
     ):
         layer = ObservabilityLayer()
         layer.on_graph_start()
-        layer.on_node_run_start(mock_start_node)
-
-        layer.on_event(GraphRunAbortedEvent(reason="worker shutdown", outputs={}))
-        layer.on_node_run_end(mock_start_node, None)
+        with layer.node_run_context(mock_start_node):
+            layer.on_node_run_start(mock_start_node)
+            layer.on_event(GraphRunAbortedEvent(reason="worker shutdown", outputs={}))
+            layer.on_node_run_end(mock_start_node, None)
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 1
@@ -323,3 +323,21 @@ class TestObservabilityLayerDisabledMode:
 
         spans = memory_span_exporter.get_finished_spans()
         assert len(spans) == 0
+
+
+@pytest.mark.usefixtures("tracer_provider_with_memory_exporter")
+def test_context_detaches_between_container_segments(mock_llm_node):
+    """Suspended containers keep their span, but never a worker's context token."""
+    from opentelemetry.trace import get_current_span
+
+    layer = ObservabilityLayer()
+    original = get_current_span()
+    with layer.node_run_context(mock_llm_node):
+        layer.on_node_run_start(mock_llm_node)
+        span = get_current_span()
+        assert span is not original
+    assert get_current_span() is original
+    with layer.node_run_context(mock_llm_node):
+        assert get_current_span() is span
+        layer.on_node_run_end(mock_llm_node, None)
+    assert get_current_span() is original

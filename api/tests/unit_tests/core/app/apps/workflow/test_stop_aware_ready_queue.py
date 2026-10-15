@@ -6,9 +6,9 @@ from core.app.apps.workflow.stop_aware_ready_queue import (
     StopAwareReadyQueue,
     attach_stop_aware_ready_queue,
 )
-from graphon.graph_engine.domain.graph_execution import GraphExecution
-from graphon.graph_engine.ready_queue import StartTask
-from graphon.runtime.graph_runtime_state import GraphRuntimeState
+from graphon.runtime.execution import GraphExecution
+from graphon.runtime.ready_queue import StartTask
+from graphon.runtime.runtime_state import RuntimeState
 from graphon.runtime.variable_pool import VariablePool
 
 
@@ -63,7 +63,8 @@ def test_ready_queue_rejects_next_node_when_stop_flag_is_set() -> None:
 
 def test_attach_stop_aware_ready_queue_wraps_once() -> None:
     inner = Mock()
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="workflow-1",
         variable_pool=VariablePool(),
         start_at=0,
         ready_queue=inner,

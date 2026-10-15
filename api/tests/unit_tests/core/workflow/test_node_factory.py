@@ -37,7 +37,7 @@ from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.tool_node import ToolNode
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
@@ -367,8 +367,9 @@ class TestDifyNodeFactoryCreateNode:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.graph_init_params = sentinel.graph_init_params
-        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
+        factory._native_runtime = None
+        factory.init_params = sentinel.init_params
+        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
         factory._dify_context = DifyRunContext(
             builder_execution=None,
             tenant_id="tenant-id",
@@ -441,8 +442,8 @@ class TestDifyNodeFactoryCreateNode:
         kwargs = matched_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
-        assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert kwargs["init_params"] is sentinel.init_params
+        assert kwargs["runtime_state"] is factory.runtime_state
         latest_node_class.assert_not_called()
 
     def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(
@@ -463,8 +464,8 @@ class TestDifyNodeFactoryCreateNode:
         kwargs = latest_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
-        assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert kwargs["init_params"] is sentinel.init_params
+        assert kwargs["runtime_state"] is factory.runtime_state
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name"),
@@ -500,8 +501,8 @@ class TestDifyNodeFactoryCreateNode:
         kwargs = constructor.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=node_type)
-        assert kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert kwargs["init_params"] is sentinel.init_params
+        assert kwargs["runtime_state"] is factory.runtime_state
 
         if constructor_name == "CodeNode":
             assert kwargs["code_executor"] is sentinel.code_executor
@@ -634,7 +635,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
             value={
                 "provider": "new-provider",
                 "name": "new-model",
@@ -649,7 +650,7 @@ class TestDifyNodeFactoryCreateNode:
         assert result.model.name == "new-model"
         assert result.model.mode == node_data.model.mode
         assert result.model.completion_params == {"temperature": 0.8}
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
+        factory.runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
 
     def test_resolve_llm_model_reference_keeps_node_parameters_for_legacy_variable(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -668,7 +669,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
             value={"provider": "new-provider", "name": "new-model", "mode": "chat"}
         )
 
@@ -688,7 +689,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
             value={"provider": "provider", "name": "model", "mode": "completion"}
         )
 
@@ -707,7 +708,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        factory.graph_runtime_state.variable_pool.get.return_value = None
+        factory.runtime_state.variable_pool.get.return_value = None
 
         with pytest.raises(ValueError, match="shared_model.*not found"):
             factory._resolve_llm_model_reference(node_data)
@@ -728,7 +729,7 @@ class TestDifyNodeFactoryCreateNode:
         result = factory._resolve_llm_model_reference(node_data)
 
         assert result is node_data
-        factory.graph_runtime_state.variable_pool.get.assert_not_called()
+        factory.runtime_state.variable_pool.get.assert_not_called()
 
     def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -826,12 +827,12 @@ class TestDifyNodeFactoryCreateNode:
 
         data = constructor.call_args.kwargs["data"]
         assert isinstance(data, Mapping)
-        assert data["structured_output_enabled"] is True
-        assert "structured_output_switch_on" not in data
+        assert data["structured_output_switch_on"] is True
+        assert "structured_output_enabled" not in data
         assert LLMNodeData.model_validate(data).structured_output_enabled is True
 
     def test_create_node_preserves_structured_output_switch_after_graphon_constructor(self, monkeypatch, factory):
-        factory.graph_init_params = SimpleNamespace(
+        factory.init_params = SimpleNamespace(
             workflow_id="workflow-id",
             graph_config={},
             run_context={},
@@ -876,7 +877,7 @@ class TestDifyNodeFactoryCreateNode:
         assert node.node_data.structured_output_enabled is True
 
     def test_create_node_uses_dify_llm_node_for_persisted_version_one(self, monkeypatch, factory):
-        factory.graph_init_params = SimpleNamespace(
+        factory.init_params = SimpleNamespace(
             workflow_id="workflow-id",
             graph_config={},
             run_context={},
@@ -991,8 +992,8 @@ class TestDifyNodeFactoryCreateNode:
         constructor_kwargs = constructor.call_args.kwargs
         assert constructor_kwargs["node_id"] == "node-id"
         _assert_constructor_node_data(constructor_kwargs["data"], node_id="node-id", node_type=node_type)
-        assert constructor_kwargs["graph_init_params"] is sentinel.graph_init_params
-        assert constructor_kwargs["graph_runtime_state"] is factory.graph_runtime_state
+        assert constructor_kwargs["init_params"] is sentinel.init_params
+        assert constructor_kwargs["runtime_state"] is factory.runtime_state
         assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider
         assert constructor_kwargs["model_factory"] is sentinel.model_factory
         assert constructor_kwargs["model_instance"] is sentinel.model_instance
@@ -1042,7 +1043,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
+        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
         return factory
 
     def test_retriever_attachment_loader_is_typed_for_llm_node_data_only(self):
@@ -1052,7 +1053,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
 
     def test_build_retriever_attachment_loader_uses_llm_context_selector(self, factory):
         factory._file_reference_factory = sentinel.file_reference_factory
-        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
             value=[
                 {
                     "metadata": {
@@ -1077,16 +1078,16 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
 
         assert loader._segment_access_checker is not None
         assert loader._segment_access_checker("allowed-segment") is True
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(["knowledge-node", "result"])
+        factory.runtime_state.variable_pool.get.assert_called_once_with(["knowledge-node", "result"])
 
     def test_checker_rejects_missing_context_selector_without_reading_variable_pool(self, factory):
         checker = factory._build_retriever_segment_access_checker(None)
 
         assert checker("segment-id") is False
-        factory.graph_runtime_state.variable_pool.get.assert_not_called()
+        factory.runtime_state.variable_pool.get.assert_not_called()
 
     def test_checker_rejects_non_knowledge_context_items(self, factory):
-        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment.model_construct(
+        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment.model_construct(
             value=[
                 "plain-text",
                 {"metadata": "not-a-mapping"},
@@ -1098,14 +1099,14 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
         assert checker("segment-id") is False
 
     def test_checker_rejects_non_array_context_value(self, factory):
-        factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="not knowledge context")
+        factory.runtime_state.variable_pool.get.return_value = StringSegment(value="not knowledge context")
 
         checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
 
         assert checker("segment-id") is False
 
     def test_checker_allows_only_segments_from_selected_knowledge_context(self, factory):
-        factory.graph_runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
             value=[
                 {
                     "metadata": {
@@ -1120,7 +1121,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
 
         assert checker("allowed-segment") is True
         assert checker("other-segment") is False
-        factory.graph_runtime_state.variable_pool.get.assert_any_call(["knowledge-node", "result"])
+        factory.runtime_state.variable_pool.get.assert_any_call(["knowledge-node", "result"])
 
 
 class TestDifyNodeFactoryModelInstance:
@@ -1179,7 +1180,7 @@ class TestDifyNodeFactoryMemory:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
         )
-        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
+        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
         return factory
 
     def test_returns_none_when_memory_is_not_configured(self, factory):
@@ -1189,11 +1190,11 @@ class TestDifyNodeFactoryMemory:
         )
 
         assert result is None
-        factory.graph_runtime_state.variable_pool.get.assert_not_called()
+        factory.runtime_state.variable_pool.get.assert_not_called()
 
     def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
         memory_config = sentinel.memory_config
-        factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
+        factory.runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
         fetch_memory = MagicMock(return_value=sentinel.memory)
         monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
 
@@ -1203,7 +1204,7 @@ class TestDifyNodeFactoryMemory:
         )
 
         assert result is sentinel.memory
-        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
+        factory.runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
         fetch_memory.assert_called_once_with(
             conversation_id="conversation-id",
             app_id="app-id",
@@ -1213,7 +1214,7 @@ class TestDifyNodeFactoryMemory:
 
     def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
         memory_config = sentinel.memory_config
-        factory.graph_runtime_state.variable_pool.get.return_value = sentinel.segment
+        factory.runtime_state.variable_pool.get.return_value = sentinel.segment
         fetch_memory = MagicMock(return_value=sentinel.memory)
         monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
 
@@ -1300,8 +1301,9 @@ class TestNodeConfigErrorsNameTheNode:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.graph_init_params = sentinel.graph_init_params
-        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
+        factory._native_runtime = None
+        factory.init_params = sentinel.init_params
+        factory.runtime_state = MagicMock(spec=RuntimeState, variable_pool=MagicMock())
         factory._dify_context = DifyRunContext(
             tenant_id="tenant-id",
             app_id="app-id",
@@ -1361,7 +1363,7 @@ class TestNodeConfigErrorsNameTheNode:
         assert data.type == BuiltinNodeTypes.IF_ELSE
 
     def test_validate_node_config_needs_no_factory_instance(self):
-        # No graph_init_params / runtime state anywhere: a pure, dry check.
+        # No init_params / runtime state anywhere: a pure, dry check.
         data = node_factory.validate_node_config(
             {"id": "s", "data": {"type": BuiltinNodeTypes.START, "title": "Start"}}
         )
@@ -1433,8 +1435,7 @@ def _confirmed_factory(
     """
     from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
     from core.workflow.variable_pool_initializer import add_variables_to_pool
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState, VariablePool
+    from graphon.runtime import InitParams, RuntimeState, VariablePool
     from models.workflow import Workflow
     from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import (
         ServiceGuardRecorder,
@@ -1459,7 +1460,7 @@ def _confirmed_factory(
         created_by=None,
         trace_session_id=None,
     )
-    params = GraphInitParams(
+    params = InitParams(
         workflow_id=workflow_id or owner.workflow_id,
         graph_config=graph,
         call_depth=0,
@@ -1477,10 +1478,8 @@ def _confirmed_factory(
             )
         ),
     )
-    state = GraphRuntimeState(variable_pool=pool, start_at=0.0)
-    factory = node_factory.DifyNodeFactory(
-        graph_init_params=params, graph_runtime_state=state, execution_recorder=recorder
-    )
+    state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=0.0)
+    factory = node_factory.DifyNodeFactory(init_params=params, runtime_state=state, execution_recorder=recorder)
     return factory, graph, reserved, run_id
 
 

@@ -160,7 +160,7 @@ def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(monkeypat
             workflow=Mock(),
             user=Mock(),
             application_generate_entity=entity,
-            graph_runtime_state=Mock(),
+            runtime_state=Mock(),
             workflow_execution_repository=Mock(),
             workflow_node_execution_repository=Mock(),
         )

@@ -22,7 +22,7 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import (
@@ -108,7 +108,7 @@ def _build_resumption_context(*, app: App, workflow_run: WorkflowRun, options: l
         call_depth=0,
         workflow_execution_id=workflow_run.id,
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.variable_pool.add(("start", "options"), options)
     return WorkflowResumptionContext(
         generate_entity=_WorkflowGenerateEntityWrapper(entity=generate_entity),

@@ -35,6 +35,8 @@ from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
 from graphon.model_runtime.model_providers.base.speech2text_model import Speech2TextModel
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk
+from libs.stream import close_stream
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
@@ -407,7 +409,7 @@ class ModelInstance:
         voice: str = "",
         *,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Iterable[bytes]:
+    ) -> Iterable[TTSChunk]:
         """
         Invoke large language tts model
 
@@ -794,7 +796,7 @@ class QuotaManagedModelInstance(ModelInstance):
         voice: str = "",
         *,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Iterable[bytes]:
+    ) -> Iterable[TTSChunk]:
         return self._invoke_tts_stream(content_text=content_text, voice=voice, request_metadata=request_metadata)
 
     def _invoke_tts_stream(
@@ -803,9 +805,10 @@ class QuotaManagedModelInstance(ModelInstance):
         content_text: str,
         voice: str,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator[bytes]:
+    ) -> Generator[TTSChunk]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         reservation = self._reserve_quota_for_request(effective_request_metadata)
+        response: Iterable[TTSChunk] | None = None
         try:
             response = super().invoke_tts(
                 content_text=content_text,
@@ -816,7 +819,11 @@ class QuotaManagedModelInstance(ModelInstance):
                 reservation.commit()
                 yield chunk
         finally:
-            self.release_quota_safely(reservation)
+            try:
+                if response is not None:
+                    close_stream(response)
+            finally:
+                self.release_quota_safely(reservation)
 
 
 class ModelManager:

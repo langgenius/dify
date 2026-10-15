@@ -635,7 +635,7 @@ class TestWorkflowAppGeneratorResume:
             workflow=_workflow(),
             user=_end_user(),
             application_generate_entity=application_generate_entity,
-            graph_runtime_state=SimpleNamespace(),
+            runtime_state=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
         )
@@ -685,7 +685,7 @@ class TestWorkflowAppGeneratorResume:
             workflow=_workflow(),
             user=_end_user(),
             application_generate_entity=application_generate_entity,
-            graph_runtime_state=SimpleNamespace(),
+            runtime_state=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
         )
@@ -753,7 +753,7 @@ class TestWorkflowAppGeneratorWorker:
             variable_loader=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
-            graph_runtime_state=SimpleNamespace(),
+            runtime_state=SimpleNamespace(),
         )
 
         assert runner_kwargs["system_user_id"] == "session-id"

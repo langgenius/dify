@@ -17,7 +17,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Pau
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
@@ -107,8 +107,8 @@ def _generate_entity(
     )
 
 
-def _runtime_state() -> GraphRuntimeState:
-    return GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+def _runtime_state() -> RuntimeState:
+    return RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
 
 
 def _repositories(
@@ -303,7 +303,7 @@ def test_resume_delegates_to_generate(
         workflow=workflow,
         user=end_user,
         application_generate_entity=application_generate_entity,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         workflow_execution_repository=workflow_execution_repository,
         workflow_node_execution_repository=workflow_node_execution_repository,
         graph_engine_layers=("layer",),
@@ -313,7 +313,7 @@ def test_resume_delegates_to_generate(
     assert result == "ok"
     mock_generate.assert_called_once()
     kwargs = mock_generate.call_args.kwargs
-    assert kwargs["graph_runtime_state"] is runtime_state
+    assert kwargs["runtime_state"] is runtime_state
     assert kwargs["pause_state_config"] is pause_config
     assert kwargs["streaming"] is False
     assert kwargs["invoke_from"] == InvokeFrom.DEBUGGER
@@ -377,7 +377,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
     monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", DummyThread)
 
     application_generate_entity = _generate_entity(app, workflow, end_user)
-    graph_runtime_state = _runtime_state()
+    runtime_state = _runtime_state()
     workflow_execution_repository, workflow_node_execution_repository = _repositories(
         sqlite_session_factory, app, end_user
     )
@@ -394,7 +394,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=True,
             graph_engine_layers=("base-layer",),
-            graph_runtime_state=graph_runtime_state,
+            runtime_state=runtime_state,
             pause_state_config=PauseStateLayerConfig(
                 session_factory=sqlite_session_factory,
                 state_owner_user_id="owner",
@@ -405,7 +405,7 @@ def test_generate_appends_pause_layer_and_forwards_state(
     graph_engine_layers = worker_kwargs["kwargs"]["graph_engine_layers"]
     assert graph_engine_layers[0] == "base-layer"
     assert isinstance(graph_engine_layers[1], PauseStatePersistenceLayer)
-    assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
+    assert worker_kwargs["kwargs"]["runtime_state"] is runtime_state
     assert worker_kwargs["joined"] is True
     assert worker_kwargs["join_timeout"] == 300
     assert draft_factory_tenant_ids == [app.tenant_id]
@@ -454,7 +454,7 @@ def test_resume_path_runs_worker_with_runtime_state(
     runner_instance = MagicMock()
 
     def runner_ctor(**kwargs):
-        assert kwargs["graph_runtime_state"] is runtime_state
+        assert kwargs["runtime_state"] is runtime_state
         assert kwargs["workflow"].id == workflow.id
         assert kwargs["system_user_id"] == end_user.session_id
         assert kwargs["queue_manager"] is queue_manager
@@ -498,7 +498,7 @@ def test_resume_path_runs_worker_with_runtime_state(
         workflow=workflow,
         user=end_user,
         application_generate_entity=application_generate_entity,
-        graph_runtime_state=runtime_state,
+        runtime_state=runtime_state,
         workflow_execution_repository=workflow_execution_repository,
         workflow_node_execution_repository=workflow_node_execution_repository,
         pause_state_config=pause_config,

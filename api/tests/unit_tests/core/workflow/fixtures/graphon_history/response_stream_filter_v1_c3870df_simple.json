@@ -1,0 +1,26 @@
+{
+  "active_session": null,
+  "closed_streams": [],
+  "node_execution_ids": {},
+  "paths_map": {
+    "answer": [
+      [
+        "edge_0"
+      ]
+    ]
+  },
+  "pending_sessions": [
+    {
+      "index": 0,
+      "node_id": "answer"
+    }
+  ],
+  "response_nodes": [
+    "answer"
+  ],
+  "stream_buffers": [],
+  "stream_positions": [],
+  "type": "ResponseStreamFilter",
+  "version": "1.0",
+  "waiting_sessions": []
+}

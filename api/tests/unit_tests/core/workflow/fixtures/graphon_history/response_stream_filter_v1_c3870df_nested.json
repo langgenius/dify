@@ -1,0 +1,32 @@
+{
+  "active_session": null,
+  "closed_streams": [],
+  "node_execution_ids": {},
+  "paths_map": {
+    "answer": [
+      [
+        "edge_1"
+      ]
+    ],
+    "child-answer": []
+  },
+  "pending_sessions": [
+    {
+      "index": 0,
+      "node_id": "answer"
+    },
+    {
+      "index": 0,
+      "node_id": "child-answer"
+    }
+  ],
+  "response_nodes": [
+    "answer",
+    "child-answer"
+  ],
+  "stream_buffers": [],
+  "stream_positions": [],
+  "type": "ResponseStreamFilter",
+  "version": "1.0",
+  "waiting_sessions": []
+}

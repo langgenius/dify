@@ -958,14 +958,14 @@ class WorkflowConfig(BaseSettings):
         default=400_000,
     )
 
-    # GraphEngine Worker Pool Configuration
+    # Engine Worker Pool Configuration
     GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
-        description="Minimum number of workers per GraphEngine instance",
+        description="Minimum number of workers per Engine instance",
         default=3,
     )
 
     GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
-        description="Maximum number of workers per GraphEngine instance",
+        description="Maximum number of workers per Engine instance",
         default=10,
     )
 

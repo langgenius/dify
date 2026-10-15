@@ -13,7 +13,7 @@ import yaml
 
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError, admitted_node_bindings, canonical_digest
 from core.workflow.restricted_execution import validate_restricted_node, validate_restricted_raw_node
-from graphon.graph_events import GraphRunSucceededEvent, NodeRunSucceededEvent
+from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 from tests.unit_tests.core.dify_builder.test_execution_policy import snapshot
@@ -67,7 +67,7 @@ def renderer_from_factory(owned, template="{{ subject }}", names=("subject", "bo
         graph_config=template_graph(template, names),
         inputs=dict.fromkeys(names, "safe"),
     )
-    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
     assert type(node) is TemplateTransformNode
     renderer = node._jinja2_template_renderer
     assert isinstance(renderer, Jinja2TemplateRenderer)
@@ -429,7 +429,7 @@ def test_native_template_class_version_and_raw_binding_are_rechecked(owned, muta
         "template_notification.yml",
         inputs={"subject": "Notice", "body": "Body"},
     )
-    raw = deepcopy(factory.graph_init_params.graph_config["nodes"][1])
+    raw = deepcopy(factory.init_params.graph_config["nodes"][1])
     node_class = TemplateTransformNode
     if mutation == "class":
 
@@ -453,7 +453,7 @@ def test_native_template_class_version_and_raw_binding_are_rechecked(owned, muta
             context=context, node_id="template", node_class=node_class, raw_node_data=raw["data"]
         )
     if mutation == "class":
-        data = TemplateTransformNode.validate_node_data(factory.graph_init_params.graph_config["nodes"][1]["data"])
+        data = TemplateTransformNode.validate_node_data(factory.init_params.graph_config["nodes"][1]["data"])
         with pytest.raises(BuilderExecutionPolicyError):
             validate_restricted_node(
                 context=context, node_id="template", node_class=node_class, resolved_node_data=data
@@ -471,7 +471,7 @@ def test_native_factory_rejects_template_raw_drift_before_native_validator(owned
         "template_notification.yml",
         inputs={"subject": "Notice", "body": "Body"},
     )
-    graph = deepcopy(factory.graph_init_params.graph_config)
+    graph = deepcopy(factory.init_params.graph_config)
     graph["nodes"][1]["data"]["template"] = "changed after launch"
 
     def forbidden(*_args, **_kwargs):
@@ -485,8 +485,8 @@ def test_native_factory_rejects_template_raw_drift_before_native_validator(owned
         if entry == "graph-init":
             return Graph.init(graph_config=graph, node_factory=factory, root_node_id="start")
         return DifyNodeFactory(
-            factory.graph_init_params.model_copy(update={"graph_config": graph}),
-            factory.graph_runtime_state,
+            factory.init_params.model_copy(update={"graph_config": graph}),
+            factory.runtime_state,
             execution_recorder=recorder,
         )
 

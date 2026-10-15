@@ -1,0 +1,17 @@
+{
+  "source_commit": "4b9590652c63f444c4ba8f9ab5f477290dc58d07",
+  "fixtures": {
+    "runtime_state_v2_1d0f32c_paused_loop.json": {
+      "upstream_path": "tests/engine/fixtures/runtime_state_v2_1d0f32c_paused_loop.json",
+      "sha256": "1b0c0335145d6fe93bac3eab6e74b9bafd8d578c35ed05a083cf13837fe4423d"
+    },
+    "response_stream_filter_v1_c3870df_simple.json": {
+      "upstream_path": "tests/engine/fixtures/response_stream_filter_v1_c3870df_simple.json",
+      "sha256": "80e6c239dc41b86ec813990c82bac37d942cda6dacfe73259777563e39af54f9"
+    },
+    "response_stream_filter_v1_c3870df_nested.json": {
+      "upstream_path": "tests/engine/fixtures/response_stream_filter_v1_c3870df_nested.json",
+      "sha256": "f1721e2ad835924fde97537211fe33529e8fd91001eed2d2f136de5258c825b1"
+    }
+  }
+}

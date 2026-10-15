@@ -68,7 +68,6 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode
@@ -82,6 +81,7 @@ from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
+from services.workflow.command_service import send_workflow_stop_command
 
 logger = logging.getLogger(__name__)
 
@@ -375,5 +375,5 @@ class AppRunTaskStopApi(Resource):
             if owner != f"end-user-{ctx.end_user.id}".encode():
                 raise NotFound("Task not found")
         AppQueueManager.set_stop_flag_no_user_check(task_id)
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        send_workflow_stop_command(task_id=task_id, redis=redis_client)
         return TaskStopResponse(result="success")

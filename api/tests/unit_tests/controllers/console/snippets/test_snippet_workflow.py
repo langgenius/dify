@@ -598,7 +598,7 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(
 
 def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     set_stop_flag = Mock()
-    send_stop_command = Mock()
+    send_command = Mock()
     monkeypatch.setattr(
         snippet_workflow_module.AppQueueManager,
         "set_stop_flag_no_user_check",
@@ -606,8 +606,8 @@ def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkey
     )
     monkeypatch.setattr(
         snippet_workflow_module,
-        "GraphEngineManager",
-        Mock(return_value=Mock(send_stop_command=send_stop_command)),
+        "send_workflow_stop_command",
+        send_command,
     )
 
     api = snippet_workflow_module.SnippetWorkflowTaskStopApi()
@@ -618,4 +618,4 @@ def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkey
 
     assert result == {"result": "success"}
     set_stop_flag.assert_called_once_with("task-1")
-    send_stop_command.assert_called_once_with("task-1")
+    send_command.assert_called_once_with(task_id="task-1", redis=snippet_workflow_module.redis_client)
