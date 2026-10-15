@@ -262,17 +262,20 @@ def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) 
     flask_app, app_id, _, _, end_user = resource_fixture
     data = call(flask_app, app_id)
     end_user.return_value.id = "machine-user"
-    with (
-        patch("controllers.openapi.app_run.redis_client") as redis,
-        patch("controllers.openapi.app_run.AppQueueManager.set_stop_flag_no_user_check") as stop,
+    from services.app_task_service import AppTaskControlService
+    from tests.unit_tests.services.test_app_task_service import _StopRedis
+
+    redis = _StopRedis(values={"generate_task_belong:task": b"end-user-other-user"})
+    with patch(
+        "controllers.openapi.app_run.application_services",
+        return_value=SimpleNamespace(app_tasks=AppTaskControlService(redis_client=redis)),
     ):
-        redis.get.return_value = b"end-user-other-user"
         with pytest.raises(NotFound):
             inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
-        stop.assert_not_called()
-        redis.get.return_value = b"end-user-machine-user"
+        assert redis.operations == []
+        redis.values["generate_task_belong:task"] = b"end-user-machine-user"
         inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
-        stop.assert_called_once_with("task")
+        assert redis.values["generate_task_stopped:task"] == b"1"
 
 
 @pytest.mark.parametrize("search", ["list", "bound", "unbound"])

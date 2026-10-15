@@ -62,7 +62,6 @@ from controllers.service_api.app.error import (
     TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse, StreamEvent
 from core.errors.error import (
@@ -71,13 +70,11 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_redis import redis_client
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from models.enums import CreatorUserRole
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
-from services.app_task_service import AppTaskService
 from services.errors.app import (
     IsDraftWorkflowError,
     WorkflowIdFormatError,
@@ -454,20 +451,13 @@ class AppRunTaskStopApi(Resource):
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
-        app_mode = AppMode.value_of(ctx.app.mode)
-        if app_mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-            owner = (
-                (CreatorUserRole.END_USER, ctx.end_user.id) if isinstance(ctx.subject, ResourceAccessSubject) else None
-            )
-            admitted = AppTaskService.stop_workflow_task(
-                tenant_id=ctx.app.tenant_id, app_id=ctx.app.id, task_id=task_id, app_mode=app_mode, owner=owner
-            )
-            if not admitted and isinstance(ctx.subject, ResourceAccessSubject):
-                raise NotFound("Task not found")
-            return TaskStopResponse(result="success")
-        if isinstance(ctx.subject, ResourceAccessSubject):
-            owner = redis_client.get(AppQueueManager._generate_task_belong_cache_key(task_id))
-            if owner != f"end-user-{ctx.end_user.id}".encode():
-                raise NotFound("Task not found")
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
+        if not application_services().app_tasks.stop_app_task(
+            tenant_id=ctx.app.tenant_id,
+            app_id=ctx.app.id,
+            task_id=task_id,
+            app_mode=AppMode.value_of(ctx.app.mode),
+            caller_role=ctx.subject.caller_role,
+            caller_id=ctx.caller.id,
+        ):
+            raise NotFound("Task not found")
         return TaskStopResponse(result="success")
