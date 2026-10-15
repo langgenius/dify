@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import socket
@@ -247,10 +248,9 @@ class AliyunLogStore:
         finally:
             # Ensure socket is properly closed
             if sock:
-                try:
+                # Ignore errors during cleanup
+                with contextlib.suppress(Exception):
                     sock.close()
-                except Exception:  # noqa: S110
-                    pass  # Ignore errors during cleanup
 
     @property
     def supports_pg_protocol(self) -> bool:
