@@ -1,6 +1,5 @@
 """Exercise the SQL emitted when workflow retrieval assembles source citations."""
 
-from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -9,6 +8,7 @@ from sqlalchemy import event, inspect
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 
+from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document as RetrievedDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
@@ -54,8 +54,7 @@ def test_source_citations_do_not_fetch_unused_document_fields(sqlite_session: Se
     sqlite_session.add_all([dataset, document, *segments])
     sqlite_session.commit()
     records = [
-        SimpleNamespace(segment=segment, score=score, summary=None, child_chunks=None, files=None)
-        for segment, score in zip(segments, (0.8, 0.9), strict=True)
+        RetrievalSegments(segment=segment, score=score) for segment, score in zip(segments, (0.8, 0.9), strict=True)
     ]
     retrieved = [RetrievedDocument(provider="dify", page_content="content", metadata={})]
     request = KnowledgeRetrievalRequest(
