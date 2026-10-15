@@ -6,7 +6,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, override
+from typing import Any, Protocol, override
 
 from pydantic import BaseModel
 
@@ -24,17 +24,21 @@ from core.trigger.debug.events import (
     build_plugin_pool_key,
     build_webhook_pool_key,
 )
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 from extensions.ext_redis import redis_client
-from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.schedule_utils import calculate_next_run_at
 from models.model import App
 from models.provider_ids import TriggerProviderID
-from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowNodeSource(Protocol):
+    def get_node_config_by_id(self, node_id: str) -> Mapping[str, Any]: ...
 
 
 class TriggerDebugEvent(BaseModel):
@@ -207,12 +211,13 @@ class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
 
 
 def create_event_poller(
-    draft_workflow: Workflow, tenant_id: str, user_id: str, app_id: str, node_id: str
+    draft_workflow: WorkflowNodeSource, tenant_id: str, user_id: str, app_id: str, node_id: str
 ) -> TriggerDebugEventPoller:
-    node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
-    if not node_config:
+    raw_node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
+    if not raw_node_config:
         raise ValueError("Node data not found for node %s", node_id)
-    node_type = draft_workflow.get_node_type_from_node_config(node_config)
+    node_config = NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(raw_node_config))
+    node_type = node_config["data"].type
     if node_type == TRIGGER_PLUGIN_NODE_TYPE:
         return PluginTriggerDebugEventPoller(
             tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
@@ -229,7 +234,7 @@ def create_event_poller(
 
 
 def select_trigger_debug_events(
-    draft_workflow: Workflow, app_model: App, user_id: str, node_ids: list[str]
+    draft_workflow: WorkflowNodeSource, app_model: App, user_id: str, node_ids: list[str]
 ) -> TriggerDebugEvent | None:
     event: TriggerDebugEvent | None = None
     for node_id in node_ids:
