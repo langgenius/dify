@@ -394,19 +394,28 @@ def test_root_resume_isolates_same_app_workflow_tool_origin(sqlite_session_facto
         assert rows["older-exec"].workflow_id == source_workflow_id
 
 
-def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_history(
+@pytest.mark.parametrize("source", [False, True])
+@pytest.mark.parametrize("outcome", ["succeeded", "failed", "aborted", "paused"])
+def test_retry_starts_preserve_original_execution_and_attempt_history(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    source: bool,
+    outcome: str,
 ) -> None:
     layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"retry-exec": 1})
-    listen = layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "caller-exec")
+    listen = (
+        layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "caller-exec")
+        if source
+        else layer.on_event
+    )
     layer.on_event(GraphRunStartedEvent())
-    state = RuntimeState(workflow_id="source-workflow", variable_pool=VariablePool(), start_at=0)
+    workflow_id = "source-workflow" if source else "workflow-id"
+    state = RuntimeState(workflow_id=workflow_id, variable_pool=VariablePool(), start_at=0)
     frames = FrameRegistry()
     node = StartNode(
         node_id="child",
         data=StartNodeData(title="Child", variables=[]),
-        init_params=build_test_graph_init_params(workflow_id="source-workflow"),
+        init_params=build_test_graph_init_params(workflow_id=workflow_id),
         runtime_state=state,
     )
     graph = Graph.new().add_root(node).build()
@@ -457,21 +466,49 @@ def test_workflow_tool_retry_starts_preserve_original_execution_and_attempt_hist
             )
         )
         dispatch(started)
-    dispatch(
-        NodeRunSucceededEvent(
-            id="retry-exec",
-            node_id="child",
-            node_type=BuiltinNodeTypes.LLM,
-            start_at=started_at,
-            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"ok": True}),
+    if outcome == "succeeded":
+        dispatch(
+            NodeRunSucceededEvent(
+                id="retry-exec",
+                node_id="child",
+                node_type=BuiltinNodeTypes.LLM,
+                start_at=started_at,
+                node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"ok": True}),
+            )
         )
-    )
+    elif outcome == "failed":
+        layer.on_event(GraphRunFailedEvent(error="terminal failure"))
+    elif outcome == "aborted":
+        layer.on_event(GraphRunAbortedEvent(reason="terminal failure"))
+    else:
+        commits = []
+
+        def record_commit(_session: Session) -> None:
+            commits.append(True)
+
+        sqlalchemy_event.listen(Session, "after_commit", record_commit)
+        try:
+            layer.persist_unfinished_nodes_synchronously()
+        finally:
+            sqlalchemy_event.remove(Session, "after_commit", record_commit)
+        assert len(commits) == 1
 
     with sqlite_session_factory() as session:
         row = session.scalars(select(WorkflowNodeExecutionModel)).one()
         assert row.index == 1
-        assert row.status == "succeeded"
-        assert row.outputs_dict == {"ok": True}
+        assert row.created_at == started_at
+        assert row.workflow_id == workflow_id
+        assert row.app_id == ("source-app" if source else "caller-app")
+        if outcome == "succeeded":
+            assert row.status == "succeeded"
+            assert row.outputs_dict == {"ok": True}
+        elif outcome == "paused":
+            assert row.status == "retry"
+            assert row.finished_at is None
+        else:
+            assert row.status == "failed"
+            assert row.error == "terminal failure"
+            assert row.finished_at is not None
         history = row.process_data_dict[RETRY_HISTORY_PROCESS_DATA_KEY]
         assert [(attempt["retry_index"], attempt["error"]) for attempt in history] == [
             (1, "attempt-1"),
@@ -509,7 +546,17 @@ def test_root_terminal_failure_finishes_running_workflow_tool_nodes(sqlite_sessi
 def test_terminal_failure_batches_only_unfinished_nodes_per_source(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    ids = ("root-a", "root-b", "root-paused", "source-a", "source-b", "source-done")
+    ids = (
+        "root-a",
+        "root-b",
+        "root-retry",
+        "root-paused",
+        "source-a",
+        "source-b",
+        "source-retry",
+        "source-paused",
+        "source-done",
+    )
     layer = _make_sql_layer(sqlite_session_factory, node_run_indices=dict.fromkeys(ids, 1))
     listen = layer.create_workflow_tool_event_listener(_tool_source(), "workflow-id", "root-a")
     layer.on_event(GraphRunStartedEvent())
@@ -525,14 +572,27 @@ def test_terminal_failure_batches_only_unfinished_nodes_per_source(
                 start_at=started_at,
             )
         )
-    layer.on_event(
-        NodeRunPauseRequestedEvent(
-            id="root-paused",
-            node_id="root-paused",
-            node_type=BuiltinNodeTypes.CODE,
-            reason=SchedulingPause(message="pause"),
-        )
-    )
+        if execution_id.endswith("paused"):
+            listener(
+                NodeRunPauseRequestedEvent(
+                    id=execution_id,
+                    node_id=execution_id,
+                    node_type=BuiltinNodeTypes.CODE,
+                    reason=SchedulingPause(message="pause"),
+                )
+            )
+        elif execution_id.endswith("retry"):
+            listener(
+                NodeRunRetryEvent(
+                    id=execution_id,
+                    node_id=execution_id,
+                    node_type=BuiltinNodeTypes.CODE,
+                    node_title="Code",
+                    start_at=started_at,
+                    retry_index=1,
+                    error="retry failed",
+                )
+            )
     listen(
         NodeRunSucceededEvent(
             id="source-done",
@@ -558,15 +618,20 @@ def test_terminal_failure_batches_only_unfinished_nodes_per_source(
         assert {key: row.status for key, row in rows.items()} == {
             "root-a": "failed",
             "root-b": "failed",
+            "root-retry": "failed",
             "root-paused": "paused",
             "source-a": "failed",
             "source-b": "failed",
+            "source-retry": "failed",
+            "source-paused": "paused",
             "source-done": "succeeded",
         }
         assert rows["source-done"].outputs_dict == {"answer": "kept"}
-        for execution_id in ("root-a", "root-b", "source-a", "source-b"):
+        for execution_id in ("root-a", "root-b", "root-retry", "source-a", "source-b", "source-retry"):
             assert rows[execution_id].error == "terminal failure"
             assert rows[execution_id].finished_at is not None
+        for execution_id in ("root-retry", "source-retry"):
+            assert rows[execution_id].process_data_dict[RETRY_HISTORY_PROCESS_DATA_KEY][0]["error"] == "retry failed"
         assert rows["source-a"].triggered_from_node_execution_id == "root-a"
         assert rows["source-a"].app_id == "source-app"
     # One commit per source owner, plus the workflow summary.

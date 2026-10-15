@@ -44,7 +44,11 @@ def save_workflow_node_executions_task(
             return True
         with session_factory.create_session() as session, session.begin():
             for execution in executions:
-                if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                if execution.status in (
+                    WorkflowNodeExecutionStatus.RUNNING,
+                    WorkflowNodeExecutionStatus.PAUSED,
+                    WorkflowNodeExecutionStatus.RETRY,
+                ):
                     apply_workflow_stop_to_node(
                         execution,
                         get_stopped_workflow_run(

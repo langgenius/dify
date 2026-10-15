@@ -399,7 +399,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_models = [self._to_db_model(execution) for execution in executions]
         with self._session_factory() as session, session.begin():
             for db_model in db_models:
-                if db_model.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+                if db_model.status in (
+                    WorkflowNodeExecutionStatus.RUNNING,
+                    WorkflowNodeExecutionStatus.PAUSED,
+                    WorkflowNodeExecutionStatus.RETRY,
+                ):
                     apply_workflow_stop_to_node(
                         db_model,
                         get_stopped_workflow_run(
