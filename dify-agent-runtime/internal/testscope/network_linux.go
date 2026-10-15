@@ -110,20 +110,20 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case b.slots <- struct{}{}:
 		defer func() { <-b.slots }()
 	default:
-		http.Error(w, "broker connection limit", 429)
+		http.Error(w, "broker connection limit", http.StatusTooManyRequests)
 		return
 	}
 	authority := r.Host
 	if r.Method != http.MethodConnect {
 		if r.URL.Scheme != "http" {
-			http.Error(w, "scheme denied", 403)
+			http.Error(w, "scheme denied", http.StatusForbidden)
 			return
 		}
 		authority = r.URL.Host
 	}
 	address, err := b.policy.Resolve(authority)
 	if err != nil {
-		http.Error(w, "target denied", 403)
+		http.Error(w, "target denied", http.StatusForbidden)
 		return
 	}
 	target := b.policy.Targets[authority]
@@ -132,7 +132,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		deadline = b.deadline
 	}
 	if !deadline.After(time.Now()) {
-		http.Error(w, "scope expired", 403)
+		http.Error(w, "scope expired", http.StatusForbidden)
 		return
 	}
 	ctx, cancel := context.WithDeadline(r.Context(), deadline)
@@ -140,19 +140,19 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b.mu.Lock()
 	if b.closed {
 		b.mu.Unlock()
-		http.Error(w, "scope revoked", 403)
+		http.Error(w, "scope revoked", http.StatusForbidden)
 		return
 	}
 	// Charge a conservative connection unit before every dial, including CONNECT.
 	if err = b.spend(authority, 1); err != nil {
 		b.mu.Unlock()
-		http.Error(w, "network budget exhausted", 502)
+		http.Error(w, "network budget exhausted", http.StatusBadGateway)
 		return
 	}
 	raw, err := (&net.Dialer{Timeout: time.Second}).DialContext(ctx, "tcp", address)
 	if err != nil {
 		b.mu.Unlock()
-		http.Error(w, "target unavailable", 502)
+		http.Error(w, "target unavailable", http.StatusBadGateway)
 		return
 	}
 	_ = raw.SetDeadline(deadline)
@@ -165,7 +165,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 		_ = client.SetDeadline(deadline)
 		_, _ = buffer.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
 		if err = buffer.Flush(); err != nil {
@@ -186,15 +186,15 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Del("Proxy-Connection")
 	r.Close = true
 	if err = r.Write(conn); err != nil {
-		http.Error(w, "network budget exceeded", 502)
+		http.Error(w, "network budget exceeded", http.StatusBadGateway)
 		return
 	}
 	response, err := http.ReadResponse(bufio.NewReader(conn), r)
 	if err != nil {
-		http.Error(w, "upstream unavailable", 502)
+		http.Error(w, "upstream unavailable", http.StatusBadGateway)
 		return
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	for name, values := range response.Header {
 		for _, v := range values {
 			w.Header().Add(name, v)
@@ -260,12 +260,12 @@ func StartWorkerProxy(socket string) error {
 			_ = client.SetDeadline(time.Now().Add(60 * time.Second))
 			go func() {
 				defer func() { <-slots }()
-				defer client.Close()
+				defer func() { _ = client.Close() }()
 				broker, err := net.Dial("unix", socket)
 				if err != nil {
 					return
 				}
-				defer broker.Close()
+				defer func() { _ = broker.Close() }()
 				done := make(chan struct{})
 				go func() { _, _ = io.Copy(broker, client); _ = broker.Close(); close(done) }()
 				_, _ = io.Copy(client, broker)

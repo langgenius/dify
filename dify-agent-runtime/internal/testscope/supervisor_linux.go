@@ -18,7 +18,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -82,22 +81,22 @@ func (m *Manager) create(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&spec); err != nil {
-		http.Error(w, "invalid scope specification", 400)
+		http.Error(w, "invalid scope specification", http.StatusBadRequest)
 		return
 	}
 	if err := spec.Validate(); err != nil {
-		http.Error(w, err.Error(), 422)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.store == nil {
-		http.Error(w, ErrUnavailable.Error(), 503)
+		http.Error(w, ErrUnavailable.Error(), http.StatusServiceUnavailable)
 		return
 	}
 	scopes, err := m.store.List()
 	if err != nil {
-		http.Error(w, "scope catalog unavailable", 503)
+		http.Error(w, "scope catalog unavailable", http.StatusServiceUnavailable)
 		return
 	}
 	active := 0
@@ -107,29 +106,33 @@ func (m *Manager) create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if active >= 32 {
-		http.Error(w, "scope capacity exhausted", 503)
+		http.Error(w, "scope capacity exhausted", http.StatusServiceUnavailable)
 		return
 	}
 	if _, err := m.store.Get(spec.ScopeID); err == nil {
-		http.Error(w, "immutable scope already exists", 409)
+		http.Error(w, "immutable scope already exists", http.StatusConflict)
 		return
 	}
 	pinCtx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 	pinned, err := PinNetwork(pinCtx, spec.NetworkTargets, m.config.Mediators)
 	if err != nil {
-		http.Error(w, "network targets unavailable", 422)
+		http.Error(w, "network targets unavailable", http.StatusUnprocessableEntity)
 		return
 	}
-	scope := Scope{Network: pinned, Spec: spec, TokenHash: HashToken(m.token(spec)), Status: "creating"}
+	scope := Scope{Network: pinned, Spec: spec, TokenHash: HashToken(m.token(spec)), Status: "reserved"}
 	if err := m.store.Insert(scope); err != nil {
-		http.Error(w, "scope identity unavailable", 409)
+		http.Error(w, "scope identity unavailable", http.StatusConflict)
 		return
 	}
 	if err := m.start(&scope); err != nil {
 		log.Printf("native scope isolation setup refused: %v", err)
-		_ = m.store.SetPhysical(spec.ScopeID, "quarantined", scope.PID, scope.StartTime)
-		http.Error(w, "native_scope_unavailable: isolation setup failed", 503)
+		// Preserve durable evidence that no physical launch was attempted.
+		// A failed catalog write is ambiguous: read the authoritative state.
+		if recorded, readErr := m.store.Get(spec.ScopeID); readErr == nil && recorded.Status != "reserved" && recorded.Status != "fenced" {
+			_ = m.store.SetPhysical(spec.ScopeID, "quarantined", scope.PID, scope.StartTime)
+		}
+		http.Error(w, "native_scope_unavailable: isolation setup failed", http.StatusServiceUnavailable)
 		return
 	}
 	writeScopeJSON(w, 201, map[string]any{"scope_id": spec.ScopeID, "generation": spec.Generation, "status": "ready", "token": m.token(spec)})
@@ -155,11 +158,11 @@ func (m *Manager) physicalAlive(s Scope) bool {
 func (m *Manager) inspect(w http.ResponseWriter, r *http.Request) {
 	s, err := m.load(r)
 	if err != nil {
-		http.Error(w, err.Error(), 409)
+		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
 	if s.Status != "ready" || !m.physicalAlive(s) || time.Now().After(s.Spec.Deadline) {
-		http.Error(w, ErrUnavailable.Error(), 409)
+		http.Error(w, ErrUnavailable.Error(), http.StatusConflict)
 		return
 	}
 	writeScopeJSON(w, 200, map[string]any{"scope_id": s.Spec.ScopeID, "generation": s.Spec.Generation, "status": s.Status, "token": m.token(s.Spec)})
@@ -169,7 +172,7 @@ func (m *Manager) destroy(w http.ResponseWriter, r *http.Request) {
 	defer m.mu.Unlock()
 	s, err := m.load(r)
 	if err != nil {
-		http.Error(w, err.Error(), 409)
+		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
 	if s.Status == "destroyed" {
@@ -177,7 +180,7 @@ func (m *Manager) destroy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := m.cleanup(s); err != nil {
-		http.Error(w, "scope cleanup quarantined", 503)
+		http.Error(w, "scope cleanup quarantined", http.StatusServiceUnavailable)
 		return
 	}
 	writeScopeJSON(w, 200, map[string]string{"status": "destroyed"})
@@ -188,17 +191,26 @@ func (m *Manager) cleanup(s Scope) error {
 		delete(m.brokers, s.Spec.ScopeID)
 	}
 	path := filepath.Join(m.config.CgroupRoot, s.Spec.ScopeID)
-	if err := KillCgroup(path, 3*time.Second); err != nil {
-		_ = m.store.SetPhysical(s.Spec.ScopeID, "quarantined", s.PID, s.StartTime)
+	if s.Status != "fenced" {
+		// Only the new reserved status proves cmd.Start was never attempted.
+		// Legacy creating/quarantined/unknown + an absent path proves nothing.
+		neverStarted := s.Status == "reserved" && s.PID == 0 && s.StartTime == ""
+		if !neverStarted {
+			if err := KillCgroup(path, 3*time.Second); err != nil {
+				_ = m.store.SetPhysical(s.Spec.ScopeID, "quarantined", s.PID, s.StartTime)
+				return err
+			}
+		}
+		// Persist the fence BEFORE any path is removed. Retrying after cgroup,
+		// artifact or final catalog failure must not lose this physical proof.
+		if err := m.store.SetPhysical(s.Spec.ScopeID, "fenced", 0, ""); err != nil {
+			return err
+		}
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if err := os.Remove(path); err != nil {
-		_ = m.store.SetPhysical(s.Spec.ScopeID, "quarantined", s.PID, s.StartTime)
-		return err
-	}
-	// Worker mount namespace is now gone; unlink only this private scope's artifacts.
 	if err := os.RemoveAll(m.scopeDir(s.Spec.ScopeID)); err != nil {
-		_ = m.store.SetPhysical(s.Spec.ScopeID, "quarantined", s.PID, s.StartTime)
 		return err
 	}
 	return m.store.SetPhysical(s.Spec.ScopeID, "destroyed", 0, "")
@@ -206,7 +218,7 @@ func (m *Manager) cleanup(s Scope) error {
 func (m *Manager) jobs(w http.ResponseWriter, r *http.Request) {
 	s, err := m.load(r)
 	if err != nil {
-		http.Error(w, err.Error(), 401)
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 	if err = s.Authorize(s.Spec.Generation, r.Header.Get("X-Scope-Token")); err != nil {
@@ -218,25 +230,26 @@ func (m *Manager) jobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !m.physicalAlive(s) {
-		_ = m.store.SetPhysical(s.Spec.ScopeID, "unknown", s.PID, s.StartTime)
-		http.Error(w, ErrUnavailable.Error(), 409)
+		// Read-only job admission must not overwrite a newer cleanup fence.
+		// Reconcile owns physical-state transitions under the manager mutex.
+		http.Error(w, ErrUnavailable.Error(), http.StatusConflict)
 		return
 	}
 	if r.Method == http.MethodPost {
 		body, err := io.ReadAll(io.LimitReader(r.Body, s.Spec.Limits.InputBytes+1))
 		if err != nil || int64(len(body)) > s.Spec.Limits.InputBytes {
-			http.Error(w, "input budget exceeded", 413)
+			http.Error(w, "input budget exceeded", http.StatusRequestEntityTooLarge)
 			return
 		}
 		if strings.HasSuffix(r.URL.Path, "/run") {
 			if err = m.store.Spend(s.Spec.ScopeID, "jobs", 1); err != nil {
-				http.Error(w, "scope lifetime job capacity exhausted", 429)
+				http.Error(w, "scope lifetime job capacity exhausted", http.StatusTooManyRequests)
 				return
 			}
 		}
 		if strings.HasSuffix(r.URL.Path, "/run") || strings.HasSuffix(r.URL.Path, "/input") {
 			if err = m.store.Spend(s.Spec.ScopeID, "input", int64(len(body))); err != nil {
-				http.Error(w, "input budget exhausted", 413)
+				http.Error(w, "input budget exhausted", http.StatusRequestEntityTooLarge)
 				return
 			}
 		}
@@ -247,26 +260,30 @@ func (m *Manager) jobs(w http.ResponseWriter, r *http.Request) {
 		path += "/" + rest
 	}
 	socket := filepath.Join(m.scopeDir(s.Spec.ScopeID), "control.sock")
-	proxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "scope"})
+	proxy := &httputil.ReverseProxy{}
 	proxy.Transport = &http.Transport{DisableKeepAlives: true, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 		return (&net.Dialer{Timeout: time.Second}).DialContext(ctx, "unix", socket)
 	}}
-	proxy.Director = func(req *http.Request) {
+	proxy.Rewrite = func(request *httputil.ProxyRequest) {
+		req := request.Out
 		req.URL.Scheme = "http"
 		req.URL.Host = "scope"
 		req.URL.Path = path
+		req.URL.RawPath = ""
 		req.Header.Set("Authorization", "Bearer "+m.token(s.Spec))
 		req.Header.Del("X-Scope-Token")
 		req.Header.Del("X-Scope-Generation")
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		http.Error(w, "native job outcome unknown", 502)
+		http.Error(w, "native job outcome unknown", http.StatusBadGateway)
 	}
 	proxy.ServeHTTP(w, r)
 }
 
 // Reconcile never launches a replacement worker. A lost physical owner remains
 // unavailable, and expired/partially created scopes must be killed or quarantined.
+// A catalog read failure is global/fatal. Per-scope cleanup errors retain capacity
+// and are retried without preventing unrelated retained owners from being served.
 func (m *Manager) Reconcile() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -274,22 +291,21 @@ func (m *Manager) Reconcile() error {
 	if err != nil {
 		return err
 	}
-	var failures []error
 	for _, s := range scopes {
 		if s.Status == "destroyed" {
 			continue
 		}
 		if s.Status != "ready" || !m.physicalAlive(s) || time.Now().After(s.Spec.Deadline) {
 			if err := m.cleanup(s); err != nil {
-				failures = append(failures, err)
+				log.Printf("native scope %s remains unavailable during reconciliation: %v", s.Spec.ScopeID, err)
 			}
 		} else if len(s.Spec.NetworkTargets) > 0 && m.brokers[s.Spec.ScopeID] == nil {
 			if err := m.startBroker(s); err != nil {
-				failures = append(failures, err)
+				log.Printf("native scope %s remains unavailable during reconciliation: %v", s.Spec.ScopeID, err)
 			}
 		}
 	}
-	return errors.Join(failures...)
+	return nil
 }
 func processStart(pid int) string {
 	b, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
@@ -364,23 +380,23 @@ func (m *Manager) start(s *Scope) error {
 		return err
 	}
 	listener.SetUnlinkOnClose(false)
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	lf, err := listener.File()
 	if err != nil {
 		return err
 	}
-	defer lf.Close()
+	defer func() { _ = lf.Close() }()
 	read, write, err := os.Pipe()
 	if err != nil {
 		return err
 	}
-	defer read.Close()
-	defer write.Close()
+	defer func() { _ = read.Close() }()
+	defer func() { _ = write.Close() }()
 	cgfd, err := os.Open(cg)
 	if err != nil {
 		return err
 	}
-	defer cgfd.Close()
+	defer func() { _ = cgfd.Close() }()
 	self, err := os.Executable()
 	if err != nil {
 		return err
@@ -391,6 +407,12 @@ func (m *Manager) start(s *Scope) error {
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	cmd.SysProcAttr = &syscall.SysProcAttr{Cloneflags: unix.CLONE_NEWUSER | unix.CLONE_NEWNS | unix.CLONE_NEWPID | unix.CLONE_NEWNET | unix.CLONE_NEWIPC | unix.CLONE_NEWUTS, UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}}, GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}}, GidMappingsEnableSetgroups: false, UseCgroupFD: true, CgroupFD: int(cgfd.Fd())}
+	// This committed transition is an irreversible start gate. A crash after
+	// it is uncertain even if no PID was recorded; only kernel fencing resolves it.
+	if err = m.store.SetPhysical(s.Spec.ScopeID, "launching", 0, ""); err != nil {
+		return err
+	}
+	s.Status = "launching"
 	if err = cmd.Start(); err != nil {
 		return err
 	}

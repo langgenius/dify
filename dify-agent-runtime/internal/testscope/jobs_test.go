@@ -42,7 +42,7 @@ func TestScopeCatalogImmutableAndSurvivesReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	got, err := NewSQLStore(db).Get(scope.Spec.ScopeID)
 	if err != nil {
 		t.Fatal(err)
@@ -56,7 +56,7 @@ func TestDurableBudgetsCannotBeResetOrOverspent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err = db.Exec("CREATE TABLE jobs(job_id TEXT PRIMARY KEY)"); err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestOutputBudgetSurvivesWriterReopenAndSpoolDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err = db.Exec("CREATE TABLE jobs(job_id TEXT PRIMARY KEY)"); err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestJobAdmissionBudgetSurvivesCatalogRowDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err = db.Exec("CREATE TABLE jobs(job_id TEXT PRIMARY KEY)"); err != nil {
 		t.Fatal(err)
 	}

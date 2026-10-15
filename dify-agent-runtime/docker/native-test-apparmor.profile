@@ -16,6 +16,9 @@ profile dify-native-test-supervisor flags=(attach_disconnected,mediate_deleted) 
   /dev/pts/** rw,
   /proc/ r,
   /proc/** r,
+  # Go's trusted CLONE_NEWUSER bootstrap writes only these child mapping files.
+  # Submitted jobs cannot reach parent proc and cannot create new namespaces.
+  /proc/[0-9]*/{uid_map,gid_map,setgroups} w,
   /sys/fs/cgroup/** r,
   /sys/fs/cgroup/system.slice/dify-native.service/** rw,
   /var/lib/dify-native/ rw,

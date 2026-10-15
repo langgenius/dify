@@ -57,7 +57,7 @@ case ${1:-} in
     [[ $ID == ubuntu && $VERSION_ID == 24.04 ]]
     printf 'userns,\n' | sudo tee /etc/apparmor.d/dify-native-userns >/dev/null
     sudo chmod 0644 /etc/apparmor.d/dify-native-userns
-    sudo apparmor_parser --replace --warn /etc/apparmor.d/dify-native-test-supervisor
+    sudo apparmor_parser --replace /etc/apparmor.d/dify-native-test-supervisor
     sudo systemd-analyze verify "/etc/systemd/system/$unit"
     token=$(openssl rand -hex 32)
     printf '::add-mask::%s\n' "$token"
@@ -73,7 +73,7 @@ case ${1:-} in
     sudo systemctl daemon-reload
     sudo systemctl start "$unit"
     for attempt in $(seq 1 30); do
-      if curl --fail --silent http://127.0.0.1:5005/healthz >/dev/null; then
+      if printf 'header = "Authorization: Bearer %s"\n' "$token" | curl --fail --silent --config - http://127.0.0.1:5005/healthz >/dev/null; then
         exit 0
       fi
       sleep 1
@@ -85,7 +85,7 @@ case ${1:-} in
     owned_fixture
     sudo systemctl restart "$unit"
     for attempt in $(seq 1 30); do
-      if curl --fail --silent http://127.0.0.1:5005/healthz >/dev/null; then
+      if printf 'header = "Authorization: Bearer %s"\n' "${SHELLCTL_NATIVE_TEST_TOKEN:?native supervisor token required}" | curl --fail --silent --config - http://127.0.0.1:5005/healthz >/dev/null; then
         exit 0
       fi
       sleep 1
@@ -98,7 +98,9 @@ case ${1:-} in
     uname -a
     sudo systemctl show "$unit" --property=User,Group,Delegate,CPUQuotaPerSecUSec,MemoryMax,TasksMax,NoNewPrivileges,AppArmorProfile,ControlGroup,SystemCallFilter,SystemCallErrorNumber
     sudo journalctl --no-pager -u "$unit" -n 300
-    sudo journalctl --dmesg --no-pager --grep=dify-native -n 100
+    # A denied startup can have no matching kernel records. Keep the remaining
+    # diagnostic output; this best-effort dump never decides qualification.
+    sudo journalctl --dmesg --no-pager --grep=dify-native -n 100 || true
     sudo aa-status --json
     ;;
   cleanup)

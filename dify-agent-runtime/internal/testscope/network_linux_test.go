@@ -78,7 +78,7 @@ func TestBrokerRealRelayDenialBudgetAndRevocation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	denied.Body.Close()
+	_ = denied.Body.Close()
 	if denied.StatusCode != 403 || calls.Load() != 0 {
 		t.Fatal("unapproved request reached canary")
 	}
@@ -87,14 +87,14 @@ func TestBrokerRealRelayDenialBudgetAndRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	body, err := io.ReadAll(response.Body)
-	response.Body.Close()
+	_ = response.Body.Close()
 	if err != nil || string(body) != "synthetic-canary" || calls.Load() != 1 {
 		t.Fatal("approved relay failed", string(body), err)
 	}
 	used.Store(1024)
 	response, err = client.Get("http://canary.test:80/")
 	if err == nil {
-		response.Body.Close()
+		_ = response.Body.Close()
 		if response.StatusCode != 502 {
 			t.Fatal("budget did not stop relay")
 		}
@@ -104,7 +104,7 @@ func TestBrokerRealRelayDenialBudgetAndRevocation(t *testing.T) {
 	}
 	broker.Close()
 	if response, err = client.Get("http://canary.test:80/"); err == nil {
-		response.Body.Close()
+		_ = response.Body.Close()
 		t.Fatal("revoked broker remained reachable")
 	}
 }

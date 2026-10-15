@@ -89,7 +89,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		if err = db.InitSchema(); err != nil {
 			return err
 		}
@@ -229,7 +229,7 @@ func runNativeWorker() (workerErr error) {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	if _, err = ready.Write([]byte("ready")); err != nil {
 		return err
 	}

@@ -160,7 +160,7 @@ func copyTree(source, target string, remaining *int64) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 	dst, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm()&0777)
 	if err != nil {
 		return err

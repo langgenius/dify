@@ -38,7 +38,7 @@ func nativeRequest(t *testing.T, method, path string, body any, token string, ge
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	var result map[string]any
 	_ = json.Unmarshal(b, &result)
@@ -157,7 +157,7 @@ func TestNativeScopeBrokerCanaryAndRawDenial(t *testing.T) {
 		t.Fatal(err)
 	}
 	before, _ := io.ReadAll(baseline.Body)
-	baseline.Body.Close()
+	_ = baseline.Body.Close()
 	id := fmt.Sprintf("scope-broker-%d", time.Now().UnixNano())
 	token := nativeCreate(t, id, map[string]any{"host": host, "port": port, "max_bytes": 8192, "timeout_seconds": 3})
 	denied := nativeRun(t, id, token, fmt.Sprintf("python3 - <<'PY'\nimport socket\ns=socket.socket();s.settimeout(1)\ntry:\n s.connect((%q,%d))\n raise AssertionError('raw route reached host canary')\nexcept OSError: print('RAW_DENIED')\nPY", host, port))
@@ -169,7 +169,7 @@ func TestNativeScopeBrokerCanaryAndRawDenial(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, _ := io.ReadAll(check.Body)
-	check.Body.Close()
+	_ = check.Body.Close()
 	if string(before) != string(after) {
 		t.Fatal("raw connection reached synthetic canary")
 	}

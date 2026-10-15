@@ -434,7 +434,7 @@ func TestMain(m *testing.M) {
 
 func TestNativeScopeIdentityRejectsRebinding(t *testing.T) {
 	db := openTestDB(t, t.TempDir())
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.InitSchema(); err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +453,7 @@ func TestNativeScopeIdentityRejectsRebinding(t *testing.T) {
 }
 func TestNativeCatalogUsesFullDurabilityBeforeJobAdmission(t *testing.T) {
 	db := openTestDB(t, t.TempDir())
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.InitSchema(); err != nil {
 		t.Fatal(err)
 	}

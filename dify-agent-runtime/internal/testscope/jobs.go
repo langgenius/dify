@@ -37,7 +37,7 @@ func (s *SQLStore) Insert(scope Scope) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if _, err = tx.Exec(`INSERT INTO native_scopes(scope_id,spec,token_hash,status,network)VALUES(?,?,?,?,?)`, scope.Spec.ScopeID, string(b), scope.TokenHash, scope.Status, string(network)); err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (s *SQLStore) List() ([]Scope, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var scopes []Scope
 	for rows.Next() {
 		var s Scope
