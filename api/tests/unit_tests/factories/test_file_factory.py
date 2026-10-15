@@ -20,13 +20,35 @@ class _FakeResponse:
         self.status_code = status_code
         self.headers = headers
 
+    def close(self) -> None:
+        return None
+
 
 def _mock_head(monkeypatch: pytest.MonkeyPatch, headers: dict[str, str], status_code: int = 200):
-    def _fake_head(method: str, url: str, follow_redirects: bool = True):
+    def _fake_head(method: str, url: str, follow_redirects: bool = True, **kwargs):
         assert method == "HEAD"
+        assert kwargs.get("stream_response") is not True
         return _FakeResponse(status_code=status_code, headers=headers)
 
     monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.make_request", _fake_head)
+
+
+def _mock_head_then_get(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    head_status: int,
+    get_headers: dict[str, str],
+    get_status: int = 200,
+):
+    def _fake_request(method: str, url: str, follow_redirects: bool = True, **kwargs):
+        if method == "HEAD":
+            return _FakeResponse(status_code=head_status, headers={})
+        if method == "GET":
+            assert kwargs.get("stream_response") is True
+            return _FakeResponse(status_code=get_status, headers=get_headers)
+        raise AssertionError(f"Unexpected method {method}")
+
+    monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.make_request", _fake_request)
 
 
 class TestGetRemoteFileInfo:
@@ -124,6 +146,28 @@ class TestGetRemoteFileInfo:
         # Should generate a random hex filename with .bin extension
         assert re.match(r"^[0-9a-f]{32}\.bin$", filename) is not None
         assert mime_type == "application/octet-stream"
+
+    @pytest.mark.parametrize("head_status", [405, 501])
+    def test_head_unsupported_falls_back_to_streaming_get(self, monkeypatch: pytest.MonkeyPatch, head_status: int):
+        _mock_head_then_get(
+            monkeypatch,
+            head_status=head_status,
+            get_headers={
+                "Content-Disposition": 'attachment; filename="report.pdf"',
+                "Content-Type": "application/pdf",
+                "Content-Length": "123",
+            },
+        )
+        mime_type, filename, size = get_remote_file_info("http://example.com/download")
+        assert filename == "report.pdf"
+        assert mime_type == "application/pdf"
+        assert size == 123
+
+    def test_head_not_found_keeps_url_guess_without_get_fallback(self, monkeypatch: pytest.MonkeyPatch):
+        _mock_head(monkeypatch, {}, status_code=404)
+        mime_type, filename, size = get_remote_file_info("http://example.com/download")
+        assert filename == "download"
+        assert size == -1
 
 
 class TestExtractFilename:
