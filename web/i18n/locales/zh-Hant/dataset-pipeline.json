@@ -34,7 +34,6 @@
   "documentSettings.title": "文件設定",
   "editPipelineInfo": "編輯管線資訊",
   "editPipelineInfoNameRequired": "請輸入知識庫的名稱。",
-  "exportDSL.errorTip": "無法匯出管線 DSL",
   "exportDSL.successTip": "成功匯出管線 DSL",
   "inputField": "輸入欄位",
   "inputFieldPanel.addInputField": "新增輸入欄位",

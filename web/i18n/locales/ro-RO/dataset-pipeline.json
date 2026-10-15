@@ -34,7 +34,6 @@
   "documentSettings.title": "Setări document",
   "editPipelineInfo": "Editați informațiile despre conductă",
   "editPipelineInfoNameRequired": "Vă rugăm să introduceți un nume pentru Baza de Cunoștințe.",
-  "exportDSL.errorTip": "Nu s-a reușit exportul DSL al conductei",
   "exportDSL.successTip": "Exportați cu succes DSL",
   "inputField": "Câmp de intrare",
   "inputFieldPanel.addInputField": "Adăugați câmp de intrare",

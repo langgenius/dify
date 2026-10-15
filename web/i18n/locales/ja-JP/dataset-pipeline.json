@@ -34,7 +34,6 @@
   "documentSettings.title": "ドキュメント設定",
   "editPipelineInfo": "パイプライン情報を編集する",
   "editPipelineInfoNameRequired": "ナレッジベースの名前を入力してください。",
-  "exportDSL.errorTip": "パイプラインDSLのエクスポートに失敗しました",
   "exportDSL.successTip": "エクスポートパイプラインDSLが成功しました",
   "inputField": "入力フィールド",
   "inputFieldPanel.addInputField": "入力フィールドを追加する",

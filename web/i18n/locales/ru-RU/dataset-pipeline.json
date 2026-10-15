@@ -34,7 +34,6 @@
   "documentSettings.title": "Настройки документа",
   "editPipelineInfo": "Редактирование сведений о воронке продаж",
   "editPipelineInfoNameRequired": "Пожалуйста, введите название базы знаний.",
-  "exportDSL.errorTip": "Не удалось экспортировать DSL конвейера",
   "exportDSL.successTip": "Экспорт конвейера DSL успешно",
   "inputField": "Поле ввода",
   "inputFieldPanel.addInputField": "Добавить поле ввода",

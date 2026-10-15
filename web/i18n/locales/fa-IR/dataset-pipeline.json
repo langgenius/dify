@@ -34,7 +34,6 @@
   "documentSettings.title": "تنظیمات سند",
   "editPipelineInfo": "ویرایش اطلاعات خط لوله",
   "editPipelineInfoNameRequired": "لطفاً یک نام برای پایگاه دانش وارد کنید.",
-  "exportDSL.errorTip": "صادرات DSL خط لوله انجام نشد",
   "exportDSL.successTip": "DSL خط لوله را با موفقیت صادر کنید",
   "inputField": "فیلد ورودی",
   "inputFieldPanel.addInputField": "افزودن فیلد ورودی",

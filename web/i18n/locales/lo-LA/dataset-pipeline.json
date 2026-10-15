@@ -34,7 +34,6 @@
   "documentSettings.title": "ຕັ້ງຄ່າເອກະສານ",
   "editPipelineInfo": "ແກ້ໄຂຂໍ້ມູນໄພພ໌ລາຍ",
   "editPipelineInfoNameRequired": "ກະລຸນາປ້ອນຊື່ສຳລັບຄັງຄວາມຮູ້.",
-  "exportDSL.errorTip": "ບໍ່ສາມາດສົ່ງອອກ DSL ຂອງໄພພ໌ລາຍໄດ້",
   "exportDSL.successTip": "ສົ່ງອອກ DSL ຂອງໄພພ໌ລາຍສຳເລັດແລ້ວ",
   "inputField": "ຟິລຂໍ້ມູນນຳເຂົ້າ",
   "inputFieldPanel.addInputField": "ເພີ່ມຟິລຂໍ້ມູນນຳເຂົ້າ",

@@ -34,7 +34,6 @@
   "documentSettings.title": "Belge Ayarları",
   "editPipelineInfo": "İşlem hattı bilgilerini düzenleme",
   "editPipelineInfoNameRequired": "Lütfen Bilgi Bankası için bir ad girin.",
-  "exportDSL.errorTip": "İşlem hattı DSL'si dışarı aktarılamadı",
   "exportDSL.successTip": "İşlem hattı DSL'sini başarıyla dışarı aktarın",
   "inputField": "Giriş Alanı",
   "inputFieldPanel.addInputField": "Giriş Alanı Ekle",

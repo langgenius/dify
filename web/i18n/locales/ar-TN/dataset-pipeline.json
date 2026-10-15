@@ -34,7 +34,6 @@
   "documentSettings.title": "إعدادات المستند",
   "editPipelineInfo": "تعديل معلومات سير العمل",
   "editPipelineInfoNameRequired": "يرجى إدخال اسم لقاعدة المعرفة.",
-  "exportDSL.errorTip": "فشل تصدير DSL لسير العمل",
   "exportDSL.successTip": "تم تصدير DSL لسير العمل بنجاح",
   "inputField": "حقل الإدخال",
   "inputFieldPanel.addInputField": "إضافة حقل إدخال",

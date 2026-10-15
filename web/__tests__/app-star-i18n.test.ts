@@ -3,12 +3,7 @@ import path from 'node:path'
 
 const I18N_DIR = path.join(__dirname, '../i18n/locales')
 
-const REQUIRED_APP_STAR_KEYS = [
-  'studio.allApps',
-  'studio.starApp',
-  'studio.starFailed',
-  'studio.starred',
-] as const
+const REQUIRED_APP_STAR_KEYS = ['studio.allApps', 'studio.starApp', 'studio.starred'] as const
 
 type AppTranslations = Record<string, unknown>
 

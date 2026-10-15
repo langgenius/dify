@@ -34,7 +34,6 @@
   "documentSettings.title": "การตั้งค่าเอกสาร",
   "editPipelineInfo": "แก้ไขข้อมูลไปป์ไลน์",
   "editPipelineInfoNameRequired": "โปรดป้อนชื่อสำหรับฐานความรู้",
-  "exportDSL.errorTip": "ไม่สามารถส่งออก DSL ไปป์ไลน์ได้",
   "exportDSL.successTip": "ส่งออก DSL ไปป์ไลน์สําเร็จ",
   "inputField": "ฟิลด์อินพุต",
   "inputFieldPanel.addInputField": "เพิ่มฟิลด์อินพุต",

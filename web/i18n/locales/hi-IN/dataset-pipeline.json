@@ -34,7 +34,6 @@
   "documentSettings.title": "डॉक्यूमेंट सेटिंग्स",
   "editPipelineInfo": "पाइपलाइन जानकारी संपादित करें",
   "editPipelineInfoNameRequired": "कृपया ज्ञान आधार के लिए एक नाम दर्ज करें।",
-  "exportDSL.errorTip": "पाइपलाइन DSL निर्यात करने में विफल",
   "exportDSL.successTip": "निर्यात पाइपलाइन DSL सफलतापूर्वक",
   "inputField": "इनपुट फ़ील्ड",
   "inputFieldPanel.addInputField": "इनपुट फ़ील्ड जोड़ें",

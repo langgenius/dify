@@ -34,7 +34,6 @@
   "documentSettings.title": "Nastavitve dokumenta",
   "editPipelineInfo": "Urejanje informacij o cevovodu",
   "editPipelineInfoNameRequired": "Prosim vnesite ime za Bazo znanja.",
-  "exportDSL.errorTip": "Izvoz cevovoda DSL ni uspel",
   "exportDSL.successTip": "Uspešno izvozite DSL",
   "inputField": "Vnosno polje",
   "inputFieldPanel.addInputField": "Dodajanje vhodnega polja",

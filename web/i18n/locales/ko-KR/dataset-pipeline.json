@@ -34,7 +34,6 @@
   "documentSettings.title": "문서 설정",
   "editPipelineInfo": "파이프라인 정보 편집",
   "editPipelineInfoNameRequired": "기술 자료의 이름을 입력해 주세요.",
-  "exportDSL.errorTip": "파이프라인 DSL을 내보내지 못했습니다.",
   "exportDSL.successTip": "파이프라인 DSL 내보내기 성공",
   "inputField": "입력 필드",
   "inputFieldPanel.addInputField": "입력 필드 추가",

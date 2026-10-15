@@ -34,7 +34,6 @@
   "documentSettings.title": "Impostazioni documento",
   "editPipelineInfo": "Modificare le informazioni sulla pipeline",
   "editPipelineInfoNameRequired": "Inserisci un nome per la Knowledge Base.",
-  "exportDSL.errorTip": "Impossibile esportare il DSL della pipeline",
   "exportDSL.successTip": "Esporta DSL pipeline con successo",
   "inputField": "Campo di input",
   "inputFieldPanel.addInputField": "Aggiungi campo di input",

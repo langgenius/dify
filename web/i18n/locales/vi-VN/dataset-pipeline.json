@@ -34,7 +34,6 @@
   "documentSettings.title": "Cài đặt tài liệu",
   "editPipelineInfo": "Chỉnh sửa thông tin quy trình",
   "editPipelineInfoNameRequired": "Vui lòng nhập tên cho Cơ sở Kiến thức.",
-  "exportDSL.errorTip": "Không thể xuất DSL đường ống",
   "exportDSL.successTip": "Xuất DSL quy trình thành công",
   "inputField": "Trường đầu vào",
   "inputFieldPanel.addInputField": "Thêm trường đầu vào",

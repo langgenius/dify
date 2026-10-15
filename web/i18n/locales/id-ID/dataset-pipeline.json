@@ -34,7 +34,6 @@
   "documentSettings.title": "Pengaturan Dokumen",
   "editPipelineInfo": "Mengedit info alur",
   "editPipelineInfoNameRequired": "Silakan masukkan nama untuk Basis Pengetahuan.",
-  "exportDSL.errorTip": "Gagal mengekspor DSL alur",
   "exportDSL.successTip": "Ekspor DSL pipeline berhasil",
   "inputField": "Bidang Masukan",
   "inputFieldPanel.addInputField": "Tambahkan Bidang Input",

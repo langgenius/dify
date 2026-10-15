@@ -34,7 +34,6 @@
   "documentSettings.title": "Параметри документа",
   "editPipelineInfo": "Як редагувати інформацію про воронку продажів",
   "editPipelineInfoNameRequired": "Будь ласка, введіть назву Бази знань.",
-  "exportDSL.errorTip": "Не вдалося експортувати DSL пайплайну",
   "exportDSL.successTip": "Успішний експорт DSL воронки продажів",
   "inputField": "Поле введення",
   "inputFieldPanel.addInputField": "Додати поле введення",
