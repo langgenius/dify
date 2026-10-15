@@ -6,6 +6,7 @@ import { I18nClientProvider } from '@/app/components/provider/i18n'
 import englishBuilder from '@/i18n/locales/en-US/dify-builder.json'
 import chineseBuilder from '@/i18n/locales/zh-Hans/dify-builder.json'
 import { StreamingAssistantTurn } from '../../conversation/streaming-assistant-turn'
+import { DifyBuilderLocaleProvider } from '../../interactions/locale-provider'
 import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderReplyLanguageAtom,
@@ -135,7 +136,9 @@ describe('Builder reply language lifecycle', () => {
       <I18nClientProvider locale="en-US" resource={{}}>
         <Provider store={store}>
           <Suspense fallback={<p>Loading translations</p>}>
-            <StreamingAssistantTurn busy />
+            <DifyBuilderLocaleProvider>
+              <StreamingAssistantTurn busy />
+            </DifyBuilderLocaleProvider>
           </Suspense>
         </Provider>
       </I18nClientProvider>,

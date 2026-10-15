@@ -17,7 +17,12 @@ const DifyBuilderModelSelector = ({
   modelList,
 }: DifyBuilderModelSelectorProps) => {
   const locale = useDifyBuilderInteractionLocale()
-  const { t } = useTranslation(['modelProvider'], { lng: locale })
+  const { t: accountT } = useTranslation(['modelProvider'], { useSuspense: false })
+  const { t: localeT, ready } = useTranslation(['modelProvider'], {
+    lng: locale,
+    useSuspense: false,
+  })
+  const t = ready ? localeT : accountT
   const readonly = useAtomValue(difyBuilderModelReadonlyAtom)
   const selectModel = useSetAtom(difyBuilderSelectModelAtom)
 

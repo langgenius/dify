@@ -1,11 +1,8 @@
-import { useAtomValue } from 'jotai'
+import { use } from 'react'
 import { useLocale } from '#i18n'
-import { difyBuilderExecutionProgressAtom, difyBuilderReplyLanguageAtom } from '../session/state'
-import { resolveInteractionLocale } from './locale'
+import { DifyBuilderLocaleContext } from './locale-context'
 
 export const useDifyBuilderInteractionLocale = () => {
   const accountLocale = useLocale()
-  const replyLanguage = useAtomValue(difyBuilderReplyLanguageAtom)
-  const progress = useAtomValue(difyBuilderExecutionProgressAtom)
-  return resolveInteractionLocale(progress?.replyLanguage || replyLanguage, accountLocale)
+  return use(DifyBuilderLocaleContext) ?? accountLocale
 }

@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import chineseBuilder from '@/i18n/locales/zh-Hans/dify-builder.json'
 import { DifyBuilderConversation } from '../conversation'
+import { DifyBuilderLocaleProvider } from '../interactions/locale-provider'
 import { createSessionView } from '../session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../session/state'
 
@@ -80,7 +81,9 @@ it('hides legacy notices while preserving literal receipts and showing the compl
     <I18nClientProvider locale="en-US" resource={{}}>
       <Provider store={store}>
         <Suspense fallback={<p>Loading translations</p>}>
-          <DifyBuilderConversation busy={false} interrupted={false} items={items} />
+          <DifyBuilderLocaleProvider>
+            <DifyBuilderConversation busy={false} interrupted={false} items={items} />
+          </DifyBuilderLocaleProvider>
         </Suspense>
       </Provider>
     </I18nClientProvider>,
@@ -94,7 +97,7 @@ it('hides legacy notices while preserving literal receipts and showing the compl
   expect(within(log).getByRole('checkbox', { name: 'Enabled' })).not.toBeChecked()
   expect(within(log).getByRole('textbox', { name: 'Count' })).toHaveValue('0')
   expect(
-    within(log).getByText(
+    await within(log).findByText(
       chineseBuilder['copy.replies.noFixIsStagedForThisFailureKeepTheDraftOrRevert'],
     ),
   ).toBeVisible()
