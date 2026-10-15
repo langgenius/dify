@@ -1,17 +1,20 @@
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { fetchConversationMessages } from '@/service/debug'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import ChatRecord from '../index'
 
-vi.mock('@/service/debug', () => ({
-  fetchConversationMessages: vi.fn(),
+const routeParams = vi.hoisted(() => ({ appId: 'app-1' }))
+const mockRequest = vi.hoisted(() => vi.fn())
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => routeParams,
 }))
 
-const mockFetchConversationMessages = vi.mocked(fetchConversationMessages)
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockRequest },
+}))
 
 const historyWorkflowData: HistoryWorkflowData = {
   id: 'run-1',
@@ -22,16 +25,14 @@ const historyWorkflowData: HistoryWorkflowData = {
 
 describe('ChatRecord', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: createAppDetailFixture(),
-    })
+    routeParams.appId = 'app-1'
+    mockRequest.mockReset()
   })
 
-  it('renders fetched chat history with the real chat shell and switches siblings', async () => {
+  it('renders chat history and keeps sibling selection within its conversation', async () => {
     const user = userEvent.setup()
 
-    mockFetchConversationMessages.mockResolvedValue({
+    mockRequest.mockResolvedValue({
       data: [
         {
           id: 'msg-1',
@@ -59,7 +60,7 @@ describe('ChatRecord', () => {
       ],
     } as never)
 
-    renderWorkflowComponent(<ChatRecord />, {
+    const { store } = renderWorkflowComponent(<ChatRecord />, {
       initialStoreState: { historyWorkflowData },
       hooksStoreProps: {
         handleLoadBackupDraft: vi.fn(),
@@ -67,7 +68,11 @@ describe('ChatRecord', () => {
     })
 
     await waitFor(() => {
-      expect(mockFetchConversationMessages).toHaveBeenCalledWith('app-1', 'conversation-1')
+      expect(mockRequest).toHaveBeenCalledWith(
+        ['apps', 'byAppId', 'chatMessages', 'get'],
+        { params: { app_id: 'app-1' }, query: { conversation_id: 'conversation-1' } },
+        expect.any(Object),
+      )
     })
 
     expect(await screen.findByText('Question 1')).toBeInTheDocument()
@@ -84,10 +89,64 @@ describe('ChatRecord', () => {
     await waitFor(() => {
       expect(screen.queryByText('Question 3')).not.toBeInTheDocument()
     })
+
+    act(() => {
+      store.setState({
+        historyWorkflowData: { ...historyWorkflowData, conversation_id: 'conversation-2' },
+      })
+    })
+    expect(await screen.findByText('Question 3')).toBeInTheDocument()
+    expect(screen.queryByText('Question 2')).not.toBeInTheDocument()
+    expect(mockRequest).toHaveBeenLastCalledWith(
+      ['apps', 'byAppId', 'chatMessages', 'get'],
+      { params: { app_id: 'app-1' }, query: { conversation_id: 'conversation-2' } },
+      expect.any(Object),
+    )
+  })
+
+  it('keeps a late response from a previous app out of the current conversation', async () => {
+    let resolvePrevious!: (value: unknown) => void
+    mockRequest.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePrevious = resolve
+      }),
+    )
+    mockRequest.mockResolvedValue({
+      data: [{ id: 'message-2', query: 'Current question', answer: 'Current answer' }],
+      has_more: false,
+      limit: 20,
+    })
+    const { store } = renderWorkflowComponent(<ChatRecord />, {
+      initialStoreState: { historyWorkflowData },
+    })
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(1))
+
+    routeParams.appId = 'app-2'
+    act(() => {
+      store.setState({
+        historyWorkflowData: { ...historyWorkflowData, conversation_id: 'conversation-2' },
+      })
+    })
+    expect(await screen.findByText('Current answer')).toBeInTheDocument()
+    expect(mockRequest).toHaveBeenLastCalledWith(
+      ['apps', 'byAppId', 'chatMessages', 'get'],
+      { params: { app_id: 'app-2' }, query: { conversation_id: 'conversation-2' } },
+      expect.any(Object),
+    )
+
+    await act(async () => {
+      resolvePrevious({
+        data: [{ id: 'message-1', query: 'Previous question', answer: 'Previous answer' }],
+        has_more: false,
+        limit: 20,
+      })
+    })
+    expect(screen.queryByText('Previous answer')).not.toBeInTheDocument()
+    expect(screen.getByText('Current answer')).toBeInTheDocument()
   })
 
   it('stops loading when conversation fetching fails', async () => {
-    mockFetchConversationMessages.mockRejectedValue(new Error('network error'))
+    mockRequest.mockRejectedValue(new Error('network error'))
 
     const { container } = renderWorkflowComponent(<ChatRecord />, {
       initialStoreState: { historyWorkflowData },
