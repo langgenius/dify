@@ -2465,6 +2465,7 @@ Update annotation settings for an app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
+| annotation_id | query | Annotation IDs to delete; omitting it clears all annotations of the app | No | [ string ] |
 
 #### Responses
 
