@@ -1,12 +1,14 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
 import AccountAvatar from '@/app/account/(commonLayout)/avatar'
+import EndUserAccountMenu from '@/app/components/end-user/layout/account-menu'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import EducationUserInfo from '@/app/education/user-info'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import AccountDropdown from '../index'
 
 const { mockSetSettingsDestination } = vi.hoisted(() => ({
@@ -143,6 +145,20 @@ describe('AccountDropdown', () => {
     await user.click(await screen.findByText('navigation.settings.preferences'))
 
     expect(mockSetSettingsDestination).toHaveBeenCalledWith('preferences')
+  })
+
+  it('shows only Logout in the end-user preview without ending the Console session', async () => {
+    const user = userEvent.setup()
+    render(<EndUserAccountMenu />)
+
+    await user.click(screen.getByRole('button', { name: 'app.endUser.userMenu:{"name":"Evan Z"}' }))
+    const logout = await screen.findByRole('menuitem', { name: 'common.userProfile.logout' })
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
+
+    await user.click(logout)
+
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    expect(mockLogout).not.toHaveBeenCalled()
   })
 
   it.each(['main navigation', 'account page', 'education'] as const)(
