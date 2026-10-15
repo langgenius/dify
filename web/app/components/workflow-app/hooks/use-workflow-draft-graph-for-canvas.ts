@@ -26,8 +26,8 @@ const hasStartPlaceholderNode = (nodes: Node[] = []): boolean => {
   return nodes.some((node) => node?.data?.type === BlockEnum.StartPlaceholder)
 }
 
-export const useWorkflowDraftGraphForCanvas = (appMode?: AppMode | string) => {
-  const { t } = useTranslation(['workflow'])
+export const useWorkflowDraftGraphForCanvas = (appMode?: AppMode) => {
+  const { t } = useTranslation(['workflow'] as const)
 
   const getNodesWithLocalStartPlaceholder = useCallback(
     (nodes: Node[] = [], localStartPlaceholderNodes?: Node[]) => {

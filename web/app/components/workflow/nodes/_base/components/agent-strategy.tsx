@@ -171,7 +171,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               modelConfig={
                 defaultModel.data
                   ? {
-                      mode: 'chat',
+                      mode: 'chat' as const,
                       name: defaultModel.data.model,
                       provider: defaultModel.data.provider.provider,
                       completion_params: {},

@@ -11,6 +11,8 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -18,14 +20,13 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import {
   useDeleteWorkflow,
-  useInvalidAllLastRun,
+  useInvalidateAllLastRun,
   useInvalidateAppWorkflow,
   useResetWorkflowVersionHistory,
   useRestoreWorkflow,
   useUpdateWorkflow,
   useWorkflowVersionHistory,
 } from '@/service/use-workflow'
-import { FlowType } from '@/types/common'
 import { useHooksStore } from '../../hooks-store'
 import { useDSL } from '../../hooks/use-DSL'
 import { useWorkflowRefreshDraft } from '../../hooks/use-workflow-refresh-draft'
@@ -91,9 +92,10 @@ export const VersionHistoryPanel = ({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
+  const resourceId = getEditorResourceId(resource)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
-  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation(['billing', 'common', 'workflow', 'workflowHistory'])
@@ -251,8 +253,8 @@ export const VersionHistoryPanel = ({
 
   const emitWorkflowUpdate = useCallback(async () => {
     try {
-      const appId = configsMap?.flowId
-      if (!appId) return
+      if (resource.kind !== 'app') return
+      const { appId } = resource
 
       const { collaborationManager } =
         await import('../../collaboration/core/collaboration-manager')
@@ -260,7 +262,7 @@ export const VersionHistoryPanel = ({
     } catch (error) {
       console.error('Failed to emit workflow update:', error)
     }
-  }, [configsMap?.flowId])
+  }, [resource])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
@@ -343,21 +345,15 @@ export const VersionHistoryPanel = ({
       const { id, ...rest } = params
       await updateWorkflow(
         {
-          ...(configsMap?.flowType === FlowType.appFlow && configsMap.flowId
-            ? { appId: configsMap.flowId, appMode }
-            : {}),
+          ...(resource.kind === 'app' && resourceId ? { appId: resourceId, appMode } : {}),
           url: updateVersionUrl?.(id || '') || '',
           ...rest,
         },
         {
           onSuccess: () => {
             setEditModalOpen(false)
-            if (
-              id === latestVersionId &&
-              configsMap?.flowType === FlowType.appFlow &&
-              configsMap.flowId
-            )
-              invalidateAppWorkflow(configsMap.flowId)
+            if (id === latestVersionId && resource.kind === 'app' && resourceId)
+              invalidateAppWorkflow(resourceId)
           },
           onError: () => {
             toast.error(
@@ -372,8 +368,8 @@ export const VersionHistoryPanel = ({
     },
     [
       appMode,
-      configsMap?.flowId,
-      configsMap?.flowType,
+      resourceId,
+      resource.kind,
       invalidateAppWorkflow,
       latestVersionId,
       t,

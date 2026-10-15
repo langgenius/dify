@@ -5,11 +5,13 @@ import type { CodeLanguage } from '../../code/types'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/config/code-generator/get-code-generator-res'
-import { useHooksStore } from '../../../hooks-store'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 
 type Props = Readonly<{
   nodeId: string
@@ -35,7 +37,8 @@ const CodeGenerateBtn: FC<Props> = ({
     },
     [onGenerated],
   )
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
+  const resourceId = getEditorResourceId(resource)
 
   return (
     <div className={cn(className)}>
@@ -53,7 +56,7 @@ const CodeGenerateBtn: FC<Props> = ({
           codeLanguages={codeLanguages}
           onClose={() => setShowAutomatic(false)}
           onFinished={handleAutomaticRes}
-          flowId={configsMap?.flowId || ''}
+          flowId={resourceId || ''}
           nodeId={nodeId}
           currentCode={currentCode}
         />

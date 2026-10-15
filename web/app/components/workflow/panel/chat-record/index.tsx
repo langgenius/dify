@@ -2,12 +2,13 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
 import { RiCloseLine } from '@remixicon/react'
 import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useMemo, useState } from 'react'
 import Chat from '@/app/components/base/chat/chat'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { useParams } from '@/next/navigation'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { consoleQuery } from '@/service/console'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
@@ -49,7 +50,7 @@ function getFormattedChatList(messages: any[]) {
 }
 
 const ChatRecord = () => {
-  const { appId } = useParams<{ appId: string }>()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const [selectedMessage, setSelectedMessage] = useState<{
     appId: string
     conversationId: string | undefined

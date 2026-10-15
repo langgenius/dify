@@ -1,23 +1,26 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
+import {
+  isChatflowAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import answerDefault from '@/app/components/workflow/nodes/answer/default'
 import llmDefault from '@/app/components/workflow/nodes/llm/default'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
 import { generateNewNode } from '@/app/components/workflow/utils'
-import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
-  const isChatMode = useIsChatMode()
-  const { appId } = useParams<{ appId: string }>()
+  const isChatflow = useAtomValue(isChatflowAtom)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
 
   const createStartNode = () => {
     const { newNode: startNode } = generateNewNode({
@@ -32,7 +35,7 @@ export const useWorkflowTemplate = () => {
     return startNode
   }
 
-  if (isChatMode) {
+  if (isChatflow) {
     const startNode = createStartNode()
 
     const { newNode: llmNode } = generateNewNode({

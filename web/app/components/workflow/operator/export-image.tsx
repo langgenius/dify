@@ -9,24 +9,26 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { editorAppNameAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from './tip-popup'
 
 const ExportImage = memo(() => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const { getNodesReadOnly } = useNodesReadOnly()
   const reactFlow = useReactFlow()
 
   const [previewUrl, setPreviewUrl] = useState('')
   const [previewTitle, setPreviewTitle] = useState('')
   const knowledgeName = useStore((s) => s.knowledgeName)
-  const appName = useStore((s) => s.appName)
+  const appName = useAtomValue(editorAppNameAtom)
   const isReadOnly = getNodesReadOnly()
 
   const handleExportImage = useCallback(

@@ -2,13 +2,15 @@ import type { LLMDefaultConfig } from './hooks/use-llm-input-manager'
 import type { LLMNodeType } from './types'
 import type { EnvironmentVariable, ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useLLMInputManager from './hooks/use-llm-input-manager'
@@ -24,7 +26,7 @@ const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type] as
     | LLMDefaultConfig
@@ -45,7 +47,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }
   const modelMode = model.mode
   const isChatModel = modelMode === 'chat'
-  const isCompletionModel = !isChatModel
+  const isCompletionModel = modelMode === 'completion'
 
   const { inputRef, setInputs, appendDefaultPromptConfig } = useLLMInputManager({
     inputs,
@@ -193,7 +195,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const promptConfig = useLLMPromptConfig({
     inputs,
     inputRef,
-    isChatMode,
+    isChatflow,
     isChatModel,
     setInputs,
   })
@@ -213,7 +215,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   return {
     readOnly,
-    isChatMode,
+    isChatflow,
     inputs,
     model,
     environmentVariables,

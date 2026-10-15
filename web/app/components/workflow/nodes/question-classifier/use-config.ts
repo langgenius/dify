@@ -2,16 +2,19 @@ import type { Memory, ValueSelector, Var } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { startTransition, useCallback, useEffect, useRef } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
+import {
+  editorResourceKindAtom,
+  isChatflowAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { FlowType } from '@/types/common'
 import useConfigVision from '../../hooks/use-config-vision'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { BlockEnum, VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
@@ -19,9 +22,9 @@ import useAvailableVarList from '../_base/hooks/use-available-var-list'
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const isSnippetFlow = flowType === FlowType.snippet
+  const isChatflow = useAtomValue(isChatflowAtom)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const isSnippetFlow = resourceKind === 'snippet'
   const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type]
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const startNode = getBeforeNodesInSameBranch(id).find(
@@ -143,7 +146,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       if (
         !isSnippetFlow &&
         draft.query_variable_selector.length === 0 &&
-        isChatMode &&
+        isChatflow &&
         startNodeId
       ) {
         draft.query_variable_selector = [startNodeId, 'sys.query']
@@ -164,7 +167,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     startTransition(() => {
       setInputs(nextInputs)
     })
-  }, [defaultConfig, isChatMode, isSnippetFlow, setInputs, startNodeId])
+  }, [defaultConfig, isChatflow, isSnippetFlow, setInputs, startNodeId])
 
   const handleClassesChange = useCallback(
     (newClasses: Topic[]) => {
@@ -204,7 +207,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   const hasSetBlockStatus = {
     history: false,
-    query: isChatMode ? checkHasQueryBlock(inputs.instruction) : false,
+    query: isChatflow ? checkHasQueryBlock(inputs.instruction) : false,
     context: false,
   }
 
@@ -256,7 +259,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     readOnly,
     inputs,
     handleModelChanged,
-    isChatMode,
+    isChatflow,
     isChatModel,
     handleCompletionParamsChange,
     handleQueryVarChange,

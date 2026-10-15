@@ -19,7 +19,7 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
     model: {
       provider: '',
       name: '',
-      mode: 'chat',
+      mode: 'chat' as const,
       completion_params: {
         temperature: 0.7,
       },

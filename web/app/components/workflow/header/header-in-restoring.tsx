@@ -6,6 +6,8 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -13,12 +15,10 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import {
-  useInvalidAllLastRun,
+  useInvalidateAllLastRun,
   useResetWorkflowVersionHistory,
   useRestoreWorkflow,
 } from '@/service/use-workflow'
-import { FlowType } from '@/types/common'
-import { useHooksStore } from '../hooks-store'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
@@ -44,8 +44,9 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const configsMap = useHooksStore((s) => s.configsMap)
-  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const resource = useAtomValue(editorResourceAtom)
+  const resourceId = getEditorResourceId(resource)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const { deleteAllInspectVars } = workflowStore.getState()
   const currentVersion = useStore((s) => s.currentVersion)
   const setShowWorkflowVersionHistoryPanel = useStore((s) => s.setShowWorkflowVersionHistoryPanel)
@@ -55,9 +56,9 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore =
-    !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
+    !!currentVersion?.id && !!resourceId && currentVersion.version !== WorkflowVersion.Draft
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
-  const canEmitCollaborationEvents = configsMap?.flowType === FlowType.appFlow
+  const canEmitCollaborationEvents = resource.kind === 'app'
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -67,14 +68,14 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
 
   const restoreVersionUrl = useCallback(
     (versionId: string) => {
-      if (!configsMap?.flowId) return ''
-      if (configsMap.flowType === FlowType.ragPipeline)
-        return `/rag/pipelines/${configsMap.flowId}/workflows/${versionId}/restore`
-      if (configsMap.flowType === FlowType.snippet)
-        return `/snippets/${configsMap.flowId}/workflows/${versionId}/restore`
-      return `/apps/${configsMap.flowId}/workflows/${versionId}/restore`
+      if (!resourceId) return ''
+      if (resource.kind === 'knowledge-pipeline')
+        return `/rag/pipelines/${resourceId}/workflows/${versionId}/restore`
+      if (resource.kind === 'snippet')
+        return `/snippets/${resourceId}/workflows/${versionId}/restore`
+      return `/apps/${resourceId}/workflows/${versionId}/restore`
     },
-    [configsMap?.flowId, configsMap?.flowType],
+    [resourceId, resource.kind],
   )
 
   const emitRestoreIntent = useCallback(async () => {
@@ -113,14 +114,14 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   )
 
   const emitWorkflowUpdate = useCallback(async () => {
-    if (!configsMap?.flowId || !canEmitCollaborationEvents) return
+    if (!resourceId || !canEmitCollaborationEvents) return
     try {
       const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
-      collaborationManager.emitWorkflowUpdate(configsMap.flowId)
+      collaborationManager.emitWorkflowUpdate(resourceId)
     } catch (error) {
       console.error('Failed to emit workflow update:', error)
     }
-  }, [canEmitCollaborationEvents, configsMap?.flowId])
+  }, [canEmitCollaborationEvents, resourceId])
 
   const handleRestore = useCallback(async () => {
     if (isPlanUnavailable || !canRestore || !currentVersion) return

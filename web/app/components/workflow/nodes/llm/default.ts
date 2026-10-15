@@ -1,9 +1,9 @@
 import type { TFunction } from 'i18next'
 import type { EnvironmentVariable, NodeDefault, PromptItem } from '../../types'
 import type { LLMNodeType } from './types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 // import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
-import { FlowType } from '@/types/common'
 import { BlockEnum, EditionType, PromptRole } from '../../types'
 import {
   getLLMModelIssue,
@@ -44,7 +44,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     model: {
       provider: '',
       name: '',
-      mode: 'chat',
+      mode: 'chat' as const,
       completion_params: {
         temperature: 0.7,
       },
@@ -71,12 +71,12 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     payload: LLMNodeType,
     t: TFunction<['workflow']>,
     moreDataForCheckValid?: {
-      flowType?: FlowType
+      resourceKind?: EditorResource['kind']
       environmentVariables?: EnvironmentVariable[]
     },
   ) {
     let errorMessages = ''
-    const isSnippetFlow = moreDataForCheckValid?.flowType === FlowType.snippet
+    const isSnippetFlow = moreDataForCheckValid?.resourceKind === 'snippet'
     const hasValidModelSelector =
       payload.model_selector === undefined ||
       !isEnvironmentModelSource(payload.model_selector) ||

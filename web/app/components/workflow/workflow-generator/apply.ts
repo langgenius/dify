@@ -1,5 +1,5 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
+import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { consoleClient } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -8,7 +8,7 @@ import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 const MODE_TO_APP_MODE = {
   workflow: 'workflow',
   'advanced-chat': 'advanced-chat',
-} as const satisfies Record<WorkflowGeneratorMode, AppMode>
+} as const satisfies Record<WorkflowGeneratorMode, WorkflowAppMode>
 
 /**
  * Thrown by ``applyToCurrentApp`` when the backend rejects the sync because
@@ -86,7 +86,7 @@ export const applyToNewApp = async ({
   icon,
 }: ApplyToNewAppParams): Promise<{
   appId: string
-  appMode: AppMode
+  appMode: WorkflowAppMode
   permissionKeys?: string[]
 }> => {
   const appMode = MODE_TO_APP_MODE[mode]
@@ -134,7 +134,7 @@ export const applyToNewApp = async ({
 
 type ApplyToCurrentAppParams = {
   appId: string
-  appMode?: AppMode
+  appMode?: WorkflowAppMode
   graph: GeneratedGraph
 }
 
