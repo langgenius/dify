@@ -48,7 +48,7 @@ class AgentToolCall(TypedDict):
     error: object | None
     time_cost: float | int
     tool_name: str
-    tool_label: str
+    tool_label: str | dict[str, str]
     tool_input: object
     tool_output: object
     tool_parameters: dict[str, object]
@@ -188,7 +188,7 @@ def store(monkeypatch: pytest.MonkeyPatch) -> Iterator[AgentLogStore]:
                 created_by="viewer",
                 thought="Search first",
                 tool="search",
-                tool_labels_str='{"search":"Search"}',
+                tool_labels_str='{"search":{"en_US":"Search","zh_Hans":"搜索"}}',
                 tokens=10,
                 tool_meta_str='{"search":{"tool_parameters":{"limit":3},"time_cost":1.2}}',
                 tool_input='{"query":"test"}',
@@ -232,7 +232,7 @@ def test_log_uses_loaded_timezone_configuration_and_tool_metadata(store: AgentLo
             "error": None,
             "time_cost": 1.2,
             "tool_name": "search",
-            "tool_label": "Search",
+            "tool_label": {"en_US": "Search", "zh_Hans": "搜索"},
             "tool_input": {"query": "test"},
             "tool_output": {"result": "found"},
             "tool_parameters": {"limit": 3},

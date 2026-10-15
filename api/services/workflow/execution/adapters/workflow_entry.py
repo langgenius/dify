@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, TypedDict
+from typing import Any, Protocol, TypedDict
 from uuid import uuid4
 
 from configs import dify_config
@@ -16,6 +16,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -41,7 +42,6 @@ from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper,
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
-from models.workflow import Workflow
 from services.human_input.ports import HumanInputFormReader
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 from services.workflow.execution.adapters.node_factory import (
@@ -102,6 +102,24 @@ class _EdgeConfigDict(TypedDict):
 class SingleNodeGraphDict(TypedDict):
     nodes: list[_NodeConfigDict]
     edges: list[_EdgeConfigDict]
+
+
+class _WorkflowEntryDefinition(Protocol):
+    """Narrow workflow view shared by ORM rows and detached snapshots during migration."""
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def tenant_id(self) -> str: ...
+
+    @property
+    def app_id(self) -> str: ...
+
+    @property
+    def graph_dict(self) -> Mapping[str, Any]: ...
+
+    def get_node_config_by_id(self, node_id: str) -> Mapping[str, Any]: ...
 
 
 class WorkflowEntry:
@@ -212,7 +230,7 @@ class WorkflowEntry:
     def single_step_run(
         cls,
         *,
-        workflow: Workflow,
+        workflow: _WorkflowEntryDefinition,
         node_id: str,
         user_id: str,
         user_inputs: Mapping[str, Any],
@@ -224,13 +242,15 @@ class WorkflowEntry:
     ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
         """
         Single step run workflow node
-        :param workflow: Workflow instance
+        :param workflow: immutable workflow definition
         :param node_id: node id
         :param user_id: user id
         :param user_inputs: user inputs
         :return:
         """
-        node_config = workflow.get_node_config_by_id(node_id)
+        node_config = NodeConfigDictAdapter.validate_python(
+            adapt_node_config_for_graph(workflow.get_node_config_by_id(node_id))
+        )
         node_config_data = node_config["data"]
 
         # Get node type
