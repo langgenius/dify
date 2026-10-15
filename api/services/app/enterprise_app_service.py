@@ -143,9 +143,11 @@ class EnterpriseAppBuiltInState:
     published_version: EnterpriseAppPublishedVersion | None
     # Size of the user-facing version history; 0 for Apps without versions.
     published_version_count: int
-    site: EnterpriseAppSite
-    api: EnterpriseAppApi
-    # None when no MCP server was ever created for the app.
+    # Web App, Service API, and MCP are None when the published workflow has a
+    # trigger entry, because such workflows cannot be run through them.
+    site: EnterpriseAppSite | None
+    api: EnterpriseAppApi | None
+    # Also None when no MCP server was ever created for the app.
     mcp_server: EnterpriseAppMCPServer | None
     triggers: Sequence[EnterpriseAppTrigger]
 
@@ -154,8 +156,8 @@ class EnterpriseAppBuiltInState:
 class EnterpriseAppBuiltIn:
     published_version: EnterpriseAppPublishedVersion | None
     published_version_count: int
-    site: EnterpriseAppSite
-    api: EnterpriseAppApi
+    site: EnterpriseAppSite | None
+    api: EnterpriseAppApi | None
     mcp_server: EnterpriseAppMCPServer | None
     triggers: Sequence[EnterpriseAppTrigger]
     # Debugger runs are excluded from all invocation fields. Unlike the counts,
@@ -243,10 +245,11 @@ def _invocations[StatusT](
 
 class EnterpriseAppService:
     """App queries across tenants, consumed by enterprise dashboard.
-    
+
     App is deployed in environments, and dify api is treated as a built-in event, where stats are collected from
     workflow runs and messages.
     """
+
     def __init__(
         self, *, apps: EnterpriseAppStore, workflow_runs: APIWorkflowRunRepository, now: Callable[[], datetime]
     ) -> None:

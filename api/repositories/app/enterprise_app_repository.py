@@ -175,6 +175,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
                 return None
             app = row[0]
             published_version, published_version_count = self._published_versions(session, app)
+            manual_entry = not self._published_trigger_entry(session, app)
             return EnterpriseAppRecord(
                 app=_summary(row),
                 built_in=EnterpriseAppBuiltInState(
@@ -184,13 +185,17 @@ class EnterpriseAppRepository(EnterpriseAppStore):
                         enabled=app.enable_site,
                         code=self._site_code(session, app),
                         app_base_url=self._app_base_url,
-                    ),
+                    )
+                    if manual_entry
+                    else None,
                     api=EnterpriseAppApi(
                         enabled=app.enable_api,
                         base_url=self._api_base_url,
                         api_key_count=self._api_key_count(session, app),
-                    ),
-                    mcp_server=self._mcp_server(session, app),
+                    )
+                    if manual_entry
+                    else None,
+                    mcp_server=self._mcp_server(session, app) if manual_entry else None,
                     triggers=self._triggers(session, app),
                 ),
             )
@@ -220,6 +225,15 @@ class EnterpriseAppRepository(EnterpriseAppStore):
             app_id: EnterpriseAppMessageStats(status_counts=status_counts.get(app_id, {}), last_created_at=created_at)
             for app_id, created_at in last_created_at.items()
         }
+
+    @staticmethod
+    def _published_trigger_entry(session: Session, app: App) -> bool:
+        """Whether the published workflow starts from a trigger, matching AppGenerateService's run check."""
+        # TODO: move to the workflow domain repository once it exists.
+        if app.mode != AppMode.WORKFLOW or not app.workflow_id:
+            return False
+        workflow = session.scalar(sa.select(Workflow).where(Workflow.id == app.workflow_id, Workflow.app_id == app.id))
+        return workflow is not None and workflow.has_trigger_node()
 
     @staticmethod
     def _site_code(session: Session, app: App) -> str | None:

@@ -83,6 +83,12 @@ _INVOCATION_COUNT_DESCRIPTION = (
 )
 
 
+_TRIGGER_ENTRY_ACCESS_DESCRIPTION = (
+    "Null when the published workflow has a trigger entry, since trigger-entry workflows cannot be run through "
+    "Web App, Service API, or MCP"
+)
+
+
 class EnterpriseAppBuiltInSummaryResponse(ResponseModel):
     published: bool = Field(description="Whether the app detail reports a built-in published_version")
     invocation_count_24h: int = Field(validation_alias="invocation_count", description=_INVOCATION_COUNT_DESCRIPTION)
@@ -154,9 +160,11 @@ class EnterpriseAppBuiltInResponse(ResponseModel):
     published_version_count: int = Field(
         description="Number of entries in the app's Studio version history; 0 for apps without versions"
     )
-    site: EnterpriseAppSiteResponse
-    api: EnterpriseAppApiResponse
-    mcp_server: EnterpriseAppMCPServerResponse | None
+    site: EnterpriseAppSiteResponse | None = Field(description=_TRIGGER_ENTRY_ACCESS_DESCRIPTION)
+    api: EnterpriseAppApiResponse | None = Field(description=_TRIGGER_ENTRY_ACCESS_DESCRIPTION)
+    mcp_server: EnterpriseAppMCPServerResponse | None = Field(
+        description=f"{_TRIGGER_ENTRY_ACCESS_DESCRIPTION}, or when no MCP server was ever created"
+    )
     triggers: list[EnterpriseAppTriggerResponse]
     last_invoked_at: int | None = Field(
         description="Latest invocation counted like invocation_count_24h, without the 24h limit"

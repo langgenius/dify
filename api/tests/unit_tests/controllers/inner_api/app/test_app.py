@@ -4,6 +4,7 @@ Auth/setup decorators are tested in test_auth_wraps.py; handler tests use inspec
 """
 
 import inspect
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -123,13 +124,13 @@ def _agent(tenant_id: str, *, scope: AgentScope, status: AgentStatus = AgentStat
     )
 
 
-def _workflow(app: App, *, version: str, created_by: str, **kwargs: object) -> Workflow:
+def _workflow(app: App, *, version: str, created_by: str, entry_node_type: str = "start", **kwargs: object) -> Workflow:
     return Workflow(
         tenant_id=app.tenant_id,
         app_id=app.id,
         type=WorkflowType.WORKFLOW,
         version=version,
-        graph="{}",
+        graph=json.dumps({"nodes": [{"id": "entry", "data": {"type": entry_node_type}}], "edges": []}),
         features="{}",
         environment_variables=[],
         conversation_variables=[],
@@ -580,6 +581,47 @@ class TestEnterpriseAppDetail:
             assert app_id not in listed_ids
             assert _detail_raw(app, app_id) == ({"message": "app not found"}, 404)
 
+    def test_trigger_entry_workflow_has_no_manual_access_points(
+        self, app: Flask, sqlite_session: Session, seeded: dict[str, str]
+    ) -> None:
+        workflow_app = sqlite_session.get(App, seeded["alpha"])
+        assert workflow_app is not None
+        published = _workflow(
+            workflow_app, version="2026-01-02 00:00:00", created_by=seeded["creator"], entry_node_type="trigger-webhook"
+        )
+        sqlite_session.add(published)
+        sqlite_session.flush()
+        workflow_app.workflow_id = published.id
+        workflow_app.enable_site = True
+        workflow_app.enable_api = True
+        sqlite_session.add_all(
+            [
+                AppTrigger(
+                    tenant_id=WS_A,
+                    app_id=workflow_app.id,
+                    node_id="entry",
+                    trigger_type=AppTriggerType.TRIGGER_WEBHOOK,
+                    title="Hook",
+                ),
+                AppMCPServer(
+                    tenant_id=WS_A,
+                    app_id=workflow_app.id,
+                    name="n",
+                    description="d",
+                    server_code="mcp-code",
+                    status="active",
+                    parameters="{}",
+                ),
+            ]
+        )
+        sqlite_session.commit()
+
+        built_in = _built_in(app, seeded["alpha"])
+
+        assert (built_in.site, built_in.api, built_in.mcp_server) == (None, None, None)
+        assert [trigger.node_id for trigger in built_in.triggers] == ["entry"]
+        assert built_in.published_version is not None
+
     def test_base_urls_are_null_when_not_configured(
         self,
         app: Flask,
@@ -591,6 +633,8 @@ class TestEnterpriseAppDetail:
 
         built_in = _built_in(app, seeded["alpha"])
 
+        assert built_in.site is not None
+        assert built_in.api is not None
         assert built_in.site.app_base_url is None
         assert built_in.api.base_url is None
 
