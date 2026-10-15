@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Never, override
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel, JsonValue
@@ -60,6 +62,7 @@ from services.knowledge_fs.product_remote import (
 from services.knowledge_fs.query_images import KnowledgeFSQueryImagePreview
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedCapabilityIssuer
+from tests.unit_tests.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall
 
 
 class FailingBroker(UnexpectedCapabilityIssuer):
@@ -101,6 +104,55 @@ class FailingRemote:
         _ = request
         self.calls += 1
         raise AssertionError("must not perform SSE I/O")
+
+
+class PassThroughPayload:
+    """Opaque payload for facade methods that forward their payload to the remote call untouched."""
+
+
+@dataclass
+class ValidatedResponse:
+    """Stand-in for a patched ``model_validate`` result; the facade only reads its query images."""
+
+    query_images: list[object] = field(default_factory=list)
+    data: list[object] = field(default_factory=list)
+
+
+class ServiceBroker(UnexpectedCapabilityIssuer):
+    def __init__(self) -> None:
+        self.service_calls: list[dict[str, object]] = []
+
+    @override
+    def issue_service(
+        self,
+        *,
+        profile: KnowledgeFSServiceApiProfile,
+        operation_id: str,
+        resource_id: str | None = None,
+        trace_id: str | None = None,
+    ) -> KnowledgeFSIssuedProductCapability:
+        self.service_calls.append(
+            {"profile": profile, "operation_id": operation_id, "resource_id": resource_id, "trace_id": trace_id}
+        )
+        return KnowledgeFSIssuedProductCapability(
+            token="service-capability",
+            expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+            operation_id=operation_id,
+            knowledge_space_id="space-1",
+            knowledge_space_revision=9,
+            trace_id="trace-1",
+        )
+
+
+def _offline_facade() -> KnowledgeFSDataFacade:
+    """Facade whose broker and remote fail loudly; tests patch the delegation seam instead."""
+    return KnowledgeFSDataFacade(broker=UnexpectedCapabilityIssuer(), remote=FailingRemote())
+
+
+def _payload_dump(call: RecordedCall, *, exclude_none: bool = False) -> dict[str, object]:
+    payload = call.kwargs["payload"]
+    assert isinstance(payload, BaseModel)
+    return payload.model_dump(mode="json", by_alias=True, exclude_none=exclude_none)
 
 
 class RecordingBroker(UnexpectedCapabilityIssuer):
@@ -1902,7 +1954,7 @@ def test_active_settings_reject_concurrent_profile_migrations() -> None:
 
 
 def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
-    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
+    facade = _offline_facade()
     raw = {
         "createdAt": "2026-08-02T12:00:00Z",
         "expectedEvidenceIds": ["node-1"],
@@ -1916,7 +1968,7 @@ def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
         "tags": ["billing"],
         "updatedAt": "2026-08-02T12:00:00Z",
     }
-    interactive = MagicMock(return_value=raw)
+    interactive = CallRecorder(result=raw)
 
     with patch.object(facade, "_interactive", interactive):
         result = facade.create_golden_question(
@@ -1934,9 +1986,8 @@ def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
 
     assert result.status == "active"
     assert result.expected_evidence_ids == ["node-1"]
-    delegated = interactive.call_args.kwargs
-    assert delegated["operation_id"] == "createGoldenQuestion"
-    assert delegated["payload"].model_dump(mode="json", by_alias=True) == {
+    assert interactive.last.kwargs["operation_id"] == "createGoldenQuestion"
+    assert _payload_dump(interactive.last) == {
         "expectedEvidenceIds": ["node-1"],
         "metadata": {
             "annotation": "Reviewer note",
@@ -1949,9 +2000,9 @@ def test_golden_question_facade_binds_direct_evidence_metadata() -> None:
 
 
 def test_golden_question_update_preserves_evidence_when_new_fields_are_omitted() -> None:
-    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
-    interactive_child = MagicMock(
-        return_value={
+    facade = _offline_facade()
+    interactive_child = CallRecorder(
+        result={
             "createdAt": "2026-08-02T12:00:00Z",
             "expectedEvidenceIds": ["node-1"],
             "id": "golden-1",
@@ -1981,8 +2032,7 @@ def test_golden_question_update_preserves_evidence_when_new_fields_are_omitted()
 
     assert result.expected_evidence_ids == ["node-1"]
     assert result.match_policy == "any"
-    remote_payload = interactive_child.call_args.kwargs["payload"]
-    assert remote_payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+    assert _payload_dump(interactive_child.last, exclude_none=True) == {
         "metadata": {"annotation": "Updated note"},
         "question": "Updated question?",
         "tags": [],
@@ -1990,41 +2040,43 @@ def test_golden_question_update_preserves_evidence_when_new_fields_are_omitted()
 
 
 def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch() -> None:
-    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
-    interactive = MagicMock(
-        side_effect=[
-            {
-                "items": [
-                    {
-                        "candidates": [
-                            {
-                                "documentAssetId": "document-1",
-                                "nodeId": "node-1",
-                                "projectionId": "projection-1",
-                                "score": 0.91,
-                                "sectionPath": ["Refunds"],
-                                "text": "Refunds are available for 30 days.",
-                            }
-                        ],
-                        "evidenceText": "Refund policy",
-                        "matched": True,
-                    }
-                ]
-            },
-            {
-                "activeCount": 1,
-                "draftCount": 0,
-                "items": [
-                    {
-                        "expectedEvidenceId": "node-1",
-                        "questionId": "golden-1",
-                        "rowIndex": 0,
-                        "similarity": 0.91,
-                        "status": "active",
-                    }
-                ],
-            },
-        ]
+    facade = _offline_facade()
+    interactive = CallRecorder(
+        outcomes=deque(
+            [
+                {
+                    "items": [
+                        {
+                            "candidates": [
+                                {
+                                    "documentAssetId": "document-1",
+                                    "nodeId": "node-1",
+                                    "projectionId": "projection-1",
+                                    "score": 0.91,
+                                    "sectionPath": ["Refunds"],
+                                    "text": "Refunds are available for 30 days.",
+                                }
+                            ],
+                            "evidenceText": "Refund policy",
+                            "matched": True,
+                        }
+                    ]
+                },
+                {
+                    "activeCount": 1,
+                    "draftCount": 0,
+                    "items": [
+                        {
+                            "expectedEvidenceId": "node-1",
+                            "questionId": "golden-1",
+                            "rowIndex": 0,
+                            "similarity": 0.91,
+                            "status": "active",
+                        }
+                    ],
+                },
+            ]
+        )
     )
 
     with patch.object(facade, "_interactive", interactive):
@@ -2053,18 +2105,16 @@ def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch()
     assert match.candidates[0].node_id == "node-1"
     assert imported.active_count == 1
     assert imported.items[0].question_id == "golden-1"
-    assert [call.kwargs["operation_id"] for call in interactive.call_args_list] == [
+    assert [call.kwargs["operation_id"] for call in interactive.calls] == [
         "matchGoldenQuestionEvidence",
         "bulkImportGoldenQuestions",
     ]
-    assert interactive.call_args_list[0].kwargs["payload"].model_dump(
-        mode="json", by_alias=True, exclude_none=True
-    ) == {
+    assert _payload_dump(interactive.calls[0], exclude_none=True) == {
         "evidenceTexts": ["Refund policy"],
         "minimumSimilarity": 0.7,
         "topK": 5,
     }
-    assert interactive.call_args_list[1].kwargs["payload"].model_dump(mode="json", by_alias=True) == {
+    assert _payload_dump(interactive.calls[1]) == {
         "matchPolicy": "all",
         "minimumSimilarity": 0.7,
         "rows": [
@@ -2082,9 +2132,9 @@ def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch()
 
 
 def test_golden_question_facade_resolves_saved_evidence_ids_without_a_search_term() -> None:
-    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
-    interactive = MagicMock(
-        return_value={
+    facade = _offline_facade()
+    interactive = CallRecorder(
+        result={
             "items": [],
             "resolvedEvidence": [
                 {
@@ -2111,7 +2161,7 @@ def test_golden_question_facade_resolves_saved_evidence_ids_without_a_search_ter
     assert result.candidates[0].node_id == "node-1"
     assert result.candidates[0].projection_id is None
     assert result.candidates[0].score is None
-    assert interactive.call_args.kwargs["payload"].model_dump(mode="json", by_alias=True, exclude_none=True) == {
+    assert _payload_dump(interactive.last, exclude_none=True) == {
         "minimumSimilarity": 0.7,
         "nodeIds": ["node-1"],
         "topK": 5,
@@ -2123,7 +2173,7 @@ def test_golden_question_facade_resolves_saved_evidence_ids_without_a_search_ter
     [None, True, 1, 1.5, [], "invalid", {}, {"items": []}, {"items": [None]}],
 )
 def test_golden_question_evidence_match_rejects_malformed_remote_response(remote_response: object) -> None:
-    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
+    facade = _offline_facade()
 
     with (
         patch.object(facade, "_interactive", return_value=remote_response),
@@ -2356,7 +2406,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             "deleteLogicalDocument",
             {
                 "document_id": "document-1",
-                "payload": MagicMock(),
+                "payload": PassThroughPayload(),
                 "idempotency_key": "delete-logical-document-once",
             },
             "document-1",
@@ -2393,7 +2443,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.update_document_metadata,
             data_facade_module.KnowledgeFSLogicalDocumentResponse,
             "updateDocumentMetadata",
-            {"document_id": "document-1", "payload": MagicMock()},
+            {"document_id": "document-1", "payload": PassThroughPayload()},
             "document-1",
         ),
         (
@@ -2414,14 +2464,14 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.bulk_delete_documents,
             data_facade_module.KnowledgeFSBulkDeletionAcceptedResponse,
             "bulkDeleteDocuments",
-            {"payload": MagicMock(), "idempotency_key": "bulk-delete-once"},
+            {"payload": PassThroughPayload(), "idempotency_key": "bulk-delete-once"},
             None,
         ),
         (
             KnowledgeFSDataFacade.reindex_documents,
             data_facade_module.KnowledgeFSDocumentReindexResponse,
             "reindexDocuments",
-            {"payload": MagicMock()},
+            {"payload": PassThroughPayload()},
             None,
         ),
         (
@@ -2484,7 +2534,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.create_quality_replay,
             data_facade_module.KnowledgeFSQualityReplayResponse,
             "createQualityReplay",
-            {"payload": MagicMock(), "idempotency_key": "quality-replay-once"},
+            {"payload": PassThroughPayload(), "idempotency_key": "quality-replay-once"},
             None,
         ),
         (
@@ -2528,7 +2578,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             "deleteSource",
             {
                 "source_id": "source-1",
-                "payload": MagicMock(),
+                "payload": PassThroughPayload(),
                 "documents": "cascade",
                 "idempotency_key": "delete-source-once",
             },
@@ -2552,7 +2602,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.create_source_connection,
             data_facade_module.KnowledgeFSSourceConnectionResponse,
             "createSourceConnection",
-            {"payload": MagicMock()},
+            {"payload": PassThroughPayload()},
             None,
         ),
         (
@@ -2566,7 +2616,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.refresh_source_connection,
             data_facade_module.KnowledgeFSSourceConnectionResponse,
             "refreshSourceConnection",
-            {"connection_id": "connection-1", "payload": MagicMock()},
+            {"connection_id": "connection-1", "payload": PassThroughPayload()},
             None,
         ),
         (
@@ -2582,7 +2632,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             "importSourceWorkflow",
             {
                 "source_id": "source-1",
-                "payload": MagicMock(),
+                "payload": PassThroughPayload(),
                 "idempotency_key": "import-source-once",
             },
             "source-1",
@@ -2598,7 +2648,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.update_source_sync_policy,
             data_facade_module.KnowledgeFSSourceSyncPolicyResponse,
             "updateSourceSyncPolicy",
-            {"source_id": "source-1", "payload": MagicMock()},
+            {"source_id": "source-1", "payload": PassThroughPayload()},
             "source-1",
         ),
         (
@@ -2612,7 +2662,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.cancel_source_workflow,
             data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "cancelSourceWorkflow",
-            {"run_id": "run-1", "payload": MagicMock()},
+            {"run_id": "run-1", "payload": PassThroughPayload()},
             "run-1",
         ),
         (
@@ -2633,7 +2683,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.select_crawl_preview_pages,
             data_facade_module.KnowledgeFSSourceWorkflowResponse,
             "selectCrawlPreviewPages",
-            {"run_id": "run-1", "payload": MagicMock(), "idempotency_key": "selection-once"},
+            {"run_id": "run-1", "payload": PassThroughPayload(), "idempotency_key": "selection-once"},
             "run-1",
         ),
         (
@@ -2654,7 +2704,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.import_source_pages,
             data_facade_module.KnowledgeFSSourceImportResponse,
             "importSourcePages",
-            {"source_id": "source-1", "payload": MagicMock()},
+            {"source_id": "source-1", "payload": PassThroughPayload()},
             "source-1",
         ),
         (
@@ -2668,14 +2718,14 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             KnowledgeFSDataFacade.import_source_files,
             data_facade_module.KnowledgeFSSourceImportResponse,
             "importSourceFiles",
-            {"source_id": "source-1", "payload": MagicMock()},
+            {"source_id": "source-1", "payload": PassThroughPayload()},
             "source-1",
         ),
         (
             KnowledgeFSDataFacade.plan_research_task,
             data_facade_module.KnowledgeFSResearchTaskPlanResponse,
             "planResearchTask",
-            {"payload": MagicMock()},
+            {"payload": PassThroughPayload()},
             None,
         ),
         (
@@ -2708,11 +2758,11 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     specific_kwargs: dict[str, object],
     child_resource_id: str | None,
 ) -> None:
-    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
-    interactive = MagicMock(return_value={})
-    interactive_child = MagicMock(return_value={})
+    facade = _offline_facade()
+    interactive = CallRecorder(result={})
+    interactive_child = CallRecorder(result={})
     response_type = response_name
-    expected_response = MagicMock(query_images=[])
+    expected_response = ValidatedResponse()
     common_kwargs = {
         "tenant_id": "tenant-1",
         "account_id": "account-1",
@@ -2729,49 +2779,54 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     assert result is expected_response
     validate.assert_called_once_with({})
     delegated = interactive_child if child_resource_id is not None else interactive
-    delegated.assert_called_once()
-    assert delegated.call_args.kwargs["operation_id"] == operation_id
+    idle = interactive if child_resource_id is not None else interactive_child
+    assert len(delegated.calls) == 1
+    assert idle.calls == []
+    delegated_kwargs = delegated.last.kwargs
+    assert delegated_kwargs["operation_id"] == operation_id
+    if "payload" in specific_kwargs:
+        assert delegated_kwargs["payload"] is specific_kwargs["payload"]
     if operation_id == "listBackgroundTasks":
         expected_query = (("limit", "25"),)
         if specific_kwargs.get("cursor"):
             expected_query += (("cursor", specific_kwargs["cursor"]),)
         if specific_kwargs.get("task_ids"):
             expected_query += (("taskIds", specific_kwargs["task_ids"]),)
-        assert delegated.call_args.kwargs["query"] == expected_query
+        assert delegated_kwargs["query"] == expected_query
 
     if child_resource_id is not None:
-        assert delegated.call_args.kwargs["resource_id"] == child_resource_id
+        assert delegated_kwargs["resource_id"] == child_resource_id
     if operation_id == "listDocumentRevisions":
-        assert delegated.call_args.kwargs["query"] == (("cursor", "cursor-1"), ("limit", "1"))
+        assert delegated_kwargs["query"] == (("cursor", "cursor-1"), ("limit", "1"))
     if operation_id in {"listGoldenQuestions", "listQualityBadCases"}:
-        assert delegated.call_args.kwargs["query"] == (("limit", "25"), ("cursor", "cursor-1"))
+        assert delegated_kwargs["query"] == (("limit", "25"), ("cursor", "cursor-1"))
     if operation_id == "createQualityReplay":
-        assert delegated.call_args.kwargs["headers"] == (("Idempotency-Key", "quality-replay-once"),)
+        assert delegated_kwargs["headers"] == (("Idempotency-Key", "quality-replay-once"),)
     if operation_id == "listQualityReplays":
-        assert delegated.call_args.kwargs["query"] == (
+        assert delegated_kwargs["query"] == (
             ("limit", "25"),
             ("cursor", "cursor-1"),
             ("mode", "deep"),
             ("state", "passed"),
         )
     if operation_id == "getQualityReplay":
-        assert delegated.call_args.kwargs["path_parameters"] == (("runId", "replay-run-1"),)
-        assert delegated.call_args.kwargs["query"] == (("evidenceItemId", "replay-item-1"),)
+        assert delegated_kwargs["path_parameters"] == (("runId", "replay-run-1"),)
+        assert delegated_kwargs["query"] == (("evidenceItemId", "replay-item-1"),)
     if operation_id == "getOverviewQueryOutcomes":
-        assert delegated.call_args.kwargs["query"] == (("window", "7d"),)
+        assert delegated_kwargs["query"] == (("window", "7d"),)
     if operation_id == "cancelBackgroundTask":
-        assert delegated.call_args.kwargs["path_parameters"] == (
+        assert delegated_kwargs["path_parameters"] == (
             ("taskKind", "source"),
             ("taskId", "task-1"),
         )
     if operation_id == "retryBackgroundTask":
-        assert delegated.call_args.kwargs["path_parameters"] == (
+        assert delegated_kwargs["path_parameters"] == (
             ("taskKind", "document_bulk"),
             ("taskId", "task-1"),
         )
     if operation_id == "importSourceWorkflow":
-        assert delegated.call_args.kwargs["path_parameters"] == (("sourceId", "source-1"),)
-        assert delegated.call_args.kwargs["headers"] == (("Idempotency-Key", "import-source-once"),)
+        assert delegated_kwargs["path_parameters"] == (("sourceId", "source-1"),)
+        assert delegated_kwargs["headers"] == (("Idempotency-Key", "import-source-once"),)
 
 
 def test_service_settings_migration_preserves_service_identity_on_every_operation() -> None:
@@ -2788,15 +2843,7 @@ def test_service_settings_migration_preserves_service_identity_on_every_operatio
         content_policy_revision=1,
     )
     remote = ActiveSettingsRemote()
-    broker = MagicMock()
-    broker.issue_service.side_effect = lambda **kwargs: KnowledgeFSIssuedProductCapability(
-        token="service-capability",
-        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
-        operation_id=kwargs["operation_id"],
-        knowledge_space_id="space-1",
-        knowledge_space_revision=9,
-        trace_id="trace-1",
-    )
+    broker = ServiceBroker()
     facade = KnowledgeFSDataFacade(broker=broker, remote=remote)
     result = facade.update_service_settings(
         profile=profile,
@@ -2807,12 +2854,11 @@ def test_service_settings_migration_preserves_service_identity_on_every_operatio
     )
     assert result.migration is not None
     assert result.migration.run_state == "queued"
-    assert [call.kwargs["operation_id"] for call in broker.issue_service.call_args_list] == [
+    assert [call["operation_id"] for call in broker.service_calls] == [
         "getSettings",
         "updateEmbeddingProfile",
     ]
-    assert all(call.kwargs["profile"] is profile for call in broker.issue_service.call_args_list)
-    broker.issue_interactive.assert_not_called()
+    assert all(call["profile"] is profile for call in broker.service_calls)
     assert [request.path for request in remote.requests] == [
         "/knowledge-spaces/space-1/product-settings",
         "/knowledge-spaces/space-1/embedding-profile",

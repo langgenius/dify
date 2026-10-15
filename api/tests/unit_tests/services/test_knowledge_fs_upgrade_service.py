@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections import deque
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import timedelta
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from typing import cast
 
 import pytest
 from sqlalchemy import select
@@ -43,10 +45,21 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeSnapshotService,
 )
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSAppBindingPayload,
+    KnowledgeFSDocumentAvailabilityPayload,
+    KnowledgeFSDocumentMetadataPayload,
+    KnowledgeFSDocumentStagedUploadAcceptedResponse,
+    KnowledgeFSExternalAccessPayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
+    KnowledgeFSMetadataFieldCreatePayload,
     KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSSpaceCreatePayload,
+    KnowledgeFSSpaceCreateResponse,
+    KnowledgeFSStagedUploadResponse,
 )
+from tasks.knowledge_fs_initial_source_tasks import KnowledgeFSInitialSourceSubmission
+from tests.unit_tests.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall, UnusedSessionFactory
 
 _TENANT_ID = "00000000-0000-0000-0000-000000000001"
 _ACCOUNT_ID = "00000000-0000-0000-0000-000000000002"
@@ -72,6 +85,124 @@ def _job(**overrides: object) -> KnowledgeFSUpgradeJob:
     }
     values.update(overrides)
     return KnowledgeFSUpgradeJob(**values)  # type: ignore[arg-type]
+
+
+@dataclass
+class FakeRuntime:
+    """The subset of the KnowledgeFS runtime that the upgrade runner reaches through ``get_knowledge_fs_runtime``."""
+
+    facade: object = None
+    application: object = None
+    control_plane: object = None
+    app_bindings: object = None
+    space_tags: object = None
+
+
+@dataclass
+class FakeUpgradeFacade:
+    list_metadata_fields: CallRecorder = field(default_factory=CallRecorder)
+    create_metadata_field: CallRecorder = field(default_factory=CallRecorder)
+    list_logical_documents: CallRecorder = field(default_factory=CallRecorder)
+    update_document_metadata: CallRecorder = field(default_factory=CallRecorder)
+    update_logical_document_availability: CallRecorder = field(default_factory=CallRecorder)
+
+
+@dataclass
+class FakeControlPlane:
+    replace_members: CallRecorder = field(default_factory=CallRecorder)
+    update_visibility: CallRecorder = field(default_factory=CallRecorder)
+    update_external_access: CallRecorder = field(default_factory=CallRecorder)
+
+
+@dataclass
+class FakeAppBindings:
+    upsert: CallRecorder = field(default_factory=CallRecorder)
+
+
+@dataclass
+class FakeSpaceTags:
+    replace_tags: CallRecorder = field(default_factory=CallRecorder)
+
+
+@dataclass
+class FakeApplication:
+    create_space: CallRecorder = field(default_factory=CallRecorder)
+
+
+@dataclass
+class FakeStagedUploads:
+    staged: deque[KnowledgeFSStagedUploadResponse] = field(default_factory=deque)
+    claimed: deque[KnowledgeFSDocumentStagedUploadAcceptedResponse] = field(default_factory=deque)
+    stage_calls: list[dict[str, object]] = field(default_factory=list)
+    claim_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def stage(self, **kwargs: object) -> KnowledgeFSStagedUploadResponse:
+        self.stage_calls.append(kwargs)
+        return self.staged.popleft()
+
+    def claim(self, **kwargs: object) -> KnowledgeFSDocumentStagedUploadAcceptedResponse:
+        self.claim_calls.append(kwargs)
+        return self.claimed.popleft()
+
+
+@dataclass(frozen=True)
+class FakeModelProvider:
+    provider: str
+
+
+@dataclass(frozen=True)
+class FakeActiveModel:
+    provider: FakeModelProvider
+    model: str
+
+
+@dataclass
+class FakeProviderConfigurations:
+    models_by_type: Mapping[ModelType, list[FakeActiveModel]]
+
+    def get_models(self, *, model_type: ModelType, only_active: bool) -> list[FakeActiveModel]:
+        assert only_active is True
+        return self.models_by_type[model_type]
+
+
+@dataclass
+class FakeProviderManager:
+    configurations: FakeProviderConfigurations
+    defaults: Mapping[ModelType, FakeActiveModel]
+    default_requests: list[tuple[str, ModelType]] = field(default_factory=list)
+
+    def get_configurations(self, tenant_id: str) -> FakeProviderConfigurations:
+        assert tenant_id == _TENANT_ID
+        return self.configurations
+
+    def get_default_model(self, *, tenant_id: str, model_type: ModelType) -> FakeActiveModel | None:
+        self.default_requests.append((tenant_id, model_type))
+        return self.defaults.get(model_type)
+
+
+def _staged_response(upload_id: str) -> KnowledgeFSStagedUploadResponse:
+    return KnowledgeFSStagedUploadResponse.model_validate(
+        {
+            "id": upload_id,
+            "fileName": "shared.txt",
+            "contentType": "text/plain",
+            "sizeBytes": 11,
+            "status": "uploaded",
+            "expiresAt": "2026-08-17T00:00:00Z",
+        }
+    )
+
+
+def _claimed_response(asset_id: str, compilation_job_id: str) -> KnowledgeFSDocumentStagedUploadAcceptedResponse:
+    return KnowledgeFSDocumentStagedUploadAcceptedResponse(
+        upload_id=f"upload-{asset_id}",
+        document_asset_id=asset_id,
+        compilation_job_id=compilation_job_id,
+    )
+
+
+def _unused_runner() -> KnowledgeFSUpgradeRunner:
+    return KnowledgeFSUpgradeRunner(cast("sessionmaker[Session]", UnusedSessionFactory()))
 
 
 def _logical_document(*, enabled: bool, row_version: int = 1) -> KnowledgeFSLogicalDocumentResponse:
@@ -561,14 +692,17 @@ def test_shared_source_file_lease_is_released_after_every_document_handoff(
         )
         session.add(lease)
 
-    staged = MagicMock()
-    staged.stage.side_effect = [SimpleNamespace(id="staged-1"), SimpleNamespace(id="staged-2")]
-    staged.claim.side_effect = [
-        SimpleNamespace(document_asset_id="asset-1", compilation_job_id="compilation-1"),
-        SimpleNamespace(document_asset_id="asset-2", compilation_job_id="compilation-2"),
-    ]
+    staged = FakeStagedUploads(
+        staged=deque([_staged_response("staged-1"), _staged_response("staged-2")]),
+        claimed=deque(
+            [
+                _claimed_response("asset-1", "compilation-1"),
+                _claimed_response("asset-2", "compilation-2"),
+            ]
+        ),
+    )
     monkeypatch.setattr(upgrade_module, "KnowledgeFSStagedUploadService", lambda *_args, **_kwargs: staged)
-    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: SimpleNamespace(facade=MagicMock()))
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=FakeUpgradeFacade()))
     monkeypatch.setattr(upgrade_module.storage, "load", lambda _key: b"shared body")
     monkeypatch.setattr(
         upgrade_module.FeatureService,
@@ -589,6 +723,8 @@ def test_shared_source_file_lease_is_released_after_every_document_handoff(
         assert persisted is not None
         assert persisted.status is KnowledgeFSUpgradeFileLeaseStatus.RELEASED
         assert persisted.released_at is not None
+    assert [call["body"] for call in staged.stage_calls] == [b"shared body", b"shared body"]
+    assert len(staged.claim_calls) == 2
 
 
 def test_reconciler_applies_metadata_then_snapshot_availability(
@@ -622,24 +758,27 @@ def test_reconciler_applies_metadata_then_snapshot_availability(
     initial = _logical_document(enabled=True, row_version=1)
     after_metadata = initial.model_copy(update={"row_version": 2})
     after_availability = after_metadata.model_copy(update={"enabled": False, "row_version": 3})
-    facade = MagicMock()
-    facade.list_logical_documents.return_value = KnowledgeFSLogicalDocumentListResponse(
-        data=[initial], next_cursor=None
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[initial], next_cursor=None)
+        ),
+        update_document_metadata=CallRecorder(result=after_metadata),
+        update_logical_document_availability=CallRecorder(result=after_availability),
     )
-    facade.update_document_metadata.return_value = after_metadata
-    facade.update_logical_document_availability.return_value = after_availability
     monkeypatch.setattr(
         upgrade_module,
         "get_knowledge_fs_runtime",
-        lambda _: SimpleNamespace(facade=facade),
+        lambda _: FakeRuntime(facade=facade),
     )
 
     assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 0
 
-    metadata_payload = facade.update_document_metadata.call_args.kwargs["payload"]
+    metadata_payload = facade.update_document_metadata.last.kwargs["payload"]
+    assert isinstance(metadata_payload, KnowledgeFSDocumentMetadataPayload)
     assert metadata_payload.expected_row_version == 1
     assert metadata_payload.patch == {"department": "support"}
-    availability_payload = facade.update_logical_document_availability.call_args.kwargs["payload"]
+    availability_payload = facade.update_logical_document_availability.last.kwargs["payload"]
+    assert isinstance(availability_payload, KnowledgeFSDocumentAvailabilityPayload)
     assert availability_payload.expected_row_version == 2
     assert availability_payload.enabled is False
     with sqlite_session_factory() as session:
@@ -661,8 +800,8 @@ def test_metadata_fields_are_created_idempotently() -> None:
             ]
         },
     )
-    facade = MagicMock()
-    facade.list_metadata_fields.return_value = KnowledgeFSMetadataFieldListResponse(
+    facade = FakeUpgradeFacade()
+    facade.list_metadata_fields.result = KnowledgeFSMetadataFieldListResponse(
         data=[
             {
                 "id": "field-1",
@@ -679,15 +818,17 @@ def test_metadata_fields_are_created_idempotently() -> None:
 
     upgrade_module._migrate_metadata_fields(job, facade)
 
-    facade.create_metadata_field.assert_called_once()
-    assert facade.create_metadata_field.call_args.kwargs["payload"].model_dump() == {
+    assert len(facade.create_metadata_field.calls) == 1
+    created = facade.create_metadata_field.last.kwargs["payload"]
+    assert isinstance(created, KnowledgeFSMetadataFieldCreatePayload)
+    assert created.model_dump() == {
         "name": "priority",
         "type": "number",
     }
 
 
-def _active_model(provider: str, model: str) -> SimpleNamespace:
-    return SimpleNamespace(provider=SimpleNamespace(provider=provider), model=model)
+def _active_model(provider: str, model: str) -> FakeActiveModel:
+    return FakeActiveModel(provider=FakeModelProvider(provider=provider), model=model)
 
 
 def test_configuration_prefers_active_legacy_models_and_uses_default_reasoning(
@@ -701,11 +842,10 @@ def test_configuration_prefers_active_legacy_models_and_uses_default_reasoning(
         ModelType.RERANK: [rerank],
         ModelType.LLM: [reasoning],
     }
-    configurations = MagicMock()
-    configurations.get_models.side_effect = lambda *, model_type, **_kwargs: models_by_type[model_type]
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value = configurations
-    provider_manager.get_default_model.return_value = reasoning
+    provider_manager = FakeProviderManager(
+        configurations=FakeProviderConfigurations(models_by_type),
+        defaults={ModelType.LLM: reasoning},
+    )
     monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: provider_manager)
     job = _job(
         config_snapshot={
@@ -747,7 +887,7 @@ def test_configuration_prefers_active_legacy_models_and_uses_default_reasoning(
     }
     assert retrieval["scoreThreshold"] == {"enabled": True, "stage": "mode-final", "value": 0.72}
     assert retrieval["topK"] == 12
-    provider_manager.get_default_model.assert_called_once_with(tenant_id=_TENANT_ID, model_type=ModelType.LLM)
+    assert provider_manager.default_requests == [(_TENANT_ID, ModelType.LLM)]
 
 
 def test_configuration_falls_back_to_active_workspace_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -756,11 +896,10 @@ def test_configuration_falls_back_to_active_workspace_defaults(monkeypatch: pyte
         ModelType.RERANK: _active_model("langgenius/cohere/cohere", "rerank-default"),
         ModelType.LLM: _active_model("langgenius/anthropic/anthropic", "reasoning-default"),
     }
-    configurations = MagicMock()
-    configurations.get_models.side_effect = lambda *, model_type, **_kwargs: [defaults[model_type]]
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value = configurations
-    provider_manager.get_default_model.side_effect = lambda *, model_type, **_kwargs: defaults[model_type]
+    provider_manager = FakeProviderManager(
+        configurations=FakeProviderConfigurations({model_type: [model] for model_type, model in defaults.items()}),
+        defaults=defaults,
+    )
     monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: provider_manager)
     job = _job(
         config_snapshot={
@@ -799,13 +938,9 @@ def test_configuration_fails_when_workspace_default_reasoning_model_is_missing(
     models_by_type = {
         ModelType.TEXT_EMBEDDING: [embedding],
         ModelType.RERANK: [rerank],
-        ModelType.LLM: list[str](),
+        ModelType.LLM: list[FakeActiveModel](),
     }
-    configurations = MagicMock()
-    configurations.get_models.side_effect = lambda *, model_type, **_kwargs: models_by_type[model_type]
-    provider_manager = MagicMock()
-    provider_manager.get_configurations.return_value = configurations
-    provider_manager.get_default_model.return_value = None
+    provider_manager = FakeProviderManager(configurations=FakeProviderConfigurations(models_by_type), defaults={})
     monkeypatch.setattr(upgrade_module, "create_plugin_provider_manager", lambda **_kwargs: provider_manager)
     job = _job(
         config_snapshot={
@@ -846,34 +981,42 @@ def test_access_migration_maps_visibility_members_apps_api_and_tags(
     with sqlite_session_factory.begin() as session:
         session.add(job)
 
-    runtime = SimpleNamespace(
-        facade=MagicMock(),
-        control_plane=MagicMock(),
-        app_bindings=MagicMock(),
-        space_tags=MagicMock(),
+    facade = FakeUpgradeFacade()
+    control_plane = FakeControlPlane()
+    app_bindings = FakeAppBindings()
+    space_tags = FakeSpaceTags()
+    runtime = FakeRuntime(
+        facade=facade,
+        control_plane=control_plane,
+        app_bindings=app_bindings,
+        space_tags=space_tags,
     )
     monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: runtime)
 
     KnowledgeFSUpgradeRunner(sqlite_session_factory)._migrate_access(job)
 
-    members = runtime.control_plane.replace_members.call_args.kwargs["members"]
+    assert facade.list_metadata_fields.calls == []
+    members = control_plane.replace_members.last.kwargs["members"]
+    assert isinstance(members, list)
     assert len(members) == 1
     assert members[0].account_id == viewer_id
     assert members[0].role is KnowledgeFSControlSpacePermissionRole.VIEWER
-    assert runtime.control_plane.update_visibility.call_args.kwargs["visibility"] is (
+    assert control_plane.update_visibility.last.kwargs["visibility"] is (
         KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS
     )
-    external_access = runtime.control_plane.update_external_access.call_args.kwargs["payload"]
+    external_access = control_plane.update_external_access.last.kwargs["payload"]
+    assert isinstance(external_access, KnowledgeFSExternalAccessPayload)
     assert external_access.service_api_enabled is True
     assert external_access.agent_enabled is True
     assert external_access.workflow_enabled is True
     assert external_access.mcp_enabled is False
-    binding_payloads = [call.kwargs["payload"] for call in runtime.app_bindings.upsert.call_args_list]
-    assert [payload.caller_kind for payload in binding_payloads] == [
+    binding_payloads = [call.kwargs["payload"] for call in app_bindings.upsert.calls]
+    assert all(isinstance(payload, KnowledgeFSAppBindingPayload) for payload in binding_payloads)
+    assert [cast(KnowledgeFSAppBindingPayload, payload).caller_kind for payload in binding_payloads] == [
         KnowledgeFSAppSpaceJoinType.AGENT,
         KnowledgeFSAppSpaceJoinType.WORKFLOW,
     ]
-    assert runtime.space_tags.replace_tags.call_args.kwargs["tag_ids"] == job.tag_ids_snapshot
+    assert space_tags.replace_tags.last.kwargs["tag_ids"] == job.tag_ids_snapshot
     with sqlite_session_factory() as session:
         persisted = session.get(KnowledgeFSUpgradeJob, job.id)
         assert persisted is not None
@@ -895,45 +1038,51 @@ def test_runner_dispatches_each_durable_stage(
     method_name: str,
     result: bool | None,
     expected: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     job = _job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=stage)
-    runner = KnowledgeFSUpgradeRunner(MagicMock())
-    runner._load_job = MagicMock(return_value=job)  # type: ignore[method-assign]
-    runner._mark_running = MagicMock()  # type: ignore[method-assign]
-    stage_method = MagicMock(return_value=result)
-    setattr(runner, method_name, stage_method)
+    runner = _unused_runner()
+    mark_running = CallRecorder()
+    stage_method = CallRecorder(result=result)
+    monkeypatch.setattr(runner, "_load_job", CallRecorder(result=job))
+    monkeypatch.setattr(runner, "_mark_running", mark_running)
+    monkeypatch.setattr(runner, method_name, stage_method)
 
     assert runner.run_next(job_id=job.id, celery_task_id="task-1") is expected
 
-    runner._mark_running.assert_called_once_with(job_id=job.id, celery_task_id="task-1")
-    stage_method.assert_called_once_with(job)
+    assert mark_running.calls == [RecordedCall((), {"job_id": job.id, "celery_task_id": "task-1"})]
+    assert stage_method.calls == [RecordedCall((job,), {})]
 
 
-def test_runner_validation_creates_space_and_waits() -> None:
+def test_runner_validation_creates_space_and_waits(monkeypatch: pytest.MonkeyPatch) -> None:
     job = _job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=KnowledgeFSUpgradeStage.VALIDATING)
-    runner = KnowledgeFSUpgradeRunner(MagicMock())
-    runner._load_job = MagicMock(return_value=job)  # type: ignore[method-assign]
-    runner._mark_running = MagicMock()  # type: ignore[method-assign]
-    runner._create_space = MagicMock()  # type: ignore[method-assign]
+    runner = _unused_runner()
+    create_space = CallRecorder()
+    monkeypatch.setattr(runner, "_load_job", CallRecorder(result=job))
+    monkeypatch.setattr(runner, "_mark_running", CallRecorder())
+    monkeypatch.setattr(runner, "_create_space", create_space)
 
     with pytest.raises(KnowledgeFSUpgradeNotReadyError, match="provisioning is pending"):
         runner.run_next(job_id=job.id)
 
-    runner._create_space.assert_called_once_with(job)
+    assert create_space.calls == [RecordedCall((job,), {})]
 
 
-def test_runner_terminal_and_unknown_stages_do_not_continue() -> None:
-    runner = KnowledgeFSUpgradeRunner(MagicMock())
-    runner._mark_running = MagicMock()  # type: ignore[method-assign]
-    runner._load_job = MagicMock(return_value=_job(status=KnowledgeFSUpgradeJobStatus.SUCCEEDED))  # type: ignore[method-assign]
+def test_runner_terminal_and_unknown_stages_do_not_continue(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = _unused_runner()
+    mark_running = CallRecorder()
+    monkeypatch.setattr(runner, "_mark_running", mark_running)
+    monkeypatch.setattr(runner, "_load_job", CallRecorder(result=_job(status=KnowledgeFSUpgradeJobStatus.SUCCEEDED)))
     assert runner.run_next(job_id="done") is False
-    runner._mark_running.assert_not_called()
+    assert mark_running.calls == []
 
-    runner._load_job = MagicMock(  # type: ignore[method-assign]
-        return_value=_job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=KnowledgeFSUpgradeStage.COMPLETED)
+    monkeypatch.setattr(
+        runner,
+        "_load_job",
+        CallRecorder(result=_job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=KnowledgeFSUpgradeStage.COMPLETED)),
     )
     assert runner.run_next(job_id="completed-stage") is False
-    runner._mark_running.assert_called_once()
+    assert len(mark_running.calls) == 1
 
 
 def test_runner_failure_loading_and_running_state_are_persisted(
@@ -1009,18 +1158,27 @@ def test_runner_creates_space_and_advances_after_activation(
     with sqlite_session_factory.begin() as session:
         session.add(job)
 
-    application = MagicMock()
-    application.create_space.return_value = SimpleNamespace(control_space_id=_CONTROL_SPACE_ID)
+    application = FakeApplication(
+        create_space=CallRecorder(
+            result=KnowledgeFSSpaceCreateResponse(
+                control_space_id=_CONTROL_SPACE_ID,
+                state=KnowledgeFSControlSpaceState.PROVISIONING,
+                operation_id="operation-1",
+                model_setup_required=False,
+            )
+        )
+    )
     monkeypatch.setattr(upgrade_module, "_resolve_configuration", lambda _job: _resolved_configuration())
     monkeypatch.setattr(
         upgrade_module,
         "get_knowledge_fs_runtime",
-        lambda _: SimpleNamespace(application=application),
+        lambda _: FakeRuntime(application=application),
     )
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
     runner._create_space(job)
 
-    payload = application.create_space.call_args.kwargs["payload"]
+    payload = application.create_space.last.kwargs["payload"]
+    assert isinstance(payload, KnowledgeFSSpaceCreatePayload)
     assert payload.name == "Legacy"
     assert payload.idempotency_key == f"upgrade:{job.id}:space"
     with sqlite_session_factory.begin() as session:
@@ -1138,8 +1296,8 @@ def test_runner_creates_source_and_marks_its_documents_handed_off(
 
     from tasks import knowledge_fs_initial_source_tasks as source_tasks
 
-    submit = MagicMock(
-        return_value=SimpleNamespace(
+    submit = CallRecorder(
+        result=KnowledgeFSInitialSourceSubmission(
             connection_id="connection-1",
             source_id="source-1",
             workflow_id="workflow-1",
@@ -1149,6 +1307,7 @@ def test_runner_creates_source_and_marks_its_documents_handed_off(
     monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", submit)
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
     assert runner._create_next_source(job) is True
+    assert len(submit.calls) == 1
 
     with sqlite_session_factory() as session:
         persisted_job = session.get(KnowledgeFSUpgradeJob, job.id)
@@ -1199,7 +1358,7 @@ def test_runner_source_failure_is_retryable_or_persisted(
     error: Exception = (
         source_tasks.KnowledgeFSInitialSourceNotReadyError("busy") if not_ready else RuntimeError("source failed")
     )
-    monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", MagicMock(side_effect=error))
+    monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", CallRecorder(error=error))
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
 
     expected_error = KnowledgeFSUpgradeNotReadyError if not_ready else RuntimeError
@@ -1459,9 +1618,9 @@ def test_document_submission_persists_missing_file_and_invalid_body_errors(
         )
         session.add(missing)
 
-    staged = MagicMock()
+    staged = FakeStagedUploads()
     monkeypatch.setattr(upgrade_module, "KnowledgeFSStagedUploadService", lambda *_args, **_kwargs: staged)
-    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: SimpleNamespace(facade=MagicMock()))
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=FakeUpgradeFacade()))
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
     with pytest.raises(KnowledgeFSUpgradeError, match="source file is unavailable"):
         runner._submit_next_document(job)
@@ -1507,6 +1666,8 @@ def test_document_submission_persists_missing_file_and_invalid_body_errors(
         persisted_invalid = session.get(KnowledgeFSUpgradeDocument, invalid.id)
         assert persisted_invalid is not None
         assert persisted_invalid.status is KnowledgeFSUpgradeItemStatus.FAILED
+    assert staged.stage_calls == []
+    assert staged.claim_calls == []
 
 
 def test_reconciler_records_missing_remote_document_and_remote_error(
@@ -1559,12 +1720,13 @@ def test_reconciler_records_missing_remote_document_and_remote_error(
         )
         session.add_all([source, missing, remote_error])
 
-    facade = MagicMock()
-    facade.list_logical_documents.return_value = KnowledgeFSLogicalDocumentListResponse(
-        data=[_logical_document(enabled=True)], next_cursor=None
+    facade = FakeUpgradeFacade(
+        list_logical_documents=CallRecorder(
+            result=KnowledgeFSLogicalDocumentListResponse(data=[_logical_document(enabled=True)], next_cursor=None)
+        ),
+        update_document_metadata=CallRecorder(error=RuntimeError("remote metadata failed")),
     )
-    facade.update_document_metadata.side_effect = RuntimeError("remote metadata failed")
-    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: FakeRuntime(facade=facade))
 
     assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 2
     with sqlite_session_factory() as session:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from typing import cast
 from uuid import UUID
 
 import httpx
@@ -20,7 +20,27 @@ from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSLifecycleRemoteError,
 )
 from services.knowledge_fs.lifecycle_remote_http import HTTPKnowledgeFSLifecycleRemoteClient
-from services.knowledge_fs_capability import CapabilityIssueRequest
+from services.knowledge_fs_capability import CapabilityIssueRequest, KnowledgeFSCapabilityIssuer
+
+
+@dataclass(frozen=True)
+class IssuedToken:
+    """The only part of an issued capability the lifecycle client reads."""
+
+    token: str
+
+
+@dataclass
+class RecordingCapabilityIssuer:
+    token: str
+    requests: list[CapabilityIssueRequest] = field(default_factory=list)
+
+    def issue(self, request: CapabilityIssueRequest) -> IssuedToken:
+        self.requests.append(request)
+        return IssuedToken(token=self.token)
+
+    def as_issuer(self) -> KnowledgeFSCapabilityIssuer:
+        return cast(KnowledgeFSCapabilityIssuer, self)
 
 
 def test_activation_request_is_strict_and_uses_a_safe_positive_revision() -> None:
@@ -43,8 +63,7 @@ def test_activation_request_is_strict_and_uses_a_safe_positive_revision() -> Non
 def test_activation_uses_exact_internal_worker_capability_path_body_and_ack(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="activation-capability")
+    issuer = RecordingCapabilityIssuer(token="activation-capability")
     captured: dict[str, object] = {}
     response = httpx.Response(
         200,
@@ -70,7 +89,7 @@ def test_activation_uses_exact_internal_worker_capability_path_body_and_ack(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
     request = KnowledgeFSDifyIntegrationActivationRequest(
@@ -97,7 +116,7 @@ def test_activation_uses_exact_internal_worker_capability_path_body_and_ack(
     assert isinstance(headers, dict)
     assert headers["Authorization"] == "Bearer activation-capability"
     assert headers["X-Trace-Id"] == request.activation_id
-    issued = issuer.issue.call_args.args[0]
+    issued = issuer.requests[-1]
     assert isinstance(issued, CapabilityIssueRequest)
     assert issued.operation_id == "activateDifyWorkspaceIntegration"
     assert issued.caller_kind == "internal_worker"
@@ -122,8 +141,7 @@ def test_activation_rejects_non_strict_or_mismatched_ack(
     monkeypatch: pytest.MonkeyPatch,
     response_patch: dict[str, object],
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="activation-capability")
+    issuer = RecordingCapabilityIssuer(token="activation-capability")
     payload: dict[str, object] = {
         "activationId": f"sha256:{'b' * 64}",
         "activationRevision": 12,
@@ -141,7 +159,7 @@ def test_activation_rejects_non_strict_or_mismatched_ack(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
 
@@ -160,8 +178,7 @@ def test_activation_rejects_non_strict_or_mismatched_ack(
 def test_activation_maps_remote_revision_conflict_without_accepting_an_ack(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="activation-capability")
+    issuer = RecordingCapabilityIssuer(token="activation-capability")
     response = httpx.Response(
         409,
         json={"code": "DIFY_INTEGRATION_ACTIVATION_CONFLICT", "error": "conflict"},
@@ -171,7 +188,7 @@ def test_activation_maps_remote_revision_conflict_without_accepting_an_ack(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
 
@@ -191,8 +208,7 @@ def test_activation_maps_remote_revision_conflict_without_accepting_an_ack(
 def test_freeze_uses_exact_internal_worker_capability_path_body_and_ack(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="freeze-capability")
+    issuer = RecordingCapabilityIssuer(token="freeze-capability")
     captured: dict[str, object] = {}
     response = httpx.Response(
         200,
@@ -219,7 +235,7 @@ def test_freeze_uses_exact_internal_worker_capability_path_body_and_ack(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
     request = KnowledgeFSDifyIntegrationFreezeRequest(
@@ -247,7 +263,7 @@ def test_freeze_uses_exact_internal_worker_capability_path_body_and_ack(
     assert isinstance(headers, dict)
     assert headers["Authorization"] == "Bearer freeze-capability"
     assert headers["X-Trace-Id"] == request.freeze_id
-    issued = issuer.issue.call_args.args[0]
+    issued = issuer.requests[-1]
     assert isinstance(issued, CapabilityIssueRequest)
     assert issued.operation_id == "freezeDifyWorkspaceIntegration"
     assert issued.caller_kind == "internal_worker"
@@ -258,8 +274,7 @@ def test_freeze_uses_exact_internal_worker_capability_path_body_and_ack(
 
 
 def test_freeze_rejects_mismatched_ack(monkeypatch: pytest.MonkeyPatch) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="freeze-capability")
+    issuer = RecordingCapabilityIssuer(token="freeze-capability")
     response = httpx.Response(
         200,
         json={
@@ -280,7 +295,7 @@ def test_freeze_rejects_mismatched_ack(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
 
@@ -300,8 +315,7 @@ def test_freeze_rejects_mismatched_ack(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_provision_issues_internal_worker_capability_and_maps_exact_pending_profiles(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="provision-capability")
+    issuer = RecordingCapabilityIssuer(token="provision-capability")
     captured: dict[str, object] = {}
     response = httpx.Response(
         201,
@@ -328,7 +342,7 @@ def test_provision_issues_internal_worker_capability_and_maps_exact_pending_prof
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
 
@@ -338,7 +352,7 @@ def test_provision_issues_internal_worker_capability_and_maps_exact_pending_prof
     assert result.knowledge_space_id == "10000000-0000-4000-8000-000000000001"
     assert result.provisioning_key == "dify:tenant-1:space"
     assert result.revision == 1
-    issued = issuer.issue.call_args.args[0]
+    issued = issuer.requests[-1]
     assert isinstance(issued, CapabilityIssueRequest)
     assert issued.caller_kind == "internal_worker"
     assert issued.operation_id == "provisionIntegratedKnowledgeSpace"
@@ -377,8 +391,7 @@ def test_provision_issues_internal_worker_capability_and_maps_exact_pending_prof
 
 
 def test_provision_omits_unconfigured_model_profiles(monkeypatch: pytest.MonkeyPatch) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="provision-capability")
+    issuer = RecordingCapabilityIssuer(token="provision-capability")
     captured: dict[str, object] = {}
     response = httpx.Response(
         201,
@@ -399,7 +412,7 @@ def test_provision_omits_unconfigured_model_profiles(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
 
@@ -417,8 +430,7 @@ def test_provision_omits_unconfigured_model_profiles(monkeypatch: pytest.MonkeyP
 def test_delete_maps_durable_progress_and_sends_all_lifecycle_identities(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="delete-capability")
+    issuer = RecordingCapabilityIssuer(token="delete-capability")
     captured: dict[str, object] = {}
     response = httpx.Response(
         202,
@@ -438,7 +450,7 @@ def test_delete_maps_durable_progress_and_sends_all_lifecycle_identities(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
     request = _deletion_request()
@@ -458,7 +470,7 @@ def test_delete_maps_durable_progress_and_sends_all_lifecycle_identities(
         "operationId": "40000000-0000-4000-8000-000000000001",
         "provisioningKey": "dify:tenant-1:space",
     }
-    issued = issuer.issue.call_args.args[0]
+    issued = issuer.requests[-1]
     assert issued.operation_id == "deleteIntegratedKnowledgeSpace"
     assert issued.resource.type == "knowledge_space"
     assert issued.resource.id == request.knowledge_space_id
@@ -467,8 +479,7 @@ def test_delete_maps_durable_progress_and_sends_all_lifecycle_identities(
 def test_revoke_capability_grant_sends_monotonic_event_and_maps_ack(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="revoke-capability")
+    issuer = RecordingCapabilityIssuer(token="revoke-capability")
     captured: dict[str, object] = {}
     response = httpx.Response(
         200,
@@ -488,7 +499,7 @@ def test_revoke_capability_grant_sends_monotonic_event_and_maps_ack(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
     request = KnowledgeFSCapabilityGrantRevokeRequest(
@@ -519,7 +530,7 @@ def test_revoke_capability_grant_sends_monotonic_event_and_maps_ack(
         "reasonCode": "permission_revoked",
         "revokeSequence": 7,
     }
-    issued = issuer.issue.call_args.args[0]
+    issued = issuer.requests[-1]
     assert isinstance(issued, CapabilityIssueRequest)
     assert issued.operation_id == "revokeCapabilityGrant"
     assert issued.grant_id == request.operation_id
@@ -530,8 +541,7 @@ def test_revoke_capability_grant_sends_monotonic_event_and_maps_ack(
 def test_list_paginates_with_one_namespace_capability_and_reconstructs_provisioning_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="list-capability")
+    issuer = RecordingCapabilityIssuer(token="list-capability")
     responses = iter(
         tuple(
             response
@@ -560,7 +570,7 @@ def test_list_paginates_with_one_namespace_capability_and_reconstructs_provision
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
 
@@ -568,8 +578,8 @@ def test_list_paginates_with_one_namespace_capability_and_reconstructs_provision
     spaces = remote.list_spaces(namespace_id="tenant-1", control_space_id=control_space_id)
 
     assert [space.provisioning_key for space in spaces] == ["dify:tenant-1:space-a", "dify:tenant-1:space-b"]
-    assert issuer.issue.call_count == 1
-    issued = issuer.issue.call_args.args[0]
+    assert len(issuer.requests) == 1
+    issued = issuer.requests[-1]
     assert issued.control_space_id == control_space_id
     assert requests[0]["params"] == (("limit", "100"),)
     assert requests[1]["params"] == (("limit", "100"), ("cursor", "cursor-2"))
@@ -580,9 +590,9 @@ def test_list_paginates_with_one_namespace_capability_and_reconstructs_provision
         )
         == spaces[1]
     )
-    assert issuer.issue.call_count == 2
-    first_list_grant = issuer.issue.call_args_list[0].args[0]
-    second_list_grant = issuer.issue.call_args_list[1].args[0]
+    assert len(issuer.requests) == 2
+    first_list_grant = issuer.requests[0]
+    second_list_grant = issuer.requests[1]
     assert UUID(first_list_grant.grant_id)
     assert UUID(second_list_grant.grant_id)
     assert first_list_grant.grant_id == first_list_grant.trace_id
@@ -593,8 +603,7 @@ def test_list_paginates_with_one_namespace_capability_and_reconstructs_provision
 def test_delete_recovers_lost_ack_space_with_real_control_identity_and_remote_revision(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="capability")
+    issuer = RecordingCapabilityIssuer(token="capability")
     captured: list[dict[str, object]] = []
     responses = iter(
         (
@@ -619,7 +628,7 @@ def test_delete_recovers_lost_ack_space_with_real_control_identity_and_remote_re
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
     request = _deletion_request()._replace(
@@ -639,7 +648,7 @@ def test_delete_recovers_lost_ack_space_with_real_control_identity_and_remote_re
         "operationId": request.operation_id,
         "provisioningKey": request.provisioning_key,
     }
-    assert [call.args[0].control_space_id for call in issuer.issue.call_args_list] == [
+    assert [issued.control_space_id for issued in issuer.requests] == [
         request.control_space_id,
         request.control_space_id,
     ]
@@ -648,8 +657,7 @@ def test_delete_recovers_lost_ack_space_with_real_control_identity_and_remote_re
 def test_remote_rejects_unscoped_reconciliation_and_invalid_or_error_responses_before_repair(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    issuer = MagicMock()
-    issuer.issue.return_value = SimpleNamespace(token="capability")
+    issuer = RecordingCapabilityIssuer(token="capability")
     calls = 0
 
     def fake_make_request(**_: object) -> httpx.Response:
@@ -661,7 +669,7 @@ def test_remote_rejects_unscoped_reconciliation_and_invalid_or_error_responses_b
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
     remote = HTTPKnowledgeFSLifecycleRemoteClient(
         base_url="https://knowledge-fs.test",
-        issuer=issuer,
+        issuer=issuer.as_issuer(),
         timeout_seconds=3,
     )
 

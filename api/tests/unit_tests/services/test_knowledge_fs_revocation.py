@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from operator import itemgetter
-from types import SimpleNamespace
 from typing import Never, cast, override
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
@@ -16,6 +16,7 @@ from models.knowledge_fs import (
     KnowledgeFSCapabilityClaimsSummary,
     KnowledgeFSCapabilityIssuanceAudit,
     KnowledgeFSCapabilityIssuanceReservation,
+    KnowledgeFSCapabilityReservationSummary,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
     KnowledgeFSLifecycleOperation,
@@ -31,7 +32,12 @@ from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSRemoteSpace,
 )
 from services.knowledge_fs.lifecycle_saga import KnowledgeFSLifecycleSagaRunner
-from services.knowledge_fs.observability import KnowledgeFSLifecycleTaskMetric
+from services.knowledge_fs.observability import (
+    KnowledgeFSBatchStatusMetric,
+    KnowledgeFSCapabilityIssuanceMetric,
+    KnowledgeFSControlSpaceStateMetric,
+    KnowledgeFSLifecycleTaskMetric,
+)
 from services.knowledge_fs.revocation_commands import (
     KnowledgeFSRevocationCommandError,
     KnowledgeFSRevocationCommandProducer,
@@ -71,6 +77,95 @@ class FakeRemote(UnexpectedLifecycleRemote):
     @override
     def list_spaces(self, *, namespace_id: str, control_space_id: str) -> Never:
         raise AssertionError((namespace_id, control_space_id))
+
+
+@dataclass
+class RecordingMetrics:
+    lifecycle_tasks: list[KnowledgeFSLifecycleTaskMetric] = field(default_factory=list)
+
+    def record_batch_status(self, event: KnowledgeFSBatchStatusMetric) -> None:
+        raise AssertionError(event)
+
+    def record_capability_issuance(self, event: KnowledgeFSCapabilityIssuanceMetric) -> None:
+        raise AssertionError(event)
+
+    def record_control_space_state(self, event: KnowledgeFSControlSpaceStateMetric) -> None:
+        raise AssertionError(event)
+
+    def record_lifecycle_task(self, event: KnowledgeFSLifecycleTaskMetric) -> None:
+        self.lifecycle_tasks.append(event)
+
+    def register_control_space_state_gauge(self, read_counts: Callable[[], object]) -> None:
+        raise AssertionError(read_counts)
+
+
+class ScriptedSession:
+    """Replays queued ``scalar``/``scalars`` results in call order, ignoring the statements."""
+
+    def __init__(
+        self, *, scalar_results: tuple[object, ...] = (), scalars_results: tuple[tuple[object, ...], ...] = ()
+    ) -> None:
+        self._scalar_results = deque(scalar_results)
+        self._scalars_results = deque(scalars_results)
+
+    def scalar(self, _statement: object) -> object:
+        return self._scalar_results.popleft()
+
+    def scalars(self, _statement: object) -> tuple[object, ...]:
+        return self._scalars_results.popleft()
+
+
+def _unused_session() -> Session:
+    return Session()
+
+
+def _control_space(*, knowledge_space_id: str | None) -> KnowledgeFSControlSpace:
+    return KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="owner-1",
+        provisioning_key="provision-1",
+        knowledge_space_id=knowledge_space_id,
+    )
+
+
+def _revision() -> KnowledgeFSAuthorizationRevision:
+    return KnowledgeFSAuthorizationRevision(tenant_id="tenant-1", control_space_id="control-1")
+
+
+def _claims_audit(claims: dict[str, object]) -> KnowledgeFSCapabilityIssuanceAudit:
+    return KnowledgeFSCapabilityIssuanceAudit(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        trace_id="trace-1",
+        jti_hash="sha256:" + "a" * 64,
+        claims_summary=cast(KnowledgeFSCapabilityClaimsSummary, claims),
+    )
+
+
+def _reservation(
+    *, summary: dict[str, object], subject: str, caller_kind: str, grant_id: str = _GRANT_A
+) -> KnowledgeFSCapabilityIssuanceReservation:
+    return KnowledgeFSCapabilityIssuanceReservation(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        grant_id=grant_id,
+        trace_id="trace-1",
+        subject=subject,
+        caller_kind=caller_kind,
+        request_summary=cast(KnowledgeFSCapabilityReservationSummary, summary),
+    )
+
+
+def _revoke_command(grant_id: str) -> KnowledgeFSLifecycleOutbox:
+    return KnowledgeFSLifecycleOutbox(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        operation_id=grant_id,
+        idempotency_key=f"kfs-revoke:{grant_id}",
+        operation=KnowledgeFSLifecycleOperation.REVOKE,
+        command_payload=cast(KnowledgeFSRevokeCommandPayload, {"grant_id": grant_id}),
+        expected_control_space_version=0,
+    )
 
 
 def _maker(sqlite_session: Session) -> sessionmaker[Session]:
@@ -221,7 +316,7 @@ def test_revoke_consumer_accepts_idempotent_or_higher_watermark_and_reconciliati
 
     remote = FakeRemote()
     remote.revoke_acks.append(KnowledgeFSCapabilityGrantRevokeAck(False, 7, "revoked"))
-    metrics = MagicMock()
+    metrics = RecordingMetrics()
     dispatched = KnowledgeFSLifecycleSagaRunner(maker, remote, metrics=metrics).dispatch_one(
         worker_id="worker-1",
         now=datetime(2026, 7, 21, 12, 0),
@@ -237,11 +332,9 @@ def test_revoke_consumer_accepts_idempotent_or_higher_watermark_and_reconciliati
     command_payload = cast(KnowledgeFSRevokeCommandPayload, command.command_payload)
     assert remote.revoke_requests[0].event_id == command_payload["event_id"]
     assert remote.revoke_requests[0].revoke_sequence == 1
-    assert metrics.record_lifecycle_task.call_args_list[-1].args == (
-        KnowledgeFSLifecycleTaskMetric(25.0, "revoke", "succeeded"),
-    )
-    assert "tenant-1" not in str(metrics.record_lifecycle_task.call_args_list)
-    assert command.id not in str(metrics.record_lifecycle_task.call_args_list)
+    assert metrics.lifecycle_tasks[-1] == KnowledgeFSLifecycleTaskMetric(25.0, "revoke", "succeeded")
+    assert "tenant-1" not in str(metrics.lifecycle_tasks)
+    assert command.id not in str(metrics.lifecycle_tasks)
 
     remote.revoke_acks.append(KnowledgeFSCapabilityGrantRevokeAck(True, 1, "revoked"))
     repaired = KnowledgeFSRevocationReconciler(maker, remote).reconcile(
@@ -272,7 +365,7 @@ def test_revoke_consumer_accepts_idempotent_or_higher_watermark_and_reconciliati
 def test_principal_revocation_rejects_unbound_operator_input(subject: str, reason: str, message: str) -> None:
     with pytest.raises(KnowledgeFSRevocationCommandError, match=message):
         KnowledgeFSRevocationCommandProducer().enqueue_principal_grants(
-            session=MagicMock(),
+            session=_unused_session(),
             tenant_id="tenant-1",
             control_space_id="control-1",
             subject=subject,
@@ -282,18 +375,15 @@ def test_principal_revocation_rejects_unbound_operator_input(subject: str, reaso
 
 def _principal_session(
     *,
-    control_space: object | None = None,
-    revision: object | None = None,
-    audits: tuple[object, ...] = (),
-    reservations: tuple[object, ...] = (),
-) -> MagicMock:
-    session = MagicMock()
-    session.scalar.side_effect = (
-        control_space if control_space is not None else None,
-        revision if revision is not None else None,
+    control_space: KnowledgeFSControlSpace | None = None,
+    revision: KnowledgeFSAuthorizationRevision | None = None,
+    audits: tuple[KnowledgeFSCapabilityIssuanceAudit, ...] = (),
+    reservations: tuple[KnowledgeFSCapabilityIssuanceReservation, ...] = (),
+) -> Session:
+    return cast(
+        Session,
+        ScriptedSession(scalar_results=(control_space, revision), scalars_results=(audits, reservations)),
     )
-    session.scalars.side_effect = (audits, reservations)
-    return session
 
 
 def test_principal_revocation_requires_control_space_revision_and_registration() -> None:
@@ -307,7 +397,7 @@ def test_principal_revocation_requires_control_space_revision_and_registration()
             reason_code="permission_revoked",
         )
 
-    control_space = SimpleNamespace(knowledge_space_id="space-1")
+    control_space = _control_space(knowledge_space_id="space-1")
     with pytest.raises(KnowledgeFSRevocationCommandError, match="revision"):
         producer.enqueue_principal_grants(
             session=_principal_session(control_space=control_space),
@@ -317,7 +407,7 @@ def test_principal_revocation_requires_control_space_revision_and_registration()
             reason_code="permission_revoked",
         )
 
-    revision = SimpleNamespace(revoke_sequence=0)
+    revision = _revision()
     assert (
         producer.enqueue_principal_grants(
             session=_principal_session(control_space=control_space, revision=revision),
@@ -329,8 +419,8 @@ def test_principal_revocation_requires_control_space_revision_and_registration()
         == ()
     )
 
-    audit = SimpleNamespace(
-        claims_summary={
+    audit = _claims_audit(
+        {
             "subject": "dify-account:member-1",
             "caller_kind": "interactive",
             "grant_id": _GRANT_A,
@@ -339,7 +429,7 @@ def test_principal_revocation_requires_control_space_revision_and_registration()
     with pytest.raises(KnowledgeFSRevocationCommandError, match="registered"):
         producer.enqueue_principal_grants(
             session=_principal_session(
-                control_space=SimpleNamespace(knowledge_space_id=None),
+                control_space=_control_space(knowledge_space_id=None),
                 revision=revision,
                 audits=(audit,),
             ),
@@ -364,9 +454,9 @@ def test_principal_revocation_revalidates_persisted_audit_bindings(
     message: str,
 ) -> None:
     session = _principal_session(
-        control_space=SimpleNamespace(knowledge_space_id="space-1"),
-        revision=SimpleNamespace(revoke_sequence=0),
-        audits=(SimpleNamespace(claims_summary=claims),),
+        control_space=_control_space(knowledge_space_id="space-1"),
+        revision=_revision(),
+        audits=(_claims_audit(claims),),
     )
 
     with pytest.raises(KnowledgeFSRevocationCommandError, match=message):
@@ -420,15 +510,10 @@ def test_principal_revocation_revalidates_persisted_reservation_bindings(
     grant_id: str,
     message: str,
 ) -> None:
-    reservation = SimpleNamespace(
-        request_summary=summary,
-        subject=subject,
-        caller_kind=caller_kind,
-        grant_id=grant_id,
-    )
+    reservation = _reservation(summary=summary, subject=subject, caller_kind=caller_kind, grant_id=grant_id)
     session = _principal_session(
-        control_space=SimpleNamespace(knowledge_space_id="space-1"),
-        revision=SimpleNamespace(revoke_sequence=0),
+        control_space=_control_space(knowledge_space_id="space-1"),
+        revision=_revision(),
         reservations=(reservation,),
     )
 
@@ -449,7 +534,7 @@ def test_control_space_revocation_validates_callers_and_deduplicates_grants(
     producer = KnowledgeFSRevocationCommandProducer()
     with pytest.raises(KnowledgeFSRevocationCommandError, match="caller kind"):
         producer.enqueue_control_space_grants(
-            session=MagicMock(),
+            session=_unused_session(),
             tenant_id="tenant-1",
             control_space_id="control-1",
             reason_code="permission_revoked",
@@ -457,44 +542,42 @@ def test_control_space_revocation_validates_callers_and_deduplicates_grants(
         )
     with pytest.raises(KnowledgeFSRevocationCommandError, match="reason code"):
         producer.enqueue_control_space_grants(
-            session=MagicMock(),
+            session=_unused_session(),
             tenant_id="tenant-1",
             control_space_id="control-1",
             reason_code="INVALID REASON",
             caller_kinds=("interactive",),
         )
 
-    session = MagicMock()
-    session.scalars.side_effect = (
-        (
-            SimpleNamespace(
-                claims_summary={"subject": "member-b", "caller_kind": "interactive"},
+    scripted = ScriptedSession(
+        scalars_results=(
+            (
+                _claims_audit({"subject": "member-b", "caller_kind": "interactive"}),
+                _claims_audit({"subject": "excluded", "caller_kind": "interactive"}),
             ),
-            SimpleNamespace(
-                claims_summary={"subject": "excluded", "caller_kind": "interactive"},
+            (
+                _reservation(
+                    summary={"subject": "member-a", "caller_kind": "interactive"},
+                    subject="member-a",
+                    caller_kind="interactive",
+                ),
             ),
-        ),
-        (
-            SimpleNamespace(
-                request_summary={"subject": "member-a", "caller_kind": "interactive"},
-                subject="member-a",
-                caller_kind="interactive",
-            ),
-        ),
+        )
     )
     commands_by_subject = {
-        "member-a": (
-            SimpleNamespace(operation=KnowledgeFSLifecycleOperation.REVOKE, command_payload={"grant_id": _GRANT_A}),
-        ),
-        "member-b": (
-            SimpleNamespace(operation=KnowledgeFSLifecycleOperation.REVOKE, command_payload={"grant_id": _GRANT_B}),
-        ),
+        "member-a": (_revoke_command(_GRANT_A),),
+        "member-b": (_revoke_command(_GRANT_B),),
     }
-    enqueue = MagicMock(side_effect=lambda **kwargs: commands_by_subject[kwargs["subject"]])
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(**kwargs: object) -> tuple[KnowledgeFSLifecycleOutbox, ...]:
+        enqueue_calls.append(kwargs)
+        return commands_by_subject[str(kwargs["subject"])]
+
     monkeypatch.setattr(producer, "enqueue_principal_grants", enqueue)
 
     commands = producer.enqueue_control_space_grants(
-        session=session,
+        session=cast(Session, scripted),
         tenant_id="tenant-1",
         control_space_id="control-1",
         reason_code="permission_revoked",
@@ -503,4 +586,4 @@ def test_control_space_revocation_validates_callers_and_deduplicates_grants(
     )
 
     assert [revoke_payload(command)["grant_id"] for command in commands] == [_GRANT_A, _GRANT_B]
-    assert [call.kwargs["subject"] for call in enqueue.call_args_list] == ["member-a", "member-b"]
+    assert [call["subject"] for call in enqueue_calls] == ["member-a", "member-b"]
