@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
@@ -183,6 +184,7 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import (
@@ -741,6 +743,7 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    bind_application_tracing_hooks(app, RuntimeApplicationTracingHooks())
     bind_account_loader(app, services.accounts.identity.load_user)
 
 
