@@ -1,6 +1,6 @@
 import datetime
 import json
-from types import SimpleNamespace
+from dataclasses import dataclass
 
 import pytest
 
@@ -45,8 +45,20 @@ def test_service_derives_output_names_from_filename_base():
     assert service.output_jsonl_name == "exports/2026/test01.jsonl"
 
 
-def _row(message_metadata: str) -> SimpleNamespace:
-    return SimpleNamespace(
+@dataclass
+class _MessageRow:
+    """Minimal stand-in for the selected Message columns `_build_record` reads."""
+
+    id: str
+    conversation_id: str
+    query: str
+    answer: str
+    _inputs: dict[str, object]
+    message_metadata: str
+
+
+def _row(message_metadata: str) -> _MessageRow:
+    return _MessageRow(
         id="msg-1",
         conversation_id="conv-1",
         query="q",

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
@@ -30,6 +30,38 @@ class _DummyHttpxResponse:
 
     def json(self) -> dict[str, Any]:
         return self.payload
+
+
+class _StubFirecrawlApp:
+    """Stand-in for the Firecrawl client that records the scrape call it receives."""
+
+    instances: ClassVar[list[_StubFirecrawlApp]] = []
+
+    def __init__(self, *, api_key: str, base_url: str | None) -> None:
+        self.api_key = api_key
+        self.base_url = base_url
+        self.scrape_calls: list[dict[str, Any]] = []
+        _StubFirecrawlApp.instances.append(self)
+
+    def scrape_url(self, *, url: str, params: dict[str, Any]) -> dict[str, Any]:
+        self.scrape_calls.append({"url": url, "params": params})
+        return {"markdown": "m"}
+
+
+class _StubWaterCrawlProvider:
+    """Stand-in for the WaterCrawl provider that records the scrape call it receives."""
+
+    instances: ClassVar[list[_StubWaterCrawlProvider]] = []
+
+    def __init__(self, *, api_key: str, base_url: str | None) -> None:
+        self.api_key = api_key
+        self.base_url = base_url
+        self.scrape_calls: list[str] = []
+        _StubWaterCrawlProvider.instances.append(self)
+
+    def scrape_url(self, url: str) -> dict[str, Any]:
+        self.scrape_calls.append(url)
+        return {"markdown": "m"}
 
 
 @pytest.fixture(autouse=True)
@@ -778,9 +810,8 @@ def test_get_scrape_url_data_dispatches_and_rejects_invalid_provider(monkeypatch
 
 
 def test_scrape_with_firecrawl_calls_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    firecrawl_instance = MagicMock()
-    firecrawl_instance.scrape_url.return_value = {"markdown": "m"}
-    monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock(return_value=firecrawl_instance))
+    _StubFirecrawlApp.instances.clear()
+    monkeypatch.setattr(website_service_module, "FirecrawlApp", _StubFirecrawlApp)
 
     result = WebsiteService._scrape_with_firecrawl(
         request=website_service_module.ScrapeRequest(
@@ -793,13 +824,12 @@ def test_scrape_with_firecrawl_calls_app(monkeypatch: pytest.MonkeyPatch) -> Non
         config={"base_url": "b"},
     )
     assert result == {"markdown": "m"}
-    firecrawl_instance.scrape_url.assert_called_once_with(url="u", params={"onlyMainContent": True})
+    assert _StubFirecrawlApp.instances[-1].scrape_calls == [{"url": "u", "params": {"onlyMainContent": True}}]
 
 
 def test_scrape_with_watercrawl_calls_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    provider_instance = MagicMock()
-    provider_instance.scrape_url.return_value = {"markdown": "m"}
-    monkeypatch.setattr(website_service_module, "WaterCrawlProvider", MagicMock(return_value=provider_instance))
+    _StubWaterCrawlProvider.instances.clear()
+    monkeypatch.setattr(website_service_module, "WaterCrawlProvider", _StubWaterCrawlProvider)
 
     result = WebsiteService._scrape_with_watercrawl(
         request=website_service_module.ScrapeRequest(
@@ -812,7 +842,8 @@ def test_scrape_with_watercrawl_calls_provider(monkeypatch: pytest.MonkeyPatch) 
         config={"base_url": "b"},
     )
     assert result == {"markdown": "m"}
-    provider_instance.scrape_url.assert_called_once_with("u")
+    assert _StubWaterCrawlProvider.instances[-1].scrape_calls == ["u"]
+    assert _StubWaterCrawlProvider.instances[-1].base_url == "b"
 
 
 def test_pooled_clients_carry_bounded_timeouts() -> None:

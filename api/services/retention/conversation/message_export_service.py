@@ -8,6 +8,7 @@ Uses (created_at, id) cursor pagination and batch-loads feedbacks to avoid N+1.
 Does NOT touch Message.inputs / Message.user_feedback properties.
 """
 
+import contextlib
 import datetime
 import gzip
 import logging
@@ -290,12 +291,10 @@ class AppMessageExportService:
     def _build_record(row: Any, feedbacks_map: dict[str, list[AppMessageExportFeedback]]) -> AppMessageExportRecord:
         retriever_resources: list[Any] = []
         if row.message_metadata:
-            try:
+            with contextlib.suppress(ValidationError, TypeError):
                 retriever_resources = _MessageMetadataModel.model_validate_json(
                     row.message_metadata
                 ).retriever_resources
-            except (ValidationError, TypeError):
-                pass
 
         message_id = str(row.id)
         return AppMessageExportRecord(

@@ -1,8 +1,10 @@
 import json
-from unittest.mock import MagicMock, create_autospec
+from typing import override
+from unittest.mock import create_autospec
 
 import pytest
 
+from libs.archive_storage import ArchiveStorage
 from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     ArchiveBundleIdentity,
     ArchiveBundleIndexDict,
@@ -17,6 +19,21 @@ from services.retention.workflow_run.constants import (
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
 SHARD_PREFIX = "workflow-runs/v2/1/2025/03/00-of-01"
 MANIFEST_KEY = f"{SHARD_PREFIX}/{ARCHIVE_BUNDLE_MANIFEST_NAME}"
+
+
+class _InMemoryArchiveStorage(ArchiveStorage):
+    """Minimal in-memory archive storage so the archiver reads real objects rather than a mock."""
+
+    def __init__(self, objects: dict[str, bytes]) -> None:
+        self.objects = objects
+
+    @override
+    def get_object(self, key: str) -> bytes:
+        return self.objects[key]
+
+    @override
+    def list_objects(self, prefix: str) -> list[str]:
+        return sorted(key for key in self.objects if key.startswith(prefix))
 
 
 def _identity() -> ArchiveBundleIdentity:
@@ -51,15 +68,12 @@ def _index_payload() -> dict[str, str | list[str]]:
 
 
 def _load_index(payload: dict[str, str | list[str]]) -> ArchiveBundleIndexDict:
-    storage = MagicMock()
-    storage.get_object.return_value = json.dumps(payload).encode()
+    storage = _InMemoryArchiveStorage({f"{SHARD_PREFIX}/index.json": json.dumps(payload).encode()})
     return WorkflowRunArchiver._load_bundle_index(_archiver(), storage, _identity())
 
 
 def _build_index(payload: dict[str, str | list[str]]) -> ArchiveBundleIndexDict:
-    storage = MagicMock()
-    storage.list_objects.return_value = [MANIFEST_KEY]
-    storage.get_object.return_value = json.dumps(payload).encode()
+    storage = _InMemoryArchiveStorage({MANIFEST_KEY: json.dumps(payload).encode()})
     return WorkflowRunArchiver._build_bundle_index(_archiver(), storage, _identity())
 
 
