@@ -54,3 +54,24 @@ class RecordingOperationalMetrics:
 
     def register_control_space_state_gauge(self, read_counts: Callable[[], Mapping[str, int]]) -> None:
         self.gauge_readers.append(read_counts)
+
+
+@dataclass(frozen=True)
+class RecordedCall:
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+@dataclass
+class RecordingCallable[T]:
+    """A typed stand-in for a patched function: records calls, then raises `failure` or returns `result`."""
+
+    result: T
+    failure: BaseException | None = None
+    calls: list[RecordedCall] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> T:
+        self.calls.append(RecordedCall(args=args, kwargs=kwargs))
+        if self.failure is not None:
+            raise self.failure
+        return self.result
