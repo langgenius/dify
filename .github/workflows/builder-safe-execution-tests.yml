@@ -23,7 +23,7 @@ on:
       - 'api/core/app/**'
       - 'api/core/workflow/**'
       - 'api/core/repositories/**'
-      - 'api/models/dify_builder.py'
+      - 'api/models/dify_builder*.py'
       - 'api/migrations/versions/*builder*'
       - 'api/tests/**/dify_builder/**'
       - 'api/tests/**/test_builder*'
@@ -598,6 +598,45 @@ jobs:
           enable-cache: true
           cache-dependency-glob: api/uv.lock
       - run: uv sync --project api --dev --locked
+      - name: Native contracts and authorization units
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-native-foundation-units.log
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          import pytest
+
+          files = [
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_contracts.py",
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_contracts.py",
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_authorization.py",
+          ]
+          expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
+          report = "builder-native-foundation-units.xml"
+          code = pytest.main([*files, "-p", "no:benchmark", "--no-cov", "-vv", "-rA", f"--junitxml={report}"])
+          problems = []
+          seen = set()
+          modules = set()
+          if not Path(report).is_file():
+              problems.append("missing native unit report")
+          else:
+              for case in ET.parse(report).getroot().iter("testcase"):
+                  module = (case.get("classname") or "").removeprefix("api.")
+                  identity = (module, case.get("name") or "")
+                  if module not in expected or identity in seen:
+                      problems.append(f"unexpected or duplicated native unit case: {identity}")
+                  modules.add(module)
+                  seen.add(identity)
+                  if any(case.find(tag) is not None for tag in ("skipped", "failure", "error")):
+                      problems.append(f"nonpassing native unit case: {identity}")
+              if modules != expected:
+                  problems.append(f"native unit module inventory mismatch: {modules}")
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          print(f"COLLECTED native units: {len(seen)} unique cases", flush=True)
+          raise SystemExit(int(code) or bool(problems))
+          PY
       - name: Native effect ledger on real PostgreSQL
         shell: bash
         run: |
@@ -608,7 +647,7 @@ jobs:
           import pytest
 
           report = "builder-native-foundation.xml"
-          expected = {'test_duplicate_delivery_does_not_get_second_permit': 1, 'test_unapproved_and_denied_never_dispatch': 1, 'test_forged_binding_never_dispatches': 4, 'test_rotation_and_cross_tenant_reference_fail_closed': 1, 'test_completed_result_replays_and_changed_intent_conflicts': 1, 'test_iteration_quota_is_shared_and_third_occurrence_waits': 1, 'test_two_processes_compete_for_one_dispatch': 1, 'test_crash_after_committed_claim_becomes_unknown': 1, 'test_budget_reference_requires_matching_identity_and_consumes_no_extra_quota': 1, 'test_configuration_and_interaction_are_not_effect_approvals': 1, 'test_sql_checks_reject_overspend_and_invalid_outcome': 1, 'test_native_migration_upgrade_downgrade_reupgrade': 1}
+          expected = {'test_duplicate_delivery_does_not_get_second_permit': 1, 'test_unapproved_and_denied_never_dispatch': 1, 'test_forged_binding_never_dispatches': 4, 'test_rotation_and_cross_tenant_reference_fail_closed': 1, 'test_completed_result_replays_and_changed_intent_conflicts': 1, 'test_iteration_quota_is_shared_and_third_occurrence_waits': 1, 'test_two_processes_compete_for_one_dispatch': 1, 'test_crash_after_committed_claim_becomes_unknown': 1, 'test_budget_reference_requires_matching_identity_and_consumes_no_extra_quota': 1, 'test_configuration_and_interaction_are_not_effect_approvals': 1, 'test_sql_checks_reject_overspend_and_invalid_outcome': 1, 'test_native_migration_upgrade_downgrade_reupgrade': 1, 'test_permission_revocation_and_serialized_revision_drift_never_dispatch': 1, 'test_oauth_requires_its_own_bounded_approval': 1, 'test_permit_returns_only_after_commit_and_releases_request_lock': 1, 'test_child_invocation_shares_root_budget': 1, 'test_legacy_request_cannot_enter_native_waiting': 1, 'test_spent_permit_can_settle_after_cancel_without_new_dispatch': 1, 'test_forged_permit_cannot_record_or_resolve_reservation': 1}
           code = pytest.main([
               "api/tests/test_containers_integration_tests/core/workflow/test_builder_native_effect_ledger.py",
               "-p", "no:benchmark", "--no-cov", "-vv", "-rA", "--tb=long",
@@ -616,11 +655,18 @@ jobs:
           ])
           problems = []
           actual = {}
+          identities = set()
+          expected_module = "tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger"
           if not Path(report).is_file():
               problems.append("missing native foundation report")
           else:
               for case in ET.parse(report).getroot().iter("testcase"):
-                  name = (case.get("name") or "").split("[", 1)[0]
+                  module = (case.get("classname") or "").removeprefix("api.")
+                  identity = (module, case.get("name") or "")
+                  if module != expected_module or identity in identities:
+                      problems.append(f"unexpected or duplicated native case: {identity}")
+                  identities.add(identity)
+                  name = identity[1].split("[", 1)[0]
                   actual[name] = actual.get(name, 0) + 1
                   if any(case.find(tag) is not None for tag in ("skipped", "failure", "error")):
                       problems.append(f"nonpassing required native case: {name}")
@@ -637,3 +683,5 @@ jobs:
           path: |
             builder-native-foundation.xml
             builder-native-foundation.log
+            builder-native-foundation-units.xml
+            builder-native-foundation-units.log

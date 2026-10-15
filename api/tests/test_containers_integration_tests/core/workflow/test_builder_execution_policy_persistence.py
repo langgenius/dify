@@ -198,14 +198,18 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "a61e9b2c7d40"
+    current_head = "c67e12a904bf"
+    previous_merge = "a61e9b2c7d40"
     branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
     predecessor = "733e4c46f90e"
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    current_merge = scripts.get_revision(current_head)
+    native_revision = scripts.get_revision(current_head)
+    assert native_revision is not None
+    assert native_revision.down_revision == previous_merge
+    current_merge = scripts.get_revision(previous_merge)
     assert current_merge is not None
     assert isinstance(current_merge.down_revision, tuple)
     assert set(current_merge.down_revision) == {merge_revision, "f1d3c5b7a902"}

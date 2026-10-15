@@ -204,7 +204,14 @@ class DifyBuilderExecutionRequest(Base):
         sa.PrimaryKeyConstraint("id", name="dify_builder_execution_request_pkey"),
         sa.Index("dify_builder_execution_request_session_idx", "session_id"),
         sa.Index("dify_builder_execution_request_app_idx", "tenant_id", "app_id"),
-        sa.CheckConstraint("state IN ('prepared', 'running', 'sealed')", name="builder_execution_request_state"),
+        sa.CheckConstraint(
+            "state IN ('prepared','running','sealed') OR "
+            "(state = 'waiting' AND COALESCE(context->>'policy_version', '') = 'builder-native-test-v1')",
+            name="builder_execution_request_state",
+        ),
+        sa.Index(
+            "builder_native_waiting_idx", "tenant_id", "app_id", "state", postgresql_where=sa.text("state = 'waiting'")
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID)

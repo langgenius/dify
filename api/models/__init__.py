@@ -329,3 +329,14 @@ __all__ = [
     "WorkflowVersionCounter",
     "resolve_workflow_kind",
 ]
+
+from .dify_builder_native_tests import (  # noqa: F401
+    NativeContinuation,
+    NativeEffectAttempt,
+    NativeEffectGrant,
+    NativeEffectOperation,
+    NativeEffectOutcome,
+    NativePendingAction,
+    NativeTestInvocation,
+    NativeTestScope,
+)
