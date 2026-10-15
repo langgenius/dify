@@ -5,7 +5,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
 from models.model import App, AppMode
-from models.workflow import Workflow
+from services.workflow.contracts import WorkflowSnapshot
 
 
 class WorkflowAppConfig(WorkflowUIBasedAppConfig):
@@ -18,7 +18,7 @@ class WorkflowAppConfig(WorkflowUIBasedAppConfig):
 
 class WorkflowAppConfigManager(BaseAppConfigManager):
     @classmethod
-    def get_app_config(cls, app_model: App, workflow: Workflow) -> WorkflowAppConfig:
+    def get_app_config(cls, app_model: App, workflow: WorkflowSnapshot) -> WorkflowAppConfig:
         features_dict = workflow.features_dict
 
         app_mode = AppMode.value_of(app_model.mode)

@@ -22,12 +22,14 @@ from models.model import (
     load_annotation_reply_config,
 )
 from models.workflow import Workflow
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
 from services.app.generation.adapters.chat import ChatAppGenerator
 from services.app.generation.adapters.completion import CompletionAppGenerator
 from services.app.generation.ports import ChatRecords
 from services.app.generation.runtime import AppGenerationRuntime
 from services.knowledge.retrieval.ports import DatasetRetrievalFactory
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 
@@ -215,7 +217,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     def invoke_workflow_app(
         cls,
         app: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: EndUser | Account,
         stream: bool,
         inputs: Mapping,
@@ -323,7 +325,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         return app
 
     @classmethod
-    def _get_workflow(cls, app: App) -> Workflow | None:
+    def _get_workflow(cls, app: App) -> WorkflowSnapshot | None:
         """
         get workflow with an owned session, additionally scoped by tenant and app
 
@@ -339,9 +341,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 .where(Workflow.id == app.workflow_id, Workflow.tenant_id == app.tenant_id, Workflow.app_id == app.id)
                 .limit(1)
             )
-            if workflow:
-                session.expunge(workflow)
-            return workflow
+            return workflow_snapshot(workflow) if workflow is not None else None
 
     @classmethod
     def _get_app_model_config_dict(cls, app: App) -> AppModelConfigDict | None:
