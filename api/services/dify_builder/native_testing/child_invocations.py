@@ -165,6 +165,21 @@ class NativeChildInvocationService:
             )
         return child_ref
 
+    def get_outcome(self, *, child_ref: NativeTestContextRef) -> NativeWorkflowOutcome | None:
+        """Replay the same child's durable outcome and protected result reference."""
+        context = self.store.load_recovery_context(ref=child_ref)
+        if context.parent_invocation_id is None:
+            raise BuilderExecutionPolicyError("native_child_owner_mismatch")
+        with self.loader.session_factory() as session:
+            state = invocation_state(session, child_ref, context.tenant_id)
+            raw = state.outcome
+        if raw is None:
+            return None
+        outcome = NativeWorkflowOutcome.model_validate(raw)
+        if outcome.ref != child_ref or outcome.native_run_id != context.native_run_id:
+            raise BuilderExecutionPolicyError("native_child_outcome_conflict")
+        return outcome
+
     def complete(self, *, child_ref: NativeTestContextRef, outcome: NativeWorkflowOutcome) -> None:
         outcome = NativeWorkflowOutcome.model_validate(outcome.model_dump(mode="json"))
         context = self.store.load_recovery_context(ref=child_ref)

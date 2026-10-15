@@ -66,6 +66,8 @@ class ResolutionOwner:
         assert pending.tenant_id == owned.tenant_id
         return NativePendingResolution(
             category=pending.category,
+            invocation_id=pending.invocation_id,
+            pending_action_id=pending.id,
             owner_ref=pending.owner_ref,
             reference=pending.reference,
             resolved=self.resolved,
@@ -423,7 +425,9 @@ def test_child_input_owner_and_unique_identity_and_completion_wakeup(continuatio
         rows = session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id)).all()
         assert len(rows) == 1
         assert rows[0].invocation_id == c.ref.invocation_id
-    assert c.store.load_result(ref=child, result_ref=result_ref) == {"ok": True}
+    replayed = child_service.get_outcome(child_ref=child)
+    assert replayed.output_result_ref == result_ref
+    assert c.store.load_result(ref=child, result_ref=replayed.output_result_ref) == {"ok": True}
 
 
 def test_revision_drift_fix_does_not_mutate_old_run(continuation_case):
@@ -807,17 +811,23 @@ def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case):
 def test_resume_rechecks_checkpoint_before_consuming_generation(continuation_case, monkeypatch, fault):
     from extensions.ext_storage import storage
     from models.dify_builder_native_tests import NativeContinuation, NativeDispatch, NativeTestScope
+
     c = continuation_case
     cp = c.pause().checkpoint
     c.ledger.confirm()
     with c.factory() as session:
-        storage_key = session.scalar(select(NativeContinuation.payload_ref).where(NativeContinuation.checkpoint_id == cp.checkpoint_id))
+        storage_key = session.scalar(
+            select(NativeContinuation.payload_ref).where(NativeContinuation.checkpoint_id == cp.checkpoint_id)
+        )
     original = storage.load
+
     def unavailable(key, *args, **kwargs):
         if key == storage_key:
-            if fault == "missing": raise FileNotFoundError("checkpoint deleted")
+            if fault == "missing":
+                raise FileNotFoundError("checkpoint deleted")
             return b"corrupt ciphertext"
         return original(key, *args, **kwargs)
+
     monkeypatch.setattr(storage, "load", unavailable)
     with pytest.raises(BuilderExecutionPolicyError, match="checkpoint_unavailable"):
         c.resume()
@@ -829,58 +839,128 @@ def test_resume_rechecks_checkpoint_before_consuming_generation(continuation_cas
 def test_resumed_child_can_checkpoint_a_second_native_wait(continuation_case):
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
+
     c = continuation_case
+
     class ChildOwner:
         def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
-            assert child_app_id == parent.app_id and child_workflow_revision == parent.graph_revision
-            return parent.model_copy(update={"ref": ref, "parent_invocation_id": parent.ref.invocation_id,
-                "call_depth": 1, "inputs": inputs, "input_revision": canonical_digest(inputs), "native_run_id": "child-run"})
+            assert child_app_id == parent.app_id
+            assert child_workflow_revision == parent.graph_revision
+            return parent.model_copy(
+                update={
+                    "ref": ref,
+                    "parent_invocation_id": parent.ref.invocation_id,
+                    "call_depth": 1,
+                    "inputs": inputs,
+                    "input_revision": canonical_digest(inputs),
+                    "native_run_id": "child-run",
+                }
+            )
+
     service = NativeChildInvocationService(c.store, resolver=ChildOwner())
     key = OperationKey(invocation_id=c.ref.invocation_id, occurrence_path=("repeat-child",), cursor=0)
     input_ref = c.store.store_result(ref=c.ref, key=key, result={"nested": True})
-    child = service.get_or_create(parent_ref=c.ref, key=key, child_app_id=c.context.app_id,
-        child_workflow_revision=c.context.graph_revision, input_digest=canonical_digest({"nested": True}), input_result_ref=input_ref)
+    child = service.get_or_create(
+        parent_ref=c.ref,
+        key=key,
+        child_app_id=c.context.app_id,
+        child_workflow_revision=c.context.graph_revision,
+        input_digest=canonical_digest({"nested": True}),
+        input_result_ref=input_ref,
+    )
     pending_service = NativePendingActionService(c.store.loader)
     first = pending_service.configuration(ref=child, requirements_ref="configuration-1", expected_generation=0)
-    payload = NativeCheckpointPayload(schema_version="1", native_run_id="child-run", generation=0,
-        generate_entity_json="{}", graph_runtime_state_json="{}", response_stream_filter_json="{}",
-        node_journals=(), child_refs=(), input_result_refs=())
+    payload = NativeCheckpointPayload(
+        schema_version="1",
+        native_run_id="child-run",
+        generation=0,
+        generate_entity_json="{}",
+        graph_runtime_state_json="{}",
+        response_stream_filter_json="{}",
+        node_journals=(),
+        child_refs=(),
+        input_result_refs=(),
+    )
     child_checkpoint = c.store.commit_checkpoint(ref=child, generation=0, payload=payload)
-    c.lifecycle.pause(ref=child, checkpoint=child_checkpoint, pending_operation_ids=(first.pending_operation_id,), expected_generation=0)
-    parent_checkpoint = c.store.commit_checkpoint(ref=c.ref, generation=0,
-        payload=payload.model_copy(update={"native_run_id": "native-run", "child_refs": (child,)}))
-    c.lifecycle.pause(ref=c.ref, checkpoint=parent_checkpoint, pending_operation_ids=(first.pending_operation_id,), expected_generation=0)
+    c.lifecycle.pause(
+        ref=child,
+        checkpoint=child_checkpoint,
+        pending_operation_ids=(first.pending_operation_id,),
+        expected_generation=0,
+    )
+    parent_checkpoint = c.store.commit_checkpoint(
+        ref=c.ref,
+        generation=0,
+        payload=payload.model_copy(update={"native_run_id": "native-run", "child_refs": (child,)}),
+    )
+    c.lifecycle.pause(
+        ref=c.ref,
+        checkpoint=parent_checkpoint,
+        pending_operation_ids=(first.pending_operation_id,),
+        expected_generation=0,
+    )
     c.resolution.resolved = True
     resumed = c.resume()
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
     assert c.store.load_context(ref=child).generation == 1
     second = pending_service.configuration(ref=child, requirements_ref="configuration-1", expected_generation=1)
-    second_checkpoint = c.store.commit_checkpoint(ref=child, generation=1, payload=payload.model_copy(update={"generation": 1}))
-    second_wait = c.lifecycle.pause(ref=child, checkpoint=second_checkpoint,
-        pending_operation_ids=(second.pending_operation_id,), expected_generation=1)
+    second_checkpoint = c.store.commit_checkpoint(
+        ref=child, generation=1, payload=payload.model_copy(update={"generation": 1})
+    )
+    second_wait = c.lifecycle.pause(
+        ref=child,
+        checkpoint=second_checkpoint,
+        pending_operation_ids=(second.pending_operation_id,),
+        expected_generation=1,
+    )
     assert second_wait.generation == 1
     assert second_checkpoint.checkpoint_id != child_checkpoint.checkpoint_id
 
 
 def test_unknown_root_quarantines_active_child_tree(continuation_case):
-    from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from models.dify_builder_native_tests import NativeDispatch, NativeTestInvocation
+    from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
+
     c = continuation_case
+
     class ChildOwner:
         def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
-            assert child_app_id == parent.app_id and child_workflow_revision == parent.graph_revision
-            return parent.model_copy(update={"ref": ref, "parent_invocation_id": parent.ref.invocation_id,
-                "call_depth": 1, "inputs": inputs, "input_revision": canonical_digest(inputs), "native_run_id": "child-run"})
+            assert child_app_id == parent.app_id
+            assert child_workflow_revision == parent.graph_revision
+            return parent.model_copy(
+                update={
+                    "ref": ref,
+                    "parent_invocation_id": parent.ref.invocation_id,
+                    "call_depth": 1,
+                    "inputs": inputs,
+                    "input_revision": canonical_digest(inputs),
+                    "native_run_id": "child-run",
+                }
+            )
+
     service = NativeChildInvocationService(c.store, resolver=ChildOwner())
     key = OperationKey(invocation_id=c.ref.invocation_id, occurrence_path=("parallel-child",), cursor=0)
     input_ref = c.store.store_result(ref=c.ref, key=key, result={"nested": True})
-    child = service.get_or_create(parent_ref=c.ref, key=key, child_app_id=c.context.app_id,
-        child_workflow_revision=c.context.graph_revision, input_digest=canonical_digest({"nested": True}), input_result_ref=input_ref)
-    c.pause(); c.ledger.confirm(); resumed = c.resume()
+    child = service.get_or_create(
+        parent_ref=c.ref,
+        key=key,
+        child_app_id=c.context.app_id,
+        child_workflow_revision=c.context.graph_revision,
+        input_digest=canonical_digest({"nested": True}),
+        input_result_ref=input_ref,
+    )
+    c.pause()
+    c.ledger.confirm()
+    resumed = c.resume()
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
     with c.factory.begin() as session:
         session.get(NativeDispatch, resumed.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(seconds=1)
     c.lifecycle.reconcile()
     with c.factory() as session:
-        assert not any(session.scalars(select(NativeTestInvocation.active).where(NativeTestInvocation.request_id == c.ref.request_id)))
-    with pytest.raises(BuilderExecutionPolicyError): c.store.load_context(ref=child)
+        assert not any(
+            session.scalars(
+                select(NativeTestInvocation.active).where(NativeTestInvocation.request_id == c.ref.request_id)
+            )
+        )
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.store.load_context(ref=child)

@@ -10,6 +10,8 @@ def test_pending_resolution_cannot_claim_configuration_without_account():
     with pytest.raises(ValidationError):
         NativePendingResolution(
             category="configuration",
+            invocation_id="inv",
+            pending_action_id="pending",
             owner_ref="owner",
             reference="config",
             resolved=True,
@@ -24,6 +26,8 @@ def test_pending_resolution_cannot_replace_form_answer_with_account():
     with pytest.raises(ValidationError):
         NativePendingResolution(
             category="interaction",
+            invocation_id="inv",
+            pending_action_id="pending",
             owner_ref="owner",
             reference="form",
             resolved=True,
@@ -38,6 +42,8 @@ def test_pending_resolution_never_coerces_client_boolean():
     with pytest.raises(ValidationError):
         NativePendingResolution(
             category="configuration",
+            invocation_id="inv",
+            pending_action_id="pending",
             owner_ref="owner",
             reference="config",
             resolved="true",
