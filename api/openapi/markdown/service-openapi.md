@@ -2428,7 +2428,7 @@ Agent has not been published. Please publish the Agent before using the API.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
+| tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
 
 #### Annotation
 
@@ -2487,6 +2487,12 @@ Agent has not been published. Please publish the Agent before using the API.
 | embedding_model_name | string | Name of the embedding model to use for annotation matching. | Yes |
 | embedding_provider_name | string | Name of the embedding model provider. | Yes |
 | score_threshold | float | Minimum similarity score for an annotation to be considered a match. Higher values require closer matches. | Yes |
+
+#### AnyJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnyJSONValue |  |  |  |
 
 #### AppFeedbackListResponse
 
@@ -2560,7 +2566,7 @@ Audio size exceeded. {message}
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
+| text | string | Transcribed text from audio | Yes |
 
 #### BinaryFileResponse
 
@@ -3769,15 +3775,6 @@ This form has already been submitted by another user, form_id={form_id}
 | ---- | ---- | ----------- | -------- |
 | HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
 
-#### I18nObject
-
-Model class for i18n object.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| en_US | string |  | Yes |
-| zh_Hans | string |  | No |
-
 #### IndexInfoResponse
 
 | Name | Type | Description | Required |
@@ -3813,12 +3810,6 @@ The metadata content is incorrect. Please check and verify.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JSONObject | object |  |  |
-
-#### JSONValue
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONValue |  |  |  |
 
 #### JSONValueType
 
@@ -3978,6 +3969,15 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
+
+#### ModelRuntimeI18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| zh_Hans | string |  | No |
 
 #### ModelStatus
 
@@ -4167,7 +4167,7 @@ Model class for model response.
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
@@ -4210,9 +4210,9 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| icon_small | [I18nObject](#i18nobject) |  | No |
-| icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the provider. | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the provider. | Yes |
 | models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
 | provider | string |  | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |

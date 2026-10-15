@@ -951,15 +951,6 @@ than an under-annotated open object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
-#### Github
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| github_plugin_unique_identifier | string |  | Yes |
-| package | string |  | Yes |
-| repo | string |  | Yes |
-| version | string |  | Yes |
-
 #### HealthResponse
 
 Liveness payload for `GET /openapi/v1/_health` — no auth required.
@@ -1014,13 +1005,6 @@ A next step the caller can hand straight to `call <op> --input <input>`.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
-
-#### Marketplace
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| marketplace_plugin_unique_identifier | string |  | Yes |
-| version | string |  | No |
 
 #### MemberActionResponse
 
@@ -1106,13 +1090,6 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | files | object | Local files keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
-#### Package
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| plugin_unique_identifier | string |  | Yes |
-| version | string |  | No |
-
 #### PermittedExternalAppsListQuery
 
 Strict (extra='forbid').
@@ -1141,7 +1118,30 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
 | type | [PluginDependencyType](#plugindependencytype) |  | Yes |
-| value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+| value | [PluginDependencyGithub](#plugindependencygithub)<br>[PluginDependencyMarketplace](#plugindependencymarketplace)<br>[PluginDependencyPackage](#plugindependencypackage) |  | Yes |
+
+#### PluginDependencyGithub
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| github_plugin_unique_identifier | string |  | Yes |
+| package | string |  | Yes |
+| repo | string |  | Yes |
+| version | string |  | Yes |
+
+#### PluginDependencyMarketplace
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| marketplace_plugin_unique_identifier | string |  | Yes |
+| version | string |  | No |
+
+#### PluginDependencyPackage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_unique_identifier | string |  | Yes |
+| version | string |  | No |
 
 #### PluginDependencyType
 

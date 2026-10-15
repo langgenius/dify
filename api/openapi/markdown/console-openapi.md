@@ -1185,7 +1185,7 @@ Create or update Agent App message feedback
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
+|  Yes | **application/json**: [AppMessageFeedbackPayload](#appmessagefeedbackpayload)<br> |
 
 #### Responses
 
@@ -1975,7 +1975,7 @@ Submit human input form preview for advanced chat workflow
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+|  Yes | **application/json**: [HumanInputFormPreviewSubmitPayload](#humaninputformpreviewsubmitpayload)<br> |
 
 #### Responses
 
@@ -3031,7 +3031,7 @@ Create or update message feedback (like/dislike)
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
+|  Yes | **application/json**: [AppMessageFeedbackPayload](#appmessagefeedbackpayload)<br> |
 
 #### Responses
 
@@ -4473,7 +4473,7 @@ Submit human input form preview for workflow
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+|  Yes | **application/json**: [HumanInputFormPreviewSubmitPayload](#humaninputformpreviewsubmitpayload)<br> |
 
 #### Responses
 
@@ -7406,7 +7406,7 @@ Request body:
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ChatMessagePayload](#chatmessagepayload)<br> |
+|  Yes | **application/json**: [ChatMessageExplorePayload](#chatmessageexplorepayload)<br> |
 
 #### Responses
 
@@ -8889,7 +8889,7 @@ Update account-level Step-by-step Tour state
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> |
+|  Yes | **application/json**: [RagPipelineDraftWorkflowRunPayload](#ragpipelinedraftworkflowrunpayload)<br> |
 
 #### Responses
 
@@ -9068,7 +9068,7 @@ Update account-level Step-by-step Tour state
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [Parser](#parser)<br> |
+|  Yes | **application/json**: [DatasourceContentPreviewPayload](#datasourcecontentpreviewpayload)<br> |
 
 #### Responses
 
@@ -10075,7 +10075,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [PublishWorkflowPayload](#publishworkflowpayload)<br> |
+|  Yes | **application/json**: [SnippetPublishWorkflowPayload](#snippetpublishworkflowpayload)<br> |
 
 #### Responses
 
@@ -14820,7 +14820,7 @@ Model class for AI model.
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
@@ -14834,7 +14834,7 @@ Model class for AI model.
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
@@ -17029,10 +17029,10 @@ Inherits from ToolProviderIdentity, without any additional fields.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | author | string | The author of the tool | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
+| description | [I18nObject](#i18nobject) | The description of the tool | Yes |
 | icon | string | The icon of the tool | Yes |
 | icon_dark | string | The dark icon of the tool | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
+| label | [I18nObject](#i18nobject) | The label of the tool | Yes |
 | name | string | The name of the tool | Yes |
 | tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
 
@@ -17079,7 +17079,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
+| tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
 
 #### AgentTokenUsageStatisticResponse
 
@@ -17282,6 +17282,12 @@ Auth Token is invalid or account already activated, please check again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | score_threshold | number | Score threshold | Yes |
+
+#### AnyJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnyJSONValue |  |  |  |
 
 #### ApiBaseUrlResponse
 
@@ -18149,6 +18155,14 @@ Publication state of a Dify app exposed as an MCP server; only ACTIVE servers ac
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | Publication state of a Dify app exposed as an MCP server; only ACTIVE servers accept MCP calls. |  |
 
+#### AppMessageFeedbackPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string | Optional text feedback providing additional detail. | No |
+| message_id | string | Message ID | Yes |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+
 #### AppMetadataConditionPayload
 
 | Name | Type | Description | Required |
@@ -18726,7 +18740,7 @@ Audio size exceeded. {message}
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
+| text | string | Transcribed text from audio | Yes |
 
 #### AuthenticationFailedError
 
@@ -19013,6 +19027,17 @@ You cannot transfer ownership to yourself.
 | page | integer, <br>**Default:** 1 | Page number | No |
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
+
+#### ChatMessageExplorePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_id | string |  | No |
+| files | [ object ] |  | No |
+| inputs | object |  | Yes |
+| parent_message_id | string |  | No |
+| query | string |  | Yes |
+| retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### ChatMessagePayload
 
@@ -19442,7 +19467,7 @@ The conversation cursor is not in the current list. Refresh the list and try aga
 | id | string |  | Yes |
 | introduction | string |  | No |
 | message_count | integer |  | Yes |
-| model_config | [ModelConfig](#modelconfig) |  | No |
+| model_config | [ConversationModelConfig](#conversationmodelconfig) |  | No |
 | status | string |  | Yes |
 | updated_at | integer |  | No |
 | user_feedback_stats | [FeedbackStat](#feedbackstat) |  | No |
@@ -19481,8 +19506,19 @@ The conversation has no message from which to generate a name.
 | from_source | string |  | Yes |
 | id | string |  | Yes |
 | message | [MessageDetail](#messagedetail) |  | No |
-| model_config | [ModelConfig](#modelconfig) |  | No |
+| model_config | [ConversationModelConfig](#conversationmodelconfig) |  | No |
 | status | string |  | Yes |
+
+#### ConversationModelConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode | [AnyJSONValue](#anyjsonvalue) |  | No |
+| model | [AnyJSONValue](#anyjsonvalue) |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| suggested_questions | [AnyJSONValue](#anyjsonvalue) |  | No |
+| user_input_form | [AnyJSONValue](#anyjsonvalue) |  | No |
 
 #### ConversationNameRequiredError
 
@@ -19661,10 +19697,10 @@ Model class for credential form schema.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default | string |  | No |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | max_length | integer |  | No |
 | options | [ [FormOption](#formoption) ] |  | No |
-| placeholder | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| placeholder | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
 | required | boolean, <br>**Default:** true |  | No |
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | type | [FormType](#formtype) |  | Yes |
@@ -20257,6 +20293,14 @@ The dataset name already exists. Please modify your dataset name.
 | vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) | Semantic search weight settings. | No |
 | weight_type | string |  | No |
 
+#### DatasourceContentPreviewPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| datasource_type | string |  | Yes |
+| inputs | object |  | Yes |
+
 #### DatasourceCredentialDeletePayload
 
 | Name | Type | Description | Required |
@@ -20439,9 +20483,9 @@ Datasource provider entity
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | author | string | The author of the tool | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
+| description | [I18nObject](#i18nobject) | The description of the tool | Yes |
 | icon | string | The icon of the tool | Yes |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
+| label | [I18nObject](#i18nobject) | The label of the tool | Yes |
 | name | string | The name of the tool | Yes |
 | tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
 
@@ -20846,10 +20890,8 @@ Workflow graph might have been modified, please refresh and resubmit.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| datasource_info_list | [ object ] |  | Yes |
-| datasource_type | string |  | Yes |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
-| start_node_id | string |  | Yes |
 
 #### DraftWorkflowSyncPayload
 
@@ -21364,7 +21406,7 @@ The configuration of an event
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the event | Yes |
+| description | [I18nObject](#i18nobject) | The description of the event | Yes |
 | identity | [EventIdentity](#eventidentity) |  | Yes |
 | output_schema | object | The output schema that this event produces | No |
 | parameters | [ [EventParameter](#eventparameter) ] | The parameters of the event | No |
@@ -21609,8 +21651,8 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
-| placeholder | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
+| placeholder | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
 
 #### FileExtensionBlockedError
 
@@ -21624,7 +21666,10 @@ The file extension is blocked for security reasons.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| file_ids | [ string ] |  | Yes |
+| extension | string |  | Yes |
+| filename | string |  | Yes |
+| mimetype | string |  | Yes |
+| size | integer |  | Yes |
 
 #### FileInputConfig
 
@@ -21780,7 +21825,7 @@ Model class for form option.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | value | string |  | Yes |
 
@@ -21818,15 +21863,6 @@ Enum class for form type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | GeneratorResponse |  |  |  |
-
-#### Github
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| github_plugin_unique_identifier | string |  | Yes |
-| package | string |  | Yes |
-| repo | string |  | Yes |
-| version | string |  | Yes |
 
 #### HitTestingChildChunk
 
@@ -21978,6 +22014,14 @@ Enum class for form type.
 | node_title | string |  | Yes |
 | resolved_default_values | object |  | No |
 
+#### HumanInputFormPreviewSubmitPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string | Selected action ID | Yes |
+| form_inputs | object | Values the user provides for the form's own fields | Yes |
+| inputs | object | Values used to fill missing upstream variables referenced in form_content | Yes |
+
 #### HumanInputFormSubmissionData
 
 | Name | Type | Description | Required |
@@ -21993,9 +22037,8 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string | Selected action ID | Yes |
-| form_inputs | object | Values the user provides for the form's own fields | Yes |
-| inputs | object | Values used to fill missing upstream variables referenced in form_content | Yes |
+| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
+| inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### HumanInputFormSubmitResponse
 
@@ -22124,7 +22167,7 @@ Knowledge indexing estimate failed: {message}
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data_source_type | string, <br>**Available values:** "notion_import", "upload_file", "website_crawl" | *Enum:* `"notion_import"`, `"upload_file"`, `"website_crawl"` | Yes |
-| file_info_list | [FileInfo](#fileinfo) |  | No |
+| file_info_list | [KnowledgeFileInfo](#knowledgefileinfo) |  | No |
 | notion_info_list | [ [NotionInfo](#notioninfo) ] |  | No |
 | website_info_list | [WebsiteInfo](#websiteinfo) |  | No |
 
@@ -22365,12 +22408,6 @@ This invitation was sent to another account. Please sign in with the invited acc
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### JSONValue
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
-
 #### JSONValueType
 
 | Name | Type | Description | Required |
@@ -22406,6 +22443,12 @@ This invitation was sent to another account. Please sign in with the invited acc
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked in this knowledge base. | No |
 | summary_index_setting | object | Summary index configuration. | No |
+
+#### KnowledgeFileInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_ids | [ string ] |  | Yes |
 
 #### KnowledgePipeline
 
@@ -22620,13 +22663,6 @@ Unable to create account because the licensed seats limit was exceeded
 | parameters | object | Server parameters configuration | Yes |
 | status | [AppMCPServerStatus](#appmcpserverstatus) | Server status | No |
 
-#### Marketplace
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| marketplace_plugin_unique_identifier | string |  | Yes |
-| version | string |  | No |
-
 #### MaxKeysExceededError
 
 The API key limit has been reached.
@@ -22758,10 +22794,10 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | from_source | string |  | Yes |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
-| message | [JSONValue](#jsonvalue) |  | Yes |
+| message | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
 | message_tokens | integer |  | Yes |
-| metadata | [JSONValue](#jsonvalue) |  | Yes |
+| metadata | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
@@ -22787,10 +22823,10 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | from_source | string |  | Yes |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
-| message | [JSONValue](#jsonvalue) |  | Yes |
+| message | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
 | message_tokens | integer |  | Yes |
-| metadata | [JSONValue](#jsonvalue) |  | Yes |
+| metadata | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
@@ -22802,7 +22838,6 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| message_id | string | Message ID | Yes |
 | rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFeedbackRatingRequiredError
@@ -23066,11 +23101,11 @@ Fields required to render the collapsed model-provider list.
 | ---- | ---- | ----------- | -------- |
 | configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
 | custom_configuration | [ModelProviderCustomConfigurationSummaryResponse](#modelprovidercustomconfigurationsummaryresponse) |  | Yes |
-| description | [I18nObject](#i18nobject) |  | No |
-| icon_small | [I18nObject](#i18nobject) |  | No |
-| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| description | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
 | is_configured | boolean |  | Yes |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | plugin_id | string |  | Yes |
 | preferred_provider_type | [ProviderType](#providertype) |  | Yes |
 | provider | string |  | Yes |
@@ -23082,6 +23117,15 @@ Fields required to render the collapsed model-provider list.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | Yes |
+
+#### ModelRuntimeI18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| zh_Hans | string |  | No |
 
 #### ModelSelectorScope
 
@@ -23115,7 +23159,7 @@ Model with provider entity.
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
@@ -23597,13 +23641,6 @@ Too many owner transfer emails have been sent. Please try again in {minutes} min
 | ---- | ---- | ----------- | -------- |
 | OwnerTransferRateLimitExceededError |  | Too many owner transfer emails have been sent. Please try again in {minutes} minutes. |  |
 
-#### Package
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| plugin_unique_identifier | string |  | Yes |
-| version | string |  | No |
-
 #### PaginatedConversationVariableResponse
 
 | Name | Type | Description | Required |
@@ -23647,8 +23684,8 @@ Model class for parameter rule.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default |  |  | No |
-| help | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| help | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | max | number |  | No |
 | min | number |  | No |
 | name | string |  | Yes |
@@ -23682,14 +23719,6 @@ Enum class for parameter type.
 | system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
 | text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
 | user_input_form | [ object ] |  | Yes |
-
-#### Parser
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| credential_id | string |  | No |
-| datasource_type | string |  | Yes |
-| inputs | object |  | Yes |
 
 #### ParserAsset
 
@@ -24175,7 +24204,31 @@ Plaintext secret values are not allowed in Agent config.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | [PluginBundleDependencyType](#pluginbundledependencytype) |  | Yes |
-| value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+| value | [PluginBundleDependencyGithub](#pluginbundledependencygithub)<br>[PluginBundleDependencyMarketplace](#pluginbundledependencymarketplace)<br>[PluginBundleDependencyPackage](#pluginbundledependencypackage) |  | Yes |
+
+#### PluginBundleDependencyGithub
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| packages | string |  | Yes |
+| release | string |  | Yes |
+| repo | string |  | Yes |
+| repo_address | string |  | Yes |
+
+#### PluginBundleDependencyMarketplace
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| organization | string |  | Yes |
+| plugin | string |  | Yes |
+| version | string |  | Yes |
+
+#### PluginBundleDependencyPackage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| manifest | [PluginDeclaration](#plugindeclaration) |  | Yes |
+| unique_identifier | string |  | Yes |
 
 #### PluginBundleDependencyType
 
@@ -24201,12 +24254,12 @@ Plaintext secret values are not allowed in Agent config.
 | ---- | ---- | ----------- | -------- |
 | allow_delete | boolean |  | Yes |
 | author | string |  | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
 | icon | string<br>object |  | Yes |
 | icon_dark | string<br>object |  | Yes |
 | id | string |  | Yes |
 | is_team_authorization | boolean |  | Yes |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
 | labels | [ string ] |  | Yes |
 | name | string |  | Yes |
 | plugin_id | string |  | Yes |
@@ -24220,8 +24273,8 @@ Plaintext secret values are not allowed in Agent config.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | author | string |  | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
 | labels | [ string ] |  | Yes |
 | name | string |  | Yes |
 | output_schema | object |  | Yes |
@@ -24283,11 +24336,11 @@ Plaintext secret values are not allowed in Agent config.
 | category | [PluginCategory](#plugincategory) |  | Yes |
 | created_at | dateTime |  | Yes |
 | datasource | [DatasourceProviderEntity](#datasourceproviderentity) |  | No |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
 | endpoint | [EndpointProviderDeclaration](#endpointproviderdeclaration) |  | No |
 | icon | string |  | Yes |
 | icon_dark | string |  | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
 | meta | [Meta](#meta) |  | Yes |
 | model | [ProviderEntity](#providerentity) |  | No |
 | name | string |  | Yes |
@@ -24309,11 +24362,11 @@ Plaintext secret values are not allowed in Agent config.
 | category | [PluginCategory](#plugincategory) |  | Yes |
 | created_at | dateTime |  | Yes |
 | datasource | object |  | No |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
 | endpoint | object |  | No |
 | icon | string |  | Yes |
 | icon_dark | string |  | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
 | meta | object |  | Yes |
 | model | [ProviderEntityResponse](#providerentityresponse) |  | No |
 | name | string |  | Yes |
@@ -24340,7 +24393,30 @@ Plaintext secret values are not allowed in Agent config.
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
 | type | [PluginDependencyType](#plugindependencytype) |  | Yes |
-| value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+| value | [PluginDependencyGithub](#plugindependencygithub)<br>[PluginDependencyMarketplace](#plugindependencymarketplace)<br>[PluginDependencyPackage](#plugindependencypackage) |  | Yes |
+
+#### PluginDependencyGithub
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| github_plugin_unique_identifier | string |  | Yes |
+| package | string |  | Yes |
+| repo | string |  | Yes |
+| version | string |  | Yes |
+
+#### PluginDependencyMarketplace
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| marketplace_plugin_unique_identifier | string |  | Yes |
+| version | string |  | No |
+
+#### PluginDependencyPackage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_unique_identifier | string |  | Yes |
+| version | string |  | No |
 
 #### PluginDependencyType
 
@@ -24722,11 +24798,11 @@ is empty when no alias exists.
 | ---- | ---- | ----------- | -------- |
 | background | string |  | No |
 | configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
-| description | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| description | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
 | help | [ProviderHelpEntity](#providerhelpentity) |  | No |
-| icon_small | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
-| icon_small_dark | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | model_credential_schema | [ModelCredentialSchema](#modelcredentialschema) |  | No |
 | models | [ [AIModelEntity](#aimodelentity) ] |  | No |
 | position | object |  | No |
@@ -24743,11 +24819,11 @@ Runtime provider response with codegen-safe model pricing schemas.
 | ---- | ---- | ----------- | -------- |
 | background | string |  | No |
 | configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
-| description | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| description | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
 | help | [ProviderHelpEntity](#providerhelpentity) |  | No |
-| icon_small | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
-| icon_small_dark | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | model_credential_schema | [ModelCredentialSchema](#modelcredentialschema) |  | No |
 | models | [ [AIModelEntityResponse](#aimodelentityresponse) ], <br>**Default:**  |  | No |
 | position | object |  | No |
@@ -24762,8 +24838,8 @@ Model class for provider help.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| title | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
-| url | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| title | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
+| url | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 
 #### ProviderModelListResponse
 
@@ -24781,7 +24857,7 @@ Model class for model response.
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
@@ -24841,11 +24917,11 @@ Model class for provider response.
 | background | string |  | No |
 | configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
 | custom_configuration | [CustomConfigurationResponse](#customconfigurationresponse) |  | Yes |
-| description | [I18nObject](#i18nobject) |  | No |
+| description | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
 | help | [ProviderHelpEntity](#providerhelpentity) |  | No |
-| icon_small | [I18nObject](#i18nobject) |  | No |
-| icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | model_credential_schema | [ModelCredentialSchema](#modelcredentialschema) |  | No |
 | preferred_provider_type | [ProviderType](#providertype) |  | Yes |
 | provider | string |  | Yes |
@@ -24866,9 +24942,9 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| icon_small | [I18nObject](#i18nobject) |  | No |
-| icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the provider. | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the provider. | Yes |
 | models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
 | provider | string |  | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |
@@ -24876,11 +24952,8 @@ Model class for provider with models response.
 
 #### PublishWorkflowPayload
 
-Payload for publishing snippet workflow.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| knowledge_base_setting | object |  | No |
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
 
@@ -24983,6 +25056,15 @@ Resource types understood by access policies.
 | plugin_unique_identifier | string |  | Yes |
 | provider | string |  | Yes |
 
+#### RagPipelineDraftWorkflowRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasource_info_list | [ object ] |  | Yes |
+| datasource_type | string |  | Yes |
+| inputs | object |  | Yes |
+| start_node_id | string |  | Yes |
+
 #### RagPipelineImportCheckDependenciesResponse
 
 | Name | Type | Description | Required |
@@ -25039,6 +25121,13 @@ Resource types understood by access policies.
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
 | result | string |  | Yes |
+
+#### RagPipelineWorkflowRunQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| last_id | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 
 #### RagPipelineWorkflowSyncResponse
 
@@ -25146,6 +25235,12 @@ Recommended app not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | language | string, <br>**Default:** en-US | Language code for recommended app localization | No |
+
+#### RecursiveJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RecursiveJSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ [RecursiveJSONValue](#recursivejsonvalue) ] |  |  |
 
 #### RedirectResponse
 
@@ -25742,6 +25837,12 @@ The Roster Agent package exceeds the size limit.
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
+#### ShallowJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ShallowJSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+
 #### SimpleAccount
 
 | Name | Type | Description | Required |
@@ -25804,7 +25905,7 @@ The Roster Agent package exceeds the size limit.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| model | [JSONValue](#jsonvalue) |  | No |
+| model | [AnyJSONValue](#anyjsonvalue) |  | No |
 | pre_prompt | string |  | No |
 
 #### SimpleProviderEntityResponse
@@ -25813,9 +25914,9 @@ Simple provider entity response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| icon_small | [I18nObject](#i18nobject) |  | No |
-| icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | Yes |
 | models | [ [AIModelEntityResponse](#aimodelentityresponse) ], <br>**Default:**  |  | No |
 | provider | string |  | Yes |
 | provider_name | string |  | No |
@@ -26376,6 +26477,16 @@ Payload for running a loop node in snippet draft workflow.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### SnippetPublishWorkflowPayload
+
+Payload for publishing snippet workflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| knowledge_base_setting | object |  | No |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+
 #### SnippetResponse
 
 | Name | Type | Description | Required |
@@ -26458,6 +26569,15 @@ Query parameters for listing snippet published workflows.
 | updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 | version_number | integer |  | No |
+
+#### SnippetWorkflowRunQuery
+
+Query parameters for workflow runs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| last_id | string |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 
 #### SpeechToTextDisabledError
 
@@ -27097,10 +27217,10 @@ removes TOOLS_SELECTOR from PluginParameterType
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | author | string | The author of the tool | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
+| description | [I18nObject](#i18nobject) | The description of the tool | Yes |
 | icon | string | The icon of the tool | Yes |
 | icon_dark | string | The dark icon of the tool | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
+| label | [I18nObject](#i18nobject) | The label of the tool | Yes |
 | name | string | The name of the tool | Yes |
 | tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
 
@@ -27519,10 +27639,10 @@ The identity of the trigger provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | author | string | The author of the trigger provider | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the trigger provider | Yes |
+| description | [I18nObject](#i18nobject) | The description of the trigger provider | Yes |
 | icon | string | The icon of the trigger provider | No |
 | icon_dark | string | The dark icon of the trigger provider | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the trigger provider | Yes |
+| label | [I18nObject](#i18nobject) | The label of the trigger provider | Yes |
 | name | string | The name of the trigger provider | Yes |
 | tags | [ string ] | The tags of the trigger provider | No |
 
@@ -27812,6 +27932,12 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebhookTriggerQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
 
 #### WebhookTriggerResponse
 
@@ -28216,7 +28342,7 @@ How a workflow node is bound to an Agent.
 | name | string |  | Yes |
 | selector | [ string ] |  | Yes |
 | type | string |  | Yes |
-| value | [JSONValue](#jsonvalue) |  | Yes |
+| value | [RecursiveJSONValue](#recursivejsonvalue) |  | Yes |
 | value_type | string |  | Yes |
 | visible | boolean |  | Yes |
 
@@ -28869,15 +28995,6 @@ Workflow run not found.
 | files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 
-#### WorkflowRunQuery
-
-Query parameters for workflow runs.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| last_id | string |  | No |
-| limit | integer, <br>**Default:** 20 |  | No |
-
 #### WorkflowRunRequest
 
 | Name | Type | Description | Required |
@@ -29206,26 +29323,6 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 | reverse | boolean |  | No |
-
-#### core__tools__entities__common_entities__I18nObject
-
-Model class for i18n object.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| en_US | string |  | Yes |
-| ja_JP | string |  | No |
-| pt_BR | string |  | No |
-| zh_Hans | string |  | No |
-
-#### graphon__model_runtime__entities__common_entities__I18nObject
-
-Model class for i18n object.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| en_US | string |  | Yes |
-| zh_Hans | string |  | No |
 
 ## FastOpenAPI Preview (OpenAPI 3.1)
 
