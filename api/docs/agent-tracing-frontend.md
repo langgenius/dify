@@ -2,7 +2,9 @@
 
 更新日期：2026-10-15。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
-本文依据本开发分支的 Console controller、生成的 OpenAPI / TypeScript 契约和运行服务编写。代码具备某项能力、部署已开启该能力、第三方账号已收到数据是三种不同结论；本文不作为 main 或 dev 已部署的证明。发布前需补全末尾的部署及端到端验收记录。
+后端应用级 Agent tracing、Console API 与生成契约已实现，并已部署到 agent dev 完成本文记录的真实 Langfuse 验收。生产代码提交为 `5da59a08959823bd46296ff86e21bb019fa2d472`，测试类型补充提交为 `dba2ff735a62b30e52afef4b6b1e05aded29c2d4`；已合并 `origin/main` 的 `8428ced558c8c6a9f3ed8bb81f5d62c9402ca17d`，原功能基线为 `69629bd7b719ab958be2b8a83d6cf13a1dcdbc0c`。Web 本次未改，本文用于后续前端接入，不代表新配置和运行状态 UI 已完成。
+
+独立 Agent 内容策略、成功/失败/取消终态、运行中配置冻结、mixed inline/reference Workflow、单节点 preview 与普通 Workflow legacy 兼容均有实际 API / Langfuse 证据。十家 provider 的适配实现与真实平台验收分开记录：其余九家没有账号级端到端证据，跨 Workflow 内部节点不保证同树。部署差异、故障注入的模拟边界与未验证范围见第 12 节。
 
 ## 1. 接入位置与配置归属
 
@@ -164,6 +166,8 @@ Agent 成功响应为以上完整策略；普通 App 成功响应为：
 这不是 PATCH 接口。前端修改一个开关时仍应提交四个字段，并沿用已读策略；遗漏两个 capture 字段会使用默认值，可能覆盖用户之前的选择。
 
 新链路还要求 API/worker 的 `OPS_AGENT_TRACE_ENABLED=true` 及 Agent runtime 的 `DIFY_AGENT_APPLICATION_TRACING_ENABLED=true`，两者部署默认均为 false。`capture_agent=true` 不会越过部署开关，也不会开启基础设施 OTel 或部署级 trajectory 导出。
+
+升级时先保持两个 gate 关闭，完成数据库迁移、新 Agent runtime、API 与 workers 的部署，再开启两个 gate 并执行验证。旧 runtime 的 execution context 使用 `extra=forbid`，即使 `tracing:null` 也会被拒绝；本次 API 已在没有 tracing context 时完全省略该字段，因此关闭 gate 的普通请求可兼容旧 runtime。不能在新 runtime 部署完成前向它发送非空 tracing context。回滚先关闭两个 gate，停止新增采集，再按发布步骤回滚服务；应用配置中的 `enabled=false` 不能代替部署 gate。
 
 后台恢复任务由 `ENABLE_APPLICATION_TRACE_RECONCILE_TASK` 控制，默认 true，并且仅在 `OPS_AGENT_TRACE_ENABLED=true` 时注册。部署验收应确认 Celery beat 正常运行、worker 消费 `ops_trace` 队列且该恢复任务未被关闭，否则丢失排队通知后的终态恢复、重试扫描和过期清理不能按设计运行。这个部署任务开关不属于前端应用策略。
 
@@ -426,6 +430,8 @@ API 没有 `pending` 和 `incomplete` 状态。若 UI 使用“处理中/pending
 
 运行中的查询建议有限退避轮询，例如 2 秒起、上限 10 秒；页面不可见或进入终态时停止。该节奏是 UI 建议，不是后端保证的投递时延。
 
+Agent worker 在观察到成功、失败或处理完显式停止后直接提交 tracing 终态，不依赖浏览器继续消费 SSE。调用 stop 后关闭 SSE 也可继续完成投递；关闭 SSE 本身不等同于发送 stop。取消执行的外层 root 标记为 error，并带 `message_execution_state=cancelled`；已完成的底层 Agent / LLM / tool span 保留它们实际的状态，不能要求整棵树所有 span 都变成 error。这些执行细节不在 Console 运行 DTO 中展开，前端业务状态仍沿用现有执行接口。
+
 ## 9. 手动重投与冻结目的地
 
 普通失败重投：
@@ -494,21 +500,85 @@ await consoleClient.agent.byAgentId.traceRuns.byMessageId.retry.post({
 7. 模拟明确失败、超时/部分接收、采集不完整；确认 failed/uncertain 的不同处理，accepted 不重发，uncertain 必须确认。
 8. 覆盖 SDK 型与 OTLP 型导出；逐 provider 记录已验证、未验证及差异。没有账号或平台证据的项目保留“未验证”，不得用 mock SDK 测试代替平台验收。
 
-## 12. 待补部署与 E2E 证据
+## 12. 部署与分级验收记录
 
-本节由实际 dev 验收负责人填写。代码测试、SDK/HTTP 边界测试、真实平台查询分开记录。
+以下是 2026-10-15 已收集的证据汇总。真实供应商查询、部署内故障注入和代码测试分别记载；未验证项目不计入通过。仓库文档不包含 workspace/account UUID、私人项目链接或凭据。
 
-| 项目 | 证据 |
+### 12.1 实现版本与 dev 差异
+
+| 项目 | 当前记录 |
 | --- | --- |
-| main 基线 / PR commit | 待填写精确 SHA 与 PR |
-| dev API / Web / Agent / worker 镜像及挂载差异 | 待填写 |
-| 数据库迁移版本、两个部署开关 | 待填写；不要附密钥 |
-| 新 Agent App：应用 / message ID / trace 链接 | 待填写本次新链路证据 |
-| inline Workflow：app / workflow run / node execution ID / trace 链接 | 待填写本次新链路证据 |
-| 单节点调试与失败/取消 | 待填写 |
-| 冻结目的地、手动重投及 uncertain 确认 | 待填写 |
-| Langfuse 实际可查询结果 | 待填写；此前普通 LLM Workflow 的 legacy trace 不代表新 Agent 内部树已验收 |
-| 其他九家 provider 平台验收 | 当前不宣称已实测，逐家填写证据与差异 |
+| main 基线 | 原功能基线 `69629bd7b719ab958be2b8a83d6cf13a1dcdbc0c`；已无冲突合并 `origin/main` 的 `8428ced558` |
+| 生产代码提交 | `5da59a08959823bd46296ff86e21bb019fa2d472` |
+| 测试类型补充提交 | `dba2ff735a62b30e52afef4b6b1e05aded29c2d4` |
+| 最终 dev API 镜像 ID | `50b6dbbc82f135d4937714111e8e8616eda154095580535537856a449df239d1` |
+| 最终 dev Agent 镜像 ID | `f0c70c043f71bf58f112eaf2a65f8dab1e2bc39072da8bc942a9e8815e111087` |
+| 验收期间的部署更新 | 早期 mixed Workflow / Agent 策略使用 API `ca15a0a0…`；终态 handoff 验收使用中间 API `9205…`；最终 API 已包含 preview 两项修复及 app-scoped tracing port 注册；在最终镜像上又完成 Agent 与 inline Workflow 回归，Agent runtime 未变更 |
+| 数据库迁移链 | main：`a17c2980f3e6`；dev：`a17c2980d3e6`。两条链不同，不把 revision 字符串不同误判为缺少本功能 |
+| dev 保留修改 | 保留 Tokener / node ID 补丁；没有以 main 覆盖 dev |
+| OpenAPI 适配差异 | dev 的 `libs.external_api` 缺少 `error_responses`，仅移除两个新 Console controller 的该纯文档注解；业务运行逻辑相同，前端类型以 main 生成契约为准 |
+| Web | 未修改；新增配置与运行状态 UI 仍由前端接入 |
+| 运行条件 | dev 验收时 API / Agent 双 gate 与恢复任务开关均开启，beat 正常投递恢复任务；实际运行由 worker 接受上报。发布其他环境时仍需核对其独立开关 |
+
+### 12.2 已通过的真实 API / Langfuse 验收
+
+| 场景 | API / 业务结果 | 第三方证据 |
+| --- | --- | --- |
+| Agent provider 配置 | 脱敏回显断言通过 | 不将配置校验成功等同于投递成功 |
+| Agent `capture_content=false` | 业务成功，投递 `accepted`；4 个 runtime span 条目 | Langfuse 查询到 6 个 observation，内容关闭矩阵检查通过 |
+| Agent `enabled=false` | 业务仍成功；新链路 `not_collected`、0 span 条目 | Langfuse 对应查询为 0 observation |
+| Agent `capture_agent=false` | 业务成功、`accepted`；0 个内部 runtime span 条目 | Langfuse 仅 1 个外层 observation |
+| accepted 重投保护 | Console 返回 HTTP 409 | 已接受的运行未通过该操作再次发送 |
+| 普通无 Agent Workflow legacy | 单次业务运行成功；0 条 managed trace run；graph / tracing 配置未变 | 旧 trace 查询 HTTP 200、输出匹配业务，v2 查询确认已索引；未将该证据外推到 Chatflow |
+| 普通 LLM + inline Agent | 首轮业务运行成功；调用方冻结配置匹配；`accepted` | 10 个 observation、1 个 root；普通 LLM 1 次 + Agent LLM 2 次 + 工具 1 次；ID、父子映射、session、token 和费用一致；4768 tokens / USD 0.0009929 |
+| 普通 LLM + reference Agent | 首轮业务运行成功；调用方冻结配置匹配；`accepted` | 10 个 observation、1 个 root；普通 LLM 1 次 + Agent LLM 2 次 + 工具 1 次；ID、父子映射、session、token 和费用一致；4766 tokens / USD 0.0009925 |
+| inline Agent 单节点 preview | `source_kind=node`，业务成功、`accepted`；graph / tracing 配置未变 | 6 个 observation，其中 GENERATION 2、TOOL 1、AGENT 3；仅 1 个 root；canonical ID 一致、所有 parent 存在、节点深链 observation 存在 |
+
+Langfuse v4 的明确入队 ACK 已按 `accepted` 处理；这仍不是平台可查询的保证。上述可查询结论来自另行执行的 v2 observations GET，运行接口的 `queryable` 仍为 null。查询 usage、费用和内容存在性需指定 `fields=core,basic,model,usage,io,time,metrics`；如检查 metadata，追加合法的 `metadata` group。默认只返回 core/basic，不能把缺省未请求的字段当作内容丢失。验收输出仅包含结构、数值和存在性布尔，不附输入输出正文或 ACK 认证信息。
+
+preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合成 workflow run ID 的问题，均未生成 trace。修复部署后的最终复验已通过上表业务、投递、平台树和节点深链检查；失败记录保留作为问题定位证据。
+
+以下终态和冻结策略场景也已完成真实 Console API、持久化状态及独立 Langfuse GET 验证：
+
+| 场景 | 操作边界与 API / 持久化结果 | 独立平台查询 |
+| --- | --- | --- |
+| 运行中变更采集策略 | invocation 尚未 finalized 后关闭 `enabled` 和 `capture_content`；旧 run 保持原 revision 与 `capture_content=true`，最终 accepted；canonical root 为 ok、`message_execution_state=succeeded` | HTTP 200，6 observations / 1 root / 2 generations；所有 parent 存在 |
+| 运行中取消并关闭 SSE | invocation 尚未 finalized 时真实 POST stop，随后立即关闭 SSE；worker 持久化终态，accepted；canonical root 为 error、`message_execution_state=cancelled`；底层已完成 span 可仍为 ok | HTTP 200，6 observations / 1 root / 2 generations；root level=ERROR，所有 parent 存在 |
+| 模型执行失败 | Console 返回 HTTP 400 / `completion_request_error`，Message 已创建；tracing 最终 accepted；canonical root 与 LLM span 为 error、`message_execution_state=failed` | HTTP 200，4 observations / 1 root / 1 generation；root 与 generation 为 ERROR，所有 parent 存在 |
+
+最终 API 镜像部署后重新执行独立 Agent 与 mixed inline Workflow：Agent 业务成功并 accepted；inline 业务成功并 accepted，独立 Langfuse 查询得到 10 observations / 1 root，包含 3 GENERATION、1 TOOL、3 AGENT 和 3 CHAIN，native tokens 与 canonical 均为 4768，ID、父关系和节点深链匹配，graph / tracing 配置未变。上述 Agent 最终镜像回归单独确认业务与投递 ACK，未新增该条 trace 的独立平台查询声明。
+
+### 12.3 部署内故障注入：真实数据库，模拟导出传输
+
+| 检查 | 结果与边界 |
+| --- | --- |
+| 慢导出续租 | PostgreSQL + gevent monkey patch 隔离进程内，租约 2 秒、模拟导出耗时 7 秒；观察到心跳，并发 claim 被阻止，最终 accepted / 1 attempt |
+| broker 调度失败恢复 | 真实数据库保存 1 个批次后模拟 broker 失败，reconciler 能发现并恢复；供应商导出使用模拟 transport |
+| uncertain 与重投确认 | 自动重投被阻止；无显式确认返回 HTTP 409；确认后的状态变更经过真实 repository 事务 |
+| 旧 attempt token | 旧 completion 和旧 heartbeat 均不能覆盖新尝试 |
+| 同 attempt 迟到 ACK | 确认成功的 late ACK 能把 lease-expired uncertain 修复为 accepted |
+
+这 5 类检查执行的是隔离进程中的实际 Celery task body，使用真实 PostgreSQL 与 gevent 调度，但不是共享 broker consumer 的完整故障演练；`platform_verified=false`，不能写成真实供应商失败/恢复已验收。
+
+### 12.4 代码回归检查
+
+| 检查范围 | 结果 |
+| --- | --- |
+| API 定向测试 | 718 passed |
+| Agent runtime 测试 | 155 passed |
+| preview scope 修复相关回归 | 143 passed；随后真实部署复验通过，见上表 |
+| 完整类型检查 | `make type-check` 通过；新增 strict unit tests 为 0 diagnostics |
+| 架构导入规则 | 68 contracts kept / 0 broken |
+| 后端完整 lint | `make lint` 通过；响应契约、禁止 spec mock、新模型基类及 dotenv 检查通过 |
+
+首次测试进程继承用户 SOCKS 代理环境时因缺少 `socksio` 失败；隔离测试进程的代理环境后上述测试全部通过，未修改用户代理配置。完整类型检查在本地虚拟环境中补充了实际 VDB 源码的搜索路径，没有添加 stub、ignore 或 suppression。测试通过不替代真实部署和供应商查询验收。
+
+### 12.5 未验证范围与后续前端验收
+
+- 普通无 Agent Workflow legacy 已在指定测试应用通过；普通 Chatflow 未补独立真实平台证据。
+- 非 Langfuse 的其他九家：已实现适配并有 SDK/协议边界测试，没有账号级真实收数 / 查询验收。
+- Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
+- 本次未实现 Web 配置和运行状态 UI；新增前端页面的权限展示、交互、状态轮询及深链跳转需在前端接入后验收。
 
 ## 13. 定稿检查与代码定位
 
@@ -522,4 +592,4 @@ await consoleClient.agent.byAgentId.traceRuns.byMessageId.retry.post({
 - Provider 能力：`api/services/tracing/provider_dispatch.py`
 - 生成契约：`packages/contracts/generated/api/console/{agent,apps}/`
 
-运行服务已提供 `retry` 和 `status.capture_agent`，配置能力接口已增加当前 API gate。发布前剩余核对项为部署/迁移版本及第 12 节的真实平台证据；runtime gate 目前仍无远程探测，不能把 API gate=true 写成完整链路已启用。
+运行服务已提供 `retry` 和 `status.capture_agent`，配置能力接口已增加当前 API gate。已完成的实测、部署标识与未验证范围按第 12 节分别记录。runtime gate 目前仍无远程探测，不能把 API gate=true 写成完整链路已启用。

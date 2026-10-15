@@ -10,12 +10,13 @@ from flask import Flask
 
 from configs import dify_config
 from core.ops.base_trace_instance import (
-    ApplicationTracingHooks,
     ApplicationTracingHooksNotRegisteredError,
     bind_application_tracing_hooks,
 )
 from core.ops.entities.config_entity import OPS_TRACE_FAILED_KEY
+from core.ops.entities.trace_entity import BaseTraceInfo
 from core.ops.exceptions import RetryableTraceDispatchError
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tasks.ops_trace_task import process_trace_tasks
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -322,8 +323,14 @@ def test_managed_application_capture_receives_restored_info_and_preserves_enterp
 
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     legacy = MagicMock()
-    hooks = MagicMock(spec=ApplicationTracingHooks)
-    hooks.capture_terminal.return_value = True
+    calls: list[BaseTraceInfo] = []
+
+    def capture(info: BaseTraceInfo) -> bool:
+        calls.append(info)
+        return True
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "capture_terminal", staticmethod(capture))
+    hooks = RuntimeApplicationTracingHooks()
     app = Flask(__name__)
     bind_application_tracing_hooks(app, hooks)
     enterprise = MagicMock()
@@ -353,8 +360,8 @@ def test_managed_application_capture_receives_restored_info_and_preserves_enterp
         patch("tasks.ops_trace_task.storage.delete") as deleted,
     ):
         _run_task({"app_id": "app-id", "file_id": "file-id"})
-    hooks.capture_terminal.assert_called_once()
-    restored = hooks.capture_terminal.call_args.args[0]
+    assert len(calls) == 1
+    restored = calls[0]
     assert isinstance(restored, MessageTraceInfo)
     assert restored.message_id == "message-id"
     enterprise.trace.assert_called_once_with(restored)
@@ -369,8 +376,14 @@ def test_nonmanaged_task_uses_legacy_and_disabled_gate_never_calls_collector(
 ):
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=enabled)
     legacy = MagicMock()
-    hooks = MagicMock(spec=ApplicationTracingHooks)
-    hooks.capture_terminal.return_value = False
+    calls: list[BaseTraceInfo] = []
+
+    def capture(info: BaseTraceInfo) -> bool:
+        calls.append(info)
+        return False
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "capture_terminal", staticmethod(capture))
+    hooks = RuntimeApplicationTracingHooks()
     app = Flask(__name__)
     bind_application_tracing_hooks(app, hooks)
     with (
@@ -380,16 +393,22 @@ def test_nonmanaged_task_uses_legacy_and_disabled_gate_never_calls_collector(
         patch("tasks.ops_trace_task.storage.delete"),
     ):
         _run_task({"app_id": "app-id", "file_id": "file-id"})
-    assert hooks.capture_terminal.call_count == int(enabled)
+    assert calls == ([{}] if enabled else [])
     legacy.trace.assert_called_once_with({})
 
 
 def test_capture_persistence_failure_preserves_payload_without_legacy_export(monkeypatch: pytest.MonkeyPatch):
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     legacy = MagicMock()
-    hooks = MagicMock(spec=ApplicationTracingHooks)
     pending_error = RetryableTraceDispatchError("database busy")
-    hooks.capture_terminal.side_effect = pending_error
+    calls: list[BaseTraceInfo] = []
+
+    def capture(info: BaseTraceInfo) -> bool:
+        calls.append(info)
+        raise pending_error
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "capture_terminal", staticmethod(capture))
+    hooks = RuntimeApplicationTracingHooks()
     app = Flask(__name__)
     bind_application_tracing_hooks(app, hooks)
     with (
@@ -404,7 +423,7 @@ def test_capture_persistence_failure_preserves_payload_without_legacy_export(mon
     legacy.trace.assert_not_called()
     deleted.assert_not_called()
 
-    hooks.capture_terminal.assert_called_once_with({})
+    assert calls == [{}]
     retry.assert_called_once_with(exc=pending_error, countdown=process_trace_tasks.default_retry_delay)
 
 
