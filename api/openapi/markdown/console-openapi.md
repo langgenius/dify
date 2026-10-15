@@ -6038,6 +6038,7 @@ Get dataset auto disable logs
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string (uuid) |
+| document_id | query | Document IDs | No | [ string ] |
 
 #### Responses
 
@@ -6054,12 +6055,12 @@ Get documents in a dataset
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string (uuid) |
-| fetch | query | Fetch full details (default: false) | No | string |
-| keyword | query | Search keyword | No | string |
-| limit | query | Number of items per page (default: 20) | No | string |
-| page | query | Page number (default: 1) | No | string |
-| sort | query | Sort order (default: -created_at) | No | string |
-| status | query | Filter documents by display status | No | string |
+| fetch | query |  | No | string, <br>**Default:** false |
+| keyword | query | Search keyword. | No | string |
+| limit | query | Page size. | No | integer, <br>**Default:** 20 |
+| page | query | Page number. | No | integer, <br>**Default:** 1 |
+| sort | query | Sort by field. | No | string, <br>**Default:** -created_at |
+| status | query | Document status. | No | string |
 
 #### Responses
 
@@ -6169,6 +6170,7 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| document_id | query | Document IDs | No | [ string ] |
 | action | path |  | Yes | string |
 | dataset_id | path |  | Yes | string (uuid) |
 
@@ -6907,6 +6909,8 @@ Get dataset query history
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string (uuid) |
+| limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 
 #### Responses
 
