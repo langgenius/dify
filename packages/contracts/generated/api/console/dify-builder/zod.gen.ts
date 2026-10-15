@@ -938,7 +938,9 @@ export const zDifyBuilderNoticeConversationItemResponse = z.object({
  * PlanCard
  */
 export const zPlanCard = z.object({
+  input_summary: z.string(),
   items: z.array(z.string()).optional(),
+  output_summary: z.string(),
   reply_language: z.string().optional().default(''),
   title: z.union([z.string(), zBuilderCopy, zBuilderTextParts]),
 })

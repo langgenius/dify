@@ -25176,7 +25176,9 @@ Plaintext secret values are not allowed in Agent config.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| input_summary | string |  | Yes |
 | items | [ string ] |  | No |
+| output_summary | string |  | Yes |
 | reply_language | string |  | No |
 | title | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | Yes |
 

@@ -5,6 +5,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { DifyBuilderCard } from '../cards/card-shell'
 import { useBuilderText } from '../copy/use-builder-text'
 import { ExecutionProgress } from './execution-progress'
+import { PlanCard } from './plan-card'
 import { PreflightContextCard } from './preflight-context-card'
 import { ReadOnlyFormResponse } from './read-only-form-response'
 import arrivalStyles from './reply-arrival.module.css'
@@ -135,32 +136,7 @@ export const ConversationCard = memo(
     }
 
     if (item.kind === 'plan') {
-      const items = item.payload.items ?? []
-      return (
-        <DifyBuilderCard
-          category={t(($) => $['cardCategory.plan'], { ns: 'difyBuilder' })}
-          headline={renderText(item.payload.title)}
-          invalidated={invalidated}
-        >
-          {items.length > 0 ? (
-            <ol className="flex flex-col py-1">
-              {items.map((text, index) => (
-                <li key={text} className="flex items-start gap-4 py-1">
-                  <span
-                    aria-hidden
-                    className="flex size-4 shrink-0 items-center justify-center rounded-md bg-components-badge-bg-gray-soft system-2xs-semibold-uppercase text-text-tertiary"
-                  >
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 system-sm-regular wrap-break-word text-text-primary">
-                    {text}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          ) : undefined}
-        </DifyBuilderCard>
-      )
+      return <PlanCard payload={item.payload} invalidated={invalidated} />
     }
 
     if (item.kind === 'test_result')
