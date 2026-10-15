@@ -333,7 +333,13 @@ def test_unavailable_template_never_reads_storage(harness: Harness, state: str, 
             snapshot = session.get(AgentConfigSnapshot, harness.snapshot.id)
             assert snapshot is not None
             snapshot.tenant_id = str(uuid4())
-    assert harness.get("files/guide.txt/preview").status_code == status
+    preview = harness.get("files/guide.txt/preview")
+    assert preview.status_code == status
+    assert preview.json is not None
+    assert preview.json["status"] == status
+    if status == 400:
+        # Raised inside the template guard, so its error answer is built by the surface and not cached.
+        assert preview.headers["Cache-Control"] == "no-store"
     composer = harness.app.test_client().get(f"/console/api/trial-apps/{harness.source.id}/agent-composer")
     assert composer.status_code == status
     if status == 400:

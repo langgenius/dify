@@ -234,6 +234,7 @@ ignore_imports =
     repositories.knowledge.dataset_api_key_repository -> services.knowledge.api_key_service
     repositories.knowledge.dataset_repository -> services.knowledge.segments.application
     repositories.knowledge.dataset_repository -> services.knowledge.dataset_access
+    repositories.knowledge.dataset_repository -> services.knowledge.entities.datasets
     repositories.knowledge.dataset_repository -> services.knowledge.indexing.estimate
     repositories.knowledge.dataset_repository -> services.knowledge.resource_scope
     repositories.knowledge.document_repository -> services.knowledge.document_sync

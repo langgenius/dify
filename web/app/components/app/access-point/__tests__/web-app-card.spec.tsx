@@ -572,13 +572,17 @@ describe('WebAppAccessPointCard', () => {
   })
 
   it('disables Web App management actions without Access Point management', async () => {
+    const user = userEvent.setup()
     renderCard(AppModeEnum.CHAT, 'available', undefined, { canManageAccessPoint: false })
 
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByRole('button', { name: /embedIntoSite/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /settings\.settings/ })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
+    const regenerate = screen.getByRole('button', { name: /regenerate/ })
+    expect(regenerate).toHaveAttribute('aria-disabled', 'true')
+    await user.click(regenerate)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(await screen.findByRole('link', { name: /studio\.accessPoint\.open/ })).toHaveAttribute(
       'href',
       `https://site.example.test${basePath}/chat/site-code`,

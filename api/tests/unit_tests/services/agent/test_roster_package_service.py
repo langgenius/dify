@@ -624,7 +624,7 @@ def test_preflight_rejects_aggregate_nested_skill_expansion(monkeypatch: pytest.
                 size=len(payload),
                 sha256=hashlib.sha256(payload).hexdigest(),
             )
-            for index, (path, payload) in zip(("one", "two"), skill_payloads.items())
+            for index, (path, payload) in zip(("one", "two"), skill_payloads.items(), strict=False)
         ],
     )
     package = _zip(

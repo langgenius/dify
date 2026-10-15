@@ -13,6 +13,36 @@ export type RuleCodeGeneratePayload = {
 
 export type GeneratorResponse = unknown
 
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ModelConfig = {
   completion_params?: {
     [key: string]: unknown
@@ -32,9 +62,16 @@ export type PostRuleCodeGenerateData = {
 }
 
 export type PostRuleCodeGenerateErrors = {
-  400: unknown
-  402: unknown
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostRuleCodeGenerateError = PostRuleCodeGenerateErrors[keyof PostRuleCodeGenerateErrors]
 
 export type PostRuleCodeGenerateResponses = {
   200: GeneratorResponse

@@ -478,7 +478,6 @@ describe('AgentOutputBlockComponent', () => {
 
     fireEvent.mouseEnter(outputBlock)
 
-    expect(outputBlock).toHaveClass('cursor-pointer')
     expect(onEdit).not.toHaveBeenCalled()
 
     fireEvent.click(outputBlock)

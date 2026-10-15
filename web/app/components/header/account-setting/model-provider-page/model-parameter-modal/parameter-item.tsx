@@ -303,13 +303,13 @@ function ParameterItem({
           >
             <FieldsetLegend className="sr-only">{translatedLabel}</FieldsetLegend>
             <FieldItem>
-              <FieldLabel className="flex w-17.5 items-center gap-1.5 system-sm-regular text-text-secondary">
+              <FieldLabel className="flex w-17.5 cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                 <Radio<boolean> value={true} />
                 True
               </FieldLabel>
             </FieldItem>
             <FieldItem>
-              <FieldLabel className="flex w-17.5 items-center gap-1.5 system-sm-regular text-text-secondary">
+              <FieldLabel className="flex w-17.5 cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                 <Radio<boolean> value={false} />
                 False
               </FieldLabel>

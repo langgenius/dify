@@ -48,6 +48,7 @@ from fields.conversation_fields import (
 )
 from fields.conversation_fields import MessageResponseSource
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
@@ -161,6 +162,7 @@ class ChatMessageListApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
 class AgentChatMessageListApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("list_agent_chat_messages")
     @console_ns.doc(description="Get Agent App chat messages for a conversation with pagination")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -205,7 +207,6 @@ class MessageFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
-    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -224,6 +225,7 @@ class MessageFeedbackApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/feedbacks")
 class AgentMessageFeedbackApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("create_agent_message_feedback")
     @console_ns.doc(description="Create or update Agent App message feedback")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -284,6 +286,16 @@ class MessageAnnotationCountApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundError,
+        AppNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_message_suggested_questions")
     @console_ns.doc(description="Get suggested questions for a message")
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
@@ -312,6 +324,16 @@ class MessageSuggestedQuestionApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class AgentMessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AgentVersionNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_agent_message_suggested_questions")
     @console_ns.doc(description="Get suggested questions for an Agent App message")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
@@ -355,6 +377,7 @@ class MessageApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/messages/<uuid:message_id>")
 class AgentMessageApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("get_agent_message")
     @console_ns.doc(description="Get Agent App message details by ID")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
