@@ -39,6 +39,11 @@ const toNotionWorkspaces = ({ notion_info }: NotionIntegrateInfoListResponse) =>
     })),
   }))
 
+const getStringField = (record: Record<string, unknown>, key: string) => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
+
 type NotionPageSelectorProps = {
   value?: string[]
   onSelect: (selectedPages: NotionPage[]) => void
@@ -80,8 +85,8 @@ const NotionPageSelector = ({
       return {
         credentialId: item.id,
         credentialName: item.name,
-        workspaceIcon: item.credential.workspace_icon,
-        workspaceName: item.credential.workspace_name,
+        workspaceIcon: getStringField(item.credential, 'workspace_icon'),
+        workspaceName: getStringField(item.credential, 'workspace_name'),
       }
     })
   }, [credentialList])

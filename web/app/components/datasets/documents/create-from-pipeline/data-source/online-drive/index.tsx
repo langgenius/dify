@@ -6,7 +6,6 @@ import { produce } from 'immer'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { selectDataSourceCredentials } from '@/app/components/header/account-setting/data-source-page-new/utils'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -69,7 +68,6 @@ const OnlineDrive = ({
   const { data: dataSourceAuth } = useQuery(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
       input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
-      select: selectDataSourceCredentials,
     }),
   )
 

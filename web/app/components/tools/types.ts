@@ -1,4 +1,6 @@
+import type { WorkflowTriggerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
+  ToolParameter as ContractToolParameter,
   DatasourceProviderType,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
@@ -109,7 +111,7 @@ export type ToolParameter = {
   llm_description: string
   required: boolean
   multiple: boolean
-  default: string
+  default?: ContractToolParameter['default']
   options?: {
     label: LocalizedText
     value: string
@@ -191,7 +193,7 @@ type ParamItem = {
   type: string
   form: string
   required: boolean
-  default: string
+  default?: ContractToolParameter['default']
   min?: number
   max?: number
   options?: {
@@ -292,14 +294,4 @@ export const MCPAuthMethod = {
 
 export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]
 
-export type AppTrigger = {
-  id: string
-  trigger_type: 'trigger-webhook' | 'trigger-schedule' | 'trigger-plugin'
-  title: string
-  node_id: string
-  provider_name: string
-  icon: string
-  status: 'enabled' | 'disabled' | 'unauthorized'
-  created_at: string
-  updated_at: string
-}
+export type AppTrigger = WorkflowTriggerResponse

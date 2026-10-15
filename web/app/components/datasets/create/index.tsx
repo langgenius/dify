@@ -16,7 +16,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { selectDataSourceAuthList } from '@/app/components/header/account-setting/data-source-page-new/utils'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   settingsQueryParamName,
@@ -95,11 +94,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     data: dataSourceList,
     isLoading: isLoadingAuthedDataSourceList,
     isError: fetchingAuthedDataSourceListError,
-  } = useQuery(
-    consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions({
-      select: selectDataSourceAuthList,
-    }),
-  )
+  } = useQuery(consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions())
 
   const updateNotionPages = useCallback((value: NotionPage[]) => {
     setNotionPages(value)

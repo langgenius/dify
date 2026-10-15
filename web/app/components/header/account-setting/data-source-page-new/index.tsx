@@ -15,7 +15,6 @@ import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/serv
 import { UpdateSettingDialog } from '../update-setting-dialog'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
-import { selectDataSourceAuthList } from './utils'
 
 type DataSourcePageProps = {
   layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
@@ -64,7 +63,7 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     select: (s) => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useQuery(
-    consoleQuery.auth.plugin.datasource.list.get.queryOptions({ select: selectDataSourceAuthList }),
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions(),
   )
   const { data: installedPluginList } = useInstalledPluginList({
     category: PluginCategoryEnum.datasource,

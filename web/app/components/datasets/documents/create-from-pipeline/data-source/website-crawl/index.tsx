@@ -12,7 +12,6 @@ import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { selectDataSourceCredentials } from '@/app/components/header/account-setting/data-source-page-new/utils'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -72,7 +71,6 @@ const WebsiteCrawl = ({
   const { data: dataSourceAuth } = useQuery(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
       input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
-      select: selectDataSourceCredentials,
     }),
   )
 

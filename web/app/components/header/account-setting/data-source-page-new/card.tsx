@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
-import { memo, useCallback, useRef } from 'react'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { ApiKeyModal, usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
@@ -23,6 +23,7 @@ import Configure from './configure'
 import { useDataSourceAuthUpdate } from './hooks'
 import Item from './item'
 import DataSourcePluginActions from './plugin-actions'
+import { providerConfigToFormSchema } from './utils'
 
 const getPluginVersion = (uniqueIdentifier?: string) => {
   return uniqueIdentifier?.match(/:([^:@]+)@/)?.[1]
@@ -40,6 +41,10 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
   const renderI18nObject = useRenderI18nObject()
   const { icon, label, credentials_list, credential_schema } = item
   const providerLabel = renderI18nObject(label)
+  const credentialFormSchemas = useMemo(
+    () => credential_schema.map(providerConfigToFormSchema),
+    [credential_schema],
+  )
   const fallbackPluginVersion = getPluginVersion(item.plugin_unique_identifier)
   const pluginPayload = {
     category: AuthCategory.datasource,
@@ -204,7 +209,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             pendingOperationCredentialId.current = null
           }}
           onUpdate={handleAuthUpdate}
-          formSchemas={credential_schema}
+          formSchemas={credentialFormSchemas}
           editValues={editValues}
           onRemove={handleRemove}
           disabled={disabled || doingAction || !canManageCredential}

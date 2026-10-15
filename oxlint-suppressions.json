@@ -1804,11 +1804,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/data-source-page-new/types.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
     "typescript/no-explicit-any": {
       "count": 4
@@ -4219,7 +4214,7 @@
   },
   "web/types/pipeline.tsx": {
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/types/workflow.ts": {

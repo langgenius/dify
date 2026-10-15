@@ -7,7 +7,6 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { selectAppTriggers } from '@/app/components/tools/utils/query-select'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -58,7 +57,6 @@ const WorkflowAppWithAdditionalContext = () => {
     consoleQuery.apps.byAppId.triggers.get.queryOptions({
       input: { params: { app_id: appId } },
       enabled: isWorkflowMode && !!appId,
-      select: selectAppTriggers,
       staleTime: 5 * 60 * 1000, // 5 minutes cache
       refetchOnWindowFocus: false,
     }),

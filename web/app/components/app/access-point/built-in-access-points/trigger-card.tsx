@@ -9,7 +9,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
-import { selectAppTriggers } from '@/app/components/tools/utils/query-select'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -154,7 +153,6 @@ export function TriggerAccessPointCard({
     consoleQuery.apps.byAppId.triggers.get.queryOptions({
       input: { params: { app_id: appInfo.id } },
       enabled: !!appInfo.id,
-      select: selectAppTriggers,
     }),
   )
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()

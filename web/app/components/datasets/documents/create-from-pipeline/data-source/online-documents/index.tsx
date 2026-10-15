@@ -7,7 +7,6 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import { selectDataSourceCredentials } from '@/app/components/header/account-setting/data-source-page-new/utils'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -54,7 +53,6 @@ const OnlineDocuments = ({
   const { data: dataSourceAuth } = useQuery(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
       input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
-      select: selectDataSourceCredentials,
     }),
   )
 

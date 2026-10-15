@@ -107,6 +107,8 @@ describe('DataSourcePage Component', () => {
       name: 'Dify Source',
       label: { en_US: 'Dify Source', zh_Hans: 'zh_hans_dify_source' },
       description: { en_US: 'Dify Description', zh_Hans: 'zh_hans_dify_description' },
+      credential_schema: [],
+      oauth_schema: null,
       credentials_list: [],
     },
     {
@@ -118,6 +120,8 @@ describe('DataSourcePage Component', () => {
       name: 'Partner Source',
       label: { en_US: 'Partner Source', zh_Hans: 'zh_hans_partner_source' },
       description: { en_US: 'Partner Description', zh_Hans: 'zh_hans_partner_description' },
+      credential_schema: [],
+      oauth_schema: null,
       credentials_list: [],
     },
   ]

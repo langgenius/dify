@@ -157,6 +157,8 @@ describe('Card Component', () => {
       en_US: 'Test Description',
       zh_Hans: '',
     },
+    credential_schema: [],
+    oauth_schema: null,
     credentials_list: [
       {
         id: 'c1',
@@ -508,7 +510,12 @@ describe('Card Component', () => {
       const configurableItem: DataSourceAuth = {
         ...mockItem,
         credential_schema: [
-          { name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true },
+          {
+            name: 'api_key',
+            type: FormTypeEnum.textInput,
+            label: { en_US: 'API Key' },
+            required: true,
+          },
         ],
       }
 
@@ -529,12 +536,27 @@ describe('Card Component', () => {
       const configurableItem: DataSourceAuth = {
         ...mockItem,
         credential_schema: [
-          { name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true },
+          {
+            name: 'api_key',
+            type: FormTypeEnum.textInput,
+            label: { en_US: 'API Key' },
+            required: true,
+          },
         ],
         oauth_schema: {
           client_schema: [
-            { name: 'oauth_key', type: FormTypeEnum.textInput, label: 'OAuth Key', required: true },
+            {
+              name: 'oauth_key',
+              type: FormTypeEnum.textInput,
+              label: { en_US: 'OAuth Key' },
+              required: true,
+            },
           ],
+          credentials_schema: [],
+          is_oauth_custom_client_enabled: false,
+          is_system_oauth_params_exists: false,
+          oauth_custom_client_params: null,
+          redirect_uri: '',
         },
       }
 
