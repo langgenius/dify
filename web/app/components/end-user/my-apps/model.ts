@@ -16,7 +16,7 @@ export type EndUserApp = {
 
 export type AppListFilter = {
   view: 'all' | 'starred'
-  sort: 'last-used' | 'name'
+  sort: 'last-used' | 'name' | 'name-desc'
   q: string
 }
 
@@ -32,9 +32,9 @@ export function selectApps(apps: readonly EndUserApp[], filter: AppListFilter, l
     .filter(
       (app) => !query || `${app.name} ${app.description}`.toLocaleLowerCase(locale).includes(query),
     )
-    .sort((a, b) =>
-      filter.sort === 'name'
-        ? a.name.localeCompare(b.name, locale)
-        : b.lastUsedAt - a.lastUsedAt || a.name.localeCompare(b.name, locale),
-    )
+    .sort((a, b) => {
+      if (filter.sort === 'name') return a.name.localeCompare(b.name, locale)
+      if (filter.sort === 'name-desc') return b.name.localeCompare(a.name, locale)
+      return b.lastUsedAt - a.lastUsedAt || a.name.localeCompare(b.name, locale)
+    })
 }

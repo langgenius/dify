@@ -100,37 +100,47 @@ const openRemoval = async (
       name: deleteChats ? 'app.endUser.removeAndDeleteChats' : 'app.endUser.removeFromList',
     }),
   )
-  return screen.findByRole('alertdialog', { name: appLabel('removeTitle', app) })
+  return screen.findByRole('alertdialog', {
+    name: deleteChats ? 'app.endUser.deleteChatsTitle' : appLabel('removeTitle', app),
+  })
 }
 
 describe('MyApps', () => {
-  it('restores view, search and name sorting from the URL and opens the selected app', async () => {
-    const user = userEvent.setup()
-    const { onOpenApp, onUrlUpdate } = setup({
-      searchParams: '?view=starred&sort=name&q=%20RESEARCH%20',
-    })
+  it.each([
+    { sort: 'name', label: 'app.endUser.nameAscending', expectedNames: [beta.name, zebra.name] },
+    {
+      sort: 'name-desc',
+      label: 'app.endUser.nameDescending',
+      expectedNames: [zebra.name, beta.name],
+    },
+  ])(
+    'restores view, search and $sort sorting from the URL and opens the selected app',
+    async ({ sort, label, expectedNames }) => {
+      const user = userEvent.setup()
+      const { onOpenApp, onUrlUpdate } = setup({
+        searchParams: `?view=starred&sort=${sort}&q=%20RESEARCH%20`,
+      })
 
-    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
-    expect(screen.getByRole('combobox', { name: 'app.endUser.sortBy' })).toHaveTextContent(
-      'app.endUser.name',
-    )
-    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue(
-      ' RESEARCH ',
-    )
-    expect(appNames()).toEqual([beta.name, zebra.name])
-    expect(onUrlUpdate).not.toHaveBeenCalled()
+      expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
+      expect(screen.getByRole('combobox', { name: 'app.endUser.sortBy' })).toHaveTextContent(label)
+      expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue(
+        ' RESEARCH ',
+      )
+      expect(appNames()).toEqual(expectedNames)
+      expect(onUrlUpdate).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: appLabel('openApp', beta) }))
+      await user.click(screen.getByRole('button', { name: appLabel('openApp', beta) }))
 
-    expect(onOpenApp).toHaveBeenCalledExactlyOnceWith(beta)
-  })
+      expect(onOpenApp).toHaveBeenCalledExactlyOnceWith(beta)
+    },
+  )
 
   it('updates URL filters and sorting, searches descriptions, and clears filters while preserving the sort', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = setup({ searchParams: '?unrelated=keep' })
     expect(appNames()).toEqual([zebra.name, beta.name, alpha.name])
     await user.click(screen.getByRole('combobox', { name: 'app.endUser.sortBy' }))
-    await user.click(await screen.findByRole('option', { name: 'app.endUser.name' }))
+    await user.click(await screen.findByRole('option', { name: 'app.endUser.nameAscending' }))
     expect(appNames()).toEqual([alpha.name, beta.name, zebra.name])
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('sort')).toBe('name'),
@@ -158,6 +168,28 @@ describe('MyApps', () => {
       expect(params?.has('view')).toBe(false)
       expect(params?.get('sort')).toBe('name')
       expect(params?.get('unrelated')).toBe('keep')
+    })
+  })
+
+  it('selects descending names without clearing the current Starred view or search', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = setup({ searchParams: '?view=starred&sort=name&q=RESEARCH' })
+    expect(appNames()).toEqual([beta.name, zebra.name])
+    const sort = screen.getByRole('combobox', { name: 'app.endUser.sortBy' })
+    await user.click(sort)
+    await user.click(await screen.findByRole('option', { name: 'app.endUser.nameDescending' }))
+
+    expect(sort).toHaveTextContent('app.endUser.nameDescending')
+    expect(appNames()).toEqual([zebra.name, beta.name])
+    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
+    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue(
+      'RESEARCH',
+    )
+    await waitFor(() => {
+      const params = onUrlUpdate.mock.lastCall?.[0].searchParams
+      expect(params?.get('sort')).toBe('name-desc')
+      expect(params?.get('view')).toBe('starred')
+      expect(params?.get('q')).toBe('RESEARCH')
     })
   })
 
@@ -190,9 +222,16 @@ describe('MyApps', () => {
       const user = userEvent.setup()
       const { onRemoveApp } = setup({ initialApps: [alpha] })
       const dialog = await openRemoval(user, alpha, deleteChats)
-      expect(dialog).toHaveAccessibleDescription(
-        deleteChats ? 'app.endUser.deleteChatsDescription' : 'app.endUser.removeDescription',
-      )
+      if (deleteChats) {
+        expect(dialog).toHaveAccessibleDescription(/app\.endUser\.deleteChatsDescription/)
+        expect(within(dialog).getByText(appLabel('deleteChatsDescription', alpha))).toBeVisible()
+        expect(within(dialog).getByText('app.endUser.deleteChatsDisclaimer')).toBeVisible()
+      } else {
+        expect(dialog).toHaveAccessibleDescription('app.endUser.removeDescription')
+        expect(
+          within(dialog).queryByText('app.endUser.deleteChatsDisclaimer'),
+        ).not.toBeInTheDocument()
+      }
       expect(onRemoveApp).not.toHaveBeenCalled()
 
       await user.click(

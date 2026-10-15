@@ -5,10 +5,14 @@ import type { AppListFilter } from './model'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
+  SelectSeparator,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +28,8 @@ export default function MyAppsToolbar({ filter, searchInputRef, onFilterChange }
   const { t } = useTranslation(['app', 'common'])
   const sortLabels = {
     'last-used': t(($) => $['endUser.lastUsed'], { ns: 'app' }),
-    name: t(($) => $['endUser.name'], { ns: 'app' }),
+    name: t(($) => $['endUser.nameAscending'], { ns: 'app' }),
+    'name-desc': t(($) => $['endUser.nameDescending'], { ns: 'app' }),
   }
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -54,14 +59,29 @@ export default function MyAppsToolbar({ filter, searchInputRef, onFilterChange }
             </span>{' '}
             {sortLabels[filter.sort]}
           </SelectTrigger>
-          <SelectContent>
-            {(['last-used', 'name'] as const).map((sort) => (
-              <SelectItem key={sort} value={sort}>
-                <SelectItemText>{sortLabels[sort]}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
+          <SelectPortal>
+            <SelectPositioner placement="bottom-end">
+              <SelectPopup className="w-54 bg-components-panel-bg-blur backdrop-blur-[5px]">
+                <SelectList className="p-2">
+                  <SelectItem value="last-used" className="gap-1">
+                    <SelectItemText className="px-1 system-md-regular">
+                      {sortLabels['last-used']}
+                    </SelectItemText>
+                    <SelectItemIndicator className="text-text-secondary" />
+                  </SelectItem>
+                  <SelectSeparator className="mx-0 my-1" />
+                  {(['name', 'name-desc'] as const).map((sort) => (
+                    <SelectItem key={sort} value={sort} className="gap-1">
+                      <SelectItemText className="px-1 system-md-regular">
+                        {sortLabels[sort]}
+                      </SelectItemText>
+                      <SelectItemIndicator className="text-text-secondary" />
+                    </SelectItem>
+                  ))}
+                </SelectList>
+              </SelectPopup>
+            </SelectPositioner>
+          </SelectPortal>
         </Select>
         <SearchInput
           ref={searchInputRef}
