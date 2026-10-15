@@ -23,7 +23,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
-from models.workflow import Workflow
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -32,6 +32,7 @@ from services.workflow.execution.adapters.node_factory import (
 )
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.variable_contracts import environment_variable_values
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +180,7 @@ class WorkflowGraphBuilder:
 
     def build_single_node(
         self,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         single_iteration_run: Any | None = None,
         single_loop_run: Any | None = None,
         *,
@@ -208,7 +209,7 @@ class WorkflowGraphBuilder:
             variable_pool,
             build_bootstrap_variables(
                 system_variables=default_system_variables(),
-                environment_variables=workflow.environment_variables,
+                environment_variables=environment_variable_values(workflow),
             ),
         )
         graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
@@ -247,7 +248,7 @@ class WorkflowGraphBuilder:
 
     def _get_graph_and_variable_pool_for_single_node_run(
         self,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user_inputs: dict[str, Any],
         graph_runtime_state: GraphRuntimeState,

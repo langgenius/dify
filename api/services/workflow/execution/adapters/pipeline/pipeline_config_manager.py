@@ -8,7 +8,7 @@ from core.app.app_config.features.text_to_speech.manager import TextToSpeechConf
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
 from models.dataset import Pipeline
 from models.model import AppMode
-from models.workflow import Workflow
+from services.workflow.contracts import WorkflowSnapshot
 
 
 class PipelineConfig(WorkflowUIBasedAppConfig):
@@ -22,14 +22,16 @@ class PipelineConfig(WorkflowUIBasedAppConfig):
 
 class PipelineConfigManager(BaseAppConfigManager):
     @classmethod
-    def get_pipeline_config(cls, pipeline: Pipeline, workflow: Workflow, start_node_id: str) -> PipelineConfig:
+    def get_pipeline_config(cls, pipeline: Pipeline, workflow: WorkflowSnapshot, start_node_id: str) -> PipelineConfig:
         pipeline_config = PipelineConfig(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             app_mode=AppMode.RAG_PIPELINE,
             workflow_id=workflow.id,
             rag_pipeline_variables=WorkflowVariablesConfigManager.convert_rag_pipeline_variable(
-                workflow=workflow, start_node_id=start_node_id
+                workflow=workflow,
+                start_node_id=start_node_id,
+                rag_pipeline_variables=workflow.rag_pipeline_variable_values,
             ),
         )
 

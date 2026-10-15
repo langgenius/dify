@@ -11,6 +11,7 @@ from core.app.entities.queue_entities import QueueStopEvent
 from core.moderation.base import ModerationError
 from models.model import App, AppMode, Conversation, IconType, Message
 from models.workflow import Workflow, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.chatflow.app_runner import AdvancedChatAppRunner
 from services.workflow.execution.ports import WorkflowRuntime
 
@@ -90,7 +91,7 @@ def build_runner(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime):
         message=message,
         dialogue_count=1,
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         system_user_id=str(uuid4()),
         app=app,
         workflow_execution_repository=MagicMock(),
