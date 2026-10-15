@@ -5,7 +5,9 @@ import json
 import os
 import shlex
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
+from typing import override
 
 import pytest
 import yaml
@@ -15,11 +17,46 @@ from dev.check_knowledge_fs_coverage import discover_core_coverage_paths
 ROOT = Path(__file__).resolve().parents[4]
 
 
-def _workflow(name: str) -> dict:
-    return yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader)
+class _Yaml:
+    """Typed view over a ``yaml.BaseLoader`` document, whose nodes are only mappings, sequences and strings."""
+
+    def __init__(self, value: object) -> None:
+        self.value = value
+
+    def __getitem__(self, key: str) -> _Yaml:
+        assert isinstance(self.value, dict), self.value
+        return _Yaml(self.value[key])
+
+    def get(self, key: str, default: str = "") -> _Yaml:
+        assert isinstance(self.value, dict), self.value
+        return _Yaml(self.value.get(key, default))
+
+    def __iter__(self) -> Iterator[_Yaml]:
+        assert isinstance(self.value, list), self.value
+        return (_Yaml(item) for item in self.value)
+
+    def __contains__(self, item: str) -> bool:
+        assert isinstance(self.value, (str, list, dict)), self.value
+        return item in self.value
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        return self.value == other
+
+    def __bool__(self) -> bool:
+        return bool(self.value)
+
+    @property
+    def text(self) -> str:
+        assert isinstance(self.value, str), self.value
+        return self.value
 
 
-def _step(workflow: dict, name: str, *, job: str = "quality") -> dict:
+def _workflow(name: str) -> _Yaml:
+    return _Yaml(yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader))
+
+
+def _step(workflow: _Yaml, name: str, *, job: str = "quality") -> _Yaml:
     return next(step for step in workflow["jobs"][job]["steps"] if step["name"] == name)
 
 
@@ -40,7 +77,7 @@ def test_dify_dockerfile_has_only_existing_local_copy_sources() -> None:
 def test_dify_gate_target_collection_includes_all_owned_integration_files(tmp_path: Path) -> None:
     workflow = _workflow("knowledge-fs-ci.yml")
     assert discover_core_coverage_paths(ROOT)
-    command = _step(workflow, "Collect Dify KnowledgeFS gate targets")["run"]
+    command = _step(workflow, "Collect Dify KnowledgeFS gate targets")["run"].text
     subprocess.run(["bash", "-c", command], cwd=ROOT, env={**os.environ, "RUNNER_TEMP": str(tmp_path)}, check=True)
     manifest = tmp_path / "knowledge-fs-ci-targets"
     production = set((manifest / "production-files").read_bytes().decode().strip("\0").split("\0"))
@@ -92,7 +129,7 @@ def test_required_dify_gate_status_fails_closed(quality: str, vectors: str, skip
     assert "vector-backends" in workflow["jobs"]["final"]["needs"]
     final = _step(workflow, "Finalize KnowledgeFS CI status", job="final")
     assert final["env"]["VECTOR_RESULT"] == "${{ needs.vector-backends.result }}"
-    command = final["run"]
+    command = final["run"].text
     result = subprocess.run(
         ["bash", "-c", command],
         env={
@@ -113,12 +150,12 @@ def test_dify_deployment_has_one_owner_and_uses_tested_revision() -> None:
     workflow = _workflow("deploy-knowledge.yml")
     dev = _workflow("deploy-dev.yml")
     assert dev["on"]["workflow_run"]["branches"] == ["deploy/dev"]
-    assert "deploy/konwledge" not in json.dumps(dev)
+    assert "deploy/konwledge" not in json.dumps(dev.value)
     assert workflow["on"]["workflow_run"]["workflows"] == ["Build and Push API & Web"]
     assert workflow["on"]["workflow_run"]["branches"] == ["deploy/konwledge"]
     assert workflow["concurrency"]["cancel-in-progress"] == "false"
     deploy = workflow["jobs"]["deploy"]
-    assert int(deploy["timeout-minutes"]) >= 335
+    assert int(deploy["timeout-minutes"].text) >= 335
     assert "workflow_run.event == 'push'" in deploy["if"]
     assert "head_repository.full_name == github.repository" in deploy["if"]
     checkout = _step(workflow, "Checkout tested deployment gates", job="deploy")
@@ -137,7 +174,7 @@ def test_remote_bridge_passes_exact_revision_or_refuses_to_execute(tmp_path: Pat
     workflow = _workflow("deploy-knowledge.yml")
     command = _step(workflow, "Deploy tested Dify revision while preserving KnowledgeFS", job="deploy")["with"][
         "script"
-    ]
+    ].text
     controller = tmp_path / "knowledge-fs-independent-deploy.py"
     controller.write_text(
         "import json, sys\nfrom pathlib import Path\n"

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import override
 
 import pytest
 from sqlalchemy.orm import Session
@@ -33,6 +34,7 @@ class _FlushRecordingSession(Session):
         super().__init__()
         self.flush_count = 0
 
+    @override
     def flush(self, objects: Sequence[object] | None = None) -> None:
         self.flush_count += 1
         super().flush(objects)

@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel, JsonValue
+from typing_extensions import TypedDict
 
 from services.knowledge_fs import data_facade as data_facade_module
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
@@ -63,6 +64,12 @@ from services.knowledge_fs.query_images import KnowledgeFSQueryImagePreview
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedCapabilityIssuer
 from tests.unit_tests.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall
+
+
+class _FacadeScope(TypedDict, closed=True):
+    tenant_id: str
+    account_id: str
+    control_space_id: str
 
 
 class FailingBroker(UnexpectedCapabilityIssuer):
@@ -718,7 +725,7 @@ def test_trace_and_research_history_carry_signed_query_image_previews() -> None:
         }
 
     facade = KnowledgeFSDataFacade(broker=broker, remote=remote, query_image_previews=previews)  # type: ignore[arg-type]
-    common = {"tenant_id": "tenant-1", "account_id": "account-1", "control_space_id": "control-1"}
+    common: _FacadeScope = {"tenant_id": "tenant-1", "account_id": "account-1", "control_space_id": "control-1"}
 
     traces = facade.list_traces(**common)
     trace = facade.get_trace(**common, trace_id="trace-1")
@@ -749,7 +756,7 @@ def test_knowledge_fs_commands_use_independent_manifest_operations_and_query_con
     remote = RecordingRemote()
     broker = RecordingBroker()
     facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
-    common = {
+    common: _FacadeScope = {
         "tenant_id": "tenant-1",
         "account_id": "account-1",
         "control_space_id": "control-1",

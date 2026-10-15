@@ -5,6 +5,7 @@ from datetime import datetime
 from io import BytesIO
 
 import pytest
+from sqlalchemy.sql import ClauseElement
 from werkzeug.datastructures import FileStorage
 
 from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError, KnowledgeFSQueryImageError
@@ -28,18 +29,20 @@ class _Session:
     def __init__(self) -> None:
         self.active_token: str | None = TOKEN_ID
         self.queries: list[dict[str, object]] = []
-        self.added: list[object] = []
+        self.added: list[UploadFile] = []
         self.committed = False
         self.fail_commit = False
 
-    def scalar(self, statement):
-        params = statement.compile().params
+    def scalar(self, statement: ClauseElement) -> str | None:
+        compiled_params = statement.compile().params
+        assert compiled_params is not None
+        params: dict[str, object] = dict(compiled_params)
         self.queries.append(params)
         assert params["tenant_id_1"] == TENANT_ID
         assert params["type_1"] == ApiTokenType.DATASET
         return self.active_token if params["id_1"] == self.active_token else None
 
-    def add(self, item) -> None:
+    def add(self, item: UploadFile) -> None:
         self.added.append(item)
 
     def commit(self) -> None:
