@@ -8434,7 +8434,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineRecommendedPluginsResponse](#ragpipelinerecommendedpluginsresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/transform/datasets/{dataset_id}
@@ -8448,7 +8448,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineTransformResponse](#ragpipelinetransformresponse)<br> |
 | 404 | Dataset or pipeline not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -9162,7 +9162,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelinePublishedRunResponse](#ragpipelinepublishedrunresponse)<br> |
 | 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -24153,6 +24153,36 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
 
+#### PipelineDataset
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chunk_structure | string |  | Yes |
+| description | string | knowledge dataset description | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### PipelineDocument
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data_source_info | object |  | No |
+| data_source_type | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | No |
+| id | string |  | Yes |
+| indexing_status | string |  | Yes |
+| name | string |  | Yes |
+| position | integer |  | Yes |
+
+#### PipelineGenerateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| dataset | [PipelineDataset](#pipelinedataset) |  | Yes |
+| documents | [ [PipelineDocument](#pipelinedocument) ] |  | Yes |
+
 #### PipelineNotFoundError
 
 Pipeline not found.
@@ -25177,17 +25207,40 @@ Resource types understood by access policies.
 | ---- | ---- | ----------- | -------- |
 | RagPipelineOpaqueResponse |  |  |  |
 
+#### RagPipelinePublishedRunResponse
+
+Blocking run result: a preview run returns the workflow result, a processing run the queued batch.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RagPipelinePublishedRunResponse | [PipelineGenerateResponse](#pipelinegenerateresponse)<br>[WorkflowAppBlockingResponse](#workflowappblockingresponse) | Blocking run result: a preview run returns the workflow result, a processing run the queued batch. |  |
+
 #### RagPipelineRecommendedPluginQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string, <br>**Default:** all |  | No |
 
+#### RagPipelineRecommendedPluginsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| installed_recommended_plugins | [ [ToolProviderApiEntityResponse](#toolproviderapientityresponse) ] |  | Yes |
+| uninstalled_recommended_plugins | [ object ] |  | Yes |
+
 #### RagPipelineStepParametersResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| variables |  |  | Yes |
+| variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
+
+#### RagPipelineTransformResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_id | string |  | Yes |
+| pipeline_id | string |  | Yes |
+| status | string |  | Yes |
 
 #### RagPipelineWorkflowPublishResponse
 
@@ -28127,6 +28180,33 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | node_execution_id | string | Workflow node execution ID | Yes |
 | path | string | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | Yes |
+
+#### WorkflowAppBlockingResponse
+
+WorkflowAppBlockingResponse entity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowAppBlockingResponseData](#workflowappblockingresponsedata) |  | Yes |
+| task_id | string |  | Yes |
+| workflow_run_id | string |  | Yes |
+
+#### WorkflowAppBlockingResponseData
+
+Data entity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| elapsed_time | number |  | Yes |
+| error | string |  | No |
+| finished_at | integer |  | Yes |
+| id | string |  | Yes |
+| outputs | object |  | No |
+| status | [WorkflowExecutionStatus](#workflowexecutionstatus) |  | Yes |
+| total_steps | integer |  | Yes |
+| total_tokens | integer |  | Yes |
+| workflow_id | string |  | Yes |
 
 #### WorkflowAppLogPaginationResponse
 
