@@ -38,6 +38,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -46,7 +47,13 @@ from core.workflow.nodes.human_input.callback import (
 from core.workflow.nodes.human_input.entities import FormInputConfig, HumanInputNodeData
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.system_variables import (
+    SystemVariableKey,
+    build_bootstrap_variables,
+    build_system_variables,
+    default_system_variables,
+    system_variable_selector,
+)
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
@@ -1158,14 +1165,19 @@ class WorkflowService:
         Run draft workflow node
         """
         files = files or []
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        node_data = node_config["data"]
+        is_agent_preview = is_dify_agent_node_data(node_data)
+        if is_agent_preview and (
+            draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id
+        ):
+            raise ValueError("Workflow does not belong to the application")
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
             draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
 
-        node_config = draft_workflow.get_node_config_by_id(node_id)
-        node_type = Workflow.get_node_type_from_node_config(node_config)
-        node_data = node_config["data"]
         if is_start_node_type(node_type):
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -1234,37 +1246,59 @@ class WorkflowService:
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         node, node_events = run
+        if is_agent_preview:
+            # Standalone previews have no WorkflowRun. The general debug bootstrap
+            # inserts a synthetic run ID; do not use it as this caller's owner.
+            variable_pool.remove(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID))
+
         started_event: NodeRunStartedEvent | None = None
+        started_execution: WorkflowNodeExecution | None = None
 
         def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
-            nonlocal started_event
+            nonlocal started_event, started_execution
             for event in node_events:
                 if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
                     started_event = event
                     # Agent workspace allocation requires this caller row before the node body runs.
-                    repository.save_synchronously(
-                        WorkflowNodeExecution(
-                            id=event.id,
-                            node_execution_id=event.id,
-                            workflow_id=draft_workflow.id,
-                            index=1,
-                            predecessor_node_id=event.predecessor_node_id,
-                            node_id=event.node_id,
-                            node_type=event.node_type,
-                            title=event.node_title,
-                            process_data=event.node_run_result.process_data or None,
-                            metadata=event.node_run_result.metadata,
-                            created_at=event.start_at,
-                        )
+                    started_execution = WorkflowNodeExecution(
+                        id=event.id,
+                        node_execution_id=event.id,
+                        workflow_id=draft_workflow.id,
+                        index=1,
+                        predecessor_node_id=event.predecessor_node_id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        title=event.node_title,
+                        process_data=event.node_run_result.process_data or None,
+                        metadata=event.node_run_result.metadata,
+                        created_at=event.start_at,
                     )
+                    repository.save_synchronously(started_execution)
                 yield event
 
         start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: (node, persist_node_start()),
-            start_at=start_at,
-            node_id=node_id,
-        )
+        try:
+            node_execution = self._handle_single_step_result(
+                invoke_node_fn=lambda: (node, persist_node_start()),
+                start_at=start_at,
+                node_id=node_id,
+            )
+        except BaseException:
+            if is_agent_preview and started_execution is not None:
+                started_execution.status = WorkflowNodeExecutionStatus.FAILED
+                started_execution.error = "Agent preview execution interrupted"
+                started_execution.elapsed_time = time.perf_counter() - start_at
+                started_execution.finished_at = naive_utc_now()
+                try:
+                    repository.save_synchronously(started_execution)
+                    # Keep the terminal append for LogStore and other async repositories.
+                    repository.save(started_execution)
+                except Exception as persistence_error:
+                    logging.getLogger(__name__).warning(
+                        "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
+                    )
+            raise
+
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:
             node_execution.id = started_event.id
@@ -1706,7 +1740,6 @@ class WorkflowService:
             created_at=naive_utc_now(),
             finished_at=naive_utc_now(),
         )
-
         # Populate execution result data
         self._populate_execution_result(node_execution, node_run_result, run_succeeded, error)
 
