@@ -4275,7 +4275,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             sqlite_session,
             dataset_ids=[dataset_id],
             query="python",
-            tenant_id="tenant-1",
+            tenant_id=tenant_id,
             user_id="u1",
             metadata_filtering_mode="disabled",
             metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
@@ -4293,7 +4293,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 sqlite_session,
                 dataset_ids=[dataset_id],
                 query="python",
-                tenant_id="tenant-1",
+                tenant_id=tenant_id,
                 user_id="u1",
                 metadata_filtering_mode="automatic",
                 metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
@@ -4312,7 +4312,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             sqlite_session,
             dataset_ids=[dataset_id],
             query="python",
-            tenant_id="tenant-1",
+            tenant_id=tenant_id,
             user_id="u1",
             metadata_filtering_mode="manual",
             metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
@@ -4330,7 +4330,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 sqlite_session,
                 dataset_ids=[dataset_id],
                 query="python",
-                tenant_id="tenant-1",
+                tenant_id=tenant_id,
                 user_id="u1",
                 metadata_filtering_mode="unsupported",
                 metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
@@ -4931,9 +4931,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         with app.app_context():
             with (
                 patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
-                patch(
-                    "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
-                ) as mock_external,
+                patch("core.rag.retrieval.dataset_retrieval.RetrievalService.external_retrieve") as mock_external,
                 patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
                 patch.object(retrieval, "_on_retrieval_end") as mock_end,
                 patch.object(retrieval, "_on_query"),
@@ -5052,7 +5050,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
             patch(
-                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval",
+                "core.rag.retrieval.dataset_retrieval.RetrievalService.external_retrieve",
                 return_value=[],
             ) as mock_external_retrieve,
             patch.object(retrieval, "_on_query") as mock_on_query,
@@ -5101,7 +5099,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
             patch(
-                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval",
+                "core.rag.retrieval.dataset_retrieval.RetrievalService.external_retrieve",
             ) as mock_external_retrieve,
             patch(
                 "core.rag.retrieval.dataset_retrieval.RetrievalService.retrieve",
@@ -5669,9 +5667,7 @@ class TestInternalHooksCoverage:
         self.orm_session.add_all([external_dataset, economy_dataset, high_dataset])
         self.orm_session.commit()
         with (
-            patch(
-                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval"
-            ) as mock_external,
+            patch("core.rag.retrieval.dataset_retrieval.RetrievalService.external_retrieve") as mock_external,
         ):
             mock_external.return_value = [{"content": "e", "metadata": {}, "score": 0.8, "title": "Ext"}]
             retrieval._retriever(

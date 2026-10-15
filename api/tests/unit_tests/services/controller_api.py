@@ -82,23 +82,15 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
-from collections.abc import Callable, Iterator
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask, g
+from flask import Flask
 from flask.testing import FlaskClient
 from flask_restx import Api
 
 from controllers.console.datasets.datasets import DatasetApi, DatasetListApi
-from controllers.console.datasets.external import (
-    ExternalApiTemplateListApi,
-)
-from controllers.console.datasets.hit_testing import HitTestingApi
-from enums import DeploymentEdition
-from models.account import Account, AccountStatus, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum
 
 # ============================================================================
@@ -656,225 +648,9 @@ class TestDatasetApiCreate:
 # ============================================================================
 
 
-class TestHitTestingApi:
-    """
-    Comprehensive API tests for HitTestingApi (POST /datasets/{id}/hit-testing endpoint).
-
-    This test class covers the hit testing (retrieval testing) functionality
-    through the HTTP API.
-
-    The POST /datasets/{id}/hit-testing endpoint:
-    1. Requires authentication and account initialization
-    2. Validates dataset exists and user has permission
-    3. Validates query parameters
-    4. Performs retrieval testing
-    5. Returns test results
-
-    Test scenarios include:
-    - Successful hit testing
-    - Query validation errors
-    - Dataset not found
-    - Permission denied
-    """
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        return ControllerApiTestDataFactory.create_flask_app()
-
-    @pytest.fixture
-    def api(self, app: Flask):
-        """Create Flask-RESTX API instance."""
-        return ControllerApiTestDataFactory.create_api_instance(app)
-
-    @pytest.fixture
-    def client(self, app: Flask, api: Api):
-        """Create test client with HitTestingApi registered."""
-        return ControllerApiTestDataFactory.create_test_client(
-            app, api, HitTestingApi, "/datasets/<uuid:dataset_id>/hit-testing"
-        )
-
-    @pytest.fixture
-    def mock_current_user(self):
-        """Mock current user and tenant context."""
-        with patch("controllers.console.datasets.hit_testing.current_account_with_tenant") as mock_get_user:
-            mock_user = ControllerApiTestDataFactory.create_user_mock()
-            mock_tenant_id = "tenant-123"
-            mock_get_user.return_value = (mock_user, mock_tenant_id)
-            yield mock_get_user
-
-    def test_hit_testing_success(self, client: FlaskClient, mock_current_user):
-        """
-        Test successful hit testing operation.
-
-        Verifies that when all validation passes, hit testing is performed
-        and results are returned.
-
-        This test ensures:
-        - Dataset validation passes
-        - Query validation passes
-        - Hit testing service is called
-        - Results are returned
-        - Status code is 200
-        """
-        # Arrange
-        dataset_id = str(uuid4())
-        dataset = ControllerApiTestDataFactory.create_dataset_mock(dataset_id=dataset_id)
-
-        request_data = {
-            "query": "test query",
-            "top_k": 10,
-        }
-
-        expected_result = {
-            "query": {"content": "test query"},
-            "records": [
-                {"content": "Result 1", "score": 0.95},
-                {"content": "Result 2", "score": 0.85},
-            ],
-        }
-
-        with (
-            patch(
-                "controllers.console.datasets.hit_testing.HitTestingApi.get_and_validate_dataset"
-            ) as mock_get_dataset,
-            patch("controllers.console.datasets.hit_testing.HitTestingApi.parse_args") as mock_parse_args,
-            patch("controllers.console.datasets.hit_testing.HitTestingApi.hit_testing_args_check") as mock_check_args,
-            patch("controllers.console.datasets.hit_testing.HitTestingApi.perform_hit_testing") as mock_perform,
-        ):
-            mock_get_dataset.return_value = dataset
-            mock_parse_args.return_value = request_data
-            mock_check_args.return_value = None  # No validation error
-            mock_perform.return_value = expected_result
-
-            # Act
-            response = client.post(
-                f"/datasets/{dataset_id}/hit-testing",
-                json=request_data,
-                content_type="application/json",
-            )
-
-        # Assert
-        assert response.status_code == 200
-        data = response.get_json()
-        assert "query" in data
-        assert "records" in data
-        assert len(data["records"]) == 2
-
-        # Verify methods were called
-        mock_get_dataset.assert_called_once()
-        mock_parse_args.assert_called_once()
-        mock_check_args.assert_called_once()
-        mock_perform.assert_called_once()
-
-
 # ============================================================================
 # Tests for External Dataset Endpoints
 # ============================================================================
-
-
-class TestExternalDatasetApi:
-    """
-    Comprehensive API tests for External Dataset endpoints.
-
-    This test class covers the external knowledge API and external dataset
-    management functionality through the HTTP API.
-
-    Endpoints covered:
-    - GET /datasets/external-knowledge-api - List external knowledge APIs
-    - POST /datasets/external-knowledge-api - Create external knowledge API
-    - GET /datasets/external-knowledge-api/{id} - Get external knowledge API
-    - PATCH /datasets/external-knowledge-api/{id} - Update external knowledge API
-    - DELETE /datasets/external-knowledge-api/{id} - Delete external knowledge API
-    - POST /datasets/external - Create external dataset
-
-    Test scenarios include:
-    - Successful CRUD operations
-    - Request validation
-    - Authentication and authorization
-    - Error handling
-    """
-
-    @pytest.fixture
-    def app(self):
-        """Create Flask test application."""
-        return ControllerApiTestDataFactory.create_flask_app()
-
-    @pytest.fixture
-    def api(self, app: Flask):
-        """Create Flask-RESTX API instance."""
-        return ControllerApiTestDataFactory.create_api_instance(app)
-
-    @pytest.fixture
-    def client_list(self, app: Flask, api: Api):
-        """Create test client for external knowledge API list endpoint."""
-        return ControllerApiTestDataFactory.create_test_client(
-            app, api, ExternalApiTemplateListApi, "/datasets/external-knowledge-api"
-        )
-
-    @pytest.fixture
-    def mock_current_account_context(self, app: Flask, config_overrides: Callable[..., None]) -> Iterator[Mock]:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        """Provide the wrapper auth context required by HTTP-client controller tests."""
-        mock_user = Account(
-            name="Test User",
-            email="user-123@example.com",
-            status=AccountStatus.ACTIVE,
-        )
-        mock_user.id = "user-123"
-        mock_user.role = TenantAccountRole.EDITOR
-
-        def load_user_from_request_context() -> None:
-            g._login_user = mock_user
-
-        app.login_manager = SimpleNamespace(load_user_from_request_context=load_user_from_request_context)
-
-        with (
-            patch("controllers.console.wraps.current_account_with_tenant") as mock_get_user,
-            patch("libs.login.check_csrf_token", return_value=None),
-        ):
-            mock_tenant_id = "tenant-123"
-            mock_get_user.return_value = (mock_user, mock_tenant_id)
-            yield mock_get_user
-
-    def test_get_external_knowledge_apis_success(self, client_list: FlaskClient, mock_current_account_context: Mock):
-        """
-        Test successful retrieval of external knowledge API list.
-
-        Verifies that the endpoint returns a paginated list of external
-        knowledge APIs.
-
-        This test ensures:
-        - Authentication is checked
-        - Service method is called
-        - Paginated response is returned
-        - Status code is 200
-        """
-        # Arrange
-        apis = []
-        for i in range(3):
-            api_item = Mock()
-            api_item.to_dict.return_value = {"id": f"api-{i}", "name": f"API {i}", "endpoint": f"https://api{i}.com"}
-            apis.append(api_item)
-
-        with patch(
-            "controllers.console.datasets.external.ExternalDatasetService.get_external_knowledge_apis"
-        ) as mock_get_apis:
-            mock_get_apis.return_value = (apis, 3)
-
-            # Act
-            # TODO: this should be made integrated tests...
-            response = client_list.get("/datasets/external-knowledge-api?page=1&limit=20")
-
-        # Assert
-        assert response.status_code == 200
-        data = response.get_json()
-        assert "data" in data
-        assert len(data["data"]) == 3
-        assert data["total"] == 3
-
-        # Verify service was called
-        mock_get_apis.assert_called_once()
 
 
 # ============================================================================

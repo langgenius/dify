@@ -257,39 +257,6 @@ class TestRetrievalServiceInternals:
         assert {doc.metadata["doc_id"] for doc in results} == {"att-1", "att-2"}
         assert mock_retrieve.call_count == 2
 
-    @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
-    @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
-    def test_external_retrieve_with_metadata_conditions(self, mock_validate, mock_fetch, sqlite_session: Session):
-        mock_validate.return_value = "validated-condition"
-        expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
-        mock_fetch.return_value = expected_documents
-        sqlite_session.add(_dataset(dataset_id="dataset-1", tenant_id="tenant-1"))
-        sqlite_session.commit()
-
-        results = RetrievalService.external_retrieve(
-            session=sqlite_session,
-            dataset_id="dataset-1",
-            query="test query",
-            external_retrieval_model={"top_k": 3},
-            metadata_filtering_conditions={"field": "source", "operator": "contains", "value": "manual"},
-        )
-
-        assert results == expected_documents
-        mock_validate.assert_called_once()
-        mock_fetch.assert_called_once_with(
-            tenant_id="tenant-1",
-            dataset_id="dataset-1",
-            query="test query",
-            external_retrieval_parameters={"top_k": 3},
-            metadata_condition="validated-condition",
-            session=sqlite_session,
-        )
-
-    def test_external_retrieve_returns_empty_when_dataset_not_found(self, sqlite_session: Session):
-        results = RetrievalService.external_retrieve(session=sqlite_session, dataset_id="missing", query="q")
-
-        assert results == []
-
     def test_get_dataset_queries_by_id(self, mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
         expected_dataset = _dataset(dataset_id="dataset-123")
         sqlite_session.add(expected_dataset)

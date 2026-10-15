@@ -12,7 +12,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 

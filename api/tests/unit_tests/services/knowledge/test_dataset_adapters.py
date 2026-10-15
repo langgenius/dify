@@ -23,14 +23,15 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
 from services.enterprise import rbac_service
-from services.knowledge.dataset_access import DatasetNotFoundError
+from services.errors.dataset import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -101,7 +102,10 @@ def operations(
         patch.object(rbac_service, "try_sync_creator_access_policy_member_bindings"),
     ):
         yield SQLAlchemyDatasetOperations(
-            session_factory=sqlite_session_factory, tags=application_tags, app_queries=app_services.queries
+            session_factory=sqlite_session_factory,
+            tags=application_tags,
+            app_queries=app_services.queries,
+            external_templates=SQLAlchemyExternalKnowledgeRepository(session_factory=sqlite_session_factory),
         )
 
 

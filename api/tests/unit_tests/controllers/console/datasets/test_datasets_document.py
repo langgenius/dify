@@ -47,7 +47,7 @@ from controllers.console.datasets.error import (
     InvalidMetadataError,
 )
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.documents.application import (
     DatasetDocumentApplicationService,
     DocumentIndexingStateError,

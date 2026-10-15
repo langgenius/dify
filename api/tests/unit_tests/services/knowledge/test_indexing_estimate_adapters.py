@@ -17,6 +17,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, DatasetProcessRule
 from models.enums import CreatorUserRole, ProcessRuleMode
 from models.model import UploadFile
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.estimate import (
     IndexingEstimateAdapter,
     SQLAlchemyProcessRuleReader,
@@ -25,7 +26,6 @@ from services.knowledge.indexing.estimate import (
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
-from services.knowledge.resource_scope import DatasetRef
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:

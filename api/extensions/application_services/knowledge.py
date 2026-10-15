@@ -12,6 +12,7 @@ from libs.helper import generate_text_hash
 from repositories.knowledge.dataset_api_key_repository import DatasetApiKeyRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
@@ -24,15 +25,17 @@ from services.data_source.credential_gateway import (
 from services.data_source.provider_service import DatasourceProviderService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
-from services.knowledge.dataset_service import DocumentService
+from services.knowledge.dataset_service import DocumentService, ExternalKnowledgeTemplateLookup
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.document_sync_adapters import CeleryDocumentSyncDispatcher
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.documents.application import DatasetDocumentApplicationService
-from services.knowledge.external.adapters import SQLAlchemyExternalKnowledgeOperations
+from services.knowledge.external.adapters import ExternalKnowledgeGateway, sync_external_dataset_creator_access
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
+from services.knowledge.hit_testing.adapters import DatasetHitTestingGateway
+from services.knowledge.hit_testing.application import HitTestingApplicationService
 from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
@@ -42,11 +45,14 @@ from services.knowledge.indexing.adapters.sources import (
 )
 from services.knowledge.indexing.estimate import IndexingEstimateApplicationService
 from services.knowledge.metadata.application import MetadataService
+from services.knowledge.retrieval.adapters import WorkflowKnowledgeRetrievalGateway
+from services.knowledge.retrieval.application import InnerKnowledgeRetrievalService
 from services.knowledge.segments.adapters import (
     CelerySegmentBatchImportDispatcher,
     ModelManagerSegmentGuard,
     RedisSegmentClient,
     RedisSegmentIndexingState,
+    SegmentPresentationAdapter,
 )
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
@@ -63,6 +69,9 @@ class KnowledgeServices:
     metadata: MetadataService
     datasets: DatasetApplicationService
     external: ExternalKnowledgeApplicationService
+    external_templates: ExternalKnowledgeTemplateLookup
+    hit_testing: HitTestingApplicationService
+    inner_retrieval: InnerKnowledgeRetrievalService
     documents: DatasetDocumentApplicationService
     document_sync: DocumentSyncApplicationService
     indexing_estimates: IndexingEstimateApplicationService
@@ -120,13 +129,20 @@ def build_knowledge_services(
         enable_task=enable_segments_to_index_task.delay,
         disable_task=disable_segments_from_index_task.delay,
     )
+    external_repository = SQLAlchemyExternalKnowledgeRepository(session_factory=database_client)
+    dataset_operations = SQLAlchemyDatasetOperations(
+        session_factory=database_client,
+        tags=tags,
+        app_queries=app_queries,
+        external_templates=external_repository,
+    )
     return KnowledgeServices(
         metadata=MetadataService(
             store=SQLAlchemyMetadataRepository(session_factory=database_client), dataset_access=dataset_access
         ),
         datasets=DatasetApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyDatasetOperations(session_factory=database_client, tags=tags, app_queries=app_queries),
+            operations=dataset_operations,
             rbac_enabled=dify_config.RBAC_ENABLED,
             service_api_url=dify_config.SERVICE_API_URL,
             vector_store=dify_config.VECTOR_STORE,
@@ -134,7 +150,20 @@ def build_knowledge_services(
         ),
         external=ExternalKnowledgeApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyExternalKnowledgeOperations(session_factory=database_client),
+            repository=external_repository,
+            retrieval=ExternalKnowledgeGateway(),
+            queries=datasets,
+            dataset_details=dataset_operations,
+            sync_creator_access=sync_external_dataset_creator_access,
+        ),
+        external_templates=external_repository,
+        hit_testing=HitTestingApplicationService(
+            dataset_access=dataset_access,
+            retrieval=DatasetHitTestingGateway(datasets=datasets, documents=documents, segments=segments),
+            queries=datasets,
+        ),
+        inner_retrieval=InnerKnowledgeRetrievalService(
+            scope=datasets, retrieval=WorkflowKnowledgeRetrievalGateway(session_factory=database_client)
         ),
         documents=DatasetDocumentApplicationService(
             dataset_access=dataset_access,
@@ -162,6 +191,7 @@ def build_knowledge_services(
             dataset_access=dataset_access,
             scopes=datasets,
             store=segments,
+            presenter=SegmentPresentationAdapter(),
             index=segment_index,
             limits=dify_config,
             text_hash=generate_text_hash,

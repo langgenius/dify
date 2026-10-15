@@ -28,13 +28,19 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
 )
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     RagPipelineDatasetCreateEntity,
 )
 from services.errors.base import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
-from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
+from services.knowledge.dataset_service import (
+    DatasetCollectionBindingService,
+    DatasetPermissionService,
+    DatasetService,
+    ExternalKnowledgeTemplateLookup,
+)
 from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
 
 from .dataset_service_test_helpers import (
@@ -117,6 +123,11 @@ def _binding(
     )
     binding.id = binding_id
     return binding
+
+
+@pytest.fixture
+def external_templates(sqlite_session_factory: sessionmaker[Session]) -> ExternalKnowledgeTemplateLookup:
+    return SQLAlchemyExternalKnowledgeRepository(session_factory=sqlite_session_factory)
 
 
 class TestDatasetServiceValidation:
@@ -392,7 +403,24 @@ class TestDatasetServiceRetrieval:
 
 
 class TestDatasetServiceCreationAndUpdate:
-    def test_create_empty_dataset_rejects_duplicate_name(self, sqlite_session: Session) -> None:
+    def test_external_template_lookup_reads_pending_row_in_current_transaction(
+        self, sqlite_session: Session, external_templates: ExternalKnowledgeTemplateLookup
+    ) -> None:
+        template = _external_api()
+        sqlite_session.add(template)
+        transaction_events: list[str] = []
+        event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
+        event.listen(sqlite_session, "after_rollback", lambda _session: transaction_events.append("rollback"))
+
+        external_templates.require_template(template.tenant_id, template.id, session=sqlite_session)
+
+        assert sqlite_session.get(ExternalKnowledgeApis, template.id) is template
+        assert sqlite_session.in_transaction()
+        assert transaction_events == []
+
+    def test_create_empty_dataset_rejects_duplicate_name(
+        self, sqlite_session: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ) -> None:
         sqlite_session.add(_dataset(name="Existing"))
         sqlite_session.commit()
 
@@ -404,12 +432,15 @@ class TestDatasetServiceCreationAndUpdate:
                 IndexTechniqueType.ECONOMY,
                 _account(),
                 session=sqlite_session,
+                external_templates=external_templates,
             )
 
     def test_create_empty_dataset_persists_default_embedding_and_creator_scope(
         self,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
+        *,
+        external_templates: ExternalKnowledgeTemplateLookup,
     ) -> None:
         embedding_model = SimpleNamespace(provider="provider", model_name="default-embedding")
 
@@ -427,6 +458,7 @@ class TestDatasetServiceCreationAndUpdate:
                 IndexTechniqueType.HIGH_QUALITY,
                 _account(),
                 session=sqlite_session,
+                external_templates=external_templates,
             )
 
         with sqlite_session_factory() as observer:
@@ -436,7 +468,9 @@ class TestDatasetServiceCreationAndUpdate:
             assert persisted.maintainer == "user-1"
             assert persisted.embedding_model == "default-embedding"
 
-    def test_create_empty_external_dataset_persists_tenant_owned_binding(self, sqlite_session: Session) -> None:
+    def test_create_empty_external_dataset_persists_tenant_owned_binding(
+        self, sqlite_session: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ) -> None:
         sqlite_session.add_all([_external_api(), _external_api(api_id="api-foreign", tenant_id="tenant-2")])
         sqlite_session.commit()
 
@@ -454,6 +488,7 @@ class TestDatasetServiceCreationAndUpdate:
                 external_knowledge_id="knowledge-1",
                 retrieval_model=_make_retrieval_model(),
                 session=sqlite_session,
+                external_templates=external_templates,
             )
 
         binding = sqlite_session.scalar(
@@ -463,7 +498,9 @@ class TestDatasetServiceCreationAndUpdate:
         assert binding.tenant_id == dataset.tenant_id
         assert binding.external_knowledge_api_id == "api-1"
 
-    def test_create_empty_external_dataset_rejects_foreign_api(self, sqlite_session: Session) -> None:
+    def test_create_empty_external_dataset_rejects_foreign_api(
+        self, sqlite_session: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ) -> None:
         sqlite_session.add(_external_api(api_id="api-foreign", tenant_id="tenant-2"))
         sqlite_session.commit()
 
@@ -483,6 +520,7 @@ class TestDatasetServiceCreationAndUpdate:
                 external_knowledge_api_id="api-foreign",
                 external_knowledge_id="knowledge-1",
                 session=sqlite_session,
+                external_templates=external_templates,
             )
 
     def test_create_empty_rag_pipeline_dataset_generates_incremental_name(self, sqlite_session: Session) -> None:
@@ -535,22 +573,39 @@ class TestDatasetServiceCreationAndUpdate:
         ):
             DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, sqlite_session)
 
-    def test_update_dataset_rejects_missing_and_duplicate_rows(self, sqlite_session: Session) -> None:
+    def test_update_dataset_rejects_missing_and_duplicate_rows(
+        self, sqlite_session: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ) -> None:
         current = _dataset(name="Current")
         duplicate = _dataset(dataset_id="dataset-2", name="Duplicate")
         sqlite_session.add_all([current, duplicate])
         sqlite_session.commit()
 
         with pytest.raises(ValueError, match="Dataset not found"):
-            DatasetService.update_dataset("missing", {}, _account(), session=sqlite_session)
+            DatasetService.update_dataset(
+                "missing", {}, _account(), session=sqlite_session, external_templates=external_templates
+            )
         with pytest.raises(ValueError, match="Dataset name already exists"):
-            DatasetService.update_dataset(current.id, {"name": duplicate.name}, _account(), session=sqlite_session)
+            DatasetService.update_dataset(
+                current.id,
+                {"name": duplicate.name},
+                _account(),
+                session=sqlite_session,
+                external_templates=external_templates,
+            )
 
     @pytest.mark.parametrize(
         ("provider", "helper_name"),
         [("external", "_update_external_dataset"), ("vendor", "_update_internal_dataset")],
     )
-    def test_update_dataset_routes_by_provider(self, sqlite_session: Session, provider: str, helper_name: str) -> None:
+    def test_update_dataset_routes_by_provider(
+        self,
+        sqlite_session: Session,
+        provider: str,
+        helper_name: str,
+        *,
+        external_templates: ExternalKnowledgeTemplateLookup,
+    ) -> None:
         dataset = _dataset(provider=provider)
         sqlite_session.add(dataset)
         sqlite_session.commit()
@@ -564,6 +619,7 @@ class TestDatasetServiceCreationAndUpdate:
                 {"name": dataset.name},
                 _account(),
                 session=sqlite_session,
+                external_templates=external_templates,
             )
 
         assert result is dataset
@@ -577,13 +633,24 @@ class TestDatasetServiceCreationAndUpdate:
         ],
     )
     def test_update_external_dataset_requires_binding_fields(
-        self, unbound_session: Session, payload: dict[str, str], message: str
+        self,
+        unbound_session: Session,
+        payload: dict[str, str],
+        message: str,
+        *,
+        external_templates: ExternalKnowledgeTemplateLookup,
     ) -> None:
         with pytest.raises(ValueError, match=message):
-            DatasetService._update_external_dataset(_dataset(provider="external"), payload, _account(), unbound_session)
+            DatasetService._update_external_dataset(
+                _dataset(provider="external"),
+                payload,
+                _account(),
+                unbound_session,
+                external_templates=external_templates,
+            )
 
     def test_update_external_dataset_flushes_dataset_and_binding_without_committing(
-        self, sqlite_session: Session
+        self, sqlite_session: Session, *, external_templates: ExternalKnowledgeTemplateLookup
     ) -> None:
         dataset = _dataset(provider="external")
         api = _external_api()
@@ -603,6 +670,7 @@ class TestDatasetServiceCreationAndUpdate:
             },
             _account(),
             sqlite_session,
+            external_templates=external_templates,
         )
 
         assert updated is dataset
@@ -610,7 +678,9 @@ class TestDatasetServiceCreationAndUpdate:
         assert binding.external_knowledge_id == "knowledge-2"
         assert transaction_events == []
 
-    def test_update_external_dataset_rejects_cross_tenant_api(self, sqlite_session: Session) -> None:
+    def test_update_external_dataset_rejects_cross_tenant_api(
+        self, sqlite_session: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ) -> None:
         dataset = _dataset(provider="external")
         foreign_api = _external_api(api_id="api-foreign", tenant_id="tenant-2")
         sqlite_session.add_all([dataset, foreign_api, _binding()])
@@ -625,6 +695,7 @@ class TestDatasetServiceCreationAndUpdate:
                 },
                 _account(),
                 sqlite_session,
+                external_templates=external_templates,
             )
 
     def test_update_external_knowledge_binding_rejects_missing_row(self, sqlite_session: Session) -> None:

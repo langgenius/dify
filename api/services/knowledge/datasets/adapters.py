@@ -19,15 +19,20 @@ from repositories.knowledge.dataset_repository import _get_dataset
 from services.app.query_service import AppQueryService
 from services.enterprise import rbac_service
 from services.errors.base import NoPermissionError
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.dataset_read_service import get_dataset_queries, load_dataset_detail, load_dataset_details
-from services.knowledge.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.knowledge.dataset_service import (
+    DatasetPermissionService,
+    DatasetService,
+    DocumentService,
+    ExternalKnowledgeTemplateLookup,
+)
 from services.knowledge.datasets.application import (
     DatasetListFilter,
     DatasetVisibility,
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.tag_application_service import TagTargetQuery
 
 
@@ -80,11 +85,17 @@ def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[s
 
 class SQLAlchemyDatasetOperations:
     def __init__(
-        self, *, session_factory: sessionmaker[Session], tags: TagTargetQuery, app_queries: AppQueryService
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        tags: TagTargetQuery,
+        app_queries: AppQueryService,
+        external_templates: ExternalKnowledgeTemplateLookup,
     ) -> None:
         self._sessions = session_factory
         self._tags = tags
         self._app_queries = app_queries
+        self._external_templates = external_templates
 
     def visibility(self, context: RequestContext) -> DatasetVisibility:
         with self._sessions() as session:
@@ -189,6 +200,7 @@ class SQLAlchemyDatasetOperations:
         with _translate_permissions(), self._sessions() as session:
             dataset = DatasetService.create_empty_dataset(
                 session=session,
+                external_templates=self._external_templates,
                 tenant_id=context.active_workspace_id,
                 account=load_actor(session, context),
                 **dict(values),
@@ -227,7 +239,9 @@ class SQLAlchemyDatasetOperations:
                 )
             # The legacy updater consumes fields from its input; retain the
             # member selection for the permission update in this transaction.
-            dataset = DatasetService.update_dataset(ref.dataset_id, dict(data), account, session=session)
+            dataset = DatasetService.update_dataset(
+                ref.dataset_id, dict(data), account, session=session, external_templates=self._external_templates
+            )
             if dataset is None:
                 raise DatasetNotFoundError()
             result = self._detail(session, context, dataset)

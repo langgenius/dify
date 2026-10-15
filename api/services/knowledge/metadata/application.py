@@ -8,7 +8,7 @@ from typing import Protocol, TypedDict
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 
 class MetadataInput(Protocol):

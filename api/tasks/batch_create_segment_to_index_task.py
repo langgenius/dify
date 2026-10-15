@@ -23,7 +23,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from models.model import UploadFile
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 logger = logging.getLogger(__name__)
 

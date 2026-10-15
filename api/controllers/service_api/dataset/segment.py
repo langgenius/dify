@@ -44,8 +44,8 @@ from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDelete
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 from services.knowledge.dataset_read_service import load_segment_detail, load_segment_details
 from services.knowledge.dataset_service import DatasetService, DocumentService, SegmentService
+from services.knowledge.entities.resource_scope import DatasetRef, SegmentRef
 from services.knowledge.entities.segments import SegmentUpdateArgs
-from services.knowledge.resource_scope import DatasetRef, SegmentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 

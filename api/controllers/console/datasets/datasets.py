@@ -40,9 +40,9 @@ from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.enums import PermissionEnum as DatasetPermissionEnum
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,

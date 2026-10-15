@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Sequence
 from contextlib import nullcontext
 from dataclasses import replace
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal, Protocol, TypedDict, cast
 
 import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
@@ -89,9 +89,8 @@ from services.knowledge.entities.knowledge_entities import (
     RerankingModel,
     RetrievalModel,
 )
+from services.knowledge.entities.resource_scope import DatasetRef, SegmentRef
 from services.knowledge.entities.segments import SegmentUpdateArgs
-from services.knowledge.external.service import ExternalDatasetService
-from services.knowledge.resource_scope import DatasetRef, SegmentRef
 from services.knowledge.segments.application import (
     ChildChunkDeleteIndexApplicationError,
     ChildChunkIndexingApplicationError,
@@ -126,6 +125,12 @@ class ProcessRulesDict(TypedDict):
 class AutoDisableLogsDict(TypedDict):
     document_ids: list[str]
     count: int
+
+
+class ExternalKnowledgeTemplateLookup(Protocol):
+    """Validate external templates within the dataset caller's transaction."""
+
+    def require_template(self, tenant_id: str, template_id: str, *, session: Session) -> None: ...
 
 
 class DatasetService:
@@ -312,6 +317,7 @@ class DatasetService:
         summary_index_setting: dict[str, Any] | None = None,
         *,
         session: Session,
+        external_templates: ExternalKnowledgeTemplateLookup,
     ):
         # check if dataset name already exists
         if session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
@@ -364,11 +370,7 @@ class DatasetService:
         session.flush()
 
         if provider == "external" and external_knowledge_api_id:
-            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-                external_knowledge_api_id, tenant_id, session=session
-            )
-            if not external_knowledge_api:
-                raise ValueError("External API template not found.")
+            external_templates.require_template(tenant_id, external_knowledge_api_id, session=session)
             if external_knowledge_id is None:
                 raise ValueError("external_knowledge_id is required")
             external_knowledge_binding = ExternalKnowledgeBindings(
@@ -530,7 +532,9 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
-    def update_dataset(dataset_id, data, user, *, session: Session):
+    def update_dataset(
+        dataset_id, data, user, *, session: Session, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """
         Update dataset configuration and settings.
 
@@ -565,7 +569,9 @@ class DatasetService:
 
         # Handle external dataset updates
         if dataset.provider == "external":
-            return DatasetService._update_external_dataset(dataset, data, user, session)
+            return DatasetService._update_external_dataset(
+                dataset, data, user, session, external_templates=external_templates
+            )
         else:
             return DatasetService._update_internal_dataset(dataset, data, user, session)
 
@@ -583,7 +589,9 @@ class DatasetService:
         return dataset is not None
 
     @staticmethod
-    def _update_external_dataset(dataset, data, user, session: Session):
+    def _update_external_dataset(
+        dataset, data, user, session: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """
         Update external dataset configuration.
 
@@ -623,7 +631,7 @@ class DatasetService:
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
         # Ensure the referenced external API template exists and belongs to the dataset tenant.
-        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id, session=session)
+        external_templates.require_template(dataset.tenant_id, external_knowledge_api_id, session=session)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()

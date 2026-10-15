@@ -6,8 +6,8 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.common.fields import UsageCountResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -16,12 +16,13 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.error import DatasetAccessDeniedRequestError, DatasetNameDuplicateError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     model_validate,
 )
+from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.dataset_fields import (
@@ -29,11 +30,10 @@ from fields.dataset_fields import (
 )
 from libs.helper import dump_response
 from machinery.context import RequestContext
-from models.account import TenantAccountRole
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.external.application import ExternalHitTestingError, ExternalTemplateNotFoundError
+from services.errors.knowledge_retrieval import ExternalHitTestingError, ExternalTemplateNotFoundError
+from services.knowledge.entities.external import ExternalDatasetCreatePayload
 
 _DATASET_EDIT_ROLES = frozenset(
     {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
@@ -42,14 +42,16 @@ _EXTERNAL_CONNECT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.
 
 
 def _raise_external_error(error: Exception) -> Never:
-    if isinstance(error, (DatasetNotFoundError, ExternalTemplateNotFoundError)):
-        raise NotFound(str(error)) from error
+    if isinstance(error, ExternalTemplateNotFoundError):
+        raise NotFoundError(description="API template not found.") from error
+    if isinstance(error, DatasetNotFoundError):
+        raise NotFoundError(description=str(error)) from error
     if isinstance(error, DatasetAccessDeniedError):
-        raise Forbidden(str(error)) from error
+        raise DatasetAccessDeniedRequestError(description=str(error)) from error
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
     if isinstance(error, ExternalHitTestingError):
-        raise InternalServerError(str(error)) from error
+        raise InternalServerError(description=str(error)) from error
     raise error
 
 

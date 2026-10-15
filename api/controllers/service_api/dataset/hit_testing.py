@@ -1,14 +1,16 @@
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.app.wraps import with_session
-from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
+from controllers.console.datasets.error import raise_hit_testing_error
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
-from fields.hit_testing_fields import HitTestingResponse
+from controllers.service_api.wraps import dataset_retrieval_admission
+from extensions.ext_application_services import application_services
+from fields.hit_testing_fields import HitTestingPayload, HitTestingResponse
 from libs.helper import dump_response
+from machinery.context import RequestContext
+from services.knowledge.entities.hit_testing import HitTestingRequest
 
 register_schema_models(service_api_ns, HitTestingPayload)
 register_response_schema_models(service_api_ns, HitTestingResponse)
@@ -19,7 +21,7 @@ register_response_schema_models(service_api_ns, HitTestingResponse)
     doc={"post": {"deprecated": True}},
 )
 @service_api_ns.route("/datasets/<uuid:dataset_id>/retrieve")
-class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
+class HitTestingApi(Resource):
     @service_api_ns.doc(
         summary="Retrieve Chunks from a Knowledge Base / Test Retrieval",
         description=(
@@ -57,16 +59,25 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
     @service_api_ns.response(401, "Unauthorized - invalid API token")
     @service_api_ns.response(404, "Dataset not found")
     @service_api_ns.expect(service_api_ns.models[HitTestingPayload.__name__])
-    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    @with_session
-    def post(self, session: Session, tenant_id: str, dataset_id: UUID) -> dict[str, object]:
+    @dataset_retrieval_admission
+    def post(self, request_context: RequestContext, dataset_id: UUID) -> dict[str, object]:
         """Perform hit testing on a dataset.
 
         Tests retrieval performance for the specified dataset.
         """
-        dataset_id_str = str(dataset_id)
-        dataset = self.get_and_validate_dataset(session, dataset_id_str)
-        args = self.parse_args(service_api_ns.payload)
-        self.hit_testing_args_check(args)
-
-        return dump_response(HitTestingResponse, self.perform_hit_testing(session, dataset, args))
+        req_data = HitTestingPayload.model_validate(service_api_ns.payload or {})
+        try:
+            result = application_services().knowledge.hit_testing.hit_testing(
+                request_context,
+                dataset_id=str(dataset_id),
+                request=HitTestingRequest(
+                    query=req_data.query,
+                    retrieval_model=req_data.retrieval_model.model_dump(exclude_none=True)
+                    if req_data.retrieval_model is not None
+                    else None,
+                    attachment_ids=req_data.attachment_ids,
+                ),
+            )
+        except Exception as error:
+            raise_hit_testing_error(error)
+        return dump_response(HitTestingResponse, result)

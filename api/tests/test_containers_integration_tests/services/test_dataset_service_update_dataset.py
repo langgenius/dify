@@ -18,7 +18,7 @@ from models.account import (
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType
 from services.errors.base import NoPermissionError
-from services.knowledge.dataset_service import DatasetService
+from services.knowledge.dataset_service import DatasetService, ExternalKnowledgeTemplateLookup
 
 
 class DatasetUpdateTestDataFactory:
@@ -154,7 +154,9 @@ class TestDatasetServiceUpdateDataset:
 
     # ==================== External Dataset Tests ====================
 
-    def test_update_external_dataset_success(self, db_session_with_containers: Session):
+    def test_update_external_dataset_success(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test successful update of external dataset."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
@@ -189,7 +191,9 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_api_id": external_api.id,
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+        result = DatasetService.update_dataset(
+            dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+        )
 
         db_session_with_containers.refresh(dataset)
         updated_binding = db_session_with_containers.query(ExternalKnowledgeBindings).filter_by(id=binding_id).first()
@@ -202,7 +206,9 @@ class TestDatasetServiceUpdateDataset:
         assert updated_binding.external_knowledge_api_id == update_data["external_knowledge_api_id"]
         assert result.id == dataset.id
 
-    def test_update_external_dataset_missing_knowledge_id_error(self, db_session_with_containers: Session):
+    def test_update_external_dataset_missing_knowledge_id_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test error when external knowledge id is missing."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
@@ -221,12 +227,16 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name", "external_knowledge_api_id": str(uuid4())}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(
+                dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+            )
 
         assert "External knowledge id is required" in str(context.value)
         db_session_with_containers.rollback()
 
-    def test_update_external_dataset_missing_api_id_error(self, db_session_with_containers: Session):
+    def test_update_external_dataset_missing_api_id_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test error when external knowledge api id is missing."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
@@ -245,12 +255,16 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name", "external_knowledge_id": "knowledge_id"}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(
+                dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+            )
 
         assert "External knowledge api id is required" in str(context.value)
         db_session_with_containers.rollback()
 
-    def test_update_external_dataset_binding_not_found_error(self, db_session_with_containers: Session):
+    def test_update_external_dataset_binding_not_found_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test error when external knowledge binding is not found."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
@@ -272,14 +286,18 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(
+                dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+            )
 
         assert "External knowledge binding not found" in str(context.value)
         db_session_with_containers.rollback()
 
     # ==================== Internal Dataset Basic Tests ====================
 
-    def test_update_internal_dataset_basic_success(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_basic_success(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test successful update of internal dataset with basic fields."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         existing_binding_id = str(uuid4())
@@ -303,7 +321,9 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": "text-embedding-ada-002",
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+        result = DatasetService.update_dataset(
+            dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+        )
         db_session_with_containers.refresh(dataset)
 
         assert dataset.name == "new_name"
@@ -314,7 +334,9 @@ class TestDatasetServiceUpdateDataset:
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert result.id == dataset.id
 
-    def test_update_internal_dataset_filter_none_values(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_filter_none_values(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test that None values are filtered out except for description field."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         existing_binding_id = str(uuid4())
@@ -338,7 +360,9 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": None,
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+        result = DatasetService.update_dataset(
+            dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+        )
         db_session_with_containers.refresh(dataset)
 
         assert dataset.name == "new_name"
@@ -350,7 +374,9 @@ class TestDatasetServiceUpdateDataset:
 
     # ==================== Indexing Technique Switch Tests ====================
 
-    def test_update_internal_dataset_indexing_technique_to_economy(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_indexing_technique_to_economy(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test updating internal dataset indexing technique to economy."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         existing_binding_id = str(uuid4())
@@ -371,7 +397,9 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task:
-            result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            result = DatasetService.update_dataset(
+                dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+            )
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
         db_session_with_containers.refresh(dataset)
@@ -382,7 +410,9 @@ class TestDatasetServiceUpdateDataset:
         assert dataset.retrieval_model == "new_model"
         assert result.id == dataset.id
 
-    def test_update_internal_dataset_indexing_technique_to_high_quality(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_indexing_technique_to_high_quality(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test updating internal dataset indexing technique to high_quality."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
@@ -418,7 +448,9 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
-            result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            result = DatasetService.update_dataset(
+                dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+            )
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
@@ -440,7 +472,7 @@ class TestDatasetServiceUpdateDataset:
     # ==================== Embedding Model Update Tests ====================
 
     def test_update_internal_dataset_keep_existing_embedding_model_when_indexing_technique_unchanged(
-        self, db_session_with_containers
+        self, db_session_with_containers, *, external_templates: ExternalKnowledgeTemplateLookup
     ):
         """Test preserving embedding settings when indexing technique remains unchanged."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
@@ -462,7 +494,9 @@ class TestDatasetServiceUpdateDataset:
             "retrieval_model": "new_model",
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+        result = DatasetService.update_dataset(
+            dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+        )
         db_session_with_containers.refresh(dataset)
 
         assert dataset.name == "new_name"
@@ -473,7 +507,9 @@ class TestDatasetServiceUpdateDataset:
         assert dataset.retrieval_model == "new_model"
         assert result.id == dataset.id
 
-    def test_update_internal_dataset_embedding_model_update(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_embedding_model_update(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test updating internal dataset with new embedding model."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         existing_binding_id = str(uuid4())
@@ -514,7 +550,9 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
-            result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            result = DatasetService.update_dataset(
+                dataset.id, update_data, user, session=db_session_with_containers, external_templates=external_templates
+            )
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
@@ -539,17 +577,27 @@ class TestDatasetServiceUpdateDataset:
 
     # ==================== Error Handling Tests ====================
 
-    def test_update_dataset_not_found_error(self, db_session_with_containers: Session):
+    def test_update_dataset_not_found_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test error when dataset is not found."""
         user, _ = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         update_data = {"name": "new_name"}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(str(uuid4()), update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(
+                str(uuid4()),
+                update_data,
+                user,
+                session=db_session_with_containers,
+                external_templates=external_templates,
+            )
 
         assert "Dataset not found" in str(context.value)
 
-    def test_update_dataset_permission_error(self, db_session_with_containers: Session):
+    def test_update_dataset_permission_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test error when user doesn't have permission."""
         owner, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(
             db_session_with_containers, role=TenantAccountRole.OWNER
@@ -568,9 +616,17 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name"}
 
         with pytest.raises(NoPermissionError):
-            DatasetService.update_dataset(dataset.id, update_data, outsider, session=db_session_with_containers)
+            DatasetService.update_dataset(
+                dataset.id,
+                update_data,
+                outsider,
+                session=db_session_with_containers,
+                external_templates=external_templates,
+            )
 
-    def test_update_internal_dataset_embedding_model_error(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_embedding_model_error(
+        self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
+    ):
         """Test error when embedding model is not available."""
         user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
@@ -595,6 +651,12 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
             with pytest.raises(Exception) as context:
-                DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+                DatasetService.update_dataset(
+                    dataset.id,
+                    update_data,
+                    user,
+                    session=db_session_with_containers,
+                    external_templates=external_templates,
+                )
 
         assert "No Embedding Model available".lower() in str(context.value).lower()

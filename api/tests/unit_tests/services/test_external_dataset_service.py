@@ -6,7 +6,6 @@ pagination, and clocks remain mocked at their genuine I/O boundaries.
 """
 
 import json
-import re
 from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -17,15 +16,10 @@ from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
-from services.entities.external_knowledge_entities.external_knowledge_entities import (
-    Authorization,
-    AuthorizationConfig,
-    ExternalDatasetCreatePayload,
-    ExternalKnowledgeApiSetting,
-)
+from repositories.knowledge import external_repository
 from services.errors.dataset import DatasetNameDuplicateError
-from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
-from services.knowledge.external.service import ExternalDatasetService
+from services.knowledge.entities.external import ExternalDatasetCreatePayload, ExternalKnowledgeApiSetting
+from services.knowledge.external.adapters import ExternalKnowledgeGateway
 
 
 class ExternalDatasetServiceTestDataFactory:
@@ -106,17 +100,6 @@ class ExternalDatasetServiceTestDataFactory:
         return binding
 
     @staticmethod
-    def create_authorization_mock(
-        auth_type: str = "api-key",
-        api_key: str = "test-key",
-        header: str = "Authorization",
-        token_type: str = "bearer",
-    ) -> Authorization:
-        """Create an Authorization object."""
-        config = AuthorizationConfig(api_key=api_key, type=token_type, header=header)
-        return Authorization(type=auth_type, config=config)
-
-    @staticmethod
     def create_api_setting_mock(
         url: str = "https://api.example.com/retrieval",
         request_method: str = "post",
@@ -173,7 +156,7 @@ def _make_dataset(
     retrieval_model: dict[str, Any] | None = None,
     created_by: str = "user-123",
 ) -> Dataset:
-    """Build a real Dataset row with the fields required by ExternalDatasetService."""
+    """Build a real Dataset row with the fields required by ExternalKnowledgeGateway."""
     dataset = Dataset(
         id=dataset_id,
         tenant_id=tenant_id,
@@ -214,24 +197,6 @@ def _add_and_commit(session: Session, *objects: object) -> None:
     session.commit()
 
 
-def _seed_external_retrieval_dependencies(
-    session: Session,
-    *,
-    tenant_id: str = "tenant-123",
-    dataset_id: str = "dataset-123",
-    api_id: str = "api-123",
-) -> tuple[ExternalKnowledgeBindings, ExternalKnowledgeApis]:
-    """Seed the binding and API template required by fetch_external_knowledge_retrieval."""
-    binding = _make_external_knowledge_binding(
-        tenant_id=tenant_id,
-        dataset_id=dataset_id,
-        external_knowledge_api_id=api_id,
-    )
-    api = _make_external_knowledge_api(api_id=api_id, tenant_id=tenant_id)
-    _add_and_commit(session, binding, api)
-    return binding, api
-
-
 class TestExternalDatasetServiceGetAPIs:
     """Exercise API filtering, ordering, pagination, and tenant scope through SQLite."""
 
@@ -254,7 +219,7 @@ class TestExternalDatasetServiceGetAPIs:
         foreign_api.created_at = datetime(2025, 1, 1, 12, 0)
         _add_and_commit(sqlite_session, *apis, foreign_api)
 
-        result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
+        result_items, result_total = external_repository.get_external_knowledge_apis(
             page=2,
             per_page=5,
             tenant_id="tenant-123",
@@ -288,7 +253,7 @@ class TestExternalDatasetServiceGetAPIs:
             ),
         )
 
-        result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
+        result_items, result_total = external_repository.get_external_knowledge_apis(
             page=1,
             per_page=10,
             tenant_id="tenant-123",
@@ -305,7 +270,7 @@ class TestExternalDatasetServiceGetAPIs:
             _make_external_knowledge_api(api_id="api-foreign", tenant_id="tenant-foreign"),
         )
 
-        result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
+        result_items, result_total = external_repository.get_external_knowledge_apis(
             page=1,
             per_page=10,
             tenant_id="tenant-123",
@@ -321,7 +286,7 @@ class TestExternalDatasetServiceGetAPIs:
             *[_make_external_knowledge_api(api_id=f"api-{index:03d}", name=f"API {index:03d}") for index in range(101)],
         )
 
-        result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
+        result_items, result_total = external_repository.get_external_knowledge_apis(
             page=1,
             per_page=1000,
             tenant_id="tenant-123",
@@ -332,230 +297,10 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_total == 101
 
 
-class TestExternalDatasetServiceValidateAPIList:
-    """Test validate_api_list operations."""
-
-    def test_validate_api_list_success_with_all_fields(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test successful validation with all required fields."""
-        # Arrange
-        api_settings = {"endpoint": "https://api.example.com", "api_key": "test-key-123"}
-
-        # Act & Assert - should not raise
-        ExternalDatasetService.validate_api_list(api_settings)
-
-    def test_validate_api_list_missing_endpoint(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation fails when endpoint is missing."""
-        # Arrange
-        api_settings = {"api_key": "test-key"}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="endpoint is required"):
-            ExternalDatasetService.validate_api_list(api_settings)
-
-    def test_validate_api_list_empty_endpoint(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation fails when endpoint is empty string."""
-        # Arrange
-        api_settings = {"endpoint": "", "api_key": "test-key"}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="endpoint is required"):
-            ExternalDatasetService.validate_api_list(api_settings)
-
-    def test_validate_api_list_missing_api_key(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation fails when API key is missing."""
-        # Arrange
-        api_settings = {"endpoint": "https://api.example.com"}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="api_key is required"):
-            ExternalDatasetService.validate_api_list(api_settings)
-
-    def test_validate_api_list_empty_api_key(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation fails when API key is empty string."""
-        # Arrange
-        api_settings = {"endpoint": "https://api.example.com", "api_key": ""}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="api_key is required"):
-            ExternalDatasetService.validate_api_list(api_settings)
-
-    def test_validate_api_list_empty_dict(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation fails when settings are empty dict."""
-        # Arrange
-        api_settings = {}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="api list is empty"):
-            ExternalDatasetService.validate_api_list(api_settings)
-
-    def test_validate_api_list_none_value(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation fails when settings are None."""
-        # Arrange
-        api_settings = None
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="api list is empty"):
-            ExternalDatasetService.validate_api_list(api_settings)
-
-    def test_validate_api_list_with_extra_fields(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test validation succeeds with extra fields present."""
-        # Arrange
-        api_settings = {
-            "endpoint": "https://api.example.com",
-            "api_key": "test-key",
-            "timeout": 30,
-            "retry_count": 3,
-        }
-
-        # Act & Assert - should not raise
-        ExternalDatasetService.validate_api_list(api_settings)
-
-
-@pytest.mark.parametrize("sqlite_session", [(ExternalKnowledgeApis,)], indirect=True)
-class TestExternalDatasetServiceCreateAPI:
-    """Test create_external_knowledge_api operations."""
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
-    def test_create_external_knowledge_api_success_full(
-        self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test successful creation with all fields."""
-        # Arrange
-        tenant_id = "tenant-123"
-        user_id = "user-123"
-        args = {
-            "name": "Test API",
-            "description": "Comprehensive test description",
-            "settings": {"endpoint": "https://api.example.com", "api_key": "test-key-123"},
-        }
-
-        # Act
-        result = ExternalDatasetService.create_external_knowledge_api(tenant_id, user_id, args, session=sqlite_session)
-
-        # Assert
-        assert result.name == "Test API"
-        assert result.description == "Comprehensive test description"
-        assert result.tenant_id == tenant_id
-        assert result.created_by == user_id
-        assert result.updated_by == user_id
-        mock_check.assert_called_once_with(args["settings"])
-        persisted_api = sqlite_session.get(ExternalKnowledgeApis, result.id)
-        assert persisted_api is result
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
-    def test_create_external_knowledge_api_minimal_fields(
-        self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test creation with minimal required fields."""
-        # Arrange
-        args = {
-            "name": "Minimal API",
-            "settings": {"endpoint": "https://api.example.com", "api_key": "key"},
-        }
-
-        # Act
-        result = ExternalDatasetService.create_external_knowledge_api(
-            "tenant-123", "user-123", args, session=sqlite_session
-        )
-
-        # Assert
-        assert result.name == "Minimal API"
-        assert result.description == ""
-        assert sqlite_session.get(ExternalKnowledgeApis, result.id) is result
-
-    def test_create_external_knowledge_api_missing_settings(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test creation fails when settings are missing."""
-        # Arrange
-        args = {"name": "Test API", "description": "Test"}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="settings is required"):
-            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, session=sqlite_session)
-
-    def test_create_external_knowledge_api_none_settings(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test creation fails when settings are explicitly None."""
-        # Arrange
-        args = {"name": "Test API", "settings": None}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="settings is required"):
-            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, session=sqlite_session)
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
-    def test_create_external_knowledge_api_settings_json_serialization(
-        self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test that settings are properly JSON serialized."""
-        # Arrange
-        settings = {
-            "endpoint": "https://api.example.com",
-            "api_key": "test-key",
-            "custom_field": "value",
-        }
-        args = {"name": "Test API", "settings": settings}
-
-        # Act
-        result = ExternalDatasetService.create_external_knowledge_api(
-            "tenant-123", "user-123", args, session=sqlite_session
-        )
-
-        # Assert
-        assert isinstance(result.settings, str)
-        parsed_settings = json.loads(result.settings)
-        assert parsed_settings == settings
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
-    def test_create_external_knowledge_api_unicode_handling(
-        self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test proper handling of Unicode characters in name and description."""
-        # Arrange
-        args = {
-            "name": "测试API",
-            "description": "テストの説明",
-            "settings": {"endpoint": "https://api.example.com", "api_key": "key"},
-        }
-
-        # Act
-        result = ExternalDatasetService.create_external_knowledge_api(
-            "tenant-123", "user-123", args, session=sqlite_session
-        )
-
-        # Assert
-        assert result.name == "测试API"
-        assert result.description == "テストの説明"
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.check_endpoint_and_api_key")
-    def test_create_external_knowledge_api_long_description(
-        self, mock_check, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test creation with very long description."""
-        # Arrange
-        long_description = "A" * 1000
-        args = {
-            "name": "Test API",
-            "description": long_description,
-            "settings": {"endpoint": "https://api.example.com", "api_key": "key"},
-        }
-
-        # Act
-        result = ExternalDatasetService.create_external_knowledge_api(
-            "tenant-123", "user-123", args, session=sqlite_session
-        )
-
-        # Assert
-        assert result.description == long_description
-        assert len(result.description) == 1000
-
-
 class TestExternalDatasetServiceCheckEndpoint:
     """Test check_endpoint_and_api_key operations - extensive coverage."""
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_success_https(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful validation with HTTPS endpoint."""
         # Arrange
@@ -566,10 +311,10 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_proxy.post.return_value = mock_response
 
         # Act & Assert - should not raise
-        ExternalDatasetService.check_endpoint_and_api_key(settings)
+        ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
         mock_proxy.post.assert_called_once()
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_success_http(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful validation with HTTP endpoint."""
         # Arrange
@@ -580,9 +325,9 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_proxy.post.return_value = mock_response
 
         # Act & Assert - should not raise
-        ExternalDatasetService.check_endpoint_and_api_key(settings)
+        ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_sends_json_body(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Regression for #39402: the validation probe must POST a JSON body matching the
         External Knowledge API retrieval contract, not a body-less request that providers
@@ -595,7 +340,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_proxy.post.return_value = mock_response
 
         # Act
-        ExternalDatasetService.check_endpoint_and_api_key(settings)
+        ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
         # Assert - a non-empty JSON body is sent with the JSON content type
         mock_proxy.post.assert_called_once()
@@ -614,7 +359,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="endpoint is required"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_empty_endpoint_string(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails when endpoint is empty string."""
@@ -623,7 +368,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="endpoint is required"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_whitespace_endpoint(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails when endpoint is only whitespace."""
@@ -632,7 +377,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="invalid endpoint"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_missing_api_key_key(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails when api_key key is missing."""
@@ -641,7 +386,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api_key is required"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_empty_api_key_string(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails when api_key is empty string."""
@@ -650,7 +395,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api_key is required"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_no_scheme_url(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails for URL without http:// or https://."""
@@ -659,7 +404,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="invalid endpoint.*must start with http"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_invalid_scheme(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails for URL with invalid scheme."""
@@ -668,7 +413,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="failed to connect to the endpoint"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_no_netloc(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails for URL without network location."""
@@ -677,7 +422,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="invalid endpoint"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
     def test_check_endpoint_malformed_url(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails for malformed URL."""
@@ -686,9 +431,9 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="invalid endpoint"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_connection_timeout(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails on connection timeout."""
         # Arrange
@@ -697,9 +442,9 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="failed to connect to the endpoint"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_network_error(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails on network error."""
         # Arrange
@@ -708,9 +453,9 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="failed to connect to the endpoint"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_502_bad_gateway(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails with 502 Bad Gateway."""
         # Arrange
@@ -722,9 +467,9 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Bad Gateway.*failed to connect"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_404_not_found(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails with 404 Not Found."""
         # Arrange
@@ -736,9 +481,9 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Not Found.*failed to connect"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_403_forbidden(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails with 403 Forbidden (auth failure)."""
         # Arrange
@@ -750,9 +495,9 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_403_message_does_not_echo_api_key(
         self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
     ):
@@ -777,7 +522,7 @@ class TestExternalDatasetServiceCheckEndpoint:
 
         # Act
         with pytest.raises(ValueError) as exc_info:
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
         # Assert -- the message names the failure but does not include the key.
         message = str(exc_info.value)
@@ -789,7 +534,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         assert "sk-abcdef" not in message
         assert "CDEF" not in message
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_other_4xx_codes_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that other 4xx codes don't raise exceptions."""
         # Arrange
@@ -801,9 +546,9 @@ class TestExternalDatasetServiceCheckEndpoint:
             mock_proxy.post.return_value = mock_response
 
             # Act & Assert - should not raise
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_5xx_codes_except_502_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that 5xx codes except 502 don't raise exceptions."""
         # Arrange
@@ -815,9 +560,9 @@ class TestExternalDatasetServiceCheckEndpoint:
             mock_proxy.post.return_value = mock_response
 
             # Act & Assert - should not raise
-            ExternalDatasetService.check_endpoint_and_api_key(settings)
+            ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_with_port_number(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation with endpoint including port number."""
         # Arrange
@@ -828,9 +573,9 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_proxy.post.return_value = mock_response
 
         # Act & Assert - should not raise
-        ExternalDatasetService.check_endpoint_and_api_key(settings)
+        ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_with_path(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation with endpoint including path."""
         # Arrange
@@ -841,12 +586,12 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_proxy.post.return_value = mock_response
 
         # Act & Assert - should not raise
-        ExternalDatasetService.check_endpoint_and_api_key(settings)
+        ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
         # Verify /retrieval is appended
         call_args = mock_proxy.post.call_args
         assert "/retrieval" in call_args[0][0]
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_check_endpoint_authorization_header_format(
         self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
     ):
@@ -859,7 +604,7 @@ class TestExternalDatasetServiceCheckEndpoint:
         mock_proxy.post.return_value = mock_response
 
         # Act
-        ExternalDatasetService.check_endpoint_and_api_key(settings)
+        ExternalKnowledgeGateway.check_endpoint_and_api_key(settings)
 
         # Assert
         call_kwargs = mock_proxy.post.call_args.kwargs
@@ -882,7 +627,7 @@ class TestExternalDatasetServiceGetAPI:
 
         # Act
         tenant_id = "tenant-123"
-        result = ExternalDatasetService.get_external_knowledge_api(api_id, tenant_id, session=sqlite_session)
+        result = external_repository.get_external_knowledge_api(api_id, tenant_id, session=sqlite_session)
 
         # Assert
         assert result.id == api_id
@@ -893,14 +638,14 @@ class TestExternalDatasetServiceGetAPI:
         """Test error when API is not found."""
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.get_external_knowledge_api("nonexistent-id", "tenant-123", session=sqlite_session)
+            external_repository.get_external_knowledge_api("nonexistent-id", "tenant-123", session=sqlite_session)
 
 
 @pytest.mark.parametrize("sqlite_session", [(ExternalKnowledgeApis,)], indirect=True)
 class TestExternalDatasetServiceUpdateAPI:
     """Test update_external_knowledge_api operations."""
 
-    @patch("services.knowledge.external.service.naive_utc_now")
+    @patch("repositories.knowledge.external_repository.naive_utc_now")
     def test_update_external_knowledge_api_success_all_fields(
         self, mock_now, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
     ):
@@ -922,7 +667,7 @@ class TestExternalDatasetServiceUpdateAPI:
         }
 
         # Act
-        result = ExternalDatasetService.update_external_knowledge_api(
+        result = external_repository.update_external_knowledge_api(
             tenant_id, user_id, api_id, args, session=sqlite_session
         )
 
@@ -954,7 +699,7 @@ class TestExternalDatasetServiceUpdateAPI:
         }
 
         # Act
-        result = ExternalDatasetService.update_external_knowledge_api(
+        result = external_repository.update_external_knowledge_api(
             tenant_id, "user-123", api_id, args, session=sqlite_session
         )
 
@@ -971,7 +716,7 @@ class TestExternalDatasetServiceUpdateAPI:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.update_external_knowledge_api(
+            external_repository.update_external_knowledge_api(
                 "tenant-123", "user-123", "api-123", args, session=sqlite_session
             )
 
@@ -985,7 +730,7 @@ class TestExternalDatasetServiceUpdateAPI:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.update_external_knowledge_api(
+            external_repository.update_external_knowledge_api(
                 "wrong-tenant", "user-123", "api-123", args, session=sqlite_session
             )
 
@@ -1003,53 +748,12 @@ class TestExternalDatasetServiceUpdateAPI:
         args = {"name": "New Name Only"}
 
         # Act
-        result = ExternalDatasetService.update_external_knowledge_api(
+        result = external_repository.update_external_knowledge_api(
             "tenant-123", "user-123", "api-123", args, session=sqlite_session
         )
 
         # Assert
         assert result.name == "New Name Only"
-
-
-@pytest.mark.parametrize("sqlite_session", [(ExternalKnowledgeApis,)], indirect=True)
-class TestExternalDatasetServiceDeleteAPI:
-    """Test delete_external_knowledge_api operations."""
-
-    def test_delete_external_knowledge_api_success(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test successful deletion of external knowledge API."""
-        # Arrange
-        api_id = "api-123"
-        tenant_id = "tenant-123"
-
-        existing_api = _make_external_knowledge_api(api_id=api_id, tenant_id=tenant_id)
-        _add_and_commit(sqlite_session, existing_api)
-
-        # Act
-        ExternalDatasetService.delete_external_knowledge_api(tenant_id, api_id, session=sqlite_session)
-
-        # Assert
-        assert sqlite_session.get(ExternalKnowledgeApis, api_id) is None
-
-    def test_delete_external_knowledge_api_not_found(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test error when API is not found."""
-        # Act & Assert
-        with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.delete_external_knowledge_api("tenant-123", "api-123", session=sqlite_session)
-
-    def test_delete_external_knowledge_api_tenant_mismatch(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test error when tenant ID doesn't match."""
-        # Arrange
-        _add_and_commit(sqlite_session, _make_external_knowledge_api(api_id="api-123", tenant_id="tenant-123"))
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.delete_external_knowledge_api("wrong-tenant", "api-123", session=sqlite_session)
 
 
 @pytest.mark.parametrize("sqlite_session", [(ExternalKnowledgeBindings,)], indirect=True)
@@ -1075,9 +779,7 @@ class TestExternalDatasetServiceAPIUseCheck:
         )
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(
-            api_id, tenant_id, session=sqlite_session
-        )
+        in_use, count = external_repository.external_knowledge_api_use_check(api_id, tenant_id, session=sqlite_session)
 
         # Assert
         assert in_use is True
@@ -1105,9 +807,7 @@ class TestExternalDatasetServiceAPIUseCheck:
         )
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(
-            api_id, tenant_id, session=sqlite_session
-        )
+        in_use, count = external_repository.external_knowledge_api_use_check(api_id, tenant_id, session=sqlite_session)
 
         # Assert
         assert in_use is True
@@ -1130,9 +830,7 @@ class TestExternalDatasetServiceAPIUseCheck:
         )
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(
-            api_id, tenant_id, session=sqlite_session
-        )
+        in_use, count = external_repository.external_knowledge_api_use_check(api_id, tenant_id, session=sqlite_session)
 
         # Assert
         assert in_use is False
@@ -1155,7 +853,7 @@ class TestExternalDatasetServiceGetBinding:
         _add_and_commit(sqlite_session, expected_binding)
 
         # Act
-        result = ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(
+        result = external_repository.get_external_knowledge_binding_with_dataset_id(
             tenant_id, dataset_id, session=sqlite_session
         )
 
@@ -1169,109 +867,15 @@ class TestExternalDatasetServiceGetBinding:
         """Test error when binding is not found."""
         # Act & Assert
         with pytest.raises(ValueError, match="external knowledge binding not found"):
-            ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(
+            external_repository.get_external_knowledge_binding_with_dataset_id(
                 "tenant-123", "dataset-123", session=sqlite_session
             )
-
-
-@pytest.mark.parametrize("sqlite_session", [(ExternalKnowledgeApis,)], indirect=True)
-class TestExternalDatasetServiceDocumentValidate:
-    """Test document_create_args_validate operations."""
-
-    def test_document_create_args_validate_success_all_params(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test successful validation with all required parameters."""
-        # Arrange
-        tenant_id = "tenant-123"
-        api_id = "api-123"
-
-        settings = {
-            "document_process_setting": [
-                {"name": "param1", "required": True},
-                {"name": "param2", "required": True},
-                {"name": "param3", "required": False},
-            ]
-        }
-
-        api = _make_external_knowledge_api(api_id=api_id, tenant_id=tenant_id, settings=[settings])
-        _add_and_commit(sqlite_session, api)
-
-        process_parameter = {"param1": "value1", "param2": "value2"}
-
-        # Act & Assert - should not raise
-        ExternalDatasetService.document_create_args_validate(
-            tenant_id, api_id, process_parameter, session=sqlite_session
-        )
-
-    def test_document_create_args_validate_missing_required_param(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test validation fails when required parameter is missing."""
-        # Arrange
-        tenant_id = "tenant-123"
-        api_id = "api-123"
-
-        settings = {"document_process_setting": [{"name": "required_param", "required": True}]}
-
-        api = _make_external_knowledge_api(api_id=api_id, tenant_id=tenant_id, settings=[settings])
-        _add_and_commit(sqlite_session, api)
-
-        process_parameter = {}
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="required_param is required"):
-            ExternalDatasetService.document_create_args_validate(
-                tenant_id, api_id, process_parameter, session=sqlite_session
-            )
-
-    def test_document_create_args_validate_api_not_found(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test validation fails when API is not found."""
-        # Act & Assert
-        with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.document_create_args_validate("tenant-123", "api-123", {}, session=sqlite_session)
-
-    def test_document_create_args_validate_no_custom_parameters(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test validation succeeds when no custom parameters defined."""
-        # Arrange
-        settings = {}
-        api = _make_external_knowledge_api(settings=[settings])
-        _add_and_commit(sqlite_session, api)
-
-        # Act & Assert - should not raise
-        ExternalDatasetService.document_create_args_validate("tenant-123", "api-123", {}, session=sqlite_session)
-
-    def test_document_create_args_validate_optional_params_not_required(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test that optional parameters don't cause validation failure."""
-        # Arrange
-        settings = {
-            "document_process_setting": [
-                {"name": "required_param", "required": True},
-                {"name": "optional_param", "required": False},
-            ]
-        }
-
-        api = _make_external_knowledge_api(settings=[settings])
-        _add_and_commit(sqlite_session, api)
-
-        process_parameter = {"required_param": "value"}
-
-        # Act & Assert - should not raise
-        ExternalDatasetService.document_create_args_validate(
-            "tenant-123", "api-123", process_parameter, session=sqlite_session
-        )
 
 
 class TestExternalDatasetServiceProcessAPI:
     """Test process_external_api operations - comprehensive HTTP method coverage."""
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_get_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing GET request."""
         # Arrange
@@ -1281,13 +885,13 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.get.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.process_external_api(settings, None)
+        result = ExternalKnowledgeGateway.process_external_api(settings, None)
 
         # Assert
         assert result == mock_response
         mock_proxy.get.assert_called_once()
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_post_request_with_data(
         self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
     ):
@@ -1299,7 +903,7 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.post.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.process_external_api(settings, None)
+        result = ExternalKnowledgeGateway.process_external_api(settings, None)
 
         # Assert
         assert result == mock_response
@@ -1307,7 +911,7 @@ class TestExternalDatasetServiceProcessAPI:
         call_kwargs = mock_proxy.post.call_args.kwargs
         assert "data" in call_kwargs
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_put_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing PUT request."""
         # Arrange
@@ -1317,13 +921,13 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.put.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.process_external_api(settings, None)
+        result = ExternalKnowledgeGateway.process_external_api(settings, None)
 
         # Assert
         assert result == mock_response
         mock_proxy.put.assert_called_once()
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_delete_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing DELETE request."""
         # Arrange
@@ -1333,13 +937,13 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.delete.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.process_external_api(settings, None)
+        result = ExternalKnowledgeGateway.process_external_api(settings, None)
 
         # Assert
         assert result == mock_response
         mock_proxy.delete.assert_called_once()
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_patch_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing PATCH request."""
         # Arrange
@@ -1349,13 +953,13 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.patch.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.process_external_api(settings, None)
+        result = ExternalKnowledgeGateway.process_external_api(settings, None)
 
         # Assert
         assert result == mock_response
         mock_proxy.patch.assert_called_once()
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_head_request(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing HEAD request."""
         # Arrange
@@ -1365,7 +969,7 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.head.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.process_external_api(settings, None)
+        result = ExternalKnowledgeGateway.process_external_api(settings, None)
 
         # Assert
         assert result == mock_response
@@ -1378,9 +982,9 @@ class TestExternalDatasetServiceProcessAPI:
 
         # Act & Assert
         with pytest.raises(Exception, match="Invalid http method"):
-            ExternalDatasetService.process_external_api(settings, None)
+            ExternalKnowledgeGateway.process_external_api(settings, None)
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_with_files(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test processing request with file uploads."""
         # Arrange
@@ -1391,7 +995,7 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.post.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.process_external_api(settings, files)
+        result = ExternalKnowledgeGateway.process_external_api(settings, files)
 
         # Assert
         assert result == mock_response
@@ -1399,7 +1003,7 @@ class TestExternalDatasetServiceProcessAPI:
         assert "files" in call_kwargs
         assert call_kwargs["files"] == files
 
-    @patch("services.knowledge.external.service.ssrf_proxy")
+    @patch("services.knowledge.external.adapters.ssrf_proxy")
     def test_process_external_api_follow_redirects(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that follow_redirects is enabled."""
         # Arrange
@@ -1409,147 +1013,11 @@ class TestExternalDatasetServiceProcessAPI:
         mock_proxy.get.return_value = mock_response
 
         # Act
-        ExternalDatasetService.process_external_api(settings, None)
+        ExternalKnowledgeGateway.process_external_api(settings, None)
 
         # Assert
         call_kwargs = mock_proxy.get.call_args.kwargs
         assert call_kwargs["follow_redirects"] is True
-
-
-class TestExternalDatasetServiceAssemblingHeaders:
-    """Test assembling_headers operations - comprehensive authorization coverage."""
-
-    def test_assembling_headers_bearer_token(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test assembling headers with Bearer token."""
-        # Arrange
-        authorization = factory.create_authorization_mock(token_type="bearer", api_key="secret-key-123")
-
-        # Act
-        result = ExternalDatasetService.assembling_headers(authorization)
-
-        # Assert
-        assert result["Authorization"] == "Bearer secret-key-123"
-
-    def test_assembling_headers_basic_auth(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test assembling headers with Basic authentication."""
-        # Arrange
-        authorization = factory.create_authorization_mock(token_type="basic", api_key="credentials")
-
-        # Act
-        result = ExternalDatasetService.assembling_headers(authorization)
-
-        # Assert
-        assert result["Authorization"] == "Basic credentials"
-
-    def test_assembling_headers_custom_auth(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test assembling headers with custom authentication."""
-        # Arrange
-        authorization = factory.create_authorization_mock(token_type="custom", api_key="custom-token")
-
-        # Act
-        result = ExternalDatasetService.assembling_headers(authorization)
-
-        # Assert
-        assert result["Authorization"] == "custom-token"
-
-    def test_assembling_headers_custom_header_name(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test assembling headers with custom header name."""
-        # Arrange
-        authorization = factory.create_authorization_mock(token_type="bearer", api_key="key-123", header="X-API-Key")
-
-        # Act
-        result = ExternalDatasetService.assembling_headers(authorization)
-
-        # Assert
-        assert result["X-API-Key"] == "Bearer key-123"
-        assert "Authorization" not in result
-
-    def test_assembling_headers_with_existing_headers(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test assembling headers preserves existing headers."""
-        # Arrange
-        authorization = factory.create_authorization_mock(token_type="bearer", api_key="key")
-        existing_headers = {
-            "Content-Type": "application/json",
-            "X-Custom": "value",
-            "User-Agent": "TestAgent/1.0",
-        }
-
-        # Act
-        result = ExternalDatasetService.assembling_headers(authorization, existing_headers)
-
-        # Assert
-        assert result["Authorization"] == "Bearer key"
-        assert result["Content-Type"] == "application/json"
-        assert result["X-Custom"] == "value"
-        assert result["User-Agent"] == "TestAgent/1.0"
-
-    def test_assembling_headers_empty_existing_headers(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test assembling headers with empty existing headers dict."""
-        # Arrange
-        authorization = factory.create_authorization_mock(token_type="bearer", api_key="key")
-        existing_headers = {}
-
-        # Act
-        result = ExternalDatasetService.assembling_headers(authorization, existing_headers)
-
-        # Assert
-        assert result["Authorization"] == "Bearer key"
-        assert len(result) == 1
-
-    def test_assembling_headers_missing_api_key(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test error when API key is missing."""
-        # Arrange
-        config = AuthorizationConfig(api_key=None, type="bearer", header="Authorization")
-        authorization = Authorization(type="api-key", config=config)
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="api_key is required"):
-            ExternalDatasetService.assembling_headers(authorization)
-
-    def test_assembling_headers_missing_config(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test error when config is missing."""
-        # Arrange
-        authorization = Authorization(type="api-key", config=None)
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="authorization config is required"):
-            ExternalDatasetService.assembling_headers(authorization)
-
-    def test_assembling_headers_default_header_name(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test that default header name is Authorization when not specified."""
-        # Arrange
-        config = AuthorizationConfig(api_key="key", type="bearer", header=None)
-        authorization = Authorization(type="api-key", config=config)
-
-        # Act
-        result = ExternalDatasetService.assembling_headers(authorization)
-
-        # Assert
-        assert "Authorization" in result
-
-
-class TestExternalDatasetServiceGetSettings:
-    """Test get_external_knowledge_api_settings operations."""
-
-    def test_get_external_knowledge_api_settings_success(self, factory: ExternalDatasetServiceTestDataFactory):
-        """Test successful parsing of API settings."""
-        # Arrange
-        settings = {
-            "url": "https://api.example.com/v1",
-            "request_method": "post",
-            "headers": {"Content-Type": "application/json", "X-Custom": "value"},
-            "params": {"key1": "value1", "key2": "value2"},
-        }
-
-        # Act
-        result = ExternalDatasetService.get_external_knowledge_api_settings(settings)
-
-        # Assert
-        assert isinstance(result, ExternalKnowledgeApiSetting)
-        assert result.url == "https://api.example.com/v1"
-        assert result.request_method == "post"
-        assert result.headers["Content-Type"] == "application/json"
-        assert result.params["key1"] == "value1"
 
 
 @pytest.mark.parametrize(
@@ -1581,7 +1049,7 @@ class TestExternalDatasetServiceCreateDataset:
         _add_and_commit(sqlite_session, api)
 
         # Act
-        result = ExternalDatasetService.create_external_dataset(tenant_id, user_id, args, session=sqlite_session)
+        result = external_repository.create_external_dataset(tenant_id, user_id, args, session=sqlite_session)
 
         # Assert
         assert result.name == "Test External Dataset"
@@ -1616,7 +1084,7 @@ class TestExternalDatasetServiceCreateDataset:
 
         # Act & Assert
         with pytest.raises(DatasetNameDuplicateError):
-            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, session=sqlite_session)
+            external_repository.create_external_dataset("tenant-123", "user-123", args, session=sqlite_session)
 
     def test_create_external_dataset_api_not_found_error(
         self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
@@ -1632,7 +1100,7 @@ class TestExternalDatasetServiceCreateDataset:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, session=sqlite_session)
+            external_repository.create_external_dataset("tenant-123", "user-123", args, session=sqlite_session)
 
     def test_create_external_dataset_missing_knowledge_id_error(
         self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
@@ -1656,265 +1124,4 @@ class TestExternalDatasetServiceCreateDataset:
         with pytest.raises(ValueError, match="external_knowledge_api_id"):
             ExternalDatasetCreatePayload.model_validate(
                 {"name": "Test Dataset", "external_knowledge_id": "knowledge-123"}
-            )
-
-
-@pytest.mark.parametrize("sqlite_session", [(ExternalKnowledgeApis, ExternalKnowledgeBindings)], indirect=True)
-class TestExternalDatasetServiceFetchRetrieval:
-    """Test fetch_external_knowledge_retrieval operations."""
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_success_with_results(
-        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test successful external knowledge retrieval with results."""
-        # Arrange
-        tenant_id = "tenant-123"
-        dataset_id = "dataset-123"
-        query = "test query for retrieval"
-
-        _seed_external_retrieval_dependencies(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "records": [
-                {"content": "result 1", "score": 0.9},
-                {"content": "result 2", "score": 0.8},
-            ]
-        }
-        mock_process.return_value = mock_response
-
-        external_retrieval_parameters = {"top_k": 5, "score_threshold_enabled": False}
-
-        # Act
-        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            tenant_id, dataset_id, query, external_retrieval_parameters, session=sqlite_session
-        )
-
-        # Assert
-        assert len(result) == 2
-        assert result[0]["content"] == "result 1"
-        assert result[1]["score"] == 0.8
-
-    def test_fetch_external_knowledge_retrieval_binding_not_found_error(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test error when external knowledge binding is not found."""
-        # Act & Assert
-        with pytest.raises(ExternalKnowledgeRetrievalError, match="external knowledge binding not found"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {}, session=sqlite_session
-            )
-
-    def test_fetch_external_knowledge_retrieval_cross_tenant_api_template_error(
-        self, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test error when a binding points to an API template outside the dataset tenant."""
-        # Arrange
-        binding = _make_external_knowledge_binding(tenant_id="tenant-123", external_knowledge_api_id="api-123")
-        cross_tenant_api = _make_external_knowledge_api(api_id="api-123", tenant_id="other-tenant")
-        _add_and_commit(sqlite_session, binding, cross_tenant_api)
-
-        # Act & Assert
-        with pytest.raises(ExternalKnowledgeRetrievalError, match="external api template not found"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {}, session=sqlite_session
-            )
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_empty_results(
-        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test retrieval with empty results."""
-        # Arrange
-        _seed_external_retrieval_dependencies(sqlite_session)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"records": []}
-        mock_process.return_value = mock_response
-
-        # Act
-        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
-        )
-
-        # Assert
-        assert len(result) == 0
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_with_score_threshold(
-        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test retrieval with score threshold enabled."""
-        # Arrange
-        _seed_external_retrieval_dependencies(sqlite_session)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"records": [{"content": "high score result"}]}
-        mock_process.return_value = mock_response
-
-        external_retrieval_parameters = {
-            "top_k": 5,
-            "score_threshold_enabled": True,
-            "score_threshold": 0.75,
-        }
-
-        # Act
-        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            "tenant-123",
-            "dataset-123",
-            "query",
-            external_retrieval_parameters,
-            session=sqlite_session,
-        )
-
-        # Assert
-        assert len(result) == 1
-        # Verify score threshold was passed in request
-        call_args = mock_process.call_args[0][0]
-        assert call_args.params["retrieval_setting"]["score_threshold"] == 0.75
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_non_200_status_raises_exception(
-        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test that non-200 status code raises Exception with response text."""
-        # Arrange
-        _seed_external_retrieval_dependencies(sqlite_session)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal Server Error: Database connection failed"
-        mock_process.return_value = mock_response
-
-        # Act & Assert
-        with pytest.raises(ExternalKnowledgeRetrievalError, match="Internal Server Error: Database connection failed"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
-            )
-
-    @pytest.mark.parametrize(
-        ("status_code", "error_message"),
-        [
-            (400, "Bad Request: Invalid query parameters"),
-            (401, "Unauthorized: Invalid API key"),
-            (403, "Forbidden: Access denied to resource"),
-            (404, "Not Found: Knowledge base not found"),
-            (429, "Too Many Requests: Rate limit exceeded"),
-            (500, "Internal Server Error: Database connection failed"),
-            (502, "Bad Gateway: External service unavailable"),
-            (503, "Service Unavailable: Maintenance mode"),
-        ],
-    )
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_various_error_status_codes(
-        self,
-        mock_process,
-        factory: ExternalDatasetServiceTestDataFactory,
-        sqlite_session: Session,
-        status_code,
-        error_message,
-    ):
-        """Test that various error status codes raise exceptions with response text."""
-        # Arrange
-        tenant_id = "tenant-123"
-        dataset_id = "dataset-123"
-
-        _seed_external_retrieval_dependencies(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
-
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_response.text = error_message
-        mock_process.return_value = mock_response
-
-        # Act & Assert
-        with pytest.raises(ExternalKnowledgeRetrievalError, match=re.escape(error_message)):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                tenant_id, dataset_id, "query", {"top_k": 5}, session=sqlite_session
-            )
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_empty_response_text(
-        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, sqlite_session: Session
-    ):
-        """Test exception with empty response text."""
-        # Arrange
-        _seed_external_retrieval_dependencies(sqlite_session)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 503
-        mock_response.text = ""
-        mock_process.return_value = mock_response
-
-        # Act & Assert
-        with pytest.raises(ExternalKnowledgeRetrievalError):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
-            )
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_invalid_json_response(
-        self, mock_process, factory, sqlite_session: Session
-    ):
-        """Test malformed JSON success responses are normalized to external retrieval errors."""
-        _seed_external_retrieval_dependencies(sqlite_session)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
-        mock_process.return_value = mock_response
-
-        with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
-            )
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_invalid_success_payload_shape(
-        self, mock_process, factory, sqlite_session: Session
-    ):
-        """Test malformed success payload shapes are normalized to external retrieval errors."""
-        _seed_external_retrieval_dependencies(sqlite_session)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = ["not-a-dict"]
-        mock_process.return_value = mock_response
-
-        with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
-            )
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_invalid_records_shape(
-        self, mock_process, factory, sqlite_session: Session
-    ):
-        """Test non-list records payloads are normalized to external retrieval errors."""
-        _seed_external_retrieval_dependencies(sqlite_session)
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"records": {"unexpected": "shape"}}
-        mock_process.return_value = mock_response
-
-        with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
-            )
-
-    @patch("services.knowledge.external.service.ExternalDatasetService.process_external_api")
-    def test_fetch_external_knowledge_retrieval_wraps_transport_errors(
-        self, mock_process, factory, sqlite_session: Session
-    ):
-        """Test transport/runtime failures are normalized to external retrieval errors."""
-        _seed_external_retrieval_dependencies(sqlite_session)
-        mock_process.side_effect = RuntimeError("connection reset by peer")
-
-        with pytest.raises(ExternalKnowledgeRetrievalError, match="connection reset by peer"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(
-                "tenant-123", "dataset-123", "query", {"top_k": 5}, session=sqlite_session
             )

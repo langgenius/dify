@@ -22,7 +22,7 @@ from models.dataset import (
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.knowledge.dataset_service import SegmentService
-from services.knowledge.resource_scope import DatasetRef, DocumentRef, SegmentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef, SegmentRef
 from services.knowledge.segments.application import SegmentIndex, SegmentIndexingState, SegmentMutationService
 
 

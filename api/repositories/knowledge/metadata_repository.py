@@ -10,8 +10,8 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from repositories.knowledge.dataset_read_repository import get_document_uploader
 from services.errors.metadata import MetadataResourceNotFoundError
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataList, MetadataOperation, MetadataRecord
-from services.knowledge.resource_scope import DatasetRef
 
 
 class SQLAlchemyMetadataRepository:

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 
 @dataclass(frozen=True)

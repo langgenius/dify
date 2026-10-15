@@ -3,33 +3,26 @@ from __future__ import annotations
 from uuid import UUID
 
 from flask_restx import Resource
-from sqlalchemy.orm import Session
 
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.app.wraps import with_session
-from controllers.console.wraps import RBACPermission, rbac_permission_required
-from fields.hit_testing_fields import HitTestingResponse
+from controllers.console.datasets.error import raise_hit_testing_error
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, model_validate
+from extensions.ext_application_services import application_services
+from fields.hit_testing_fields import HitTestingPayload, HitTestingResponse
 from libs.helper import dump_response
-from libs.login import login_required
-from models import Account
+from machinery.context import RequestContext
+from services.knowledge.entities.hit_testing import HitTestingRequest
 
 from .. import console_ns
-from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
-from ..wraps import (
-    account_initialization_required,
-    cloud_edition_billing_rate_limit_check,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
 
 register_schema_models(console_ns, HitTestingPayload)
 register_response_schema_models(console_ns, HitTestingResponse)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/hit-testing")
-class HitTestingApi(Resource, DatasetsHitTestingBase):
+class HitTestingApi(Resource):
     @console_ns.doc("test_dataset_retrieval")
     @console_ns.doc(description="Test dataset knowledge retrieval")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -41,24 +34,24 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(400, "Invalid parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
-    @with_current_tenant_id
-    @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()))
-    @with_session
-    def post(
-        self, session: Session, current_user: Account, current_tenant_id: str, dataset_id: UUID
-    ) -> dict[str, object]:
-        dataset_id_str = str(dataset_id)
-
-        dataset = self.get_and_validate_dataset(session, dataset_id_str, current_user, current_tenant_id)
-        args = self.parse_args(console_ns.payload)
-        self.hit_testing_args_check(args)
-
-        return dump_response(
-            HitTestingResponse,
-            self.perform_hit_testing(session, dataset, args, current_user, current_tenant_id),
-        )
+    @console_account_admission(
+        billing_rate_limit="knowledge",
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()),),
+    )
+    @model_validate(HitTestingPayload)
+    def post(self, req_data: HitTestingPayload, request_context: RequestContext, dataset_id: UUID) -> dict[str, object]:
+        try:
+            result = application_services().knowledge.hit_testing.hit_testing(
+                request_context,
+                dataset_id=str(dataset_id),
+                request=HitTestingRequest(
+                    query=req_data.query,
+                    retrieval_model=req_data.retrieval_model.model_dump(exclude_none=True)
+                    if req_data.retrieval_model is not None
+                    else None,
+                    attachment_ids=req_data.attachment_ids,
+                ),
+            )
+        except Exception as error:
+            raise_hit_testing_error(error)
+        return dump_response(HitTestingResponse, result)

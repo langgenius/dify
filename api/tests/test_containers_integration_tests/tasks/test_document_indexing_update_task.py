@@ -9,7 +9,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 

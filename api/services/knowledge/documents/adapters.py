@@ -36,9 +36,9 @@ from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.document_repository import _get_document
 from services.enterprise import rbac_service
 from services.errors.base import NoPermissionError
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.document import DocumentIndexingError
 from services.file_service import FileService
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.dataset_read_service import (
     get_document_metadata_details,
     get_document_source_detail,
@@ -57,7 +57,7 @@ from services.knowledge.documents.application import (
 )
 from services.knowledge.entities.document_creation import DocumentCreationDataset, DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
