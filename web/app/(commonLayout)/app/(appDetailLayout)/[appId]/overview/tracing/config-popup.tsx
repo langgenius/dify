@@ -1,13 +1,15 @@
 'use client'
 import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { FC, JSX } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ProviderConfigModal from './provider-config-modal'
 import ProviderPanel from './provider-panel'
@@ -18,6 +20,7 @@ const I18N_PREFIX = 'tracing'
 
 export type PopupProps = {
   appId: string
+  onConfigRemoved: (provider: TracingProvider) => void
   readOnly: boolean
   enabled: boolean
   onStatusChange: (enabled: boolean) => void
@@ -33,11 +36,11 @@ export type PopupProps = {
   mlflowConfig: TraceAppConfigResponse['tracing_config']
   databricksConfig: TraceAppConfigResponse['tracing_config']
   tencentConfig: TraceAppConfigResponse['tracing_config']
-  onConfigRemoved: (provider: TracingProvider) => void
 }
 
 const ConfigPopup: FC<PopupProps> = ({
   appId,
+  onConfigRemoved,
   readOnly,
   enabled,
   onStatusChange,
@@ -53,17 +56,11 @@ const ConfigPopup: FC<PopupProps> = ({
   mlflowConfig,
   databricksConfig,
   tencentConfig,
-  onConfigRemoved,
 }) => {
   const { t } = useTranslation(['app'])
-
-  const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(null)
-  const hideConfigModal = () => setCurrentProvider(null)
-  const handleOnConfig = useCallback((provider: TracingProvider) => {
-    return () => {
-      setCurrentProvider(provider)
-    }
-  }, [])
+  const dialogActionsRef = React.useRef<DialogActions>(null)
+  const firstInputRef = React.useRef<HTMLInputElement>(null)
+  const closeConfig = () => dialogActionsRef.current?.close()
 
   const handleOnChoose = useCallback(
     (provider: TracingProvider) => {
@@ -102,7 +99,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.arize}
       readOnly={readOnly}
       config={arizeConfig}
-      onConfig={handleOnConfig(TracingProvider.arize)}
       isChosen={chosenProvider === TracingProvider.arize}
       onChoose={handleOnChoose(TracingProvider.arize)}
       key="arize-provider-panel"
@@ -114,7 +110,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.phoenix}
       readOnly={readOnly}
       config={phoenixConfig}
-      onConfig={handleOnConfig(TracingProvider.phoenix)}
       isChosen={chosenProvider === TracingProvider.phoenix}
       onChoose={handleOnChoose(TracingProvider.phoenix)}
       key="phoenix-provider-panel"
@@ -126,7 +121,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.langSmith}
       readOnly={readOnly}
       config={langSmithConfig}
-      onConfig={handleOnConfig(TracingProvider.langSmith)}
       isChosen={chosenProvider === TracingProvider.langSmith}
       onChoose={handleOnChoose(TracingProvider.langSmith)}
       key="langSmith-provider-panel"
@@ -138,7 +132,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.langfuse}
       readOnly={readOnly}
       config={langFuseConfig}
-      onConfig={handleOnConfig(TracingProvider.langfuse)}
       isChosen={chosenProvider === TracingProvider.langfuse}
       onChoose={handleOnChoose(TracingProvider.langfuse)}
       key="langfuse-provider-panel"
@@ -150,7 +143,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.opik}
       readOnly={readOnly}
       config={opikConfig}
-      onConfig={handleOnConfig(TracingProvider.opik)}
       isChosen={chosenProvider === TracingProvider.opik}
       onChoose={handleOnChoose(TracingProvider.opik)}
       key="opik-provider-panel"
@@ -162,7 +154,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.weave}
       readOnly={readOnly}
       config={weaveConfig}
-      onConfig={handleOnConfig(TracingProvider.weave)}
       isChosen={chosenProvider === TracingProvider.weave}
       onChoose={handleOnChoose(TracingProvider.weave)}
       key="weave-provider-panel"
@@ -174,7 +165,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.aliyun}
       readOnly={readOnly}
       config={aliyunConfig}
-      onConfig={handleOnConfig(TracingProvider.aliyun)}
       isChosen={chosenProvider === TracingProvider.aliyun}
       onChoose={handleOnChoose(TracingProvider.aliyun)}
       key="aliyun-provider-panel"
@@ -186,7 +176,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.mlflow}
       readOnly={readOnly}
       config={mlflowConfig}
-      onConfig={handleOnConfig(TracingProvider.mlflow)}
       isChosen={chosenProvider === TracingProvider.mlflow}
       onChoose={handleOnChoose(TracingProvider.mlflow)}
       key="mlflow-provider-panel"
@@ -198,7 +187,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.databricks}
       readOnly={readOnly}
       config={databricksConfig}
-      onConfig={handleOnConfig(TracingProvider.databricks)}
       isChosen={chosenProvider === TracingProvider.databricks}
       onChoose={handleOnChoose(TracingProvider.databricks)}
       key="databricks-provider-panel"
@@ -210,7 +198,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.tencent}
       readOnly={readOnly}
       config={tencentConfig}
-      onConfig={handleOnConfig(TracingProvider.tencent)}
       isChosen={chosenProvider === TracingProvider.tencent}
       onChoose={handleOnChoose(TracingProvider.tencent)}
       key="tencent-provider-panel"
@@ -269,100 +256,113 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   return (
-    <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <TracingIcon size="md" className="mr-2" />
-          <div className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`${I18N_PREFIX}.tracing`], { ns: 'app' })}
-          </div>
-        </div>
-        <div className="flex items-center">
-          <StatusDot status={enabled ? 'success' : 'disabled'} />
-          <div
-            className={cn(
-              'ml-1 system-xs-semibold-uppercase text-text-tertiary',
-              enabled && 'text-util-colors-green-green-600',
-            )}
-          >
-            {t(($) => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
-          </div>
-          {!readOnly && (
-            <>
-              {providerAllNotConfigured ? (
-                <Tooltip>
-                  <TooltipTrigger render={switchContent} />
-                  <TooltipContent>
-                    {t(($) => $[`${I18N_PREFIX}.disabledTip`], { ns: 'app' })}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                switchContent
-              )}
-            </>
-          )}
-        </div>
-      </div>
+    <Dialog<TracingProvider> actionsRef={dialogActionsRef} disablePointerDismissal>
+      {({ payload: provider }) => (
+        <>
+          <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <TracingIcon size="md" className="mr-2" />
+                <div className="title-2xl-semi-bold text-text-primary">
+                  {t(($) => $[`${I18N_PREFIX}.tracing`], { ns: 'app' })}
+                </div>
+              </div>
+              <div className="flex items-center">
+                <StatusDot status={enabled ? 'success' : 'disabled'} />
+                <div
+                  className={cn(
+                    'ml-1 system-xs-semibold-uppercase text-text-tertiary',
+                    enabled && 'text-util-colors-green-green-600',
+                  )}
+                >
+                  {t(($) => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
+                </div>
+                {!readOnly && (
+                  <>
+                    {providerAllNotConfigured ? (
+                      <Tooltip>
+                        <TooltipTrigger render={switchContent} />
+                        <TooltipContent>
+                          {t(($) => $[`${I18N_PREFIX}.disabledTip`], { ns: 'app' })}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      switchContent
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
 
-      <div className="mt-2 system-xs-regular text-text-tertiary">
-        {t(($) => $[`${I18N_PREFIX}.tracingDescription`], { ns: 'app' })}
-      </div>
-      <Separator className="my-3 h-[0.5px]" />
-      <div className="relative">
-        {providerAllConfigured || providerAllNotConfigured ? (
-          <>
-            <div className="system-xs-medium-uppercase text-text-tertiary">
-              {t(
-                ($) =>
-                  $[
-                    `${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`
-                  ],
-                { ns: 'app' },
+            <div className="mt-2 system-xs-regular text-text-tertiary">
+              {t(($) => $[`${I18N_PREFIX}.tracingDescription`], { ns: 'app' })}
+            </div>
+            <Separator className="my-3 h-[0.5px]" />
+            <div className="relative">
+              {providerAllConfigured || providerAllNotConfigured ? (
+                <>
+                  <div className="system-xs-medium-uppercase text-text-tertiary">
+                    {t(
+                      ($) =>
+                        $[
+                          `${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`
+                        ],
+                      { ns: 'app' },
+                    )}
+                  </div>
+                  <div className="mt-2 max-h-96 space-y-2 overflow-y-auto">
+                    {langfusePanel}
+                    {langSmithPanel}
+                    {opikPanel}
+                    {mlflowPanel}
+                    {databricksPanel}
+                    {weavePanel}
+                    {arizePanel}
+                    {phoenixPanel}
+                    {aliyunPanel}
+                    {tencentPanel}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="system-xs-medium-uppercase text-text-tertiary">
+                    {t(($) => $[`${I18N_PREFIX}.configProviderTitle.configured`], { ns: 'app' })}
+                  </div>
+                  <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
+                    {configuredProviderPanel()}
+                  </div>
+                  <div className="mt-3 system-xs-medium-uppercase text-text-tertiary">
+                    {t(($) => $[`${I18N_PREFIX}.configProviderTitle.moreProvider`], { ns: 'app' })}
+                  </div>
+                  <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
+                    {moreProviderPanel()}
+                  </div>
+                </>
               )}
             </div>
-            <div className="mt-2 max-h-96 space-y-2 overflow-y-auto">
-              {langfusePanel}
-              {langSmithPanel}
-              {opikPanel}
-              {mlflowPanel}
-              {databricksPanel}
-              {weavePanel}
-              {arizePanel}
-              {phoenixPanel}
-              {aliyunPanel}
-              {tencentPanel}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $[`${I18N_PREFIX}.configProviderTitle.configured`], { ns: 'app' })}
-            </div>
-            <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
-              {configuredProviderPanel()}
-            </div>
-            <div className="mt-3 system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $[`${I18N_PREFIX}.configProviderTitle.moreProvider`], { ns: 'app' })}
-            </div>
-            <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{moreProviderPanel()}</div>
-          </>
-        )}
-      </div>
-      {currentProvider !== null && (
-        <ProviderConfigModal
-          appId={appId}
-          type={currentProvider}
-          payload={providerConfigs[currentProvider]}
-          onCancel={hideConfigModal}
-          onSaved={hideConfigModal}
-          onChosen={onChooseProvider}
-          onRemoved={() => {
-            onConfigRemoved(currentProvider)
-            hideConfigModal()
-          }}
-        />
+          </div>
+          <DialogContent
+            initialFocus={firstInputRef}
+            className="max-h-[calc(100dvh-2rem)] w-160 p-0"
+          >
+            {provider && (
+              <ProviderConfigModal
+                appId={appId}
+                type={provider}
+                payload={providerConfigs[provider]}
+                firstInputRef={firstInputRef}
+                onSaved={closeConfig}
+                onChosen={onChooseProvider}
+                onRemoved={() => {
+                  onConfigRemoved(provider)
+                  closeConfig()
+                }}
+              />
+            )}
+          </DialogContent>
+        </>
       )}
-    </div>
+    </Dialog>
   )
 }
 export default React.memo(ConfigPopup)

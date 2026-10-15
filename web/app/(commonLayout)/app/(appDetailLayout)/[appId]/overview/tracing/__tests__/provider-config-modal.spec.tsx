@@ -1,6 +1,8 @@
 import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createRef } from 'react'
 import { toast } from '@/app/notifications'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
@@ -260,7 +262,7 @@ const renderConfigButton = () => {
       tencentConfig={null}
       onConfigRemoved={vi.fn()}
     >
-      <button type="button">Open tracing</button>
+      Open tracing
     </ConfigBtn>,
     { wrapper: createQueryClientWrapper(createTestQueryClient()) },
   )
@@ -280,16 +282,27 @@ const renderProviderConfigModal = ({
     onRemoved: vi.fn(),
   }
 
+  const firstInputRef = createRef<HTMLInputElement>()
   render(
-    <ProviderConfigModal
-      appId="app-id"
-      type={type}
-      payload={payload}
-      onCancel={callbacks.onCancel}
-      onSaved={callbacks.onSaved}
-      onChosen={callbacks.onChosen}
-      onRemoved={callbacks.onRemoved}
-    />,
+    <Dialog
+      defaultOpen
+      disablePointerDismissal
+      onOpenChangeComplete={(open) => {
+        if (!open) callbacks.onCancel()
+      }}
+    >
+      <DialogContent initialFocus={firstInputRef}>
+        <ProviderConfigModal
+          appId="app-id"
+          type={type}
+          payload={payload}
+          firstInputRef={firstInputRef}
+          onSaved={callbacks.onSaved}
+          onChosen={callbacks.onChosen}
+          onRemoved={callbacks.onRemoved}
+        />
+      </DialogContent>
+    </Dialog>,
     { wrapper: createQueryClientWrapper(createTestQueryClient()) },
   )
 
@@ -307,7 +320,7 @@ describe('ProviderConfigModal', () => {
   })
 
   describe('Nested Overlay Behavior', () => {
-    it('should keep the provider config modal open when clicking inside it', async () => {
+    it('keeps the provider list open and starts a fresh draft after closing the dialog', async () => {
       const user = userEvent.setup()
       renderConfigButton()
 
@@ -326,19 +339,27 @@ describe('ProviderConfigModal', () => {
       })
       expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      await user.click(screen.getByPlaceholderText('https://cloud.langfuse.com'))
-
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://draft.langfuse.com')
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'common.operation.close' }),
+        ).not.toBeInTheDocument(),
+      )
       expect(screen.getByText('app.tracing.tracing')).toBeInTheDocument()
-      expect(
-        screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
-      ).toBeInTheDocument()
+      const configButton = screen.getAllByRole('button', { name: 'app.tracing.config' })[0]!
+      await waitFor(() => expect(configButton).toHaveFocus())
+      await user.click(configButton)
+      expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
     })
   })
 
   describe('Rendering', () => {
     it.each(providerFieldLabels)(
       'should render %s fields when adding a provider',
-      (provider, expectedLabels) => {
+      async (provider, expectedLabels) => {
         renderProviderConfigModal({ type: provider })
 
         expect(
@@ -347,6 +368,9 @@ describe('ProviderConfigModal', () => {
         expectedLabels.forEach((label) => {
           expect(screen.getByRole('textbox', { name: label })).toBeInTheDocument()
         })
+        await waitFor(() =>
+          expect(screen.getByRole('textbox', { name: expectedLabels[0] })).toHaveFocus(),
+        )
         expect(
           screen.getByRole('button', { name: 'common.operation.saveAndEnable' }),
         ).toBeInTheDocument()
@@ -471,11 +495,11 @@ describe('ProviderConfigModal', () => {
   })
 
   describe('Closing And Removing', () => {
-    it('should cancel when the cancel button is clicked', async () => {
+    it.each(['cancel', 'close'])('should dismiss when the %s button is clicked', async (action) => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal()
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
 
       expect(callbacks.onCancel).toHaveBeenCalledTimes(1)
     })
@@ -512,16 +536,24 @@ describe('ProviderConfigModal', () => {
       expect(toast).toHaveBeenCalledWith('common.api.remove', { type: 'success' })
     })
 
-    it('should return to the edit dialog when remove confirmation is canceled', async () => {
+    it('keeps the draft and returns focus to Remove when confirmation is canceled', async () => {
       const user = userEvent.setup()
       renderProviderConfigModal({
         type: TracingProvider.langfuse,
         payload: validConfigs[TracingProvider.langfuse],
       })
 
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://draft.langfuse.com')
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(host).toHaveValue('https://draft.langfuse.com')
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'common.operation.remove' })).toHaveFocus(),
+      )
       expect(request).not.toHaveBeenCalled()
       expect(
         screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),

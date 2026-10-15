@@ -1,7 +1,9 @@
 'use client'
 import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +17,6 @@ type Props = Readonly<{
   isChosen: boolean
   config: TraceAppConfigResponse['tracing_config']
   onChoose: () => void
-  onConfig: () => void
 }>
 
 const getIconClassName = (type: TracingProvider) => {
@@ -33,18 +34,10 @@ const getIconClassName = (type: TracingProvider) => {
   }[type]
 }
 
-const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, onChoose, onConfig }) => {
+const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, onChoose }) => {
   const { t } = useTranslation(['app'])
   const iconClassName = getIconClassName(type)
   const hasConfigured = !!config
-
-  const handleConfigBtnClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      onConfig()
-    },
-    [onConfig],
-  )
 
   const viewBtnClick = useCallback(
     (e: React.MouseEvent) => {
@@ -98,15 +91,14 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, onChoose, 
                 </div>
               </div>
             )}
-            <div
-              className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
-              onClick={handleConfigBtnClick}
+            <DialogTrigger
+              payload={type}
+              onClick={(event) => event.stopPropagation()}
+              render={<Button size="small" />}
             >
               <span aria-hidden className="i-ri-equalizer-2-line size-3" />
-              <div className="text-xs font-medium">
-                {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
-              </div>
-            </div>
+              {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
+            </DialogTrigger>
           </div>
         )}
       </div>
