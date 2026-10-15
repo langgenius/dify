@@ -23,7 +23,9 @@ def test_tracing_owner_rejects_inline_without_materializing_app(sqlite_session_f
         repository.resolve_roster_app_id(tenant_id="tenant-1", agent_id="inline-agent")
     with sqlite_session_factory() as session:
         assert session.scalar(select(App)) is None
-        assert session.get(Agent, "inline-agent").backing_app_id is None
+        agent = session.get(Agent, "inline-agent")
+        assert agent is not None
+        assert agent.backing_app_id is None
 
 
 @pytest.fixture
