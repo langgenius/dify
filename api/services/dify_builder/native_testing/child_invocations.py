@@ -1,5 +1,6 @@
 """Unique child identity sharing the root ledger, quotas and cancellation scope."""
 
+import json
 from typing import Protocol
 from uuid import uuid4
 
@@ -7,9 +8,13 @@ from sqlalchemy import select
 
 from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
+from services.dify_builder.execution_policy_service import check_execution_permission
 from services.dify_builder.native_testing.contracts import NativeTestContextRef, OperationKey, operation_digest
+from services.dify_builder.native_testing.private_reads import validate_invocation_workflow
+from services.dify_builder.native_testing.repository import native_workflow_revision
 from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome, ResolvedNativeTestContext
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, invocation_state, owner_query
+from services.dify_builder.native_testing.transitions import has_unknown_descendant, quarantine_unknown
 
 
 class NativeChildResolver(Protocol):
@@ -111,6 +116,13 @@ class NativeChildInvocationService:
             parent.root_native_run_id,
         ) or canonical_digest(child.inputs) != input_digest:
             raise BuilderExecutionPolicyError("native_child_owner_mismatch")
+        with self.loader.session_factory() as session:
+            workflow = validate_invocation_workflow(
+                session, tenant_id=parent.tenant_id, app_id=child.app_id, workflow_id=child.workflow_id
+            )
+            if native_workflow_revision(workflow) != child.graph_revision or json.loads(workflow.graph) != child.graph:
+                raise BuilderExecutionPolicyError("native_revision_drift")
+        check_execution_permission(self.loader.actor, child.app_id, self.loader.session_factory)
         receipt = self.store.prepare_object(
             ref=child_ref,
             tenant_id=parent.tenant_id,
@@ -150,6 +162,8 @@ class NativeChildInvocationService:
                     request_id=parent_ref.request_id,
                     invocation_id=child_ref.invocation_id,
                     context_object_id=obj.id,
+                    app_id=child.app_id,
+                    workflow_id=child.workflow_id,
                     parent_invocation_id=parent_ref.invocation_id,
                     parent_operation_digest=occurrence,
                     child_identity_digest=identity,
@@ -207,6 +221,9 @@ class NativeChildInvocationService:
                 if state.outcome != raw:
                     raise BuilderExecutionPolicyError("native_child_outcome_conflict")
                 return
+            if outcome.status == "unknown":
+                quarantine_unknown(session, ref=child_ref, tenant_id=owned.tenant_id, outcome=raw)
+                return
             state.outcome, state.state = raw, outcome.status
             invocation = session.scalar(owner_query(NativeTestInvocation, child_ref, owned.tenant_id))
             invocation.active = False
@@ -214,7 +231,12 @@ class NativeChildInvocationService:
             parent = invocation_state(session, parent_ref, owned.tenant_id)
             # A still-running parent observes the durable child outcome itself.
             # Only a checkpointed parent is eligible for another native launch.
-            if scope.cancelled or parent.state != "waiting" or parent.checkpoint_id is None:
+            if (
+                scope.cancelled
+                or parent.state != "waiting"
+                or parent.checkpoint_id is None
+                or has_unknown_descendant(session, parent_ref, owned.tenant_id)
+            ):
                 return
             scope.generation += 1
             parent.generation, parent.state = scope.generation, "queued"

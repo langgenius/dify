@@ -32,6 +32,7 @@ from services.dify_builder.native_testing.contracts import (
     OperationKey,
     operation_digest,
 )
+from services.dify_builder.native_testing.private_reads import validate_private_read
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision, utc_now
 from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
 
@@ -243,6 +244,8 @@ class NativeExecutionStateStore:
                         request_id=context.ref.request_id,
                         invocation_id=context.ref.invocation_id,
                         context_object_id=row.id,
+                        app_id=context.app_id,
+                        workflow_id=context.workflow_id,
                         parent_invocation_id=None,
                         parent_operation_digest=None,
                         child_identity_digest=None,
@@ -267,48 +270,36 @@ class NativeExecutionStateStore:
         return self._load_context(ref=ref, recovery=True)
 
     def _load_context(self, *, ref: NativeTestContextRef, recovery: bool) -> ResolvedNativeTestContext:
-        if recovery:
-            with self.loader.session_factory() as session:
-                owned, scope = self.loader._load(session, ref=ref, lock=False, settlement=True)
-                if scope.cancelled:
-                    raise BuilderExecutionPolicyError("native_cancelled")
-        else:
-            owned = self.loader.load(ref=ref)
+        owned = validate_private_read(self.loader, ref)
+        if owned.cancelled:
+            raise BuilderExecutionPolicyError("native_cancelled")
+        if not recovery and (not owned.active or owned.request_state not in {"running", "waiting"}):
+            raise BuilderExecutionPolicyError("native_invocation_mismatch")
         if owned.expires_at <= utc_now():
             raise BuilderExecutionPolicyError("native_expired")
         with self.loader.session_factory() as session:
-            state = invocation_state(session, ref, owned.tenant_id)
             row = session.scalar(
                 owner_query(NativePayloadObject, ref, owned.tenant_id).where(
-                    NativePayloadObject.id == state.context_object_id, NativePayloadObject.kind == "context"
+                    NativePayloadObject.id == owned.context_object_id, NativePayloadObject.kind == "context"
                 )
             )
-            generation = state.generation
         if row is None:
             raise BuilderExecutionPolicyError("native_state_unavailable")
         context = ResolvedNativeTestContext.model_validate(self._read_object(row))
-        if context.ref != ref or (context.tenant_id, context.actor_id) != (owned.tenant_id, owned.actor_id):
+        if (
+            context.ref,
+            context.tenant_id,
+            context.actor_id,
+            context.app_id,
+            context.workflow_id,
+            context.parent_invocation_id,
+        ) != (ref, owned.tenant_id, owned.actor_id, owned.app_id, owned.workflow_id, owned.parent_invocation_id):
             raise BuilderExecutionPolicyError("native_context_mismatch")
-        # Child refs share the root request, but their own workflow/permission
-        # metadata must still be current. No resolved variables or secrets.
-        from services.dify_builder.execution_policy_service import check_execution_permission
-
-        with self.loader.session_factory() as session:
-            workflow = session.scalar(
-                select(Workflow).where(
-                    Workflow.id == context.workflow_id,
-                    Workflow.tenant_id == owned.tenant_id,
-                    Workflow.app_id == context.app_id,
-                )
-            )
-            if workflow is None or native_workflow_revision(workflow) != context.graph_revision:
-                raise BuilderExecutionPolicyError("native_revision_drift")
-            if context.parent_invocation_id is None:
-                inputs = session.get(DifyBuilderTestInput, owned.test_input_id)
-                if inputs is None or canonical_digest(inputs.inputs) != context.input_revision:
-                    raise BuilderExecutionPolicyError("native_input_drift")
-        check_execution_permission(self.loader.actor, context.app_id, self.loader.session_factory)
-        return context.model_copy(update={"generation": generation})
+        if not owned.root_revision_matches or context.graph_revision != owned.graph_revision:
+            raise BuilderExecutionPolicyError("native_revision_drift")
+        if owned.input_revision is not None and owned.input_revision != context.input_revision:
+            raise BuilderExecutionPolicyError("native_input_drift")
+        return context.model_copy(update={"generation": owned.generation})
 
     def commit_checkpoint(
         self, *, ref: NativeTestContextRef, generation: int, payload: NativeCheckpointPayload
@@ -381,7 +372,7 @@ class NativeExecutionStateStore:
             raise BuilderExecutionPolicyError("checkpoint_unavailable") from None
 
     def read_checkpoint(self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef) -> NativeCheckpointPayload:
-        owned = self.loader.load(ref=ref)
+        owned = validate_private_read(self.loader, ref)
         with self.loader.session_factory() as session:
             continuation = session.scalar(
                 owner_query(NativeContinuation, ref, owned.tenant_id).where(
@@ -422,6 +413,7 @@ class NativeExecutionStateStore:
             )
         if not spent:
             self.loader.load(ref=ref)
+            validate_private_read(self.loader, ref)
         receipt = self.prepare_object(
             ref=ref, tenant_id=owned.tenant_id, kind="result", logical_key=logical_key, payload=result
         )
@@ -431,18 +423,13 @@ class NativeExecutionStateStore:
         return result_ref
 
     def load_result(self, *, ref: NativeTestContextRef, result_ref: str) -> JsonValue:
-        # Completed children remain readable, but tenant/actor lineage and current
-        # read permission are still checked. This path never grants new dispatch.
-        from services.dify_builder.execution_policy_service import check_execution_permission
-
+        owned = validate_private_read(self.loader, ref)
         with self.loader.session_factory() as session:
-            owned, _ = self.loader._load(session, ref=ref, lock=False, settlement=True)
             row = session.scalar(
                 owner_query(NativePayloadObject, ref, owned.tenant_id).where(
                     NativePayloadObject.id == result_ref, NativePayloadObject.kind == "result"
                 )
             )
-        check_execution_permission(self.loader.actor, owned.app_id, self.loader.session_factory)
         if row is None:
             raise BuilderExecutionPolicyError("native_result_owner_mismatch")
         return self._read_object(row)

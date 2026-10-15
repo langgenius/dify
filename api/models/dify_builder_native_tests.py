@@ -200,12 +200,15 @@ class NativeInvocationState(Identity, InvocationOwner, Base):
         sa.UniqueConstraint(
             "request_id", "parent_invocation_id", "parent_operation_digest", name="native_child_occurrence"
         ),
+        sa.CheckConstraint("(app_id IS NULL) = (workflow_id IS NULL)", name="native_state_read_owner_pair"),
         sa.CheckConstraint("generation >= 0", name="native_state_generation"),
         sa.CheckConstraint(
             "state IN ('running','waiting','queued','completed','stopped','unknown','cancelled')",
             name="native_state_status",
         ),
     )
+    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     context_object_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     parent_invocation_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
     parent_operation_digest: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)

@@ -198,7 +198,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "d28f0e3c912a"
+    current_head = "f47a1c90d2e8"
+    continuation_head = "d28f0e3c912a"
     native_head = "c67e12a904bf"
     previous_merge = "a61e9b2c7d40"
     branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
@@ -207,7 +208,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    continuation_revision = scripts.get_revision(current_head)
+    owner_revision = scripts.get_revision(current_head)
+    assert owner_revision is not None
+    assert owner_revision.down_revision == continuation_head
+    continuation_revision = scripts.get_revision(continuation_head)
     assert continuation_revision is not None
     assert continuation_revision.down_revision == native_head
     native_revision = scripts.get_revision(native_head)
@@ -468,10 +472,59 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
 
         before_continuation = witness(include_archive=True, include_native=True)
         ledger_before = native_ledger_witness()
+        assert migrate(continuation_head) == (continuation_head,)
+        assert witness(include_archive=True, include_native=True, include_continuation=True) == before_continuation
+        assert native_ledger_witness() == ledger_before
+        assert archive_witness() == archive_before
+
+        # An acknowledged pre-provenance invocation remains explicitly unowned;
+        # the forward migration must not invent app/workflow authority for it.
+        connection.execute(
+            text(
+                "INSERT INTO dify_builder_native_invocation_states "
+                "(id,tenant_id,request_id,invocation_id,context_object_id,generation,state,pending_ids,resolution) "
+                "VALUES (:id,:id,:id,'legacy-native',:id,0,'waiting','[]','{}')"
+            ),
+            {"id": identity},
+        )
+        continuation_before = {
+            table: {
+                "columns": [
+                    (column["name"], str(column["type"]), column["nullable"], column["default"])
+                    for column in inspect(connection).get_columns(table, schema=schema)
+                ],
+                "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY id")).tuples()),
+            }
+            for table in sorted(continuation_tables)
+        }
         assert migrate("head") == (current_head,)
         assert witness(include_archive=True, include_native=True, include_continuation=True) == before_continuation
         assert native_ledger_witness() == ledger_before
         assert archive_witness() == archive_before
+        for table, previous in continuation_before.items():
+            columns = inspect(connection).get_columns(table, schema=schema)
+            names = {column["name"] for column in columns}
+            old_names = [column[0] for column in previous["columns"]]
+            additions = {"app_id", "workflow_id"} if table.endswith("invocation_states") else set()
+            assert names == {*old_names, *additions}
+            assert [
+                (column["name"], str(column["type"]), column["nullable"], column["default"])
+                for column in columns
+                if column["name"] not in additions
+            ] == previous["columns"]
+            for column in columns:
+                if column["name"] in additions:
+                    assert column["nullable"] is True
+                    assert column["default"] is None
+            projection = ",".join(f'"{name}"' for name in old_names)
+            assert (
+                list(connection.execute(text(f"SELECT {projection} FROM {table} ORDER BY id")).tuples())
+                == previous["rows"]
+            )
+        assert connection.execute(
+            text("SELECT app_id,workflow_id FROM dify_builder_native_invocation_states WHERE id=:id"),
+            {"id": identity},
+        ).one() == (None, None)
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 

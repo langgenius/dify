@@ -41,6 +41,11 @@ from services.dify_builder.native_testing.runtime_contracts import (
     ResolvedNativeTestContext,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, invocation_state, owner_query
+from services.dify_builder.native_testing.transitions import (
+    has_unknown_descendant,
+    invocation_subtree,
+    quarantine_unknown,
+)
 
 
 class NativePendingResolution(FrozenDTO):
@@ -323,6 +328,8 @@ class NativeTestLifecycleService:
                 raise BuilderExecutionPolicyError("native_generation_conflict")
             if state.state != "waiting" or state.checkpoint_id != checkpoint.checkpoint_id:
                 raise BuilderExecutionPolicyError("native_state_conflict")
+            if has_unknown_descendant(session, ref, owned.tenant_id):
+                raise BuilderExecutionPolicyError("native_subtree_unknown")
             resolutions = self._resolve_pending(session, owned, state)
             # Answer reference provenance is checked in SQL here; payload is read
             # outside this transaction by the runtime/state owner.
@@ -452,6 +459,8 @@ class NativeTestLifecycleService:
                 return False
             if state.generation != generation or state.state != "queued" or owned.expires_at <= self.clock():
                 raise BuilderExecutionPolicyError("native_generation_conflict")
+            if has_unknown_descendant(session, ref, owned.tenant_id):
+                raise BuilderExecutionPolicyError("native_subtree_unknown")
             dispatch.state, dispatch.claim_expires_at = "claimed", self.clock() + timedelta(minutes=10)
             state.state = "running"
             for child in self._subtree(session, ref, owned.tenant_id):
@@ -501,8 +510,15 @@ class NativeTestLifecycleService:
                 dispatch = session.get(NativeDispatch, dispatch_id)
                 if dispatch.state != "claimed" or state.generation != generation or scope.cancelled:
                     raise BuilderExecutionPolicyError("native_dispatch_conflict")
-                dispatch.state = "completed" if outcome.status != "unknown" else "unknown"
-                if outcome.status != "waiting":
+                if outcome.status == "completed" and has_unknown_descendant(session, ref, owned.tenant_id):
+                    raise BuilderExecutionPolicyError("native_subtree_unknown")
+                if outcome.status == "unknown":
+                    quarantine_unknown(
+                        session, ref=ref, tenant_id=owned.tenant_id, outcome=outcome.model_dump(mode="json")
+                    )
+                else:
+                    dispatch.state = "completed"
+                if outcome.status not in {"waiting", "unknown"}:
                     state.state, state.outcome = outcome.status, outcome.model_dump(mode="json")
                     invocation = session.scalar(owner_query(NativeTestInvocation, ref, owned.tenant_id))
                     invocation.active = False
@@ -532,30 +548,9 @@ class NativeTestLifecycleService:
                 dispatch.state = "unknown"
                 state = invocation_state(session, ref, owned.tenant_id)
                 if state.generation == dispatch.generation and state.state != "cancelled":
-                    state.state = "unknown"
-                    child_ids = {row.invocation_id for row in self._subtree(session, ref, owned.tenant_id)}
-                    for invocation in session.scalars(
-                        select(NativeTestInvocation).where(
-                            NativeTestInvocation.request_id == ref.request_id,
-                            NativeTestInvocation.tenant_id == owned.tenant_id,
-                            NativeTestInvocation.invocation_id.in_(child_ids),
-                        )
-                    ):
-                        invocation.active = False
+                    quarantine_unknown(session, ref=ref, tenant_id=owned.tenant_id)
 
-    @staticmethod
-    def _subtree(session, ref, tenant_id):
-        states = session.scalars(
-            select(NativeInvocationState).where(
-                NativeInvocationState.request_id == ref.request_id, NativeInvocationState.tenant_id == tenant_id
-            )
-        ).all()
-        ids = {ref.invocation_id}
-        while True:
-            expanded = ids | {state.invocation_id for state in states if state.parent_invocation_id in ids}
-            if expanded == ids:
-                return [state for state in states if state.invocation_id in ids]
-            ids = expanded
+    _subtree = staticmethod(invocation_subtree)
 
     def reconcile(self, *, limit: int = 100) -> int:
         with self.loader.session_factory() as session:
