@@ -59,6 +59,11 @@ on:
         description: Generate API contracts only, returning reviewed outputs as artifacts
         type: boolean
         default: false
+      test_scope:
+        description: Select a focused lane; all always runs on build branch pushes
+        type: choice
+        options: [all, native-agent, native-catalog]
+        default: all
 permissions:
   contents: read
 concurrency:
@@ -66,7 +71,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-postgres:
-    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all'))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -285,7 +290,7 @@ jobs:
             builder-safe-execution.xml
             builder-safe-execution.log
   confirmed-tool-units:
-    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-catalog'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -542,7 +547,7 @@ jobs:
             builder-confirmed-tool-units.xml
             builder-confirmed-tool-units.log
   native-continuation:
-    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -609,7 +614,7 @@ jobs:
             builder-native-continuation.xml
             builder-native-continuation.log
   native-agent-binding:
-    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-catalog'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -676,7 +681,7 @@ jobs:
             builder-native-agent-binding.xml
             builder-native-agent-binding.log
   native-agent-protocol:
-    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-agent'))
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
@@ -843,7 +848,7 @@ jobs:
           path: builder-api-contracts/
 
   native-testing-foundation:
-    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all'))
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
