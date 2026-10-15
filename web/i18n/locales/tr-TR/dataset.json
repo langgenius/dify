@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Meta veriler, bilgi alma doğruluğunu ve geçerliliğini artıran önemli bir filtre görevi görür. Bu belgede meta verileri burada değiştirebilir ve ekleyebilirsiniz.",
   "metadata.documentMetadata.startLabeling": "Etiketlemeye Başla",
   "metadata.documentMetadata.technicalParameters": "Teknik Parametreler",
+  "metadata.externalDescription": "Harici bilgi API’nizin desteklediği alan adlarını ve türlerini yapılandırın. Değerleri harici sağlayıcı yönetir; değişiklikler hemen kaydedilir.",
   "metadata.metadata": "Meta Veri",
   "metadata.selectMetadata.manageAction": "Yönet",
   "metadata.selectMetadata.newAction": "Yeni Meta Veri",

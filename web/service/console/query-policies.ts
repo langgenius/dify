@@ -802,6 +802,30 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       datasets: {
+        byDatasetId: {
+          metadata: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) =>
+                  invalidateMetadata(context.client, variables.params.dataset_id),
+              },
+            },
+            byMetadataId: {
+              patch: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) =>
+                    invalidateMetadata(context.client, variables.params.dataset_id),
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) =>
+                    invalidateMetadata(context.client, variables.params.dataset_id),
+                },
+              },
+            },
+          },
+        },
         apiKeys: {
           post: {
             mutationOptions: {
@@ -1633,6 +1657,31 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
     },
   })
 
+  function invalidateMetadata(client: QueryClient, datasetId: string) {
+    return Promise.all([
+      client.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+          input: { params: { dataset_id: datasetId } },
+        }),
+      }),
+      client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() }),
+      client.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+          input: { params: { dataset_id: datasetId } },
+        }),
+      }),
+      client.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: datasetId } },
+        }),
+      }),
+      client.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+          input: { params: { dataset_id: datasetId } },
+        }),
+      }),
+    ])
+  }
   return consoleQuery
 }
 

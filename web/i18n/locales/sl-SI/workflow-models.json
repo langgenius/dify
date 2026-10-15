@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Nezdružljivi pogoji so bili ohranjeni: {{fields}}. Pred iskanjem odpravite spore.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Samodejno ustvarite filtrirne pogoje za metapodatke na podlagi spremenljivke poizvedbe",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Samodejno ustvarite filtrirne pogoje za metapodatke na podlagi uporabniškega poizvedovanja.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Samodejno",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Išči metapodatke",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Izberi spremenljivko...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Pogoji za filtriranje metapodatkov",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Polja morajo imeti enako ime in tip v vseh izbranih bazah znanja: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Filtriranje metapodatkov je postopek uporabe metapodatkovnih atributov (kot so oznake, kategorije ali dovoljenja za dostop) za natančnejše določanje in nadzorovanje pridobivanja relevantnih informacij znotraj sistema.",
   "nodes.knowledgeRetrieval.metadata.title": "Filtriranje metapodatkov",
   "nodes.knowledgeRetrieval.outputVars.content": "Segmentirana vsebina",

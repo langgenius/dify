@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "ข้อมูลเมตาเป็นตัวกรองที่สำคัญซึ่งช่วยเพิ่มความถูกต้องและความเกี่ยวข้องของการดึงข้อมูล คุณสามารถปรับแก้และเพิ่มข้อมูลเมตาสำหรับเอกสารนี้ได้ที่นี่",
   "metadata.documentMetadata.startLabeling": "เริ่มการติดป้าย",
   "metadata.documentMetadata.technicalParameters": "พารามิเตอร์ทางเทคนิค",
+  "metadata.externalDescription": "กำหนดชื่อและประเภทฟิลด์ที่ API ความรู้ภายนอกรองรับ ผู้ให้บริการภายนอกจัดการค่าและการเปลี่ยนแปลงจะถูกบันทึกทันที",
   "metadata.metadata": "ข้อมูลเมตา",
   "metadata.selectMetadata.manageAction": "จัดการ",
   "metadata.selectMetadata.newAction": "ข้อมูลเมตาใหม่",

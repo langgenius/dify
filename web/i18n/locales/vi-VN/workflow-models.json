@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Các điều kiện không tương thích được giữ lại: {{fields}}. Hãy giải quyết xung đột trước khi truy xuất.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Tự động tạo điều kiện lọc siêu dữ liệu dựa trên biến truy vấn",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Tự động tạo điều kiện lọc siêu dữ liệu dựa trên truy vấn của người dùng",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Tự động",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Tìm kiếm siêu dữ liệu",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Chọn biến...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Điều kiện lọc siêu dữ liệu",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Các trường phải có cùng tên và kiểu trong mọi cơ sở tri thức đã chọn: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Lọc siêu dữ liệu là quá trình sử dụng các thuộc tính siêu dữ liệu (chẳng hạn như thẻ, danh mục hoặc quyền truy cập) để tinh chỉnh và kiểm soát việc truy xuất thông tin liên quan trong một hệ thống.",
   "nodes.knowledgeRetrieval.metadata.title": "Lọc siêu dữ liệu",
   "nodes.knowledgeRetrieval.outputVars.content": "Nội dung phân đoạn",

@@ -192,3 +192,6 @@ describe('Knowledge settings narrow-screen readability', () => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320)
   })
 })
+
+// Field CRUD has its own owner tests; this suite owns the surrounding settings.
+vi.mock('../external-metadata-section', () => ({ default: () => null }))

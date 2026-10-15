@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Uyğun olmayan şərtlər saxlanılıb: {{fields}}. Axtarışdan əvvəl ziddiyyətləri həll edin.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Sorğu dəyişəni əsasında metaməlumatların süzgəcdən keçirilməsi şərtlərini avtomatik yarat",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "İstifadəçi sorğusu əsasında metaməlumatların süzgəcdən keçirilməsi şərtlərini avtomatik yarat",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Avtomatik",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Metaməlumatları axtar",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Dəyişən seçin...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Metaməlumat süzgəcinin şərtləri",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Sahələr bütün seçilmiş bilik bazalarında eyni ada və tipə malik olmalıdır: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Metaməlumatların süzgəcdən keçirilməsi sistem daxilində müvafiq məlumatların axtarışını dəqiqləşdirmək və idarə etmək üçün metaməlumat atributlarından (məsələn, etiketlərdən, kateqoriyalardan və ya giriş icazələrindən) istifadə prosesidir.",
   "nodes.knowledgeRetrieval.metadata.title": "Metaməlumatların süzgəcdən keçirilməsi",
   "nodes.knowledgeRetrieval.outputVars.content": "Seqmentin məzmunu",

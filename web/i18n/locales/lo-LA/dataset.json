@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "ຂໍ້ມູນກຳກັບເຮັດໜ້າທີ່ເປັນຕົວຕອງທີ່ສຳຄັນເຊິ່ງຊ່ວຍເພີ່ມຄວາມຊັດເຈນ ແລະ ຄວາມກ່ຽວຂ້ອງຂອງການດຶງຂໍ້ມູນ. ທ່ານສາມາດແກ້ໄຂ ແລະ ເພີ່ມຂໍ້ມູນກຳກັບສຳລັບເອກະສານນີ້ໄດ້ທີ່ນີ້.",
   "metadata.documentMetadata.startLabeling": "ເລີ່ມຕິດປ້າຍ (Labeling)",
   "metadata.documentMetadata.technicalParameters": "ພາລາມິເຕີທາງເຕັກນິກ",
+  "metadata.externalDescription": "ຕັ້ງຄ່າຊື່ແລະປະເພດຟິວທີ່ API ຄວາມຮູ້ພາຍນອກຮອງຮັບ. ຜູ້ໃຫ້ບໍລິການພາຍນອກຈັດການຄ່າ; ການປ່ຽນແປງຖືກບັນທຶກທັນທີ.",
   "metadata.metadata": "ຂໍ້ມູນກຳກັບ (Metadata)",
   "metadata.selectMetadata.manageAction": "ຈັດການ",
   "metadata.selectMetadata.newAction": "ຂໍ້ມູນກຳກັບໃໝ່",

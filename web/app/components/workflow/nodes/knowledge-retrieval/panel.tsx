@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { intersectionBy } from 'es-toolkit/compat'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -12,6 +11,7 @@ import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
 import MetadataFilter from './components/metadata/metadata-filter'
 import RetrievalConfig from './components/retrieval-config'
+import { getMetadataConflicts, getSharedMetadata } from './metadata-schema'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.knowledgeRetrieval'
@@ -49,18 +49,11 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({ id, data }) => 
     showImageQueryVarSelector,
   } = useConfig(id, data)
 
-  const metadataList = useMemo(() => {
-    return intersectionBy(
-      ...selectedDatasets
-        .filter((dataset) => {
-          return !!dataset.doc_metadata
-        })
-        .map((dataset) => {
-          return dataset.doc_metadata!
-        }),
-      'name',
-    )
-  }, [selectedDatasets])
+  const metadataList = useMemo(() => getSharedMetadata(selectedDatasets), [selectedDatasets])
+  const metadataSchemaConflicts = useMemo(
+    () => getMetadataConflicts(selectedDatasets),
+    [selectedDatasets],
+  )
 
   return (
     <div className="pt-2">
@@ -127,6 +120,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({ id, data }) => 
       <div className="mb-2 py-2">
         <MetadataFilter
           metadataList={metadataList}
+          metadataSchemaConflicts={metadataSchemaConflicts}
           selectedDatasetsLoaded={selectedDatasetsLoaded}
           metadataFilterMode={inputs.metadata_filtering_mode}
           metadataFilteringConditions={inputs.metadata_filtering_conditions}

@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Metadaten dienen als ein entscheidender Filter, der die Genauigkeit und Relevanz der Informationsbeschaffung verbessert. Sie können die Metadaten für dieses Dokument hier ändern und hinzufügen.",
   "metadata.documentMetadata.startLabeling": "Labeling starten",
   "metadata.documentMetadata.technicalParameters": "Technische Parameter",
+  "metadata.externalDescription": "Konfigurieren Sie die von Ihrer externen Wissens-API unterstützten Feldnamen und Typen. Der externe Anbieter verwaltet die Werte; Änderungen werden sofort gespeichert.",
   "metadata.metadata": "Metadaten",
   "metadata.selectMetadata.manageAction": "Verwalten",
   "metadata.selectMetadata.newAction": "Neue Metadaten",

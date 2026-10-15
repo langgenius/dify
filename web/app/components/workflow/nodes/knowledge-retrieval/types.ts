@@ -97,6 +97,7 @@ export type MetadataFilteringCondition = {
   id: string
   name: string
   metadata_id?: string
+  type?: MetadataFilteringVariableType
   comparison_operator: ComparisonOperator
   value?: string | number | string[] | null
 }
@@ -125,6 +126,7 @@ export type HandleUpdateCondition = (id: string, newCondition: MetadataFiltering
 export type HandleToggleConditionLogicalOperator = () => void
 
 export type MetadataShape = {
+  metadataSchemaConflicts?: string[]
   metadataList?: MetadataInDoc[]
   selectedDatasetsLoaded?: boolean
   metadataFilteringConditions?: MetadataFilteringConditions

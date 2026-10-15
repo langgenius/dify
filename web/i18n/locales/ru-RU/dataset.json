@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Метаданные служат важным фильтром, который повышает точность и актуальность извлечения информации. Вы можете изменить и добавить метаданные для этого документа здесь.",
   "metadata.documentMetadata.startLabeling": "Начать маркировку",
   "metadata.documentMetadata.technicalParameters": "Технические параметры",
+  "metadata.externalDescription": "Настройте имена и типы полей внешнего API знаний. Значения управляются внешним поставщиком; изменения сохраняются сразу.",
   "metadata.metadata": "Метаданные",
   "metadata.selectMetadata.manageAction": "Управлять",
   "metadata.selectMetadata.newAction": "Новые метаданные",

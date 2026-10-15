@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "元數據作為一個關鍵的過濾器，提高了信息檢索的準確性和相關性。您可以在此處修改和新增此文檔的元數據。",
   "metadata.documentMetadata.startLabeling": "開始標記",
   "metadata.documentMetadata.technicalParameters": "技術參數",
+  "metadata.externalDescription": "設定外部知識 API 支援的欄位名稱和類型。欄位值由外部服務提供，修改會立即儲存。",
   "metadata.metadata": "元數據",
   "metadata.selectMetadata.manageAction": "管理",
   "metadata.selectMetadata.newAction": "新元數據",

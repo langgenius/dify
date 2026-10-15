@@ -56,6 +56,7 @@ const useKnowledgeMetadataConfig = ({ id, inputRef, setInputs }: Params) => {
         const newCondition = {
           id: uuid4(),
           metadata_id: id,
+          type,
           name,
           comparison_operator: comparisonOperator,
         }

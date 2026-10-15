@@ -344,3 +344,6 @@ describe('ExternalKnowledgeSection', () => {
     })
   })
 })
+
+// Field CRUD has its own owner tests; this suite owns the surrounding settings.
+vi.mock('../external-metadata-section', () => ({ default: () => null }))

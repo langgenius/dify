@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "شرط‌های ناسازگار حفظ شده‌اند: {{fields}}. پیش از بازیابی، تعارض‌ها را برطرف کنید.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "تولید خودکار شرایط فیلتر متادیتا بر اساس متغیر پرس‌وجو",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "تولید خودکار شرایط فیلتر متادیتا بر اساس پرسش کاربر",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "خودکار",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "جستجوی متادیتا",
   "nodes.knowledgeRetrieval.metadata.panel.select": "انتخاب متغیر...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "شرایط فیلتر متادیتا",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "نام و نوع فیلدها باید در همه پایگاه‌های دانش انتخاب‌شده یکسان باشد: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "فیلتر متادیتا فرایند استفاده از ویژگی‌های متادیتا (مانند برچسب‌ها، دسته‌بندی‌ها یا سطح دسترسی) برای محدود کردن و دقیق‌تر کردن نتایج بازیابی است.",
   "nodes.knowledgeRetrieval.metadata.title": "فیلتر متادیتا",
   "nodes.knowledgeRetrieval.outputVars.content": "محتوای بخش‌بندی‌شده",

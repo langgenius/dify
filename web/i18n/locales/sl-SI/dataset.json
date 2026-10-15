@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Metapodatki služijo kot pomemben filter, ki izboljšuje natančnost in pomembnost iskanja informacij. Tukaj lahko spremenite in dodate metapodatke za ta dokument.",
   "metadata.documentMetadata.startLabeling": "Začni označevanje",
   "metadata.documentMetadata.technicalParameters": "Tehnični parametri",
+  "metadata.externalDescription": "Nastavite imena in tipe polj, ki jih podpira zunanji API znanja. Vrednosti upravlja zunanji ponudnik; spremembe se shranijo takoj.",
   "metadata.metadata": "Meta podatki",
   "metadata.selectMetadata.manageAction": "Upravljati",
   "metadata.selectMetadata.newAction": "Nova metapodatki",

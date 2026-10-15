@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Несумісні умови збережено: {{fields}}. Усуньте конфлікти перед пошуком.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Автоматично генерувати умови фільтрації метаданих на основі змінної запиту.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Автоматично генерувати умови фільтрації метаданих на основі запиту користувача.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Автоматичний",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Пошукова метаінформація",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Виберіть змінну...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Умови фільтрації метаданих",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Поля повинні мати однакові назви й типи в усіх вибраних базах знань: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Фільтрація метаданих — це процес використання атрибутів метаданих (таких як теги, категорії або права доступу) для уточнення та контролю отримання відповідної інформації в системі.",
   "nodes.knowledgeRetrieval.metadata.title": "Фільтрація метаданих",
   "nodes.knowledgeRetrieval.outputVars.content": "Сегментований вміст",

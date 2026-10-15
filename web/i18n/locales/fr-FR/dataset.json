@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Les métadonnées servent de filtre essentiel qui améliore l'exactitude et la pertinence de la recherche d'informations. Vous pouvez modifier et ajouter des métadonnées pour ce document ici.",
   "metadata.documentMetadata.startLabeling": "Commencer l'étiquetage",
   "metadata.documentMetadata.technicalParameters": "Paramètres techniques",
+  "metadata.externalDescription": "Configurez les noms et types de champs pris en charge par votre API externe. Le fournisseur externe gère les valeurs ; les modifications sont enregistrées immédiatement.",
   "metadata.metadata": "Métadonnées",
   "metadata.selectMetadata.manageAction": "Gérer",
   "metadata.selectMetadata.newAction": "Nouveaux métadonnées",

@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Metadane służą jako istotny filtr, który zwiększa dokładność i trafność wyszukiwania informacji. Możesz modyfikować i dodawać metadane do tego dokumentu tutaj.",
   "metadata.documentMetadata.startLabeling": "Rozpocznij etykietowanie",
   "metadata.documentMetadata.technicalParameters": "Parametry techniczne",
+  "metadata.externalDescription": "Skonfiguruj nazwy i typy pól obsługiwane przez zewnętrzne API wiedzy. Wartości są zarządzane przez zewnętrznego dostawcę; zmiany są zapisywane od razu.",
   "metadata.metadata": "Metadane",
   "metadata.selectMetadata.manageAction": "Zarządzaj",
   "metadata.selectMetadata.newAction": "Nowe metadane",

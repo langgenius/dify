@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Metaməlumatlar məlumat axtarışının dəqiqliyini və uyğunluğunu artıran mühüm süzgəc rolunu oynayır. Bu sənədin metaməlumatlarını burada dəyişə və əlavə edə bilərsiniz.",
   "metadata.documentMetadata.startLabeling": "Etiketləməyə başla",
   "metadata.documentMetadata.technicalParameters": "Texniki parametrlər",
+  "metadata.externalDescription": "Xarici bilik API-nizin dəstəklədiyi sahə adlarını və tiplərini konfiqurasiya edin. Dəyərləri xarici provayder idarə edir; dəyişikliklər dərhal saxlanılır.",
   "metadata.metadata": "Metaməlumatlar",
   "metadata.selectMetadata.manageAction": "İdarə et",
   "metadata.selectMetadata.newAction": "Yeni metaməlumat yarat",

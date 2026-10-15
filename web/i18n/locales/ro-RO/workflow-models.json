@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Aceste condiții incompatibile au fost păstrate: {{fields}}. Rezolvați conflictele înainte de căutare.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Generați automat condiții de filtrare a metadatelor pe baza variabilei de interogare",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Generați automat condiții de filtrare a metadatelor pe baza interogării utilizatorului",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Automat",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Căutare metadate",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Selectați variabila...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Condiții de filtrare a metadatelor",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Câmpurile trebuie să aibă același nume și tip în toate bazele selectate: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Filtrarea metadatelor este procesul de utilizare a atributelor metadatelor (cum ar fi etichetele, categoriile sau permisiunile de acces) pentru a rafina și controla recuperarea informațiilor relevante într-un sistem.",
   "nodes.knowledgeRetrieval.metadata.title": "Filtrarea metadatelor",
   "nodes.knowledgeRetrieval.outputVars.content": "Conținut segmentat",

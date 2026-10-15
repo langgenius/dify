@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Несовместимые условия сохранены: {{fields}}. Устраните конфликты перед поиском.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Автоматически генерировать условия фильтрации метаданных на основе переменной запроса",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Автоматически генерировать условия фильтрации метаданных на основе запроса пользователя",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Автоматический",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Поиск метаданных",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Выберите переменную...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Условия фильтрации метаданных",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Поля должны иметь одинаковые имена и типы во всех выбранных базах знаний: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Фильтрация метаданных — это процесс использования атрибутов метаданных (таких как теги, категории или права доступа) для уточнения и контроля извлечения соответствующей информации внутри системы.",
   "nodes.knowledgeRetrieval.metadata.title": "Фильтрация метаданных",
   "nodes.knowledgeRetrieval.outputVars.content": "Сегментированный контент",

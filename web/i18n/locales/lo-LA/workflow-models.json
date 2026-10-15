@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "ເງື່ອນໄຂທີ່ບໍ່ເຂົ້າກັນໄດ້ຖືກເກັບໄວ້: {{fields}}. ກະລຸນາແກ້ໄຂກ່ອນຄົ້ນຫາ.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "ສ້າງເງື່ອນໄຂການກັ່ນຕອງ Metadata ອັດຕະໂນມັດຕາມຕົວປ່ຽນ Query",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "ສ້າງເງື່ອນໄຂການກັ່ນຕອງ Metadata ອັດຕະໂນມັດຕາມຄຳຖາມຜູ້ໃຊ້",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "ອັດຕະໂນມັດ",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "ຄົ້ນຫາ Metadata",
   "nodes.knowledgeRetrieval.metadata.panel.select": "ເລືອກຕົວປ່ຽນ...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "ເງື່ອນໄຂການກັ່ນຕອງ Metadata",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "ຟິວຕ້ອງມີຊື່ແລະປະເພດຄືກັນໃນທຸກຖານຄວາມຮູ້ທີ່ເລືອກ: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "ການກັ່ນຕອງ Metadata ແມ່ນຂະບວນການໃຊ້ຄຸນລັກສະນະ Metadata (ເຊັ່ນ ແທັກ, ໝວດໝູ່, ຫຼື ສິດການເຂົ້າເຖິງ) ເພື່ອປັບແຕ່ງ ແລະ ຄວບຄຸມການດຶງຂໍ້ມູນທີ່ກ່ຽວຂ້ອງໃນລະບົບ.",
   "nodes.knowledgeRetrieval.metadata.title": "ການກັ່ນຕອງ Metadata",
   "nodes.knowledgeRetrieval.outputVars.content": "ເນື້ອໃນທີ່ແບ່ງສ່ວນແລ້ວ",

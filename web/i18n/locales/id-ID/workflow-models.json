@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Kondisi yang tidak kompatibel ini dipertahankan: {{fields}}. Selesaikan konflik sebelum pencarian.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Secara otomatis menghasilkan kondisi pemfilteran metadata berdasarkan Variabel Kueri",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Secara otomatis membuat kondisi pemfilteran metadata berdasarkan kueri pengguna",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Otomatis",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Metadata pencarian",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Pilih variabel...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Kondisi Filter Metadata",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Nama dan tipe kolom harus sama di semua basis pengetahuan yang dipilih: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Pemfilteran metadata adalah proses menggunakan atribut metadata (seperti tag, kategori, atau izin akses) untuk menyempurnakan dan mengontrol pengambilan informasi yang relevan dalam sistem.",
   "nodes.knowledgeRetrieval.metadata.title": "Pemfilteran Metadata",
   "nodes.knowledgeRetrieval.outputVars.content": "Konten tersegmentasi",

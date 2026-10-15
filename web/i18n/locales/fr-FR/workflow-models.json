@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Ces conditions incompatibles ont été conservées : {{fields}}. Résolvez les conflits avant la recherche.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Générer automatiquement des conditions de filtrage de métadonnées en fonction de la variable de requête.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Générer automatiquement des conditions de filtrage des métadonnées en fonction de la requête de l'utilisateur",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Automatique",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Rechercher des métadonnées",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Sélectionner une variable...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Conditions de filtrage des métadonnées",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Les champs doivent avoir le même nom et type dans toutes les bases sélectionnées : {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Le filtrage des métadonnées est le processus d'utilisation des attributs de métadonnées (tels que les étiquettes, les catégories ou les autorisations d'accès) pour affiner et contrôler la récupération d'informations pertinentes au sein d'un système.",
   "nodes.knowledgeRetrieval.metadata.title": "Filtrage des métadonnées",
   "nodes.knowledgeRetrieval.outputVars.content": "Contenu segmenté",

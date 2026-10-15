@@ -124,6 +124,7 @@
   "metadata.documentMetadata.metadataToolTip": "Metadata serve ca un filtru critic care îmbunătățește acuratețea și relevanța recuperării informațiilor. Puteți modifica și adăuga metadata pentru acest document aici.",
   "metadata.documentMetadata.startLabeling": "Începe etichetarea",
   "metadata.documentMetadata.technicalParameters": "Parametrii tehnici",
+  "metadata.externalDescription": "Configurați numele și tipurile câmpurilor acceptate de API-ul extern. Furnizorul extern gestionează valorile; modificările sunt salvate imediat.",
   "metadata.metadata": "Metadate",
   "metadata.selectMetadata.manageAction": "Gestionează",
   "metadata.selectMetadata.newAction": "Metadate noi",

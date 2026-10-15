@@ -1,4 +1,5 @@
 {
+  "nodes.knowledgeRetrieval.metadata.conditionConflict": "Zachowano niezgodne warunki: {{fields}}. Rozwiąż konflikty przed wyszukiwaniem.",
   "nodes.knowledgeRetrieval.metadata.options.automatic.desc": "Automatycznie generuj warunki filtracji metadanych na podstawie zmiennej zapytania",
   "nodes.knowledgeRetrieval.metadata.options.automatic.subTitle": "Automatycznie generuj warunki filtracji metadanych na podstawie zapytania użytkownika",
   "nodes.knowledgeRetrieval.metadata.options.automatic.title": "Automatyczny",
@@ -13,6 +14,7 @@
   "nodes.knowledgeRetrieval.metadata.panel.search": "Szukaj metadanych",
   "nodes.knowledgeRetrieval.metadata.panel.select": "Wybierz zmienną...",
   "nodes.knowledgeRetrieval.metadata.panel.title": "Warunki filtru metadanych",
+  "nodes.knowledgeRetrieval.metadata.schemaConflict": "Pola muszą mieć taką samą nazwę i typ we wszystkich wybranych bazach wiedzy: {{fields}}.",
   "nodes.knowledgeRetrieval.metadata.tip": "Filtracja metadanych to proces wykorzystania atrybutów metadanych (takich jak tagi, kategorie lub uprawnienia dostępu) do precyzowania i kontrolowania pozyskiwania istotnych informacji w systemie.",
   "nodes.knowledgeRetrieval.metadata.title": "Filtrowanie metadanych",
   "nodes.knowledgeRetrieval.outputVars.content": "Treść segmentowana",

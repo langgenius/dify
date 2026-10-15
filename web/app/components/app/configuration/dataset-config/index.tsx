@@ -11,7 +11,6 @@ import type {
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -22,6 +21,10 @@ import { v4 as uuid4 } from 'uuid'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
+import {
+  getMetadataConflicts,
+  getSharedMetadata,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/metadata-schema'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -175,18 +178,11 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     })
   }, [currentUserId, dataSet, workspacePermissionKeys])
 
-  const metadataList = useMemo(() => {
-    return intersectionBy(
-      ...formattedDataset
-        .filter((dataset) => {
-          return !!dataset.doc_metadata
-        })
-        .map((dataset) => {
-          return dataset.doc_metadata!
-        }),
-      'name',
-    )
-  }, [formattedDataset])
+  const metadataList = useMemo(() => getSharedMetadata(formattedDataset), [formattedDataset])
+  const metadataSchemaConflicts = useMemo(
+    () => getMetadataConflicts(formattedDataset),
+    [formattedDataset],
+  )
 
   const handleMetadataFilterModeChange = useCallback(
     (newMode: MetadataFilteringModeEnum) => {
@@ -208,6 +204,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
       const newCondition = {
         id: uuid4(),
         metadata_id: id, // Save metadata.id for reliable reference
+        type,
         name,
         comparison_operator: operator,
       }
@@ -331,6 +328,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
         <div className="border-t border-t-divider-subtle py-2">
           <MetadataFilter
             metadataList={metadataList}
+            metadataSchemaConflicts={metadataSchemaConflicts}
             selectedDatasetsLoaded
             metadataFilterMode={datasetConfigs.metadata_filtering_mode}
             metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
