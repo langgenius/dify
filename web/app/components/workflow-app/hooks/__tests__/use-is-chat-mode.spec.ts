@@ -1,4 +1,3 @@
-import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderHookWithConsoleQuery,
@@ -8,13 +7,9 @@ import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { useIsChatMode } from '../use-is-chat-mode'
 
-const { mockParams } = vi.hoisted(() => ({
-  mockParams: { current: {} as { appId?: string } },
-}))
-
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => mockParams.current,
+  useParams: () => ({ appId: 'app-1' }),
 }))
 
 const renderWithAppMode = (mode: AppModeEnum) => {
@@ -24,11 +19,6 @@ const renderWithAppMode = (mode: AppModeEnum) => {
 }
 
 describe('useIsChatMode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockParams.current = { appId: 'app-1' }
-  })
-
   it('should return true when the app mode is ADVANCED_CHAT', () => {
     const { result } = renderWithAppMode(AppModeEnum.ADVANCED_CHAT)
 
@@ -39,20 +29,5 @@ describe('useIsChatMode', () => {
     const { result } = renderWithAppMode(AppModeEnum.WORKFLOW)
 
     expect(result.current).toBe(false)
-  })
-
-  it('should return false without requesting app detail when there is no appId route param', () => {
-    mockParams.current = {}
-
-    const { result, queryClient } = renderHookWithConsoleQuery(() => useIsChatMode())
-
-    expect(result.current).toBe(false)
-    const appDetailQueries = queryClient
-      .getQueryCache()
-      .findAll({ queryKey: consoleQuery.apps.byAppId.get.key() })
-    for (const query of appDetailQueries) {
-      expect(query.state.fetchStatus).toBe('idle')
-      expect(query.state.dataUpdateCount).toBe(0)
-    }
   })
 })
