@@ -286,3 +286,31 @@ def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dep
         "pydantic",
         "services.dify_builder.native_testing.contracts",
     }
+
+
+@pytest.mark.parametrize(
+    "resource",
+    [
+        {"value": float("nan")},
+        {"value": float("inf")},
+        {"value": float("-inf")},
+        {"value": {"nested": [float("nan")]}},
+        {"value": b"file bytes"},
+        {"value": (1, 2)},
+        {"value": {1: "non-JSON key"}},
+        {"resource_ref": "valid-resource"},
+    ],
+)
+def test_context_rejects_manifest_generators_before_tuple_coercion(resource):
+    manifest = (entry for entry in [resource])
+    with pytest.raises(ValidationError, match="resource_manifest"):
+        ResolvedNativeTestContext.model_validate({**CONTEXT, "resource_manifest": manifest})
+
+
+@pytest.mark.parametrize("manifest", [[], (), [{"resource_ref": "resource-1"}], ({"resource_ref": "resource-1"},)])
+def test_context_manifest_accepts_lists_and_tuples_with_public_json_roundtrip(manifest):
+    context = ResolvedNativeTestContext.model_validate({**CONTEXT, "resource_manifest": manifest})
+    assert isinstance(context.resource_manifest, tuple)
+    assert context.model_dump(mode="json")["resource_manifest"] == list(manifest)
+    restored = ResolvedNativeTestContext.model_validate_json(context.model_dump_json())
+    assert restored.resource_manifest == context.resource_manifest

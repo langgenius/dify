@@ -54,9 +54,10 @@ class ResolvedNativeTestContext(FrozenDTO):
     @field_validator("resource_manifest", mode="before")
     @classmethod
     def validate_resource_json(cls, value: object) -> object:
-        if isinstance(value, (list, tuple)):
-            for resource in value:
-                _FINITE_JSON.validate_python(resource)
+        if not isinstance(value, (list, tuple)):
+            raise ValueError("resource_manifest must be a list or tuple")
+        for resource in value:
+            _FINITE_JSON.validate_python(resource)
         return value
 
 
