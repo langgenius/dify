@@ -460,7 +460,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
     [
         (
             resources.KnowledgeFSServiceSourceSyncApi,
-            "post",
+            resources.KnowledgeFSServiceSourceSyncApi.post,
             ("control-1", "source-1"),
             "syncSource",
             None,
@@ -470,7 +470,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceCrawlPreviewApi,
-            "post",
+            resources.KnowledgeFSServiceSourceCrawlPreviewApi.post,
             ("control-1", "source-1"),
             "previewSourceCrawl",
             None,
@@ -480,7 +480,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceCrawlImportApi,
-            "post",
+            resources.KnowledgeFSServiceSourceCrawlImportApi.post,
             ("control-1", "source-1"),
             "importSelectedSourceCrawl",
             {"sourceUrls": ["https://example.com/a"]},
@@ -490,7 +490,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceWorkflowImportApi,
-            "post",
+            resources.KnowledgeFSServiceSourceWorkflowImportApi.post,
             ("control-1", "source-1"),
             "importSourceWorkflow",
             {
@@ -503,7 +503,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceSyncPolicyApi,
-            "put",
+            resources.KnowledgeFSServiceSourceSyncPolicyApi.put,
             ("control-1", "source-1"),
             "updateSourceSyncPolicy",
             {"expectedRevision": 3, "expectedSourceVersion": 4, "enabled": False, "mode": "manual"},
@@ -513,7 +513,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceConnectionsApi,
-            "get",
+            resources.KnowledgeFSServiceSourceConnectionsApi.get,
             ("control-1",),
             "listSourceConnections",
             None,
@@ -523,7 +523,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceConnectionsApi,
-            "post",
+            resources.KnowledgeFSServiceSourceConnectionsApi.post,
             ("control-1",),
             "createSourceConnection",
             {
@@ -537,7 +537,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceConnectionRefreshApi,
-            "post",
+            resources.KnowledgeFSServiceSourceConnectionRefreshApi.post,
             ("control-1", "connection-1"),
             "refreshSourceConnection",
             {"expectedVersion": 3},
@@ -547,7 +547,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceWorkflowCancelApi,
-            "post",
+            resources.KnowledgeFSServiceSourceWorkflowCancelApi.post,
             ("control-1", "run-1"),
             "cancelSourceWorkflow",
             {"reason": "source selection changed"},
@@ -557,7 +557,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceWorkflowRetryApi,
-            "post",
+            resources.KnowledgeFSServiceSourceWorkflowRetryApi.post,
             ("control-1", "run-1"),
             "retrySourceWorkflow",
             None,
@@ -567,7 +567,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceCrawlPreviewPagesApi,
-            "get",
+            resources.KnowledgeFSServiceCrawlPreviewPagesApi.get,
             ("control-1", "run-1"),
             "listCrawlPreviewPages",
             None,
@@ -577,7 +577,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         ),
         (
             resources.KnowledgeFSServiceSourceProvidersApi,
-            "get",
+            resources.KnowledgeFSServiceSourceProvidersApi.get,
             ("control-1",),
             "listSourceProviders",
             None,
@@ -605,11 +605,11 @@ def test_durable_source_contracts_bind_the_original_profile_and_resource(
     monkeypatch.setattr(resources, "_dump_response", lambda _schema, raw: raw)
     with Flask(__name__).test_request_context(
         "/",
-        method=method.upper(),
+        method=method.__name__.upper(),
         json=body,
         headers={"Idempotency-Key": "source-command-1"},
     ):
-        getattr(controller(), method)(*arguments)
+        method(controller(), *arguments)
     authorize.assert_called_once_with(runtime, operation_id=operation, control_space_id="control-1")
     call = runtime.facade.execute_service.call_args.kwargs
     assert call["profile"] is profile

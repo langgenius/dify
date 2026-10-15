@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Literal, cast, override
 
@@ -686,10 +687,18 @@ def test_workflow_app_issuance_uses_the_workflow_caller_kind(sqlite_session: Ses
     assert issuer.requests[0].caller_kind == "workflow"
 
 
-@pytest.mark.parametrize("changed_revision", ["space_acl_epoch", "content_policy_revision"])
+def _bump_space_acl_epoch(revision: KnowledgeFSAuthorizationRevision) -> None:
+    revision.space_acl_epoch += 1
+
+
+def _bump_content_policy_revision(revision: KnowledgeFSAuthorizationRevision) -> None:
+    revision.content_policy_revision += 1
+
+
+@pytest.mark.parametrize("change_revision", [_bump_space_acl_epoch, _bump_content_policy_revision])
 @pytest.mark.parametrize("sqlite_session", [_ISSUANCE_FENCE_MODELS], indirect=True)
 def test_investigation_authorization_matches_retrieval_until_scope_changes(
-    sqlite_session: Session, changed_revision: str
+    sqlite_session: Session, change_revision: Callable[[KnowledgeFSAuthorizationRevision], None]
 ) -> None:
     space, _, profile = _seed_external_principals(sqlite_session)
     broker = KnowledgeFSCapabilityBroker(
@@ -711,7 +720,7 @@ def test_investigation_authorization_matches_retrieval_until_scope_changes(
         sa.select(KnowledgeFSAuthorizationRevision).where(KnowledgeFSAuthorizationRevision.control_space_id == space.id)
     )
     assert revision is not None
-    setattr(revision, changed_revision, getattr(revision, changed_revision) + 1)
+    change_revision(revision)
     sqlite_session.commit()
     changed = broker.issue_app(profile=capture_profile, operation_id="captureAgentKnowledgeInvestigation")
     assert changed.authorization_fingerprint != retrieved.authorization_fingerprint

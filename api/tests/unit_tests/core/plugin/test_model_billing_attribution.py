@@ -28,22 +28,34 @@ from services.billing_service import BillingService
 @pytest.mark.parametrize(
     ("payload_type", "invoke_method", "provider_method", "model_type", "body"),
     [
-        (RequestInvokeLLM, "invoke_llm", "invoke_llm", ModelType.LLM, {"mode": "chat", "stream": True}),
+        (
+            RequestInvokeLLM,
+            PluginModelBackwardsInvocation.invoke_llm,
+            "invoke_llm",
+            ModelType.LLM,
+            {"mode": "chat", "stream": True},
+        ),
         (
             RequestInvokeTextEmbedding,
-            "invoke_text_embedding",
+            PluginModelBackwardsInvocation.invoke_text_embedding,
             "invoke_text_embedding",
             ModelType.TEXT_EMBEDDING,
             {"texts": ["query"], "input_type": "query"},
         ),
         (
             RequestInvokeMultimodalEmbedding,
-            "invoke_multimodal_embedding",
+            PluginModelBackwardsInvocation.invoke_multimodal_embedding,
             "invoke_multimodal_embedding",
             ModelType.TEXT_EMBEDDING,
             {"documents": [{"content": "AQID", "content_type": "image"}]},
         ),
-        (RequestInvokeRerank, "invoke_rerank", "invoke_rerank", ModelType.RERANK, {"query": "query", "docs": ["doc"]}),
+        (
+            RequestInvokeRerank,
+            PluginModelBackwardsInvocation.invoke_rerank,
+            "invoke_rerank",
+            ModelType.RERANK,
+            {"query": "query", "docs": ["doc"]},
+        ),
     ],
 )
 @pytest.mark.parametrize(
@@ -53,7 +65,7 @@ from services.billing_service import BillingService
 )
 def test_model_invocation_preserves_billing_origin(
     payload_type,
-    invoke_method: str,
+    invoke_method: Callable[..., object],
     provider_method: str,
     model_type: ModelType,
     body: dict,
@@ -113,9 +125,7 @@ def test_model_invocation_preserves_billing_origin(
         patch.object(ModelInstance, provider_method, return_value=provider_result),
         patch.object(BillingService, "_send_quota_request", side_effect=billing_transport),
     ):
-        response = getattr(PluginModelBackwardsInvocation, invoke_method)(
-            "synthetic-end-user", SimpleNamespace(id="tenant-1"), payload
-        )
+        response = invoke_method("synthetic-end-user", SimpleNamespace(id="tenant-1"), payload)
         assert get_credit_usage_metadata() is None
         if model_type == ModelType.LLM:
             assert list(response)[0].delta.message.content == "OK"
