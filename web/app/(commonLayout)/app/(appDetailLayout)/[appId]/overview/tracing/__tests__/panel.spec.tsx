@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
@@ -114,6 +114,35 @@ describe('Tracing overview panel', () => {
     expect(writes).toEqual([
       { method: 'POST', body: { enabled: false, tracing_provider: 'langfuse' } },
     ])
+  })
+
+  it('opens configuration without selecting the provider and supports keyboard selection', async () => {
+    const writes = mockServer()
+    const { client } = renderPanel()
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    act(() =>
+      client.setQueryData(
+        consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        { enabled: true, tracing_provider: 'langsmith' },
+      ),
+    )
+    const user = await openConfiguredPanel()
+    const provider = within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' }))
+    await user.click(provider.getByRole('button', { name: 'app.tracing.config' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() =>
+      expect(provider.getByRole('button', { name: 'app.tracing.config' })).toHaveFocus(),
+    )
+    expect(writes).toEqual([])
+
+    await user.tab({ shift: true })
+    await expect(provider.getByRole('button', { name: 'app.tracing.langfuse.title' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await waitFor(() =>
+      expect(writes).toEqual([
+        { method: 'POST', body: { enabled: true, tracing_provider: 'langfuse' } },
+      ]),
+    )
   })
 
   it('saves a new provider before enabling it', async () => {

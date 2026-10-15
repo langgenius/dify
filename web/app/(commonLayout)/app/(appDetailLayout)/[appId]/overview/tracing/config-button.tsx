@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { PopupProps } from './config-popup'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
@@ -28,7 +29,14 @@ const ConfigBtn: FC<Props> = ({
     <Popover>
       <PopoverTrigger
         disabled={disabled}
-        className={cn('select-none disabled:opacity-50', className)}
+        render={
+          <Button
+            className={cn(
+              'h-auto gap-0 rounded-xl border-components-panel-border bg-background-default-dodge p-2 hover:bg-background-default-lighter',
+              className,
+            )}
+          />
+        }
       >
         {children}
       </PopoverTrigger>

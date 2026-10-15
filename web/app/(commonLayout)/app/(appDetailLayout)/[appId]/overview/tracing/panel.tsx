@@ -142,23 +142,19 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
           tencentConfig={configs.get(TracingProvider.tencent)}
           onConfigRemoved={handleTracingConfigRemoved}
         >
-          <div
-            className={cn(
-              'flex cursor-pointer items-center rounded-xl border-[0.5px] border-components-panel-border bg-background-default-dodge p-2 shadow-xs select-none hover:bg-background-default-lighter',
-            )}
-          >
+          <>
             <TracingIcon size="md" />
-            <div className="mx-2 system-sm-semibold text-text-secondary">
+            <span className="mx-2 system-sm-semibold text-text-secondary">
               {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
-            </div>
-            <div className="rounded-md p-1">
+            </span>
+            <span className="rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-            </div>
+            </span>
             <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
-            <div className="rounded-md p-1">
+            <span className="rounded-md p-1">
               <span className="i-ri-arrow-down-double-line size-4 text-text-tertiary" />
-            </div>
-          </div>
+            </span>
+          </>
         </ConfigButton>
       )}
       {hasConfiguredTracing && (
@@ -184,25 +180,21 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
           tencentConfig={configs.get(TracingProvider.tencent)}
           onConfigRemoved={handleTracingConfigRemoved}
         >
-          <div
-            className={cn(
-              'flex cursor-pointer items-center rounded-xl border-[0.5px] border-components-panel-border bg-background-default-dodge p-2 shadow-xs select-none hover:bg-background-default-lighter',
-            )}
-          >
-            <div className="mr-1 ml-4 flex items-center">
+          <>
+            <span className="mr-1 ml-4 flex items-center">
               <StatusDot status={enabled ? 'success' : 'disabled'} />
-              <div className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
+              <span className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
                 {t(($) => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
-              </div>
-            </div>
+              </span>
+            </span>
             {inUseProviderIconClassName && (
               <span aria-hidden className={cn(inUseProviderIconClassName, 'ml-1 h-4')} />
             )}
-            <div className="ml-2 rounded-md p-1">
+            <span className="ml-2 rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-            </div>
+            </span>
             <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
-          </div>
+          </>
         </ConfigButton>
       )}
     </div>
