@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
@@ -13,10 +13,11 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as RealHTTPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as RealHTTPSpanExporter
 from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.metrics.export import HistogramDataPoint, InMemoryMetricReader, NumberDataPoint
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.util.types import AttributeValue
 
 import enterprise.telemetry.exporter as exporter_module
 from configs import DifyConfig
@@ -40,7 +41,7 @@ def _make_grpc_config(**overrides: object) -> DifyConfig:
 
 
 @contextmanager
-def _running_exporter(config: DifyConfig) -> Iterator[EnterpriseExporter]:
+def _running_exporter(config: DifyConfig) -> Generator[EnterpriseExporter]:
     exporter = EnterpriseExporter(config)
     try:
         yield exporter
@@ -49,22 +50,23 @@ def _running_exporter(config: DifyConfig) -> Iterator[EnterpriseExporter]:
         exporter._meter_provider.shutdown()
 
 
+def _recording[**P, T](factory: Callable[P, T], calls: list[dict[str, object]]) -> Callable[P, T]:
+    """Wrap an exporter class so each construction records its keyword arguments."""
+
+    def create(*args: P.args, **kwargs: P.kwargs) -> T:
+        calls.append(dict(kwargs))
+        return factory(*args, **kwargs)
+
+    return create
+
+
 def _record_grpc_construction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     span_calls: list[dict[str, object]] = []
     metric_calls: list[dict[str, object]] = []
-
-    def create_span_exporter(**kwargs: object) -> RealGRPCSpanExporter:
-        span_calls.append(kwargs)
-        return RealGRPCSpanExporter(**kwargs)
-
-    def create_metric_exporter(**kwargs: object) -> RealGRPCMetricExporter:
-        metric_calls.append(kwargs)
-        return RealGRPCMetricExporter(**kwargs)
-
-    monkeypatch.setattr(exporter_module, "GRPCSpanExporter", create_span_exporter)
-    monkeypatch.setattr(exporter_module, "GRPCMetricExporter", create_metric_exporter)
+    monkeypatch.setattr(exporter_module, "GRPCSpanExporter", _recording(RealGRPCSpanExporter, span_calls))
+    monkeypatch.setattr(exporter_module, "GRPCMetricExporter", _recording(RealGRPCMetricExporter, metric_calls))
     return span_calls, metric_calls
 
 
@@ -73,21 +75,12 @@ def _record_http_construction(
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     span_calls: list[dict[str, object]] = []
     metric_calls: list[dict[str, object]] = []
-
-    def create_span_exporter(**kwargs: object) -> RealHTTPSpanExporter:
-        span_calls.append(kwargs)
-        return RealHTTPSpanExporter(**kwargs)
-
-    def create_metric_exporter(**kwargs: object) -> RealHTTPMetricExporter:
-        metric_calls.append(kwargs)
-        return RealHTTPMetricExporter(**kwargs)
-
-    monkeypatch.setattr(exporter_module, "HTTPSpanExporter", create_span_exporter)
-    monkeypatch.setattr(exporter_module, "HTTPMetricExporter", create_metric_exporter)
+    monkeypatch.setattr(exporter_module, "HTTPSpanExporter", _recording(RealHTTPSpanExporter, span_calls))
+    monkeypatch.setattr(exporter_module, "HTTPMetricExporter", _recording(RealHTTPMetricExporter, metric_calls))
     return span_calls, metric_calls
 
 
-def test_config_api_key_default_empty():
+def test_config_api_key_default_empty() -> None:
     """Test that ENTERPRISE_OTLP_API_KEY defaults to empty string."""
     config = EnterpriseTelemetryConfig()
     assert config.ENTERPRISE_OTLP_API_KEY == ""
@@ -333,7 +326,7 @@ def test_grpc_exporter_empty_endpoint_passes_none(monkeypatch: pytest.MonkeyPatc
 
 
 @contextmanager
-def _exporter_with_in_memory_tracer() -> Iterator[tuple[EnterpriseExporter, InMemorySpanExporter]]:
+def _exporter_with_in_memory_tracer() -> Generator[tuple[EnterpriseExporter, InMemorySpanExporter]]:
     span_exporter = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(span_exporter))
@@ -466,7 +459,7 @@ def test_export_span_cross_workflow_parent_context() -> None:
 def test_export_span_logs_exception_on_error(caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     """If the span block raises, the exception is logged and context is still cleared."""
 
-    def raise_error(*args: object, **kwargs: object) -> None:
+    def raise_error(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("boom")
 
     with _exporter_with_in_memory_tracer() as (exporter, _):
@@ -504,14 +497,18 @@ def test_increment_counter_calls_add_on_counter() -> None:
     provider = MeterProvider(metric_readers=[reader])
     counter = provider.get_meter("test").create_counter("test.tokens")
 
-    labels = {"tenant_id": "t1", "app_id": "app-1"}
+    labels: dict[str, AttributeValue] = {"tenant_id": "t1", "app_id": "app-1"}
     with _running_exporter(_make_grpc_config()) as exporter:
         exporter._counters[EnterpriseTelemetryCounter.TOKENS] = counter
         exporter.increment_counter(EnterpriseTelemetryCounter.TOKENS, 50, labels)
 
-    metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics
+    metrics_data = reader.get_metrics_data()
+    assert metrics_data is not None
+    metrics = metrics_data.resource_metrics[0].scope_metrics[0].metrics
     data_point = metrics[0].data.data_points[0]
+    assert isinstance(data_point, NumberDataPoint)
     assert data_point.value == 50
+    assert data_point.attributes is not None
     assert dict(data_point.attributes) == labels
     provider.shutdown()
 
@@ -536,15 +533,19 @@ def test_record_histogram_calls_record_on_histogram() -> None:
     provider = MeterProvider(metric_readers=[reader])
     histogram = provider.get_meter("test").create_histogram("test.workflow.duration")
 
-    labels = {"tenant_id": "t1"}
+    labels: dict[str, AttributeValue] = {"tenant_id": "t1"}
     with _running_exporter(_make_grpc_config()) as exporter:
         exporter._histograms[EnterpriseTelemetryHistogram.WORKFLOW_DURATION] = histogram
         exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, float("3.14"), labels)
 
-    metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics
+    metrics_data = reader.get_metrics_data()
+    assert metrics_data is not None
+    metrics = metrics_data.resource_metrics[0].scope_metrics[0].metrics
     data_point = metrics[0].data.data_points[0]
+    assert isinstance(data_point, HistogramDataPoint)
     assert data_point.count == 1
     assert data_point.sum == float("3.14")
+    assert data_point.attributes is not None
     assert dict(data_point.attributes) == labels
     provider.shutdown()
 
