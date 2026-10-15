@@ -56,5 +56,11 @@ def test_generate_validates_structured_output(
 
     assert result == _JudgeResponse(verdict="yes")
     assert invoke_structured.call_args.kwargs["provider"] == "plugin/provider"
-    assert invoke_structured.call_args.kwargs["json_schema"] == _JudgeResponse.model_json_schema()
+    assert invoke_structured.call_args.kwargs["json_schema"] == {
+        "additionalProperties": False,
+        "properties": {"verdict": {"title": "Verdict", "type": "string"}},
+        "required": ["verdict"],
+        "title": "_JudgeResponse",
+        "type": "object",
+    }
     assert invoke_structured.call_args.kwargs["stream"] is False
