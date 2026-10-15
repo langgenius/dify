@@ -2,6 +2,7 @@ import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/
 import { describe, expect, it } from 'vite-plus/test'
 import {
   selectMCPServerDetail,
+  selectRAGRecommendedPlugins,
   selectToolsWithProvider,
   selectWorkflowToolDetail,
 } from '../query-select'
@@ -135,5 +136,22 @@ describe('tool query selectors', () => {
       type: 'object',
       properties: { text: { type: 'string', description: 'Text' } },
     })
+  })
+
+  it('should keep installable marketplace recommendations', () => {
+    const plugin = {
+      type: 'plugin',
+      org: 'langgenius',
+      name: 'notion',
+      plugin_id: 'langgenius/notion',
+      latest_package_identifier: 'langgenius/notion:1.0.0@hash',
+    }
+    const recommendations = selectRAGRecommendedPlugins({
+      installed_recommended_plugins: [createProvider()],
+      uninstalled_recommended_plugins: [plugin, { plugin_id: 'broken' }],
+    })
+
+    expect(recommendations.installed_recommended_plugins[0]!.tools).toEqual([])
+    expect(recommendations.uninstalled_recommended_plugins).toEqual([plugin])
   })
 })

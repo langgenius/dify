@@ -1,5 +1,5 @@
 import type { AppMcpServerResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { RagPipelineOpaqueResponse } from '@dify/contracts/api/console/rag/types.gen'
+import type { RagPipelineRecommendedPluginsResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
   ToolParameter as ContractToolParameter,
   I18nObject,
@@ -9,6 +9,7 @@ import type {
   ToolProviderListResponse,
   WorkflowToolDetailResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { MarketplacePlugin } from '@dify/contracts/marketplace'
 import type {
   Collection,
   Emoji,
@@ -164,6 +165,18 @@ export const selectWorkflowToolDetail = (
   },
 })
 
-// The recommended plugins endpoint declares no response schema, so there is nothing to narrow.
-export const selectRAGRecommendedPlugins = (data: RagPipelineOpaqueResponse) =>
-  data as RAGRecommendedPlugins
+// Uninstalled recommendations are marketplace manifests the console proxies unchanged; keep the
+// ones that identify an installable package.
+const isMarketplacePlugin = (value: Record<string, unknown>): value is MarketplacePlugin =>
+  typeof value.type === 'string' &&
+  typeof value.org === 'string' &&
+  typeof value.name === 'string' &&
+  typeof value.plugin_id === 'string' &&
+  typeof value.latest_package_identifier === 'string'
+
+export const selectRAGRecommendedPlugins = (
+  data: RagPipelineRecommendedPluginsResponse,
+): RAGRecommendedPlugins => ({
+  installed_recommended_plugins: data.installed_recommended_plugins.map(selectToolProvider),
+  uninstalled_recommended_plugins: data.uninstalled_recommended_plugins.filter(isMarketplacePlugin),
+})
