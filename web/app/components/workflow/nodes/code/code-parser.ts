@@ -5,11 +5,19 @@ import { CodeLanguage } from './types'
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {
   if (language === CodeLanguage.json) return []
 
+  // A commented-out signature must not be picked up instead of the real one, so drop
+  // block comments and comment-only lines before looking for the `main` definition.
+  // This is what keeps a commented previous interface from winning the match now that
+  // the parameter list may span lines.
+  const codeWithoutComments = code
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^[ \t]*(?:#|\/\/).*$/gm, '')
+
   const patterns: Record<Exclude<CodeLanguage, typeof CodeLanguage.json>, RegExp> = {
     [CodeLanguage.python3]: /def\s+main\s*\(([\s\S]*?)\)/,
     [CodeLanguage.javascript]: /function\s+main\s*\(([\s\S]*?)\)/,
   }
-  const match = patterns[language].exec(code)
+  const match = patterns[language].exec(codeWithoutComments)
   const params: string[] = []
 
   if (match?.[1]) {

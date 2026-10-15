@@ -18,6 +18,12 @@ const SAMPLE_CODES = {
       param2: int,
     ) -> dict:
       return {"result": param1}`,
+    commentedOutSignature: `# Previous interface:
+# def main(
+#     old_arg: str,
+# ):
+def main(arg1: str, arg2: str) -> dict:
+    return {"result": arg1 + arg2}`,
   },
   javascript: {
     noParams: 'function main() {',
@@ -40,6 +46,21 @@ const SAMPLE_CODES = {
     ) {
       return { result: param1 }
     }`,
+    commentedOutSignature: `// Previous interface:
+// function main(
+//   oldArg,
+// ) {
+function main(arg1, arg2) {
+  return { result: arg1 }
+}`,
+    blockCommentedSignature: `/*
+function main(
+  oldArg,
+) {
+*/
+function main(arg1, arg2) {
+  return { result: arg1 }
+}`,
   },
 }
 
@@ -79,6 +100,14 @@ describe('extractFunctionParams', () => {
         CodeLanguage.python3,
       )
       expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('ignores a commented-out signature', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.python3.commentedOutSignature,
+        CodeLanguage.python3,
+      )
+      expect(result).toEqual(['arg1', 'arg2'])
     })
   })
 
@@ -138,6 +167,22 @@ describe('extractFunctionParams', () => {
         CodeLanguage.javascript,
       )
       expect(result).toEqual(['param1', 'param2'])
+    })
+
+    it('ignores a commented-out signature', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.commentedOutSignature,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['arg1', 'arg2'])
+    })
+
+    it('ignores a block-commented signature', () => {
+      const result = extractFunctionParams(
+        SAMPLE_CODES.javascript.blockCommentedSignature,
+        CodeLanguage.javascript,
+      )
+      expect(result).toEqual(['arg1', 'arg2'])
     })
   })
 })
