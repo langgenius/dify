@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
-from types import SimpleNamespace
-from typing import TypedDict, Unpack
-from unittest.mock import Mock
+from contextlib import AbstractContextManager, nullcontext
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import TypedDict, Unpack, cast
 from uuid import uuid4
 
 import pytest
@@ -18,7 +18,9 @@ from dify_agent.protocol.knowledge_fs import (
 )
 from sqlalchemy.orm import Session
 
+from core.app.file_access import FileAccessScope
 from core.app.knowledge_citations import knowledge_sources_from_tool_part
+from core.knowledge_fs.errors import KnowledgeFSWorkflowQueryImageReference
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
@@ -27,8 +29,12 @@ from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent import knowledge_gateway as gateway
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
+from services.agent_config_service import AgentConfigTarget, AgentConfigVersionKind
+from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
+from services.knowledge_fs.query_images import KnowledgeFSQueryImageMetadata
 from services.knowledge_fs.runtime import KnowledgeFSRuntime
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.knowledge_fs_services_b_fakes import RecordingCallable
 
 SPACE = "00000000-0000-4000-8000-000000000001"
 NODE = "00000000-0000-4000-8000-000000000002"
@@ -57,6 +63,65 @@ CITATION = KnowledgeFsCitation(
     document_version=2,
     document_title="说明.pdf",
 )
+
+
+ISSUED = KnowledgeFSIssuedProductCapability(
+    token="private-token",
+    expires_at=datetime(2026, 7, 21, tzinfo=UTC),
+    operation_id="operation",
+    knowledge_space_id=SPACE,
+    knowledge_space_revision=1,
+    trace_id="trace",
+    authorization_fingerprint="a" * 64,
+)
+
+
+@dataclass
+class FakeBroker:
+    issued: KnowledgeFSIssuedProductCapability = ISSUED
+    issue_interactive_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def issue_interactive(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
+        self.issue_interactive_calls.append(kwargs)
+        return self.issued
+
+
+@dataclass
+class FakeAppCapabilities:
+    """Issues `issued` unless `issue_failure` is set; records issuance and investigation captures."""
+
+    issued: KnowledgeFSIssuedProductCapability = ISSUED
+    issue_failure: Exception | None = None
+    issue_calls: list[dict[str, object]] = field(default_factory=list)
+    capture_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def issue(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
+        self.issue_calls.append(kwargs)
+        if self.issue_failure is not None:
+            raise self.issue_failure
+        return self.issued
+
+    def capture_agent_investigation(self, **kwargs: object) -> dict[str, object]:
+        self.capture_calls.append(kwargs)
+        return {}
+
+
+@dataclass
+class FakeRuntime:
+    broker: FakeBroker = field(default_factory=FakeBroker)
+    app_capabilities: FakeAppCapabilities = field(default_factory=FakeAppCapabilities)
+
+
+@dataclass
+class _ScalarsSession:
+    """Captures the snapshot query and returns preloaded rows."""
+
+    rows: list[AgentConfigSnapshot]
+    statements: list[object] = field(default_factory=list)
+
+    def scalars(self, statement: object) -> list[AgentConfigSnapshot]:
+        self.statements.append(statement)
+        return self.rows
 
 
 class CommandArgs(TypedDict, total=False):
@@ -91,16 +156,11 @@ def request(
 
 
 @pytest.fixture
-def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKnowledgeGateway, Mock]:
+def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKnowledgeGateway, FakeRuntime]:
     monkeypatch.setattr(gateway.AgentKnowledgeGateway, "_authorize_context", staticmethod(lambda _: SOUL))
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL="http://kfs:8000")
-    issued = SimpleNamespace(
-        token="private-token", knowledge_space_id=SPACE, trace_id="trace", authorization_fingerprint="a" * 64
-    )
-    runtime = Mock(spec=KnowledgeFSRuntime)
-    runtime.broker.issue_interactive.return_value = issued
-    runtime.app_capabilities.issue.return_value = issued
-    return gateway.AgentKnowledgeGateway(runtime), runtime
+    runtime = FakeRuntime()
+    return gateway.AgentKnowledgeGateway(cast(KnowledgeFSRuntime, runtime)), runtime
 
 
 @pytest.mark.parametrize(
@@ -146,7 +206,7 @@ def authorized_gateway(monkeypatch: pytest.MonkeyPatch) -> tuple[gateway.AgentKn
     ],
 )
 def test_every_command_maps_to_exact_current_product_contract(
-    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock],
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
     name: KnowledgeFsCommandName,
     args: CommandArgs,
     operation: str,
@@ -158,7 +218,7 @@ def test_every_command_maps_to_exact_current_product_contract(
     assert result.query == query
     assert result.url is not None
     assert result.url.startswith(f"http://kfs:8000/knowledge-spaces/{SPACE}/")
-    assert runtime.app_capabilities.issue.call_args.kwargs["caller_kind"] is KnowledgeFSAppSpaceJoinType.AGENT
+    assert runtime.app_capabilities.issue_calls[-1]["caller_kind"] is KnowledgeFSAppSpaceJoinType.AGENT
     assert "private-token" not in repr(result)
     if name == "search":
         assert result.payload is not None
@@ -169,7 +229,7 @@ def test_every_command_maps_to_exact_current_product_contract(
 
 
 def test_space_subset_changed_config_and_receipt_scope_fail_closed(
-    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock],
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
 ) -> None:
     service, runtime = authorized_gateway
     value = request("search", query="x")
@@ -188,69 +248,75 @@ def test_space_subset_changed_config_and_receipt_scope_fail_closed(
     value.agent_supports_vision = False
     with pytest.raises(KnowledgeFsError, match="cannot consume images"):
         service.prepare(value)
-    runtime.app_capabilities.issue.assert_not_called()
+    assert runtime.app_capabilities.issue_calls == []
 
 
 def test_preview_never_issues_app_grants_and_revocation_is_rechecked(
-    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock],
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
 ) -> None:
     service, runtime = authorized_gateway
     preview = CONTEXT.model_copy(update={"agent_config_version_kind": "draft", "invoke_from": "debugger"})
     service.prepare(request("search", context=preview, query="x"))
-    runtime.broker.issue_interactive.assert_called_once()
-    runtime.app_capabilities.issue.assert_not_called()
-    runtime.app_capabilities.issue.side_effect = PermissionError("revoked")
+    assert len(runtime.broker.issue_interactive_calls) == 1
+    assert runtime.app_capabilities.issue_calls == []
+    runtime.app_capabilities.issue_failure = PermissionError("revoked")
     with pytest.raises(PermissionError):
         service.prepare(request("search", query="x"))
     assert service.prepare(request()).data == {"spaces": [{"id": "docs", "name": "产品说明", "available": False}]}
 
 
 def test_preview_query_images_use_current_account_authorization_without_app_grants(
-    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock], monkeypatch: pytest.MonkeyPatch
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     service, runtime = authorized_gateway
     image_id = str(uuid4())
-    validate = Mock(return_value=[SimpleNamespace(upload_file_id=image_id)])
+    validate = RecordingCallable(
+        result=[KnowledgeFSQueryImageMetadata(upload_file_id=image_id, byte_size=10, mime_type="image/png")]
+    )
     monkeypatch.setattr(gateway, "validate_query_image_references", validate)
     preview = CONTEXT.model_copy(update={"agent_config_version_kind": "draft", "invoke_from": "debugger"})
     result = service.prepare(request("search", context=preview, image_file_ids=[image_id]))
-    validate.assert_called_once_with(
-        tenant_id="tenant", account_id="account", upload_file_ids=[image_id], mark_used=False
-    )
+    assert [call.kwargs for call in validate.calls] == [
+        {"tenant_id": "tenant", "account_id": "account", "upload_file_ids": [image_id], "mark_used": False}
+    ]
     assert result.payload is not None
     assert result.payload["queryImages"] == [{"uploadFileId": image_id}]
     assert result.payload["query"] == ""
-    runtime.app_capabilities.issue.assert_not_called()
-    validate.side_effect = PermissionError("revoked")
+    assert runtime.app_capabilities.issue_calls == []
+    validate.failure = PermissionError("revoked")
     with pytest.raises(PermissionError):
         service.prepare(request("search", context=preview, image_file_ids=[image_id]))
 
 
 def test_published_query_images_use_file_scope_and_keep_grants_out_of_public_payload(
-    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, Mock], monkeypatch: pytest.MonkeyPatch
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from services.knowledge_fs.product_remote import KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER
 
     service, _ = authorized_gateway
     image_id = str(uuid4())
     file = object()
-    resolve = Mock(return_value=file)
-    grant = Mock(
-        return_value=SimpleNamespace(upload_file_id=image_id, byte_size=10, access_grant="private-image-grant")
+    resolve = RecordingCallable(result=file)
+    grant = RecordingCallable(
+        result=KnowledgeFSWorkflowQueryImageReference(
+            upload_file_id=image_id, access_grant="private-image-grant", byte_size=10, mime_type="image/png"
+        )
     )
-    scope = Mock(side_effect=lambda _: nullcontext())
+    scope = RecordingCallable[AbstractContextManager[None]](result=nullcontext())
     monkeypatch.setattr(gateway, "build_from_mapping", resolve)
     monkeypatch.setattr(gateway, "issue_workflow_query_image_reference", grant)
     monkeypatch.setattr(gateway, "bind_file_access_scope", scope)
     context = CONTEXT.model_copy(update={"invoke_from": "web-app"})
     result = service.prepare(request("search", context=context, query="diagram", image_file_ids=[image_id]))
-    assert resolve.call_args.kwargs["mapping"] == {
+    assert resolve.calls[-1].kwargs["mapping"] == {
         "type": "image",
         "transfer_method": "local_file",
         "upload_file_id": image_id,
     }
-    assert scope.call_args.args[0].user_id == "account"
-    grant.assert_called_once_with(app_id="app", tenant_id="tenant", file=file)
+    bound_scope = scope.calls[-1].args[0]
+    assert isinstance(bound_scope, FileAccessScope)
+    assert bound_scope.user_id == "account"
+    assert [call.kwargs for call in grant.calls] == [{"app_id": "app", "tenant_id": "tenant", "file": file}]
     assert result.payload is not None
     assert result.payload["queryImages"] == [{"uploadFileId": image_id}]
     assert result.headers[KNOWLEDGE_FS_QUERY_IMAGE_GRANTS_HEADER]
@@ -286,9 +352,16 @@ def test_real_context_scope_rejects_foreign_tenant_wrong_agent_and_changed_workf
     sqlite_session.flush()
     monkeypatch.setattr(gateway.session_factory, "create_session", lambda: nullcontext(sqlite_session))
     monkeypatch.setattr(gateway, "_account_belongs_to_tenant", lambda *_args, **_kwargs: True)
-    monkeypatch.setattr(
-        gateway.AgentConfigService, "resolve_target", lambda *_args, **_kwargs: SimpleNamespace(agent_soul=SOUL)
+    target = AgentConfigTarget(
+        tenant_id="tenant",
+        agent_id="agent",
+        version_id="snapshot",
+        kind=AgentConfigVersionKind.SNAPSHOT,
+        writable=False,
+        version=AgentConfigSnapshot(config_snapshot=SOUL),
+        agent_soul=SOUL,
     )
+    monkeypatch.setattr(gateway.AgentConfigService, "resolve_target", lambda *_args, **_kwargs: target)
     assert gateway.AgentKnowledgeGateway._authorize_context(request()) == SOUL
     for changes in (
         {"tenant_id": "foreign"},
@@ -325,19 +398,23 @@ def test_only_trusted_tool_metadata_produces_sources() -> None:
 
 
 def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul() -> None:
-    session = Mock()
-    session.scalars.return_value = [
-        AgentConfigSnapshot(config_snapshot=SOUL),
-        AgentConfigSnapshot(config_snapshot=SOUL),
-    ]
+    snapshots = _ScalarsSession(
+        rows=[
+            AgentConfigSnapshot(config_snapshot=SOUL),
+            AgentConfigSnapshot(config_snapshot=SOUL),
+        ]
+    )
     workflow = Workflow(tenant_id="tenant", app_id="app", id="workflow", version="published")
-    assert collect_workflow_agent_knowledge_space_ids(session=session, workflow=workflow) == (SPACE,)
-    sql = str(session.scalars.call_args.args[0])
+    assert collect_workflow_agent_knowledge_space_ids(session=cast(Session, snapshots), workflow=workflow) == (SPACE,)
+    assert len(snapshots.statements) == 1
+    sql = str(snapshots.statements[0])
     assert "workflow_agent_node_bindings.current_snapshot_id" in sql
     assert "workflow_agent_node_bindings.workflow_version" in sql
 
 
-def test_investigation_capture_reauthorizes_agent_and_keeps_stable_id(authorized_gateway):
+def test_investigation_capture_reauthorizes_agent_and_keeps_stable_id(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
+) -> None:
     from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt, KnowledgeInvestigationPayload
 
     service, runtime = authorized_gateway
@@ -363,16 +440,17 @@ def test_investigation_capture_reauthorizes_agent_and_keeps_stable_id(authorized
         ],
     )
     service.capture_investigation(report, SPACE)
-    first = runtime.app_capabilities.capture_agent_investigation.call_args.kwargs["payload"]
+    first = runtime.app_capabilities.capture_calls[-1]["payload"]
     service.capture_investigation(report, SPACE)
-    assert runtime.app_capabilities.capture_agent_investigation.call_args.kwargs["payload"] == first
+    assert runtime.app_capabilities.capture_calls[-1]["payload"] == first
+    assert isinstance(first, dict)
     assert first["query"] == "refund"
     assert len(first["attempts"]) == 1
-    assert runtime.app_capabilities.issue.call_args.kwargs["caller_kind"] == KnowledgeFSAppSpaceJoinType.AGENT
-    assert runtime.app_capabilities.issue.call_args.kwargs["operation_id"] == "captureAgentKnowledgeInvestigation"
-    runtime.app_capabilities.issue.return_value.authorization_fingerprint = "b" * 64
+    assert runtime.app_capabilities.issue_calls[-1]["caller_kind"] == KnowledgeFSAppSpaceJoinType.AGENT
+    assert runtime.app_capabilities.issue_calls[-1]["operation_id"] == "captureAgentKnowledgeInvestigation"
+    runtime.app_capabilities.issued = ISSUED._replace(authorization_fingerprint="b" * 64)
     with pytest.raises(KnowledgeFsError, match="authorization changed"):
         service.capture_investigation(report, SPACE)
-    assert runtime.app_capabilities.capture_agent_investigation.call_count == 2
+    assert len(runtime.app_capabilities.capture_calls) == 2
     with pytest.raises(KnowledgeFsError, match="not bound"):
         service.capture_investigation(report, str(uuid4()))

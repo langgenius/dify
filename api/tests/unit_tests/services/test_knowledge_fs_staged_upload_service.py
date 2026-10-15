@@ -4,9 +4,7 @@ from base64 import b64encode
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from types import SimpleNamespace
-from typing import cast
-from unittest.mock import MagicMock
+from typing import cast, override
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -81,6 +79,34 @@ class FakeStorage:
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         del files, directories
         return sorted(key for key in self.objects if key.startswith(path))
+
+
+class FakeFileService:
+    """Records upload requests and returns the configured upload or raises the configured error."""
+
+    def __init__(self, *, upload_file: UploadFile | None = None) -> None:
+        self.result = upload_file
+        self.failure: Exception | None = None
+        self.upload_calls: list[dict[str, object]] = []
+
+    def upload_file(self, **kwargs: object) -> UploadFile:
+        self.upload_calls.append(kwargs)
+        if self.failure is not None:
+            raise self.failure
+        assert self.result is not None
+        return self.result
+
+
+class _CommitFailingSession(Session):
+    @override
+    def commit(self) -> None:
+        raise RuntimeError("database unavailable")
+
+
+def _account() -> Account:
+    account = Account(name="KnowledgeFS tester", email="knowledge-fs@example.com")
+    account.id = _ACCOUNT_ID
+    return account
 
 
 class FakeFacade:
@@ -240,14 +266,13 @@ def test_stage_persists_workspace_owned_upload(
     upload_file = _upload_file()
     with sqlite_session_factory.begin() as session:
         session.add(upload_file)
-    file_service = MagicMock()
-    file_service.upload_file.return_value = upload_file
+    file_service = FakeFileService(upload_file=upload_file)
     monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
-        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+        facade=cast(KnowledgeFSDataFacade, FakeFacade()),
     )
-    account = cast(Account, SimpleNamespace(id=_ACCOUNT_ID))
+    account = _account()
 
     response = service.stage(
         tenant_id=_TENANT_ID,
@@ -262,15 +287,17 @@ def test_stage_persists_workspace_owned_upload(
     assert response.content_type == "application/pdf"
     assert response.size_bytes == len(_BODY)
     assert response.status == "uploaded"
-    file_service.upload_file.assert_called_once_with(
-        filename="guide.pdf",
-        content=_BODY,
-        mimetype="application/pdf",
-        user=account,
-        tenant_id=_TENANT_ID,
-        source="knowledge_fs",
-        default_file_size_limit=15,
-    )
+    assert file_service.upload_calls == [
+        {
+            "filename": "guide.pdf",
+            "content": _BODY,
+            "mimetype": "application/pdf",
+            "user": account,
+            "tenant_id": _TENANT_ID,
+            "source": "knowledge_fs",
+            "default_file_size_limit": 15,
+        }
+    ]
     with sqlite_session_factory() as session:
         persisted = session.get(KnowledgeFSStagedUpload, response.id)
         assert persisted is not None
@@ -298,14 +325,13 @@ def test_stage_canonicalizes_content_type_from_the_supported_extension(
     upload_file.mime_type = expected_content_type
     with sqlite_session_factory.begin() as session:
         session.add(upload_file)
-    file_service = MagicMock()
-    file_service.upload_file.return_value = upload_file
+    file_service = FakeFileService(upload_file=upload_file)
     monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
-        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+        facade=cast(KnowledgeFSDataFacade, FakeFacade()),
     )
-    account = cast(Account, SimpleNamespace(id=_ACCOUNT_ID))
+    account = _account()
 
     response = service.stage(
         tenant_id=_TENANT_ID,
@@ -317,15 +343,17 @@ def test_stage_canonicalizes_content_type_from_the_supported_extension(
     )
 
     assert response.content_type == expected_content_type
-    file_service.upload_file.assert_called_once_with(
-        filename=file_name,
-        content=_BODY,
-        mimetype=expected_content_type,
-        user=account,
-        tenant_id=_TENANT_ID,
-        source="knowledge_fs",
-        default_file_size_limit=15,
-    )
+    assert file_service.upload_calls == [
+        {
+            "filename": file_name,
+            "content": _BODY,
+            "mimetype": expected_content_type,
+            "user": account,
+            "tenant_id": _TENANT_ID,
+            "source": "knowledge_fs",
+            "default_file_size_limit": 15,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
@@ -358,7 +386,7 @@ def test_stage_accepts_knowledge_fs_document_formats_with_the_real_file_service(
     account.id = _ACCOUNT_ID
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
-        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+        facade=cast(KnowledgeFSDataFacade, FakeFacade()),
     )
 
     response = service.stage(
@@ -393,7 +421,7 @@ def test_stage_rejects_an_unsupported_filename_with_the_real_file_service(
     account.id = _ACCOUNT_ID
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
-        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+        facade=cast(KnowledgeFSDataFacade, FakeFacade()),
     )
 
     with pytest.raises(KnowledgeFSStagedUploadInvalidError, match="invalid"):
@@ -412,13 +440,13 @@ def test_stage_rejects_an_unsupported_filename_with_the_real_file_service(
 def test_stage_rejects_empty_and_maps_file_service_errors(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    file_service = MagicMock()
+    file_service = FakeFileService()
     monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
-        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+        facade=cast(KnowledgeFSDataFacade, FakeFacade()),
     )
-    account = cast(Account, SimpleNamespace(id=_ACCOUNT_ID))
+    account = _account()
 
     with pytest.raises(KnowledgeFSStagedUploadInvalidError, match="empty"):
         service.stage(
@@ -430,7 +458,7 @@ def test_stage_rejects_empty_and_maps_file_service_errors(
             file_size_limit_mb=15,
         )
 
-    file_service.upload_file.side_effect = FileTooLargeError("too large")
+    file_service.failure = FileTooLargeError("too large")
     with pytest.raises(KnowledgeFSStagedUploadTooLargeError):
         service.stage(
             tenant_id=_TENANT_ID,
@@ -441,7 +469,7 @@ def test_stage_rejects_empty_and_maps_file_service_errors(
             file_size_limit_mb=1,
         )
 
-    file_service.upload_file.side_effect = UnsupportedFileTypeError("unsupported")
+    file_service.failure = UnsupportedFileTypeError("unsupported")
     with pytest.raises(KnowledgeFSStagedUploadInvalidError, match="invalid"):
         service.stage(
             tenant_id=_TENANT_ID,
@@ -463,34 +491,31 @@ def test_stage_removes_file_when_staging_row_cannot_commit(
     if persisted_upload_file:
         with sqlite_session_factory.begin() as session:
             session.add(upload_file)
-    file_service = MagicMock()
-    file_service.upload_file.return_value = upload_file
+    file_service = FakeFileService(upload_file=upload_file)
     monkeypatch.setattr(staged_upload_module, "FileService", lambda _: file_service)
     backend = FakeStorage()
     backend.save(_SOURCE_PATH, _BODY)
     monkeypatch.setattr(staged_upload_module, "storage", backend)
 
-    failing_session = MagicMock()
-    failing_session.__enter__.return_value = failing_session
-    failing_session.__exit__.return_value = False
-    failing_session.commit.side_effect = RuntimeError("database unavailable")
     calls = 0
 
-    def session_maker_with_failure(**kwargs: object) -> MagicMock | Session:
+    def session_maker_with_failure(**kwargs: object) -> Session:
         nonlocal calls
         del kwargs
         calls += 1
-        return failing_session if calls == 1 else sqlite_session_factory()
+        if calls == 1:
+            return _CommitFailingSession(bind=sqlite_session_factory.kw["bind"])
+        return sqlite_session_factory()
 
     service = KnowledgeFSStagedUploadService(
         cast(sessionmaker[Session], session_maker_with_failure),
-        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+        facade=cast(KnowledgeFSDataFacade, FakeFacade()),
     )
 
     with pytest.raises(RuntimeError, match="database unavailable"):
         service.stage(
             tenant_id=_TENANT_ID,
-            account=cast(Account, SimpleNamespace(id=_ACCOUNT_ID)),
+            account=_account(),
             file_name="guide.pdf",
             content_type="application/pdf",
             body=_BODY,

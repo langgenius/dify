@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
@@ -21,6 +20,54 @@ from services.knowledge_fs.control_space_management import (
     KnowledgeFSControlSpaceManagementService,
     KnowledgeFSControlSpaceRegistration,
 )
+
+
+def _control_space(control_space_id: str) -> KnowledgeFSControlSpace:
+    control_space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key=f"provision-{control_space_id}",
+        knowledge_space_id="space-1",
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    control_space.id = control_space_id
+    return control_space
+
+
+@dataclass
+class _QueuedRegister:
+    """Replays queued registration outcomes and records each registration it receives."""
+
+    outcomes: list[tuple[KnowledgeFSControlSpace, bool]]
+    calls: list[KnowledgeFSControlSpaceRegistration] = field(default_factory=list)
+
+    def __call__(self, registration: KnowledgeFSControlSpaceRegistration) -> tuple[KnowledgeFSControlSpace, bool]:
+        self.calls.append(registration)
+        return self.outcomes.pop(0)
+
+
+@dataclass
+class _RecordingRepositoryFactory:
+    sessions: list[Session] = field(default_factory=list)
+
+    def __call__(self, session: Session) -> object:
+        self.sessions.append(session)
+        return self
+
+
+@dataclass
+class _RecordingLifecycle:
+    result: KnowledgeFSControlSpace
+    repositories: list[object] = field(default_factory=list)
+    transitions: list[dict[str, object]] = field(default_factory=list)
+
+    def __call__(self, repository: object) -> _RecordingLifecycle:
+        self.repositories.append(repository)
+        return self
+
+    def transition(self, **kwargs: object) -> KnowledgeFSControlSpace:
+        self.transitions.append(kwargs)
+        return self.result
 
 
 @pytest.mark.parametrize(
@@ -110,39 +157,31 @@ def test_registration_rejects_reusing_either_remote_or_local_identity(sqlite_ses
 
 
 def test_backfill_is_dry_run_by_default_and_accounts_for_replays(monkeypatch: pytest.MonkeyPatch) -> None:
-    service = KnowledgeFSControlSpaceManagementService(MagicMock())
+    service = KnowledgeFSControlSpaceManagementService(sessionmaker())
     registrations = (
         KnowledgeFSControlSpaceRegistration("tenant-1", "account-1", "provision-1", "space-1", 1),
         KnowledgeFSControlSpaceRegistration("tenant-1", "account-1", "provision-2", "space-2", 1),
     )
-    register = MagicMock(
-        side_effect=(
-            (SimpleNamespace(id="control-1"), False),
-            (SimpleNamespace(id="control-2"), True),
-        )
+    register = _QueuedRegister(
+        outcomes=[
+            (_control_space("control-1"), False),
+            (_control_space("control-2"), True),
+        ]
     )
     monkeypatch.setattr(service, "register", register)
 
     assert service.backfill(registrations, apply=False) == (2, 0, 0)
-    register.assert_not_called()
+    assert register.calls == []
     assert service.backfill(registrations, apply=True) == (2, 1, 1)
-    assert register.call_count == 2
+    assert len(register.calls) == 2
 
 
 def test_repair_registration_delegates_an_active_cas_transition(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    transaction = MagicMock()
-    transaction.__enter__.return_value = session
-    session_maker = MagicMock()
-    session_maker.begin.return_value = transaction
-    repository = MagicMock()
-    repository_factory = MagicMock(return_value=repository)
-    lifecycle = MagicMock()
-    lifecycle.transition.return_value = SimpleNamespace(id="control-1")
-    lifecycle_factory = MagicMock(return_value=lifecycle)
+    repository_factory = _RecordingRepositoryFactory()
+    lifecycle = _RecordingLifecycle(result=_control_space("control-1"))
     monkeypatch.setattr(management_module, "SQLAlchemyKnowledgeFSControlSpaceRepository", repository_factory)
-    monkeypatch.setattr(management_module, "KnowledgeFSControlSpaceLifecycleService", lifecycle_factory)
-    service = KnowledgeFSControlSpaceManagementService(session_maker)
+    monkeypatch.setattr(management_module, "KnowledgeFSControlSpaceLifecycleService", lifecycle)
+    service = KnowledgeFSControlSpaceManagementService(sessionmaker())
 
     result = service.repair_registration(
         tenant_id="tenant-1",
@@ -153,12 +192,16 @@ def test_repair_registration_delegates_an_active_cas_transition(monkeypatch: pyt
     )
 
     assert result.id == "control-1"
-    lifecycle.transition.assert_called_once_with(
-        tenant_id="tenant-1",
-        control_space_id="control-1",
-        expected_resource_version=4,
-        new_state=KnowledgeFSControlSpaceState.ACTIVE,
-        lifecycle_operation_id="management-repair",
-        knowledge_space_id="space-1",
-        knowledge_space_revision=9,
-    )
+    assert len(repository_factory.sessions) == 1
+    assert lifecycle.repositories == [repository_factory]
+    assert lifecycle.transitions == [
+        {
+            "tenant_id": "tenant-1",
+            "control_space_id": "control-1",
+            "expected_resource_version": 4,
+            "new_state": KnowledgeFSControlSpaceState.ACTIVE,
+            "lifecycle_operation_id": "management-repair",
+            "knowledge_space_id": "space-1",
+            "knowledge_space_revision": 9,
+        }
+    ]

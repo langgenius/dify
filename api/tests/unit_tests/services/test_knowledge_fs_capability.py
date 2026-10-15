@@ -3,9 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Literal
-from unittest.mock import MagicMock
+from typing import Literal, override
 
 import jwt
 import pytest
@@ -14,7 +12,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from pydantic import SecretStr
 
-import services.knowledge_fs_capability as capability_module
 from services.knowledge_fs_capability import (
     KNOWLEDGE_FS_CAPABILITY_OPERATIONS,
     CapabilityAuthzRevision,
@@ -27,6 +24,11 @@ from services.knowledge_fs_capability import (
     KnowledgeFSCapabilityPolicyError,
     RotatingCapabilityKeyRing,
     create_configured_knowledge_fs_capability_issuer,
+)
+from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.services.knowledge_fs_services_b_fakes import (
+    RecordingCapabilityAuditor,
+    RecordingOperationalMetrics,
 )
 
 _CAPABILITY_V2_VECTOR_PATH = (
@@ -73,6 +75,14 @@ def _signing_key(kid: str) -> CapabilitySigningKey:
     )
 
 
+class _FailingSigningKeyRing(RotatingCapabilityKeyRing):
+    """A real key ring whose signer is unavailable."""
+
+    @override
+    def sign(self, claims: DifyCapabilityV2Claims) -> str:
+        raise RuntimeError(f"signing HSM unavailable for {claims.action}")
+
+
 def _request(
     *,
     actor: str = "dify-account:account-1",
@@ -111,7 +121,7 @@ def test_issuer_reproduces_the_public_capability_v2_contract_vector() -> None:
         password=None,
     )
     assert isinstance(private_key, rsa.RSAPrivateKey)
-    audit = MagicMock()
+    audit = RecordingCapabilityAuditor()
     issuer = KnowledgeFSCapabilityIssuer(
         audit=audit,
         audience=vector["audience"],
@@ -151,7 +161,7 @@ def test_issuer_reproduces_the_public_capability_v2_contract_vector() -> None:
 
 def test_issuer_signs_current_rs256_key_and_audits_only_token_fingerprints() -> None:
     current = _signing_key("current-1")
-    audit = MagicMock()
+    audit = RecordingCapabilityAuditor()
     issuer = KnowledgeFSCapabilityIssuer(
         audit=audit,
         key_ring=RotatingCapabilityKeyRing(current=current),
@@ -183,7 +193,7 @@ def test_issuer_signs_current_rs256_key_and_audits_only_token_fingerprints() -> 
     assert claims["resource"] == {"id": "space-1", "parent_id": None, "type": "knowledge_space"}
     assert claims["exp"] - claims["iat"] == 60
 
-    event = audit.record.call_args.args[0]
+    event = audit.events[-1]
     serialized_event = event.model_dump(mode="json")
     assert serialized_event["trace_id"] == "trace-1"
     assert serialized_event["subject"] == "dify-account:account-1"
@@ -209,9 +219,9 @@ def test_issuer_signs_current_rs256_key_and_audits_only_token_fingerprints() -> 
 
 
 def test_issuer_records_sanitized_success_and_policy_denial_metrics() -> None:
-    metrics = MagicMock()
+    metrics = RecordingOperationalMetrics()
     issuer = KnowledgeFSCapabilityIssuer(
-        audit=MagicMock(),
+        audit=RecordingCapabilityAuditor(),
         key_ring=RotatingCapabilityKeyRing(current=_signing_key("current-1")),
         metrics=metrics,
     )
@@ -226,7 +236,7 @@ def test_issuer_records_sanitized_success_and_policy_denial_metrics() -> None:
             )
         )
 
-    success, denied = [call.args[0] for call in metrics.record_capability_issuance.call_args_list]
+    success, denied = metrics.capability_issuances
     assert success == ("interactive", "getKnowledgeSpace", "issued", "success")
     assert denied == (
         "interactive",
@@ -239,9 +249,9 @@ def test_issuer_records_sanitized_success_and_policy_denial_metrics() -> None:
 
 
 def test_issuer_buckets_unregistered_operation_metric_labels() -> None:
-    metrics = MagicMock()
+    metrics = RecordingOperationalMetrics()
     issuer = KnowledgeFSCapabilityIssuer(
-        audit=MagicMock(),
+        audit=RecordingCapabilityAuditor(),
         key_ring=RotatingCapabilityKeyRing(current=_signing_key("current-1")),
         metrics=metrics,
     )
@@ -249,33 +259,31 @@ def test_issuer_buckets_unregistered_operation_metric_labels() -> None:
     with pytest.raises(KnowledgeFSCapabilityPolicyError, match="not registered"):
         issuer.issue(_request(operation_id="attacker-controlled-operation"))
 
-    metric = metrics.record_capability_issuance.call_args.args[0]
+    metric = metrics.capability_issuances[-1]
     assert metric == ("interactive", "unknown", "denied", "operation_not_registered")
     assert "attacker-controlled-operation" not in str(metric)
 
 
 def test_issuer_classifies_sign_and_audit_failures_without_leaking_tokens() -> None:
-    sign_metrics = MagicMock()
-    signing_ring = MagicMock()
-    signing_ring.sign.side_effect = RuntimeError("signing HSM unavailable")
+    sign_metrics = RecordingOperationalMetrics()
+    signing_ring = _FailingSigningKeyRing(current=_signing_key("current-1"))
     signing_issuer = KnowledgeFSCapabilityIssuer(
-        audit=MagicMock(),
+        audit=RecordingCapabilityAuditor(),
         key_ring=signing_ring,
         metrics=sign_metrics,
     )
 
     with pytest.raises(RuntimeError, match="HSM"):
         signing_issuer.issue(_request())
-    assert sign_metrics.record_capability_issuance.call_args.args[0] == (
+    assert sign_metrics.capability_issuances[-1] == (
         "interactive",
         "getKnowledgeSpace",
         "failed",
         "signing_failure",
     )
 
-    audit = MagicMock()
-    audit.record.side_effect = RuntimeError("audit database unavailable")
-    audit_metrics = MagicMock()
+    audit = RecordingCapabilityAuditor(failure=RuntimeError("audit database unavailable"))
+    audit_metrics = RecordingOperationalMetrics()
     audit_issuer = KnowledgeFSCapabilityIssuer(
         audit=audit,
         key_ring=RotatingCapabilityKeyRing(current=_signing_key("current-1")),
@@ -284,7 +292,7 @@ def test_issuer_classifies_sign_and_audit_failures_without_leaking_tokens() -> N
 
     with pytest.raises(RuntimeError, match="audit database"):
         audit_issuer.issue(_request())
-    assert audit_metrics.record_capability_issuance.call_args.args[0] == (
+    assert audit_metrics.capability_issuances[-1] == (
         "interactive",
         "getKnowledgeSpace",
         "failed",
@@ -293,10 +301,9 @@ def test_issuer_classifies_sign_and_audit_failures_without_leaking_tokens() -> N
 
 
 def test_capability_metric_export_failure_never_changes_issuance() -> None:
-    metrics = MagicMock()
-    metrics.record_capability_issuance.side_effect = RuntimeError("collector unavailable")
+    metrics = RecordingOperationalMetrics(capability_failure=RuntimeError("collector unavailable"))
     issuer = KnowledgeFSCapabilityIssuer(
-        audit=MagicMock(),
+        audit=RecordingCapabilityAuditor(),
         key_ring=RotatingCapabilityKeyRing(current=_signing_key("current-1")),
         metrics=metrics,
     )
@@ -322,7 +329,7 @@ def test_issuance_profiles_keep_principal_types_distinct(
     expected_subject: str,
     expected_azp: str,
 ) -> None:
-    audit = MagicMock()
+    audit = RecordingCapabilityAuditor()
     issuer = KnowledgeFSCapabilityIssuer(
         audit=audit,
         key_ring=RotatingCapabilityKeyRing(current=_signing_key("current-1")),
@@ -340,7 +347,7 @@ def test_issuance_profiles_keep_principal_types_distinct(
 
 
 def test_interactive_accounts_remain_distinct_in_issuance_audit() -> None:
-    audit = MagicMock()
+    audit = RecordingCapabilityAuditor()
     jtis = iter(("jti-account-1", "jti-account-2"))
     issuer = KnowledgeFSCapabilityIssuer(
         audit=audit,
@@ -357,14 +364,14 @@ def test_interactive_accounts_remain_distinct_in_issuance_audit() -> None:
         )
     )
 
-    events = [call.args[0] for call in audit.record.call_args_list]
+    events = audit.events
     assert [event.subject for event in events] == ["dify-account:account-1", "dify-account:account-2"]
     assert events[0].jti_hash != events[1].jti_hash
 
 
 def test_mcp_profile_and_operation_resource_mismatches_fail_closed() -> None:
     issuer = KnowledgeFSCapabilityIssuer(
-        audit=MagicMock(),
+        audit=RecordingCapabilityAuditor(),
         key_ring=RotatingCapabilityKeyRing(current=_signing_key("current-1")),
     )
 
@@ -567,7 +574,7 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
 
 def test_internal_control_operations_are_limited_to_service_and_worker_profiles() -> None:
     issuer = KnowledgeFSCapabilityIssuer(
-        audit=MagicMock(),
+        audit=RecordingCapabilityAuditor(),
         key_ring=RotatingCapabilityKeyRing(current=_signing_key("current-1")),
     )
 
@@ -663,21 +670,18 @@ def test_configured_issuer_loads_private_current_and_public_previous_keys(
         serialization.NoEncryption(),
     ).decode()
     previous_jwks = RotatingCapabilityKeyRing(current=previous).public_jwks()
-    monkeypatch.setattr(
-        capability_module,
-        "dify_config",
-        SimpleNamespace(
-            KNOWLEDGE_FS_CAPABILITY_V2_AUDIENCE="knowledge-fs",
-            KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
-            KNOWLEDGE_FS_CAPABILITY_V2_ISSUER="dify-control-plane",
-            KNOWLEDGE_FS_CAPABILITY_V2_MAX_TTL_SECONDS=60,
-            KNOWLEDGE_FS_CAPABILITY_V2_PREVIOUS_PUBLIC_JWKS=json.dumps(previous_jwks),
-            KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=SecretStr(private_pem),
-            KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="current-1",
-        ),
+    apply_config_overrides(
+        monkeypatch,
+        KNOWLEDGE_FS_CAPABILITY_V2_AUDIENCE="knowledge-fs",
+        KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
+        KNOWLEDGE_FS_CAPABILITY_V2_ISSUER="dify-control-plane",
+        KNOWLEDGE_FS_CAPABILITY_V2_MAX_TTL_SECONDS=60,
+        KNOWLEDGE_FS_CAPABILITY_V2_PREVIOUS_PUBLIC_JWKS=json.dumps(previous_jwks),
+        KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=SecretStr(private_pem),
+        KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="current-1",
     )
 
-    issuer = create_configured_knowledge_fs_capability_issuer(audit=MagicMock())
+    issuer = create_configured_knowledge_fs_capability_issuer(audit=RecordingCapabilityAuditor())
 
     assert issuer is not None
     assert [key["kid"] for key in issuer.public_jwks()["keys"]] == ["current-1", "previous-1"]
@@ -693,19 +697,16 @@ def test_configured_issuer_rejects_private_rotation_jwks(monkeypatch: pytest.Mon
     ).decode()
     private_jwk = RSAAlgorithm.to_jwk(_signing_key("previous-1").private_key, as_dict=True)
     private_jwk.update({"alg": "RS256", "kid": "previous-1", "use": "sig"})
-    monkeypatch.setattr(
-        capability_module,
-        "dify_config",
-        SimpleNamespace(
-            KNOWLEDGE_FS_CAPABILITY_V2_AUDIENCE="knowledge-fs",
-            KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
-            KNOWLEDGE_FS_CAPABILITY_V2_ISSUER="dify-control-plane",
-            KNOWLEDGE_FS_CAPABILITY_V2_MAX_TTL_SECONDS=60,
-            KNOWLEDGE_FS_CAPABILITY_V2_PREVIOUS_PUBLIC_JWKS=json.dumps({"keys": [private_jwk]}),
-            KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=SecretStr(private_pem),
-            KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="current-1",
-        ),
+    apply_config_overrides(
+        monkeypatch,
+        KNOWLEDGE_FS_CAPABILITY_V2_AUDIENCE="knowledge-fs",
+        KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
+        KNOWLEDGE_FS_CAPABILITY_V2_ISSUER="dify-control-plane",
+        KNOWLEDGE_FS_CAPABILITY_V2_MAX_TTL_SECONDS=60,
+        KNOWLEDGE_FS_CAPABILITY_V2_PREVIOUS_PUBLIC_JWKS=json.dumps({"keys": [private_jwk]}),
+        KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=SecretStr(private_pem),
+        KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="current-1",
     )
 
     with pytest.raises(KnowledgeFSCapabilityConfigurationError, match="public keys only"):
-        create_configured_knowledge_fs_capability_issuer(audit=MagicMock())
+        create_configured_knowledge_fs_capability_issuer(audit=RecordingCapabilityAuditor())

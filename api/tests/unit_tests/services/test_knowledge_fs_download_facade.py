@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal
-from unittest.mock import MagicMock
+from typing import Literal, override
 
 import pytest
 
@@ -70,13 +69,81 @@ def asset() -> KnowledgeFSDocumentResponse:
     )
 
 
-def test_prepare_logical_document_download_resolves_active_asset() -> None:
-    facade = MagicMock(spec=KnowledgeFSDataFacade)
-    facade.get_logical_document.return_value = logical_document(active=revision())
-    facade.get_document.return_value = asset()
+class FakeDownloadFacade(KnowledgeFSDataFacade):
+    """Serves canned facade reads and records the calls download preparation makes."""
 
-    result = KnowledgeFSDataFacade.prepare_logical_document_download(
-        facade,
+    def __init__(
+        self,
+        *,
+        logical: KnowledgeFSLogicalDocumentResponse,
+        revisions: KnowledgeFSDocumentRevisionListResponse | None = None,
+        document: KnowledgeFSDocumentResponse | None = None,
+    ) -> None:
+        self._logical = logical
+        self._revisions = revisions
+        self._document = document
+        self.get_logical_document_calls: list[dict[str, object]] = []
+        self.list_document_revisions_calls: list[dict[str, object]] = []
+        self.get_document_calls: list[dict[str, object]] = []
+
+    @override
+    def get_logical_document(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
+    ) -> KnowledgeFSLogicalDocumentResponse:
+        self.get_logical_document_calls.append(
+            {
+                "tenant_id": tenant_id,
+                "account_id": account_id,
+                "control_space_id": control_space_id,
+                "document_id": document_id,
+            }
+        )
+        return self._logical
+
+    @override
+    def list_document_revisions(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        document_id: str,
+        cursor: str | None = None,
+        limit: int | None = None,
+    ) -> KnowledgeFSDocumentRevisionListResponse:
+        self.list_document_revisions_calls.append(
+            {
+                "tenant_id": tenant_id,
+                "account_id": account_id,
+                "control_space_id": control_space_id,
+                "document_id": document_id,
+                "cursor": cursor,
+                "limit": limit,
+            }
+        )
+        assert self._revisions is not None
+        return self._revisions
+
+    @override
+    def get_document(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
+    ) -> KnowledgeFSDocumentResponse:
+        self.get_document_calls.append(
+            {
+                "tenant_id": tenant_id,
+                "account_id": account_id,
+                "control_space_id": control_space_id,
+                "document_id": document_id,
+            }
+        )
+        assert self._document is not None
+        return self._document
+
+
+def test_prepare_logical_document_download_resolves_active_asset() -> None:
+    facade = FakeDownloadFacade(logical=logical_document(active=revision()), document=asset())
+
+    result = facade.prepare_logical_document_download(
         tenant_id="tenant-1",
         account_id="account-1",
         control_space_id="control-1",
@@ -85,25 +152,25 @@ def test_prepare_logical_document_download_resolves_active_asset() -> None:
 
     assert result.document_id == "logical-1"
     assert result.object_key == "tenant/spaces/space-1/documents/page.md"
-    facade.list_document_revisions.assert_not_called()
-    facade.get_document.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="control-1",
-        document_id="asset-1",
-    )
+    assert facade.list_document_revisions_calls == []
+    assert facade.get_document_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "document_id": "asset-1",
+        }
+    ]
 
 
 def test_prepare_logical_document_download_resolves_latest_failed_revision_without_active_revision() -> None:
-    facade = MagicMock(spec=KnowledgeFSDataFacade)
-    facade.get_logical_document.return_value = logical_document(active=None, status="failed")
-    facade.list_document_revisions.return_value = KnowledgeFSDocumentRevisionListResponse(
-        data=[revision(state="failed")]
+    facade = FakeDownloadFacade(
+        logical=logical_document(active=None, status="failed"),
+        revisions=KnowledgeFSDocumentRevisionListResponse(data=[revision(state="failed")]),
+        document=asset(),
     )
-    facade.get_document.return_value = asset()
 
-    result = KnowledgeFSDataFacade.prepare_logical_document_download(
-        facade,
+    result = facade.prepare_logical_document_download(
         tenant_id="tenant-1",
         account_id="account-1",
         control_space_id="control-1",
@@ -112,23 +179,26 @@ def test_prepare_logical_document_download_resolves_latest_failed_revision_witho
 
     assert result.document_id == "logical-1"
     assert result.object_key == "tenant/spaces/space-1/documents/page.md"
-    facade.list_document_revisions.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="control-1",
-        document_id="logical-1",
-        limit=1,
-    )
+    assert facade.list_document_revisions_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "document_id": "logical-1",
+            "cursor": None,
+            "limit": 1,
+        }
+    ]
 
 
 def test_prepare_logical_document_download_rejects_document_without_visible_revision() -> None:
-    facade = MagicMock(spec=KnowledgeFSDataFacade)
-    facade.get_logical_document.return_value = logical_document(active=None, status="failed")
-    facade.list_document_revisions.return_value = KnowledgeFSDocumentRevisionListResponse(data=[])
+    facade = FakeDownloadFacade(
+        logical=logical_document(active=None, status="failed"),
+        revisions=KnowledgeFSDocumentRevisionListResponse(data=[]),
+    )
 
     with pytest.raises(KnowledgeFSProductResourceNotFoundError):
-        KnowledgeFSDataFacade.prepare_logical_document_download(
-            facade,
+        facade.prepare_logical_document_download(
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
@@ -137,36 +207,32 @@ def test_prepare_logical_document_download_rejects_document_without_visible_revi
 
 
 def test_prepare_logical_document_download_rejects_latest_candidate_revision() -> None:
-    facade = MagicMock(spec=KnowledgeFSDataFacade)
-    facade.get_logical_document.return_value = logical_document(active=None, status="failed")
-    facade.list_document_revisions.return_value = KnowledgeFSDocumentRevisionListResponse(
-        data=[revision(state="candidate")]
+    facade = FakeDownloadFacade(
+        logical=logical_document(active=None, status="failed"),
+        revisions=KnowledgeFSDocumentRevisionListResponse(data=[revision(state="candidate")]),
     )
 
     with pytest.raises(KnowledgeFSProductResourceNotFoundError):
-        KnowledgeFSDataFacade.prepare_logical_document_download(
-            facade,
+        facade.prepare_logical_document_download(
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
             document_id="logical-1",
         )
 
-    facade.get_document.assert_not_called()
+    assert facade.get_document_calls == []
 
 
 def test_prepare_logical_document_download_rejects_pending_document_without_active_revision() -> None:
-    facade = MagicMock(spec=KnowledgeFSDataFacade)
-    facade.get_logical_document.return_value = logical_document(active=None, status="pending")
+    facade = FakeDownloadFacade(logical=logical_document(active=None, status="pending"))
 
     with pytest.raises(KnowledgeFSProductResourceNotFoundError):
-        KnowledgeFSDataFacade.prepare_logical_document_download(
-            facade,
+        facade.prepare_logical_document_download(
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_id="control-1",
             document_id="logical-1",
         )
 
-    facade.list_document_revisions.assert_not_called()
-    facade.get_document.assert_not_called()
+    assert facade.list_document_revisions_calls == []
+    assert facade.get_document_calls == []

@@ -1,13 +1,15 @@
-from types import SimpleNamespace
-from typing import cast
-from unittest.mock import MagicMock, patch
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.datasource.entities.datasource_entities import (
     OnlineDocumentInfo,
     OnlineDocumentPage,
     OnlineDocumentPagesMessage,
+    OnlineDriveBrowseFilesRequest,
     OnlineDriveBrowseFilesResponse,
     OnlineDriveFile,
     OnlineDriveFileBucket,
@@ -16,6 +18,7 @@ from core.datasource.entities.datasource_entities import (
     WebSiteInfoDetail,
 )
 from models.account import Account
+from models.oauth import DatasourceProvider
 from services.knowledge_fs.initial_source_preview import (
     KnowledgeFSInitialSourcePreviewCanceledError,
     KnowledgeFSInitialSourcePreviewService,
@@ -25,26 +28,72 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialWebsiteSourcePreviewPayload,
 )
 
-_CREDENTIAL = SimpleNamespace(
-    id="credential-1",
-    tenant_id="tenant-1",
-    user_id="account-1",
-    name="Credential",
-    provider="provider",
-    plugin_id="plugin",
-    auth_type="api_key",
-    encrypted_credentials={},
-    expires_at=-1,
-    updated_at=None,
-)
+
+def _account() -> Account:
+    account = Account(name="KnowledgeFS tester", email="knowledge-fs@example.com")
+    account.id = "account-1"
+    return account
 
 
-def _service(credential: object = _CREDENTIAL) -> tuple[KnowledgeFSInitialSourcePreviewService, MagicMock]:
-    session = MagicMock()
-    session.scalar.return_value = credential
-    context = MagicMock()
-    context.__enter__.return_value = session
-    return KnowledgeFSInitialSourcePreviewService(MagicMock(return_value=context)), session
+def _service(
+    session_maker: sessionmaker[Session], *, with_credential: bool = True
+) -> KnowledgeFSInitialSourcePreviewService:
+    if with_credential:
+        credential = DatasourceProvider(
+            tenant_id="tenant-1",
+            name="Credential",
+            provider="provider",
+            plugin_id="langgenius/provider",
+            auth_type="api_key",
+            encrypted_credentials={},
+            user_id="account-1",
+        )
+        credential.id = "credential-1"
+        with session_maker.begin() as session:
+            session.add(credential)
+    return KnowledgeFSInitialSourcePreviewService(session_maker)
+
+
+@dataclass
+class _PluginRuntime:
+    credentials: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass
+class FakeDatasourceRuntime:
+    """Streams the configured datasource messages and records each plugin invocation."""
+
+    provider_type: str
+    messages: list[object]
+    runtime: _PluginRuntime = field(default_factory=_PluginRuntime)
+    online_document_calls: list[dict[str, object]] = field(default_factory=list)
+    online_drive_calls: list[dict[str, object]] = field(default_factory=list)
+    website_crawl_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def datasource_provider_type(self) -> str:
+        return self.provider_type
+
+    def get_online_document_pages(self, **kwargs: object) -> Iterator[object]:
+        self.online_document_calls.append(kwargs)
+        return iter(self.messages)
+
+    def online_drive_browse_files(self, **kwargs: object) -> Iterator[object]:
+        self.online_drive_calls.append(kwargs)
+        return iter(self.messages)
+
+    def get_website_crawl(self, **kwargs: object) -> Iterator[object]:
+        self.website_crawl_calls.append(kwargs)
+        return iter(self.messages)
+
+
+@dataclass
+class _QueuedCancellation:
+    answers: list[bool]
+    call_count: int = 0
+
+    def __call__(self) -> bool:
+        self.call_count += 1
+        return self.answers.pop(0)
 
 
 def _payload(kind: str) -> KnowledgeFSInitialSourcePreviewPayload | KnowledgeFSInitialWebsiteSourcePreviewPayload:
@@ -65,30 +114,33 @@ def _payload(kind: str) -> KnowledgeFSInitialSourcePreviewPayload | KnowledgeFSI
     )
 
 
-def test_preview_lists_online_documents_with_stable_import_identity() -> None:
-    service, _session = _service()
-    runtime = MagicMock()
-    runtime.datasource_provider_type.return_value = "online_document"
-    runtime.get_online_document_pages.return_value = [
-        OnlineDocumentPagesMessage(
-            result=[
-                OnlineDocumentInfo(
-                    pages=[
-                        OnlineDocumentPage(
-                            last_edited_time="2026-08-10T00:00:00Z",
-                            page_id="page-1",
-                            page_name="Roadmap",
-                            parent_id=None,
-                            type="page",
-                        )
-                    ],
-                    total=1,
-                    workspace_id="workspace-1",
-                    workspace_name="Product",
-                )
-            ]
-        )
-    ]
+def test_preview_lists_online_documents_with_stable_import_identity(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _service(sqlite_session_factory)
+    runtime = FakeDatasourceRuntime(
+        provider_type="online_document",
+        messages=[
+            OnlineDocumentPagesMessage(
+                result=[
+                    OnlineDocumentInfo(
+                        pages=[
+                            OnlineDocumentPage(
+                                last_edited_time="2026-08-10T00:00:00Z",
+                                page_id="page-1",
+                                page_name="Roadmap",
+                                parent_id=None,
+                                type="page",
+                            )
+                        ],
+                        total=1,
+                        workspace_id="workspace-1",
+                        workspace_name="Product",
+                    )
+                ]
+            )
+        ],
+    )
     with (
         patch(
             "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
@@ -101,7 +153,7 @@ def test_preview_lists_online_documents_with_stable_import_identity() -> None:
     ):
         response = service.preview(
             tenant_id="tenant-1",
-            account=cast(Account, SimpleNamespace(id="account-1")),
+            account=_account(),
             payload=_payload("online_document"),
         )
 
@@ -112,29 +164,30 @@ def test_preview_lists_online_documents_with_stable_import_identity() -> None:
     assert runtime.runtime.credentials == {"token": "secret"}
 
 
-def test_preview_browses_online_drive_and_preserves_pagination() -> None:
-    service, _session = _service()
-    runtime = MagicMock()
-    runtime.datasource_provider_type.return_value = "online_drive"
-    runtime.online_drive_browse_files.return_value = [
-        OnlineDriveBrowseFilesResponse(
-            result=[
-                OnlineDriveFileBucket(
-                    bucket="manuals",
-                    files=[
-                        OnlineDriveFile(
-                            id="file-1",
-                            name="Plan.pdf",
-                            size=128,
-                            type="application/pdf",
-                        )
-                    ],
-                    is_truncated=True,
-                    next_page_parameters={"cursor": "next"},
-                )
-            ]
-        )
-    ]
+def test_preview_browses_online_drive_and_preserves_pagination(sqlite_session_factory: sessionmaker[Session]) -> None:
+    service = _service(sqlite_session_factory)
+    runtime = FakeDatasourceRuntime(
+        provider_type="online_drive",
+        messages=[
+            OnlineDriveBrowseFilesResponse(
+                result=[
+                    OnlineDriveFileBucket(
+                        bucket="manuals",
+                        files=[
+                            OnlineDriveFile(
+                                id="file-1",
+                                name="Plan.pdf",
+                                size=128,
+                                type="application/pdf",
+                            )
+                        ],
+                        is_truncated=True,
+                        next_page_parameters={"cursor": "next"},
+                    )
+                ]
+            )
+        ],
+    )
     payload = _payload("online_drive")
     payload.parameters = {"prefix": "folder-1"}
     with (
@@ -149,7 +202,7 @@ def test_preview_browses_online_drive_and_preserves_pagination() -> None:
     ):
         response = service.preview(
             tenant_id="tenant-1",
-            account=cast(Account, SimpleNamespace(id="account-1")),
+            account=_account(),
             payload=payload,
         )
 
@@ -157,32 +210,34 @@ def test_preview_browses_online_drive_and_preserves_pagination() -> None:
     assert response.files[0].provider_item_id == '["manuals","file-1"]'
     assert response.files[0].mime_type == "application/pdf"
     assert response.next_page_parameters == {"cursor": "next"}
-    request = runtime.online_drive_browse_files.call_args.kwargs["request"]
+    request = runtime.online_drive_calls[-1]["request"]
+    assert isinstance(request, OnlineDriveBrowseFilesRequest)
     assert request.prefix == "folder-1"
 
 
-def test_preview_crawls_a_website_with_exact_declared_parameters() -> None:
-    service, _session = _service()
-    runtime = MagicMock()
-    runtime.datasource_provider_type.return_value = "website_crawl"
-    runtime.get_website_crawl.return_value = [
-        WebsiteCrawlMessage(
-            result=WebSiteInfo(
-                status="completed",
-                web_info_list=[
-                    WebSiteInfoDetail(
-                        content="# Result",
-                        description="Search result",
-                        source_url="https://example.com/result",
-                        title="Result",
-                    )
-                ],
+def test_preview_crawls_a_website_with_exact_declared_parameters(sqlite_session_factory: sessionmaker[Session]) -> None:
+    service = _service(sqlite_session_factory)
+    runtime = FakeDatasourceRuntime(
+        provider_type="website_crawl",
+        messages=[
+            WebsiteCrawlMessage(
+                result=WebSiteInfo(
+                    status="completed",
+                    web_info_list=[
+                        WebSiteInfoDetail(
+                            content="# Result",
+                            description="Search result",
+                            source_url="https://example.com/result",
+                            title="Result",
+                        )
+                    ],
+                )
             )
-        )
-    ]
+        ],
+    )
     payload = _payload("website_crawl")
     payload.parameters = {"query": "agentic RAG", "search_depth": "advanced"}
-    account = cast(Account, SimpleNamespace(id="account-1"))
+    account = _account()
     with (
         patch(
             "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
@@ -208,21 +263,24 @@ def test_preview_crawls_a_website_with_exact_declared_parameters() -> None:
         credential_id="credential-1",
         current_user=account,
     )
-    runtime.get_website_crawl.assert_called_once_with(
-        user_id="account-1",
-        datasource_parameters={"query": "agentic RAG", "search_depth": "advanced"},
-        provider_type="website_crawl",
-    )
-
-
-def test_preview_stops_consuming_website_results_after_cancellation() -> None:
-    service, _session = _service()
-    runtime = MagicMock()
-    runtime.datasource_provider_type.return_value = "website_crawl"
-    runtime.get_website_crawl.return_value = [
-        WebsiteCrawlMessage(result=WebSiteInfo(status="running", web_info_list=[]))
+    assert runtime.website_crawl_calls == [
+        {
+            "user_id": "account-1",
+            "datasource_parameters": {"query": "agentic RAG", "search_depth": "advanced"},
+            "provider_type": "website_crawl",
+        }
     ]
-    is_canceled = MagicMock(side_effect=[False, True])
+
+
+def test_preview_stops_consuming_website_results_after_cancellation(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _service(sqlite_session_factory)
+    runtime = FakeDatasourceRuntime(
+        provider_type="website_crawl",
+        messages=[WebsiteCrawlMessage(result=WebSiteInfo(status="running", web_info_list=[]))],
+    )
+    is_canceled = _QueuedCancellation(answers=[False, True])
     with (
         patch(
             "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
@@ -236,7 +294,7 @@ def test_preview_stops_consuming_website_results_after_cancellation() -> None:
     ):
         service.preview(
             tenant_id="tenant-1",
-            account=cast(Account, SimpleNamespace(id="account-1")),
+            account=_account(),
             payload=_payload("website_crawl"),
             is_canceled=is_canceled,
         )
@@ -244,13 +302,18 @@ def test_preview_stops_consuming_website_results_after_cancellation() -> None:
     assert is_canceled.call_count == 2
 
 
-def test_preview_exposes_an_empty_drive_bucket_as_a_browsable_container() -> None:
-    service, _session = _service()
-    runtime = MagicMock()
-    runtime.datasource_provider_type.return_value = "online_drive"
-    runtime.online_drive_browse_files.return_value = [
-        OnlineDriveBrowseFilesResponse(result=[OnlineDriveFileBucket(bucket="manuals", files=[], is_truncated=False)])
-    ]
+def test_preview_exposes_an_empty_drive_bucket_as_a_browsable_container(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _service(sqlite_session_factory)
+    runtime = FakeDatasourceRuntime(
+        provider_type="online_drive",
+        messages=[
+            OnlineDriveBrowseFilesResponse(
+                result=[OnlineDriveFileBucket(bucket="manuals", files=[], is_truncated=False)]
+            )
+        ],
+    )
     with (
         patch(
             "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials",
@@ -263,7 +326,7 @@ def test_preview_exposes_an_empty_drive_bucket_as_a_browsable_container() -> Non
     ):
         response = service.preview(
             tenant_id="tenant-1",
-            account=cast(Account, SimpleNamespace(id="account-1")),
+            account=_account(),
             payload=_payload("online_drive"),
         )
 
@@ -273,8 +336,8 @@ def test_preview_exposes_an_empty_drive_bucket_as_a_browsable_container() -> Non
     assert response.files[0].type == "bucket"
 
 
-def test_preview_rejects_a_credential_hidden_from_the_account() -> None:
-    service, _session = _service(credential=None)
+def test_preview_rejects_a_credential_hidden_from_the_account(sqlite_session_factory: sessionmaker[Session]) -> None:
+    service = _service(sqlite_session_factory, with_credential=False)
     with (
         patch(
             "services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials"
@@ -283,7 +346,7 @@ def test_preview_rejects_a_credential_hidden_from_the_account() -> None:
     ):
         service.preview(
             tenant_id="tenant-1",
-            account=cast(Account, SimpleNamespace(id="account-1")),
+            account=_account(),
             payload=_payload("online_document"),
         )
 
