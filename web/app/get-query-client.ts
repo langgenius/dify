@@ -1,10 +1,14 @@
 import { defaultShouldDehydrateQuery, environmentManager, QueryClient } from '@tanstack/react-query'
+import { notifyError } from '@/app/notifications/error'
 
 const STALE_TIME = 1000 * 60 * 5
 
-function makeQueryClient() {
+export function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
+      mutations: {
+        onError: notifyError,
+      },
       queries: {
         staleTime: STALE_TIME,
       },

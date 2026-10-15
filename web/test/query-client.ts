@@ -1,5 +1,6 @@
 import type { QueryFunction } from '@tanstack/react-query'
 import { QueryClient } from '@tanstack/react-query'
+import { notifyError } from '@/app/notifications/error'
 
 export const createTestQueryClient = (queryFn?: QueryFunction) =>
   new QueryClient({
@@ -12,6 +13,7 @@ export const createTestQueryClient = (queryFn?: QueryFunction) =>
       },
       mutations: {
         retry: false,
+        onError: notifyError,
       },
     },
   })
