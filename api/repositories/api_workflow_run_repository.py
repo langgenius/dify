@@ -580,8 +580,8 @@ class APIWorkflowRunRepository(Protocol):
 
     def backfill_workflow_pause_task_id(
         self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
-    ) -> None:
-        """Index a legacy pause after its already-authorized snapshot is read."""
+    ) -> bool:
+        """Index an unchanged legacy pause; return whether its task ID was written."""
         ...
 
     def get_workflow_pause(self, workflow_run_id: str) -> WorkflowPauseEntity | None:

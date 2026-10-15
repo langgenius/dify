@@ -31,7 +31,7 @@ import sqlalchemy as sa
 from pydantic import ValidationError
 from sqlalchemy import and_, delete, func, null, or_, select, tuple_, update
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, selectinload, sessionmaker
+from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
 from core.workflow.nodes.human_input.entities import FormDefinition
@@ -1247,16 +1247,44 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 .values(task_id=task_id)
             )
 
+    def list_legacy_workflow_runs(self, *, after_id: str | None, limit: int) -> Sequence[WorkflowRun]:
+        """Page unresolved control records across tenants for the upgrade backfill."""
+        stmt = (
+            select(WorkflowRun)
+            .options(
+                load_only(
+                    WorkflowRun.id,
+                    WorkflowRun.tenant_id,
+                    WorkflowRun.app_id,
+                    WorkflowRun.task_id,
+                    WorkflowRun.status,
+                    WorkflowRun.created_by,
+                )
+            )
+            .where(
+                WorkflowRun.task_id.is_(None),
+                WorkflowRun.type.in_([WorkflowType.WORKFLOW, WorkflowType.CHAT]),
+                WorkflowRun.status.in_([WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED]),
+            )
+            .order_by(WorkflowRun.id)
+            .limit(limit)
+        )
+        if after_id is not None:
+            stmt = stmt.where(WorkflowRun.id > after_id)
+        with self._session_maker() as session:
+            return session.scalars(stmt).all()
+
     @override
     def backfill_workflow_pause_task_id(
         self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
-    ) -> None:
+    ) -> bool:
         current_pause = select(WorkflowPause.workflow_run_id).where(
             WorkflowPause.id == pause_id,
             WorkflowPause.workflow_run_id == workflow_run_id,
+            WorkflowPause.resumed_at.is_(None),
         )
         with self._session_maker() as session, session.begin():
-            session.execute(
+            result = session.execute(
                 update(WorkflowRun)
                 .where(
                     WorkflowRun.id.in_(current_pause),
@@ -1267,6 +1295,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 )
                 .values(task_id=task_id)
             )
+            return cast(CursorResult, result).rowcount == 1
 
     @override
     def get_workflow_pause(
