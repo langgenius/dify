@@ -398,7 +398,7 @@ const ModelModal: FC<ModelModalProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-block align-middle system-xs-regular text-text-accent"
-              onClick={(e) => !provider.help.url && e.preventDefault()}
+              onClick={(e) => !provider.help?.url && e.preventDefault()}
             >
               {provider.help.title?.[language] ||
                 provider.help.url[language] ||

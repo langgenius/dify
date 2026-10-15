@@ -43,7 +43,7 @@ describe('OneMoreStep', () => {
     mockUseOneMoreStep.mockReturnValue({
       mutateAsync: mockSubmitOneMoreStep,
       isPending: false,
-    } as unknown as ReturnType<typeof mockOneMoreStepHook>)
+    })
     mockSubmitOneMoreStep.mockResolvedValue({ result: 'success' })
   })
 

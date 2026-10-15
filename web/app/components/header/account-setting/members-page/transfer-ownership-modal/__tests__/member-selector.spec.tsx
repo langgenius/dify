@@ -114,9 +114,7 @@ describe('MemberSelector', () => {
   })
 
   it('should handle missing data gracefully', () => {
-    vi.mocked(mockMembersHook).mockReturnValue({ data: undefined } as unknown as ReturnType<
-      typeof mockMembersHook
-    >)
+    vi.mocked(mockMembersHook).mockReturnValue({ data: undefined })
     render(<MemberSelector onSelect={mockOnSelect} />)
     expect(getTrigger()).toBeInTheDocument()
   })

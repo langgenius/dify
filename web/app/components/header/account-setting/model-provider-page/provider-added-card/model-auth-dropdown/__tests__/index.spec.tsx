@@ -3,6 +3,7 @@ import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import ModelAuthDropdown from '../index'
@@ -212,7 +213,7 @@ describe('ModelAuthDropdown', () => {
         },
         system_configuration: { enabled: true },
       } satisfies ModelProviderSummaryResponse
-      const fullProvider = createProvider()
+      const fullProvider = createProviderResponseFixture({ provider: 'test' })
       render(
         <ModelAuthDropdown
           provider={providerSummary}
@@ -283,9 +284,9 @@ describe('ModelAuthDropdown', () => {
     })
 
     it('should load provider detail on first click and reuse it on reopen', async () => {
-      const fullProvider = createProvider({
+      const fullProvider = createProviderResponseFixture({
+        provider: 'test',
         custom_configuration: {
-          status: CustomConfigurationStatusEnum.active,
           available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
           current_credential_id: 'c1',
           current_credential_name: 'Key 1',
@@ -346,17 +347,17 @@ describe('ModelAuthDropdown', () => {
           current_credential_usable: true,
         },
       } as unknown as ModelProviderSummaryResponse
-      const firstProvider = createProvider({
+      const firstProvider = createProviderResponseFixture({
+        provider: 'test',
         custom_configuration: {
-          status: CustomConfigurationStatusEnum.active,
           available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
           current_credential_id: 'c1',
           current_credential_name: 'Key 1',
         },
       })
-      const nextProvider = createProvider({
+      const nextProvider = createProviderResponseFixture({
+        provider: 'test',
         custom_configuration: {
-          status: CustomConfigurationStatusEnum.active,
           available_credentials: [{ credential_id: 'c2', credential_name: 'Key 2' }],
           current_credential_id: 'c2',
           current_credential_name: 'Key 2',

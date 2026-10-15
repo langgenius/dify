@@ -125,7 +125,7 @@ describe('InviteSettingsPage', () => {
         },
       },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof mockInvitationCheckHook>)
+    })
     mockUseQuery.mockReturnValue({
       data: {
         profile: {
@@ -160,7 +160,7 @@ describe('InviteSettingsPage', () => {
         },
       },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof mockInvitationCheckHook>)
+    })
 
     render(<InviteSettingsPage />)
 
@@ -235,7 +235,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof mockInvitationCheckHook>)
+      })
 
       render(<InviteSettingsPage />)
 
@@ -264,7 +264,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof mockInvitationCheckHook>)
+      })
 
       render(<InviteSettingsPage />)
 
@@ -294,7 +294,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof mockInvitationCheckHook>)
+      })
 
       render(<InviteSettingsPage />)
 

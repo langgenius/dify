@@ -95,7 +95,7 @@ describe('Signup Set Password Page', () => {
     mockUseMailRegister.mockReturnValue({
       mutateAsync: mockRegister,
       isPending: false,
-    } as unknown as ReturnType<typeof mockMailRegisterHook>)
+    })
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
   })

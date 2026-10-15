@@ -1,4 +1,8 @@
-import type { GetWorkspacesCurrentDefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  FormType as ContractFormType,
+  QuotaConfiguration as ContractQuotaConfiguration,
+  GetWorkspacesCurrentDefaultModelResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 
 export type FormValue = Record<string, any>
@@ -119,7 +123,8 @@ export type CredentialFormSchemaBase = {
   name: string
   variable: string
   label: TypeWithI18N
-  type: FormTypeEnum
+  // Model provider credential forms may also declare `switch`, which has no field renderer.
+  type: FormTypeEnum | ContractFormType
   required: boolean
   default?: string | number | boolean | unknown[] | Record<string, unknown> | null
   tooltip?: TypeWithI18N
@@ -194,14 +199,7 @@ export const QuotaUnitEnum = {
 
 export type QuotaUnitEnum = (typeof QuotaUnitEnum)[keyof typeof QuotaUnitEnum]
 
-type QuotaConfiguration = {
-  quota_type: CurrentSystemQuotaTypeEnum
-  quota_unit: QuotaUnitEnum
-  quota_limit: number
-  quota_used: number
-  last_used: number
-  is_valid: boolean
-}
+type QuotaConfiguration = ContractQuotaConfiguration
 
 export type Credential = {
   credential_id: string
@@ -226,19 +224,19 @@ export type ModelProvider = {
   provider: string
   label: TypeWithI18N
   description?: TypeWithI18N
-  help: {
+  help?: {
     title: TypeWithI18N
     url: TypeWithI18N
   }
-  icon_small: TypeWithI18N
+  icon_small?: TypeWithI18N
   icon_small_dark?: TypeWithI18N
   background?: string
   supported_model_types: ModelTypeEnum[]
   configurate_methods: ConfigurationMethodEnum[]
-  provider_credential_schema: {
+  provider_credential_schema?: {
     credential_form_schemas: CredentialFormSchema[]
   }
-  model_credential_schema: {
+  model_credential_schema?: {
     model: {
       label: TypeWithI18N
       placeholder: TypeWithI18N
@@ -259,7 +257,7 @@ export type ModelProvider = {
   }
   system_configuration: {
     enabled: boolean
-    current_quota_type: CurrentSystemQuotaTypeEnum
+    current_quota_type?: CurrentSystemQuotaTypeEnum
     quota_configurations: QuotaConfiguration[]
   }
   allow_custom_token?: boolean

@@ -127,16 +127,12 @@ describe('TransferOwnershipModal', () => {
     ).mockResolvedValue({
       data: 'step-token',
       result: 'success',
-    } as unknown as Awaited<
-      ReturnType<typeof consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post>
-    >)
+    })
     vi.mocked(consoleClient.workspaces.current.members.ownerTransferCheck.post).mockResolvedValue({
+      email: 'owner@example.com',
       is_valid: isValid,
       token,
-      result: 'success',
-    } as unknown as Awaited<
-      ReturnType<typeof consoleClient.workspaces.current.members.ownerTransferCheck.post>
-    >)
+    })
   }
 
   const goToTransferStep = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -160,9 +156,7 @@ describe('TransferOwnershipModal', () => {
       consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
     ).mockResolvedValue({
       result: 'success',
-    } as unknown as Awaited<
-      ReturnType<typeof consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post>
-    >)
+    })
 
     renderModal()
     await goToTransferStep(user)
@@ -190,9 +184,7 @@ describe('TransferOwnershipModal', () => {
     ).mockResolvedValue({
       data: 'token',
       result: 'success',
-    } as unknown as Awaited<
-      ReturnType<typeof consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post>
-    >)
+    })
 
     renderModal()
     // Trigger the email send (which starts the timer)
@@ -308,23 +300,21 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should handle sendOwnerEmail returning null data', async () => {
+  it('should handle sendOwnerEmail returning an empty step token', async () => {
     const user = userEvent.setup()
     vi.mocked(
       consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
     ).mockResolvedValue({
-      data: null,
+      data: '',
       result: 'success',
-    } as unknown as Awaited<
-      ReturnType<typeof consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post>
-    >)
+    })
 
     renderModal()
     await user.click(
       screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
     )
 
-    // Should advance to verify step even with null data
+    // Should advance to verify step even without a step token
     await waitFor(() => {
       expect(screen.getByText(/members\.transferModal\.verifyEmail/i)).toBeInTheDocument()
     })

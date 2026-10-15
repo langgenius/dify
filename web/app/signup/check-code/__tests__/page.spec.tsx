@@ -69,10 +69,10 @@ describe('Signup Check Code Page', () => {
     )
     mockUseMailValidity.mockReturnValue({
       mutateAsync: mockVerifyCode,
-    } as unknown as ReturnType<typeof mockMailValidityHook>)
+    })
     mockUseSendMail.mockReturnValue({
       mutateAsync: mockSubmitMail,
-    } as unknown as ReturnType<typeof mockSendMailHook>)
+    })
     mockVerifyCode.mockResolvedValue({ is_valid: true, token: 'verified-token' })
   })
 
