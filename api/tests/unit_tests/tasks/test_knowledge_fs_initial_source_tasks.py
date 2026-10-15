@@ -10,9 +10,15 @@ from models.account import Account
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.oauth import DatasourceProvider
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSCrawlImportPayload,
     KnowledgeFSInitialOnlineDocumentSourcePayload,
     KnowledgeFSInitialOnlineDriveSourcePayload,
     KnowledgeFSInitialWebsiteSourcePayload,
+    KnowledgeFSSourceConnectionCreatePayload,
+    KnowledgeFSSourceCreatePayload,
+    KnowledgeFSSourceSyncPolicyPayload,
+    KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceWorkflowImportPayload,
     knowledge_fs_initial_preview_configuration_fingerprint,
 )
 from services.knowledge_fs.product_remote import (
@@ -31,6 +37,7 @@ from tasks.knowledge_fs_initial_source_tasks import (
 from tests.unit_tests.tasks.knowledge_fs_task_fakes import (
     FacadeRuntime,
     RecordingKnowledgeFSFacade,
+    json_object,
     source_connection_list_response,
     source_connection_response,
     source_list_response,
@@ -286,7 +293,7 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
 
     assert _start(facade, _payload()) == "workflow-1"
 
-    source_payload = facade.payload("create_source")
+    source_payload = facade.payload("create_source", KnowledgeFSSourceCreatePayload)
     assert source_payload.status == "disabled"
     assert source_payload.connection_id == "connection-1"
     assert source_payload.metadata["datasourceParameterMode"] == "exact"
@@ -299,16 +306,17 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
         "limit": 25,
         "url": "https://docs.dify.ai",
     }
-    import_payload = facade.payload("import_selected_source_crawl")
+    import_payload = facade.payload("import_selected_source_crawl", KnowledgeFSCrawlImportPayload)
     assert import_payload.source_urls == [
         "https://docs.dify.ai/a",
         "https://docs.dify.ai/b",
     ]
-    source_update_payload = facade.payload("update_source")
+    source_update_payload = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+    source_update_metadata = json_object(source_update_payload.metadata)
     assert source_update_payload.expected_version == 3
-    assert source_update_payload.metadata == {"preview": False}
+    assert source_update_metadata == {"preview": False}
     assert source_update_payload.status == "active"
-    sync_payload = facade.payload("update_source_sync_policy")
+    sync_payload = facade.payload("update_source_sync_policy", KnowledgeFSSourceSyncPolicyPayload)
     assert sync_payload.mode == "interval"
     assert sync_payload.enabled is True
     assert sync_payload.expected_revision == 0
@@ -334,7 +342,7 @@ def test_initial_website_source_import_preserves_distinct_urls_with_the_same_can
 
     assert _start(facade, payload) == "workflow-1"
 
-    import_payload = facade.payload("import_selected_source_crawl")
+    import_payload = facade.payload("import_selected_source_crawl", KnowledgeFSCrawlImportPayload)
     assert import_payload.source_urls == [
         "https://docs.dify.ai/a/",
         "https://DOCS.dify.ai:443/a#section",
@@ -346,7 +354,7 @@ def test_initial_website_source_import_preserves_legacy_crawl_option_projection(
 
     assert _start(facade, _legacy_payload()) == "workflow-1"
 
-    source_payload = facade.payload("create_source")
+    source_payload = facade.payload("create_source", KnowledgeFSSourceCreatePayload)
     assert "datasourceParameterMode" not in source_payload.metadata
     assert "parameters" not in source_payload.metadata
     assert source_payload.metadata["crawlOptions"] == {
@@ -436,7 +444,7 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
         )
 
     assert result == "connector-workflow-1"
-    connection_payload = facade.payload("create_source_connection")
+    connection_payload = facade.payload("create_source_connection", KnowledgeFSSourceConnectionCreatePayload)
     assert connection_payload.provider_id == provider_id
     assert connection_payload.configuration == {
         "credentialId": credential_id,
@@ -445,17 +453,17 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
         "provider": payload.provider,
         "providerKind": "online-document" if workflow_kind == "online-document-import" else "online-drive",
     }
-    source_payload = facade.payload("create_source")
+    source_payload = facade.payload("create_source", KnowledgeFSSourceCreatePayload)
     assert source_payload.connection_id == "connector-1"
     assert source_payload.name == expected_source_name
     assert source_payload.type == "connector"
     assert source_payload.uri == "connector://connector-1"
     assert source_payload.metadata["providerId"] == provider_id
     assert source_payload.metadata["providerName"] == expected_provider_name
-    import_payload = facade.payload("import_source_workflow").root
+    import_payload = facade.payload("import_source_workflow", KnowledgeFSSourceWorkflowImportPayload).root
     assert import_payload.kind == workflow_kind
     assert import_payload.items == payload.selection
-    sync_payload = facade.payload("update_source_sync_policy")
+    sync_payload = facade.payload("update_source_sync_policy", KnowledgeFSSourceSyncPolicyPayload)
     assert sync_payload.mode == ("manual" if workflow_kind == "online-drive-import" else "interval")
 
 
@@ -488,12 +496,13 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
     assert _start(facade, _payload()) == "failed-workflow"
     assert facade.call_count("create_source") == 0
     assert facade.call_count("list_source_connections") == 0
-    source_update_payload = facade.payload("update_source")
+    source_update_payload = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+    source_update_metadata = json_object(source_update_payload.metadata)
     assert source_update_payload.status == "disabled"
-    assert "parameters" not in source_update_payload.metadata
-    assert source_update_payload.metadata["preview"] is False
-    assert source_update_payload.metadata["initialImport"]["state"] == "failed"
-    assert source_update_payload.metadata["initialImport"]["syncPolicy"] == {
+    assert "parameters" not in source_update_metadata
+    assert source_update_metadata["preview"] is False
+    assert json_object(source_update_metadata["initialImport"])["state"] == "failed"
+    assert json_object(source_update_metadata["initialImport"])["syncPolicy"] == {
         "customIntervalSeconds": None,
         "enabled": True,
         "mode": "interval",
@@ -522,12 +531,13 @@ def test_initial_website_source_import_exposes_preview_consume_rejection() -> No
     with pytest.raises(KnowledgeFSProductRequestRejectedError):
         _start(facade, payload)
 
-    source_update = facade.payload("update_source")
+    source_update = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+    source_update_metadata = json_object(source_update.metadata)
     assert source_update.status == "disabled"
-    assert source_update.metadata["preview"] is False
-    assert source_update.metadata["initialImport"]["state"] == "failed"
-    assert source_update.metadata["initialImport"]["errorCode"] == "SOURCE_WORKFLOW_FAILED"
-    assert source_update.metadata["initialImport"]["syncPolicy"] == {
+    assert source_update_metadata["preview"] is False
+    assert json_object(source_update_metadata["initialImport"])["state"] == "failed"
+    assert json_object(source_update_metadata["initialImport"])["errorCode"] == "SOURCE_WORKFLOW_FAILED"
+    assert json_object(source_update_metadata["initialImport"])["syncPolicy"] == {
         "customIntervalSeconds": None,
         "enabled": True,
         "mode": "interval",
@@ -567,7 +577,7 @@ def test_initial_website_source_import_configures_remaining_sync_modes(
     facade.script("get_source_sync_policy", sync_policy_response(revision=7))
 
     assert _start(facade, _payload(sync_policy)) == "workflow-1"
-    sync_payload = facade.payload("update_source_sync_policy")
+    sync_payload = facade.payload("update_source_sync_policy", KnowledgeFSSourceSyncPolicyPayload)
     assert sync_payload.mode == expected_mode
     assert sync_payload.enabled is expected_enabled
     assert sync_payload.custom_interval_seconds == expected_custom_interval_seconds
@@ -592,7 +602,7 @@ def test_initial_website_source_import_does_not_recommit_active_source_after_ret
     assert _start(facade, _payload()) == "workflow-1"
 
     assert facade.call_count("update_source") == 0
-    sync_payload = facade.payload("update_source_sync_policy")
+    sync_payload = facade.payload("update_source_sync_policy", KnowledgeFSSourceSyncPolicyPayload)
     assert sync_payload.expected_source_version == 4
 
 
@@ -688,7 +698,7 @@ def test_initial_website_source_import_creates_missing_firecrawl_connection() ->
 
     assert _start(facade, _payload()) == "workflow-1"
 
-    connection_payload = facade.payload("create_source_connection")
+    connection_payload = facade.payload("create_source_connection", KnowledgeFSSourceConnectionCreatePayload)
     assert connection_payload.auth_kind == "endpoint"
     assert connection_payload.configuration == {
         "credentialId": "firecrawl-credential-1",
@@ -699,7 +709,7 @@ def test_initial_website_source_import_creates_missing_firecrawl_connection() ->
     }
     assert connection_payload.credentials == {}
     assert connection_payload.provider_id == "plugin-daemon-website"
-    source_payload = facade.payload("create_source")
+    source_payload = facade.payload("create_source", KnowledgeFSSourceCreatePayload)
     assert source_payload.connection_id == "connection-created"
 
 
@@ -754,7 +764,8 @@ def test_initial_website_source_import_polls_existing_workflow_without_recreatin
     assert facade.call_count("list_source_connections") == 0
     assert facade.call_count("create_source") == 0
     assert facade.call_count("import_selected_source_crawl") == 0
-    source_update_payload = facade.payload("update_source")
+    source_update_payload = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+    source_update_metadata = json_object(source_update_payload.metadata)
     assert source_update_payload.status == "active"
 
 
@@ -788,10 +799,11 @@ def test_initial_website_source_import_exposes_failed_source_without_activating_
 
     assert _start(facade, _payload(), workflow_id="workflow-1") == "workflow-1"
 
-    source_update_payload = facade.payload("update_source")
+    source_update_payload = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+    source_update_metadata = json_object(source_update_payload.metadata)
     assert source_update_payload.status == "disabled"
-    assert source_update_payload.metadata["preview"] is False
-    initial_import = source_update_payload.metadata["initialImport"]
+    assert source_update_metadata["preview"] is False
+    initial_import = json_object(source_update_metadata["initialImport"])
     assert initial_import["errorCode"] == "SOURCE_DOCUMENT_MATERIALIZATION_FAILED"
     assert initial_import["errorMessage"] == "Source document materialization failed"
     assert initial_import["state"] == "failed"
@@ -803,7 +815,9 @@ def test_initial_website_source_import_exposes_failed_source_without_activating_
         "enabled": True,
         "mode": "interval",
     }
-    assert len(initial_import["configurationFingerprint"]) == 64
+    fingerprint = initial_import["configurationFingerprint"]
+    assert isinstance(fingerprint, str)
+    assert len(fingerprint) == 64
     assert facade.call_count("update_source_sync_policy") == 0
 
 

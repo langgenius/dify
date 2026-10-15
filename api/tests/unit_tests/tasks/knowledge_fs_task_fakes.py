@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from typing import TypeVar, cast
 
 from celery.exceptions import Retry
 
@@ -24,6 +25,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceWorkflowResponse,
 )
+
+_PayloadT = TypeVar("_PayloadT")
 
 
 @dataclass
@@ -85,9 +88,11 @@ class RecordingKnowledgeFSFacade:
     def call_count(self, method: str) -> int:
         return len(self.calls.get(method, []))
 
-    def payload(self, method: str) -> object:
-        """Return the ``payload`` keyword of the most recent call to ``method``."""
-        return self.calls[method][-1]["payload"]
+    def payload(self, method: str, payload_type: type[_PayloadT]) -> _PayloadT:
+        """Return the ``payload`` keyword of the most recent call to ``method``, checked against ``payload_type``."""
+        payload = self.calls[method][-1]["payload"]
+        assert isinstance(payload, payload_type), f"{method} payload is {type(payload).__name__}"
+        return payload
 
     def _respond(self, method: str, kwargs: dict[str, object]) -> object:
         self.calls.setdefault(method, []).append(kwargs)
@@ -137,6 +142,12 @@ class RecordingKnowledgeFSFacade:
 
     def update_source_sync_policy(self, **kwargs: object) -> object:
         return self._respond("update_source_sync_policy", kwargs)
+
+
+def json_object(value: object) -> dict[str, object]:
+    """Narrow recorded JSON metadata, or an object nested in it, to a string-keyed dict."""
+    assert isinstance(value, dict), f"expected a JSON object, got {type(value).__name__}"
+    return cast(dict[str, object], value)
 
 
 @dataclass(frozen=True)

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, TypedDict
+from typing import Literal
 
 import pytest
 from celery.app.task import Context
 from celery.exceptions import Retry
+from typing_extensions import TypedDict
 
+from core.knowledge_fs.resource import KnowledgeResourceRef
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
-from services.knowledge_fs.product_dto import KnowledgeFSWorkflowFailedRetrievalCaptureResponse
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSWorkflowFailedRetrievalCapturePayload,
+    KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
+)
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from tasks import knowledge_fs_failed_retrieval_tasks as task_module
 from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingRetry
@@ -17,7 +22,7 @@ from tests.unit_tests.tasks.task_options import task_options
 EVENT_ID = "019fac9f-bfb0-75ee-9af5-252ebafbac1e"
 
 
-class FailedRetrievalTaskArguments(TypedDict):
+class FailedRetrievalTaskArguments(TypedDict, closed=True):
     event_id: str
     tenant_id: str
     app_id: str
@@ -39,13 +44,28 @@ def _task_kwargs() -> FailedRetrievalTaskArguments:
     }
 
 
+@dataclass(frozen=True)
+class _CaptureCall:
+    tenant_id: str
+    app_id: str
+    resource: KnowledgeResourceRef
+    payload: KnowledgeFSWorkflowFailedRetrievalCapturePayload
+
+
 @dataclass
 class _AppCapabilities:
     outcome: KnowledgeFSWorkflowFailedRetrievalCaptureResponse | Exception
-    calls: list[dict[str, object]] = field(default_factory=list)
+    calls: list[_CaptureCall] = field(default_factory=list)
 
-    def capture_workflow_failed_retrieval(self, **kwargs: object) -> KnowledgeFSWorkflowFailedRetrievalCaptureResponse:
-        self.calls.append(kwargs)
+    def capture_workflow_failed_retrieval(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        resource: KnowledgeResourceRef,
+        payload: KnowledgeFSWorkflowFailedRetrievalCapturePayload,
+    ) -> KnowledgeFSWorkflowFailedRetrievalCaptureResponse:
+        self.calls.append(_CaptureCall(tenant_id=tenant_id, app_id=app_id, resource=resource, payload=payload))
         if isinstance(self.outcome, Exception):
             raise self.outcome
         return self.outcome
@@ -91,12 +111,12 @@ def test_failed_retrieval_task_runs_on_dataset_queue_and_reauthorizes_app(
     assert task_options(task_module.capture_workflow_failed_retrieval_task)["queue"] == "dataset"
     assert len(capability.calls) == 1
     call = capability.calls[0]
-    assert call["tenant_id"] == "tenant-1"
-    assert call["app_id"] == "app-1"
-    assert call["resource"].control_space_id == "control-1"
-    assert str(call["payload"].event_id) == EVENT_ID
-    assert call["payload"].query == "missing answer"
-    assert call["payload"].retrieval_trace_id == "retrieval-trace-1"
+    assert call.tenant_id == "tenant-1"
+    assert call.app_id == "app-1"
+    assert call.resource.control_space_id == "control-1"
+    assert str(call.payload.event_id) == EVENT_ID
+    assert call.payload.query == "missing answer"
+    assert call.payload.retrieval_trace_id == "retrieval-trace-1"
 
 
 def test_enqueue_is_idempotency_aware_and_never_propagates_broker_failure(monkeypatch: pytest.MonkeyPatch) -> None:
