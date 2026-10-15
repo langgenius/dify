@@ -4,8 +4,8 @@ import logging
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import UTC, timedelta
-from typing import Any, Literal
+from datetime import UTC, datetime, timedelta
+from typing import Any, Literal, cast
 
 from dify_agent.layers.execution_context import ApplicationTracingContext
 from dify_agent.protocol.tracing import AgentTraceBatch
@@ -13,14 +13,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.ops.entities.trace_entity import BaseTraceInfo, MessageTraceInfo, WorkflowTraceInfo
+from core.ops.entities.trace_entity import BaseTraceInfo, MessageTraceInfo, TraceTaskName, WorkflowTraceInfo
 from core.ops.exceptions import RetryableTraceDispatchError
-from core.ops.ops_trace_manager import OpsTraceManager
+from core.ops.ops_trace_manager import OpsTraceManager, TraceTask
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder, RepositoryWorkflowExecutionLoader
 from extensions.ext_database import db
 from models import Account, App, AppMode, Conversation, Message, Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from models.application_trace import ApplicationTraceRun
+from models.model import MessageDict
 from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
 from services.tracing.normalization import normalize_agent_span, order_spans, remap_outer_trace, sanitize
 from services.tracing.provider_dispatch import TraceExportUncertainError, export_trace, provider_capabilities
@@ -100,6 +101,53 @@ class ApplicationTracingService:
         # Persistence commits before scheduling. Beat reconciles a broker outage.
         self.schedule(run_id)
         return accepted
+
+    def capture_agent_app_terminal(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        message_id: str,
+        outcome: Literal["succeeded", "failed", "cancelled"],
+        output: str | None,
+    ) -> None:
+        """Persist a worker-observed terminal even after its SSE consumer closes.
+
+        Usage-only Message writes are intentionally insufficient for recovery.
+        This handoff is made only after the runner observes a terminal result or
+        finishes handling an explicit stop, and it does not rewrite Message data.
+        """
+        with self.repository.sessions() as session:
+            source = self.repository._source(
+                session, tenant_id=tenant_id, app_id=app_id, kind="message", source_id=message_id
+            )
+            if not isinstance(source, Message):
+                raise TraceCollectionError("tracing_source_not_found", 404)
+            conversation_id = source.conversation_id
+        run = self.repository.source_run(
+            tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id
+        )
+        if run is not None and run.state == "not_collected":
+            return
+        info = TraceTask(
+            TraceTaskName.MESSAGE_TRACE,
+            message_id=message_id,
+            conversation_id=conversation_id,
+            trace_session_id=run.session_id if run else conversation_id,
+        ).execute()
+        if not isinstance(info, MessageTraceInfo):
+            raise TraceCollectionError("tracing_terminal_not_supported")
+        if isinstance(info.message_data, dict):
+            info.message_data = Message.from_dict(cast(MessageDict, info.message_data))
+        if output is not None and isinstance(info.message_data, Message):
+            # This is a detached trace snapshot, not a write to the business row.
+            info.message_data.answer = output
+        info.outputs = output if output is not None else info.outputs
+        info.end_time = datetime.now(UTC)
+        info.metadata = {**info.metadata, "message_execution_state": outcome}
+        if outcome != "succeeded":
+            info.error = f"Agent message {outcome}"
+        self.capture_terminal(info)
 
     @staticmethod
     def schedule(run_id: str) -> None:
