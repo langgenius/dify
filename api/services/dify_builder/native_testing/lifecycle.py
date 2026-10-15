@@ -45,6 +45,8 @@ from services.dify_builder.native_testing.transitions import (
     has_unknown_descendant,
     invocation_subtree,
     quarantine_unknown,
+    recoverable_invocation_ids,
+    require_ancestor_authority,
 )
 
 
@@ -447,8 +449,10 @@ class NativeTestLifecycleService:
                 and prior.state in {"claimed", "completed", "unknown"}
             ):
                 return False
+            require_ancestor_authority(session, ref, owned.tenant_id)
         self.loader.load(ref=ref)
         with self.loader.locked(ref=ref) as (session, owned, _):
+            require_ancestor_authority(session, ref, owned.tenant_id)
             state = invocation_state(session, ref, owned.tenant_id)
             dispatch = session.scalar(
                 owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
@@ -594,6 +598,9 @@ class NativeTestLifecycleService:
         if self.runtime is None:
             raise BuilderExecutionPolicyError("native_runtime_unavailable")
         context = self.store.load_recovery_context(ref=ref)
+        with self.loader.session_factory() as session:
+            owned, scope = self.loader._load(session, ref=ref, lock=False, settlement=True)
+            self._check_recovery_authority(session, ref, owned, scope)
         proof = self.runtime.recovery_evidence(context=context, dispatch_id=dispatch_id)
         if proof not in {"not_started", "stopped"}:
             raise BuilderExecutionPolicyError("native_recovery_unproven")
@@ -602,19 +609,14 @@ class NativeTestLifecycleService:
                 owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
             )
             state = invocation_state(session, ref, owned.tenant_id)
-            if scope.cancelled or owned.expires_at <= self.clock():
-                raise BuilderExecutionPolicyError("native_recovery_unavailable")
+            self._check_recovery_authority(session, ref, owned, scope)
             if row is None or row.state != "unknown" or state.generation != row.generation:
                 raise BuilderExecutionPolicyError("native_dispatch_conflict")
             row.state, row.claim_expires_at = "queued", None
             state.state = "queued"
             # Proof applies to the complete native execution subtree. Preserve
             # completed/unknown child outcomes and the prior waiting cursors.
-            recoverable = {
-                child.invocation_id
-                for child in self._subtree(session, ref, owned.tenant_id)
-                if child.state in {"running", "waiting", "queued"}
-            }
+            recoverable = recoverable_invocation_ids(self._subtree(session, ref, owned.tenant_id), ref.invocation_id)
             for invocation in session.scalars(
                 select(NativeTestInvocation).where(
                     NativeTestInvocation.request_id == ref.request_id,
@@ -623,6 +625,11 @@ class NativeTestLifecycleService:
                 )
             ):
                 invocation.active = True
+
+    def _check_recovery_authority(self, session, ref, owned, scope):
+        if scope.cancelled or owned.expires_at <= self.clock() or owned.state not in {"running", "waiting"}:
+            raise BuilderExecutionPolicyError("native_recovery_unavailable")
+        require_ancestor_authority(session, ref, owned.tenant_id)
 
     def cancel(self, *, actor: Actor, request_id: str, idempotency_key: str) -> CancellationReceipt:
         ref = self._root_ref(actor, request_id)

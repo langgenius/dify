@@ -82,3 +82,24 @@ def test_payload_codec_snapshots_caller_mutation():
     assert decode_payload(raw, tenant_id="t", request_id="r", invocation_id="i", kind="result", digest=digest) == {
         "inputs": [True, 1, "1"]
     }
+
+
+def test_controlling_proof_keeps_independently_unknown_and_completed_branches_inactive():
+    from types import SimpleNamespace
+
+    from services.dify_builder.native_testing.transitions import recoverable_invocation_ids
+
+    def state(identity, parent, status):
+        return SimpleNamespace(invocation_id=identity, parent_invocation_id=parent, state=status)
+
+    # Descendants precede parents deliberately; topology, not row order, decides.
+    states = [
+        state("unknown-leaf", "unknown-child", "running"),
+        state("live-leaf", "live-child", "waiting"),
+        state("completed-leaf", "completed-child", "queued"),
+        state("unknown-child", "root", "unknown"),
+        state("completed-child", "root", "completed"),
+        state("live-child", "root", "running"),
+        state("root", None, "queued"),
+    ]
+    assert recoverable_invocation_ids(states, "root") == {"root", "live-child", "live-leaf"}
