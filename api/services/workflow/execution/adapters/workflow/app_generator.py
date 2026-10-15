@@ -352,6 +352,7 @@ class WorkflowAppGenerator(AppInputAdapter):
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
+                        human_form_reader=self._runtime.human_form_reader,
                         state_owner_user_id=pause_state_config.state_owner_user_id,
                         response_stream_filter=resolved_response_stream_filter,
                     )

@@ -19,14 +19,10 @@ from graphon.file import File
 from graphon.graph_engine.manager import GraphEngineManager
 from machinery.context import RequestContext
 from models import Account, App
-from models.workflow import Workflow, WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel
 from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
-from repositories.workflow.definition_repository import (
-    WorkflowDefinitionRepository,
-    workflow_from_snapshot,
-    workflow_snapshot,
-)
+from repositories.workflow.definition_repository import WorkflowDefinitionRepository
 from repositories.workflow.node_execution_repository import WorkflowNodeExecutionRepository
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.generation.runtime import AppGenerationRuntime
@@ -150,13 +146,15 @@ class WorkflowRuntimeGateway:
             streaming=True,
         )
 
-    def _draft(self, context: RequestContext, app_id: str, missing_message: str) -> tuple[App, Account, Workflow]:
+    def _draft(
+        self, context: RequestContext, app_id: str, missing_message: str
+    ) -> tuple[App, Account, WorkflowSnapshot]:
         try:
             return self._definitions.debug_context(context, app_id, workflow_id=None, snapshot=None)
         except ValueError as error:
             raise ValueError(missing_message) from error
 
-    def _files(self, workflow: Workflow, files: list[dict[str, Any]] | None) -> Sequence[File]:
+    def _files(self, workflow: WorkflowSnapshot, files: list[dict[str, Any]] | None) -> Sequence[File]:
         config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         if config is None:
             return []
@@ -215,10 +213,10 @@ class WorkflowRuntimeGateway:
     ) -> WorkflowTriggerEvent | None:
         if single_node:
             app, _, workflow = self._draft(context, app_id, "Workflow not found")
-            snapshot = workflow_snapshot(workflow)
+            snapshot = workflow
         else:
             app, snapshot = self._reservations.reserve_trigger_debug(context, app_id)
-            workflow = workflow_from_snapshot(snapshot)
+            workflow = snapshot
         if single_node:
             node_id = node_ids[0]
             config = workflow.get_node_config_by_id(node_id=node_id)

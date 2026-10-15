@@ -9,7 +9,9 @@ from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from models.account import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.snippet_generate_service import SnippetGenerateService
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import WorkflowService
@@ -89,7 +91,7 @@ def test_debug_generators_use_injected_variable_dependencies(
         saver(workflow.app_id, "node", BuiltinNodeTypes.CODE, "execution").save(
             process_data=None, outputs={"text": "injected"}
         )
-        loader = workflow_variables.workflow_loader(workflow, user.id)
+        loader = workflow_variables.workflow_loader(workflow_snapshot(workflow), user.id)
         assert loader.load_variables([["node", "text"]])[0].value == "injected"
         calls.append(entry)
         return {"result": "ready"}
@@ -140,7 +142,7 @@ def test_is_virtual_start_event(message, expected):
 
 
 def test_ensure_start_node_returns_workflow_when_start_already_exists():
-    workflow = _workflow({"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []})
+    workflow = workflow_snapshot(_workflow({"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}))
     snippet = _snippet()
 
     result = SnippetGenerateService._ensure_start_node(workflow, snippet)
@@ -148,7 +150,7 @@ def test_ensure_start_node_returns_workflow_when_start_already_exists():
     assert result is workflow
 
 
-def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch: pytest.MonkeyPatch):
+def test_ensure_start_node_injects_virtual_start_for_root_candidates():
     graph = {
         "nodes": [
             {"id": "llm-1", "data": {"type": "llm"}},
@@ -156,7 +158,7 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
         ],
         "edges": [{"source": "llm-1", "target": "answer-1"}],
     }
-    workflow = _workflow(graph)
+    workflow = workflow_snapshot(_workflow(graph))
     snippet = _snippet(
         input_fields=[
             {
@@ -168,18 +170,15 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
             }
         ]
     )
-    make_transient = Mock()
-    monkeypatch.setattr("services.snippet_generate_service.make_transient", make_transient)
-
     result = SnippetGenerateService._ensure_start_node(workflow, snippet)
 
-    assert result is workflow
-    updated_graph = workflow.graph_dict
+    assert result is not workflow
+    assert workflow.graph_dict == graph
+    updated_graph = result.graph_dict
     assert updated_graph["nodes"][0]["id"] == SNIPPET_VIRTUAL_START_NODE_ID
     assert updated_graph["nodes"][0]["data"]["variables"][0]["max_length"] == 128
     assert updated_graph["edges"][-1]["source"] == SNIPPET_VIRTUAL_START_NODE_ID
     assert updated_graph["edges"][-1]["target"] == "llm-1"
-    make_transient.assert_called_once_with(workflow)
 
 
 def test_parse_files_returns_empty_when_upload_config_disabled(monkeypatch: pytest.MonkeyPatch):
@@ -239,7 +238,8 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     workflow_generator_class.convert_to_event_stream = Mock(side_effect=lambda response: response)
 
     snippet_reader.workflow = workflow
-    ensure_start_node = Mock(return_value=workflow)
+    expected_workflow = workflow_snapshot(workflow)
+    ensure_start_node = Mock(return_value=expected_workflow)
     monkeypatch.setattr(SnippetGenerateService, "_ensure_start_node", ensure_start_node)
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
@@ -253,11 +253,12 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(
     assert [json.loads(event.removeprefix("data: ")) for event in result] == [
         {"event": "node_finished", "data": {"node_id": "llm-1"}}
     ]
-    ensure_start_node.assert_called_once_with(workflow, snippet)
+    ensure_start_node.assert_called_once_with(expected_workflow, snippet)
     generator.generate.assert_called_once()
     kwargs = generator.generate.call_args.kwargs
     assert kwargs["app_model"].id == "snippet-1"
-    assert kwargs["workflow"] is workflow
+    assert isinstance(kwargs["workflow"], WorkflowSnapshot)
+    assert kwargs["workflow"] == expected_workflow
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
     assert kwargs["call_depth"] == 0
@@ -292,7 +293,8 @@ def test_run_draft_node_delegates_to_workflow_service(
     workflow_service.run_draft_workflow_node.assert_called_once()
     kwargs = workflow_service.run_draft_workflow_node.call_args.kwargs
     assert kwargs["app_model"].id == "snippet-1"
-    assert kwargs["draft_workflow"] is workflow
+    assert isinstance(kwargs["draft_workflow"], WorkflowSnapshot)
+    assert kwargs["draft_workflow"] == workflow_snapshot(workflow)
     assert kwargs["node_id"] == "llm-1"
     assert kwargs["user_inputs"] == {"query": "hello"}
     assert kwargs["account"] is account
@@ -344,7 +346,8 @@ def test_generate_single_iteration_delegates_to_workflow_generator(
     generator.single_iteration_generate.assert_called_once()
     kwargs = generator.single_iteration_generate.call_args.kwargs
     assert kwargs["app_model"].id == "snippet-1"
-    assert kwargs["workflow"] is workflow
+    assert isinstance(kwargs["workflow"], WorkflowSnapshot)
+    assert kwargs["workflow"] == workflow_snapshot(workflow)
     assert kwargs["node_id"] == "iteration-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
@@ -393,7 +396,8 @@ def test_generate_single_loop_delegates_to_workflow_generator(
     generator.single_loop_generate.assert_called_once()
     kwargs = generator.single_loop_generate.call_args.kwargs
     assert kwargs["app_model"].id == "snippet-1"
-    assert kwargs["workflow"] is workflow
+    assert isinstance(kwargs["workflow"], WorkflowSnapshot)
+    assert kwargs["workflow"] == workflow_snapshot(workflow)
     assert kwargs["node_id"] == "loop-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True

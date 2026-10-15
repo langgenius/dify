@@ -55,6 +55,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -367,6 +368,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
+                        human_form_reader=HumanInputFormSubmissionRepository(
+                            sessions=(
+                                pause_state_config.session_factory
+                                if isinstance(pause_state_config.session_factory, sessionmaker)
+                                else sessionmaker(pause_state_config.session_factory)
+                            )
+                        ),
                         state_owner_user_id=pause_state_config.state_owner_user_id,
                         response_stream_filter=resolved_response_stream_filter,
                     )

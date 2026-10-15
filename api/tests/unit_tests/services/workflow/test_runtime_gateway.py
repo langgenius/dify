@@ -1254,7 +1254,7 @@ def test_task_rejects_snapshot_outside_its_debugger_owner(
         user=actor,
         args={"inputs": {}},
         invoke_from=InvokeFrom.DEBUGGER,
-        workflow_snapshot=module.workflow_snapshot(draft),
+        workflow_snapshot=draft,
     )
     payload = json.loads(params.model_dump_json())
     if field.startswith("workflow_snapshot."):

@@ -56,6 +56,7 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow_draft_variable_service import (
@@ -581,6 +582,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
+                        human_form_reader=HumanInputFormSubmissionRepository(
+                            sessions=(
+                                pause_state_config.session_factory
+                                if isinstance(pause_state_config.session_factory, sessionmaker)
+                                else sessionmaker(pause_state_config.session_factory)
+                            )
+                        ),
                         state_owner_user_id=pause_state_config.state_owner_user_id,
                         response_stream_filter=resolved_response_stream_filter,
                     )
