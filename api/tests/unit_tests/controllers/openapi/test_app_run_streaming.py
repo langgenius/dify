@@ -28,13 +28,16 @@ from controllers.openapi._models import (
     WorkflowRunPayload,
 )
 from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
-from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
+from controllers.openapi.auth.subjects import Subject, subject_from_auth
 from core.app.entities.app_invoke_entities import InvokeFrom
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.file import FileType
 from libs.oauth_bearer import AuthContext
 from models import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser, UploadFile
+from models.workflow import WorkflowRun
+from services.app_task_service import AppTaskControlService
 from tests.unit_tests.model_factories import make_upload_file
 from tests.unit_tests.services.test_app_task_service import _StopRedis
 
@@ -60,17 +63,18 @@ def _make_account() -> Account:
     return account
 
 
-def _subject(*, resource_access: bool = False) -> AccountSubject | ResourceAccessSubject:
-    auth = AuthContext(
-        token_type=TokenType.RESOURCE_ACCESS if resource_access else TokenType.OAUTH_ACCOUNT,
-        subject_email=None,
-        subject_issuer=None,
-        account_id=None if resource_access else uuid.UUID(_TEST_ACCOUNT_ID),
-        client_id=None,
-        token_id=uuid.uuid4(),
-        expires_at=None,
+def _subject(token_type: TokenType = TokenType.OAUTH_ACCOUNT) -> Subject:
+    return subject_from_auth(
+        AuthContext(
+            token_type=token_type,
+            subject_email="sso@example.com" if token_type == TokenType.OAUTH_EXTERNAL_SSO else None,
+            subject_issuer=None,
+            account_id=uuid.UUID(_TEST_ACCOUNT_ID) if token_type == TokenType.OAUTH_ACCOUNT else None,
+            client_id=None,
+            token_id=uuid.uuid4(),
+            expires_at=None,
+        )
     )
-    return ResourceAccessSubject(auth) if resource_access else AccountSubject(auth)
 
 
 @pytest.mark.parametrize(
@@ -94,76 +98,68 @@ def test_chat_payload_normalizes_conversation_id():
     assert ChatRunPayload(inputs={}, query="hi", conversation_id=cid).conversation_id == cid
 
 
-def test_stop_task_calls_queue_manager(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    queue_mock = Mock()
-
-    run_module = sys.modules["controllers.openapi.app_run"]
-    monkeypatch.setattr(run_module, "AppQueueManager", queue_mock)
-
-    api = AppRunTaskStopApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
-        result = api.post.__handler__(
-            api,
-            _SealableContext(
-                subject=_subject(),
-                app=App(mode=AppMode.CHAT),
-            ),
-            app_id="app-1",
-            task_id="task-1",
-        )
-
-    queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-    assert result == TaskStopResponse(result="success")
-
-
-@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-@pytest.mark.parametrize("resource_subject", [False, True])
-def test_workflow_task_stop_uses_durable_app_and_resource_owner(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, mode: AppMode, resource_subject: bool
+@pytest.mark.parametrize(
+    "token_type", [TokenType.OAUTH_ACCOUNT, TokenType.OAUTH_EXTERNAL_SSO, TokenType.RESOURCE_ACCESS]
+)
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize("owns_task", [False, True])
+def test_stop_task_enforces_resolved_caller_ownership(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    token_type: TokenType,
+    mode: AppMode,
+    owns_task: bool,
 ):
-    run_module = sys.modules["controllers.openapi.app_run"]
-    stop_calls: list[dict[str, object]] = []
+    import services.app_task_service as task_module
 
-    def stop_task(**kwargs: object) -> bool:
-        stop_calls.append(kwargs)
-        return True
-
-    monkeypatch.setattr(run_module.AppTaskService, "stop_workflow_task", stop_task)
-    redis = _StopRedis(read_error=AssertionError("Workflow stop must use the durable owner"))
-    monkeypatch.setattr(run_module, "redis_client", redis)
+    subject = _subject(token_type)
+    caller = _make_account() if subject.caller_role == CreatorUserRole.ACCOUNT else EndUser(id="user-1")
+    owner_id = caller.id if owns_task else "another-user"
+    task_id = str(uuid.uuid4())
+    redis = _StopRedis(values={f"generate_task_belong:{task_id}": f"end-user-{owner_id}".encode()})
+    if mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+        sqlite_session.add(
+            WorkflowRun(
+                id="run-1",
+                tenant_id="tenant-1",
+                app_id="app-1",
+                workflow_id="workflow-1",
+                task_id=task_id,
+                type=WorkflowType.CHAT if mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW,
+                version="1",
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.END_USER,
+                created_by=owner_id,
+            )
+        )
+        sqlite_session.commit()
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi.app_run"],
+        "application_services",
+        lambda: SimpleNamespace(app_tasks=AppTaskControlService(redis_client=redis)),
+    )
     ctx = _SealableContext(
-        subject=_subject(resource_access=resource_subject),
+        subject=subject,
+        caller=caller,
         app=App(id="app-1", tenant_id="tenant-1", mode=mode),
-        end_user=EndUser(id="user-1"),
     )
     api = AppRunTaskStopApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
-        result = api.post.__handler__(api, ctx, app_id="app-1", task_id="task-1")
-    assert stop_calls == [
-        {
-            "tenant_id": "tenant-1",
-            "app_id": "app-1",
-            "task_id": "task-1",
-            "app_mode": mode,
-            "owner": (CreatorUserRole.END_USER, "user-1") if resource_subject else None,
-        }
-    ]
-    assert result == TaskStopResponse(result="success")
-    assert redis.reads == []
-
-
-def test_resource_stop_hides_workflow_task_outside_durable_owner(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    run_module = sys.modules["controllers.openapi.app_run"]
-    monkeypatch.setattr(run_module.AppTaskService, "stop_workflow_task", lambda **_kwargs: False)
-    ctx = _SealableContext(
-        subject=_subject(resource_access=True),
-        app=App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW),
-        end_user=EndUser(id="user-1"),
-    )
-    api = AppRunTaskStopApi()
-    with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
-        with pytest.raises(NotFound, match="Task not found"):
-            api.post.__handler__(api, ctx, app_id="app-1", task_id="task-1")
+    allowed = owns_task or subject.caller_role == CreatorUserRole.ACCOUNT
+    with app.test_request_context(f"/openapi/v1/apps/app-1/tasks/{task_id}:stop", method="POST"):
+        if allowed:
+            assert api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id) == TaskStopResponse(result="success")
+        else:
+            with pytest.raises(NotFound, match="Task not found"):
+                api.post.__handler__(api, ctx, app_id="app-1", task_id=task_id)
+    if allowed:
+        assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
+        assert bool(redis.commands) == (mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT))
+    else:
+        assert redis.operations == []
+        assert redis.commands == {}
 
 
 class _SealableContext:

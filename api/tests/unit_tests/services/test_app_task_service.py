@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import partial
 from typing import override
 
@@ -14,11 +14,13 @@ import core.app.apps.base_app_queue_manager as queue_module
 import core.app.apps.execution_coordinator as coordinator_module
 import services.app_task_service as task_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.human_input import HumanInputForm
 from models.model import AppMode
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPause, WorkflowRun
 from services.app_task_service import AppTaskControlService, AppTaskService
 
 _TASK_ID = "task-with-non-uuid-id"
@@ -126,7 +128,7 @@ def _assert_graph_command(redis: _StopRedis) -> None:
 def test_stop_task_sets_only_the_legacy_flag() -> None:
     redis = _StopRedis(values={_OWNER_KEY: f"end-user-{_USER_ID}".encode()})
 
-    AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, InvokeFrom.WEB_APP, _USER_ID)
+    assert AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, InvokeFrom.WEB_APP, _USER_ID) is True
 
     assert redis.reads == [_OWNER_KEY]
     _assert_stop_flag(redis)
@@ -141,14 +143,18 @@ def test_stop_task_sets_only_the_legacy_flag() -> None:
         (InvokeFrom.DEBUGGER, b"account-user-1", True),
         (InvokeFrom.WEB_APP, b"end-user-user-1", True),
         (InvokeFrom.SERVICE_API, b"end-user-user-1", True),
+        (InvokeFrom.OPENAPI, b"end-user-user-1", True),
         (InvokeFrom.EXPLORE, b"end-user-user-1", False),
         (InvokeFrom.DEBUGGER, b"end-user-user-1", False),
         (InvokeFrom.WEB_APP, b"account-user-1", False),
         (InvokeFrom.SERVICE_API, b"account-user-1", False),
+        (InvokeFrom.OPENAPI, b"account-user-1", False),
         (InvokeFrom.EXPLORE, b"account-another-user", False),
         (InvokeFrom.WEB_APP, b"end-user-another-user", False),
+        (InvokeFrom.OPENAPI, b"end-user-another-user", False),
         (InvokeFrom.EXPLORE, None, False),
         (InvokeFrom.WEB_APP, None, False),
+        (InvokeFrom.OPENAPI, None, False),
     ],
 )
 def test_task_ownership_controls_the_legacy_flag(
@@ -156,8 +162,9 @@ def test_task_ownership_controls_the_legacy_flag(
 ) -> None:
     redis = _StopRedis(values={_OWNER_KEY: owner} if owner is not None else {})
 
-    AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, invoke_from, _USER_ID)
+    admitted = AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, invoke_from, _USER_ID)
 
+    assert admitted is should_set_flag
     assert redis.reads == [_OWNER_KEY]
     if should_set_flag:
         _assert_stop_flag(redis)
@@ -166,6 +173,183 @@ def test_task_ownership_controls_the_legacy_flag(
         assert _STOP_KEY not in redis.values
         assert redis.operations == []
     assert redis.commands == {}
+
+
+@pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize(
+    ("caller_role", "cached_owner", "admitted"),
+    [
+        (CreatorUserRole.END_USER, b"end-user-user-1", True),
+        (CreatorUserRole.END_USER, b"end-user-other", False),
+        (CreatorUserRole.END_USER, b"account-user-1", False),
+        (CreatorUserRole.END_USER, None, False),
+        (CreatorUserRole.ACCOUNT, b"end-user-other", True),
+        (CreatorUserRole.ACCOUNT, None, True),
+    ],
+)
+def test_stop_app_task_applies_legacy_caller_ownership(
+    app_mode: AppMode, caller_role: CreatorUserRole, cached_owner: bytes | None, admitted: bool
+) -> None:
+    redis = _StopRedis(values={_OWNER_KEY: cached_owner} if cached_owner is not None else {})
+
+    result = AppTaskControlService(redis_client=redis).stop_app_task(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        task_id=_TASK_ID,
+        app_mode=app_mode,
+        caller_role=caller_role,
+        caller_id=_USER_ID,
+    )
+
+    assert result is admitted
+    assert redis.reads == ([_OWNER_KEY] if caller_role is CreatorUserRole.END_USER else [])
+    assert redis.operations == (["legacy_flag"] if admitted else [])
+    assert redis.commands == {}
+    if admitted:
+        _assert_stop_flag(redis)
+    else:
+        assert _STOP_KEY not in redis.values
+
+
+@pytest.fixture
+def app_task_workflow_run(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> WorkflowRun:
+    run = WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        task_id="11111111-1111-1111-1111-111111111111",
+        type="workflow",
+        version="1",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        status=WorkflowExecutionStatus.RUNNING,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=_USER_ID,
+    )
+    sqlite_session.add(run)
+    monkeypatch.setattr(type(task_module.db), "engine", property(lambda _: sqlite_session.get_bind()))
+    return run
+
+
+@pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize(
+    ("caller_role", "run_owner_role", "run_owner_id"),
+    [
+        (CreatorUserRole.END_USER, CreatorUserRole.END_USER, _USER_ID),
+        (CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER, "other-user"),
+        (CreatorUserRole.ACCOUNT, CreatorUserRole.ACCOUNT, "other-account"),
+    ],
+)
+def test_stop_app_task_signals_admitted_running_workflow(
+    sqlite_session: Session,
+    app_task_workflow_run: WorkflowRun,
+    app_mode: AppMode,
+    caller_role: CreatorUserRole,
+    run_owner_role: CreatorUserRole,
+    run_owner_id: str,
+) -> None:
+    run = app_task_workflow_run
+    run.created_by_role = run_owner_role
+    run.created_by = run_owner_id
+    sqlite_session.commit()
+    task_id = run.task_id
+    assert task_id is not None
+    redis = _StopRedis(read_error=AssertionError("Durable workflow ownership must not depend on Redis"))
+
+    admitted = AppTaskControlService(redis_client=redis).stop_app_task(
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        task_id=task_id,
+        app_mode=app_mode,
+        caller_role=caller_role,
+        caller_id=_USER_ID,
+    )
+
+    assert admitted is True
+    sqlite_session.refresh(run)
+    assert run.status == WorkflowExecutionStatus.RUNNING
+    assert run.stop_requested_at is not None
+    assert redis.reads == []
+    assert redis.operations == ["legacy_flag", "graph_command"]
+    assert redis.values[f"generate_task_stopped:{task_id}"] == b"1"
+    assert [json.loads(command) for command in redis.commands[f"workflow:{task_id}:commands"]] == [
+        {"command_type": "abort", "reason": "User requested stop"}
+    ]
+
+
+@pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("status", [WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED])
+@pytest.mark.parametrize(
+    ("caller_role", "mismatch"),
+    [
+        (CreatorUserRole.END_USER, "owner-id"),
+        (CreatorUserRole.END_USER, "owner-role"),
+        (CreatorUserRole.END_USER, "app"),
+        (CreatorUserRole.END_USER, "tenant"),
+        (CreatorUserRole.END_USER, "missing"),
+        (CreatorUserRole.ACCOUNT, "app"),
+        (CreatorUserRole.ACCOUNT, "tenant"),
+        (CreatorUserRole.ACCOUNT, "missing"),
+    ],
+)
+def test_stop_app_task_preserves_unadmitted_workflow_and_pause(
+    sqlite_session: Session,
+    app_task_workflow_run: WorkflowRun,
+    app_mode: AppMode,
+    status: WorkflowExecutionStatus,
+    caller_role: CreatorUserRole,
+    mismatch: str,
+) -> None:
+    run = app_task_workflow_run
+    run.status = status
+    if mismatch == "owner-id":
+        run.created_by = "other-user"
+    if mismatch == "owner-role":
+        run.created_by_role = CreatorUserRole.ACCOUNT
+    pause = None
+    form = None
+    if status == WorkflowExecutionStatus.PAUSED:
+        pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
+        form = HumanInputForm(
+            id="form-1",
+            tenant_id=run.tenant_id,
+            app_id=run.app_id,
+            workflow_run_id=run.id,
+            node_id="review",
+            form_definition="{}",
+            rendered_content="Review",
+            expiration_time=datetime(2026, 10, 20),
+        )
+        sqlite_session.add_all([pause, form])
+    sqlite_session.commit()
+    task_id = "22222222-2222-2222-2222-222222222222" if mismatch == "missing" else run.task_id
+    assert task_id is not None
+    redis = _StopRedis(read_error=AssertionError("Durable workflow ownership must not depend on Redis"))
+
+    admitted = AppTaskControlService(redis_client=redis).stop_app_task(
+        tenant_id="other-tenant" if mismatch == "tenant" else run.tenant_id,
+        app_id="other-app" if mismatch == "app" else run.app_id,
+        task_id=task_id,
+        app_mode=app_mode,
+        caller_role=caller_role,
+        caller_id=_USER_ID,
+    )
+
+    assert admitted is (caller_role is CreatorUserRole.ACCOUNT)
+    assert redis.reads == []
+    assert redis.operations == []
+    assert redis.values == {}
+    assert redis.commands == {}
+    sqlite_session.refresh(run)
+    assert run.status == status
+    assert run.stop_requested_at is None
+    assert run.finished_at is None
+    if pause is not None and form is not None:
+        sqlite_session.refresh(pause)
+        sqlite_session.refresh(form)
+        assert pause.state_object_key == "state"
+        assert form.status == HumanInputFormStatus.WAITING
+        assert form.submitted_at is None
 
 
 @pytest.mark.parametrize("owner", [None, b"account-another-user"])
