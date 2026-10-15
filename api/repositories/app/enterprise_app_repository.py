@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import override
 
 import sqlalchemy as sa
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import escape_like_pattern
@@ -13,11 +13,14 @@ from libs.pagination import PaginatedResult, clamp_pagination
 from libs.url_utils import normalize_api_base_url
 from models import Account, Tenant
 from models.agent import (
+    AGENT_APP_VERSION_OPERATIONS,
     APP_BACKED_AGENT_SOURCES,
     Agent,
     AgentConfigRevision,
+    AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentScope,
+    AgentSource,
     AgentStatus,
 )
 from models.enums import ApiTokenType, AppStatus, AppTriggerType, InvokeFrom, MessageStatus, WorkflowRunTriggeredFrom
@@ -27,8 +30,10 @@ from models.workflow import Workflow, WorkflowRun
 from services.app.enterprise_app_service import (
     EnterpriseAppApi,
     EnterpriseAppBuiltIn,
+    EnterpriseAppBuiltInSummary,
     EnterpriseAppCreator,
     EnterpriseAppDetail,
+    EnterpriseAppListItem,
     EnterpriseAppListParams,
     EnterpriseAppMCPServer,
     EnterpriseAppPublishedVersion,
@@ -51,9 +56,31 @@ _INVOKED_RUN_SOURCES = (
 )
 # Every finished run that is neither succeeded nor stopped by the user.
 _FAILED_RUN_STATUSES = (WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.PARTIAL_SUCCEEDED)
+_INVOKED_RUN = WorkflowRun.triggered_from.in_(_INVOKED_RUN_SOURCES)
+_INVOKED_MESSAGE = Message.invoke_from != InvokeFrom.DEBUGGER
 
 # Outer joins: the workspace and creator columns are None at runtime when the row is missing.
 _SummaryRow = tuple[App, str, str, str, str]
+
+
+def _creator(account_id: str | None, name: str | None, email: str | None) -> EnterpriseAppCreator | None:
+    """Build a creator from outer-joined Account columns, which are all None when the row is missing."""
+    if account_id is None or name is None or email is None:
+        return None
+    return EnterpriseAppCreator(id=account_id, name=name, email=email)
+
+
+def _roster_agent_condition(
+    tenant_id: sa.ColumnElement[str] | InstrumentedAttribute[str] | str,
+    app_id: sa.ColumnElement[str] | InstrumentedAttribute[str] | str,
+) -> sa.ColumnElement[bool]:
+    """Match the active roster Agent an Agent App is bound to."""
+    return sa.and_(
+        Agent.tenant_id == tenant_id,
+        Agent.app_id == app_id,
+        Agent.scope == AgentScope.ROSTER,
+        Agent.status == AgentStatus.ACTIVE,
+    )
 
 
 def _studio_visible_condition() -> sa.ColumnElement[bool]:
@@ -102,11 +129,7 @@ def _summary(row: sa.Row[_SummaryRow]) -> EnterpriseAppSummary:
         icon_background=app.icon_background,
         workspace_id=app.tenant_id,
         workspace_name=workspace_name,
-        created_by=(
-            EnterpriseAppCreator(id=creator_id, name=creator_name, email=creator_email)
-            if creator_id is not None
-            else None
-        ),
+        created_by=_creator(creator_id, creator_name, creator_email),
         created_at=app.created_at,
         updated_at=app.updated_at,
     )
@@ -119,7 +142,9 @@ class EnterpriseAppRepository(EnterpriseAppStore):
         self._api_base_url = normalize_api_base_url(service_api_url) if service_api_url else None
 
     @override
-    def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppSummary]:
+    def list_apps(
+        self, params: EnterpriseAppListParams, *, invoked_since: datetime
+    ) -> PaginatedResult[EnterpriseAppListItem]:
         filters = [_studio_visible_condition()]
         if params.workspace_ids:
             filters.append(App.tenant_id.in_(params.workspace_ids))
@@ -142,7 +167,18 @@ class EnterpriseAppRepository(EnterpriseAppStore):
                 .offset((page - 1) * limit)
                 .limit(limit)
             ).all()
-            items = [_summary(row) for row in rows]
+            apps = [row[0] for row in rows]
+            published = self._published_app_ids(session, apps)
+            invocations = self._invocation_counts(session, apps, invoked_since)
+            items = [
+                EnterpriseAppListItem(
+                    app=_summary(row),
+                    built_in=EnterpriseAppBuiltInSummary(
+                        published=row[0].id in published, invocation_count=invocations.get(row[0].id, 0)
+                    ),
+                )
+                for row in rows
+            ]
         return PaginatedResult(items=items, total=total, page=page, per_page=limit)
 
     @override
@@ -153,10 +189,12 @@ class EnterpriseAppRepository(EnterpriseAppStore):
                 return None
             app = row[0]
             last_invoked_at, invocation_count, failed_invocation_count = self._invocations(session, app, invoked_since)
+            published_version, published_version_count = self._published_versions(session, app)
             return EnterpriseAppDetail(
                 app=_summary(row),
                 built_in=EnterpriseAppBuiltIn(
-                    published_version=self._published_version(session, app),
+                    published_version=published_version,
+                    published_version_count=published_version_count,
                     site=EnterpriseAppSite(
                         enabled=app.enable_site,
                         code=session.scalar(sa.select(Site.code).where(Site.app_id == app.id).limit(1)),
@@ -181,34 +219,142 @@ class EnterpriseAppRepository(EnterpriseAppStore):
             )
 
     @staticmethod
-    def _published_version(session: Session, app: App) -> EnterpriseAppPublishedVersion | None:
-        if app.mode in _WORKFLOW_APP_MODES:
-            if not app.workflow_id:
-                return None
-            workflow = session.execute(
-                sa.select(Workflow.id, Workflow.version_number, Workflow.created_at).where(
-                    Workflow.id == app.workflow_id, Workflow.app_id == app.id
+    def _published_app_ids(session: Session, apps: Sequence[App]) -> set[str]:
+        """Batch form of the published_version check: ids whose detail reports a published version."""
+        workflow_app_ids = [app.id for app in apps if app.mode in _WORKFLOW_APP_MODES]
+        agent_app_ids = [app.id for app in apps if app.mode == AppMode.AGENT]
+        published: set[str] = set()
+        if workflow_app_ids:
+            published.update(
+                session.scalars(
+                    sa.select(App.id)
+                    .join(Workflow, sa.and_(Workflow.id == App.workflow_id, Workflow.app_id == App.id))
+                    .where(App.id.in_(workflow_app_ids))
                 )
-            ).one_or_none()
-            return EnterpriseAppPublishedVersion(*workflow) if workflow else None
-
-        if app.mode != AppMode.AGENT:
-            return None
-        snapshot = session.execute(
-            sa.select(Agent.id, AgentConfigSnapshot.id, AgentConfigSnapshot.version, AgentConfigSnapshot.created_at)
-            .join(AgentConfigSnapshot, AgentConfigSnapshot.id == Agent.active_config_snapshot_id)
-            .where(
-                Agent.tenant_id == app.tenant_id,
-                Agent.app_id == app.id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.status == AgentStatus.ACTIVE,
-                Agent.active_config_is_published.is_(True),
             )
+        if agent_app_ids:
+            published.update(
+                session.scalars(
+                    sa.select(App.id)
+                    .join(Agent, _roster_agent_condition(App.tenant_id, App.id))
+                    .join(
+                        AgentConfigSnapshot,
+                        sa.and_(
+                            AgentConfigSnapshot.id == Agent.active_config_snapshot_id,
+                            AgentConfigSnapshot.agent_id == Agent.id,
+                        ),
+                    )
+                    .where(App.id.in_(agent_app_ids), Agent.active_config_is_published.is_(True))
+                )
+            )
+        return published
+
+    @classmethod
+    def _published_versions(cls, session: Session, app: App) -> tuple[EnterpriseAppPublishedVersion | None, int]:
+        """Return the served version and the size of the version history Studio shows."""
+        if app.mode in _WORKFLOW_APP_MODES:
+            return cls._published_workflow(session, app)
+        if app.mode == AppMode.AGENT:
+            return cls._published_agent_snapshot(session, app)
+        return None, 0
+
+    @staticmethod
+    def _published_workflow(session: Session, app: App) -> tuple[EnterpriseAppPublishedVersion | None, int]:
+        count = (
+            session.scalar(
+                sa.select(sa.func.count())
+                .select_from(Workflow)
+                .where(
+                    Workflow.tenant_id == app.tenant_id,
+                    Workflow.app_id == app.id,
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
+            )
+            or 0
+        )
+        if not app.workflow_id:
+            return None, count
+        row = session.execute(
+            sa.select(
+                Workflow.id,
+                Workflow.version,
+                Workflow.version_number,
+                Workflow.marked_name,
+                Workflow.marked_comment,
+                Workflow.created_at,
+                Account.id,
+                Account.name,
+                Account.email,
+            )
+            .outerjoin(Account, Account.id == Workflow.created_by)
+            .where(Workflow.id == app.workflow_id, Workflow.app_id == app.id)
+        ).one_or_none()
+        if row is None:
+            return None, count
+        workflow_id, version, version_number, marked_name, marked_comment, created_at, *creator = row
+        return (
+            EnterpriseAppPublishedVersion(
+                id=workflow_id,
+                version=version,
+                version_number=version_number,
+                marked_name=marked_name,
+                marked_comment=marked_comment,
+                created_by=_creator(*creator),
+                published_at=created_at,
+            ),
+            count,
+        )
+
+    @staticmethod
+    def _published_agent_snapshot(session: Session, app: App) -> tuple[EnterpriseAppPublishedVersion | None, int]:
+        agent = session.execute(
+            sa.select(Agent.id, Agent.source, Agent.active_config_snapshot_id, Agent.active_config_is_published)
+            .where(_roster_agent_condition(app.tenant_id, app.id))
             .limit(1)
         ).one_or_none()
+        if agent is None:
+            return None, 0
+        agent_id, source, snapshot_id, is_published = agent
+        operations = (
+            AGENT_APP_VERSION_OPERATIONS | {AgentConfigRevisionOperation.IMPORT_PACKAGE}
+            if source == AgentSource.IMPORTED
+            else AGENT_APP_VERSION_OPERATIONS
+        )
+        history = session.scalars(
+            sa.select(AgentConfigSnapshot.id)
+            .where(
+                AgentConfigSnapshot.tenant_id == app.tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id.in_(
+                    sa.select(AgentConfigRevision.current_snapshot_id).where(
+                        AgentConfigRevision.tenant_id == app.tenant_id,
+                        AgentConfigRevision.agent_id == agent_id,
+                        AgentConfigRevision.operation.in_(operations),
+                    )
+                ),
+            )
+            .order_by(AgentConfigSnapshot.version.asc())
+        ).all()
+        if not (snapshot_id and is_published):
+            return None, len(history)
+        snapshot = session.execute(
+            sa.select(
+                AgentConfigSnapshot.version_note,
+                AgentConfigSnapshot.created_at,
+                Account.id,
+                Account.name,
+                Account.email,
+            )
+            .outerjoin(Account, Account.id == AgentConfigSnapshot.created_by)
+            .where(
+                AgentConfigSnapshot.tenant_id == app.tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == snapshot_id,
+            )
+        ).one_or_none()
         if snapshot is None:
-            return None
-        agent_id, snapshot_id, version, created_at = snapshot
+            return None, len(history)
+        version_note, created_at, *creator = snapshot
         # Restoring an older version re-serves an existing snapshot, so the
         # latest revision pointing at it is when it went live.
         published_at = session.scalar(
@@ -218,8 +364,19 @@ class EnterpriseAppRepository(EnterpriseAppStore):
                 AgentConfigRevision.current_snapshot_id == snapshot_id,
             )
         )
-        return EnterpriseAppPublishedVersion(
-            id=snapshot_id, version_number=version, published_at=published_at or created_at
+        # Studio numbers history entries from 1 in snapshot version order.
+        version_numbers = {history_id: number for number, history_id in enumerate(history, start=1)}
+        return (
+            EnterpriseAppPublishedVersion(
+                id=snapshot_id,
+                version=None,
+                version_number=version_numbers.get(snapshot_id),
+                marked_name=None,
+                marked_comment=version_note,
+                created_by=_creator(*creator),
+                published_at=published_at or created_at,
+            ),
+            len(history),
         )
 
     @staticmethod
@@ -268,15 +425,11 @@ class EnterpriseAppRepository(EnterpriseAppStore):
     def _invocations(session: Session, app: App, since: datetime) -> tuple[datetime | None, int, int]:
         """Read built-in invocations: workflow runs for workflow Apps, messages otherwise."""
         if app.mode in _WORKFLOW_APP_MODES:
-            source = sa.and_(
-                WorkflowRun.tenant_id == app.tenant_id,
-                WorkflowRun.app_id == app.id,
-                WorkflowRun.triggered_from.in_(_INVOKED_RUN_SOURCES),
-            )
+            source = sa.and_(WorkflowRun.tenant_id == app.tenant_id, WorkflowRun.app_id == app.id, _INVOKED_RUN)
             created_at = WorkflowRun.created_at
             failed = WorkflowRun.status.in_(_FAILED_RUN_STATUSES)
         else:
-            source = sa.and_(Message.app_id == app.id, Message.invoke_from != InvokeFrom.DEBUGGER)
+            source = sa.and_(Message.app_id == app.id, _INVOKED_MESSAGE)
             created_at = Message.created_at
             failed = Message.status == MessageStatus.ERROR
 
@@ -288,3 +441,36 @@ class EnterpriseAppRepository(EnterpriseAppStore):
             )
         ).one()
         return last_invoked_at, int(total), int(failed_total)
+
+    @staticmethod
+    def _invocation_counts(session: Session, apps: Sequence[App], since: datetime) -> dict[str, int]:
+        """Batch form of the detail's invocation_count, keyed by app id; apps without invocations are absent."""
+        workflow_apps = [app for app in apps if app.mode in _WORKFLOW_APP_MODES]
+        message_app_ids = [app.id for app in apps if app.mode not in _WORKFLOW_APP_MODES]
+        counts: dict[str, int] = {}
+        if workflow_apps:
+            counts.update(
+                session.execute(
+                    sa.select(WorkflowRun.app_id, sa.func.count())
+                    .where(
+                        WorkflowRun.tenant_id.in_({app.tenant_id for app in workflow_apps}),
+                        WorkflowRun.app_id.in_([app.id for app in workflow_apps]),
+                        _INVOKED_RUN,
+                        WorkflowRun.created_at >= since,
+                    )
+                    .group_by(WorkflowRun.app_id)
+                )
+                .tuples()
+                .all()
+            )
+        if message_app_ids:
+            counts.update(
+                session.execute(
+                    sa.select(Message.app_id, sa.func.count())
+                    .where(Message.app_id.in_(message_app_ids), _INVOKED_MESSAGE, Message.created_at >= since)
+                    .group_by(Message.app_id)
+                )
+                .tuples()
+                .all()
+            )
+        return counts

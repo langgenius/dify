@@ -16,7 +16,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest
 
-from controllers.inner_api.app.app import EnterpriseAppDetail, EnterpriseAppList
+from controllers.inner_api.app.app import (
+    EnterpriseAppBuiltInResponse,
+    EnterpriseAppDetail,
+    EnterpriseAppDetailResponse,
+    EnterpriseAppList,
+    EnterpriseAppPaginationResponse,
+)
 from graphon.enums import WorkflowExecutionStatus
 from models import Account, App, Tenant
 from models.account import AccountStatus
@@ -104,6 +110,56 @@ def _agent(tenant_id: str, *, scope: AgentScope, status: AgentStatus = AgentStat
     )
 
 
+def _workflow(app: App, *, version: str, created_by: str, **kwargs: object) -> Workflow:
+    return Workflow(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        type=WorkflowType.WORKFLOW,
+        version=version,
+        graph="{}",
+        features="{}",
+        environment_variables=[],
+        conversation_variables=[],
+        created_by=created_by,
+        **kwargs,
+    )
+
+
+def _snapshot(agent: Agent, version: int, created_at: datetime, **kwargs: object) -> AgentConfigSnapshot:
+    snapshot = AgentConfigSnapshot(
+        tenant_id=agent.tenant_id, agent_id=agent.id, version=version, config_snapshot={}, **kwargs
+    )
+    snapshot.created_at = created_at
+    return snapshot
+
+
+def _revision(
+    snapshot: AgentConfigSnapshot, revision: int, operation: AgentConfigRevisionOperation, created_at: datetime
+) -> AgentConfigRevision:
+    return AgentConfigRevision(
+        tenant_id=snapshot.tenant_id,
+        agent_id=snapshot.agent_id,
+        current_snapshot_id=snapshot.id,
+        revision=revision,
+        operation=operation,
+        created_at=created_at,
+    )
+
+
+def _publish_agent(session: Session, app_id: str) -> Agent:
+    """Publish one snapshot for the roster Agent bound to the App."""
+    agent = session.scalar(select(Agent).where(Agent.app_id == app_id))
+    assert agent is not None
+    snapshot = _snapshot(agent, 1, datetime(2026, 2, 1))
+    session.add(snapshot)
+    session.flush()
+    session.add(_revision(snapshot, 1, AgentConfigRevisionOperation.PUBLISH_DRAFT, datetime(2026, 2, 1)))
+    agent.active_config_snapshot_id = snapshot.id
+    agent.active_config_is_published = True
+    session.flush()
+    return agent
+
+
 @pytest.fixture
 def seeded(sqlite_session: Session) -> dict[str, str]:
     creator = Account(name="Creator", email="creator@example.com", status=AccountStatus.ACTIVE)
@@ -137,9 +193,10 @@ def seeded(sqlite_session: Session) -> dict[str, str]:
     return {"alpha": alpha.id, "beta": beta.id, "gamma": gamma.id, "roster": roster.id, "creator": creator.id}
 
 
-def _list(app: Flask, query: str = "") -> dict:
+def _list(app: Flask, query: str = "") -> EnterpriseAppPaginationResponse:
     with app.test_request_context(f"/enterprise/apps{query}"):
-        return inspect.unwrap(EnterpriseAppList.get)(EnterpriseAppList())
+        body = inspect.unwrap(EnterpriseAppList.get)(EnterpriseAppList())
+    return EnterpriseAppPaginationResponse.model_validate(body)
 
 
 @pytest.mark.usefixtures("enterprise_apps")
@@ -148,13 +205,13 @@ class TestEnterpriseAppList:
     def test_lists_studio_visible_apps_newest_first(self, app: Flask) -> None:
         body = _list(app)
 
-        assert [item["name"] for item in body["data"]] == ["Roster Agent", "beta", "Gamma", "Alpha 100%"]
-        assert (body["page"], body["limit"], body["total"], body["has_more"]) == (1, 20, 4, False)
+        assert [item.name for item in body.data] == ["Roster Agent", "beta", "Gamma", "Alpha 100%"]
+        assert (body.page, body.limit, body.total, body.has_more) == (1, 20, 4, False)
 
     def test_item_shape(self, app: Flask, seeded: dict[str, str]) -> None:
-        items = {item["name"]: item for item in _list(app)["data"]}
+        items = {item.name: item for item in _list(app).data}
 
-        assert items["Alpha 100%"] == {
+        assert items["Alpha 100%"].model_dump(mode="json") == {
             "id": seeded["alpha"],
             "name": "Alpha 100%",
             "description": "d",
@@ -167,9 +224,65 @@ class TestEnterpriseAppList:
             "created_by": {"id": seeded["creator"], "name": "Creator", "email": "creator@example.com"},
             "created_at": int(datetime(2026, 1, 1).timestamp()),
             "updated_at": int(datetime(2026, 1, 1).timestamp()),
+            "built_in": {"published": False, "invocation_count_24h": 0},
         }
         # A creator whose account no longer exists is reported as missing.
-        assert items["Gamma"]["created_by"] is None
+        assert items["Gamma"].created_by is None
+
+    def test_item_built_in_summary(self, app: Flask, sqlite_session: Session, seeded: dict[str, str]) -> None:
+        workflow_app = sqlite_session.get(App, seeded["alpha"])
+        assert workflow_app is not None
+        published = _workflow(workflow_app, version="2026-01-02 00:00:00", created_by=seeded["creator"])
+        sqlite_session.add(published)
+        sqlite_session.flush()
+        workflow_app.workflow_id = published.id
+        # beta points at a workflow that no longer exists, so it is not published.
+        beta = sqlite_session.get(App, seeded["beta"])
+        assert beta is not None
+        beta.workflow_id = str(uuid4())
+        _publish_agent(sqlite_session, seeded["roster"])
+        sqlite_session.add_all(
+            [
+                _run(workflow_app, WorkflowExecutionStatus.SUCCEEDED, NOW - timedelta(hours=1)),
+                _run(workflow_app, WorkflowExecutionStatus.FAILED, NOW - timedelta(hours=2)),
+                _run(workflow_app, WorkflowExecutionStatus.SUCCEEDED, NOW - timedelta(hours=25)),
+                _run(
+                    workflow_app,
+                    WorkflowExecutionStatus.SUCCEEDED,
+                    NOW - timedelta(minutes=1),
+                    triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+                ),
+                _message(seeded["gamma"], MessageStatus.NORMAL, NOW - timedelta(hours=1), InvokeFrom.WEB_APP),
+                _message(seeded["gamma"], MessageStatus.NORMAL, NOW - timedelta(hours=1), InvokeFrom.DEBUGGER),
+                _message(seeded["roster"], MessageStatus.ERROR, NOW - timedelta(hours=3), InvokeFrom.SERVICE_API),
+            ]
+        )
+        sqlite_session.commit()
+
+        items = _list(app).data
+
+        assert {item.name: item.built_in.model_dump(mode="json") for item in items} == {
+            "Alpha 100%": {"published": True, "invocation_count_24h": 2},
+            "beta": {"published": False, "invocation_count_24h": 0},
+            "Gamma": {"published": False, "invocation_count_24h": 1},
+            "Roster Agent": {"published": True, "invocation_count_24h": 1},
+        }
+        for item in items:
+            detail = _built_in(app, item.id)
+            assert item.built_in.published == (detail.published_version is not None)
+            assert item.built_in.invocation_count_24h == detail.invocation_count_24h
+
+    def test_agent_with_unpublished_draft_is_not_published(
+        self, app: Flask, sqlite_session: Session, seeded: dict[str, str]
+    ) -> None:
+        agent = _publish_agent(sqlite_session, seeded["roster"])
+        agent.active_config_is_published = False
+        sqlite_session.commit()
+
+        items = {item.name: item for item in _list(app).data}
+
+        assert items["Roster Agent"].built_in.published is False
+        assert _built_in(app, seeded["roster"]).published_version is None
 
     @pytest.mark.parametrize(
         ("query", "expected"),
@@ -188,15 +301,15 @@ class TestEnterpriseAppList:
     )
     @pytest.mark.usefixtures("seeded")
     def test_filters_and_sorting(self, app: Flask, query: str, expected: list[str]) -> None:
-        assert [item["name"] for item in _list(app, query)["data"]] == expected
+        assert [item.name for item in _list(app, query).data] == expected
 
     @pytest.mark.usefixtures("seeded")
     def test_pagination(self, app: Flask) -> None:
         first = _list(app, "?limit=3")
         second = _list(app, "?limit=3&page=2")
 
-        assert (first["total"], first["has_more"], len(first["data"])) == (4, True, 3)
-        assert (second["total"], second["has_more"], [item["name"] for item in second["data"]]) == (
+        assert (first.total, first.has_more, len(first.data)) == (4, True, 3)
+        assert (second.total, second.has_more, [item.name for item in second.data]) == (
             4,
             False,
             ["Alpha 100%"],
@@ -215,9 +328,17 @@ class TestEnterpriseAppList:
             assert params[name]["in"] == "query"
 
 
-def _detail(app: Flask, app_id: str) -> dict | tuple[dict, int]:
+def _detail_raw(app: Flask, app_id: str) -> object:
     with app.test_request_context(f"/enterprise/apps/{app_id}"):
         return inspect.unwrap(EnterpriseAppDetail.get)(EnterpriseAppDetail(), app_id=UUID(app_id))
+
+
+def _detail(app: Flask, app_id: str) -> EnterpriseAppDetailResponse:
+    return EnterpriseAppDetailResponse.model_validate(_detail_raw(app, app_id))
+
+
+def _built_in(app: Flask, app_id: str) -> EnterpriseAppBuiltInResponse:
+    return _detail(app, app_id).built_in
 
 
 def _run(app: App, status: WorkflowExecutionStatus, created_at: datetime, **kwargs: object) -> WorkflowRun:
@@ -261,20 +382,22 @@ class TestEnterpriseAppDetail:
     def test_workflow_app_built_in_state(self, app: Flask, sqlite_session: Session, seeded: dict[str, str]) -> None:
         workflow_app = sqlite_session.get(App, seeded["alpha"])
         assert workflow_app is not None
-        published = Workflow(
-            tenant_id=WS_A,
-            app_id=workflow_app.id,
-            type=WorkflowType.WORKFLOW,
+        published = _workflow(
+            workflow_app,
             version="2026-01-02 00:00:00",
             version_number=3,
-            graph="{}",
-            features="{}",
-            environment_variables=[],
-            conversation_variables=[],
+            marked_name="Launch",
+            marked_comment="First release",
             created_by=seeded["creator"],
             created_at=datetime(2026, 1, 2),
         )
-        sqlite_session.add(published)
+        sqlite_session.add_all(
+            [
+                published,
+                _workflow(workflow_app, version="2026-01-03 00:00:00", version_number=4, created_by=seeded["creator"]),
+                _workflow(workflow_app, version=Workflow.VERSION_DRAFT, created_by=seeded["creator"]),
+            ]
+        )
         sqlite_session.flush()
         workflow_app.workflow_id = published.id
         workflow_app.enable_site = True
@@ -341,21 +464,24 @@ class TestEnterpriseAppDetail:
 
         body = _detail(app, seeded["alpha"])
 
-        assert isinstance(body, dict)
-        assert body["id"] == seeded["alpha"]
-        assert body["workspace_name"] == "Support"
-        built_in = body["built_in"]
+        assert (body.id, body.workspace_name) == (seeded["alpha"], "Support")
+        built_in = body.built_in.model_dump(mode="json")
         assert built_in["published_version"] == {
             "id": published.id,
+            "version": "2026-01-02 00:00:00",
             "version_number": 3,
+            "marked_name": "Launch",
+            "marked_comment": "First release",
+            "created_by": {"id": seeded["creator"], "name": "Creator", "email": "creator@example.com"},
             "published_at": int(datetime(2026, 1, 2).timestamp()),
         }
+        assert built_in["published_version_count"] == 2
         assert built_in["site"] == {"enabled": True, "code": "site-code", "app_base_url": "https://apps.example.com"}
         assert built_in["api"] == {"enabled": False, "base_url": "https://api.example.com/v1", "api_key_count": 2}
         assert built_in["mcp_server"] == {"status": "active", "server_code": "mcp-code"}
-        triggers = {trigger["node_id"]: trigger for trigger in built_in["triggers"]}
-        assert triggers["hook"]["webhook_url"].endswith("/triggers/webhook/whk")
-        assert triggers["cron"] | {"id": None} == {
+        triggers = {trigger.node_id: trigger for trigger in body.built_in.triggers}
+        assert (triggers["hook"].webhook_url or "").endswith("/triggers/webhook/whk")
+        assert triggers["cron"].model_dump(mode="json") | {"id": None} == {
             "id": None,
             "node_id": "cron",
             "title": "Cron",
@@ -380,9 +506,9 @@ class TestEnterpriseAppDetail:
         )
         sqlite_session.commit()
 
-        built_in = cast(dict, _detail(app, seeded["gamma"]))["built_in"]
+        built_in = _built_in(app, seeded["gamma"]).model_dump(mode="json")
 
-        assert built_in["published_version"] is None
+        assert (built_in["published_version"], built_in["published_version_count"]) == (None, 0)
         assert built_in["site"] == {"enabled": False, "code": None, "app_base_url": "https://apps.example.com"}
         assert built_in["mcp_server"] is None
         assert built_in["triggers"] == []
@@ -391,54 +517,55 @@ class TestEnterpriseAppDetail:
 
     @pytest.mark.usefixtures("seeded")
     def test_app_without_invocations(self, app: Flask, seeded: dict[str, str]) -> None:
-        built_in = cast(dict, _detail(app, seeded["beta"]))["built_in"]
+        built_in = _built_in(app, seeded["beta"])
 
-        assert built_in["published_version"] is None
-        assert (built_in["last_invoked_at"], built_in["invocation_count_24h"]) == (None, 0)
+        assert built_in.published_version is None
+        assert (built_in.last_invoked_at, built_in.invocation_count_24h) == (None, 0)
 
     def test_agent_app_published_version_uses_latest_revision(
         self, app: Flask, sqlite_session: Session, seeded: dict[str, str]
     ) -> None:
         agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == seeded["roster"]))
         assert agent is not None
-        snapshot = AgentConfigSnapshot(tenant_id=WS_B, agent_id=agent.id, version=2, config_snapshot={})
-        snapshot.created_at = datetime(2026, 2, 1)
-        sqlite_session.add(snapshot)
+        # The initial snapshot is not in an Agent App's version history.
+        initial = _snapshot(agent, 1, datetime(2026, 1, 15))
+        served = _snapshot(agent, 2, datetime(2026, 2, 1), version_note="Tuned prompt", created_by=seeded["creator"])
+        newer = _snapshot(agent, 3, datetime(2026, 2, 15))
+        sqlite_session.add_all([initial, served, newer])
         sqlite_session.flush()
-        agent.active_config_snapshot_id = snapshot.id
+        agent.active_config_snapshot_id = served.id
         agent.active_config_is_published = True
         sqlite_session.add_all(
             [
-                AgentConfigRevision(
-                    tenant_id=WS_B,
-                    agent_id=agent.id,
-                    current_snapshot_id=snapshot.id,
-                    revision=revision,
-                    operation=operation,
-                    created_at=created_at,
-                )
-                for revision, operation, created_at in (
-                    (1, AgentConfigRevisionOperation.PUBLISH_DRAFT, datetime(2026, 2, 1)),
-                    (2, AgentConfigRevisionOperation.RESTORE_VERSION, datetime(2026, 3, 1)),
-                )
+                _revision(initial, 1, AgentConfigRevisionOperation.CREATE_VERSION, datetime(2026, 1, 15)),
+                _revision(served, 2, AgentConfigRevisionOperation.PUBLISH_DRAFT, datetime(2026, 2, 1)),
+                _revision(newer, 3, AgentConfigRevisionOperation.PUBLISH_DRAFT, datetime(2026, 2, 15)),
+                _revision(served, 4, AgentConfigRevisionOperation.RESTORE_VERSION, datetime(2026, 3, 1)),
             ]
         )
         sqlite_session.commit()
 
-        built_in = cast(dict, _detail(app, seeded["roster"]))["built_in"]
+        built_in = _built_in(app, seeded["roster"]).model_dump(mode="json")
 
         assert built_in["published_version"] == {
-            "id": snapshot.id,
-            "version_number": 2,
+            "id": served.id,
+            "version": None,
+            "version_number": 1,
+            "marked_name": None,
+            "marked_comment": "Tuned prompt",
+            "created_by": {"id": seeded["creator"], "name": "Creator", "email": "creator@example.com"},
             "published_at": int(datetime(2026, 3, 1).timestamp()),
         }
+        assert built_in["published_version_count"] == 2
 
     @pytest.mark.usefixtures("seeded")
     def test_missing_or_hidden_app_returns_404(self, app: Flask, sqlite_session: Session) -> None:
-        hidden_id = sqlite_session.scalar(select(App.id).where(App.name == "Archived Agent"))
-        assert hidden_id is not None
-        for app_id in (str(uuid4()), hidden_id):
-            assert _detail(app, app_id) == ({"message": "app not found"}, 404)
+        hidden_ids = sqlite_session.scalars(select(App.id).where(App.name.in_(["Archived Agent", "Universal"]))).all()
+        assert len(hidden_ids) == 2
+        listed_ids = {item.id for item in _list(app).data}
+        for app_id in (str(uuid4()), *hidden_ids):
+            assert app_id not in listed_ids
+            assert _detail_raw(app, app_id) == ({"message": "app not found"}, 404)
 
     def test_base_urls_are_null_when_not_configured(
         self,
@@ -453,7 +580,7 @@ class TestEnterpriseAppDetail:
         )
         monkeypatch.setitem(app.extensions, "application_services", _Services(apps=_Apps(service)))
 
-        built_in = cast(dict, _detail(app, seeded["alpha"]))["built_in"]
+        built_in = _built_in(app, seeded["alpha"])
 
-        assert built_in["site"]["app_base_url"] is None
-        assert built_in["api"]["base_url"] is None
+        assert built_in.site.app_base_url is None
+        assert built_in.api.base_url is None

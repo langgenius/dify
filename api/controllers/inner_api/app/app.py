@@ -1,9 +1,10 @@
 """Inner API endpoints for the enterprise admin app list and app detail.
 
 Called by the enterprise admin-api service. The list covers Studio-visible apps
-across all workspaces; enterprise joins its own environments, deployment status,
-and invocation metrics onto it by app id. The detail adds what only CE owns:
-the built-in environment's published version, access points, and invocations.
+across all workspaces with a summary of their built-in environment; enterprise
+joins its own environments, deployment status, and invocation metrics onto it by
+app id. The detail adds what only CE owns: the built-in environment's published
+version, access points, and invocations.
 """
 
 from dataclasses import asdict
@@ -76,17 +77,38 @@ class EnterpriseAppResponse(ResponseModel):
         return to_timestamp(value)
 
 
+_INVOCATION_COUNT_DESCRIPTION = (
+    "Built-in invocations in the last 24h: published workflow runs (app-run, webhook, schedule, plugin) for "
+    "workflow and advanced-chat apps, non-debugger messages for other apps"
+)
+
+
+class EnterpriseAppBuiltInSummaryResponse(ResponseModel):
+    published: bool = Field(description="Whether the app detail reports a built-in published_version")
+    invocation_count_24h: int = Field(validation_alias="invocation_count", description=_INVOCATION_COUNT_DESCRIPTION)
+
+
+class EnterpriseAppListItemResponse(EnterpriseAppResponse):
+    built_in: EnterpriseAppBuiltInSummaryResponse
+
+
 class EnterpriseAppPaginationResponse(ResponseModel):
     page: int
     limit: int
     total: int
     has_more: bool
-    data: list[EnterpriseAppResponse]
+    data: list[EnterpriseAppListItemResponse]
 
 
 class EnterpriseAppPublishedVersionResponse(ResponseModel):
     id: str
-    version_number: int | None
+    version: str | None = Field(description="Workflow version string; null for Agent config snapshots")
+    version_number: int | None = Field(
+        description="The #N shown in Studio version history; null for unnumbered legacy workflows"
+    )
+    marked_name: str | None = Field(description="Workflow version name; null for Agent config snapshots")
+    marked_comment: str | None = Field(description="Workflow version comment or Agent snapshot version note")
+    created_by: EnterpriseAppCreatorResponse | None
     published_at: int
 
     @field_validator("published_at", mode="before")
@@ -123,14 +145,30 @@ class EnterpriseAppTriggerResponse(ResponseModel):
 
 
 class EnterpriseAppBuiltInResponse(ResponseModel):
-    published_version: EnterpriseAppPublishedVersionResponse | None
+    published_version: EnterpriseAppPublishedVersionResponse | None = Field(
+        description=(
+            "Version the built-in environment serves; null when unpublished, when an Agent App draft has "
+            "unpublished changes, and always for chat, completion, and agent-chat apps"
+        )
+    )
+    published_version_count: int = Field(
+        description="Number of entries in the app's Studio version history; 0 for apps without versions"
+    )
     site: EnterpriseAppSiteResponse
     api: EnterpriseAppApiResponse
     mcp_server: EnterpriseAppMCPServerResponse | None
     triggers: list[EnterpriseAppTriggerResponse]
-    last_invoked_at: int | None
-    invocation_count_24h: int = Field(validation_alias="invocation_count")
-    failed_invocation_count_24h: int = Field(validation_alias="failed_invocation_count")
+    last_invoked_at: int | None = Field(
+        description="Latest invocation counted like invocation_count_24h, without the 24h limit"
+    )
+    invocation_count_24h: int = Field(validation_alias="invocation_count", description=_INVOCATION_COUNT_DESCRIPTION)
+    failed_invocation_count_24h: int = Field(
+        validation_alias="failed_invocation_count",
+        description=(
+            "Invocations counted in invocation_count_24h that ended failed or partial-succeeded (workflow runs) "
+            "or in error (messages); running and stopped runs are not failures"
+        ),
+    )
 
     @field_validator("last_invoked_at", mode="before")
     @classmethod
@@ -180,7 +218,7 @@ class EnterpriseAppList(Resource):
                 "limit": result.per_page,
                 "total": result.total,
                 "has_more": result.has_next,
-                "data": result.items,
+                "data": [{**asdict(item.app), "built_in": item.built_in} for item in result.items],
             },
         )
 

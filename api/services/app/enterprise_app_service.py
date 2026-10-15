@@ -58,12 +58,37 @@ class EnterpriseAppSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class EnterpriseAppBuiltInSummary:
+    """Built-in environment state cheap enough to read for a whole list page."""
+
+    # True exactly when the detail reports a published_version.
+    published: bool
+    invocation_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class EnterpriseAppListItem:
+    app: EnterpriseAppSummary
+    built_in: EnterpriseAppBuiltInSummary
+
+
+@dataclass(frozen=True, slots=True)
 class EnterpriseAppPublishedVersion:
     """The workflow or Agent config version the built-in environment serves."""
 
     id: str
-    # None for workflows published before version numbering was introduced.
+    # Workflow version string; None for Agent config snapshots, which have none.
+    version: str | None
+    # The `#N` Studio shows in version history. None for workflows published
+    # before version numbering was introduced, and for Agent snapshots that
+    # are not in the user-facing history.
     version_number: int | None
+    # Workflow version name; None for Agent snapshots, which have none.
+    marked_name: str | None
+    # Workflow version comment, or the Agent snapshot's version note.
+    marked_comment: str | None
+    # None when the publisher was not recorded or the account was removed.
+    created_by: EnterpriseAppCreator | None
     published_at: datetime
 
 
@@ -108,13 +133,18 @@ class EnterpriseAppTrigger:
 class EnterpriseAppBuiltIn:
     # None when the app has never been published (workflow and Agent Apps) or
     # has no version concept (legacy chat, completion, and agent-chat Apps).
+    # Agent Apps also report None while their draft differs from the active
+    # snapshot, matching Studio's published filter.
     published_version: EnterpriseAppPublishedVersion | None
+    # Size of the user-facing version history; 0 for Apps without versions.
+    published_version_count: int
     site: EnterpriseAppSite
     api: EnterpriseAppApi
     # None when no MCP server was ever created for the app.
     mcp_server: EnterpriseAppMCPServer | None
     triggers: Sequence[EnterpriseAppTrigger]
-    # Debugger runs are excluded from all invocation fields.
+    # Debugger runs are excluded from all invocation fields. Unlike the counts,
+    # last_invoked_at is not limited to the invocation window.
     last_invoked_at: datetime | None
     invocation_count: int
     failed_invocation_count: int
@@ -127,7 +157,9 @@ class EnterpriseAppDetail:
 
 
 class EnterpriseAppStore(Protocol):
-    def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppSummary]: ...
+    def list_apps(
+        self, params: EnterpriseAppListParams, *, invoked_since: datetime
+    ) -> PaginatedResult[EnterpriseAppListItem]: ...
 
     def get_app(self, app_id: str, *, invoked_since: datetime) -> EnterpriseAppDetail | None:
         """Return None when the app does not exist or is hidden from Studio."""
@@ -139,8 +171,8 @@ class EnterpriseAppService:
         self._apps = apps
         self._now = now
 
-    def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppSummary]:
-        return self._apps.list_apps(params)
+    def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppListItem]:
+        return self._apps.list_apps(params, invoked_since=self._now() - INVOCATION_WINDOW)
 
     def get_app(self, app_id: str) -> EnterpriseAppDetail | None:
         return self._apps.get_app(app_id, invoked_since=self._now() - INVOCATION_WINDOW)
