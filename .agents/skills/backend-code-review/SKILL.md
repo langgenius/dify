@@ -19,7 +19,7 @@ Review the requested scope for concrete, reproducible defects. The nearest `AGEN
 Read only the packs matched by the diff:
 
 - Models or migrations: [`references/db-schema-rule.md`][db-schema]
-- Controllers, application services, ports, adapters, the composition root, `api/.importlinter`, libraries, or model behavior: [`references/architecture-rule.md`][architecture]
+- Controllers, application services, ports, adapters, the composition root, import-boundary contracts, libraries, or model behavior: [`references/architecture-rule.md`][architecture]
 - Table access outside a repository that implements a consumer-owned port: [`references/repositories-rule.md`][repositories]
 - SQLAlchemy sessions, queries, transactions, CRUD, concurrency, or raw SQL: [`references/sqlalchemy-rule.md`][sqlalchemy]
 
