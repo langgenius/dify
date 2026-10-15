@@ -22,7 +22,6 @@ from core.dify_builder.execution_policy import (
     JsonToolExecutionContext,
     RestrictedAdmissionSnapshot,
     admit_restricted_workflow,
-    canonical_digest,
     validate_execution_context,
 )
 from core.dify_builder.input_schema import start_schema
@@ -101,6 +100,7 @@ from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 from services.dify_builder.json_tool_execution import admit_json_workflow
 from services.dify_builder.json_tool_runtime import QualifiedJsonToolNodeRuntime
+from services.dify_builder.revision import node_config_digest
 from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
 
 if TYPE_CHECKING:
@@ -795,7 +795,7 @@ class DifyNodeFactory(NodeFactory):
             binding is None
             or binding.implementation != f"{node_class.__module__}.{node_class.__qualname__}"
             or binding.node_version != "1"
-            or binding.normalized_config_digest != canonical_digest({**data, "version": "1"})
+            or binding.normalized_config_digest != node_config_digest(data)
         ):
             raise BuilderExecutionPolicyError("execution_binding_mismatch")
 
@@ -820,7 +820,7 @@ class DifyNodeFactory(NodeFactory):
             binding is None
             or binding.implementation != f"{node_class.__module__}.{node_class.__qualname__}"
             or binding.node_version != "1"
-            or binding.normalized_config_digest != canonical_digest({**data, "version": "1"})
+            or binding.normalized_config_digest != node_config_digest(data)
         ):
             raise BuilderExecutionPolicyError("execution_binding_mismatch")
 

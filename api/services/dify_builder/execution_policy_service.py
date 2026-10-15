@@ -61,7 +61,7 @@ from services.dify_builder.json_tool_metadata import (
     resolve_installed_json_parse,
 )
 from services.dify_builder.json_tool_runtime import JsonRuntimeBinding, JsonToolRuntimeIssuer
-from services.dify_builder.revision import executable_graph_revision, execution_revision
+from services.dify_builder.revision import executable_graph_revision, execution_revision, normalize_execution_graph
 from services.rbac.resource_queries import ResourceQueryService
 
 _ID_ADAPTER = TypeAdapter(BoundedID)
@@ -121,6 +121,11 @@ def restricted_admission_snapshot(workflow: Workflow, app: App) -> RestrictedAdm
     )
     admit_raw_execution_metadata(snapshot)
     return snapshot
+
+
+def _execution_snapshot(snapshot: RestrictedAdmissionSnapshot) -> RestrictedAdmissionSnapshot:
+    """Compare executable state after raw metadata inspection, without canvas presentation."""
+    return snapshot.model_copy(update={"graph": normalize_execution_graph(snapshot.graph)})
 
 
 @dataclass(frozen=True)
@@ -318,7 +323,11 @@ def _owned_effective_inputs(owner: ExecutionOwnerSnapshot) -> dict[str, Any]:
 
 
 def _json_owner_state(owner: ExecutionOwnerSnapshot, snapshot: RestrictedAdmissionSnapshot) -> str:
-    """Capture the complete participating owner/configuration/input state across daemon I/O."""
+    """Bind owners, execution configuration and inputs across daemon I/O.
+
+    Canvas presentation and the editor's full graph hash are excluded, just
+    as in preparation and native admission.
+    """
     assert owner.session is not None
     assert owner.test_input is not None
     return canonical_digest(
@@ -336,10 +345,9 @@ def _json_owner_state(owner: ExecutionOwnerSnapshot, snapshot: RestrictedAdmissi
                 "app_id": owner.workflow.app_id,
                 "tenant_id": owner.workflow.tenant_id,
                 "version": owner.workflow.version,
-                "unique_hash": owner.workflow.unique_hash,
                 "type": owner.workflow.type.value,
                 "kind": owner.workflow.kind.value if owner.workflow.kind is not None else None,
-                "graph": snapshot.graph,
+                "graph": normalize_execution_graph(snapshot.graph),
                 "features": snapshot.features,
                 "environment": owner.workflow._environment_variables,
                 "conversation": owner.workflow._conversation_variables,
@@ -389,6 +397,9 @@ class BuilderExecutionPolicyService:
     ) -> BuilderExecutionContext | JsonToolExecutionContext:
         json_values: dict[str, Any] | None = None
         json_state: str | None = None
+        # JSON admission waits for qualified metadata; only the restricted
+        # branch constructs its context inside the initial owner read.
+        context: BuilderExecutionContext | None = None
         with self._session_factory() as db:
             owner = load_execution_owners(
                 db,
@@ -403,7 +414,7 @@ class BuilderExecutionPolicyService:
                 raise BuilderExecutionPolicyError("execution_owner_mismatch")
             supplied = restricted_admission_snapshot(workflow, owner.app)
             snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
-            if supplied != snapshot:
+            if _execution_snapshot(supplied) != _execution_snapshot(snapshot):
                 raise BuilderExecutionPolicyError("stale_execution_revision")
             submitted_digest = scalar_inputs_digest(submitted_inputs)
             effective_digest = scalar_inputs_digest(effective_inputs)
@@ -508,6 +519,7 @@ class BuilderExecutionPolicyService:
                     )
                 )
             return json_context
+        assert context is not None
         with self._session_factory.begin() as db:
             db.add(
                 DifyBuilderExecutionRequest(
@@ -654,7 +666,7 @@ class BuilderExecutionPolicyService:
             if isinstance(context, JsonToolExecutionContext):
                 admit_execution_workflow(context, snapshot)
             if (
-                supplied != snapshot
+                _execution_snapshot(supplied) != _execution_snapshot(snapshot)
                 or context.execution_revision != execution_revision(owner.workflow)
                 or context.graph_revision != executable_graph_revision(snapshot.graph)
             ):
@@ -766,7 +778,7 @@ class BuilderExecutionPolicyService:
                 or observation.implementation_version != f"{binding.implementation}:{binding.node_version}"
             ):
                 raise BuilderExecutionPolicyError("observation_binding_mismatch")
-            if observation.kind == "fixture_served":
+            if isinstance(context, BuilderExecutionContext) and observation.kind == "fixture_served":
                 if (
                     not any(f.node_id == observation.node_id for f in context.http_fixtures)
                     or observation.fixture_digest != context.fixture_digest

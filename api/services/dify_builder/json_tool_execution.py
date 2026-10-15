@@ -25,6 +25,7 @@ from services.dify_builder.execution_contracts import (
     QualifiedJsonToolBinding,
     canonical_digest,
 )
+from services.dify_builder.revision import node_config_digest
 
 __all__ = [
     "JsonToolAdmission",
@@ -442,7 +443,7 @@ def admit_json_workflow(snapshot: RestrictedAdmissionSnapshot) -> JsonToolAdmiss
                 node_id=node_id,
                 implementation=f"{cls.__module__}.{cls.__qualname__}",
                 node_version="1",
-                normalized_config_digest=canonical_digest({**data, "version": "1"}),
+                normalized_config_digest=node_config_digest(data),
             )
         )
     return JsonToolAdmission(
