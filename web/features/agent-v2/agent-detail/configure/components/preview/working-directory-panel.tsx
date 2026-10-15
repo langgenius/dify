@@ -263,9 +263,6 @@ export function AgentWorkingDirectoryPanel({
               path: toSandboxApiPath(path),
             },
           },
-          context: {
-            silent: true,
-          },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.queryOptions(
           {
@@ -279,9 +276,6 @@ export function AgentWorkingDirectoryPanel({
                 node_execution_id: source.nodeExecutionId,
                 path: toSandboxApiPath(path),
               },
-            },
-            context: {
-              silent: true,
             },
           },
         )
@@ -343,9 +337,6 @@ export function AgentWorkingDirectoryPanel({
                 },
               }
             : skipToken,
-          context: {
-            silent: true,
-          },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
           {
@@ -362,9 +353,6 @@ export function AgentWorkingDirectoryPanel({
                   },
                 }
               : skipToken,
-            context: {
-              silent: true,
-            },
           },
         )
   const fileReadQuery = useQuery({

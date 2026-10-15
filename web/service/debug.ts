@@ -30,7 +30,6 @@ export const sendCompletionMessage = async (
     onCompleted: IOnCompleted
     onError: IOnError
     onMessageReplace: IOnMessageReplace
-    onNotifyError?: IOnError
   },
 ) => {
   return ssePost(

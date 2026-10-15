@@ -166,9 +166,6 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: buildDraftQueryInput.params,
     },
-    context: {
-      silent: true,
-    },
   })
   const buildDraftQuery = useQuery(
     queryOptions({

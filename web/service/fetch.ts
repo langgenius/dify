@@ -13,9 +13,7 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
-import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -45,29 +43,12 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
-const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async ({ request, response }) => {
-    if (isHttpErrorStatus(response.status)) {
-      const error = await httpErrorFromResponse(response)
-      const errorData = error.data
-      const shouldNotifyError =
-        response.status >= 400 &&
-        response.status !== 401 &&
-        errorData &&
-        !otherOptions.silent &&
-        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
-
-      const errorMessage = [errorData?.message, errorData?.error].find(
-        (value): value is string => typeof value === 'string' && !!value.trim(),
-      )
-      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
-
-      if (response.status === 403 && errorData?.code === 'already_setup')
-        globalThis.location.href = `${globalThis.location.origin}/signin`
-      throw error
-    } else {
-      clearRequestErrorToasts(request)
-    }
+const afterResponseErrorCode: AfterResponseHook = async ({ response }) => {
+  if (isHttpErrorStatus(response.status)) {
+    const error = await httpErrorFromResponse(response)
+    if (response.status === 403 && error.data?.code === 'already_setup')
+      globalThis.location.href = `${globalThis.location.origin}/signin`
+    throw error
   }
 }
 
@@ -167,7 +148,7 @@ async function base<T>(
         ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(otherOptions)],
+      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode],
     },
   })
 

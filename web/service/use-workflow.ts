@@ -309,8 +309,7 @@ export const useDeleteWorkflow = () => {
 export const useRestoreWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'restore'],
-    mutationFn: (url: string) =>
-      post<CommonResponse & { updated_at: number; hash: string }>(url, {}, { silent: true }),
+    mutationFn: (url: string) => post<CommonResponse & { updated_at: number; hash: string }>(url),
   })
 }
 
@@ -338,13 +337,7 @@ export const useLastRun = (
     enabled,
     queryKey: [...useLastRunKey, flowType, flowId, nodeId],
     queryFn: async () => {
-      return get(
-        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`,
-        {},
-        {
-          silent: true,
-        },
-      )
+      return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`)
     },
     retry: 0,
   })

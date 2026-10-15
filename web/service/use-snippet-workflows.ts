@@ -5,14 +5,9 @@ import { isNotFoundError } from '@/service/http-error'
 
 export const fetchSnippetDraftWorkflow = async (snippetId: string) => {
   try {
-    return await consoleClient.snippets.bySnippetId.workflows.draft.get(
-      {
-        params: { snippet_id: snippetId },
-      },
-      {
-        context: { silent: true },
-      },
-    )
+    return await consoleClient.snippets.bySnippetId.workflows.draft.get({
+      params: { snippet_id: snippetId },
+    })
   } catch (error) {
     if (isNotFoundError(error)) return undefined
 

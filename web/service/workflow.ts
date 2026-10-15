@@ -30,7 +30,7 @@ type EnvironmentVariablePatchPayload = {
 }
 
 export const fetchWorkflowDraft = (url: string) => {
-  return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+  return get(url) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const syncWorkflowDraft = ({
@@ -44,11 +44,7 @@ export const syncWorkflowDraft = ({
       force?: boolean
     }
 }) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(
-    url,
-    { body: params },
-    { silent: true },
-  )
+  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params })
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {

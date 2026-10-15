@@ -23,7 +23,6 @@ export const userProfileQueryOptions = () =>
         {},
         {
           needAllResponseContent: true,
-          silent: true,
         },
       )
       const profile: GetAccountProfileResponse = await response.clone().json()

@@ -701,14 +701,13 @@ export function AddSourcePage({
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
-      context: { silent: true },
+
       enabled: websiteSourceSelected,
       retry: false,
     }),
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
-      context: { silent: true },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },

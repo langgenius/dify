@@ -183,13 +183,12 @@ export const changeWebAppPasswordWithToken = ({
 export const uploadRemoteFileInfo = (
   url: string,
   isPublic?: boolean,
-  silent?: boolean,
   uploadEndpoint?: string,
 ): Promise<{ id: string; name: string; size: number; mime_type: string; url: string }> => {
   return post<{ id: string; name: string; size: number; mime_type: string; url: string }>(
     uploadEndpoint || '/remote-files/upload',
     { body: { url } },
-    { isPublicAPI: isPublic, silent },
+    { isPublicAPI: isPublic },
   )
 }
 
@@ -277,7 +276,7 @@ export const submitDeleteAccountFeedback = (body: {
 }): Promise<CommonResponse> => post<CommonResponse>('/account/delete/feedback', { body })
 
 export const getDocDownloadUrl = (doc_name: string): Promise<{ url: string }> =>
-  get<{ url: string }>('/compliance/download', { params: { doc_name } }, { silent: true })
+  get<{ url: string }>('/compliance/download', { params: { doc_name } })
 
 export const sendVerifyCode = (body: {
   email: string
@@ -300,7 +299,7 @@ export const resetEmail = (body: { new_email: string; token: string }): Promise<
   post<CommonResponse>('/account/change-email/reset', { body })
 
 export const checkEmailExisted = (body: { email: string }): Promise<CommonResponse> =>
-  post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
+  post<CommonResponse>('/account/change-email/check-email-unique', { body })
 
 export const getAvatar = async ({
   avatar,
