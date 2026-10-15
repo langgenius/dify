@@ -3,35 +3,6 @@ import type { Metadata, ThoughtItem } from '@/app/components/base/chat/chat/type
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
 
-type CompletionParamsType = {
-  max_tokens: number
-  temperature: number
-  top_p: number
-  stop: string[]
-  presence_penalty: number
-  frequency_penalty: number
-}
-
-type LogModelConfig = {
-  name: string
-  provider: string
-  completion_params: CompletionParamsType
-}
-
-type ModelConfigDetail = {
-  introduction: string
-  prompt_template: string
-  prompt_variables: Array<{
-    key: string
-    name: string
-    description: string
-    type: string | number
-    default: string
-    options: string[]
-  }>
-  completion_params: CompletionParamsType
-}
-
 export type LogAnnotation = {
   id: string
   content: string
@@ -82,98 +53,6 @@ type MessageContent = {
   agent_thoughts: ThoughtItem[]
   workflow_run_id: string
   parent_message_id: string | null
-}
-
-export type CompletionConversationGeneralDetail = {
-  id: string
-  status: 'normal' | 'finished' | 'paused'
-  from_source: 'api' | 'console'
-  from_end_user_id: string
-  from_end_user_session_id: string
-  from_account_id: string
-  read_at: Date
-  created_at: number
-  updated_at: number
-  annotation: Annotation
-  user_feedback_stats: {
-    like: number
-    dislike: number
-  }
-  admin_feedback_stats: {
-    like: number
-    dislike: number
-  }
-  model_config: {
-    provider: string
-    model_id: string
-    configs: Pick<ModelConfigDetail, 'prompt_template'>
-  }
-  message: Pick<MessageContent, 'inputs' | 'query' | 'answer' | 'message'>
-}
-
-export type CompletionConversationFullDetailResponse = {
-  id: string
-  status: 'normal' | 'finished'
-  from_source: 'api' | 'console'
-  from_end_user_id: string
-  from_account_id: string
-  // read_at: Date
-  created_at: number
-  model_config: {
-    provider: string
-    model_id: string
-    configs: ModelConfigDetail
-  }
-  message: MessageContent
-}
-
-export type CompletionConversationsResponse = {
-  data: Array<CompletionConversationGeneralDetail>
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
-
-export type CompletionConversationsRequest = {
-  keyword: string
-  start: string
-  end: string
-  annotation_status: string
-  page: number
-  limit: number // The default value is 20 and the range is 1-100
-}
-
-export type ChatConversationGeneralDetail = Omit<
-  CompletionConversationGeneralDetail,
-  'message' | 'annotation'
-> & {
-  summary: string
-  message_count: number
-  annotated: boolean
-}
-
-export type ChatConversationsResponse = {
-  data: Array<ChatConversationGeneralDetail>
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
-
-export type ChatConversationsRequest = CompletionConversationsRequest & { message_count: number }
-
-export type ChatConversationFullDetailResponse = Omit<
-  CompletionConversationGeneralDetail,
-  'message' | 'model_config'
-> & {
-  message_count: number
-  model_config: {
-    provider: string
-    model_id: string
-    configs: ModelConfigDetail
-    model: LogModelConfig
-  }
 }
 
 export type ChatMessagesRequest = {
@@ -230,30 +109,10 @@ export type TriggerMetadata = {
   icon_dark?: string | null
 }
 
-type WorkflowLogDetails = {
+export type WorkflowLogDetails = {
   trigger_metadata?: TriggerMetadata
 }
 
-export type WorkflowRunDetail = {
-  id: string
-  version: string
-  status:
-    | 'scheduled'
-    | 'running'
-    | 'succeeded'
-    | 'failed'
-    | 'stopped'
-    | 'partial-succeeded'
-    | 'paused'
-  error?: string
-  triggered_from?: WorkflowRunTriggeredFrom
-  elapsed_time: number
-  total_tokens: number
-  total_price: number
-  currency: string
-  total_steps: number
-  finished_at: number
-}
 type AccountInfo = {
   id: string
   name: string
@@ -264,24 +123,6 @@ type EndUserInfo = {
   type: 'browser' | 'service_api'
   is_anonymous: boolean
   session_id: string
-}
-export type WorkflowAppLogDetail = {
-  id: string
-  workflow_run: WorkflowRunDetail
-  details?: WorkflowLogDetails
-  created_from: 'service-api' | 'web-app' | 'explore'
-  created_by_role: 'account' | 'end_user'
-  created_by_account?: AccountInfo
-  created_by_end_user?: EndUserInfo
-  created_at: number
-  read_at?: number
-}
-export type WorkflowLogsResponse = {
-  data: Array<WorkflowAppLogDetail>
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
 }
 export type WorkflowRunDetailResponse = {
   id: string
@@ -370,25 +211,4 @@ export type AgentLogDetailResponse = {
   meta: AgentLogMeta
   iterations: AgentIteration[]
   files: AgentLogFile[]
-}
-
-type PauseType =
-  | {
-      type: 'human_input'
-      form_id: string
-      backstage_input_url: string
-    }
-  | {
-      type: 'breakpoint'
-    }
-
-type PauseDetail = {
-  node_id: string
-  node_title: string
-  pause_type: PauseType
-}
-
-export type WorkflowPausedDetailsResponse = {
-  paused_at: string
-  paused_nodes: PauseDetail[]
 }

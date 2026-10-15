@@ -474,7 +474,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 3
     }
   },
   "web/app/components/app/log/var-panel.tsx": {
@@ -4252,14 +4252,6 @@
   },
   "web/service/use-flow.ts": {
     "eslint-react/no-unnecessary-use-prefix": {
-      "count": 1
-    }
-  },
-  "web/service/use-log.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 7
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },

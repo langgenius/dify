@@ -1,6 +1,14 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  Conversation,
+  ConversationDetail,
+  ConversationMessageDetail,
+  ConversationPagination,
+  ConversationWithSummary,
+  ConversationWithSummaryPagination,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { ChatItemInTree } from '../../base/chat/types'
 import type {
@@ -9,14 +17,7 @@ import type {
   IChatItem,
   SubmitAnnotationFunc,
 } from '@/app/components/base/chat/chat/type'
-import type {
-  ChatConversationGeneralDetail,
-  ChatConversationsResponse,
-  ChatMessagesRequest,
-  CompletionConversationGeneralDetail,
-  CompletionConversationsResponse,
-  LogAnnotation,
-} from '@/models/log'
+import type { ChatMessagesRequest, LogAnnotation } from '@/models/log'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -33,7 +34,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -54,13 +55,13 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
+import { consoleQuery } from '@/service/console'
 import {
   fetchChatMessages,
   updateLogMessageAnnotations,
   updateLogMessageFeedbacks,
 } from '@/service/log'
 import { AppSourceType } from '@/service/share'
-import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import PromptLogModal from '../../base/prompt-log-modal'
 import {
@@ -68,10 +69,12 @@ import {
   applyAnnotationEdited,
   applyAnnotationRemoved,
   buildChatThreadState,
+  getAdminFeedback,
   getCompletionMessageFiles,
   getConversationRowValues,
   getDetailVarList,
   getFormattedChatList,
+  getLogModelInfo,
   getThreadChatItems,
   isNearTopLoadMore,
   mergePaginatedChatItems,
@@ -79,14 +82,14 @@ import {
 } from './list-utils'
 import VarPanel from './var-panel'
 
-type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
+type ConversationListItem = ConversationWithSummary | Conversation
 type ConversationSelection = ConversationListItem | { id: string; isPlaceholder?: true }
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
 type IConversationList = {
-  logs?: ChatConversationsResponse | CompletionConversationsResponse
+  logs?: ConversationWithSummaryPagination | ConversationPagination
   appDetail: AppDetailWithSite
   onRefresh: () => void
 }
@@ -157,7 +160,7 @@ const statusTdRender = (statusCount: StatusCount) => {
 
 type IDetailPanel = {
   appDetail: AppDetailWithSite
-  detail: any
+  detail: ConversationDetail | ConversationMessageDetail
   onClose: () => void
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
@@ -247,12 +250,12 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     const nextThreadState = buildChatThreadState({
       allChatItems,
       hasMore,
-      introduction: detail?.model_config?.configs?.introduction,
+      introduction: 'introduction' in detail ? (detail.introduction ?? undefined) : undefined,
     })
     setChatItemTree(nextThreadState.chatItemTree)
     setThreadChatItems(nextThreadState.threadChatItems)
     if (nextThreadState.oldestAnswerId) oldestAnswerIdRef.current = nextThreadState.oldestAnswerId
-  }, [allChatItems, hasMore, detail?.model_config?.configs?.introduction])
+  }, [allChatItems, hasMore, detail])
 
   const switchSibling = useCallback(
     (siblingMessageId: string) => {
@@ -412,6 +415,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
   const varList = getDetailVarList(detail, varValues)
   const message_files = getCompletionMessageFiles(detail, isChatMode)
+  const completionMessage = 'message' in detail ? detail.message : undefined
+  const modelInfo = getLogModelInfo(detail.model_config?.model)
 
   const [width, setWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -449,15 +454,17 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
           )}
           {!isChatMode && (
             <div className="system-2xs-regular-uppercase text-text-secondary">
-              {formatTime(
-                detail.created_at,
-                t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-              )}
+              {detail.created_at
+                ? formatTime(
+                    detail.created_at,
+                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                  )
+                : defaultValue}
             </div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
-          {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
+          {!isAdvanced && modelInfo && <ModelInfo model={modelInfo} />}
         </div>
         <IconButton
           size="lg"
@@ -477,35 +484,37 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       </div>
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
         {!isChatMode ? (
-          <div className="px-6 py-4">
-            <div className="flex h-4.5 items-center space-x-3">
-              <div className="system-xs-semibold-uppercase text-text-tertiary">
-                {t(($) => $['table.header.output'], { ns: 'appLog' })}
+          completionMessage && (
+            <div className="px-6 py-4">
+              <div className="flex h-4.5 items-center space-x-3">
+                <div className="system-xs-semibold-uppercase text-text-tertiary">
+                  {t(($) => $['table.header.output'], { ns: 'appLog' })}
+                </div>
+                <div
+                  className="h-px grow"
+                  style={{
+                    background:
+                      'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+                  }}
+                ></div>
               </div>
-              <div
-                className="h-px grow"
-                style={{
-                  background:
-                    'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+              <TextGeneration
+                appSourceType={AppSourceType.webApp}
+                className="mt-2"
+                content={completionMessage.answer}
+                messageId={completionMessage.id}
+                isError={false}
+                onRetry={noop}
+                supportFeedback
+                feedback={getAdminFeedback(completionMessage.feedbacks)}
+                onFeedback={(feedback) => {
+                  onFeedback(completionMessage.id, feedback).catch(noop)
                 }}
-              ></div>
+                isShowTextToSpeech
+                siteInfo={null}
+              />
             </div>
-            <TextGeneration
-              appSourceType={AppSourceType.webApp}
-              className="mt-2"
-              content={detail.message.answer}
-              messageId={detail.message.id}
-              isError={false}
-              onRetry={noop}
-              supportFeedback
-              feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              onFeedback={(feedback) => {
-                onFeedback(detail.message.id, feedback).catch(noop)
-              }}
-              isShowTextToSpeech
-              siteInfo={null}
-            />
-          </div>
+          )
         ) : threadChatItems.length < MIN_ITEMS_FOR_SCROLL_LOADING ? (
           <div className="mb-4 pt-4">
             <Chat
@@ -632,8 +641,13 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   onClose,
 }) => {
   // Text Generator App Session Details Including Message List
-  const { data: conversationDetail, refetch: conversationDetailMutate } =
-    useCompletionConversationDetail(appDetail.id, conversationId)
+  const { data: conversationDetail, refetch: conversationDetailMutate } = useQuery(
+    consoleQuery.apps.byAppId.completionConversations.byConversationId.get.queryOptions({
+      input: conversationId
+        ? { params: { app_id: appDetail.id, conversation_id: conversationId } }
+        : skipToken,
+    }),
+  )
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
@@ -687,7 +701,13 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   conversationId,
   onClose,
 }) => {
-  const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId)
+  const { data: conversationDetail } = useQuery(
+    consoleQuery.apps.byAppId.chatConversations.byConversationId.get.queryOptions({
+      input: conversationId
+        ? { params: { app_id: appDetail.id, conversation_id: conversationId } }
+        : skipToken,
+    }),
+  )
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {

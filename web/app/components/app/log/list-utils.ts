@@ -1,11 +1,12 @@
 import type { ChatItemInTree } from '../../base/chat/types'
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatMessage } from '@/models/log'
 import type { FileResponse } from '@/types/workflow'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { get } from 'es-toolkit/compat'
+import { isPlainObject } from 'es-toolkit/predicate'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
@@ -15,26 +16,27 @@ dayjs.extend(timezone)
 
 type LogDetailMessage = {
   answer?: string | number | null
-  inputs?: Record<string, string>
-  message_files?: Array<{ url?: string }>
+  inputs?: Record<string, unknown>
+  message_files?: Array<{ url?: string | null }>
   query?: string
 }
 
-type UserInputFormItem = Record<string, { variable?: string }>
-
 type ConversationLogDetail = {
-  from_account_name?: string
-  from_end_user_session_id?: string
-  message?: LogDetailMessage
+  from_account_name?: string | null
+  from_end_user_session_id?: string | null
+  message?: LogDetailMessage | null
   message_count?: number
   model_config?: {
-    user_input_form?: UserInputFormItem[]
-  }
+    // Untyped JSON in the console API response.
+    user_input_form?: unknown
+  } | null
   name?: string
 }
 
-const getUserInputVariable = (item: UserInputFormItem) => {
-  const variable = Object.values(item)[0]?.variable
+const getUserInputVariable = (item: unknown) => {
+  if (!isPlainObject(item)) return undefined
+  const field = Object.values(item)[0]
+  const variable = isPlainObject(field) ? field.variable : undefined
 
   return typeof variable === 'string' ? variable : undefined
 }
@@ -305,10 +307,12 @@ export const getConversationRowValues = ({
   noOutputLabel: string
 }) => {
   const endUser = log.from_end_user_session_id || log.from_account_name
-  const leftValue =
+  const rawLeftValue: unknown =
     get(log, isChatMode ? 'name' : 'message.inputs.query') ||
     (!isChatMode ? get(log, 'message.query') || get(log, 'message.inputs.default_input') : '') ||
     ''
+  const leftValue =
+    typeof rawLeftValue === 'string' || typeof rawLeftValue === 'number' ? rawLeftValue : ''
   const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
 
   return {
@@ -323,8 +327,11 @@ export const getConversationRowValues = ({
 export const getDetailVarList = (
   detail: ConversationLogDetail,
   varValues: Record<string, string>,
-) =>
-  detail.model_config?.user_input_form?.flatMap((item) => {
+) => {
+  const userInputForm = detail.model_config?.user_input_form
+  if (!Array.isArray(userInputForm)) return []
+
+  return userInputForm.flatMap((item) => {
     const variable = getUserInputVariable(item)
 
     if (!variable) return []
@@ -339,7 +346,8 @@ export const getDetailVarList = (
         value,
       },
     ]
-  }) || []
+  })
+}
 
 export const getCompletionMessageFiles = (detail: ConversationLogDetail, isChatMode: boolean) => {
   const messageFiles = detail.message?.message_files
@@ -347,4 +355,26 @@ export const getCompletionMessageFiles = (detail: ConversationLogDetail, isChatM
   if (isChatMode || !messageFiles?.length) return []
 
   return messageFiles.flatMap((item) => (item.url ? [item.url] : []))
+}
+
+// `model_config.model` is untyped JSON in the console API response.
+export const getLogModelInfo = (model: unknown) => {
+  if (!isPlainObject(model)) return undefined
+  const { name, provider, completion_params } = model
+  if (typeof name !== 'string' || typeof provider !== 'string') return undefined
+
+  return {
+    name,
+    provider,
+    completion_params: isPlainObject(completion_params) ? completion_params : undefined,
+  }
+}
+
+export const getAdminFeedback = (
+  feedbacks: Array<{ content?: string | null; from_source: string; rating: string }>,
+): FeedbackType | undefined => {
+  const feedback = feedbacks.find((item) => item.from_source === 'admin')
+  if (feedback?.rating !== 'like' && feedback?.rating !== 'dislike') return undefined
+
+  return { rating: feedback.rating, content: feedback.content }
 }

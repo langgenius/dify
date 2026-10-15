@@ -35,15 +35,20 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/service/use-log', () => ({
-  useChatConversationDetail: () => ({
-    data: mockChatConversationDetail,
-  }),
-  useCompletionConversationDetail: () => ({
-    data: mockCompletionConversationDetail,
-    refetch: mockCompletionRefetch,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
+      const [path] = options.queryKey as [string[]]
+      if (Array.isArray(path) && path.includes('byConversationId')) {
+        if (path.includes('chatConversations')) return { data: mockChatConversationDetail }
+        return { data: mockCompletionConversationDetail, refetch: mockCompletionRefetch }
+      }
+      return actual.useQuery(options)
+    },
+  }
+})
 
 vi.mock('@/service/log', () => ({
   fetchChatMessages: (...args: unknown[]) => mockFetchChatMessages(...args),
@@ -60,7 +65,9 @@ vi.mock('@/app/components/base/loading-placeholder', () => ({
 }))
 
 vi.mock('@/app/components/app/log/model-info', () => ({
-  default: ({ model }: { model: string }) => <div data-testid="model-info">{model}</div>,
+  default: ({ model }: { model: { name: string } }) => (
+    <div data-testid="model-info">{model.name}</div>
+  ),
 }))
 
 vi.mock('@/app/components/app/log/var-panel', () => ({
@@ -401,11 +408,9 @@ describe('ConversationList', () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
+      introduction: 'Hello there',
       model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
         user_input_form: [],
       },
       message: {
@@ -443,11 +448,9 @@ describe('ConversationList', () => {
       mockChatConversationDetail = {
         id: 'conversation-1',
         created_at: 1710000000,
+        introduction: 'Hello there',
         model_config: {
-          model: 'gpt-4o',
-          configs: {
-            introduction: 'Hello there',
-          },
+          model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
           user_input_form: [
             {
               query: {
@@ -525,11 +528,9 @@ describe('ConversationList', () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
+      introduction: 'Hello there',
       model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
         user_input_form: [],
       },
       message: {
@@ -554,7 +555,7 @@ describe('ConversationList', () => {
       id: 'conversation-1',
       created_at: 1710000000,
       model_config: {
-        model: 'gpt-4o-mini',
+        model: { provider: 'openai', name: 'gpt-4o-mini', mode: 'chat', completion_params: {} },
         user_input_form: [
           {
             query: {
@@ -672,11 +673,9 @@ describe('ConversationList', () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
+      introduction: 'Hello there',
       model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
         user_input_form: [
           {
             query: {
