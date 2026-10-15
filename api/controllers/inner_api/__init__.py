@@ -31,7 +31,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespace exists."""
 
     from . import mail, runtime_credentials
-    from .agent import files, llm, runtime_usage, tools
+    from .agent import files, llm, runtime_usage, tools, tracing
     from .app import app, dsl, file_grants
     from .knowledge import retrieval
     from .plugin import agent_config, plugin, skills
@@ -44,6 +44,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         llm,
         runtime_usage,
         tools,
+        tracing,
         app,
         dsl,
         file_grants,
@@ -62,6 +63,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _agent_llm,
     _agent_runtime_usage,
     _agent_tools,
+    _agent_tracing,
     _app_app,
     _app_dsl,
     _app_file_grants,

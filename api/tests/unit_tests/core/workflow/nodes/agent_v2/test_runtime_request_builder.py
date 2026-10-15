@@ -223,6 +223,36 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
     )
 
 
+@pytest.mark.parametrize("preview", [False, True])
+def test_builder_passes_inline_or_preview_context_to_application_tracing(
+    monkeypatch: pytest.MonkeyPatch, preview: bool
+):
+    from uuid import uuid4
+
+    from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
+
+    tracing = ApplicationTracingContext(
+        run_id=uuid4(),
+        invocation_id=uuid4(),
+        trace_id="1" * 32,
+        parent_span_id="2" * 16,
+        session_id="session",
+        capture_content=False,
+    )
+    context = replace(_context(), workflow_run_id=None if preview else "run-1", attempt=2)
+    calls = []
+
+    def prepare(value, conversation_id):
+        calls.append((value, conversation_id))
+        return tracing
+
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.prepare_workflow_agent", prepare)
+    result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=CapturingPluginLayerBuilder()).build(context)
+    layer = next(item for item in result.request.composition.layers if item.name == DIFY_EXECUTION_CONTEXT_LAYER_ID)
+    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
+    assert calls == [(context, None)]
+
+
 def _request_layers(result) -> dict[str, dict[str, object]]:
     dumped = result.request.model_dump(mode="json")
     return {layer["name"]: layer for layer in dumped["composition"]["layers"]}
