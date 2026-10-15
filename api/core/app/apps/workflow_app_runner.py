@@ -380,20 +380,22 @@ class WorkflowBasedAppRunner:  # noqa: B903  # Runtime owner; constructor names 
         nodes_by_id = {node["id"]: node for node in all_node_configs}
         container_ids = {node["id"]: resolve_container_id(node, nodes_by_id=nodes_by_id) for node in all_node_configs}
         node_ids = {node_id}
-        while (
-            child_node_ids := {node["id"] for node in all_node_configs if container_ids[node["id"]] in node_ids}
-            - node_ids
-        ):
+        while True:
+            child_node_ids = {node["id"] for node in all_node_configs if container_ids[node["id"]] in node_ids}
+            child_node_ids -= node_ids
+            if not child_node_ids:
+                break
             node_ids.update(child_node_ids)
         # Preserve ownership resolved with the complete ancestry before removing it
         # from the debug subtree. Nested legacy IDs can otherwise become ambiguous.
-        selected_node_configs = [
-            _WorkflowGraphNodeConfig.model_validate(
-                {**node, "data": {**node["data"], "container_id": container_ids[node["id"]]}}
-            )
-            for node in all_node_configs
-            if node["id"] in node_ids
-        ]
+        selected_node_configs = []
+        for node in all_node_configs:
+            if node["id"] not in node_ids:
+                continue
+            selected_node = dict(node)
+            selected_node["data"] = dict(node["data"])
+            selected_node["data"]["container_id"] = container_ids[node["id"]]
+            selected_node_configs.append(_WorkflowGraphNodeConfig.model_validate(selected_node))
 
         # filter edges only in the specified node type
         selected_edge_configs = [
