@@ -62,9 +62,7 @@ class VolcengineTosStorage(BaseStorage):
         if not self.bucket_name:
             return False
         res = self.client.head_object(bucket=self.bucket_name, key=filename)
-        if res.status_code != 200:
-            return False
-        return True
+        return res.status_code == 200
 
     @override
     def delete(self, filename: str):

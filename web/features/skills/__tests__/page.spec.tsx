@@ -133,10 +133,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
-}))
-
 vi.mock('@/features/tag-management/components/skill-card-tags', () => ({
   SkillCardTags: ({ tags }: { tags: string[] }) => (
     <button type="button" aria-label={tags.join(', ')}>

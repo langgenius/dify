@@ -460,7 +460,7 @@ def _attach_active_credentials(
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
-        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
         _attach_active_credentials(
             session=session,
@@ -1002,7 +1002,7 @@ class ProviderManager:
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
+            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
             providers = list(session.scalars(stmt))
             _attach_active_credentials(
                 session=session,
