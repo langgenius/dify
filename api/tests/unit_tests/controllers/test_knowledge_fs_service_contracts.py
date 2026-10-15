@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Literal
+from typing import Literal, Protocol
 
 import pytest
 from flask import Flask
 from flask_restx import Resource
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
+from werkzeug.datastructures import FileStorage
 
 from controllers.service_api.knowledge_fs import resources
 from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceInvalidRequestHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
+from libs.exception import BaseHTTPException
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSDocumentCompilationJobResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSIdempotencyHeader,
@@ -27,7 +30,13 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.controllers.knowledge_fs_controller_fakes import FakeComponent, FakeRuntime, Recorder, invocation
+from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
+    FakeComponent,
+    FakeRuntime,
+    Recorder,
+    invocation,
+    narrowed,
+)
 
 _NOW = "2026-09-17T00:00:00Z"
 _FAILURE = {
@@ -36,6 +45,10 @@ _FAILURE = {
     "message": "untrusted provider message",
     "retryPolicy": "manual",
 }
+
+
+class _ReadResource(Protocol):
+    def get(self, *args: str) -> object: ...
 
 
 def _job() -> dict[str, object]:
@@ -255,7 +268,8 @@ def test_legacy_source_import_adapts_coordinates_and_admits_durable_workflow(run
     kwargs = runtime.facade.execute_service.last_call.kwargs
     assert kwargs["operation_id"] == "importSourceWorkflow"
     assert kwargs["headers"] == (("Idempotency-Key", "import-once"),)
-    assert kwargs["payload"].model_dump(mode="json", by_alias=True)["items"][0]["providerItemId"] == coordinate
+    forwarded = narrowed(kwargs["payload"], BaseModel).model_dump(mode="json", by_alias=True)
+    assert forwarded["items"][0]["providerItemId"] == coordinate
 
 
 def test_malformed_upstream_is_502_and_invalid_input_is_400_without_input_echo(runtime: FakeRuntime) -> None:
@@ -319,9 +333,10 @@ def test_service_preserves_temporary_failure_status_and_safe_violations(status: 
             violations=[{"field": ["query"], "type": "too_long"}],
         )
 
-    with pytest.raises(Exception) as error:
+    with pytest.raises(BaseHTTPException) as error:
         rejected()
     assert error.value.code == status
+    assert error.value.data is not None
     assert error.value.data["violations"] == [{"field": ["query"], "type": "too_long"}]
 
 
@@ -335,8 +350,8 @@ def test_service_image_upload_uses_authenticated_profile_and_typed_response(monk
         response, status = resources.KnowledgeFSServiceQueryImagesApi().post("control-1")
     assert status == 201
     assert response == {"upload_file_id": "image-1", "byte_size": 8, "mime_type": "image/png"}
-    assert upload.last_call.kwargs["profile"].tenant_id == "tenant-1"
-    assert upload.last_call.kwargs["file"].filename == "image.png"
+    assert narrowed(upload.last_call.kwargs["profile"], KnowledgeFSServiceApiProfile).tenant_id == "tenant-1"
+    assert narrowed(upload.last_call.kwargs["file"], FileStorage).filename == "image.png"
 
 
 def test_image_admission_checks_ownership_before_issuing_a_capability(
@@ -352,7 +367,7 @@ def test_image_admission_checks_ownership_before_issuing_a_capability(
         method="POST",
         json={"queryImages": [{"uploadFileId": "b3d672a0-f379-4c3a-ad89-6eac80aa3efd"}]},
     ):
-        with pytest.raises(Exception) as error:
+        with pytest.raises(BaseHTTPException) as error:
             resources.KnowledgeFSServiceQueryAdmissionApi().post("control-1")
     assert error.value.code == 422
     assert runtime.broker.issue_service.calls == []
@@ -420,7 +435,7 @@ def test_atomic_crawl_edit_rejects_inline_document_content() -> None:
 def test_recovery_reads_keep_the_authorized_space_and_child_resource_binding(
     runtime: FakeRuntime,
     monkeypatch: pytest.MonkeyPatch,
-    controller: type[Resource],
+    controller: Callable[[], _ReadResource],
     arguments: tuple[str, ...],
     operation: str,
     resource_id: str | None,
@@ -470,7 +485,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime: Fak
     assert call["operation_id"] == "selectCrawlPreviewPages"
     assert call["resource_id"] == "run-1"
     assert call["headers"] == (("Idempotency-Key", "selection-request-1"),)
-    assert call["payload"].page_ids == ["page-1"]
+    assert narrowed(call["payload"], KnowledgeFSCrawlPreviewSelectionPayload).page_ids == ["page-1"]
 
 
 @pytest.mark.parametrize(
@@ -636,6 +651,6 @@ def test_durable_source_contracts_bind_the_original_profile_and_resource(
     if requires_key:
         assert call["headers"] == (("Idempotency-Key", "source-command-1"),)
     if body is not None:
-        forwarded = call["payload"].model_dump(by_alias=True, exclude_none=True)
+        forwarded = narrowed(call["payload"], BaseModel).model_dump(by_alias=True, exclude_none=True)
         for field, value in body.items():
             assert forwarded[field] == value

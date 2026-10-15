@@ -94,6 +94,13 @@ class FakeRuntime:
     service_api_authorization: FakeComponent = field(default_factory=FakeComponent)
 
 
+def narrowed[T](value: object, kind: type[T]) -> T:
+    """Assert a recorded argument is ``kind`` and return it typed as such."""
+
+    assert isinstance(value, kind), f"expected {kind.__name__}, got {type(value).__name__}"
+    return value
+
+
 def raising(error: BaseException) -> Callable[..., object]:
     """Return a plain callable that raises ``error`` when invoked."""
 

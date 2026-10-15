@@ -14,11 +14,13 @@ from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from libs.oauth_bearer import AuthContext, TokenType
+from services.knowledge_fs.product_dto import KnowledgeFSListQuery
 from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
     FakeComponent,
     FakeRuntime,
     Recorder,
     invocation,
+    narrowed,
     raising,
 )
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
@@ -97,7 +99,9 @@ def test_list_controller_adapts_public_pagination_to_the_product_operation(monke
         "?path=/knowledge&page_size=25&page_token=opaque-page&consistency_class=path-consistent",
         method="GET",
     ):
-        body, status = api.get.__wrapped__(
+        # Peel only the outermost OpenAPI wrapper so the inner decorators still run.
+        get = inspect.unwrap(KnowledgeFsEntryListApi.get, stop=lambda fn: fn is not KnowledgeFsEntryListApi.get)
+        body, status = get(
             api,
             workspace_id="workspace-1",
             knowledge_space_id="space-1",
@@ -132,10 +136,11 @@ def test_list_controller_adapts_public_pagination_to_the_product_operation(monke
     assert call["tenant_id"] == "workspace-1"
     assert call["account_id"] == str(account_id)
     assert call["control_space_id"] == "space-1"
-    assert call["query"].path == "/knowledge"
-    assert call["query"].limit == 25
-    assert call["query"].cursor == "opaque-page"
-    assert call["query"].consistency_class == "path-consistent"
+    query = narrowed(call["query"], KnowledgeFSListQuery)
+    assert query.path == "/knowledge"
+    assert query.limit == 25
+    assert query.cursor == "opaque-page"
+    assert query.consistency_class == "path-consistent"
 
 
 @pytest.mark.parametrize(

@@ -46,10 +46,12 @@ from models import Account
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSAtomicSourceUpdatePayload,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSPublicFailureResponse,
     KnowledgeFSQueryCreatePayload,
+    KnowledgeFSSourceImportConfigurationPayload,
     KnowledgeFSSourceResponse,
     KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceUpdatePayload,
@@ -64,6 +66,7 @@ from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
     FakeRuntime,
     Recorder,
     invocation,
+    narrowed,
     raising,
 )
 
@@ -761,7 +764,9 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         assert call_fields[field_name] == expected
     if "payload" in call_fields:
         if class_name.__name__ == "KnowledgeFSSpaceSourceApi" and method_name.__name__ == "patch":
-            assert call_fields["payload"].model_dump(exclude_none=True) == payload.model_dump(exclude_none=True)
+            forwarded = narrowed(call_fields["payload"], BaseModel)
+            source_update = narrowed(payload, KnowledgeFSSourceUpdatePayload)
+            assert forwarded.model_dump(exclude_none=True) == source_update.model_dump(exclude_none=True)
         else:
             assert call_fields["payload"] is payload
     if "members" in call_fields:
@@ -854,7 +859,7 @@ def test_console_source_update_does_not_start_sync_before_resource_selection(
             "source-1",
         )
 
-    forwarded = facade.update_source.last_call.kwargs["payload"]
+    forwarded = narrowed(facade.update_source.last_call.kwargs["payload"], KnowledgeFSAtomicSourceUpdatePayload)
     assert forwarded is not payload
     assert forwarded.status == "disabled"
     assert forwarded.sync_after_update is None
@@ -951,10 +956,10 @@ def test_console_source_update_commits_complete_edit_selection(
         )
 
     assert facade.update_source.calls == []
-    source_payload = commit.last_call.kwargs["source_update"]
+    source_payload = narrowed(commit.last_call.kwargs["source_update"], KnowledgeFSSourceImportConfigurationPayload)
     assert source_payload.status == "disabled"
-    import_payload = commit.last_call.kwargs["payload"]
-    assert import_payload.kind == expected_import_kind
+    import_payload = narrowed(commit.last_call.kwargs["payload"], BaseModel)
+    assert import_payload.model_dump()["kind"] == expected_import_kind
     assert commit.last_call.kwargs["idempotency_key"] == "source-edit:source-1:3"
     assert updated.sync_workflow is workflow
     assert result is updated
@@ -1002,9 +1007,10 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
     assert len(facade.update_source.calls) == 1
     assert commit.calls == []
     assert facade.update_source_sync_policy.calls == []
-    command = facade.update_source.last_call.kwargs["payload"]
+    command = narrowed(facade.update_source.last_call.kwargs["payload"], KnowledgeFSAtomicSourceUpdatePayload)
     assert command.expected_version == 3
     assert command.expected_policy_revision == 2
+    assert command.sync_policy is not None
     assert command.sync_policy.mode == "interval"
     assert result is source
 
@@ -1164,9 +1170,10 @@ def test_console_source_update_applies_policy_without_creating_import_work(
     assert len(facade.update_source.calls) == 1
     assert commit.calls == []
     assert facade.update_source_sync_policy.calls == []
-    policy_payload = facade.update_source.last_call.kwargs["payload"]
+    policy_payload = narrowed(facade.update_source.last_call.kwargs["payload"], KnowledgeFSAtomicSourceUpdatePayload)
     assert policy_payload.expected_policy_revision == 2
     assert policy_payload.expected_version == 5
+    assert policy_payload.sync_policy is not None
     assert policy_payload.sync_policy.custom_interval_seconds == 7200
     assert source.sync_policy is policy
     assert result is source

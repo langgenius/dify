@@ -35,9 +35,11 @@ from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpace
 from services.knowledge_fs.download_service import KnowledgeFSDownloadUnavailableError
 from services.knowledge_fs.object_storage import KnowledgeFSObjectMetadata
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentMultimodalManifest,
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
+    KnowledgeFSDocumentStagedUploadPayload,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSLogicalDocumentDeletePayload,
@@ -59,7 +61,13 @@ from services.knowledge_fs.service_api_authorization import (
     KnowledgeFSServiceApiScopeError,
 )
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.controllers.knowledge_fs_controller_fakes import FakeComponent, FakeRuntime, Recorder, invocation
+from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
+    FakeComponent,
+    FakeRuntime,
+    Recorder,
+    invocation,
+    narrowed,
+)
 
 _API_ROOT = Path(__file__).resolve().parents[3]
 
@@ -978,7 +986,8 @@ def test_staged_document_claim_passes_only_upload_id_to_the_admission_service(
         "compilation_job_id": "job-1",
     }
     assert len(staged_uploads.claim.calls) == 1
-    assert staged_uploads.claim.last_call.kwargs["payload"].upload_id == "staged-1"
+    claimed = narrowed(staged_uploads.claim.last_call.kwargs["payload"], KnowledgeFSDocumentStagedUploadPayload)
+    assert claimed.upload_id == "staged-1"
 
 
 @pytest.mark.parametrize("file_size_limit_mb", [15, 50])
@@ -1614,7 +1623,7 @@ def test_console_query_stream_proxy_forwards_only_the_admitted_capability(
     call = facade.stream_query.last_call.kwargs
     assert call["capability_token"] == "capability-token"
     assert call["trace_id"] == "trace-1"
-    assert call["payload"].knowledge_space_id == "space-1"
+    assert narrowed(call["payload"], KnowledgeFSAdmittedQueryRequest).knowledge_space_id == "space-1"
     assert set(call) == {"capability_token", "trace_id", "payload"}
 
 
@@ -1667,7 +1676,7 @@ def test_service_query_stream_proxy_forwards_only_the_admitted_capability(
     call = facade.stream_query.last_call.kwargs
     assert call["capability_token"] == "capability-token"
     assert call["trace_id"] == "trace-1"
-    assert call["payload"].knowledge_space_id == "space-1"
+    assert narrowed(call["payload"], KnowledgeFSAdmittedQueryRequest).knowledge_space_id == "space-1"
     assert set(call) == {"capability_token", "trace_id", "payload"}
 
 
