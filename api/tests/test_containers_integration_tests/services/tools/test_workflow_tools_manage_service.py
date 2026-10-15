@@ -111,13 +111,13 @@ class TestWorkflowToolManageService:
         workflow = WorkflowModel(
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=WorkflowType.WORKFLOW,
             version="1.0.0",
             graph=json.dumps({}),
-            features=json.dumps({}),
+            _features=json.dumps({}),
             created_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         db_session_with_containers.add(workflow)

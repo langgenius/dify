@@ -150,9 +150,9 @@ def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
         total_steps=0,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=datetime.datetime(2025, 3, 15),
         finished_at=datetime.datetime(2025, 3, 15),
     )
+    run.created_at = datetime.datetime(2025, 3, 15)
     with sqlite_session_factory.begin() as session:
         session.add_all([target, other_tenant, other_month, run])
     repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)

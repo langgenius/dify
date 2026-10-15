@@ -103,7 +103,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             type=WorkflowType.CHAT,
             version="published",
             graph='{"nodes":[],"edges":[]}',
-            features='{"opening_statement":"Workflow opening"}',
+            _features='{"opening_statement":"Workflow opening"}',
             created_by=account.id,
             updated_by=account.id,
         )
@@ -113,7 +113,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             type=WorkflowType.CHAT,
             version="published",
             graph='{"nodes":[],"edges":[]}',
-            features='{"opening_statement":"Other tenant workflow"}',
+            _features='{"opening_statement":"Other tenant workflow"}',
             created_by=account.id,
         )
         session.add_all([workflow, decoy_workflow])

@@ -49,7 +49,7 @@ def _run(
     triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.APP_RUN,
 ) -> WorkflowRun:
     created_at = datetime(2026, 1, 1, tzinfo=UTC)
-    return WorkflowRun(
+    run = WorkflowRun(
         id=run_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -67,10 +67,11 @@ def _run(
         total_steps=2,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="actor-1",
-        created_at=created_at,
         finished_at=created_at + timedelta(seconds=1),
         exceptions_count=0,
     )
+    run.created_at = created_at
+    return run
 
 
 def test_get_paginated_returns_detached_actor_records_by_role_when_ids_overlap(

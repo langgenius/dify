@@ -66,10 +66,10 @@ class TestArchivedWorkflowRunDeletion:
             total_steps=1,
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
-            created_at=created_at,
             finished_at=created_at,
             exceptions_count=0,
         )
+        run.created_at = created_at
         db_session_with_containers.add(run)
         db_session_with_containers.commit()
         return run

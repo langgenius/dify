@@ -16,7 +16,7 @@ from fields.workflow_run_fields import workflow_run_pagination_response_source, 
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import EndUser
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowExecutionStatus, WorkflowRun, WorkflowType
 
 
 def _run(role: CreatorUserRole, created_by: str) -> WorkflowRun:
@@ -26,10 +26,10 @@ def _run(role: CreatorUserRole, created_by: str) -> WorkflowRun:
         tenant_id="00000000-0000-0000-0000-000000000001",
         app_id="00000000-0000-0000-0000-000000000002",
         workflow_id=str(uuid4()),
-        type="workflow",
+        type=WorkflowType("workflow"),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1.0",
-        status="succeeded",
+        status=WorkflowExecutionStatus.SUCCEEDED,
         created_by_role=role,
         created_by=created_by,
     )

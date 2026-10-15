@@ -92,7 +92,7 @@ def test_export_errors_have_canonical_http_responses(
                 type=WorkflowType.WORKFLOW,
                 version=Workflow.VERSION_DRAFT,
                 graph='{"nodes": [], "edges": []}',
-                features="{}",
+                _features="{}",
                 created_by="account-id",
             )
         )
