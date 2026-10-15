@@ -1,6 +1,7 @@
 """Run tracing endpoints preserve resource ownership, acknowledgement and error contracts."""
 
 import inspect
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta, timezone
 from functools import wraps
 from types import SimpleNamespace
@@ -32,7 +33,7 @@ NODE_ID = UUID("01a44444-4444-7444-8444-444444444444")
 
 
 @pytest.fixture
-def services(monkeypatch):
+def services(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicMock, MagicMock]:
     owners, runs = MagicMock(), MagicMock()
     owners.resolve_app_id.return_value = str(APP_ID)
     status = {"status": "not_collected", "source_kind": "message", "source_id": str(SOURCE_ID)}
@@ -51,7 +52,9 @@ def services(monkeypatch):
         datetime(2026, 1, 1, 8, tzinfo=timezone(timedelta(hours=8))),
     ],
 )
-def test_agent_status_resolves_owner_and_never_exposes_destination_secrets(app: Flask, services, accepted_at) -> None:
+def test_agent_status_resolves_owner_and_never_exposes_destination_secrets(
+    app: Flask, services: tuple[MagicMock, MagicMock], accepted_at: datetime
+) -> None:
     owners, runs = services
     runs.status.return_value.update(
         {
@@ -85,7 +88,9 @@ def test_agent_status_resolves_owner_and_never_exposes_destination_secrets(app: 
 
 
 @pytest.mark.parametrize("kind", ["message", "workflow", "node"])
-def test_app_status_source_scope_and_not_collected(app: Flask, services, kind) -> None:
+def test_app_status_source_scope_and_not_collected(
+    app: Flask, services: tuple[MagicMock, MagicMock], kind: str
+) -> None:
     owners, runs = services
     runs.status.return_value["source_kind"] = kind
     with app.test_request_context():
@@ -101,7 +106,9 @@ def test_app_status_source_scope_and_not_collected(app: Flask, services, kind) -
 
 @pytest.mark.parametrize("ack", [False, True])
 @pytest.mark.parametrize("agent", [False, True])
-def test_retry_forwards_only_frozen_run_identity_and_explicit_ack(app: Flask, services, ack, agent) -> None:
+def test_retry_forwards_only_frozen_run_identity_and_explicit_ack(
+    app: Flask, services: tuple[MagicMock, MagicMock], ack: bool, agent: bool
+) -> None:
     _, runs = services
     with app.test_request_context(
         f"/?node_execution_id={NODE_ID}", method="POST", json={"acknowledge_possible_duplicates": ack} if ack else {}
@@ -126,7 +133,9 @@ def test_retry_forwards_only_frozen_run_identity_and_explicit_ack(app: Flask, se
 
 
 @pytest.mark.parametrize("payload", [{"provider": "different-provider"}, {"acknowledge_possible_duplicates": "true"}])
-def test_retry_rejects_destination_changes_and_non_boolean_ack(app: Flask, services, payload) -> None:
+def test_retry_rejects_destination_changes_and_non_boolean_ack(
+    app: Flask, services: tuple[MagicMock, MagicMock], payload: dict[str, str]
+) -> None:
     _, runs = services
     with app.test_request_context(method="POST", json=payload), pytest.raises(ValidationError):
         inspect.unwrap(tracing_runs.AppTraceRunRetryApi.post)(
@@ -135,7 +144,7 @@ def test_retry_rejects_destination_changes_and_non_boolean_ack(app: Flask, servi
     runs.retry.assert_not_called()
 
 
-def test_source_kind_is_validated_before_service_lookup(app: Flask, services) -> None:
+def test_source_kind_is_validated_before_service_lookup(app: Flask, services: tuple[MagicMock, MagicMock]) -> None:
     _, runs = services
     with app.test_request_context(), pytest.raises(ValidationError):
         inspect.unwrap(tracing_runs.AppTraceRunApi.get)(
@@ -144,7 +153,7 @@ def test_source_kind_is_validated_before_service_lookup(app: Flask, services) ->
     runs.status.assert_not_called()
 
 
-def test_agent_owner_rejection_prevents_run_lookup(app: Flask, services) -> None:
+def test_agent_owner_rejection_prevents_run_lookup(app: Flask, services: tuple[MagicMock, MagicMock]) -> None:
     owners, runs = services
     owners.resolve_app_id.side_effect = AgentAppNotFoundError
     with app.test_request_context(), pytest.raises(NotFound):
@@ -163,13 +172,15 @@ def test_agent_owner_rejection_prevents_run_lookup(app: Flask, services) -> None
         ("tracing_duplicate_acknowledgement_required", 409),
     ],
 )
-def test_retry_business_errors_match_served_error_contract(services, code, status) -> None:
+def test_retry_business_errors_match_served_error_contract(
+    services: tuple[MagicMock, MagicMock], code: str, status: int
+) -> None:
     _, runs = services
     runs.retry.side_effect = TraceCollectionError(code, status)
     target = tracing_runs.AppTraceRunRetryApi.post
 
     @wraps(target)
-    def post(self):
+    def post(self: Resource) -> dict[str, object]:
         return inspect.unwrap(target)(self, CONTEXT, APP_ID, "message", SOURCE_ID)
 
     resource = type("RetryContractResource", (Resource,), {"post": post})
@@ -179,8 +190,10 @@ def test_retry_business_errors_match_served_error_contract(services, code, statu
     with app.test_client() as client:
         response = client.post("/retry", json={})
     assert response.status_code == status
-    assert response.json["code"] == code
-    assert response.json["status"] == status
+    body = response.json
+    assert body is not None
+    assert body["code"] == code
+    assert body["status"] == status
 
 
 @pytest.mark.parametrize(
@@ -192,7 +205,13 @@ def test_retry_business_errors_match_served_error_contract(services, code, statu
         (tracing_runs.AppTraceRunRetryApi.post, tracing_runs.RBACPermission.APP_TRACING_CONFIG, PlainApp),
     ],
 )
-def test_run_endpoints_enforce_resource_permissions(app: Flask, monkeypatch, method, permission, locator) -> None:
+def test_run_endpoints_enforce_resource_permissions(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method: Callable[..., object],
+    permission: tracing_runs.RBACPermission,
+    locator: type[AgentId] | type[PlainApp],
+) -> None:
     account = Account(name="Reader", email="reader@example.com", status=AccountStatus.ACTIVE)
     account.id, account.role = "account", TenantAccountRole.NORMAL
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
@@ -212,7 +231,9 @@ def test_run_endpoints_enforce_resource_permissions(app: Flask, monkeypatch, met
 
 
 @pytest.mark.parametrize("method", [tracing_runs.AgentTraceRunRetryApi.post, tracing_runs.AppTraceRunRetryApi.post])
-def test_retry_rejects_readonly_members_without_rbac(app: Flask, monkeypatch, method) -> None:
+def test_retry_rejects_readonly_members_without_rbac(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, method: Callable[..., object]
+) -> None:
     account = Account(name="Reader", email="reader@example.com", status=AccountStatus.ACTIVE)
     account.id, account.role = "account", TenantAccountRole.NORMAL
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
