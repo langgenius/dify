@@ -180,12 +180,25 @@ for populated=0 and removes storage. Failed cleanup quarantines capacity.
 Deployment source is in `docker/native-test-supervisor.service`,
 `docker/native-test-start.sh`, `docker/native-test-seccomp.json` and
 `docker/native-test-apparmor.profile`. Only the host administrator/systemd
-provisions the dedicated subtree and profile. The startup script runs as the
-unprivileged supervisor UID. The systemd unit actually installs the syscall
+provisions the dedicated subtree and profile. This host-systemd profile requires
+systemd 254 or newer and effective `DelegateSubgroup=manager`. systemd must place
+the initial and restarted manager in that leaf before executing the startup
+script: retained workers leave domain controllers enabled on the unit root,
+which cannot also contain processes. The unprivileged startup script checks the
+installed systemd version and its actual `/proc/self/cgroup` placement before
+writing cgroup controls; it never migrates itself to repair incorrect placement.
+Qualification must verify the running manager's version, effective unit property,
+manager PID in the `manager` leaf, empty unit-root `cgroup.procs`, and retained
+scope/job reconnection after a service restart. `KillMode=process` preserves the
+existing workers; scope cancellation still requires the scope's `cgroup.kill`
+and populated=0 proof. The systemd unit actually installs the syscall
 allowlist; OCI deployments must explicitly apply the shipped JSON. Ubuntu24.04
 needs the profile-specific `userns,` rule in
-`/etc/apparmor.d/dify-native-userns`; Ubuntu22.04 leaves that optional include
-absent. Parse and enforce the target profile; never substitute privileged mode,
+`/etc/apparmor.d/dify-native-userns`; Ubuntu22.04's AppArmor syntax leaves that
+optional include absent. That syntax compatibility does not qualify Ubuntu22.04
+hosts: systemd versions below 254 are unsupported by this profile, and the actual
+Dev node has not passed native deployment qualification. Parse and enforce the
+target profile; never substitute privileged mode,
 a Docker socket, broad host cgroup access or a globally disabled LSM.
 
 For local Agent settings, `DIFY_AGENT_RUNTIME_BACKEND=local` remains selected.

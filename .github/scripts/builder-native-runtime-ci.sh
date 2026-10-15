@@ -15,11 +15,32 @@ owned_fixture() {
   [[ $(sudo cat "$marker" 2>/dev/null) == "$owner" ]]
 }
 
+require_manager_subgroup_support() {
+  local native_systemd_version
+  native_systemd_version=$(systemctl show --property=Version --value)
+  [[ $native_systemd_version =~ ^([0-9]+) ]]
+  (( BASH_REMATCH[1] >= 254 )) || {
+    echo 'Native host profile requires systemd 254 or newer.' >&2
+    return 1
+  }
+}
+
+assert_manager_subgroup() {
+  local native_manager_pid native_cgroup_root
+  native_cgroup_root=/sys/fs/cgroup/system.slice/dify-native.service
+  [[ $(systemctl show "$unit" --property=DelegateSubgroup --value) == manager ]]
+  native_manager_pid=$(systemctl show "$unit" --property=MainPID --value)
+  [[ $native_manager_pid =~ ^[0-9]+$ && $native_manager_pid -gt 1 ]]
+  [[ -z $(sudo cat "$native_cgroup_root/cgroup.procs") ]]
+  sudo grep -Fxq "$native_manager_pid" "$native_cgroup_root/manager/cgroup.procs"
+}
+
 case ${1:-} in
   provision)
     binary_dir=${2:?binary directory required}
     profile_dir=${3:?profile directory required}
     [[ $(cat /proc/1/comm) == systemd ]]
+    require_manager_subgroup_support
     [[ $(stat -fc %T /sys/fs/cgroup) == cgroup2fs ]]
     [[ $(cat /sys/module/apparmor/parameters/enabled) == Y ]]
     for path in /var/lib/dify-native /home/dify /workspace "$marker"; do
@@ -74,6 +95,7 @@ case ${1:-} in
     sudo systemctl start "$unit"
     for attempt in $(seq 1 30); do
       if printf 'header = "Authorization: Bearer %s"\n' "$token" | curl --fail --silent --config - http://127.0.0.1:5005/healthz >/dev/null; then
+        assert_manager_subgroup
         exit 0
       fi
       sleep 1
@@ -83,9 +105,11 @@ case ${1:-} in
     ;;
   restart)
     owned_fixture
+    require_manager_subgroup_support
     sudo systemctl restart "$unit"
     for attempt in $(seq 1 30); do
       if printf 'header = "Authorization: Bearer %s"\n' "${SHELLCTL_NATIVE_TEST_TOKEN:?native supervisor token required}" | curl --fail --silent --config - http://127.0.0.1:5005/healthz >/dev/null; then
+        assert_manager_subgroup
         exit 0
       fi
       sleep 1
@@ -96,7 +120,15 @@ case ${1:-} in
   logs)
     owned_fixture || exit 0
     uname -a
-    sudo systemctl show "$unit" --property=User,Group,Delegate,CPUQuotaPerSecUSec,MemoryMax,TasksMax,NoNewPrivileges,AppArmorProfile,ControlGroup,SystemCallFilter,SystemCallErrorNumber
+    systemctl --version
+    systemctl show --property=Version
+    sudo systemctl show "$unit" --property=User,Group,Delegate,DelegateSubgroup,CPUQuotaPerSecUSec,MemoryMax,TasksMax,NoNewPrivileges,AppArmorProfile,ControlGroup,SystemCallFilter,SystemCallErrorNumber
+    for group in /sys/fs/cgroup/system.slice/dify-native.service{,/manager,/scopes}; do
+      for file in cgroup.type cgroup.procs cgroup.subtree_control cgroup.events; do
+        printf '%s\n' "$group/$file"
+        sudo cat "$group/$file" || true
+      done
+    done
     sudo journalctl --no-pager -u "$unit" -n 300
     # A denied startup can have no matching kernel records. Keep the remaining
     # diagnostic output; this best-effort dump never decides qualification.

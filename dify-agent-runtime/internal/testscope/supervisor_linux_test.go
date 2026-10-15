@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -312,5 +313,105 @@ func TestScopedProxyRewritesAuthorityAfterHopHeaders(t *testing.T) {
 	m.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusNoContent {
 		t.Fatalf("proxy status %d", response.Code)
+	}
+}
+
+// Startup fixture tests substitute read-only systemd/proc/cgroup inputs in a
+// temporary copy of the real script. They do not qualify real kernel placement.
+func TestNativeSystemdStartupRequiresManagerPlacement(t *testing.T) {
+	source, err := os.ReadFile("../../docker/native-test-start.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unit, err := os.ReadFile("../../docker/native-test-supervisor.service")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(unit), "\nDelegateSubgroup=manager\n") {
+		t.Error("unit must place initial and restarted manager directly in its leaf")
+	}
+	for _, tc := range []struct {
+		name, version, placement, want string
+		allowed                        bool
+	}{
+		{"old-systemd", "249", "/system.slice/dify-native.service/manager", "requires systemd >= 254", false},
+		{"unknown-version", "unknown", "/system.slice/dify-native.service/manager", "requires systemd >= 254", false},
+		{"unit-root", "254", "/system.slice/dify-native.service", "requires DelegateSubgroup=manager placement", false},
+		{"scope-leaf", "255", "/system.slice/dify-native.service/scopes/other", "requires DelegateSubgroup=manager placement", false},
+		{"minimum-version", "254", "/system.slice/dify-native.service/manager", "", true},
+		{"retained-worker-restart", "255", "/system.slice/dify-native.service/manager", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			cg := filepath.Join(dir, "cgroup")
+			if err := os.MkdirAll(filepath.Join(cg, "manager"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			worker := filepath.Join(cg, "scopes", "retained", "cgroup.procs")
+			if err := os.MkdirAll(filepath.Dir(worker), 0700); err != nil {
+				t.Fatal(err)
+			}
+			write := func(path, content string) {
+				t.Helper()
+				if err := os.WriteFile(path, []byte(content), 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			write(worker, "777\n")
+			write(filepath.Join(cg, "manager", "cgroup.procs"), "222\n")
+			write(filepath.Join(cg, "cgroup.subtree_control"), "untouched\n")
+			proc := filepath.Join(dir, "proc-cgroup")
+			write(proc, "0::"+tc.placement+"\n")
+			systemctl := filepath.Join(dir, "systemctl")
+			write(systemctl, "#!/bin/sh\nprintf 'systemd "+tc.version+" (fixture)\\n'\n")
+			stat := filepath.Join(dir, "stat")
+			write(stat, "#!/bin/sh\nprintf 'cgroup2fs\\n'\n")
+			executable := filepath.Join(dir, "shellctl")
+			started := filepath.Join(dir, "started")
+			write(executable, "#!/bin/sh\nprintf started > '"+started+"'\n")
+			script := string(source)
+			script = strings.ReplaceAll(script, "root=/sys/fs/cgroup/system.slice/dify-native.service", "root="+cg)
+			script = strings.ReplaceAll(script, "/proc/self/cgroup", proc)
+			script = strings.ReplaceAll(script, "/usr/bin/systemctl", systemctl)
+			script = strings.ReplaceAll(script, "stat -fc", stat+" -fc")
+			script = strings.ReplaceAll(script, "/usr/local/bin/shellctl", executable)
+			path := filepath.Join(dir, "start.sh")
+			write(path, script)
+			command := exec.Command("/bin/sh", path)
+			output, err := command.CombinedOutput()
+			if tc.allowed {
+				if err != nil {
+					t.Fatalf("supported manager failed: %v %s", err, output)
+				}
+				if _, err = os.Stat(started); err != nil {
+					t.Fatal("supervisor was not started")
+				}
+				for file, want := range map[string]string{"cgroup.subtree_control": "+cpu +memory +pids\n", "scopes/cpu.max": "200000 100000\n", "scopes/memory.max": "2147483648\n", "scopes/memory.swap.max": "0\n", "scopes/pids.max": "512\n", "scopes/cgroup.subtree_control": "+cpu +memory +pids\n"} {
+					got, err := os.ReadFile(filepath.Join(cg, file))
+					if err != nil || string(got) != want {
+						t.Fatalf("bound %s = %q, %v", file, got, err)
+					}
+				}
+			} else {
+				if err == nil || !strings.Contains(string(output), tc.want) {
+					t.Fatalf("missing prerequisite was not specifically refused: %v %s", err, output)
+				}
+				if _, err = os.Stat(started); !os.IsNotExist(err) {
+					t.Fatal("unsupported startup reached supervisor")
+				}
+				data, _ := os.ReadFile(filepath.Join(cg, "cgroup.subtree_control"))
+				if string(data) != "untouched\n" {
+					t.Fatal("unsupported startup mutated delegation")
+				}
+			}
+			data, _ := os.ReadFile(worker)
+			if string(data) != "777\n" {
+				t.Fatal("startup moved or erased retained worker")
+			}
+			data, _ = os.ReadFile(filepath.Join(cg, "manager", "cgroup.procs"))
+			if string(data) != "222\n" {
+				t.Fatal("startup performed manual manager migration")
+			}
+		})
 	}
 }
