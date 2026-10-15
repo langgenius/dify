@@ -6,8 +6,8 @@ import os
 import threading
 import time
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
@@ -43,6 +43,16 @@ from dify_agent.server.observability import configure_application_observability
 from dify_agent.server.settings import ServerSettings
 
 
+@dataclass
+class TraceInbox:
+    batches: list[dict[str, object]] = field(default_factory=list)
+    headers: list[str | None] = field(default_factory=list)
+    paths: list[str] = field(default_factory=list)
+    failures: int = 0
+    status: int | None = None
+    url: str = ""
+
+
 @pytest.fixture(autouse=True)
 def isolated_environment(monkeypatch, tmp_path) -> None:
     monkeypatch.chdir(tmp_path)
@@ -52,8 +62,8 @@ def isolated_environment(monkeypatch, tmp_path) -> None:
 
 
 @pytest.fixture
-def inbox() -> Iterator[SimpleNamespace]:
-    state = SimpleNamespace(batches=[], headers=[], paths=[], failures=0, status=None)
+def inbox() -> Iterator[TraceInbox]:
+    state = TraceInbox()
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
