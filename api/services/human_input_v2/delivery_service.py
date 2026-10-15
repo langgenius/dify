@@ -77,6 +77,7 @@ from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCre
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 logger = logging.getLogger(__name__)
+_CONSOLE_FORM_PAGE_PATH = "/human-input"
 _PUBLIC_V2_FORM_PAGE_PATH = "/form-v2"
 _LEGACY_FORM_PAGE_PATH = "/form"
 
@@ -390,10 +391,18 @@ class HumanInputDeliveryService:
 
     @staticmethod
     def _request_url(token: SecretStr, auth_type: SubmissionAuthType) -> str:
-        base_url = dify_config.APP_WEB_URL
+        if auth_type == SubmissionAuthType.CONSOLE:
+            base_url = dify_config.CONSOLE_WEB_URL
+            page_path = _CONSOLE_FORM_PAGE_PATH
+            required_setting = "CONSOLE_WEB_URL"
+        else:
+            base_url = dify_config.APP_WEB_URL
+            page_path = (
+                _PUBLIC_V2_FORM_PAGE_PATH if auth_type == SubmissionAuthType.EMAIL_OTP else _LEGACY_FORM_PAGE_PATH
+            )
+            required_setting = "APP_WEB_URL"
         if not base_url:
-            raise ValueError("APP_WEB_URL is required for Human Input approval links")
-        page_path = _PUBLIC_V2_FORM_PAGE_PATH if auth_type == SubmissionAuthType.EMAIL_OTP else _LEGACY_FORM_PAGE_PATH
+            raise ValueError(f"{required_setting} is required for Human Input approval links")
         return f"{base_url.rstrip('/')}{page_path}/{quote(token.get_secret_value(), safe='')}"
 
     @staticmethod

@@ -327,6 +327,7 @@ def providers(context: Context, monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(dify_config, "APP_WEB_URL", "https://app.example.com")
+    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://console.example.com")
     cipher = Fernet(Fernet.generate_key())
     monkeypatch.setattr(encrypter, "encrypt_token", lambda _tenant, token: cipher.encrypt(token.encode()).decode())
     monkeypatch.setattr(encrypter, "decrypt_token", lambda _tenant, token: cipher.decrypt(token.encode()).decode())
@@ -508,6 +509,62 @@ def test_im_assessment_controls_message_form_and_auth_without_losing_email(conte
     adapter.close.assert_called_once()
 
 
+@pytest.mark.parametrize("contact_kind", ["workspace", "organization"])
+@pytest.mark.parametrize("app_web_url", ["https://app.example.com", ""])
+def test_account_contact_notifications_use_console_form_page(
+    context: Context, providers, monkeypatch, contact_kind, app_web_url
+):
+    from configs import dify_config
+    from core.human_input_v2.im_integration.adapters.entities import CardAssessment
+    from services.human_input_v2.composition import build_human_input_delivery_service
+
+    monkeypatch.setattr(dify_config, "APP_WEB_URL", app_web_url)
+    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://console.example.com/console/")
+    if contact_kind == "organization":
+        with context.sessions.begin() as session:
+            session.execute(
+                sa.delete(TenantAccountJoin).where(
+                    TenantAccountJoin.tenant_id == _TENANT, TenantAccountJoin.account_id == _ACCOUNT
+                )
+            )
+            session.add(
+                HumanInputPlatformContactWorkspaceEntry(
+                    tenant_id=_TENANT, contact_id=_CONTACT, added_by_account_id=_ACCOUNT
+                )
+            )
+    _add_im(context)
+    adapter, email_send = providers
+    adapter.dynamic_card_messaging.assess.return_value = CardAssessment(False, "file input")
+    created = context.prepare(_node(Contact(contact_id=_CONTACT)))
+    assert isinstance(created, CreatedForm)
+
+    build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
+        form=created.form,
+        recipient=created.recipients[0],
+        message_template=created.message_template,
+    )
+
+    assert "https://console.example.com/console/human-input/" in email_send.call_args.kwargs["html"]
+    assert "https://console.example.com/console/human-input/" in adapter.messaging.send_text.call_args.args[1]
+
+
+@pytest.mark.usefixtures("providers")
+def test_account_contact_notification_requires_console_web_url(context: Context, monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from services.human_input_v2.composition import build_human_input_delivery_service
+
+    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "")
+    created = context.prepare(_node(Contact(contact_id=_CONTACT)))
+    assert isinstance(created, CreatedForm)
+
+    with pytest.raises(ValueError, match="CONSOLE_WEB_URL"):
+        build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
+            form=created.form,
+            recipient=created.recipients[0],
+            message_template=created.message_template,
+        )
+
+
 def test_email_failure_is_recorded_without_discarding_im_success(context: Context, providers):
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
@@ -587,7 +644,7 @@ def test_submission_during_delivery_is_rejected_until_workflow_pauses(
         accepted = provider_accept(*args, **kwargs)
         if kwargs["to"] != "member@example.com":
             return accepted
-        approval_link = re.search(r"/form/([A-Za-z0-9_-]+)", kwargs["html"])
+        approval_link = re.search(r"/human-input/([A-Za-z0-9_-]+)", kwargs["html"])
         assert approval_link is not None
         with pytest.raises(HumanInputFormError) as exc:
             submission_service.submit_console_form(
