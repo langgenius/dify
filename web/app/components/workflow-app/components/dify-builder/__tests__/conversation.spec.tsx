@@ -1267,7 +1267,7 @@ describe('DifyBuilderConversation test data form', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
   })
 
-  it('renders a plan title and steps without version metadata', () => {
+  it('renders the resulting workflow overview and the actual plan step count', () => {
     render(
       <DifyBuilderConversation
         busy={false}
@@ -1279,6 +1279,8 @@ describe('DifyBuilderConversation test data form', () => {
             kind: 'plan',
             payload: {
               title: 'Build a support workflow',
+              input_summary: 'A support question and its attachments.',
+              output_summary: 'An answer with references from the knowledge base.',
               items: ['Collect the question', 'Generate an answer'],
             },
           },
@@ -1286,12 +1288,18 @@ describe('DifyBuilderConversation test data form', () => {
       />,
     )
 
-    const heading = screen.getByRole('heading', { level: 3, name: 'Build a support workflow' })
-    const card = heading.closest('article')
+    const card = screen.getByRole('article', { name: 'difyBuilder.cardCategory.plan' })
+    expect(
+      within(card).getByRole('heading', { level: 3, name: 'Build a support workflow' }),
+    ).toBeInTheDocument()
     expect(card).toHaveTextContent('difyBuilder.cardCategory.plan')
     expect(card).not.toHaveTextContent('v1')
     expect(card).toHaveTextContent('Collect the question')
-    expect(card?.querySelector('[data-card-status]')).not.toBeInTheDocument()
+    expect(card).toHaveTextContent('A support question and its attachments.')
+    expect(card).toHaveTextContent('An answer with references from the knowledge base.')
+    expect(card).toHaveTextContent('difyBuilder.plan.stepCount:{"count":2}')
+    expect(card).toHaveTextContent('difyBuilder.plan.ready')
+    expect(within(card).getAllByRole('listitem')).toHaveLength(2)
   })
 
   it('renders failed test result content in the card framework', () => {

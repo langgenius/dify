@@ -197,15 +197,23 @@ def test_planner_and_gap_provider_requests_offer_installed_setup_tools(draft_too
 
     def model_text(_model, *, system, user, **kwargs):  # noqa: ARG001
         requests.append((system, user))
-        return json.dumps({"plan": [f"tool node uses {AUTH_PROVIDER}/post"]})
+        return json.dumps(
+            {
+                "title": "Post to a Huddle channel",
+                "input_summary": "A message for the support channel.",
+                "output_summary": "The message ID returned by Huddle.",
+                "plan": [f"tool node uses {AUTH_PROVIDER}/post"],
+            }
+        )
 
     monkeypatch.setattr(build.llm, "invoke_json", model_json)
     monkeypatch.setattr(build.llm, "invoke_text", model_text)
     agent = LlmBuilderAgent(TENANT_ID, {})
     monkeypatch.setattr(agent, "_model", lambda: object())
     plan = agent.propose_plan_v1({}, goal_text="Post a message to a Huddle channel")
-    options = agent.discover_resources(plan, goal_text="Post a message to a Huddle channel", requirements={})
-    agent.assess_capability_gap(plan, options, goal_text="Post a message to a Huddle channel", requirements={})
+    assert plan is not None
+    options = agent.discover_resources(plan.items, goal_text="Post a message to a Huddle channel", requirements={})
+    agent.assess_capability_gap(plan.items, options, goal_text="Post a message to a Huddle channel", requirements={})
     assert f"{AUTH_PROVIDER}/post" in requests[0][0]
     assert "setup" in requests[0][0].lower()
     assert f"{AUTH_PROVIDER}/post" in requests[2][1]
