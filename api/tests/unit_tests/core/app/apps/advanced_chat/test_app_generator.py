@@ -465,8 +465,13 @@ class TestAdvancedChatAppGeneratorInternals:
         event.listen(sqlite_session, "after_commit", _record_commit)
         captured: dict[str, object] = {}
         thread_data: dict[str, object] = {}
+        pause_layer_kwargs: dict[str, object] = {}
         init_records = MagicMock(return_value=(conversation, message))
         get_thread_messages_length = MagicMock(return_value=3)
+
+        def _build_pause_layer(**kwargs: object) -> str:
+            pause_layer_kwargs.update(kwargs)
+            return "pause-layer"
 
         monkeypatch.setattr(generator._runtime.chat_records, "initialize", init_records)
         monkeypatch.setattr(generator._runtime.chat_records, "dialogue_count", get_thread_messages_length)
@@ -476,7 +481,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.PauseStatePersistenceLayer",
-            lambda **kwargs: "pause-layer",
+            _build_pause_layer,
         )
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.current_app",
@@ -533,6 +538,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["joined"] is True
         assert thread_data["join_timeout"] == 300
         assert "pause-layer" in thread_data["kwargs"]["graph_engine_layers"]
+        assert pause_layer_kwargs["human_form_reader"] is workflow_runtime.human_form_reader
         assert generator._dialogue_count == 3
         get_thread_messages_length.assert_called_once_with(conversation.id)
         assert commit_count == 0
@@ -818,7 +824,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr(
             "services.workflow.execution.adapters.chatflow.app_generator.AdvancedChatAppRunner", _Runner
         )
-        restore_workflow_run_graph = MagicMock()
+        restore_workflow_run_graph = MagicMock(side_effect=lambda workflow, _run_id: workflow)
         monkeypatch.setattr(generator._runtime.contexts, "restore_graph", restore_workflow_run_graph)
 
         generator._generate_worker(
