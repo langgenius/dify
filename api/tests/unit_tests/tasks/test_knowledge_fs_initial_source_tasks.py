@@ -1,11 +1,14 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass, field
+from unittest.mock import patch
 
 import pytest
 
-from models.knowledge_fs import KnowledgeFSControlSpaceState
+from core.db.session_factory import session_factory
+from models.account import Account
+from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
+from models.oauth import DatasourceProvider
 from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialOnlineDocumentSourcePayload,
     KnowledgeFSInitialOnlineDriveSourcePayload,
@@ -25,8 +28,17 @@ from tasks.knowledge_fs_initial_source_tasks import (
     start_initial_website_source_import,
     submit_initial_source_for_upgrade,
 )
-
-_DEFAULT_CREDENTIAL = object()
+from tests.unit_tests.tasks.knowledge_fs_task_fakes import (
+    FacadeRuntime,
+    RecordingKnowledgeFSFacade,
+    source_connection_list_response,
+    source_connection_response,
+    source_list_response,
+    source_provider_list_response,
+    source_response,
+    source_workflow_response,
+    sync_policy_response,
+)
 
 
 def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePayload:
@@ -111,102 +123,149 @@ def _drive_payload() -> KnowledgeFSInitialOnlineDriveSourcePayload:
     )
 
 
-def _facade() -> MagicMock:
-    facade = MagicMock()
-    facade.list_sources.return_value = SimpleNamespace(data=[], next_cursor=None)
-    facade.list_source_providers.return_value = SimpleNamespace(
-        data=[SimpleNamespace(id="plugin-daemon-website", available=True)]
-    )
-    facade.list_source_connections.return_value = SimpleNamespace(
-        data=[
-            SimpleNamespace(
-                configuration={
-                    "credentialId": "firecrawl-credential-1",
-                    "datasource": "crawl",
-                    "pluginId": "langgenius/firecrawl_datasource",
-                    "provider": "firecrawl",
-                    "providerKind": "website",
-                },
-                id="connection-1",
+_FIRECRAWL_CONNECTION_CONFIGURATION: dict[str, bool | int | str] = {
+    "credentialId": "firecrawl-credential-1",
+    "datasource": "crawl",
+    "pluginId": "langgenius/firecrawl_datasource",
+    "provider": "firecrawl",
+    "providerKind": "website",
+}
+
+
+@dataclass(frozen=True)
+class _Credential:
+    id: str
+    name: str
+    provider: str = "firecrawl"
+    plugin_id: str = "langgenius/firecrawl_datasource"
+
+
+_FIRECRAWL_CREDENTIAL = _Credential(id="firecrawl-credential-1", name="Firecrawl")
+
+
+@dataclass
+class _ControlSpaceRepository:
+    control_space: KnowledgeFSControlSpace | None
+    lookups: list[dict[str, str]] = field(default_factory=list)
+
+    def get(self, *, tenant_id: str, control_space_id: str) -> KnowledgeFSControlSpace | None:
+        self.lookups.append({"tenant_id": tenant_id, "control_space_id": control_space_id})
+        return self.control_space
+
+
+def _facade() -> RecordingKnowledgeFSFacade:
+    facade = RecordingKnowledgeFSFacade()
+    facade.script("list_sources", source_list_response())
+    facade.script("list_source_providers", source_provider_list_response("plugin-daemon-website"))
+    facade.script(
+        "list_source_connections",
+        source_connection_list_response(
+            source_connection_response(
+                configuration=_FIRECRAWL_CONNECTION_CONFIGURATION,
+                connection_id="connection-1",
                 provider_id="plugin-daemon-website",
                 status="active",
             )
-        ],
-        next_cursor=None,
+        ),
     )
-    facade.create_source_connection.return_value = SimpleNamespace(
-        configuration={"credentialId": "firecrawl-credential-1"},
-        id="connection-created",
-        provider_id="plugin-daemon-website",
-        status="active",
+    facade.script(
+        "create_source_connection",
+        source_connection_response(
+            configuration={"credentialId": "firecrawl-credential-1"},
+            connection_id="connection-created",
+            provider_id="plugin-daemon-website",
+            status="active",
+        ),
     )
-    facade.create_source.return_value = SimpleNamespace(id="source-1")
-    facade.import_selected_source_crawl.return_value = SimpleNamespace(
-        id="workflow-1",
-        source_id="source-1",
-        state="completed",
+    facade.script("create_source", source_response(metadata={}, status="disabled", version=1))
+    facade.script(
+        "import_selected_source_crawl",
+        source_workflow_response(workflow_id="workflow-1", source_id="source-1", state="completed"),
     )
-    facade.get_source_workflow.return_value = SimpleNamespace(
-        id="workflow-1",
-        source_id="source-1",
-        state="completed",
+    facade.script(
+        "get_source_workflow",
+        source_workflow_response(workflow_id="workflow-1", source_id="source-1", state="completed"),
     )
-    facade.get_source.return_value = SimpleNamespace(
-        metadata={
-            "clientRequestId": "initial-website-source:operation-1",
-            "parameters": {"limit": 99},
-            "preview": True,
-        },
-        status="disabled",
-        version=3,
+    facade.script(
+        "get_source",
+        source_response(
+            metadata={
+                "clientRequestId": "initial-website-source:operation-1",
+                "parameters": {"limit": 99},
+                "preview": True,
+            },
+            status="disabled",
+            version=3,
+        ),
     )
-    facade.update_source.return_value = SimpleNamespace(
-        metadata={
-            "clientRequestId": "initial-website-source:operation-1",
-            "preview": False,
-        },
-        status="active",
-        version=4,
+    facade.script(
+        "update_source",
+        source_response(
+            metadata={
+                "clientRequestId": "initial-website-source:operation-1",
+                "preview": False,
+            },
+            status="active",
+            version=4,
+        ),
     )
-    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("not found")
+    facade.script("get_source_sync_policy", KnowledgeFSProductResourceNotFoundError("not found"))
+    facade.script("update_source_sync_policy", None)
     return facade
+
+
+def _seed_account_and_credential(credential: _Credential | None) -> None:
+    account = Account(name="Initial source owner", email="initial-source-owner@example.com")
+    account.id = "account-1"
+    with session_factory.create_session() as session:
+        session.add(account)
+        if credential is not None:
+            provider = DatasourceProvider(
+                tenant_id="tenant-1",
+                name=credential.name,
+                provider=credential.provider,
+                plugin_id=credential.plugin_id,
+                auth_type="api_key",
+                encrypted_credentials={},
+            )
+            provider.id = credential.id
+            session.add(provider)
+        session.commit()
 
 
 @contextmanager
 def _runtime(
-    facade: MagicMock,
+    facade: RecordingKnowledgeFSFacade,
     *,
-    credential: SimpleNamespace | None | object = _DEFAULT_CREDENTIAL,
+    credential: _Credential | None = _FIRECRAWL_CREDENTIAL,
     state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE,
     knowledge_space_id: str | None = "space-1",
-) -> Generator[MagicMock]:
-    session_context = MagicMock()
-    session = MagicMock()
-    session.scalar.return_value = (
-        SimpleNamespace(id="firecrawl-credential-1", name="Firecrawl")
-        if credential is _DEFAULT_CREDENTIAL
-        else credential
+    control_space_found: bool = True,
+) -> Generator[_ControlSpaceRepository]:
+    _seed_account_and_credential(credential)
+    control_space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="provision-1",
+        state=state,
+        knowledge_space_id=knowledge_space_id,
     )
-    session_context.__enter__.return_value = session
-    session_maker = MagicMock(return_value=session_context)
+    repository = _ControlSpaceRepository(control_space if control_space_found else None)
     with (
         patch(
-            "tasks.knowledge_fs_initial_source_tasks.session_factory.get_session_maker",
-            return_value=session_maker,
+            "tasks.knowledge_fs_initial_source_tasks.SQLAlchemyKnowledgeFSControlSpaceRepository",
+            return_value=repository,
         ),
-        patch("tasks.knowledge_fs_initial_source_tasks.SQLAlchemyKnowledgeFSControlSpaceRepository") as repository_type,
-        patch("tasks.knowledge_fs_initial_source_tasks.get_knowledge_fs_runtime") as get_runtime,
+        patch(
+            "tasks.knowledge_fs_initial_source_tasks.get_knowledge_fs_runtime",
+            return_value=FacadeRuntime(facade),
+        ),
     ):
-        repository_type.return_value.get.return_value = SimpleNamespace(
-            state=state,
-            knowledge_space_id=knowledge_space_id,
-        )
-        get_runtime.return_value.facade = facade
-        yield repository_type
+        yield repository
 
 
 def _start(
-    facade: MagicMock,
+    facade: RecordingKnowledgeFSFacade,
     payload: KnowledgeFSInitialWebsiteSourcePayload,
     *,
     workflow_id: str | None = None,
@@ -227,7 +286,7 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
 
     assert _start(facade, _payload()) == "workflow-1"
 
-    source_payload = facade.create_source.call_args.kwargs["payload"]
+    source_payload = facade.payload("create_source")
     assert source_payload.status == "disabled"
     assert source_payload.connection_id == "connection-1"
     assert source_payload.metadata["datasourceParameterMode"] == "exact"
@@ -240,16 +299,16 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
         "limit": 25,
         "url": "https://docs.dify.ai",
     }
-    import_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
+    import_payload = facade.payload("import_selected_source_crawl")
     assert import_payload.source_urls == [
         "https://docs.dify.ai/a",
         "https://docs.dify.ai/b",
     ]
-    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    source_update_payload = facade.payload("update_source")
     assert source_update_payload.expected_version == 3
     assert source_update_payload.metadata == {"preview": False}
     assert source_update_payload.status == "active"
-    sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    sync_payload = facade.payload("update_source_sync_policy")
     assert sync_payload.mode == "interval"
     assert sync_payload.enabled is True
     assert sync_payload.expected_revision == 0
@@ -275,7 +334,7 @@ def test_initial_website_source_import_preserves_distinct_urls_with_the_same_can
 
     assert _start(facade, payload) == "workflow-1"
 
-    import_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
+    import_payload = facade.payload("import_selected_source_crawl")
     assert import_payload.source_urls == [
         "https://docs.dify.ai/a/",
         "https://DOCS.dify.ai:443/a#section",
@@ -287,7 +346,7 @@ def test_initial_website_source_import_preserves_legacy_crawl_option_projection(
 
     assert _start(facade, _legacy_payload()) == "workflow-1"
 
-    source_payload = facade.create_source.call_args.kwargs["payload"]
+    source_payload = facade.payload("create_source")
     assert "datasourceParameterMode" not in source_payload.metadata
     assert "parameters" not in source_payload.metadata
     assert source_payload.metadata["crawlOptions"] == {
@@ -334,25 +393,38 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
     expected_provider_name: str,
 ) -> None:
     facade = _facade()
-    facade.list_source_providers.return_value = SimpleNamespace(data=[SimpleNamespace(id=provider_id, available=True)])
-    facade.list_source_connections.return_value = SimpleNamespace(data=[], next_cursor=None)
-    facade.create_source_connection.return_value = SimpleNamespace(id="connector-1", status="active")
-    facade.import_source_workflow.return_value = SimpleNamespace(
-        id="connector-workflow-1",
-        source_id="source-1",
-        state="completed",
+    facade.script("list_source_providers", source_provider_list_response(provider_id))
+    facade.script("list_source_connections", source_connection_list_response())
+    facade.script(
+        "create_source_connection",
+        source_connection_response(connection_id="connector-1", provider_id=provider_id, status="active"),
     )
-    facade.get_source.return_value = SimpleNamespace(
-        metadata={"clientRequestId": "initial-source:operation-1", "preview": True},
-        status="disabled",
-        version=3,
+    facade.script(
+        "import_source_workflow",
+        source_workflow_response(workflow_id="connector-workflow-1", source_id="source-1", state="completed"),
     )
-    facade.update_source.return_value = SimpleNamespace(
-        metadata={"clientRequestId": "initial-source:operation-1", "preview": False},
-        status="active",
-        version=4,
+    facade.script(
+        "get_source",
+        source_response(
+            metadata={"clientRequestId": "initial-source:operation-1", "preview": True},
+            status="disabled",
+            version=3,
+        ),
     )
-    credential = SimpleNamespace(id=credential_id, name=expected_source_name)
+    facade.script(
+        "update_source",
+        source_response(
+            metadata={"clientRequestId": "initial-source:operation-1", "preview": False},
+            status="active",
+            version=4,
+        ),
+    )
+    credential = _Credential(
+        id=credential_id,
+        name=expected_source_name,
+        provider=payload.provider,
+        plugin_id=payload.plugin_id,
+    )
 
     with _runtime(facade, credential=credential):
         result = start_initial_source_import(
@@ -364,7 +436,7 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
         )
 
     assert result == "connector-workflow-1"
-    connection_payload = facade.create_source_connection.call_args.kwargs["payload"]
+    connection_payload = facade.payload("create_source_connection")
     assert connection_payload.provider_id == provider_id
     assert connection_payload.configuration == {
         "credentialId": credential_id,
@@ -373,45 +445,50 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
         "provider": payload.provider,
         "providerKind": "online-document" if workflow_kind == "online-document-import" else "online-drive",
     }
-    source_payload = facade.create_source.call_args.kwargs["payload"]
+    source_payload = facade.payload("create_source")
     assert source_payload.connection_id == "connector-1"
     assert source_payload.name == expected_source_name
     assert source_payload.type == "connector"
     assert source_payload.uri == "connector://connector-1"
     assert source_payload.metadata["providerId"] == provider_id
     assert source_payload.metadata["providerName"] == expected_provider_name
-    import_payload = facade.import_source_workflow.call_args.kwargs["payload"].root
+    import_payload = facade.payload("import_source_workflow").root
     assert import_payload.kind == workflow_kind
     assert import_payload.items == payload.selection
-    sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    sync_payload = facade.payload("update_source_sync_policy")
     assert sync_payload.mode == ("manual" if workflow_kind == "online-drive-import" else "interval")
 
 
 def test_initial_website_source_import_reuses_source_across_pages_and_preserves_failure() -> None:
     facade = _facade()
-    existing_source = SimpleNamespace(
-        id="existing-source",
+    existing_source = source_response(
+        source_id="existing-source",
         metadata={"clientRequestId": "initial-website-source:operation-1"},
+        status="disabled",
         version=2,
     )
-    facade.list_sources.side_effect = [
-        SimpleNamespace(
-            data=[SimpleNamespace(id="other", metadata={})],
+    facade.script(
+        "list_sources",
+        source_list_response(
+            source_response(source_id="other", metadata={}, status="active", version=1),
             next_cursor="next-source",
         ),
-        SimpleNamespace(data=[existing_source], next_cursor=None),
-    ]
-    facade.import_selected_source_crawl.return_value = SimpleNamespace(
-        failure=SimpleNamespace(message="Source document materialization failed"),
-        id="failed-workflow",
-        last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
-        state="failed",
+        source_list_response(existing_source),
+    )
+    facade.script(
+        "import_selected_source_crawl",
+        source_workflow_response(
+            workflow_id="failed-workflow",
+            state="failed",
+            failure_message="Source document materialization failed",
+            last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+        ),
     )
 
     assert _start(facade, _payload()) == "failed-workflow"
-    facade.create_source.assert_not_called()
-    facade.list_source_connections.assert_not_called()
-    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    assert facade.call_count("create_source") == 0
+    assert facade.call_count("list_source_connections") == 0
+    source_update_payload = facade.payload("update_source")
     assert source_update_payload.status == "disabled"
     assert "parameters" not in source_update_payload.metadata
     assert source_update_payload.metadata["preview"] is False
@@ -421,12 +498,12 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
         "enabled": True,
         "mode": "interval",
     }
-    facade.update_source_sync_policy.assert_not_called()
+    assert facade.call_count("update_source_sync_policy") == 0
 
 
 def test_initial_website_source_import_exposes_preview_consume_rejection() -> None:
     facade = _facade()
-    facade.consume_namespace_source_preview.side_effect = KnowledgeFSProductRequestRejectedError(status_code=409)
+    facade.script("consume_namespace_source_preview", KnowledgeFSProductRequestRejectedError(status_code=409))
     payload = _payload().model_copy(
         update={
             "credential_id": "firecrawl-credential-1",
@@ -445,7 +522,7 @@ def test_initial_website_source_import_exposes_preview_consume_rejection() -> No
     with pytest.raises(KnowledgeFSProductRequestRejectedError):
         _start(facade, payload)
 
-    source_update = facade.update_source.call_args.kwargs["payload"]
+    source_update = facade.payload("update_source")
     assert source_update.status == "disabled"
     assert source_update.metadata["preview"] is False
     assert source_update.metadata["initialImport"]["state"] == "failed"
@@ -472,34 +549,25 @@ def test_initial_website_source_import_configures_remaining_sync_modes(
     expected_custom_interval_seconds: int | None,
 ) -> None:
     facade = _facade()
-    facade.list_source_connections.side_effect = [
-        SimpleNamespace(
-            data=[SimpleNamespace(id="inactive", provider_id="other", status="disabled")],
+    facade.script(
+        "list_source_connections",
+        source_connection_list_response(
+            source_connection_response(connection_id="inactive", provider_id="other", status="revoked"),
             next_cursor="next-connection",
         ),
-        SimpleNamespace(
-            data=[
-                SimpleNamespace(
-                    configuration={
-                        "credentialId": "firecrawl-credential-1",
-                        "datasource": "crawl",
-                        "pluginId": "langgenius/firecrawl_datasource",
-                        "provider": "firecrawl",
-                        "providerKind": "website",
-                    },
-                    id="connection-2",
-                    provider_id="plugin-daemon-website",
-                    status="active",
-                )
-            ],
-            next_cursor=None,
+        source_connection_list_response(
+            source_connection_response(
+                configuration=_FIRECRAWL_CONNECTION_CONFIGURATION,
+                connection_id="connection-2",
+                provider_id="plugin-daemon-website",
+                status="active",
+            )
         ),
-    ]
-    facade.get_source_sync_policy.side_effect = None
-    facade.get_source_sync_policy.return_value = SimpleNamespace(revision=7)
+    )
+    facade.script("get_source_sync_policy", sync_policy_response(revision=7))
 
     assert _start(facade, _payload(sync_policy)) == "workflow-1"
-    sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    sync_payload = facade.payload("update_source_sync_policy")
     assert sync_payload.mode == expected_mode
     assert sync_payload.enabled is expected_enabled
     assert sync_payload.custom_interval_seconds == expected_custom_interval_seconds
@@ -509,19 +577,22 @@ def test_initial_website_source_import_configures_remaining_sync_modes(
 
 def test_initial_website_source_import_does_not_recommit_active_source_after_retry() -> None:
     facade = _facade()
-    facade.get_source.return_value = SimpleNamespace(
-        metadata={
-            "clientRequestId": "initial-website-source:operation-1",
-            "preview": False,
-        },
-        status="active",
-        version=4,
+    facade.script(
+        "get_source",
+        source_response(
+            metadata={
+                "clientRequestId": "initial-website-source:operation-1",
+                "preview": False,
+            },
+            status="active",
+            version=4,
+        ),
     )
 
     assert _start(facade, _payload()) == "workflow-1"
 
-    facade.update_source.assert_not_called()
-    sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert facade.call_count("update_source") == 0
+    sync_payload = facade.payload("update_source_sync_policy")
     assert sync_payload.expected_source_version == 4
 
 
@@ -570,8 +641,7 @@ def test_initial_website_source_import_rejects_unavailable_spaces(
 
 def test_initial_website_source_import_rejects_missing_control_space() -> None:
     facade = _facade()
-    with _runtime(facade) as repository_type:
-        repository_type.return_value.get.return_value = None
+    with _runtime(facade, control_space_found=False):
         with pytest.raises(RuntimeError, match="control-space was not found"):
             start_initial_website_source_import(
                 tenant_id="tenant-1",
@@ -584,7 +654,7 @@ def test_initial_website_source_import_rejects_missing_control_space() -> None:
 
 def test_initial_website_source_import_rejects_unavailable_provider() -> None:
     unavailable_provider = _facade()
-    unavailable_provider.list_source_providers.return_value = SimpleNamespace(data=[])
+    unavailable_provider.script("list_source_providers", source_provider_list_response())
     with pytest.raises(RuntimeError, match="provider is unavailable"):
         _start(unavailable_provider, _payload())
 
@@ -603,20 +673,22 @@ def test_initial_website_source_import_rejects_missing_firecrawl_credential() ->
             payload=_payload(),
         )
 
-    facade.create_source_connection.assert_not_called()
-    facade.create_source.assert_not_called()
+    assert facade.call_count("create_source_connection") == 0
+    assert facade.call_count("create_source") == 0
 
 
 def test_initial_website_source_import_creates_missing_firecrawl_connection() -> None:
     facade = _facade()
-    facade.list_source_connections.return_value = SimpleNamespace(
-        data=[SimpleNamespace(id="inactive", provider_id="other", status="disabled")],
-        next_cursor=None,
+    facade.script(
+        "list_source_connections",
+        source_connection_list_response(
+            source_connection_response(connection_id="inactive", provider_id="other", status="revoked")
+        ),
     )
 
     assert _start(facade, _payload()) == "workflow-1"
 
-    connection_payload = facade.create_source_connection.call_args.kwargs["payload"]
+    connection_payload = facade.payload("create_source_connection")
     assert connection_payload.auth_kind == "endpoint"
     assert connection_payload.configuration == {
         "credentialId": "firecrawl-credential-1",
@@ -627,43 +699,36 @@ def test_initial_website_source_import_creates_missing_firecrawl_connection() ->
     }
     assert connection_payload.credentials == {}
     assert connection_payload.provider_id == "plugin-daemon-website"
-    source_payload = facade.create_source.call_args.kwargs["payload"]
+    source_payload = facade.payload("create_source")
     assert source_payload.connection_id == "connection-created"
 
 
 def test_initial_website_source_import_retries_provisioning_firecrawl_connection() -> None:
     facade = _facade()
-    facade.list_source_connections.return_value = SimpleNamespace(
-        data=[
-            SimpleNamespace(
-                configuration={
-                    "credentialId": "firecrawl-credential-1",
-                    "datasource": "crawl",
-                    "pluginId": "langgenius/firecrawl_datasource",
-                    "provider": "firecrawl",
-                    "providerKind": "website",
-                },
-                id="connection-1",
+    facade.script(
+        "list_source_connections",
+        source_connection_list_response(
+            source_connection_response(
+                configuration=_FIRECRAWL_CONNECTION_CONFIGURATION,
+                connection_id="connection-1",
                 provider_id="plugin-daemon-website",
                 status="provisioning",
             )
-        ],
-        next_cursor=None,
+        ),
     )
 
     with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still provisioning"):
         _start(facade, _payload())
 
-    facade.create_source_connection.assert_not_called()
-    facade.create_source.assert_not_called()
+    assert facade.call_count("create_source_connection") == 0
+    assert facade.call_count("create_source") == 0
 
 
 def test_initial_website_source_import_retries_running_workflow() -> None:
     facade = _facade()
-    facade.import_selected_source_crawl.return_value = SimpleNamespace(
-        id="running-workflow",
-        source_id="source-1",
-        state="running",
+    facade.script(
+        "import_selected_source_crawl",
+        source_workflow_response(workflow_id="running-workflow", source_id="source-1", state="running"),
     )
 
     with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still running") as raised:
@@ -677,49 +742,53 @@ def test_initial_website_source_import_polls_existing_workflow_without_recreatin
 
     assert _start(facade, _payload(), workflow_id="workflow-1") == "workflow-1"
 
-    facade.get_source_workflow.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="control-1",
-        run_id="workflow-1",
-    )
-    facade.list_sources.assert_not_called()
-    facade.list_source_connections.assert_not_called()
-    facade.create_source.assert_not_called()
-    facade.import_selected_source_crawl.assert_not_called()
-    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    assert facade.calls["get_source_workflow"] == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "run_id": "workflow-1",
+        }
+    ]
+    assert facade.call_count("list_sources") == 0
+    assert facade.call_count("list_source_connections") == 0
+    assert facade.call_count("create_source") == 0
+    assert facade.call_count("import_selected_source_crawl") == 0
+    source_update_payload = facade.payload("update_source")
     assert source_update_payload.status == "active"
 
 
 def test_initial_website_source_import_keeps_polling_existing_running_workflow() -> None:
     facade = _facade()
-    facade.get_source_workflow.return_value = SimpleNamespace(
-        id="workflow-1",
-        source_id="source-1",
-        state="importing",
+    facade.script(
+        "get_source_workflow",
+        source_workflow_response(workflow_id="workflow-1", source_id="source-1", state="importing"),
     )
 
     with pytest.raises(KnowledgeFSInitialSourceNotReadyError, match="still running") as raised:
         _start(facade, _payload(), workflow_id="workflow-1")
 
     assert raised.value.workflow_id == "workflow-1"
-    facade.import_selected_source_crawl.assert_not_called()
-    facade.get_source.assert_not_called()
+    assert facade.call_count("import_selected_source_crawl") == 0
+    assert facade.call_count("get_source") == 0
 
 
 def test_initial_website_source_import_exposes_failed_source_without_activating_it() -> None:
     facade = _facade()
-    facade.get_source_workflow.return_value = SimpleNamespace(
-        failure=SimpleNamespace(message="Source document materialization failed"),
-        id="workflow-1",
-        last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
-        source_id="source-1",
-        state="failed",
+    facade.script(
+        "get_source_workflow",
+        source_workflow_response(
+            workflow_id="workflow-1",
+            source_id="source-1",
+            state="failed",
+            failure_message="Source document materialization failed",
+            last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+        ),
     )
 
     assert _start(facade, _payload(), workflow_id="workflow-1") == "workflow-1"
 
-    source_update_payload = facade.update_source.call_args.kwargs["payload"]
+    source_update_payload = facade.payload("update_source")
     assert source_update_payload.status == "disabled"
     assert source_update_payload.metadata["preview"] is False
     initial_import = source_update_payload.metadata["initialImport"]
@@ -735,7 +804,7 @@ def test_initial_website_source_import_exposes_failed_source_without_activating_
         "mode": "interval",
     }
     assert len(initial_import["configurationFingerprint"]) == 64
-    facade.update_source_sync_policy.assert_not_called()
+    assert facade.call_count("update_source_sync_policy") == 0
 
 
 def test_initial_website_source_task_returns_result_and_retries_not_ready_error() -> None:
@@ -904,21 +973,25 @@ def test_initial_source_task_does_not_retry_authoritative_missing_resource() -> 
 
 def test_upgrade_source_submission_succeeds_when_first_import_submission_fails() -> None:
     facade = _facade()
-    facade.create_source.return_value = SimpleNamespace(
-        connection_id="connection-1",
-        id="source-1",
-        metadata={"clientRequestId": "initial-website-source:operation-1", "preview": True},
-        status="disabled",
-        version=1,
+    facade.script(
+        "create_source",
+        source_response(
+            connection_id="connection-1",
+            metadata={"clientRequestId": "initial-website-source:operation-1", "preview": True},
+            status="disabled",
+            version=1,
+        ),
     )
-    facade.update_source.return_value = SimpleNamespace(
-        connection_id="connection-1",
-        id="source-1",
-        metadata={"clientRequestId": "initial-website-source:operation-1", "preview": False},
-        status="active",
-        version=2,
+    facade.script(
+        "update_source",
+        source_response(
+            connection_id="connection-1",
+            metadata={"clientRequestId": "initial-website-source:operation-1", "preview": False},
+            status="active",
+            version=2,
+        ),
     )
-    facade.import_selected_source_crawl.side_effect = RuntimeError("crawl queue unavailable")
+    facade.script("import_selected_source_crawl", RuntimeError("crawl queue unavailable"))
 
     with _runtime(facade):
         result = submit_initial_source_for_upgrade(
@@ -933,4 +1006,4 @@ def test_upgrade_source_submission_succeeds_when_first_import_submission_fails()
     assert result.source_id == "source-1"
     assert result.workflow_id is None
     assert result.workflow_error == "RuntimeError"
-    facade.update_source_sync_policy.assert_called_once()
+    assert facade.call_count("update_source_sync_policy") == 1
