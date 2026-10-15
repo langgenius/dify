@@ -1,24 +1,27 @@
 """Agent preview callers are committed before execution and retain their identity."""
 
 import json
-from collections.abc import Generator
-from types import SimpleNamespace
+from collections.abc import Generator, Iterator
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.workflow_service import WorkflowService
+from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.services.test_workflow_service import TestWorkflowAssociatedDataFactory as Factory
 
 
@@ -26,9 +29,20 @@ class PreviewCancelled(BaseException):
     """Cancellation can bypass Exception handlers, like a stopped greenlet."""
 
 
+@pytest.fixture
+def preview_flask_app(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Flask]:
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL="https://agent.test")
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = sqlite_engine.url.render_as_string(hide_password=False)
+    db.init_app(app)
+    with app.app_context():
+        yield app
+
+
 @pytest.mark.parametrize("outcome", ["success", "failure", "exception", "cancel"])
+@pytest.mark.usefixtures("preview_flask_app")
 def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engine: Engine, outcome: str) -> None:
-    tenant_id, app_id, workflow_id, account_id, execution_id = (str(uuid4()) for _ in range(5))
+    tenant_id, app_id, workflow_id, account_id = (str(uuid4()) for _ in range(4))
     node_id = "agent-preview"
     app = Factory.create_app(app_id=app_id, tenant_id=tenant_id)
     account = Factory.create_account(account_id=account_id)
@@ -52,13 +66,15 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
     repository = SQLAlchemyWorkflowNodeExecutionRepository(
         sessions, tenant_id, account, app_id, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
     )
-    node = SimpleNamespace(execution_id=execution_id, node_type="agent", title="Agent", error_strategy=None)
     observed_created_at = []
+    execution_ids: list[str] = []
 
-    def events() -> Generator[NodeRunSucceededEvent | NodeRunFailedEvent]:
+    def events(node: DifyAgentNode) -> Generator[NodeRunSucceededEvent | NodeRunFailedEvent]:
         # This is the real scoped lookup that failed in dev: a separate transaction
         # must see the committed caller before any runtime request is dispatched.
-        variable_pool = single_step.call_args.kwargs["variable_pool"]
+        execution_id = node.execution_id
+        execution_ids.append(execution_id)
+        variable_pool = node.graph_runtime_state.variable_pool
         workflow_run_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
         assert workflow_run_id is None
         with sessions.begin() as session:
@@ -103,15 +119,13 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
 
     service = WorkflowService(sessions)
     with (
-        patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
-        patch("services.workflow_service.WorkflowDraftVariableService"),
-        patch("services.workflow_service.DraftVarLoader"),
-        patch("services.workflow_service.WorkflowEntry.single_step_run", return_value=(node, events())) as single_step,
+        patch("services.workflow_service.WorkflowDraftVariableService.prefill_conversation_variable_default_values"),
+        patch.object(DifyAgentNode, "run", events),
         patch(
             "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
             return_value=repository,
         ),
-        patch("services.workflow_service.DraftVariableSaver"),
+        patch("services.workflow_service.DraftVariableSaver.save"),
         patch("services.workflow_service.enqueue_draft_node_execution_trace"),
     ):
         if outcome in {"exception", "cancel"}:
@@ -119,8 +133,10 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
                 service.run_draft_workflow_node(app, workflow, node_id, {}, account)
         else:
             response = service.run_draft_workflow_node(app, workflow, node_id, {}, account)
-            assert response.id == response.node_execution_id == execution_id
+            assert response.id == response.node_execution_id == execution_ids[0]
 
+    assert len(execution_ids) == 1
+    execution_id = execution_ids[0]
     with sessions() as session:
         assert session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 1
         row = session.get(WorkflowNodeExecutionModel, execution_id)
@@ -143,6 +159,7 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
             assert row.error == "Agent preview execution interrupted"
 
 
+@pytest.mark.usefixtures("preview_flask_app")
 def test_agent_preview_rejects_mismatched_workflow_before_creating_caller(sqlite_engine: Engine) -> None:
     app = Factory.create_app(app_id="app", tenant_id="tenant")
     account = Factory.create_account()
@@ -155,21 +172,13 @@ def test_agent_preview_rejects_mismatched_workflow_before_creating_caller(sqlite
         },
     )
     sessions = sessionmaker(sqlite_engine, expire_on_commit=False)
-    repository = SQLAlchemyWorkflowNodeExecutionRepository(
-        sessions, app.tenant_id, account, app.id, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
-    )
     with (
-        patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
-        patch("services.workflow_service.WorkflowDraftVariableService") as draft_variables,
-        patch("services.workflow_service.DraftVarLoader"),
-        patch("services.workflow_service.WorkflowEntry.single_step_run", return_value=(SimpleNamespace(), iter(()))),
         patch(
-            "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-            return_value=repository,
-        ),
+            "services.workflow_service.WorkflowDraftVariableService.prefill_conversation_variable_default_values"
+        ) as prefill,
         pytest.raises(ValueError, match="does not belong"),
     ):
         WorkflowService(sessions).run_draft_workflow_node(app, workflow, "agent", {}, account)
-    draft_variables.assert_not_called()
+    prefill.assert_not_called()
     with sessions() as session:
         assert session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 0
