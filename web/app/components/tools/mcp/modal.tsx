@@ -39,7 +39,7 @@ type MCPModalConfirmPayload = {
   server_url: string
   icon_type: AppIconType
   icon: string
-  icon_background?: string | null
+  icon_background?: string
   server_identifier: string
   headers?: Record<string, string>
   is_dynamic_registration?: boolean

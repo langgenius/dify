@@ -4129,11 +4129,6 @@
       "count": 1
     }
   },
-  "web/service/tools.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
@@ -4200,9 +4195,6 @@
   "web/service/use-tools.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 15
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/use-triggers.ts": {

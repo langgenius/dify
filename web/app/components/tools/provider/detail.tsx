@@ -54,7 +54,6 @@ import {
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
-  fetchModelToolList,
   fetchWorkflowToolDetail,
   removeBuiltInToolCredential,
   removeCustomCollection,
@@ -233,9 +232,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     try {
       if (collection.type === CollectionType.builtIn) {
         const list = await fetchBuiltInToolList(collection.name)
-        setToolList(list)
-      } else if (collection.type === CollectionType.model) {
-        const list = await fetchModelToolList(collection.name)
         setToolList(list)
       } else if (collection.type === CollectionType.workflow) {
         setToolList([])
@@ -470,7 +466,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                               collection={collection}
                               tool={tool}
                               isBuiltIn={isBuiltIn}
-                              isModel={isModel}
                             />
                           ))}
                         {collection.type === CollectionType.workflow &&

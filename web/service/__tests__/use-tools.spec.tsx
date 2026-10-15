@@ -10,15 +10,9 @@ const { mockGet, mockPost } = vi.hoisted(() => ({
   mockPost: vi.fn(),
 }))
 
-vi.mock('@/service/base', () => ({
-  del: vi.fn(),
-  get: mockGet,
-  post: mockPost,
-  put: vi.fn(),
-}))
-
 vi.mock('@/service/console', () => ({
   consoleClient: {
+    workspaces: { current: { toolProviders: { get: mockGet } } },
     apps: {
       byAppId: {
         server: {
@@ -85,9 +79,7 @@ describe('useAllToolProviders', () => {
     )
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2))
-    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/tool-providers')
-    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/tool-providers', {
-      params: { type: 'mcp' },
-    })
+    expect(mockGet).toHaveBeenCalledWith({ query: {} })
+    expect(mockGet).toHaveBeenCalledWith({ query: { type: 'mcp' } })
   })
 })

@@ -81,7 +81,6 @@ vi.mock('@/context/modal-context', () => ({
 
 const mockFetchBuiltInToolList = vi.fn().mockResolvedValue([])
 const mockFetchCustomToolList = vi.fn().mockResolvedValue([])
-const mockFetchModelToolList = vi.fn().mockResolvedValue([])
 const mockFetchCustomCollection = vi.fn().mockResolvedValue({
   credentials: { auth_type: 'none' },
 })
@@ -100,7 +99,6 @@ const mockSaveWorkflowToolProvider = vi.fn().mockResolvedValue({})
 vi.mock('@/service/tools', () => ({
   fetchBuiltInToolList: (...args: unknown[]) => mockFetchBuiltInToolList(...args),
   fetchCustomToolList: (...args: unknown[]) => mockFetchCustomToolList(...args),
-  fetchModelToolList: (...args: unknown[]) => mockFetchModelToolList(...args),
   fetchCustomCollection: (...args: unknown[]) => mockFetchCustomCollection(...args),
   fetchWorkflowToolDetail: (...args: unknown[]) => mockFetchWorkflowToolDetail(...args),
   updateBuiltInToolCredential: (...args: unknown[]) => mockUpdateBuiltInToolCredential(...args),
@@ -278,7 +276,6 @@ describe('ProviderDetail', () => {
       },
     ])
     mockFetchCustomToolList.mockResolvedValue([])
-    mockFetchModelToolList.mockResolvedValue([])
     mockConsoleState.workspacePermissionKeys = [
       'tool.manage',
       'credential.use',
@@ -584,17 +581,6 @@ describe('ProviderDetail', () => {
 
   describe('Model Collection', () => {
     it('opens model modal when clicking auth button for model type', async () => {
-      mockFetchModelToolList.mockResolvedValue([
-        {
-          name: 'model-tool-1',
-          label: { en_US: 'MT1' },
-          description: { en_US: '' },
-          parameters: [],
-          labels: [],
-          author: '',
-          output_schema: {},
-        },
-      ])
       render(
         <ProviderDetail
           collection={createMockCollection({
@@ -644,19 +630,6 @@ describe('ProviderDetail', () => {
       )
       await waitFor(() => {
         expect(mockFetchBuiltInToolList).toHaveBeenCalledWith('test-collection')
-      })
-    })
-
-    it('calls fetchModelToolList for model type', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ type: CollectionType.model })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(mockFetchModelToolList).toHaveBeenCalledWith('test-collection')
       })
     })
 

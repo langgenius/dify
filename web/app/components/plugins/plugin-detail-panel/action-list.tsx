@@ -40,7 +40,6 @@ const ActionList = ({ detail }: Props) => {
             collection={provider}
             tool={tool}
             isBuiltIn={true}
-            isModel={false}
           />
         ))}
       </div>

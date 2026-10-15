@@ -387,7 +387,7 @@ describe('ToolPicker', () => {
       plugins: [],
       isLoading: false,
     } as ReturnType<typeof useFeaturedToolsRecommendations>)
-    mockCreateCustomCollection.mockResolvedValue(undefined)
+    mockCreateCustomCollection.mockResolvedValue({ result: 'success' })
     mockInstallPackageFromMarketPlace.mockResolvedValue({
       all_installed: true,
       task_id: 'task-1',

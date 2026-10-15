@@ -402,7 +402,6 @@ const AgentTools: FC = () => {
           toolName={currentTool?.tool_name as string}
           setting={currentTool?.tool_parameters}
           collection={currentTool?.collection as ToolWithProvider}
-          isModel={currentTool?.collection?.type === CollectionType.model}
           onSave={handleToolSettingChange}
           onHide={() => setIsShowSettingTool(false)}
           credentialId={currentTool?.credential_id}
