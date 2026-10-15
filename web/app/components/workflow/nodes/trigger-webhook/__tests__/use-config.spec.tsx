@@ -1,9 +1,7 @@
 import type { WebhookTriggerNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { fetchWebhookUrl } from '@/service/apps'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
 import { useConfig } from '../use-config'
 
@@ -45,11 +43,17 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<WebhookTriggerNodeType>(mockSetInputs),
 }))
 
-vi.mock('@/service/apps', () => ({
-  fetchWebhookUrl: vi.fn(),
+const routeParams = vi.hoisted(() => ({ appId: 'app-1' as string | undefined }))
+const mockRequest = vi.hoisted(() => vi.fn())
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => routeParams,
 }))
 
-const mockedFetchWebhookUrl = vi.mocked(fetchWebhookUrl)
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockRequest },
+}))
 const mockedToastError = vi.mocked(toast.error)
 
 const createPayload = (
@@ -73,9 +77,8 @@ const createPayload = (
 describe('useConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(useAppStore, 'getState').mockReturnValue({
-      appDetail: { id: 'app-1' },
-    } as never)
+    routeParams.appId = 'app-1'
+    mockRequest.mockReset()
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
     mockIsVarUsedInNodes.mockReturnValue(false)
   })
@@ -102,7 +105,7 @@ describe('useConfig', () => {
       ],
     })
     mockIsVarUsedInNodes.mockImplementation(([_, variable]) => variable === 'payload')
-    const { result } = renderHook(() => useConfig('webhook-node', payload))
+    const { result } = renderHookWithConsoleQuery(() => useConfig('webhook-node', payload))
 
     result.current.handleMethodChange('GET')
     result.current.handleContentTypeChange('text/plain')
@@ -145,7 +148,7 @@ describe('useConfig', () => {
         },
       ],
     })
-    const { result } = renderHook(() => useConfig('webhook-node', payload))
+    const { result } = renderHookWithConsoleQuery(() => useConfig('webhook-node', payload))
 
     result.current.handleParamsChange([{ name: 'page', type: VarType.number, required: true }])
     result.current.handleHeadersChange([{ name: 'x-request-id', required: false }])
@@ -192,20 +195,27 @@ describe('useConfig', () => {
   })
 
   it('should generate webhook urls once and fall back to empty url on request failure', async () => {
-    mockedFetchWebhookUrl.mockResolvedValueOnce({
+    mockRequest.mockResolvedValueOnce({
       webhook_url: 'https://example.com/hook',
       webhook_debug_url: 'https://example.com/debug',
     } as never)
-    mockedFetchWebhookUrl.mockRejectedValueOnce(new Error('boom'))
+    mockRequest.mockRejectedValueOnce(new Error('boom'))
 
-    const { result, rerender } = renderHook(({ payload }) => useConfig('webhook-node', payload), {
-      initialProps: {
-        payload: createPayload(),
+    const { result, rerender } = renderHookWithConsoleQuery(
+      ({ payload }) => useConfig('webhook-node', payload),
+      {
+        initialProps: {
+          payload: createPayload(),
+        },
       },
-    })
+    )
 
     await result.current.generateWebhookUrl()
-    expect(mockedFetchWebhookUrl).toHaveBeenCalledWith({ appId: 'app-1', nodeId: 'webhook-node' })
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
+      { params: { app_id: 'app-1' }, query: { node_id: 'webhook-node' } },
+      expect.any(Object),
+    )
     expect(mockSetInputs).toHaveBeenCalledWith(
       expect.objectContaining({
         webhook_url: 'https://example.com/hook',
@@ -227,22 +237,20 @@ describe('useConfig', () => {
       payload: createPayload({ webhook_url: 'https://already-exists' }),
     })
     await result.current.generateWebhookUrl()
-    expect(mockedFetchWebhookUrl).toHaveBeenCalledTimes(2)
+    expect(mockRequest).toHaveBeenCalledTimes(2)
   })
 
   it('should expose readonly state and skip url generation without app id', async () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
-    vi.spyOn(useAppStore, 'getState').mockReturnValue({
-      appDetail: undefined,
-    } as never)
+    routeParams.appId = undefined
 
-    const { result } = renderHook(() => useConfig('webhook-node', createPayload()))
+    const { result } = renderHookWithConsoleQuery(() => useConfig('webhook-node', createPayload()))
 
     expect(result.current.readOnly).toBe(true)
 
     await result.current.generateWebhookUrl()
 
-    expect(mockedFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockRequest).not.toHaveBeenCalled()
     expect(mockSetInputs).not.toHaveBeenCalled()
   })
 })
