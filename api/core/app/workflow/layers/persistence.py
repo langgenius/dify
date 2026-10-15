@@ -173,6 +173,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             workflow_id=self._workflow_info.workflow_id,
             workflow_run_id=execution_id,
             conversation_id=self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value),
+            graph_data=self._workflow_info.graph_data,
         )
         if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
             node_executions = self._workflow_node_execution_repository.get_by_workflow_execution(execution_id)

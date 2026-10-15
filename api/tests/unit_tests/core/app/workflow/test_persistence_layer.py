@@ -118,8 +118,9 @@ class TestWorkflowPersistenceLayer:
         layer, workflow_repo, _, _ = _make_layer(extras={"trace_session_id": "external-session"})
         calls = []
 
-        def freeze(entity, *, workflow_id, workflow_run_id, conversation_id):
+        def freeze(entity, *, workflow_id, workflow_run_id, conversation_id, graph_data):
             assert workflow_repo.saved
+            assert graph_data == {"nodes": [], "edges": []}
             assert workflow_repo.saved[-1].id_ == workflow_run_id
             calls.append(
                 (entity.app_config.app_id, entity.app_config.tenant_id, workflow_id, workflow_run_id, conversation_id)
