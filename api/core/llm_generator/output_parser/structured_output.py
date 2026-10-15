@@ -294,6 +294,25 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
     except ValidationError:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
+        if isinstance(temp_parsed, list) and result_text.lstrip().lower().startswith("<think"):
+            # The response opens with a reasoning block and repaired into several objects.
+            # Reasoning models emit their chain of thought in a <think> block that the provider
+            # concatenates ahead of the answer, so a JSON object inside the reasoning becomes one
+            # of those candidates and the first one wins. Repair what follows the leading blocks
+            # instead, and keep that result only if it still yields candidates, so a truncated
+            # response behaves as it did before. This drops a prefix rather than substituting
+            # every <think> block, which would also empty literal tags inside the answer.
+            answer_text = result_text.lstrip()
+            while answer_text.lower().startswith("<think"):
+                close_index = answer_text.lower().find("</think>")
+                if close_index < 0:
+                    answer_text = ""
+                    break
+                answer_text = answer_text[close_index + len("</think>") :].lstrip()
+            if answer_text:
+                reparsed = json_repair.loads(answer_text)
+                if isinstance(reparsed, dict | list):
+                    temp_parsed = reparsed
         match temp_parsed:
             case dict():
                 pass

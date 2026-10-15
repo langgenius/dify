@@ -592,7 +592,7 @@ class TestSchemaResolverClass:
         batch_time = time.perf_counter() - start
 
         # Verify all results are identical to inputs (fast path used)
-        for original, result in zip(schemas_without_refs, results):
+        for original, result in zip(schemas_without_refs, results, strict=False):
             assert result is original
 
         # Should be very fast - each schema should take < 0.001 seconds on average

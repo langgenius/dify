@@ -2243,7 +2243,7 @@ class WorkflowGenerator:
             defaulted = [e for e in outgoing if e.get("sourceHandle") in (None, "", "source")]
             if not defaulted or len(defaulted) > len(unused):
                 continue
-            for edge, handle in zip(defaulted, unused):
+            for edge, handle in zip(defaulted, unused, strict=False):
                 edge["sourceHandle"] = handle
                 logger.info(
                     "Workflow generator: re-homed default-handle edge %s -> %s onto branch handle %r",

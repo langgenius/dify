@@ -188,8 +188,7 @@ class AppRunner:
         :return:
         """
         if stream:
-            index = 0
-            for token in text:
+            for index, token in enumerate(text):
                 chunk = LLMResultChunk(
                     model=app_generate_entity.model_conf.model,
                     prompt_messages=prompt_messages,
@@ -197,7 +196,6 @@ class AppRunner:
                 )
 
                 queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
-                index += 1
                 time.sleep(0.01)
 
         queue_manager.publish(

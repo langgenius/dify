@@ -3,15 +3,16 @@ import type { ChatWrapperRefType } from './index'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/debug'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useStore, useWorkflowStore } from '../../store'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import ConversationVariableModal from './conversation-variable-modal'
@@ -38,7 +39,11 @@ const ChatWrapper = ({
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useParams<{ appId: string }>()
+  const queryClient = useQueryClient()
+  const { mutateAsync: stopChat } = useMutation(
+    consoleQuery.apps.byAppId.chatMessages.byTaskId.stop.post.mutationOptions(),
+  )
   const workflowStore = useWorkflowStore()
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const inputs = useStore((s) => s.inputs)
@@ -79,6 +84,22 @@ const ChatWrapper = ({
   ])
   const setShowFeaturesPanel = useStore((s) => s.setShowFeaturesPanel)
 
+  const handleGetSuggestedQuestions = useCallback(
+    (messageId: string, onCancel: (cancel: () => void) => void) => {
+      const options =
+        consoleQuery.apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get.queryOptions({
+          input: { params: { app_id: appId, message_id: messageId } },
+          staleTime: 0,
+          retry: false,
+        })
+      onCancel(() => {
+        void queryClient.cancelQueries({ queryKey: options.queryKey, exact: true })
+      })
+      return queryClient.query(options)
+    },
+    [appId, queryClient],
+  )
+
   const {
     conversationId,
     chatList,
@@ -97,7 +118,10 @@ const ChatWrapper = ({
       inputsForm: (startVariables || []) as any,
     },
     [],
-    (taskId) => stopChatMessageResponding(appDetail!.id, taskId),
+    (taskId) =>
+      stopChat({
+        params: { app_id: appId, task_id: taskId },
+      }),
   )
 
   const handleRestartChat = useCallback(() => {
@@ -118,12 +142,11 @@ const ChatWrapper = ({
             (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || undefined,
         },
         {
-          onGetSuggestedQuestions: (messageId, getAbortController) =>
-            fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+          onGetSuggestedQuestions: handleGetSuggestedQuestions,
         },
       )
     },
-    [handleSend, workflowStore, conversationId, chatList, appDetail],
+    [handleSend, workflowStore, conversationId, chatList, handleGetSuggestedQuestions],
   )
 
   const doRegenerate = useCallback(
@@ -145,11 +168,10 @@ const ChatWrapper = ({
   const doSwitchSibling = useCallback(
     (siblingMessageId: string) => {
       handleSwitchSibling(siblingMessageId, {
-        onGetSuggestedQuestions: (messageId, getAbortController) =>
-          fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+        onGetSuggestedQuestions: handleGetSuggestedQuestions,
       })
     },
-    [handleSwitchSibling, appDetail],
+    [handleSwitchSibling, handleGetSuggestedQuestions],
   )
 
   const doHumanInputFormSubmit = useCallback(
@@ -200,7 +222,7 @@ const ChatWrapper = ({
             supportCitationHitInfo: true,
           } as any
         }
-        speechToTextTarget={appDetail ? { type: 'consoleApp', appId: appDetail.id } : undefined}
+        speechToTextTarget={{ type: 'consoleApp', appId }}
         chatList={chatList}
         isResponding={isResponding}
         chatContainerClassName="px-3"

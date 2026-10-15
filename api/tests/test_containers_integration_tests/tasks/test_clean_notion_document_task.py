@@ -833,7 +833,7 @@ class TestCleanNotionDocumentTask:
         all_segments = []
         all_index_node_ids = []
 
-        for i, (dataset, account) in enumerate(zip(datasets, accounts)):
+        for i, (dataset, account) in enumerate(zip(datasets, accounts, strict=False)):
             document = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=account.current_tenant.id,
