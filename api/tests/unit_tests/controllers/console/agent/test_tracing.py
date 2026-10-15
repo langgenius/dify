@@ -1,6 +1,7 @@
 """Agent tracing Console contracts and authorization stay separate from PlainApp."""
 
 import inspect
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -114,7 +115,7 @@ def test_invalid_agent_returns_not_found(app: Flask, service: MagicMock) -> None
 )
 @pytest.mark.parametrize("rbac_enabled", [False, True])
 def test_config_requires_editor_role_or_agent_edit_permission(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, method, rbac_enabled: bool
+    app: Flask, monkeypatch: pytest.MonkeyPatch, method: Callable[..., object], rbac_enabled: bool
 ) -> None:
     account = Account(name="Reader", email="reader@example.com", status=AccountStatus.ACTIVE)
     account.id, account.role = "account", TenantAccountRole.NORMAL

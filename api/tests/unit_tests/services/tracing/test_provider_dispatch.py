@@ -1,7 +1,9 @@
 """Exercise real vendor serializers and OTLP stubs at their network boundary."""
 
 import json
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
+from typing import Never, NotRequired, TypedDict, cast
 from uuid import UUID
 
 import httpx
@@ -10,6 +12,7 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
     ExportTraceServiceResponse,
 )
+from opentelemetry.proto.trace.v1.trace_pb2 import Span
 
 from core.ops.exceptions import RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
@@ -21,8 +24,18 @@ from services.tracing.provider_dispatch import (
 )
 
 
+class HTTPArguments(TypedDict):
+    content: bytes
+    headers: Mapping[str, str]
+    max_retries: NotRequired[int]
+    follow_redirects: NotRequired[bool]
+
+
+type HTTPCall = tuple[str, str, HTTPArguments]
+
+
 @pytest.fixture
-def trace():
+def trace() -> CanonicalTrace:
     start = datetime(2026, 10, 15, 1, tzinfo=UTC)
     return CanonicalTrace(
         trace_id="1" * 32,
@@ -79,29 +92,34 @@ def trace():
 
 
 @pytest.fixture
-def http_calls(monkeypatch):
+def http_calls(monkeypatch: pytest.MonkeyPatch) -> list[HTTPCall]:
     from core.helper import ssrf_proxy
 
-    calls = []
+    calls: list[HTTPCall] = []
 
-    def send(method, url, **kwargs):
-        calls.append((method, url, kwargs))
+    def send(method: str, url: str, **kwargs: object) -> httpx.Response:
+        calls.append((method, url, cast(HTTPArguments, kwargs)))
         return httpx.Response(200, content=b"", request=httpx.Request(method, url))
 
     monkeypatch.setattr(ssrf_proxy, "make_request", send)
     return calls
 
 
-def spans_from_call(call):
+def spans_from_call(call: HTTPCall) -> list[Span]:
     request = ExportTraceServiceRequest.FromString(call[2]["content"])
     return list(request.resource_spans[0].scope_spans[0].spans)
 
 
-def attributes(span):
-    return {item.key: getattr(item.value, item.value.WhichOneof("value")) for item in span.attributes}
+def attributes(span: Span) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for item in span.attributes:
+        kind = item.value.WhichOneof("value")
+        assert kind is not None
+        result[item.key] = getattr(item.value, kind)
+    return result
 
 
-def test_langfuse_v4_tree_and_native_usage(trace, http_calls):
+def test_langfuse_v4_tree_and_native_usage(trace: CanonicalTrace, http_calls: list[HTTPCall]) -> None:
     config = {
         "host": "https://us.cloud.langfuse.com",
         "public_key": "pk-test",
@@ -124,8 +142,11 @@ def test_langfuse_v4_tree_and_native_usage(trace, http_calls):
     root, llm = attributes(spans[0]), attributes(spans[1])
     assert root["langfuse.observation.type"] == "agent"
     assert "langfuse.observation.usage_details" not in root
-    assert json.loads(llm["langfuse.observation.usage_details"]) == {"input": 8, "output": 4, "total": 12}
-    assert json.loads(llm["langfuse.observation.cost_details"]) == {"total": 0.03}
+    usage_details, cost_details = llm["langfuse.observation.usage_details"], llm["langfuse.observation.cost_details"]
+    assert isinstance(usage_details, str)
+    assert isinstance(cost_details, str)
+    assert json.loads(usage_details) == {"input": 8, "output": 4, "total": 12}
+    assert json.loads(cost_details) == {"total": 0.03}
     assert all(attributes(span)["langfuse.session.id"] == trace.session_id for span in spans)
     assert result.span_urls[trace.spans[1].id].endswith(trace.spans[1].id)
 
@@ -149,7 +170,15 @@ def test_langfuse_v4_tree_and_native_usage(trace, http_calls):
         ),
     ],
 )
-def test_other_http_providers_have_native_semantics(trace, http_calls, provider, config, suffix, kind_key, kind):
+def test_other_http_providers_have_native_semantics(
+    trace: CanonicalTrace,
+    http_calls: list[HTTPCall],
+    provider: str,
+    config: dict[str, str],
+    suffix: str,
+    kind_key: str,
+    kind: str,
+) -> None:
     result = export_trace(provider, config, trace)
     assert result.status == "accepted"
     assert http_calls[0][1].endswith(suffix)
@@ -175,26 +204,38 @@ def test_other_http_providers_have_native_semantics(trace, http_calls, provider,
         ),
     ],
 )
-def test_grpc_real_stub_serialization(trace, monkeypatch, provider, config, header):
-    import grpc
-
-    calls = []
+def test_grpc_real_stub_serialization(
+    trace: CanonicalTrace,
+    monkeypatch: pytest.MonkeyPatch,
+    provider: str,
+    config: dict[str, str],
+    header: tuple[str, str],
+) -> None:
+    calls: list[tuple[ExportTraceServiceRequest, Sequence[tuple[str, str]]]] = []
 
     class Channel:
-        def unary_unary(self, method, request_serializer, response_deserializer, **_kwargs):
+        def unary_unary(
+            self,
+            method: str,
+            request_serializer: Callable[[ExportTraceServiceRequest], bytes],
+            response_deserializer: Callable[[bytes], ExportTraceServiceResponse],
+            **_kwargs: object,
+        ) -> Callable[..., ExportTraceServiceResponse]:
             assert method == "/opentelemetry.proto.collector.trace.v1.TraceService/Export"
 
-            def invoke(payload, metadata, timeout):
+            def invoke(
+                payload: ExportTraceServiceRequest, metadata: Sequence[tuple[str, str]], timeout: float
+            ) -> ExportTraceServiceResponse:
                 assert timeout == 30
                 calls.append((ExportTraceServiceRequest.FromString(request_serializer(payload)), metadata))
                 return response_deserializer(ExportTraceServiceResponse().SerializeToString())
 
             return invoke
 
-        def close(self):
+        def close(self) -> None:
             pass
 
-    monkeypatch.setattr(grpc, "secure_channel", lambda *_args, **_kwargs: Channel())
+    monkeypatch.setattr("grpc.secure_channel", lambda *_args, **_kwargs: Channel())
     result = export_trace(provider, config, trace)
     assert result.status == "accepted"
     assert header in calls[0][1]
@@ -202,7 +243,7 @@ def test_grpc_real_stub_serialization(trace, monkeypatch, provider, config, head
     assert spans[1].parent_span_id == spans[0].span_id
 
 
-def test_langsmith_real_sdk_uses_isolated_sync_runs(trace, http_calls):
+def test_langsmith_real_sdk_uses_isolated_sync_runs(trace: CanonicalTrace, http_calls: list[HTTPCall]) -> None:
     result = export_trace(
         "langsmith", {"api_key": "ls-test", "endpoint": "https://langsmith.test", "project": "one"}, trace
     )
@@ -222,7 +263,9 @@ def test_langsmith_real_sdk_uses_isolated_sync_runs(trace, http_calls):
     assert UUID(result.trace_id)
 
 
-def test_opik_real_sdk_preserves_tree_thread_and_native_usage(trace, http_calls):
+def test_opik_real_sdk_preserves_tree_thread_and_native_usage(
+    trace: CanonicalTrace, http_calls: list[HTTPCall]
+) -> None:
     result = export_trace(
         "opik",
         {"api_key": "opik-test", "url": "https://opik.test/api", "workspace": "org-one", "project": "one"},
@@ -246,7 +289,9 @@ def test_opik_real_sdk_preserves_tree_thread_and_native_usage(trace, http_calls)
     ("status", "error"),
     [(401, TraceExportRejectedError), (429, RetryableTraceDispatchError), (503, RetryableTraceDispatchError)],
 )
-def test_explicit_http_rejections_are_classified_without_response_body(trace, monkeypatch, status, error):
+def test_explicit_http_rejections_are_classified_without_response_body(
+    trace: CanonicalTrace, monkeypatch: pytest.MonkeyPatch, status: int, error: type[Exception]
+) -> None:
     from core.helper import ssrf_proxy
 
     monkeypatch.setattr(
@@ -261,7 +306,9 @@ def test_explicit_http_rejections_are_classified_without_response_body(trace, mo
     assert "secret-token" not in str(caught.value)
 
 
-def test_partial_otlp_acceptance_requires_reconciliation(trace, monkeypatch):
+def test_partial_otlp_acceptance_requires_reconciliation(
+    trace: CanonicalTrace, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.helper import ssrf_proxy
 
     response = ExportTraceServiceResponse()
@@ -277,7 +324,7 @@ def test_partial_otlp_acceptance_requires_reconciliation(trace, monkeypatch):
         export_trace("langfuse", {"host": "https://langfuse.test", "public_key": "pk", "secret_key": "sk"}, trace)
 
 
-def _langfuse_queue_job_ack():
+def _langfuse_queue_job_ack() -> dict[str, object]:
     # Synthetic values only. Real acknowledgements contain auth context and must
     # never be logged or persisted as acceptance-test evidence.
     return {
@@ -299,7 +346,20 @@ def _langfuse_queue_job_ack():
     }
 
 
-def test_langfuse_v4_queue_ack_confirms_ingestion_acceptance_only(trace, monkeypatch, caplog, capsys):
+def _replace_ack_value(ack: dict[str, object], path: tuple[str, ...], value: object) -> None:
+    for field in path[:-1]:
+        nested = ack[field]
+        assert isinstance(nested, dict)
+        ack = cast(dict[str, object], nested)
+    ack[path[-1]] = value
+
+
+def test_langfuse_v4_queue_ack_confirms_ingestion_acceptance_only(
+    trace: CanonicalTrace,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     from core.helper import ssrf_proxy
 
     monkeypatch.setattr(
@@ -338,36 +398,43 @@ def test_langfuse_v4_queue_ack_confirms_ingestion_acceptance_only(trace, monkeyp
         "array",
     ],
 )
-def test_langfuse_ambiguous_json_ack_remains_uncertain(trace, monkeypatch, caplog, capsys, scenario):
+def test_langfuse_ambiguous_json_ack_remains_uncertain(
+    trace: CanonicalTrace,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+    scenario: str,
+) -> None:
     from core.helper import ssrf_proxy
 
-    body = _langfuse_queue_job_ack()
+    ack = _langfuse_queue_job_ack()
+    body: object = ack
     if scenario == "wrong_name":
-        body["name"] = "different-job"
+        ack["name"] = "different-job"
     elif scenario == "wrong_nested_name":
-        body["data"]["name"] = "different-job"
+        _replace_ack_value(ack, ("data", "name"), "different-job")
     elif scenario == "invalid_id":
-        body["data"]["id"] = "not-a-uuid"
+        _replace_ack_value(ack, ("data", "id"), "not-a-uuid")
     elif scenario == "invalid_timestamp":
-        body["data"]["timestamp"] = "2026-10-15T01:00:00"
+        _replace_ack_value(ack, ("data", "timestamp"), "2026-10-15T01:00:00")
     elif scenario == "invalid_auth":
-        body["data"]["payload"]["authCheck"]["validKey"] = False
+        _replace_ack_value(ack, ("data", "payload", "authCheck", "validKey"), False)
     elif scenario == "missing_scope":
-        body["data"]["payload"]["authCheck"]["scope"] = {}
+        _replace_ack_value(ack, ("data", "payload", "authCheck", "scope"), dict[str, object]())
     elif scenario == "missing_file":
-        body["data"]["payload"]["data"]["fileKey"] = ""
+        _replace_ack_value(ack, ("data", "payload", "data", "fileKey"), "")
     elif scenario == "partial_success":
-        body["partialSuccess"] = {"rejectedSpans": "1"}
+        ack["partialSuccess"] = {"rejectedSpans": "1"}
     elif scenario == "error":
-        body["error"] = "never-log-public-key"
+        ack["error"] = "never-log-public-key"
     elif scenario == "failed_job":
-        body["failedReason"] = "never-log-public-key"
+        ack["failedReason"] = "never-log-public-key"
     elif scenario == "unknown":
         body = {"accepted": True, "publicKey": "never-log-public-key"}
     elif scenario == "null":
         body = None
     elif scenario == "array":
-        body = []
+        body = list[object]()
     monkeypatch.setattr(
         ssrf_proxy,
         "make_request",
@@ -390,7 +457,9 @@ def test_langfuse_ambiguous_json_ack_remains_uncertain(trace, monkeypatch, caplo
 @pytest.mark.parametrize(
     ("provider", "version", "status"), [("phoenix", "4", 200), ("langfuse", "3", 200), ("langfuse", "4", 202)]
 )
-def test_langfuse_queue_ack_is_not_a_generic_otlp_success(monkeypatch, provider, version, status):
+def test_langfuse_queue_ack_is_not_a_generic_otlp_success(
+    monkeypatch: pytest.MonkeyPatch, provider: str, version: str, status: int
+) -> None:
     from core.helper import ssrf_proxy
     from services.tracing.otlp_export import export_http
 
@@ -411,7 +480,9 @@ def test_langfuse_queue_ack_is_not_a_generic_otlp_success(monkeypatch, provider,
 
 
 @pytest.mark.parametrize("body", [{}, {"partialSuccess": {}}, {"partialSuccess": {"rejectedSpans": "1"}}])
-def test_langfuse_standard_otlp_json_ack_remains_supported(trace, monkeypatch, body):
+def test_langfuse_standard_otlp_json_ack_remains_supported(
+    trace: CanonicalTrace, monkeypatch: pytest.MonkeyPatch, body: dict[str, dict[str, str]]
+) -> None:
     from core.helper import ssrf_proxy
 
     monkeypatch.setattr(
@@ -427,10 +498,10 @@ def test_langfuse_standard_otlp_json_ack_remains_supported(trace, monkeypatch, b
         assert export_trace("langfuse", config, trace).status == "accepted"
 
 
-def test_lost_http_ack_is_uncertain_not_rejected(trace, monkeypatch):
+def test_lost_http_ack_is_uncertain_not_rejected(trace: CanonicalTrace, monkeypatch: pytest.MonkeyPatch) -> None:
     from core.helper import ssrf_proxy
 
-    def timeout(*_args, **_kwargs):
+    def timeout(*_args: object, **_kwargs: object) -> Never:
         raise httpx.ReadTimeout("response lost")
 
     monkeypatch.setattr(ssrf_proxy, "make_request", timeout)
@@ -440,12 +511,14 @@ def test_lost_http_ack_is_uncertain_not_rejected(trace, monkeypatch):
 
 @pytest.mark.parametrize("provider", ["langsmith", "opik"])
 @pytest.mark.parametrize("accepted_prefix", [False, True])
-def test_native_sdk_preserves_first_failure_or_partial_acceptance(trace, monkeypatch, provider, accepted_prefix):
+def test_native_sdk_preserves_first_failure_or_partial_acceptance(
+    trace: CanonicalTrace, monkeypatch: pytest.MonkeyPatch, provider: str, accepted_prefix: bool
+) -> None:
     from core.helper import ssrf_proxy
 
-    calls = []
+    calls: list[str] = []
 
-    def send(method, url, **_kwargs):
+    def send(method: str, url: str, **_kwargs: object) -> httpx.Response:
         calls.append(url)
         status = 200 if accepted_prefix and len(calls) == 1 else 429
         return httpx.Response(status, content=b"", request=httpx.Request(method, url))
@@ -459,7 +532,7 @@ def test_native_sdk_preserves_first_failure_or_partial_acceptance(trace, monkeyp
     assert len(calls) == (2 if accepted_prefix else 1)
 
 
-def test_http_exports_keep_destination_credentials_local(trace, http_calls):
+def test_http_exports_keep_destination_credentials_local(trace: CanonicalTrace, http_calls: list[HTTPCall]) -> None:
     for project in ("a", "b"):
         export_trace(
             "langfuse", {"host": f"https://{project}.test", "public_key": project, "secret_key": project}, trace
@@ -474,14 +547,16 @@ def test_http_exports_keep_destination_credentials_local(trace, http_calls):
     "provider",
     ["langfuse", "langsmith", "phoenix", "arize", "opik", "weave", "mlflow", "databricks", "aliyun", "tencent"],
 )
-def test_capabilities_state_implemented_contract_not_platform_validation(provider):
+def test_capabilities_state_implemented_contract_not_platform_validation(provider: str) -> None:
     result = provider_capabilities(provider)
     assert result["agent_spans"] is True
     assert result["export_ack"] == "accepted"
     assert "platform_validated" not in result
 
 
-def test_rejects_unfinished_and_unknown_provider_before_sending(trace, http_calls):
+def test_rejects_unfinished_and_unknown_provider_before_sending(
+    trace: CanonicalTrace, http_calls: list[HTTPCall]
+) -> None:
     unfinished = trace.model_copy(update={"spans": (trace.spans[0].model_copy(update={"end_time": None}),)})
     with pytest.raises(TraceExportRejectedError):
         export_trace("langfuse", {}, unfinished)
