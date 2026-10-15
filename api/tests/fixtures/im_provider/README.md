@@ -41,3 +41,11 @@ The Teams directory test replays this response through the avatar downloader
 and checks that the directory entry contains the JPEG MIME type and exact bytes.
 
 Unmodified HTTP envelopes contain credentials and personal data and remain local.
+
+
+## Lark
+
+Lark HTTP replay fixtures are owned by the corresponding unit tests. See
+[the Lark fixture README](../../unit_tests/core/human_input_v2/im_provider/fixtures/lark/README.md)
+for capture provenance and redaction details. Tests load the committed
+`sanitized_protocol.json` in that directory.
