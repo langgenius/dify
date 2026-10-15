@@ -149,6 +149,9 @@ class RedisClientWrapper:
     def ttl(self, name: str | bytes) -> Any:
         return self._require_client().ttl(_serialize_redis_name_arg(name, self._get_prefix()))
 
+    def pttl(self, name: str | bytes) -> Any:
+        return self._require_client().pttl(_serialize_redis_name_arg(name, self._get_prefix()))
+
     def getdel(self, name: str | bytes) -> Any:
         return self._require_client().getdel(_serialize_redis_name_arg(name, self._get_prefix()))
 
