@@ -1,8 +1,13 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDetail } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
@@ -22,14 +27,7 @@ const mockInitialNodes = vi.fn()
 const mockInitialEdges = vi.fn()
 const mockGetWorkflowRunAndTraceUrl = vi.fn()
 
-let appStoreState: {
-  appDetail?: {
-    id: string
-    mode: string
-    maintainer?: string
-    permission_keys?: string[]
-  }
-}
+let appDetail: AppDetailWithSite
 
 let workflowInitState: {
   data: {
@@ -66,10 +64,13 @@ let appTriggersState: {
 
 let searchParamsValue: string | null = null
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(consoleState.userProfile),
+const render = (ui: ReactElement) => {
+  const queryClient = createAccountProfileQueryClient(consoleState.userProfile)
+  seedAppDetail(queryClient, appDetail)
+  return renderWithConsoleState(ui, {
+    wrapper: createQueryClientWrapper(queryClient),
   })
+}
 
 const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
@@ -83,10 +84,6 @@ const mockWorkflowStore = {
     },
   }),
 }
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: typeof appStoreState) => T) => selector(appStoreState),
-}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockWorkflowStore,
@@ -117,7 +114,9 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
   useSearchParams: () => ({
     get: (key: string) => (key === 'replayRunId' ? searchParamsValue : null),
   }),
@@ -228,13 +227,11 @@ describe('WorkflowApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsWorkflowDataLoaded = true
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.TestAndRun],
-      },
-    }
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.TestAndRun],
+    })
     workflowInitState = {
       data: {
         graph: {
@@ -360,13 +357,11 @@ describe('WorkflowApp', () => {
 
   it('should skip replay lookups when test/run permission is missing', async () => {
     searchParamsValue = 'run-1'
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.ViewLayout],
-      },
-    }
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      mode: AppModeEnum.WORKFLOW,
+      permission_keys: [AppACLPermission.ViewLayout],
+    })
 
     render(<WorkflowApp />)
 

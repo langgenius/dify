@@ -160,6 +160,10 @@ vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   }),
 }))
 
+vi.mock('../../hooks/use-is-chat-mode', () => ({
+  useIsChatMode: () => false,
+}))
+
 vi.mock('../../hooks/use-auto-onboarding', () => ({
   useAutoOnboarding: () => ({
     handleOnboardingClose: mockHandleOnboardingClose,
