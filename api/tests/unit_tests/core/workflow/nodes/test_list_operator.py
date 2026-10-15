@@ -19,12 +19,12 @@ from graphon.nodes.list_operator.node import ListOperatorNode, _get_file_extract
 from graphon.variables import ArrayFileSegment
 
 
-def _build_list_operator_node(node_data: ListOperatorNodeData, init_params) -> ListOperatorNode:
+def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params) -> ListOperatorNode:
     return ListOperatorNode(
         node_id="test_node_id",
         data=node_data,
-        init_params=init_params,
-        runtime_state=MagicMock(),
+        graph_init_params=graph_init_params,
+        graph_runtime_state=MagicMock(),
     )
 
 
@@ -44,12 +44,12 @@ def list_operator_node():
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData.model_validate(config)
-    # Create properly configured mock for init_params
-    init_params = MagicMock()
-    init_params.workflow_id = "test_workflow"
-    init_params.graph_config = {}
-    init_params.call_depth = 0
-    init_params.run_context = {
+    # Create properly configured mock for graph_init_params
+    graph_init_params = MagicMock()
+    graph_init_params.workflow_id = "test_workflow"
+    graph_init_params.graph_config = {}
+    graph_init_params.call_depth = 0
+    graph_init_params.run_context = {
         DIFY_RUN_CONTEXT_KEY: {
             "tenant_id": "test_tenant",
             "app_id": "test_app",
@@ -59,9 +59,9 @@ def list_operator_node():
         }
     }
 
-    node = _build_list_operator_node(node_data, init_params)
-    node.runtime_state = MagicMock()
-    node.runtime_state.variable_pool = MagicMock()
+    node = _build_list_operator_node(node_data, graph_init_params)
+    node.graph_runtime_state = MagicMock()
+    node.graph_runtime_state.variable_pool = MagicMock()
     return node
 
 
@@ -98,7 +98,7 @@ def test_filter_files_by_type(list_operator_node):
         ),
     ]
     variable = ArrayFileSegment(value=files)
-    list_operator_node.runtime_state.variable_pool.get.return_value = variable
+    list_operator_node.graph_runtime_state.variable_pool.get.return_value = variable
 
     # Run the node
     result = list_operator_node._run()

@@ -400,11 +400,15 @@ def test_runtime_helper_wrappers_delegate_to_config_and_io(
         mock_load.assert_called_once_with("path", stream=True)
 
 
-def test_bind_dify_workflow_file_runtime_scopes_runtime() -> None:
-    from graphon.file.runtime import peek_workflow_file_runtime
+def test_bind_dify_workflow_file_runtime_registers_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtimes: list[DifyWorkflowFileRuntime] = []
 
-    before = peek_workflow_file_runtime()
-    with bind_dify_workflow_file_runtime():
-        assert isinstance(peek_workflow_file_runtime(), DifyWorkflowFileRuntime)
-        assert peek_workflow_file_runtime() is not before
-    assert peek_workflow_file_runtime() is before
+    def set_runtime(runtime: DifyWorkflowFileRuntime) -> None:
+        runtimes.append(runtime)
+
+    monkeypatch.setattr(file_runtime, "set_workflow_file_runtime", set_runtime)
+
+    bind_dify_workflow_file_runtime()
+
+    assert len(runtimes) == 1
+    assert isinstance(runtimes[0], DifyWorkflowFileRuntime)

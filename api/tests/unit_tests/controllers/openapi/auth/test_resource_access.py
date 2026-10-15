@@ -267,7 +267,7 @@ def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) 
     with (
         patch("controllers.openapi.app_run.redis_client") as redis,
         patch("controllers.openapi.app_run.AppQueueManager.set_stop_flag_no_user_check") as stop,
-        patch("controllers.openapi.app_run.send_workflow_stop_command") as engine,
+        patch("controllers.openapi.app_run.GraphEngineManager") as engine,
     ):
         redis.get.return_value = b"end-user-other-user"
         with pytest.raises(NotFound):

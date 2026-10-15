@@ -5,17 +5,17 @@ from collections.abc import Iterable, Sequence
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.engine.filter import EngineEventFilterContext
-from graphon.engine_events import (
-    EngineEvent,
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
+from graphon.enums import BuiltinNodeTypes
+from graphon.filters import GraphEventFilterContext
+from graphon.graph_events import (
+    GraphEngineEvent,
     NodeRunHumanInputFormFilledEvent,
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
-from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.enums import BuiltinNodeTypes
-from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 
 from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
 from .pause_reason import HumanInputRequired, PauseReason
@@ -38,11 +38,11 @@ class HumanInputFormEventFilter:
     def filter_id(self) -> str:
         return "dify-human-input-form-events"
 
-    def initialize(self, context: EngineEventFilterContext) -> None:
+    def initialize(self, context: GraphEventFilterContext) -> None:
         self._node_titles.clear()
         self._app_id = get_system_text(context.runtime_state.variable_pool, SystemVariableKey.APP_ID)
 
-    def on_event(self, event: EngineEvent) -> Iterable[EngineEvent]:
+    def on_event(self, event: GraphEngineEvent) -> Iterable[GraphEngineEvent]:
         if isinstance(event, NodeRunStartedEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
             self._node_titles[event.id] = event.node_title
         elif isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
@@ -50,7 +50,7 @@ class HumanInputFormEventFilter:
 
         yield event
 
-    def flush(self) -> Iterable[EngineEvent]:
+    def flush(self) -> Iterable[GraphEngineEvent]:
         return ()
 
     def _completion_event(
@@ -72,7 +72,8 @@ class HumanInputFormEventFilter:
                 node_type=event.node_type,
                 node_title=node_title,
                 node_version=event.node_version,
-                container_id=event.container_id,
+                in_iteration_id=event.in_iteration_id,
+                in_loop_id=event.in_loop_id,
                 expiration_time=form.expiration_time,
             )
 
@@ -82,7 +83,8 @@ class HumanInputFormEventFilter:
             node_type=event.node_type,
             node_title=node_title,
             node_version=event.node_version,
-            container_id=event.container_id,
+            in_iteration_id=event.in_iteration_id,
+            in_loop_id=event.in_loop_id,
             rendered_content=result.outputs[OUTPUT_FIELD_RENDERED_CONTENT].text,
             action_id=result.outputs[OUTPUT_FIELD_ACTION_ID].text,
             action_text=result.outputs[OUTPUT_FIELD_ACTION_VALUE].text,

@@ -26,7 +26,7 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from graphon.runtime import RuntimeState
+from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class AppQueueManager(ABC):
         q: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
 
         self._q = q
-        self._graph_runtime_state: RuntimeState | None = None
+        self._graph_runtime_state: GraphRuntimeState | None = None
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
         self._listener_segment_completed = threading.Event()
@@ -152,14 +152,14 @@ class AppQueueManager(ABC):
         self.publish(QueueErrorEvent(error=e), pub_from)
 
     @property
-    def runtime_state(self) -> RuntimeState | None:
+    def graph_runtime_state(self) -> GraphRuntimeState | None:
         """Retrieve the attached graph runtime state, if available."""
         return self._graph_runtime_state
 
-    @runtime_state.setter
-    def runtime_state(self, runtime_state: RuntimeState | None) -> None:
+    @graph_runtime_state.setter
+    def graph_runtime_state(self, graph_runtime_state: GraphRuntimeState | None) -> None:
         """Attach the live graph runtime state reference for downstream consumers."""
-        self._graph_runtime_state = runtime_state
+        self._graph_runtime_state = graph_runtime_state
 
     def publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """

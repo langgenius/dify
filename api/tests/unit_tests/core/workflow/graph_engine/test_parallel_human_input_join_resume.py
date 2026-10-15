@@ -23,44 +23,44 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.system_variables import build_system_variables
-from graphon.engine import Engine
-from graphon.engine.command import InMemoryChannel
-from graphon.engine_events import (
+from graphon.entities import WorkflowStartReason
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from graphon.entities import WorkflowStartReason
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.graph import Graph
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
 class PauseStateStore(Protocol):
-    def save(self, runtime_state: RuntimeState) -> None: ...
+    def save(self, runtime_state: GraphRuntimeState) -> None: ...
 
-    def load(self) -> RuntimeState: ...
+    def load(self) -> GraphRuntimeState: ...
 
 
 class InMemoryPauseStore:
     def __init__(self) -> None:
         self._snapshot: str | None = None
 
-    def save(self, runtime_state: RuntimeState) -> None:
+    def save(self, runtime_state: GraphRuntimeState) -> None:
         self._snapshot = runtime_state.dumps()
 
-    def load(self) -> RuntimeState:
+    def load(self) -> GraphRuntimeState:
         assert self._snapshot is not None
-        return RuntimeState.from_snapshot(self._snapshot)
+        return GraphRuntimeState.from_snapshot(self._snapshot)
 
 
 class _TestFileReferenceFactory:
@@ -144,7 +144,7 @@ class StaticRepo(HumanInputFormRepository):
         raise AssertionError("create_form should not be called in resume scenario")
 
 
-def _build_runtime_state() -> RuntimeState:
+def _build_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             user_id="user",
@@ -155,12 +155,12 @@ def _build_runtime_state() -> RuntimeState:
         user_inputs={},
         conversation_variables=[],
     )
-    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
+    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 
-def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) -> Graph:
+def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepository) -> Graph:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    init_params = build_test_graph_init_params(
+    graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
         tenant_id="tenant",
@@ -175,8 +175,8 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     start_node = StartNode(
         node_id=start_config["id"],
         data=StartNodeData(title="Start", variables=[]),
-        init_params=init_params,
-        runtime_state=runtime_state,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=runtime_state,
     )
 
     human_data = HumanInputNodeData(
@@ -194,7 +194,7 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     )
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
-    human_a_runtime = DifyHumanInputNodeRuntime(init_params.run_context)
+    human_a_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
     human_a_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
@@ -204,13 +204,13 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
         data=human_data,
-        init_params=init_params,
-        runtime_state=runtime_state,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=runtime_state,
         hitl_callback=human_a_callback,
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
-    human_b_runtime = DifyHumanInputNodeRuntime(init_params.run_context)
+    human_b_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
     human_b_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
@@ -220,8 +220,8 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
         data=human_data,
-        init_params=init_params,
-        runtime_state=runtime_state,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=runtime_state,
         hitl_callback=human_b_callback,
     )
 
@@ -241,8 +241,8 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     end_node = EndNode(
         node_id=end_config["id"],
         data=end_data,
-        init_params=init_params,
-        runtime_state=runtime_state,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=runtime_state,
     )
 
     builder = (
@@ -255,12 +255,18 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     return builder.connect(tail="human_b", head="end", source_handle="approve").build()
 
 
-def _run_graph(graph: Graph, runtime_state: RuntimeState) -> list[object]:
-    engine = Engine(
+def _run_graph(graph: Graph, runtime_state: GraphRuntimeState) -> list[object]:
+    engine = GraphEngine(
+        workflow_id="workflow",
         graph=graph,
-        runtime_state=runtime_state,
+        graph_runtime_state=runtime_state,
         command_channel=InMemoryChannel(),
-        workers=2,
+        config=GraphEngineConfig(
+            min_workers=2,
+            max_workers=2,
+            scale_up_threshold=1,
+            scale_down_idle_time=30.0,
+        ),
     )
     return list(engine.run())
 

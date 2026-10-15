@@ -1,7 +1,7 @@
 from collections import UserString
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import pytest
 
@@ -10,12 +10,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
-from graphon.engine.filter import ResponseStreamFilter
-from graphon.engine_events import GraphRunFailedEvent, NodeRunSucceededEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.filters import ResponseStreamFilter
+from graphon.graph_events import GraphRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
@@ -39,12 +39,13 @@ def _build_minimal_workflow_entry(
     *,
     response_stream_filter: ResponseStreamFilter | None = None,
 ) -> workflow_entry.WorkflowEntry:
-    """Construct a minimal WorkflowEntry with Engine construction mocked out."""
+    """Construct a minimal WorkflowEntry with GraphEngine construction mocked out."""
     graph_engine = MagicMock()
-    runtime_state = SimpleNamespace(_execution_context=None)
+    graph_runtime_state = SimpleNamespace(_execution_context=None)
 
-    monkeypatch.setattr(workflow_entry, "WorkflowExecutionContextLayer", MagicMock())
-    monkeypatch.setattr(workflow_entry, "Engine", MagicMock(return_value=graph_engine))
+    monkeypatch.setattr(workflow_entry, "capture_current_context", lambda: sentinel.execution_context)
+    monkeypatch.setattr(workflow_entry, "GraphEngine", MagicMock(return_value=graph_engine))
+    monkeypatch.setattr(workflow_entry, "GraphEngineConfig", MagicMock(return_value=sentinel.graph_engine_config))
     monkeypatch.setattr(workflow_entry, "InMemoryChannel", MagicMock(return_value=sentinel.command_channel))
 
     return workflow_entry.WorkflowEntry(
@@ -58,7 +59,7 @@ def _build_minimal_workflow_entry(
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
         variable_pool=sentinel.variable_pool,
-        runtime_state=runtime_state,
+        graph_runtime_state=graph_runtime_state,
         response_stream_filter=response_stream_filter,
     )
 
@@ -79,12 +80,12 @@ class TestWorkflowEntryInit:
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=call_depth,
                 variable_pool=sentinel.variable_pool,
-                runtime_state=sentinel.runtime_state,
+                graph_runtime_state=sentinel.graph_runtime_state,
             )
 
     def test_applies_debug_and_observability_layers(self):
         graph_engine = MagicMock()
-        runtime_state = SimpleNamespace(_execution_context=None)
+        graph_runtime_state = SimpleNamespace(_execution_context=None)
         debug_layer = sentinel.debug_layer
         execution_limits_layer = sentinel.execution_limits_layer
         observability_layer = sentinel.observability_layer
@@ -92,12 +93,11 @@ class TestWorkflowEntryInit:
         with (
             config_overrides_context(DEBUG=True, ENABLE_OTEL=False),
             patch.object(workflow_entry, "is_instrument_flag_enabled", return_value=True),
-            patch.object(
-                workflow_entry, "WorkflowExecutionContextLayer", return_value=sentinel.execution_context_layer
-            ),
-            patch.object(workflow_entry, "Engine", return_value=graph_engine) as graph_engine_cls,
+            patch.object(workflow_entry, "capture_current_context", return_value=sentinel.execution_context),
+            patch.object(workflow_entry, "GraphEngine", return_value=graph_engine) as graph_engine_cls,
+            patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
-            patch.object(workflow_entry, "WorkflowDebugLayer", return_value=debug_layer) as debug_logging_layer,
+            patch.object(workflow_entry, "DebugLoggingLayer", return_value=debug_layer) as debug_logging_layer,
             patch.object(
                 workflow_entry,
                 "ExecutionLimitsLayer",
@@ -116,25 +116,31 @@ class TestWorkflowEntryInit:
                 invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
                 variable_pool=sentinel.variable_pool,
-                runtime_state=runtime_state,
+                graph_runtime_state=graph_runtime_state,
                 command_channel=None,
             )
 
         assert entry.command_channel is sentinel.command_channel
         graph_engine_cls.assert_called_once_with(
+            workflow_id="workflow-id-123456",
             graph=sentinel.graph,
-            runtime_state=runtime_state,
+            graph_runtime_state=graph_runtime_state,
             command_channel=sentinel.command_channel,
-            workers=workflow_entry.dify_config.GRAPH_ENGINE_MAX_WORKERS,
-            file_runtime=ANY,
+            config=sentinel.graph_engine_config,
         )
-        debug_logging_layer.assert_called_once_with()
+        assert graph_runtime_state._execution_context is sentinel.execution_context
+        debug_logging_layer.assert_called_once_with(
+            level="DEBUG",
+            include_inputs=True,
+            include_outputs=True,
+            include_process_data=False,
+            logger_name="GraphEngine.Debug.workflow",
+        )
         execution_limits_layer_cls.assert_called_once_with(
             max_steps=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_time=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_TIME,
         )
-        assert graph_engine.add_layer.call_args_list == [
-            ((sentinel.execution_context_layer,), {}),
+        assert graph_engine.layer.call_args_list == [
             ((debug_layer,), {}),
             ((execution_limits_layer,), {}),
             ((observability_layer,), {}),
@@ -155,7 +161,6 @@ class TestWorkflowEntryInit:
 class TestWorkflowEntryRun:
     def test_run_swallows_generate_task_stopped_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
-        entry._layers = []
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
         entry._response_stream_filter = ResponseStreamFilter()
@@ -168,7 +173,7 @@ class TestWorkflowEntryRun:
 
         with (
             patch.object(
-                workflow_entry.EngineEventFilterContext,
+                workflow_entry.GraphEventFilterContext,
                 "from_engine",
                 return_value=sentinel.filter_context,
             ) as from_engine,
@@ -184,16 +189,16 @@ class TestWorkflowEntryRun:
             ),
             patch.object(
                 workflow_entry,
-                "filter_engine_events",
+                "filter_graph_events",
                 return_value=iter([sentinel.filtered_event]),
-            ) as filter_engine_events,
+            ) as filter_graph_events,
         ):
             events = list(workflow_entry.iter_dify_graph_engine_events(graph_engine))
 
         assert events == [sentinel.filtered_event]
         from_engine.assert_called_once_with(graph_engine)
         response_stream_filter_cls.assert_called_once_with()
-        filter_engine_events.assert_called_once_with(
+        filter_graph_events.assert_called_once_with(
             graph_engine.run.return_value,
             context=sentinel.filter_context,
             filters=[sentinel.human_input_filter, sentinel.response_stream_filter],
@@ -201,7 +206,6 @@ class TestWorkflowEntryRun:
 
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
-        entry._layers = []
         entry.graph_engine = sentinel.graph_engine
         entry._response_stream_filter = sentinel.response_stream_filter
 
@@ -213,13 +217,10 @@ class TestWorkflowEntryRun:
             events = list(entry.run())
 
         assert events == [sentinel.filtered_event]
-        iter_dify_graph_engine_events.assert_called_once_with(
-            sentinel.graph_engine, sentinel.response_stream_filter, pause_callbacks=(), pause_failure_callbacks=()
-        )
+        iter_dify_graph_engine_events.assert_called_once_with(sentinel.graph_engine, sentinel.response_stream_filter)
 
     def test_run_emits_failed_event_for_unexpected_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
-        entry._layers = []
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = RuntimeError("boom")
         entry._response_stream_filter = ResponseStreamFilter()
@@ -279,12 +280,10 @@ class TestWorkflowEntrySingleStepRun:
 
         with (
             patch.object(workflow, "get_node_config_by_id", return_value=node_config),
-            patch.object(
-                workflow_entry, "DifyGraphInitContext", return_value=SimpleNamespace(workflow_id="workflow-id")
-            ),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
             patch.object(
                 workflow_entry,
-                "RuntimeState",
+                "GraphRuntimeState",
                 return_value=SimpleNamespace(variable_pool=variable_pool),
             ),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
@@ -339,10 +338,8 @@ class TestWorkflowEntrySingleStepRun:
                 "get_node_config_by_id",
                 return_value=_build_typed_node_config(BuiltinNodeTypes.START),
             ),
-            patch.object(
-                workflow_entry, "DifyGraphInitContext", return_value=SimpleNamespace(workflow_id="workflow-id")
-            ),
-            patch.object(workflow_entry, "RuntimeState", return_value=sentinel.runtime_state),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
+            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
@@ -408,10 +405,8 @@ class TestWorkflowEntrySingleStepRun:
                 "get_node_config_by_id",
                 return_value=_build_typed_node_config(BuiltinNodeTypes.DATASOURCE),
             ),
-            patch.object(
-                workflow_entry, "DifyGraphInitContext", return_value=SimpleNamespace(workflow_id="workflow-id")
-            ),
-            patch.object(workflow_entry, "RuntimeState", return_value=sentinel.runtime_state),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
+            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeDatasourceNode),
@@ -468,10 +463,8 @@ class TestWorkflowEntrySingleStepRun:
                 "get_node_config_by_id",
                 return_value=_build_typed_node_config(BuiltinNodeTypes.START),
             ),
-            patch.object(
-                workflow_entry, "DifyGraphInitContext", return_value=SimpleNamespace(workflow_id="workflow-id")
-            ),
-            patch.object(workflow_entry, "RuntimeState", return_value=sentinel.runtime_state),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
+            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeNode),
@@ -574,9 +567,9 @@ class TestWorkflowEntryHelpers:
             patch.object(workflow_entry, "VariablePool", return_value=sentinel.variable_pool) as variable_pool_cls,
             patch.object(workflow_entry, "add_variables_to_pool") as add_variables_to_pool,
             patch.object(
-                workflow_entry, "DifyGraphInitContext", return_value=SimpleNamespace(workflow_id="workflow-id")
+                workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context
             ) as graph_init_context_cls,
-            patch.object(workflow_entry, "RuntimeState", return_value=sentinel.runtime_state),
+            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(
                 workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}
             ) as build_dify_run_context,
@@ -625,8 +618,8 @@ class TestWorkflowEntryHelpers:
             call_depth=0,
         )
         dify_node_factory_cls.assert_called_once_with(
-            graph_init_context=ANY,
-            runtime_state=sentinel.runtime_state,
+            graph_init_context=sentinel.graph_init_context,
+            graph_runtime_state=sentinel.graph_runtime_state,
         )
         mapping_user_inputs_to_variable_pool.assert_called_once_with(
             variable_mapping={},
@@ -662,10 +655,8 @@ class TestWorkflowEntryHelpers:
             patch.object(workflow_entry, "default_system_variables", return_value=sentinel.system_variables),
             patch.object(workflow_entry, "VariablePool", return_value=sentinel.variable_pool),
             patch.object(workflow_entry, "add_variables_to_pool"),
-            patch.object(
-                workflow_entry, "DifyGraphInitContext", return_value=SimpleNamespace(workflow_id="workflow-id")
-            ),
-            patch.object(workflow_entry, "RuntimeState", return_value=sentinel.runtime_state),
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
+            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
             patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
             patch.object(workflow_entry.time, "perf_counter", return_value=123.0),
             patch.object(
@@ -770,7 +761,7 @@ class TestWorkflowEntryNodeLayers:
         )
 
         class FakeNode:
-            runtime_state = sentinel.runtime_state
+            graph_runtime_state = sentinel.graph_runtime_state
 
             def bind_execution_id(self, _execution_id):
                 return None
@@ -784,14 +775,14 @@ class TestWorkflowEntryNodeLayers:
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
             patch.object(
                 workflow_entry,
-                "ReadOnlyRuntimeStateWrapper",
+                "ReadOnlyGraphRuntimeStateWrapper",
                 return_value=sentinel.read_only_runtime_state,
             ) as runtime_state_wrapper,
         ):
             events = list(workflow_entry.WorkflowEntry._run_node_with_layers(node, tenant_id="tenant-id"))
 
         assert events == [result_event]
-        runtime_state_wrapper.assert_called_once_with(sentinel.runtime_state)
+        runtime_state_wrapper.assert_called_once_with(sentinel.graph_runtime_state)
         for layer in (observability_layer,):
             layer.initialize.assert_called_once_with(sentinel.read_only_runtime_state, sentinel.command_channel)
             layer.on_graph_start.assert_called_once_with()
@@ -803,7 +794,7 @@ class TestWorkflowEntryNodeLayers:
         observability_layer = MagicMock()
 
         class FakeNode:
-            runtime_state = sentinel.runtime_state
+            graph_runtime_state = sentinel.graph_runtime_state
 
             def bind_execution_id(self, _execution_id):
                 return None
@@ -817,7 +808,7 @@ class TestWorkflowEntryNodeLayers:
             patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
             patch.object(
                 workflow_entry,
-                "ReadOnlyRuntimeStateWrapper",
+                "ReadOnlyGraphRuntimeStateWrapper",
                 return_value=sentinel.read_only_runtime_state,
             ),
         ):

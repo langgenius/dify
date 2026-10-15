@@ -23,10 +23,9 @@ from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.node_events import StreamCompletedEvent
-from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -78,14 +77,14 @@ def init_llm_node(config: dict[str, object]) -> LLMNode:
     )
     variable_pool.add(["abc", "output"], "sunny")
 
-    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     run_context = resolve_dify_run_context(init_params.run_context)
 
     node = LLMNode(
         node_id=str(uuid.uuid4()),
         data=LLMNodeData.model_validate(config["data"]),
-        init_params=init_params,
-        runtime_state=runtime_state,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
         credentials_provider=DifyCredentialsProvider(run_context=run_context),
         model_factory=DifyModelFactory(run_context=run_context),
         model_instance=DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-3.5-turbo")),
@@ -139,8 +138,7 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
 
         model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
         schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
-        monkeypatch.setattr(model_instance.model_type_instance, "get_model_schema", MagicMock(return_value=schema))
-        monkeypatch.setattr(model_instance, "get_llm_num_tokens", MagicMock(return_value=0))
+        monkeypatch.setattr(model_instance, "get_model_schema", MagicMock(return_value=schema))
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -176,7 +174,7 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
 
     node._model_instance = build_model_instance()
 
-    with patch.object(llm_utils, "fetch_prompt_messages", mock_fetch_prompt_messages_1):
+    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1):
         # execute node
         result = node._run()
         assert isinstance(result, Generator)
@@ -241,8 +239,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch) -> None:
 
         model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
         schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
-        monkeypatch.setattr(model_instance.model_type_instance, "get_model_schema", MagicMock(return_value=schema))
-        monkeypatch.setattr(model_instance, "get_llm_num_tokens", MagicMock(return_value=0))
+        monkeypatch.setattr(model_instance, "get_model_schema", MagicMock(return_value=schema))
         mock_usage = LLMUsage(
             prompt_tokens=30,
             prompt_unit_price=Decimal("0.001"),
@@ -278,7 +275,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch) -> None:
 
     node._model_instance = build_model_instance()
 
-    with patch.object(llm_utils, "fetch_prompt_messages", mock_fetch_prompt_messages_2):
+    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2):
         # execute node
         result = node._run()
 

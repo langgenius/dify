@@ -150,7 +150,9 @@ class TestObservabilityLayerExtras:
         assert ended == ["ended"]
         assert "exec" not in layer._node_contexts
 
-    def test_node_run_context_propagates_detach_failure_for_engine_isolation(self, monkeypatch: pytest.MonkeyPatch):
+    def test_on_node_run_end_logs_detach_failure(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         layer = ObservabilityLayer()
         layer._is_disabled = False
 
@@ -167,9 +169,9 @@ class TestObservabilityLayerExtras:
         monkeypatch.setattr("core.app.workflow.layers.observability.context_api.detach", _raise)
 
         node = SimpleNamespace(execution_id="exec", title="Node", id="node", node_type=None)
-        with pytest.raises(RuntimeError, match="detach failed"):
-            with layer.node_run_context(node):
-                layer.on_node_run_end(node, error=None)
+        layer.on_node_run_end(node, error=None)
+
+        assert "Failed to detach OpenTelemetry token" in caplog.text
         assert "exec" not in layer._node_contexts
 
     def test_on_node_run_start_and_end_creates_span(self, monkeypatch: pytest.MonkeyPatch):

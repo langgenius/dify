@@ -1,9 +1,9 @@
 """Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
 
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
-from graphon.engine import Engine
-from graphon.engine.command import InMemoryChannel
-from graphon.engine_events import GraphRunSucceededEvent, NodeRunStreamChunkEvent
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events import GraphRunSucceededEvent, NodeRunStreamChunkEvent
 from tests.unit_tests.core.workflow.graph_engine.test_mock_config import MockConfig, MockConfigBuilder
 from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
 
@@ -45,7 +45,7 @@ def _build_issue_170_mock_config() -> tuple[WorkflowRunner, MockConfig]:
 def test_dify_response_stream_filter_handles_issue_170_shape() -> None:
     runner, mock_config = _build_issue_170_mock_config()
     fixture_data = runner.load_fixture("response_stream_filter_issue_170_workflow")
-    graph, runtime_state = runner.create_graph_from_fixture(
+    graph, graph_runtime_state = runner.create_graph_from_fixture(
         fixture_data=fixture_data,
         query="1",
         use_mock_factory=True,
@@ -54,11 +54,12 @@ def test_dify_response_stream_filter_handles_issue_170_shape() -> None:
 
     expected_answer = "# Du Fu\n\nSpring View\n\n# Li Bai\n\nQuiet Night Thought"
 
-    engine = Engine(
+    engine = GraphEngine(
+        workflow_id="test_workflow",
         graph=graph,
-        runtime_state=runtime_state,
+        graph_runtime_state=graph_runtime_state,
         command_channel=InMemoryChannel(),
-        workers=5,
+        config=GraphEngineConfig(),
     )
     events = list(iter_dify_graph_engine_events(engine))
 

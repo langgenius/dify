@@ -316,10 +316,6 @@ jobs:
 
           JUNIT = "builder-confirmed-tool-units.xml"
           FILES = [
-              "api/tests/unit_tests/core/workflow/test_graphon_v08_scope_regressions.py",
-              "api/tests/unit_tests/core/workflow/test_graphon_v08_contract.py",
-              "api/tests/unit_tests/core/workflow/context/test_execution_context.py",
-              "api/tests/unit_tests/core/workflow/context/test_flask_app_context.py",
               "api/tests/unit_tests/services/dify_builder/test_reconcile.py",
               "api/tests/unit_tests/core/app/apps/test_builder_execution_admission.py",
               "api/tests/unit_tests/services/dify_builder/test_real_call_consent_service.py",
@@ -408,93 +404,6 @@ jobs:
               print(f"COLLECTED {module}: {count} unit cases", flush=True)
               if count == 0:
                   problems.append(f"missing unit module {module}")
-          graphon_v08_expected = {
-              "tests.unit_tests.core.workflow.test_graphon_v08_scope_regressions": {
-                  "test_actual_dify_v07_envelope_resumes_exact_graph_through_entry": 4,
-                  "test_actual_single_worker_keeps_engine_adapter_for_second_node": 2,
-                  "test_background_summary_keeps_real_image_conversion_without_ambient_runtime": 1,
-                  "test_capture_restores_worker_context_and_adapter": 8,
-                  "test_captured_otel_context_is_reversible_on_exception": 2,
-                  "test_dify_application_context_binds_rendering_for_request_and_background": 2,
-                  "test_direct_host_signing_boundary_needs_no_ambient_runtime": 4,
-                  "test_json_prevalidation_compares_original_binding_before_dto_adaptation": 2,
-                  "test_lazy_file_response_keeps_owner_until_iteration_and_cleanup": 3,
-                  "test_lazy_response_retains_ownership_grants_between_steps_without_leaking": 1,
-                  "test_public_preview_checks_real_signature_without_ambient_adapter": 2,
-                  "test_request_rendering_and_teardown_restore_none_even_on_failure": 1,
-                  "test_valid_public_preview_retains_normal_delivery_without_ambient_adapter": 2
-              },
-              "tests.unit_tests.core.workflow.test_graphon_v08_contract": {
-                  "test_explicit_file_scope_is_reentrant_and_restores_previous_adapter": 1,
-                  "test_historical_v1_filter_binds_original_edge_position_to_public_id": 1,
-                  "test_historical_v1_response_filter_bytes_are_accepted_without_rewriting": 1,
-                  "test_historical_v2_loop_snapshot_resumes_with_dify_scoped_factory": 2,
-                  "test_host_context_does_not_replace_engine_file_adapter_on_any_segment": 1,
-                  "test_legacy_v1_child_tasks_fail_closed_without_fabricating_frames": 1,
-                  "test_nested_ancestry_uses_actual_direct_container_and_retains_occurrence_id": 1,
-                  "test_ordinary_workflow_uses_official_engine_without_external_io": 1,
-                  "test_pause_barrier_flushes_before_persisting_and_exposing_pause": 1,
-                  "test_pause_barrier_storage_failure_never_exposes_resumable_pause": 1,
-                  "test_pause_event_defers_snapshot_until_outer_filter_flush": 1,
-                  "test_real_engine_pause_snapshot_follows_quiescence_and_outer_filter_flush": 1,
-                  "test_scoped_factory_validation_never_initializes_collaborators": 1,
-                  "test_single_node_execution_binds_an_explicit_file_adapter": 1,
-                  "test_stop_queue_preserves_frame_and_invocation_tasks": 1
-              },
-              "tests.unit_tests.core.workflow.context.test_execution_context": {
-                  "test_builder_fluent_interface": 1,
-                  "test_builder_with_all_params": 1,
-                  "test_builder_with_partial_params": 1,
-                  "test_capture_current_context_captures_contextvars": 1,
-                  "test_capture_current_context_returns_context": 1,
-                  "test_context_manager_protocol": 1,
-                  "test_enter_with_app_context": 1,
-                  "test_enter_with_context_vars": 1,
-                  "test_enter_without_app_context": 1,
-                  "test_execution_context_implements_protocol": 1,
-                  "test_initialization_with_all_params": 1,
-                  "test_initialization_with_minimal_params": 1,
-                  "test_missing_provider_raises_keyerror": 1,
-                  "test_null_app_context_enter_yield": 1,
-                  "test_null_app_context_get_config": 1,
-                  "test_null_app_context_get_config_default": 1,
-                  "test_null_app_context_get_extension": 1,
-                  "test_null_app_context_get_extension_not_found": 1,
-                  "test_protocol_compatibility": 1,
-                  "test_protocol_with_flask_execution_context": 1,
-                  "test_tenant_provider_read_ok": 1,
-                  "test_thread_safe_context_manager": 1,
-                  "test_user_property": 1
-              },
-              "tests.unit_tests.core.workflow.context.test_flask_app_context": {
-                  "test_app_context_property": 1,
-                  "test_capture_flask_context_captures_app": 1,
-                  "test_capture_flask_context_captures_contextvars": 1,
-                  "test_capture_flask_context_captures_user_from_g": 1,
-                  "test_capture_flask_context_with_explicit_user": 1,
-                  "test_context_manager_protocol": 1,
-                  "test_enter_enters_flask_app_context": 1,
-                  "test_enter_method_as_context_manager": 1,
-                  "test_enter_restores_context_vars": 1,
-                  "test_enter_restores_user_in_g": 1,
-                  "test_flask_app_context_enter": 1,
-                  "test_flask_app_context_get_config": 1,
-                  "test_flask_app_context_get_config_default": 1,
-                  "test_flask_app_context_get_extension": 1,
-                  "test_flask_app_context_get_extension_not_found": 1,
-                  "test_flask_app_context_initialization": 1,
-                  "test_initialization": 1
-              }
-          }
-          for module, expected in graphon_v08_expected.items():
-              actual = {}
-              for classname, name in identities:
-                  normalized = classname.removeprefix("api.")
-                  if normalized == module or normalized.startswith(module + "."):
-                      function = name.split("[", 1)[0]
-                      actual[function] = actual.get(function, 0) + 1
-              if actual != expected:
-                  problems.append(f"Graphon 0.8 case inventory mismatch {module}: {actual}")
           json_admission_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution_admission"
           expected_json_admission = {
               f"test_owned_json_parse_prepare_persists_restricted_request[{variant}]"

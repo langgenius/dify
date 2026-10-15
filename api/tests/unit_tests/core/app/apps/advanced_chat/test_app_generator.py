@@ -313,7 +313,7 @@ class TestAdvancedChatAppGeneratorInternals:
         def _fake_generate(**kwargs):
             nonlocal captured_entity, captured_graph_runtime_state
             captured_entity = kwargs["application_generate_entity"]
-            captured_graph_runtime_state = kwargs["runtime_state"]
+            captured_graph_runtime_state = kwargs["graph_runtime_state"]
             return SimpleNamespace(resumed=True)
 
         monkeypatch.setattr(generator, "_generate", _fake_generate)
@@ -328,7 +328,7 @@ class TestAdvancedChatAppGeneratorInternals:
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
-            runtime_state=SimpleNamespace(),
+            graph_runtime_state=SimpleNamespace(),
             pause_state_config=None,
         )
 
@@ -733,7 +733,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 workflow_execution_repository=SimpleNamespace(),
                 workflow_node_execution_repository=SimpleNamespace(),
                 graph_engine_layers=(),
-                runtime_state=None,
+                graph_runtime_state=None,
             )
 
     def test_generate_worker_raises_when_app_not_found_for_internal_call(
@@ -785,7 +785,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 workflow_execution_repository=SimpleNamespace(),
                 workflow_node_execution_repository=SimpleNamespace(),
                 graph_engine_layers=(),
-                runtime_state=None,
+                graph_runtime_state=None,
             )
 
     def test_generate_worker_handles_stopped_error(
@@ -848,7 +848,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
-            runtime_state=SimpleNamespace(),
+            graph_runtime_state=SimpleNamespace(),
         )
 
         queue_manager.publish_error.assert_not_called()
@@ -922,7 +922,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
-            runtime_state=None,
+            graph_runtime_state=None,
         )
 
         queue_manager.publish_error.assert_called_once()
@@ -991,7 +991,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 workflow_execution_repository=SimpleNamespace(),
                 workflow_node_execution_repository=SimpleNamespace(),
                 graph_engine_layers=(),
-                runtime_state=None,
+                graph_runtime_state=None,
             )
 
             queue_manager.publish_error.assert_called_once()
@@ -1170,7 +1170,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
             graph_engine_layers=(),
-            runtime_state=None,
+            graph_runtime_state=None,
         )
 
         assert queue_manager.publish_error.called
@@ -1388,7 +1388,7 @@ class TestAdvancedChatAppGeneratorResume:
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
-            runtime_state=SimpleNamespace(),
+            graph_runtime_state=SimpleNamespace(),
         )
 
         assert result.ok is True
@@ -1436,7 +1436,7 @@ class TestAdvancedChatAppGeneratorResume:
             application_generate_entity=application_generate_entity,
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
-            runtime_state=SimpleNamespace(),
+            graph_runtime_state=SimpleNamespace(),
         )
 
         assert result.ok is True

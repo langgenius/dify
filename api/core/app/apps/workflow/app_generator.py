@@ -53,11 +53,11 @@ from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.engine.filter import ResponseStreamFilter
-from graphon.engine.layer import Layer
 from graphon.enums import NodeType
+from graphon.filters import ResponseStreamFilter
+from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import RuntimeState
+from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
@@ -160,7 +160,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -186,7 +186,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -212,7 +212,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -237,7 +237,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_run_id: str | uuid.UUID | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -434,10 +434,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         user: Account | EndUser,
         application_generate_entity: WorkflowAppGenerateEntity,
-        runtime_state: RuntimeState,
+        graph_runtime_state: GraphRuntimeState,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[Layer] = (),
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -475,7 +475,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             streaming=application_generate_entity.stream,
             variable_loader=variable_loader,
             graph_engine_layers=graph_engine_layers,
-            runtime_state=runtime_state,
+            graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
         )
@@ -493,8 +493,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
-        runtime_state: RuntimeState | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
@@ -517,7 +517,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
-            graph_layers: list[Layer] = list(graph_engine_layers)
+            graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
 
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
@@ -556,7 +556,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "workflow_execution_repository": workflow_execution_repository,
                     "workflow_node_execution_repository": workflow_node_execution_repository,
                     "graph_engine_layers": tuple(graph_layers),
-                    "runtime_state": runtime_state,
+                    "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
                     "builder_execution_admit": builder_execution_admit,
                     "native_runtime": native_runtime,
@@ -795,8 +795,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         root_node_id: str | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
-        runtime_state: RuntimeState | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
@@ -883,7 +883,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                                 app,
                                 application_generate_entity,
                                 root_node_id or get_default_root_node_id(workflow.graph_dict),
-                                runtime_state is not None,
+                                graph_runtime_state is not None,
                             )
                             if execution_recorder is None or not execution_recorder.healthy:
                                 raise BuilderExecutionPolicyError("missing_execution_recorder")
@@ -894,7 +894,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         else:
                             workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
 
-                        if runtime_state is not None and native_context is None:
+                        if graph_runtime_state is not None and native_context is None:
                             self._restore_workflow_run_graph(
                                 session=session,
                                 workflow=workflow,
@@ -928,7 +928,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         workflow_node_execution_repository=workflow_node_execution_repository,
                         root_node_id=root_node_id,
                         graph_engine_layers=graph_engine_layers,
-                        runtime_state=runtime_state,
+                        graph_runtime_state=graph_runtime_state,
                         response_stream_filter=response_stream_filter,
                         execution_recorder=execution_recorder,
                     )

@@ -96,34 +96,28 @@ class ExecutionContext:
     @contextmanager
     def enter(self) -> Generator[None]:
         """Enter this execution context."""
-        tokens = []
-        try:
-            if self._context_vars:
-                for var, val in self._context_vars.items():
-                    tokens.append((var, var.set(val)))
-            if self._app_context is not None:
-                with self._app_context.enter():
-                    yield
-            else:
+        if self._context_vars:
+            for var, val in self._context_vars.items():
+                var.set(val)
+
+        if self._app_context is not None:
+            with self._app_context.enter():
                 yield
-        finally:
-            for var, token in reversed(tokens):
-                var.reset(token)
+        else:
+            yield
 
     def __enter__(self) -> "ExecutionContext":
         """Enter the execution context."""
         cm = self.enter()
+        self._local.cm = cm
         cm.__enter__()
-        if not hasattr(self._local, "stack"):
-            self._local.stack = []
-        self._local.stack.append(cm)
         return self
 
     def __exit__(self, *args: Any) -> None:
         """Exit the execution context."""
-        stack = getattr(self._local, "stack", [])
-        if stack:
-            stack.pop().__exit__(*args)
+        cm = getattr(self._local, "cm", None)
+        if cm is not None:
+            cm.__exit__(*args)
 
 
 class NullAppContext(AppContext):

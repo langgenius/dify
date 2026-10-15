@@ -1,7 +1,7 @@
 import logging
 import threading
 from collections.abc import Generator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, Union, final
 
 from sqlalchemy.orm import Session
@@ -13,12 +13,7 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import (
-    DatabaseFileAccessController,
-    FileAccessScope,
-    bind_file_access_scope,
-    get_current_file_access_scope,
-)
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -102,58 +97,34 @@ class BaseAppGenerator:
         response_stream: Generator[ResponseT],
         worker_thread: threading.Thread,
     ) -> Generator[ResponseT]:
-        """Capture rendering ownership now; restore it for every lazy step and close."""
-        from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
-
-        file_runtime = peek_workflow_file_runtime()
-        file_scope = get_current_file_access_scope()
-
-        def consume() -> Generator[ResponseT]:
-            nonlocal file_scope
-            try:
-                while True:
-                    with use_workflow_file_runtime(file_runtime), bind_file_access_scope(file_scope):
-                        try:
-                            item = next(response_stream)
-                            file_scope = get_current_file_access_scope()
-                        except StopIteration:
-                            return
-                    yield item
-            finally:
-                try:
-                    with use_workflow_file_runtime(file_runtime), bind_file_access_scope(file_scope):
-                        response_stream.close()
-                finally:
-                    BaseAppGenerator._join_worker_thread(worker_thread)
-
-        return consume()
+        """Keep the producer owned by the response stream until both finish."""
+        try:
+            yield from response_stream
+        finally:
+            BaseAppGenerator._join_worker_thread(worker_thread)
 
     @staticmethod
-    @contextmanager
     def _bind_file_access_scope(
         *,
         tenant_id: str,
         user: Account | EndUser,
         invoke_from: InvokeFrom,
-    ) -> Generator[None]:
-        """Bind the file adapter and request ownership for downstream file lookups."""
-        from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+    ) -> AbstractContextManager[None]:
+        """Bind request-scoped file ownership markers for downstream file lookups."""
 
-        with bind_dify_workflow_file_runtime():
-            user_id = getattr(user, "id", None)
-            if not isinstance(user_id, str) or not user_id:
-                yield
-                return
-            user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
-            with bind_file_access_scope(
-                FileAccessScope(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    user_from=user_from,
-                    invoke_from=invoke_from,
-                )
-            ):
-                yield
+        user_id = getattr(user, "id", None)
+        if not isinstance(user_id, str) or not user_id:
+            return nullcontext()
+
+        user_from = UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER
+        return bind_file_access_scope(
+            FileAccessScope(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            )
+        )
 
     def _prepare_user_inputs(
         self,

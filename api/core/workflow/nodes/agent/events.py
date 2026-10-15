@@ -3,11 +3,11 @@ from typing import Any
 
 from pydantic import Field
 
-from graphon.engine_events import NodeEvent
-from graphon.node_events import NodeEventPayload
+from graphon.graph_events import GraphNodeEventBase
+from graphon.node_events import NodeEventBase
 
 
-class AgentLogEvent(NodeEventPayload):
+class AgentLogEvent(NodeEventBase):
     message_id: str = Field(..., description="id")
     label: str = Field(..., description="label")
     node_execution_id: str = Field(..., description="node execution id")
@@ -19,7 +19,7 @@ class AgentLogEvent(NodeEventPayload):
     node_id: str = Field(..., description="node id")
 
 
-class GraphAgentNodeEventBase(NodeEvent):
+class GraphAgentNodeEventBase(GraphNodeEventBase):
     pass
 
 

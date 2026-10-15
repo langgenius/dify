@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, override
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
-from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from libs.stream import close_stream
 
 if TYPE_CHECKING:
@@ -94,10 +93,8 @@ def _normalize_reported_mime_type(mime_type: object | None, source: str) -> str 
     return normalized_mime_type
 
 
-def _extract_audio_chunk(chunk: bytes | bytearray | memoryview | TTSAudioChunk | TTSChunk) -> tuple[bytes, str | None]:
-    """Unpack native runtime chunks and plugin byte carriers without losing MIME."""
-    if isinstance(chunk, TTSChunk):
-        return chunk.data, chunk.mime_type
+def _extract_audio_chunk(chunk: bytes | bytearray | memoryview | TTSAudioChunk) -> tuple[bytes, str | None]:
+    """Accept old byte chunks and the compatibility carrier for current Graphon."""
     if isinstance(chunk, TTSAudioChunk):
         return bytes(chunk), chunk.mime_type
 
@@ -144,7 +141,7 @@ def resolve_audio_mime_type(
     return normalized_declared_mime_type or DEFAULT_TTS_AUDIO_MIME_TYPE
 
 
-type _AudioChunk = bytes | bytearray | memoryview | TTSAudioChunk | TTSChunk
+type _AudioChunk = bytes | bytearray | memoryview | TTSAudioChunk
 
 
 class AudioStream(Iterator[bytes]):

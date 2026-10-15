@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.workflow.system_variables import build_system_variables
-from graphon.engine_events import (
+from graphon.graph_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunSucceededEvent,

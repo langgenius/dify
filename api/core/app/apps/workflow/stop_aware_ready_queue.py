@@ -5,16 +5,15 @@ from __future__ import annotations
 from typing import final
 
 from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
-from graphon.runtime import RuntimeState
-from graphon.runtime.execution import GraphExecution
-from graphon.runtime.ready_queue import ReadyQueue, ReadyTask
+from graphon.graph_engine.ready_queue import ReadyQueue, ReadyTask
+from graphon.runtime.graph_runtime_state import GraphExecutionProtocol, GraphRuntimeState
 
 
 @final
 class StopAwareReadyQueue:
     """Reject newly ready nodes once the run has been stopped.
 
-    Engine drain still enqueues successors after abort. Drop those puts so
+    GraphEngine drain still enqueues successors after abort. Drop those puts so
     later nodes do not start; the in-flight node can finish.
     """
 
@@ -23,7 +22,7 @@ class StopAwareReadyQueue:
         inner: ReadyQueue,
         *,
         task_id: str,
-        graph_execution: GraphExecution,
+        graph_execution: GraphExecutionProtocol,
     ) -> None:
         self._inner = inner
         self._task_id = task_id
@@ -46,8 +45,8 @@ class StopAwareReadyQueue:
     def qsize(self) -> int:
         return self._inner.qsize()
 
-    def take_all(self) -> list[ReadyTask]:
-        return self._inner.take_all()
+    def drain(self) -> list[ReadyTask]:
+        return self._inner.drain()
 
     def dumps(self) -> str:
         return self._inner.dumps()
@@ -56,13 +55,13 @@ class StopAwareReadyQueue:
         self._inner.loads(data)
 
 
-def attach_stop_aware_ready_queue(runtime_state: RuntimeState, *, task_id: str) -> None:
+def attach_stop_aware_ready_queue(graph_runtime_state: GraphRuntimeState, *, task_id: str) -> None:
     """Install stop-aware enqueue policy on an existing runtime state."""
-    current = runtime_state.ready_queue
+    current = graph_runtime_state.ready_queue
     if isinstance(current, StopAwareReadyQueue):
         return
-    runtime_state._ready_queue = StopAwareReadyQueue(
+    graph_runtime_state._ready_queue = StopAwareReadyQueue(
         current,
         task_id=task_id,
-        graph_execution=runtime_state.graph_execution,
+        graph_execution=graph_runtime_state.graph_execution,
     )

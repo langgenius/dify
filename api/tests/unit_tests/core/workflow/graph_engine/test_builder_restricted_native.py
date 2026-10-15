@@ -21,22 +21,23 @@ from core.dify_builder.execution_policy import BuilderExecutionPolicyError, cano
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
-from graphon.engine import Engine
-from graphon.engine.command import InMemoryChannel
-from graphon.engine.layer.base import Layer
-from graphon.engine_events import (
+from graphon.entities import GraphInitParams
+from graphon.entities.base_node_data import DefaultValue, DefaultValueType
+from graphon.enums import ErrorStrategy
+from graphon.graph import Graph
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_events import (
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from graphon.entities.base_node_data import DefaultValue, DefaultValueType
-from graphon.enums import ErrorStrategy
-from graphon.graph import Graph
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import InitParams, RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
@@ -47,7 +48,7 @@ from tests.unit_tests.services.dify_builder.test_execution_policy_service import
 FIXTURES = Path(__file__).parents[4] / "fixtures/workflow/builder_restricted"
 
 
-class ThrowingLayer(Layer):
+class ThrowingLayer(GraphEngineLayer):
     def on_graph_start(self):
         pass
 
@@ -92,7 +93,7 @@ def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None, grap
     )
     service.claim_launch(context=context, native_run_id="native-run", task_id="native-task")
     recorder = service.recorder(context=context, native_run_id="native-run", task_id="native-task")
-    params = InitParams(
+    params = GraphInitParams(
         workflow_id=workflow.id,
         graph_config=graph_config,
         call_depth=0,
@@ -107,8 +108,8 @@ def prepare_native(owned, name, *, samples=(), inputs=None, http_data=None, grap
     )
     pool = VariablePool()
     add_node_inputs_to_pool(pool, node_id="start", inputs=inputs)
-    state = RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=time.perf_counter())
-    factory = DifyNodeFactory(init_params=params, runtime_state=state, execution_recorder=recorder)
+    state = GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter())
+    factory = DifyNodeFactory(graph_init_params=params, graph_runtime_state=state, execution_recorder=recorder)
     return factory, context, recorder
 
 
@@ -116,8 +117,8 @@ def init_runner_graph(owned, factory, context, recorder):
     _, actor, app, workflow, _, _ = owned
     runner = WorkflowBasedAppRunner(queue_manager=Mock(spec=AppQueueManager), app_id=app.id)
     return runner._init_graph(
-        graph_config=factory.init_params.graph_config,
-        runtime_state=factory.runtime_state,
+        graph_config=factory.graph_init_params.graph_config,
+        graph_runtime_state=factory.graph_runtime_state,
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_id=workflow.id,
@@ -130,15 +131,18 @@ def init_runner_graph(owned, factory, context, recorder):
 
 def execute_native(factory, *, throwing=False, graph=None):
     if graph is None:
-        graph = Graph.init(graph_config=factory.init_params.graph_config, node_factory=factory, root_node_id="start")
-    engine = Engine(
+        graph = Graph.init(
+            graph_config=factory.graph_init_params.graph_config, node_factory=factory, root_node_id="start"
+        )
+    engine = GraphEngine(
+        workflow_id=factory.graph_init_params.workflow_id,
         graph=graph,
-        runtime_state=factory.runtime_state,
+        graph_runtime_state=factory.graph_runtime_state,
         command_channel=InMemoryChannel(),
-        workers=1,
+        config=GraphEngineConfig(min_workers=1, max_workers=1),
     )
     if throwing:
-        engine.add_layer(ThrowingLayer())
+        engine.layer(ThrowingLayer())
     events = []
     error = None
     try:
@@ -188,7 +192,7 @@ def forbid_live(monkeypatch):
         monkeypatch.setattr(module, name, forbidden)
     for name in ("get", "head", "post", "put", "patch", "delete"):
         monkeypatch.setattr(ssrf_proxy.graphon_ssrf_proxy, name, forbidden)
-    monkeypatch.setattr(http_module, "HttpxHttpClient", forbidden)
+    monkeypatch.setattr(http_module, "get_http_client", forbidden)
     monkeypatch.setattr(CodeExecutor, "execute_workflow_code_template", forbidden)
     monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", forbidden)
     monkeypatch.setattr(oauth, "OAuthHandler", forbidden)
@@ -317,20 +321,14 @@ def test_runner_default_output_executes_native_partial_and_preserves_raw_graph(o
     for target in (graph_config, graph_config["nodes"][1], graph_config["nodes"][1]["data"], graph_config["edges"][0]):
         target["undeclared_metadata"] = {"nested": ["preserved", 1]}
     factory, context, recorder = prepare_native(owned, "http_default_output.yml", graph_config=graph_config)
-    raw_graph = factory.init_params.graph_config
+    raw_graph = factory.graph_init_params.graph_config
     original = deepcopy(raw_graph)
     graph = init_runner_graph(owned, factory, context, recorder)
     _, events, error = execute_native(factory, graph=graph)
     assert error is None
     assert type(graph.nodes["http"]) is HttpRequestNode
     assert type(graph.nodes["end"]) is EndNode
-    # 0.8 nodes receive a copied, scoped graph with canonical owners/edge IDs.
-    # The admitted source and every caller-owned extra remain unchanged.
-    assert factory.init_params.graph_config == original
-    scoped = graph.nodes["http"].init_params.graph_config
-    assert scoped["undeclared_metadata"] == original["undeclared_metadata"]
-    assert scoped["nodes"][1]["data"]["undeclared_metadata"] == original["nodes"][1]["data"]["undeclared_metadata"]
-    assert scoped["edges"][0]["undeclared_metadata"] == original["edges"][0]["undeclared_metadata"]
+    assert graph.nodes["http"].graph_init_params.graph_config == original
     assert raw_graph == original
     assert type(raw_graph["nodes"][1]["data"]["error_strategy"]) is str
     assert type(raw_graph["nodes"][1]["data"]["default_value"][0]["type"]) is str
@@ -351,7 +349,7 @@ def test_runner_default_output_executes_native_partial_and_preserves_raw_graph(o
 
 def test_runner_rejects_changed_raw_node_data_extras_before_execution(owned, forbid_live):
     factory, context, recorder = prepare_native(owned, "http_default_output.yml")
-    raw_graph = factory.init_params.graph_config
+    raw_graph = factory.graph_init_params.graph_config
     raw_graph["nodes"][1]["data"]["undeclared_metadata"] = {"nested": ["changed", 1]}
     changed = deepcopy(raw_graph)
     with pytest.raises(BuilderExecutionPolicyError, match="execution_binding_mismatch"):
@@ -365,7 +363,7 @@ def test_runner_rejects_changed_raw_node_data_extras_before_execution(owned, for
 @pytest.mark.parametrize("value", ["strategy_enum", "default_type_enum", "default_model"])
 def test_runner_refuses_non_json_objects_even_when_json_serialization_is_equivalent(owned, forbid_live, value):
     factory, context, recorder = prepare_native(owned, "http_default_output.yml")
-    data = factory.init_params.graph_config["nodes"][1]["data"]
+    data = factory.graph_init_params.graph_config["nodes"][1]["data"]
     if value == "strategy_enum":
         data["error_strategy"] = ErrorStrategy.DEFAULT_VALUE
     elif value == "default_type_enum":
@@ -398,7 +396,7 @@ def test_recorder_db_failure_prevents_fixture_return_and_poisons_shared_latch(ow
         from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 
         with pytest.raises(BuilderExecutionPolicyError, match="missing_execution_recorder"):
-            factory.with_runtime_state(factory.runtime_state)
+            factory.with_runtime_state(factory.graph_runtime_state)
     finally:
         event.remove(engine, "before_cursor_execute", fail_append)
 

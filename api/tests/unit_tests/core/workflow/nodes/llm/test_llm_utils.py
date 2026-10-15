@@ -135,7 +135,7 @@ def _fetch_prompt_messages_with_mocked_content(content):
             vision_detail=ImagePromptMessageContent.DETAIL.HIGH,
             variable_pool=variable_pool,
             jinja2_variables=[],
-            jinja2_template_renderer=None,
+            template_renderer=None,
         )
 
 
@@ -433,7 +433,7 @@ def test_handle_list_messages_renders_jinja2_messages():
         jinja2_variables=[VariableSelector(variable="name", value_selector=["input", "name"])],
         variable_pool=variable_pool,
         vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
-        jinja2_template_renderer=renderer,
+        template_renderer=renderer,
     )
 
     assert prompt_messages == [SystemPromptMessage(content=[TextPromptMessageContent(data="Hello Dify")])]
@@ -542,17 +542,17 @@ def test_render_jinja2_message_handles_empty_template_success_and_missing_render
             template="",
             jinja2_variables=variables,
             variable_pool=variable_pool,
-            jinja2_template_renderer=None,
+            template_renderer=None,
         )
         == ""
     )
 
-    with pytest.raises(ValueError, match="LLM prompts require an injected jinja2_template_renderer"):
+    with pytest.raises(ValueError, match="template_renderer is required"):
         llm_utils.render_jinja2_message(
             template="Hello {{ name }}",
             jinja2_variables=variables,
             variable_pool=variable_pool,
-            jinja2_template_renderer=None,
+            template_renderer=None,
         )
 
     renderer = mock.MagicMock()
@@ -562,7 +562,7 @@ def test_render_jinja2_message_handles_empty_template_success_and_missing_render
             template="Hello {{ name }}",
             jinja2_variables=variables,
             variable_pool=variable_pool,
-            jinja2_template_renderer=renderer,
+            template_renderer=renderer,
         )
         == "Hello Dify"
     )
@@ -592,7 +592,7 @@ def test_handle_completion_template_supports_basic_and_jinja2_templates():
         context="",
         jinja2_variables=[VariableSelector(variable="name", value_selector=["input", "name"])],
         variable_pool=variable_pool,
-        jinja2_template_renderer=renderer,
+        template_renderer=renderer,
     )
 
     assert basic_messages == [

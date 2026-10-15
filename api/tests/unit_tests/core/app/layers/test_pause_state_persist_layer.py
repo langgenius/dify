@@ -18,15 +18,16 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey
-from graphon.engine.command import Command
-from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter
-from graphon.engine_events import (
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
+from graphon.filters import GraphEventFilterContext, ResponseStreamFilter
+from graphon.graph_engine.entities.commands import GraphEngineCommand
+from graphon.graph_engine.layers.base import GraphEngineLayerNotInitializedError
+from graphon.graph_events import (
     GraphRunFailedEvent,
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.runtime import ReadOnlyVariablePool
 from graphon.variables import build_segment
 from graphon.variables.segments import Segment
@@ -45,14 +46,14 @@ def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
     """Build a `ResponseStreamFilter` that has already run `initialize()`.
 
     `ResponseStreamFilter.dumps()` raises `RuntimeError` unless the filter has
-    processed a `EngineEventFilterContext` first. In production this always
+    processed a `GraphEventFilterContext` first. In production this always
     happens before any event (including `GraphRunPausedEvent`) reaches
     `PauseStatePersistenceLayer.on_event`, so tests that exercise `on_event`
     or a subsequent `dumps()` call need a filter in that same state. A
     nodeless graph is enough to satisfy the precondition.
     """
     response_stream_filter = ResponseStreamFilter()
-    context = EngineEventFilterContext(graph=Mock(nodes={}), runtime_state=Mock())
+    context = GraphEventFilterContext(graph=Mock(nodes={}), runtime_state=Mock())
     response_stream_filter.initialize(context)
     return response_stream_filter
 
@@ -102,7 +103,7 @@ class MockReadOnlyVariablePool:
 
 
 class MockReadOnlyGraphRuntimeState:
-    """Mock implementation of ReadOnlyRuntimeState for testing."""
+    """Mock implementation of ReadOnlyGraphRuntimeState for testing."""
 
     def __init__(
         self,
@@ -186,12 +187,12 @@ class MockCommandChannel:
     """Mock implementation of CommandChannel for testing."""
 
     def __init__(self):
-        self._commands: list[Command] = []
+        self._commands: list[GraphEngineCommand] = []
 
-    def fetch_commands(self) -> list[Command]:
+    def fetch_commands(self) -> list[GraphEngineCommand]:
         return self._commands.copy()
 
-    def send_command(self, command: Command) -> None:
+    def send_command(self, command: GraphEngineCommand) -> None:
         self._commands.append(command)
 
 
@@ -229,8 +230,8 @@ class TestPauseStatePersistenceLayer:
 
         assert layer._session_maker is sqlite_session_factory
         assert layer._state_owner_user_id == state_owner_user_id
-        with pytest.raises(RuntimeError):
-            _ = layer.runtime_state
+        with pytest.raises(GraphEngineLayerNotInitializedError):
+            _ = layer.graph_runtime_state
         assert layer.command_channel is None
 
     def test_initialize_sets_dependencies(self, sqlite_session_factory: sessionmaker[Session]):
@@ -241,12 +242,12 @@ class TestPauseStatePersistenceLayer:
             response_stream_filter=ResponseStreamFilter(),
         )
 
-        runtime_state = MockReadOnlyGraphRuntimeState()
+        graph_runtime_state = MockReadOnlyGraphRuntimeState()
         command_channel = MockCommandChannel()
 
-        layer.initialize(runtime_state, command_channel)
+        layer.initialize(graph_runtime_state, command_channel)
 
-        assert layer.runtime_state is runtime_state
+        assert layer.graph_runtime_state is graph_runtime_state
         assert layer.command_channel is command_channel
 
     def test_on_event_with_graph_run_paused_event(
@@ -264,19 +265,18 @@ class TestPauseStatePersistenceLayer:
         mock_factory = Mock(return_value=mock_repo)
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-        runtime_state = MockReadOnlyGraphRuntimeState(
+        graph_runtime_state = MockReadOnlyGraphRuntimeState(
             outputs={"result": "test_output"},
             total_tokens=100,
             workflow_execution_id="run-123",
         )
         command_channel = MockCommandChannel()
-        layer.initialize(runtime_state, command_channel)
+        layer.initialize(graph_runtime_state, command_channel)
 
         event = TestDataFactory.create_graph_run_paused_event(outputs={"intermediate": "result"})
-        expected_state = runtime_state.dumps()
+        expected_state = graph_runtime_state.dumps()
 
         layer.on_event(event)
-        layer.persist_paused_state()
 
         mock_factory.assert_called_once_with(sqlite_session_factory)
         assert mock_repo.create_workflow_pause.call_count == 1
@@ -328,11 +328,11 @@ class TestPauseStatePersistenceLayer:
             raising=False,
         )
 
-        runtime_state = MockReadOnlyGraphRuntimeState(
+        graph_runtime_state = MockReadOnlyGraphRuntimeState(
             workflow_execution_id="run-123",
         )
         command_channel = MockCommandChannel()
-        layer.initialize(runtime_state, command_channel)
+        layer.initialize(graph_runtime_state, command_channel)
 
         raw_reason = HitlRequired(
             session_id="session-123",
@@ -342,12 +342,11 @@ class TestPauseStatePersistenceLayer:
         event = GraphRunPausedEvent(reasons=[raw_reason], outputs={})
 
         layer.on_event(event)
-        layer.persist_paused_state()
 
         enrich_mock.assert_called_once_with(
             reasons=[raw_reason],
             form_repository=mock_form_repository,
-            variable_pool=runtime_state.variable_pool,
+            variable_pool=graph_runtime_state.variable_pool,
         )
         assert mock_repo.create_workflow_pause.call_args.kwargs["pause_reasons"] == [enriched_reason]
 
@@ -365,9 +364,9 @@ class TestPauseStatePersistenceLayer:
         mock_factory = Mock(return_value=mock_repo)
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-        runtime_state = MockReadOnlyGraphRuntimeState()
+        graph_runtime_state = MockReadOnlyGraphRuntimeState()
         command_channel = MockCommandChannel()
-        layer.initialize(runtime_state, command_channel)
+        layer.initialize(graph_runtime_state, command_channel)
 
         events = [
             TestDataFactory.create_graph_run_started_event(),
@@ -377,7 +376,6 @@ class TestPauseStatePersistenceLayer:
 
         for event in events:
             layer.on_event(event)
-            layer.persist_paused_state()
 
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
@@ -394,9 +392,8 @@ class TestPauseStatePersistenceLayer:
 
         event = TestDataFactory.create_graph_run_paused_event()
 
-        layer.on_event(event)
-        with pytest.raises(RuntimeError):
-            layer.persist_paused_state()
+        with pytest.raises(GraphEngineLayerNotInitializedError):
+            layer.on_event(event)
 
     def test_on_event_asserts_when_workflow_execution_id_missing(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
@@ -412,15 +409,14 @@ class TestPauseStatePersistenceLayer:
         mock_factory = Mock(return_value=mock_repo)
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-        runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id=None)
+        graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id=None)
         command_channel = MockCommandChannel()
-        layer.initialize(runtime_state, command_channel)
+        layer.initialize(graph_runtime_state, command_channel)
 
         event = TestDataFactory.create_graph_run_paused_event()
 
-        layer.on_event(event)
         with pytest.raises(AssertionError):
-            layer.persist_paused_state()
+            layer.on_event(event)
 
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
@@ -524,12 +520,11 @@ def test_on_event_persists_response_stream_filter_dump(
     mock_factory = Mock(return_value=mock_repo)
     monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
 
-    runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123")
-    layer.initialize(runtime_state, MockCommandChannel())
+    graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123")
+    layer.initialize(graph_runtime_state, MockCommandChannel())
 
     event = TestDataFactory.create_graph_run_paused_event()
     layer.on_event(event)
-    layer.persist_paused_state()
 
     serialized_state = mock_repo.create_workflow_pause.call_args.kwargs["state"]
     resumption_context = WorkflowResumptionContext.loads(serialized_state)

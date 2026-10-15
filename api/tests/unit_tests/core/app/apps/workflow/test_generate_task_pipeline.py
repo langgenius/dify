@@ -13,7 +13,7 @@ from core.app.entities.queue_entities import QueueWorkflowStartedEvent
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_redis import RedisClientWrapper
 from graphon.entities import WorkflowStartReason
-from graphon.runtime import RuntimeState
+from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
@@ -47,16 +47,16 @@ def _build_generate_entity(run_id: str) -> WorkflowAppGenerateEntity:
     )
 
 
-def _build_runtime_state(run_id: str) -> RuntimeState:
+def _build_runtime_state(run_id: str) -> GraphRuntimeState:
     variable_pool = build_test_variable_pool(variables=build_system_variables(workflow_execution_id=run_id))
-    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
+    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 
 def _build_pipeline(run_id: str, unbound_session_factory: sessionmaker[Session]) -> WorkflowAppGenerateTaskPipeline:
     queue_manager = WorkflowAppQueueManager(
         task_id="task-id", user_id="user-id", invoke_from=InvokeFrom.SERVICE_API, app_mode=AppMode.WORKFLOW
     )
-    queue_manager.runtime_state = _build_runtime_state(run_id)
+    queue_manager.graph_runtime_state = _build_runtime_state(run_id)
     workflow = Workflow(
         id="workflow-id",
         tenant_id="tenant-id",

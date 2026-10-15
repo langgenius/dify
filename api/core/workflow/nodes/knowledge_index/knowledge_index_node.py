@@ -23,7 +23,8 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from graphon.runtime import InitParams, RuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 _INVOKE_FROM_DEBUGGER = "debugger"
@@ -38,14 +39,14 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         node_id: str,
         data: KnowledgeIndexNodeData,
         *,
-        init_params: "InitParams",
-        runtime_state: "RuntimeState",
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
         )
         self.index_processor = IndexProcessor()
         self.summary_index_service = SummaryIndex()
@@ -53,7 +54,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
     @override
     def _run(self) -> NodeRunResult:
         node_data = self.node_data
-        variable_pool = self.runtime_state.variable_pool
+        variable_pool = self.graph_runtime_state.variable_pool
 
         # get dataset id as string
         dataset_id_segment = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)

@@ -163,10 +163,7 @@ class FileService:
             session.commit()
 
         if not upload_file.source_url:
-            from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
-
-            with bind_dify_workflow_file_runtime():
-                upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
+            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         return upload_file
 
@@ -288,10 +285,7 @@ class FileService:
                 raise NotFound("File not found")
         except NotFound as exc:
             raise FileNotExistsError("File reference not found") from exc
-        from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
-
-        with bind_dify_workflow_file_runtime():
-            return file_helpers.get_signed_file_url(upload_file_id=file_id)
+        return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:

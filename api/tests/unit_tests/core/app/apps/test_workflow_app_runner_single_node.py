@@ -13,23 +13,19 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.credit_usage import CreditUsageAppType
 from core.workflow.system_variables import default_system_variables
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
 
 
-def _make_graph_state() -> tuple[MagicMock, VariablePool, RuntimeState]:
+def _make_graph_state() -> tuple[MagicMock, VariablePool, GraphRuntimeState]:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
-    return (
-        MagicMock(),
-        variable_pool,
-        RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0.0),
-    )
+    return MagicMock(), variable_pool, GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
 
 @pytest.fixture
@@ -87,7 +83,7 @@ def test_run_uses_single_node_execution_branch(
         workflow_node_execution_repository=MagicMock(),
     )
 
-    graph, variable_pool, runtime_state = _make_graph_state()
+    graph, variable_pool, graph_runtime_state = _make_graph_state()
     mock_workflow_entry = MagicMock()
     mock_workflow_entry.graph_engine = MagicMock()
     mock_workflow_entry.graph_engine.layer = MagicMock()
@@ -103,7 +99,7 @@ def test_run_uses_single_node_execution_branch(
             return_value=(
                 graph,
                 variable_pool,
-                runtime_state,
+                graph_runtime_state,
             ),
         ) as prepare_single,
         patch.object(runner, "_init_graph") as init_graph,
@@ -123,7 +119,7 @@ def test_run_uses_single_node_execution_branch(
     entry_kwargs = entry_class.call_args.kwargs
     assert entry_kwargs["invoke_from"] == InvokeFrom.DEBUGGER
     assert entry_kwargs["variable_pool"] is variable_pool
-    assert entry_kwargs["runtime_state"] is runtime_state
+    assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
 
 
 def test_single_node_run_validates_target_node_config(queue_manager: WorkflowAppQueueManager) -> None:
@@ -149,14 +145,14 @@ def test_single_node_run_validates_target_node_config(queue_manager: WorkflowApp
         ),
     )
 
-    _, _, runtime_state = _make_graph_state()
+    _, _, graph_runtime_state = _make_graph_state()
 
     with pytest.raises(ValidationError, match="nodes.0.data.type"):
         runner._get_graph_and_variable_pool_for_single_node_run(
             workflow=workflow,
             node_id="loop-node",
             user_inputs={},
-            runtime_state=runtime_state,
+            graph_runtime_state=graph_runtime_state,
             node_type_filter_key="loop_id",
             node_type_label="loop",
             user_id="00000000-0000-0000-0000-000000000001",

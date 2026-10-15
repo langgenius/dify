@@ -15,7 +15,6 @@ from controllers.web.error import (
 )
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
-from graphon.engine.command import AbortCommand
 from models.model import App, AppMode, EndUser
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
@@ -110,7 +109,7 @@ class TestWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
 
-    @patch("services.workflow.command_service.RedisChannel.send_command")
+    @patch("controllers.web.workflow.GraphEngineManager.send_stop_command")
     @patch("controllers.web.workflow.AppQueueManager.set_stop_flag_no_user_check")
     def test_stop_calls_both_mechanisms(self, mock_legacy: MagicMock, mock_graph: MagicMock, app: Flask) -> None:
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
@@ -118,4 +117,4 @@ class TestWorkflowTaskStopApi:
 
         assert result == {"result": "success"}
         mock_legacy.assert_called_once_with("task-1")
-        mock_graph.assert_called_once_with(AbortCommand(reason="User requested stop"))
+        mock_graph.assert_called_once_with("task-1")

@@ -36,6 +36,7 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.app.workflow import (
     AppQueueManager,
+    GraphEngineManager,
     WorkflowAppLogApi,
     WorkflowLogQuery,
     WorkflowRunApi,
@@ -47,7 +48,6 @@ from controllers.service_api.app.workflow import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from enums import CloudPlan, DeploymentEdition
-from graphon.engine.command import AbortCommand, RedisChannel
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
 from models import Account
@@ -727,7 +727,7 @@ class TestWorkflowTaskStopApi:
         stop_mock = Mock()
         send_mock = Mock()
         monkeypatch.setattr(AppQueueManager, "set_stop_flag_no_user_check", stop_mock)
-        monkeypatch.setattr(RedisChannel, "send_command", send_mock)
+        monkeypatch.setattr(GraphEngineManager, "send_stop_command", send_mock)
 
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
@@ -739,7 +739,7 @@ class TestWorkflowTaskStopApi:
 
         assert response == {"result": "success"}
         stop_mock.assert_called_once_with("t1")
-        send_mock.assert_called_once_with(AbortCommand(reason="User requested stop"))
+        send_mock.assert_called_once_with("t1")
 
 
 class TestWorkflowAppLogApi:

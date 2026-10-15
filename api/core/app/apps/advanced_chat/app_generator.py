@@ -48,10 +48,10 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
-from graphon.engine.filter import ResponseStreamFilter
-from graphon.engine.layer import Layer
+from graphon.filters import ResponseStreamFilter
+from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import RuntimeState
+from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
@@ -281,7 +281,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        runtime_state: RuntimeState,
+        graph_runtime_state: GraphRuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ):
@@ -312,7 +312,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message=message,
             stream=application_generate_entity.stream,
             pause_state_config=pause_state_config,
-            runtime_state=runtime_state,
+            graph_runtime_state=graph_runtime_state,
             response_stream_filter=response_stream_filter,
             session=session,
         )
@@ -520,8 +520,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         pause_state_config: PauseStateLayerConfig | None = None,
-        runtime_state: RuntimeState | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -574,7 +574,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 message_id=message.id,
             )
 
-            graph_layers: list[Layer] = list(graph_engine_layers)
+            graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
             resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
@@ -602,7 +602,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     "workflow_execution_repository": workflow_execution_repository,
                     "workflow_node_execution_repository": workflow_node_execution_repository,
                     "graph_engine_layers": tuple(graph_layers),
-                    "runtime_state": runtime_state,
+                    "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
                 },
             )
@@ -656,8 +656,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[Layer] = (),
-        runtime_state: RuntimeState | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ):
         """
@@ -685,7 +685,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
-                if runtime_state is not None:
+                if graph_runtime_state is not None:
                     self._restore_workflow_run_graph(
                         session=session,
                         workflow=workflow,
@@ -723,7 +723,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 graph_engine_layers=graph_engine_layers,
-                runtime_state=runtime_state,
+                graph_runtime_state=graph_runtime_state,
                 response_stream_filter=response_stream_filter,
             )
 

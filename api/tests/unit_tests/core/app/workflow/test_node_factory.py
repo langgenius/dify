@@ -6,15 +6,14 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
 from graphon.enums import BuiltinNodeTypes
-from graphon.runtime import InitParams
 
 
 class DummyNode:
-    def __init__(self, *, node_id, data, init_params, runtime_state, **kwargs):
+    def __init__(self, *, node_id, data, graph_init_params, graph_runtime_state, **kwargs):
         self.id = node_id
         self.data = data
-        self.init_params = init_params
-        self.runtime_state = runtime_state
+        self.graph_init_params = graph_init_params
+        self.graph_runtime_state = graph_runtime_state
         self.kwargs = kwargs
 
 
@@ -74,8 +73,8 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            init_params=InitParams(run_context=run_context, workflow_id="workflow", graph_config={}, call_depth=0),
-            runtime_state=SimpleNamespace(),
+            graph_init_params=SimpleNamespace(run_context=run_context, workflow_id="workflow"),
+            graph_runtime_state=SimpleNamespace(),
         )
 
     def test_create_node_unknown_type(self):

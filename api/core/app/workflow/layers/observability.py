@@ -1,5 +1,5 @@
 """
-Observability layer for Engine.
+Observability layer for GraphEngine.
 
 This layer creates OpenTelemetry spans for node execution, enabling distributed
 tracing of workflow execution. It establishes OTel context during node execution
@@ -8,8 +8,7 @@ associates with the node span.
 """
 
 import logging
-from collections.abc import Generator
-from contextlib import contextmanager
+from contextvars import Token
 from dataclasses import dataclass
 from typing import cast, final, override
 
@@ -26,9 +25,9 @@ from extensions.otel.parser import (
 )
 from extensions.otel.runtime import is_instrument_flag_enabled
 from extensions.otel.semconv import DifySpanAttributes
-from graphon.engine.layer import Layer
-from graphon.engine_events import EngineEvent, GraphRunAbortedEvent, NodeEvent
 from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunAbortedEvent
 from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
@@ -37,10 +36,11 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class _NodeSpanContext:
     span: "Span"
+    token: Token[context_api.Context]
 
 
 @final
-class ObservabilityLayer(Layer):
+class ObservabilityLayer(GraphEngineLayer):
     """
     Layer that creates OpenTelemetry spans for node execution.
 
@@ -88,25 +88,8 @@ class ObservabilityLayer(Layer):
         """Called when graph execution starts."""
         self._node_contexts.clear()
 
-    @contextmanager
-    @override
-    def node_run_context(self, node: Node, *, parent_execution_id: str | None = None) -> Generator[None]:
-        self._ensure_node_span(node, parent_execution_id=parent_execution_id)
-        node_context = self._node_contexts.get(node.execution_id)
-        if node_context is None:
-            yield
-            return
-        token = context_api.attach(set_span_in_context(node_context.span))
-        try:
-            yield
-        finally:
-            context_api.detach(token)
-
     @override
     def on_node_run_start(self, node: Node) -> None:
-        self._ensure_node_span(node)
-
-    def _ensure_node_span(self, node: Node, *, parent_execution_id: str | None = None) -> None:
         """
         Called when a node starts execution.
 
@@ -120,24 +103,28 @@ class ObservabilityLayer(Layer):
                 return
 
             execution_id = node.execution_id
-            if not execution_id or execution_id in self._node_contexts:
+            if not execution_id:
                 return
 
-            parent = self._node_contexts.get(parent_execution_id) if parent_execution_id else None
-            parent_context = set_span_in_context(parent.span) if parent else context_api.get_current()
+            parent_context = context_api.get_current()
             span = self._tracer.start_span(
                 f"{node.title}",
                 kind=SpanKind.INTERNAL,
                 context=parent_context,
             )
 
-            self._node_contexts[execution_id] = _NodeSpanContext(span=span)
+            new_context = set_span_in_context(span)
+            token = context_api.attach(new_context)
+
+            self._node_contexts[execution_id] = _NodeSpanContext(span=span, token=token)
 
         except Exception as e:
             logger.warning("Failed to create OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
-    def on_node_run_end(self, node: Node, error: Exception | None, result_event: NodeEvent | None = None) -> None:
+    def on_node_run_end(
+        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
+    ) -> None:
         """
         Called when a node finishes execution.
 
@@ -160,13 +147,19 @@ class ObservabilityLayer(Layer):
                 parser.parse(node=node, span=span, error=error, result_event=result_event)
                 span.end()
             finally:
+                token = node_context.token
+                if token is not None:
+                    try:
+                        context_api.detach(token)
+                    except Exception:
+                        logger.warning("Failed to detach OpenTelemetry token: %s", token)
                 self._node_contexts.pop(execution_id, None)
 
         except Exception as e:
             logger.warning("Failed to end OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
-    def on_event(self, event: EngineEvent) -> None:
+    def on_event(self, event: GraphEngineEvent) -> None:
         """Record graph-level observability events."""
         if self._is_disabled:
             return

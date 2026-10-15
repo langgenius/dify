@@ -28,9 +28,9 @@ from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedE
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
-from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.graph import Graph
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
 from models.dataset import Dataset, Document, Pipeline
@@ -189,22 +189,19 @@ def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
 
     with pytest.raises(ValueError):
         runner._init_rag_pipeline_graph(
-            workflow=workflow,
-            runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
 
     workflow.graph = json.dumps({"nodes": "bad", "edges": []})
     with pytest.raises(ValueError):
         runner._init_rag_pipeline_graph(
-            workflow=workflow,
-            runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
 
     workflow.graph = json.dumps({"nodes": [], "edges": "bad"})
     with pytest.raises(ValueError):
         runner._init_rag_pipeline_graph(
-            workflow=workflow,
-            runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
 
 
@@ -214,8 +211,7 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
 
     with pytest.raises(ValueError):
         runner._init_rag_pipeline_graph(
-            workflow=workflow,
-            runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
+            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
         )
 
 
@@ -382,7 +378,7 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     published: list[AppQueueEvent] = []
     failure = GraphRunFailedEvent(error="iteration failed")
     variable_pool = VariablePool()
-    state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=0)
+    state = GraphRuntimeState(variable_pool=variable_pool, start_at=0)
 
     def prepare_single_node_execution(
         *,
@@ -390,13 +386,13 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
         single_iteration_run: RagPipelineGenerateEntity.SingleIterationRunEntity | None,
         single_loop_run: RagPipelineGenerateEntity.SingleLoopRunEntity | None,
         user_id: str,
-    ) -> tuple[Graph, VariablePool, RuntimeState]:
+    ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         prepared.append((workflow.id, single_iteration_run, single_loop_run, user_id))
-        graph = runner._init_rag_pipeline_graph(workflow=workflow, runtime_state=state, start_node_id="start")
+        graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=state, start_node_id="start")
         return graph, variable_pool, state
 
-    def run_workflow(entry: WorkflowEntry) -> Generator[EngineEvent]:
-        assert entry.graph_engine.runtime_state is state
+    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent]:
+        assert entry.graph_engine.graph_runtime_state is state
         yield failure
 
     monkeypatch.setattr(runner, "_prepare_single_node_execution", prepare_single_node_execution)
@@ -406,7 +402,7 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     runner.run()
 
     assert prepared == [("wf", app_generate_entity.single_iteration_run, None, "user")]
-    assert runner._queue_manager.runtime_state is state
+    assert runner._queue_manager.graph_runtime_state is state
     sqlite_session.expire_all()
     document = sqlite_session.get(Document, "doc")
     assert document is not None
@@ -430,7 +426,7 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
     runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
     entries: list[WorkflowEntry] = []
 
-    def run_workflow(entry: WorkflowEntry) -> Generator[EngineEvent]:
+    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent]:
         events.append("workflow_run")
         entries.append(entry)
         yield from ()
@@ -451,7 +447,7 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
     assert len(entries) == 1
     graph_engine = entries[0].graph_engine
     assert graph_engine.graph.root_node.id == "start"
-    assert graph_engine.runtime_state is runner._queue_manager.runtime_state
-    input_variable = graph_engine.runtime_state.variable_pool.get(["start", "input1"])
+    assert graph_engine.graph_runtime_state is runner._queue_manager.graph_runtime_state
+    input_variable = graph_engine.graph_runtime_state.variable_pool.get(["start", "input1"])
     assert input_variable is not None
     assert input_variable.value == "v1"

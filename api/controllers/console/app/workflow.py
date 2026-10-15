@@ -83,6 +83,7 @@ from fields.workflow_run_fields import (
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
+from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
@@ -101,7 +102,6 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.workflow_service import EmptyWorkflowConfirmationRequiredError
-from services.workflow.command_service import send_workflow_stop_command
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import (
@@ -1234,7 +1234,7 @@ class WorkflowTaskStopApi(Resource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        send_workflow_stop_command(task_id=task_id, redis=redis_client)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
 

@@ -21,7 +21,8 @@ from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownlo
 from .exc import DatasourceNodeError
 
 if TYPE_CHECKING:
-    from graphon.runtime import InitParams, RuntimeState
+    from graphon.entities import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
 
 
 class DatasourceNode(Node[DatasourceNodeData]):
@@ -37,15 +38,15 @@ class DatasourceNode(Node[DatasourceNodeData]):
         node_id: str,
         data: DatasourceNodeData,
         *,
-        init_params: "InitParams",
-        runtime_state: "RuntimeState",
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
         datasource_credentials: Callable[[str, str, str, str | None], dict[str, Any]],
     ) -> None:
         super().__init__(
             node_id=node_id,
             data=data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
         )
         self.datasource_manager = DatasourceManager
         self._datasource_credentials = datasource_credentials
@@ -62,7 +63,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         """
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         node_data = self.node_data
-        variable_pool = self.runtime_state.variable_pool
+        variable_pool = self.graph_runtime_state.variable_pool
         datasource_type_segment = get_system_segment(variable_pool, SystemVariableKey.DATASOURCE_TYPE)
         if not datasource_type_segment:
             raise DatasourceNodeError("Datasource type is not set")

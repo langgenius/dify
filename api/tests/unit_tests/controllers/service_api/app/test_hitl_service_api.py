@@ -40,7 +40,7 @@ from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, MessageStatus
@@ -313,7 +313,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
     runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -504,7 +504,7 @@ class TestHitlServiceApi:
         pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             workflow=WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={}),
-            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, runtime_state=None),
+            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
             conversation=ConversationSnapshot(id="conv-id", mode=AppMode.ADVANCED_CHAT),
             message=MessageSnapshot(
                 id="message-id",
@@ -597,7 +597,7 @@ class TestHitlServiceApi:
         pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             workflow=_workflow(workflow_id="workflow-id", app_id="app", tenant_id="tenant"),
-            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, runtime_state=None),
+            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
             user=_end_user(user_id="user", app_id="app", tenant_id="tenant"),
             stream=False,
             draft_var_saver_factory=lambda **kwargs: None,
@@ -691,7 +691,7 @@ class TestHitlServiceApi:
         responses = converter.workflow_pause_to_stream_response(
             event=queue_event,
             task_id="task",
-            runtime_state=runtime_state,
+            graph_runtime_state=runtime_state,
         )
 
         assert isinstance(responses[-1], WorkflowPauseStreamResponse)

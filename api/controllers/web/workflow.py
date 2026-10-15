@@ -26,6 +26,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from extensions.ext_redis import redis_client
+from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
@@ -35,7 +36,6 @@ from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
-from services.workflow.command_service import send_workflow_stop_command
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +144,6 @@ class WorkflowTaskStopApi(WebApiResource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        send_workflow_stop_command(task_id=task_id, redis=redis_client)
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")

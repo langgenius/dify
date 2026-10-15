@@ -7,7 +7,6 @@ import os
 import time
 import urllib.parse
 from collections.abc import Generator
-from contextlib import AbstractContextManager
 from typing import TYPE_CHECKING, Literal, override
 
 from configs import dify_config
@@ -19,7 +18,7 @@ from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
-from graphon.file.runtime import use_workflow_file_runtime
+from graphon.file.runtime import set_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
 
 if TYPE_CHECKING:
@@ -216,6 +215,5 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
                 raise ValueError(f"Tool file {tool_file_id} not found")
 
 
-def bind_dify_workflow_file_runtime() -> AbstractContextManager[None]:
-    """Bind the host adapter for one explicit execution or rendering scope."""
-    return use_workflow_file_runtime(DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController()))
+def bind_dify_workflow_file_runtime() -> None:
+    set_workflow_file_runtime(DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController()))

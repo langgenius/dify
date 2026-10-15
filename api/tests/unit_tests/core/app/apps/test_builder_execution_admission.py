@@ -197,7 +197,7 @@ def test_json_resume_refuses_before_trace_or_graph_restore():
             workflow=Workflow(id=marker.workflow_id),
             user=MagicMock(),
             application_generate_entity=AppGenerateEntity.model_construct(builder_execution=marker),
-            runtime_state=MagicMock(),
+            graph_runtime_state=MagicMock(),
             workflow_execution_repository=MagicMock(),
             workflow_node_execution_repository=MagicMock(),
         )
@@ -208,13 +208,14 @@ def test_json_factory_refuses_nonissued_recorder_before_ordinary_setup(monkeypat
 
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
     from core.workflow import node_factory
-    from graphon.runtime import InitParams, RuntimeState, VariablePool
+    from graphon.entities.graph_init_params import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
 
     marker = _json_context()
     ordinary = MagicMock(side_effect=AssertionError("ordinary setup forbidden"))
     monkeypatch.setattr(node_factory, "build_dify_model_access", ordinary)
-    params = InitParams(
+    params = GraphInitParams(
         workflow_id=marker.workflow_id,
         graph_config={"nodes": [], "edges": []},
         call_depth=0,
@@ -229,7 +230,7 @@ def test_json_factory_refuses_nonissued_recorder_before_ordinary_setup(monkeypat
             )
         },
     )
-    state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=time.perf_counter())
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
     with pytest.raises(BuilderExecutionPolicyError, match="missing_json_tool_issuer"):
         node_factory.DifyNodeFactory(params, state, execution_recorder=MagicMock(healthy=True))
     ordinary.assert_not_called()
@@ -258,7 +259,7 @@ def test_json_task_resume_refuses_before_snapshot_restore(monkeypatch):
     state.get_generate_entity.return_value = entity
     monkeypatch.setattr(module.WorkflowResumptionContext, "loads", lambda _: state)
     restore = MagicMock(side_effect=AssertionError("restore forbidden"))
-    monkeypatch.setattr(module.RuntimeState, "from_snapshot", restore)
+    monkeypatch.setattr(module.GraphRuntimeState, "from_snapshot", restore)
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
         module._resume_app_execution({"workflow_run_id": "run"})
     restore.assert_not_called()
@@ -295,7 +296,8 @@ def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, h
     import core.workflow.node_factory as module
     from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
     from core.dify_builder.execution_policy import admitted_node_bindings, context_digest, fixture_digest
-    from graphon.runtime import InitParams, RuntimeState, VariablePool
+    from graphon.entities.graph_init_params import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
     from tests.unit_tests.core.dify_builder.test_execution_policy import graph, snapshot
 
     marker = context().model_copy(
@@ -304,7 +306,7 @@ def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, h
     marker = marker.model_copy(update={"context_digest": context_digest(marker)})
     live = MagicMock(side_effect=AssertionError("live construction forbidden"))
     monkeypatch.setattr(module, "build_dify_model_access", live)
-    params = InitParams(
+    params = GraphInitParams(
         workflow_id="workflow",
         graph_config=graph(),
         call_depth=0,
@@ -319,7 +321,7 @@ def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, h
             )
         },
     )
-    state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=time.perf_counter())
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
 
     def construct():
         recorder = MagicMock(healthy=True) if has_recorder else None
@@ -330,7 +332,7 @@ def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, h
                 graph_init_context=module.DifyGraphInitContext(
                     workflow_id="workflow", graph_config=graph(), run_context=params.run_context, call_depth=0
                 ),
-                runtime_state=state,
+                graph_runtime_state=state,
                 execution_recorder=recorder,
             )
         else:
@@ -339,7 +341,7 @@ def test_factory_composes_restricted_without_live_adapters(monkeypatch, entry, h
             runner = WorkflowBasedAppRunner(queue_manager=MagicMock(), app_id="app")
             return runner._init_graph(
                 graph_config=graph(),
-                runtime_state=state,
+                graph_runtime_state=state,
                 workflow_id="workflow",
                 tenant_id="tenant",
                 user_id="account",
@@ -591,7 +593,7 @@ def test_resume_marker_refused_before_restore_trace_or_cancellation_reset(monkey
     monkeypatch.setattr(module.WorkflowResumptionContext, "loads", MagicMock(return_value=state))
     restore = MagicMock(side_effect=AssertionError("restore forbidden"))
     reset = MagicMock(side_effect=AssertionError("reset forbidden"))
-    monkeypatch.setattr(module.RuntimeState, "from_snapshot", restore)
+    monkeypatch.setattr(module.GraphRuntimeState, "from_snapshot", restore)
     monkeypatch.setattr(module, "clear_app_task_cancellation_signals", reset)
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
         module._resume_app_execution({"workflow_run_id": "run"})

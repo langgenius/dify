@@ -10,7 +10,7 @@ from typing import Any, final, override
 
 from flask import Flask, current_app, g
 
-from context.execution_context import AppContext, ExecutionContext, IExecutionContext, register_context_capturer
+from context.execution_context import AppContext, IExecutionContext, register_context_capturer
 
 
 @final
@@ -137,23 +137,37 @@ class FlaskExecutionContext:
 
     def __enter__(self) -> "FlaskExecutionContext":
         """Enter the Flask execution context."""
-        cm = self.enter()
+        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
+        for var, val in self._context_vars.items():
+            var.set(val)
+
+        # Enter Flask app context
+        cm = self._app_context.enter()
+        self._local.cm = cm
         cm.__enter__()
-        if not hasattr(self._local, "stack"):
-            self._local.stack = []
-        self._local.stack.append(cm)
+
+        # Restore user in new app context
+        if self._user is not None:
+            g._login_user = self._user
+
         return self
 
     def __exit__(self, *args: Any) -> None:
-        """Exit the Flask execution context and restore the caller's variables."""
-        stack = getattr(self._local, "stack", [])
-        if stack:
-            stack.pop().__exit__(*args)
+        """Exit the Flask execution context."""
+        cm = getattr(self._local, "cm", None)
+        if cm is not None:
+            cm.__exit__(*args)
 
     @contextmanager
     def enter(self) -> Generator[None]:
-        """Activate captured state reversibly for one worker segment."""
-        with ExecutionContext(app_context=self._app_context, context_vars=self._context_vars).enter():
+        """Enter Flask execution context as context manager."""
+        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
+        for var, val in self._context_vars.items():
+            var.set(val)
+
+        # Enter Flask app context
+        with self._flask_app.app_context():
+            # Restore user in new app context
             if self._user is not None:
                 g._login_user = self._user
             yield

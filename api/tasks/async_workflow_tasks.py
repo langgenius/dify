@@ -23,7 +23,7 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
-from graphon.runtime import RuntimeState
+from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -224,7 +224,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         )
         return
 
-    runtime_state = RuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
@@ -285,7 +285,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         workflow=workflow,
         user=user,
         application_generate_entity=generate_entity,
-        runtime_state=runtime_state,
+        graph_runtime_state=graph_runtime_state,
         workflow_execution_repository=workflow_execution_repository,
         workflow_node_execution_repository=workflow_node_execution_repository,
         graph_engine_layers=graph_engine_layers,

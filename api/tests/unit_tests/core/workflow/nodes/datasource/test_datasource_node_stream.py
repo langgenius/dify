@@ -17,7 +17,7 @@ from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamCompletedEvent
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -33,7 +33,7 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
             },
         )
     )
-    init_params = build_test_graph_init_params(
+    graph_init_params = build_test_graph_init_params(
         workflow_id="wf-1",
         tenant_id="t1",
         app_id="app-1",
@@ -41,7 +41,7 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
     )
-    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
     class _Mgr:
         @classmethod
@@ -78,7 +78,7 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
             "core.workflow.node_factory.build_data_source_credentials",
             return_value=SimpleNamespace(providers=SimpleNamespace(get_datasource_credentials=load_credentials)),
         )
-        factory = DifyNodeFactory(init_params=init_params, runtime_state=runtime_state)
+        factory = DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
         node = factory.create_node({"id": "n", "data": node_data.model_dump()})
         build_credentials.assert_called_once_with(database_client=database_client)
         assert isinstance(node, DatasourceNode)
@@ -86,8 +86,8 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
         node = DatasourceNode(
             node_id="n",
             data=node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             datasource_credentials=load_credentials,
         )
 

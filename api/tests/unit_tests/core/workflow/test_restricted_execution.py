@@ -12,7 +12,7 @@ from core.dify_builder.execution_policy import BuilderExecutionPolicyError, admi
 from graphon.http import HttpClientProtocol
 from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, snapshot
 from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
     forbid_live as forbid_live,  # noqa: PLC0414
@@ -49,7 +49,7 @@ def test_all_protocol_methods_serve_text_and_append_distinct_attempts(owned, met
     from core.workflow.restricted_execution import PolicyTransportError, RestrictedHttpClient
 
     factory, context, recorder = prepare_native(owned, "http_text.yml", samples=(fixture(body="你好"),))
-    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
     client = node.http_client
     assert isinstance(client, RestrictedHttpClient)
@@ -105,7 +105,7 @@ def test_runtime_kwargs_deny_before_fixture_return_and_append_receipt(owned, kwa
     from core.workflow.restricted_execution import PolicyTransportError
 
     factory, _, _ = prepare_native(owned, "http_text.yml", samples=(fixture(),))
-    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
     client = node.http_client
     with pytest.raises(PolicyTransportError, match="execution_policy: http_request_arguments"):
@@ -121,7 +121,7 @@ def test_file_collaborators_deny_and_record(owned, entry):
     from core.workflow.restricted_execution import PolicyTransportError
 
     factory, _, _ = prepare_native(owned, "http_text.yml", samples=(fixture(),))
-    node = factory.create_node(factory.init_params.graph_config["nodes"][1])
+    node = factory.create_node(factory.graph_init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
 
     def invoke():
@@ -154,7 +154,7 @@ def test_forbidden_raw_type_refused_before_concrete_validation_or_model_resoluti
         )
         monkeypatch.setattr(forbidden_class, "validate_node_data", forbidden)
         monkeypatch.setattr(forbidden_class, "__init__", forbidden)
-    node = deepcopy(factory.init_params.graph_config["nodes"][0])
+    node = deepcopy(factory.graph_init_params.graph_config["nodes"][0])
     node["data"]["type"] = node_type
     with pytest.raises(BuilderExecutionPolicyError):
         factory.create_node(node)
@@ -168,7 +168,7 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(owned, mon
     from graphon.graph import Graph
 
     factory, _, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
-    node = deepcopy(factory.init_params.graph_config["nodes"][0])
+    node = deepcopy(factory.graph_init_params.graph_config["nodes"][0])
     forbidden = MagicMock(side_effect=AssertionError("concrete validation reached"))
     monkeypatch.setattr(StartNode, "validate_node_data", forbidden)
     if mutation == "class":
@@ -187,7 +187,7 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(owned, mon
         node["data"]["new_extra"] = "changed"
     else:
         node["data"]["version"] = "latest" if mutation == "latest" else "999"
-    config = deepcopy(factory.init_params.graph_config)
+    config = deepcopy(factory.graph_init_params.graph_config)
     config["nodes"][0] = node
 
     def invoke():
@@ -196,8 +196,8 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(owned, mon
         if entry == "graph_init":
             return Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
         return DifyNodeFactory(
-            factory.init_params.model_copy(update={"graph_config": config}),
-            factory.runtime_state,
+            factory.graph_init_params.model_copy(update={"graph_config": config}),
+            factory.graph_runtime_state,
             execution_recorder=factory.execution_recorder,
         )
 
@@ -208,13 +208,13 @@ def test_raw_identity_and_config_gate_runs_before_concrete_validation(owned, mon
 
 def test_with_runtime_state_keeps_exact_policy_recorder_and_private_key(owned):
     factory, context, recorder = prepare_native(owned, "http_text.yml", samples=(fixture(),))
-    state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0)
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
     clone = factory.with_runtime_state(state)
     assert clone.execution_recorder is recorder
     assert clone._dify_context.builder_execution is context
     assert clone._dify_context.builder_execution.http_fixtures is context.http_fixtures
     assert clone._request_hmac_key is factory._request_hmac_key
-    node = clone.create_node(clone.init_params.graph_config["nodes"][1])
+    node = clone.create_node(clone.graph_init_params.graph_config["nodes"][1])
     assert isinstance(node, HttpRequestNode)
     node.http_client.get("https://sample.invalid/clone")
     assert len(receipts(owned)) == 1
@@ -290,9 +290,9 @@ def test_wrong_fixture_or_context_cannot_construct_native_adapter(owned, change)
     if change != "context_digest":
         altered = altered.model_copy(update={"context_digest": context_digest(altered)})
     dify_context = factory._dify_context.model_copy(update={"builder_execution": altered})
-    params = factory.init_params.model_copy(update={"run_context": {DIFY_RUN_CONTEXT_KEY: dify_context}})
+    params = factory.graph_init_params.model_copy(update={"run_context": {DIFY_RUN_CONTEXT_KEY: dify_context}})
     with pytest.raises(BuilderExecutionPolicyError):
-        DifyNodeFactory(params, factory.runtime_state, execution_recorder=recorder)
+        DifyNodeFactory(params, factory.graph_runtime_state, execution_recorder=recorder)
     assert receipts(owned) == []
 
 
@@ -344,7 +344,7 @@ def test_actual_resolved_class_is_guarded_before_its_validator_when_registry_cha
     classes = iter((StartNode, StartNode, ChangedStart))
     monkeypatch.setattr(factory, "_resolve_node_class", lambda **_: next(classes))
     with pytest.raises(BuilderExecutionPolicyError):
-        factory.create_node(factory.init_params.graph_config["nodes"][0])
+        factory.create_node(factory.graph_init_params.graph_config["nodes"][0])
     forbidden.assert_not_called()
 
 
@@ -353,7 +353,7 @@ def test_typed_capability_recheck_requires_same_exact_binding_and_version(owned,
     from core.workflow.restricted_execution import validate_restricted_node
 
     factory, context, _ = prepare_native(owned, "scalar.yml", inputs={"text": "x"})
-    data = StartNode.validate_node_data(factory.init_params.graph_config["nodes"][0]["data"])
+    data = StartNode.validate_node_data(factory.graph_init_params.graph_config["nodes"][0]["data"])
     if change == "binding":
         binding = context.admitted_nodes[0].model_copy(update={"implementation": "unreviewed.StartNode"})
         context = context.model_copy(update={"admitted_nodes": (binding, *context.admitted_nodes[1:])})

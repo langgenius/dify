@@ -7,7 +7,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -15,8 +15,8 @@ from tests.workflow_test_utils import build_test_graph_init_params
 def _build_template_transform_node(
     *,
     node_data,
-    init_params,
-    runtime_state,
+    graph_init_params,
+    graph_runtime_state,
     node_id: str = "test_node",
     **kwargs,
 ) -> TemplateTransformNode:
@@ -28,8 +28,8 @@ def _build_template_transform_node(
     return TemplateTransformNode(
         node_id=node_id,
         data=typed_node_data,
-        init_params=init_params,
-        runtime_state=runtime_state,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
         **kwargs,
     )
 
@@ -38,12 +38,12 @@ class TestTemplateTransformNode:
     """Comprehensive test suite for TemplateTransformNode."""
 
     @pytest.fixture
-    def runtime_state(self) -> RuntimeState:
+    def graph_runtime_state(self) -> GraphRuntimeState:
         """Create graph state with real variable storage and conversion."""
-        return RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0)
+        return GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
 
     @pytest.fixture
-    def init_params(self):
+    def graph_init_params(self):
         """Create validated graph initialization parameters."""
         return build_test_graph_init_params(
             workflow_id="test_workflow",
@@ -73,8 +73,8 @@ class TestTemplateTransformNode:
     def test_node_initialization_rejects_non_positive_max_output_length(
         self,
         basic_node_data,
-        runtime_state,
-        init_params,
+        graph_runtime_state,
+        graph_init_params,
         max_output_length,
     ):
         mock_renderer = MagicMock()
@@ -82,13 +82,13 @@ class TestTemplateTransformNode:
         with pytest.raises(ValueError, match="max_output_length must be a positive integer"):
             _build_template_transform_node(
                 node_data=basic_node_data,
-                init_params=init_params,
-                runtime_state=runtime_state,
+                graph_init_params=graph_init_params,
+                graph_runtime_state=graph_runtime_state,
                 jinja2_template_renderer=mock_renderer,
                 max_output_length=max_output_length,
             )
 
-    def test_run_simple_template(self, basic_node_data, runtime_state, init_params):
+    def test_run_simple_template(self, basic_node_data, graph_runtime_state, graph_init_params):
         """Test _run with simple template transformation using injected renderer."""
         name_value = "Alice"
         age_value = 30
@@ -98,7 +98,7 @@ class TestTemplateTransformNode:
             ("sys", "user_age"): age_value,
         }
         for selector, value in variable_map.items():
-            runtime_state.variable_pool.add(selector, value)
+            graph_runtime_state.variable_pool.add(selector, value)
 
         # Setup mock renderer
         mock_renderer = MagicMock()
@@ -106,8 +106,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -118,7 +118,7 @@ class TestTemplateTransformNode:
         assert result.inputs["name"] == "Alice"
         assert result.inputs["age"] == 30
 
-    def test_run_with_none_values(self, runtime_state, init_params):
+    def test_run_with_none_values(self, graph_runtime_state, graph_init_params):
         """Test _run with None variable values."""
         node_data = {
             "title": "Test",
@@ -131,8 +131,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -141,18 +141,18 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs["value"] is None
 
-    def test_run_with_render_error(self, basic_node_data, runtime_state, init_params):
+    def test_run_with_render_error(self, basic_node_data, graph_runtime_state, graph_init_params):
         """Test _run when template rendering fails."""
-        runtime_state.variable_pool.add(["sys", "user_name"], "Alice")
-        runtime_state.variable_pool.add(["sys", "user_age"], 30)
+        graph_runtime_state.variable_pool.add(["sys", "user_name"], "Alice")
+        graph_runtime_state.variable_pool.add(["sys", "user_age"], 30)
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.side_effect = TemplateRenderError("Template syntax error")
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -161,18 +161,18 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Template syntax error" in result.error
 
-    def test_run_output_length_exceeds_limit(self, basic_node_data, runtime_state, init_params):
+    def test_run_output_length_exceeds_limit(self, basic_node_data, graph_runtime_state, graph_init_params):
         """Test _run when output exceeds maximum length."""
-        runtime_state.variable_pool.add(["sys", "user_name"], "Alice")
-        runtime_state.variable_pool.add(["sys", "user_age"], 30)
+        graph_runtime_state.variable_pool.add(["sys", "user_name"], "Alice")
+        graph_runtime_state.variable_pool.add(["sys", "user_age"], 30)
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "This is a very long output that exceeds the limit"
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
             max_output_length=10,
         )
@@ -182,17 +182,17 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Output length exceeds" in result.error
 
-    def test_run_output_length_equal_to_limit_succeeds(self, basic_node_data, runtime_state, init_params):
-        runtime_state.variable_pool.add(["sys", "user_name"], "Alice")
-        runtime_state.variable_pool.add(["sys", "user_age"], 30)
+    def test_run_output_length_equal_to_limit_succeeds(self, basic_node_data, graph_runtime_state, graph_init_params):
+        graph_runtime_state.variable_pool.add(["sys", "user_name"], "Alice")
+        graph_runtime_state.variable_pool.add(["sys", "user_age"], 30)
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "1234567890"
 
         node = _build_template_transform_node(
             node_data=basic_node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
             max_output_length=10,
         )
@@ -202,7 +202,7 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["output"] == "1234567890"
 
-    def test_run_with_complex_jinja2_template(self, runtime_state, init_params):
+    def test_run_with_complex_jinja2_template(self, graph_runtime_state, graph_init_params):
         """Test _run with complex Jinja2 template including loops and conditions."""
         node_data = {
             "title": "Complex Template",
@@ -224,15 +224,15 @@ class TestTemplateTransformNode:
             ("sys", "show_total"): show_total,
         }
         for selector, value in variable_map.items():
-            runtime_state.variable_pool.add(selector, value)
+            graph_runtime_state.variable_pool.add(selector, value)
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "apple, banana, orange (Total: 3)"
 
         node = _build_template_transform_node(
             node_data=node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -324,7 +324,7 @@ class TestTemplateTransformNode:
 
         assert mapping == {"node_123.var1": ["sys", "input1"]}
 
-    def test_run_with_empty_variables(self, runtime_state, init_params):
+    def test_run_with_empty_variables(self, graph_runtime_state, graph_init_params):
         """Test _run with no variables (static template)."""
         node_data = {
             "title": "Static Template",
@@ -337,8 +337,8 @@ class TestTemplateTransformNode:
 
         node = _build_template_transform_node(
             node_data=node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -348,7 +348,7 @@ class TestTemplateTransformNode:
         assert result.outputs["output"] == "This is a static message."
         assert result.inputs == {}
 
-    def test_run_with_numeric_values(self, runtime_state, init_params):
+    def test_run_with_numeric_values(self, graph_runtime_state, graph_init_params):
         """Test _run with numeric variable values."""
         node_data = {
             "title": "Numeric Template",
@@ -367,15 +367,15 @@ class TestTemplateTransformNode:
             ("sys", "quantity"): quantity,
         }
         for selector, value in variable_map.items():
-            runtime_state.variable_pool.add(selector, value)
+            graph_runtime_state.variable_pool.add(selector, value)
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Total: $31.5"
 
         node = _build_template_transform_node(
             node_data=node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -384,7 +384,7 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["output"] == "Total: $31.5"
 
-    def test_run_with_dict_values(self, runtime_state, init_params):
+    def test_run_with_dict_values(self, graph_runtime_state, graph_init_params):
         """Test _run with dictionary variable values."""
         node_data = {
             "title": "Dict Template",
@@ -394,15 +394,15 @@ class TestTemplateTransformNode:
 
         user = {"name": "John Doe", "email": "john@example.com"}
 
-        runtime_state.variable_pool.add(["sys", "user_data"], user)
+        graph_runtime_state.variable_pool.add(["sys", "user_data"], user)
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Name: John Doe, Email: john@example.com"
 
         node = _build_template_transform_node(
             node_data=node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 
@@ -412,7 +412,7 @@ class TestTemplateTransformNode:
         assert "John Doe" in result.outputs["output"]
         assert "john@example.com" in result.outputs["output"]
 
-    def test_run_with_list_values(self, runtime_state, init_params):
+    def test_run_with_list_values(self, graph_runtime_state, graph_init_params):
         """Test _run with list variable values."""
         node_data = {
             "title": "List Template",
@@ -422,15 +422,15 @@ class TestTemplateTransformNode:
 
         tags = ["python", "ai", "workflow"]
 
-        runtime_state.variable_pool.add(["sys", "tags"], tags)
+        graph_runtime_state.variable_pool.add(["sys", "tags"], tags)
 
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "Tags: #python #ai #workflow "
 
         node = _build_template_transform_node(
             node_data=node_data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
             jinja2_template_renderer=mock_renderer,
         )
 

@@ -64,7 +64,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import RuntimeState
+from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -120,7 +120,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             user=user,
             system_variables=self._workflow_system_variables,
         )
-        self._graph_runtime_state: RuntimeState | None = self._base_task_pipeline.queue_manager.runtime_state
+        self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
     def process(
         self,
@@ -481,7 +481,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,
             status=WorkflowExecutionStatus.SUCCEEDED,
-            runtime_state=validated_state,
+            graph_runtime_state=validated_state,
         )
 
         yield workflow_finish_resp
@@ -501,7 +501,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,
             status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
-            runtime_state=validated_state,
+            graph_runtime_state=validated_state,
             exceptions_count=event.exceptions_count,
         )
         yield workflow_finish_resp
@@ -517,7 +517,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
-            runtime_state=validated_state,
+            graph_runtime_state=validated_state,
         )
         yield from responses
 
@@ -545,7 +545,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,
             status=status,
-            runtime_state=validated_state,
+            graph_runtime_state=validated_state,
             error=error,
             exceptions_count=exceptions_count,
         )

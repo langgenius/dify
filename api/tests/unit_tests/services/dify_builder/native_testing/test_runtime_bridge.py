@@ -1,10 +1,10 @@
 """No ordinary collaborator is constructed for a marked native run."""
 
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
-from graphon.runtime import InitParams
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
 from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
@@ -61,10 +61,8 @@ def test_marked_factory_requires_bridge_before_eager_model_setup(monkeypatch):
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
         node_factory.DifyNodeFactory(
-            init_params=InitParams(
-                run_context={"_dify": context}, workflow_id="workflow", graph_config={}, call_depth=0
-            ),
-            runtime_state=object(),
+            graph_init_params=SimpleNamespace(run_context={"_dify": context}),
+            graph_runtime_state=object(),
         )
     eager.assert_not_called()
 
@@ -85,19 +83,17 @@ def test_factory_preserves_bridge_on_runtime_clone_and_checks_owners(monkeypatch
         native_test_required=True,
         native_test_ref=context.ref,
     )
-    from graphon.runtime import InitParams
-
-    init = InitParams(
+    init = SimpleNamespace(
         run_context={"_dify": run}, workflow_id=context.workflow_id, graph_config=context.graph, call_depth=0
     )
-    factory = node_factory.DifyNodeFactory(init_params=init, runtime_state=object(), native_runtime=bridge)
+    factory = node_factory.DifyNodeFactory(graph_init_params=init, graph_runtime_state=object(), native_runtime=bridge)
     clone = factory.with_runtime_state(object())
     assert clone._native_runtime is bridge
     provider.assert_not_called()
     eager.assert_not_called()
     init.workflow_id = "foreign"
     with pytest.raises(NativeContextUnavailable, match="native_context_mismatch"):
-        node_factory.DifyNodeFactory(init_params=init, runtime_state=object(), native_runtime=bridge)
+        node_factory.DifyNodeFactory(graph_init_params=init, graph_runtime_state=object(), native_runtime=bridge)
 
 
 def test_unmarked_factory_cannot_accept_native_bridge(monkeypatch):
@@ -112,8 +108,8 @@ def test_unmarked_factory_cannot_accept_native_bridge(monkeypatch):
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
         node_factory.DifyNodeFactory(
-            init_params=InitParams(run_context={"_dify": run}, workflow_id="w", graph_config={}, call_depth=0),
-            runtime_state=object(),
+            graph_init_params=SimpleNamespace(run_context={"_dify": run}, workflow_id="w"),
+            graph_runtime_state=object(),
             native_runtime=bridge,
         )
     eager.assert_not_called()
@@ -123,7 +119,7 @@ def test_native_factory_constructs_real_registered_start_with_explicit_occurrenc
     from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
     from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory
     from graphon.nodes.start.start_node import StartNode
-    from graphon.runtime import RuntimeState, VariablePool
+    from graphon.runtime import GraphRuntimeState, VariablePool
 
     context, bridge, bundle, provider, occurrences, arguments = bridge_fixture()
     node = {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}}
@@ -144,7 +140,7 @@ def test_native_factory_constructs_real_registered_start_with_explicit_occurrenc
         graph_init_context=DifyGraphInitContext(
             workflow_id=context.workflow_id, graph_config=context.graph, run_context={"_dify": run}, call_depth=0
         ),
-        runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0),
+        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
         native_runtime=bridge,
     )
     created = factory.create_node(node)

@@ -677,7 +677,7 @@ def native_tool_node(case, *, workflow_id=None):
     """Construct the real Tool through the production native factory and scope."""
     from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
     from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory
-    from graphon.runtime import RuntimeState, VariablePool
+    from graphon.runtime import GraphRuntimeState, VariablePool
 
     pool = VariablePool()
     factory = DifyNodeFactory.from_graph_init_context(
@@ -693,7 +693,7 @@ def native_tool_node(case, *, workflow_id=None):
             ),
             call_depth=0,
         ),
-        runtime_state=RuntimeState(workflow_id="test-workflow", variable_pool=pool, start_at=0.0),
+        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=0.0),
     )
     return factory.create_node(case.workflow.get_node_config_by_id("t")), pool
 
@@ -1144,7 +1144,7 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
     from graphon.enums import WorkflowExecutionStatus
-    from graphon.runtime import RuntimeState, VariablePool
+    from graphon.runtime import GraphRuntimeState, VariablePool
     from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
     from models.model import Conversation, Message
     from models.workflow import WorkflowPause, WorkflowRun
@@ -1253,9 +1253,7 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
     def save_context():
         context = WorkflowResumptionContext(
             generate_entity={"type": state.mode, "entity": state.entity},
-            serialized_graph_runtime_state=RuntimeState(
-                workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0
-            ).dumps(),
+            serialized_graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0).dumps(),
         )
         state.saved_blob = context.dumps().encode()
 

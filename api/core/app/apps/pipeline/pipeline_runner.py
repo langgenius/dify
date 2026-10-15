@@ -22,10 +22,10 @@ from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, ge
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Dataset, Pipeline
@@ -145,7 +145,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
-            graph, variable_pool, runtime_state = self._prepare_single_node_execution(
+            graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
@@ -199,13 +199,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow.graph_dict
             )
             add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
-            runtime_state = RuntimeState(
-                workflow_id=workflow.id, variable_pool=variable_pool, start_at=time.perf_counter()
-            )
+            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
             # init graph
             graph = self._init_rag_pipeline_graph(
-                runtime_state=runtime_state,
+                graph_runtime_state=graph_runtime_state,
                 start_node_id=root_node_id,
                 workflow=workflow,
                 user_from=user_from,
@@ -223,11 +221,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
             user_from=user_from,
             invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
-            runtime_state=runtime_state,
+            graph_runtime_state=graph_runtime_state,
             variable_pool=variable_pool,
         )
 
-        self._queue_manager.runtime_state = runtime_state
+        self._queue_manager.graph_runtime_state = graph_runtime_state
 
         persistence_layer = WorkflowPersistenceLayer(
             application_generate_entity=self.application_generate_entity,
@@ -242,7 +240,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             trace_manager=self.application_generate_entity.trace_manager,
         )
 
-        workflow_entry.add_layer(persistence_layer)
+        workflow_entry.graph_engine.layer(persistence_layer)
 
         generator = workflow_entry.run()
 
@@ -272,7 +270,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
     def _init_rag_pipeline_graph(
         self,
         workflow: Workflow,
-        runtime_state: RuntimeState,
+        graph_runtime_state: GraphRuntimeState,
         start_node_id: str | None = None,
         user_from: UserFrom = UserFrom.ACCOUNT,
         invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
@@ -329,7 +327,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
-            runtime_state=runtime_state,
+            graph_runtime_state=graph_runtime_state,
         )
         if start_node_id is None:
             start_node_id = get_default_root_node_id(graph_config)
@@ -342,7 +340,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
     def _update_document_status(
         self,
-        event: EngineEvent,
+        event: GraphEngineEvent,
         *,
         workspace_id: str,
         dataset_id: str,
