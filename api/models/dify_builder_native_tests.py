@@ -1,7 +1,8 @@
 """Native test persistence. Ledger rows contain hashes/references, never effect payloads.
 
 The request scope is the lock for every child invocation and all shared spend.
-Attempts and outcomes are append-only; operations are a resumable projection.
+Attempts, physical dispatch claims and outcomes are append-only; operations
+are a resumable projection.
 """
 
 from datetime import datetime
@@ -122,6 +123,19 @@ class NativeEffectAttempt(Identity, InvocationOwner, Base):
     invocation_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     budget: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     profile: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+
+
+class NativeEffectDispatchClaim(Identity, InvocationOwner, Base):
+    """One physical-owner consumption of an already-spent attempt, never replayed."""
+
+    __tablename__ = "dify_builder_native_effect_dispatch_claims"
+    __table_args__ = (
+        sa.UniqueConstraint("attempt_id", name="native_effect_dispatch_claim_attempt"),
+        sa.UniqueConstraint("operation_id", name="native_effect_dispatch_claim_operation"),
+    )
+    operation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    attempt_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    claimed_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
 
 
 class NativeEffectOutcome(Identity, InvocationOwner, Base):

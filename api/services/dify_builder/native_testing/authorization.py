@@ -17,9 +17,11 @@ from sqlalchemy.orm import Session
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import (
     NativeEffectAttempt,
+    NativeEffectDispatchClaim,
     NativeEffectGrant,
     NativeEffectOperation,
     NativeEffectOutcome,
+    NativeInvocationState,
     NativePendingAction,
     NativeTestScope,
 )
@@ -37,15 +39,17 @@ from services.dify_builder.native_testing.contracts import (
     operation_digest,
 )
 from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
-from services.dify_builder.native_testing.private_reads import validate_private_read
+from services.dify_builder.native_testing.private_reads import validate_invocation_workflow, validate_private_read
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import (
     BudgetReservation,
     NativeBinding,
     OwnedNativeTest,
     OwnedNativeTestLoader,
+    native_workflow_revision,
     utc_now,
 )
+from services.dify_builder.native_testing.transitions import require_ancestor_authority
 
 
 def validate_binding(intent: EffectIntent, binding: NativeBinding) -> None:
@@ -436,6 +440,117 @@ class EffectAuthorizationService:
             )
         )
         if attempt is None:
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        return attempt
+
+    def validate_dispatch(self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit) -> None:
+        """Revalidate a reserved permit without claiming or spending another one.
+
+        This is NOT a physical-dispatch fence. An authenticated endpoint must
+        also atomically consume its durable dispatch fence before performing I/O;
+        repeated validation cannot authorize repeating the transport operation.
+        """
+        try:
+            ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
+            intent = EffectIntent.model_validate(intent.model_dump(mode="json"))
+            permit = DispatchPermit.model_validate(permit.model_dump(mode="json"))
+        except (ValidationError, AttributeError, TypeError):
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit") from None
+        if self._permit_ref(permit) != ref:
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        self.loader.load(ref=ref)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            self._validate_dispatch_locked(session=session, owned=owned, scope=scope, intent=intent, permit=permit)
+
+    def claim_dispatch(self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit) -> None:
+        """Consume a reserved permit once, durably, before the sole owner's I/O.
+
+        The actual owner must compare its requested resource, target, typed args
+        and phase with intent before calling this boundary. Success is returned
+        only after commit. A lost/uncertain response must never be retried and
+        followed by I/O: the committed claim cannot be reissued or refunded.
+        This method never spends another permit or performs external I/O under
+        the root request lock. It does not itself execute the physical effect.
+        """
+        try:
+            ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
+            intent = EffectIntent.model_validate(intent.model_dump(mode="json"))
+            permit = DispatchPermit.model_validate(permit.model_dump(mode="json"))
+        except (BuilderExecutionPolicyError, ValidationError, AttributeError, TypeError):
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit") from None
+        if self._permit_ref(permit) != ref:
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        self.loader.load(ref=ref)
+        # Child-app RBAC may perform RPC, so refresh before the writer lock.
+        # SQL provenance and state are checked again inside the transaction.
+        authority = validate_private_read(self.loader, ref)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            attempt = self._validate_dispatch_locked(
+                session=session, owned=owned, scope=scope, intent=intent, permit=permit
+            )
+            require_ancestor_authority(session, ref, owned.tenant_id)
+            state = session.scalar(_owned_query(NativeInvocationState, owned))
+            if (
+                state is None
+                or state.state not in {"running", "waiting", "queued"}
+                or (state.app_id, state.workflow_id, state.context_object_id, state.generation)
+                != (authority.app_id, authority.workflow_id, authority.context_object_id, authority.generation)
+            ):
+                raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+            workflow = validate_invocation_workflow(
+                session, tenant_id=owned.tenant_id, app_id=authority.app_id, workflow_id=authority.workflow_id
+            )
+            if native_workflow_revision(workflow) != authority.graph_revision:
+                raise BuilderExecutionPolicyError("native_revision_drift")
+            existing = session.scalar(
+                _owned_query(NativeEffectDispatchClaim, owned).where(
+                    NativeEffectDispatchClaim.operation_id == attempt.operation_id
+                )
+            )
+            if existing is not None:
+                raise BuilderExecutionPolicyError("dispatch_already_consumed")
+            session.add(
+                NativeEffectDispatchClaim(
+                    **_owner(owned),
+                    operation_id=attempt.operation_id,
+                    attempt_id=attempt.id,
+                    claimed_at=self.clock(),
+                )
+            )
+            session.flush()
+        # Leaving loader.locked commits before any caller can perform I/O.
+
+    def _validate_dispatch_locked(
+        self,
+        *,
+        session: Session,
+        owned: OwnedNativeTest,
+        scope: NativeTestScope,
+        intent: EffectIntent,
+        permit: DispatchPermit,
+    ) -> NativeEffectAttempt:
+        """Shared local validation inside the caller's existing root transaction.
+
+        The durable transport consumer must call this while holding loader.locked
+        and insert its unique consumption fence before committing that same lock.
+        No I/O, independent transaction or quota mutation occurs in this helper.
+        """
+        attempt = self._attempt(session, owned, permit)
+        operation = session.scalar(
+            _owned_query(NativeEffectOperation, owned).where(NativeEffectOperation.id == permit.operation_id)
+        )
+        binding = self._binding(session, owned, intent)
+        now = self.clock()
+        if (
+            operation is None
+            or operation.operation_digest != operation_digest(intent.key)
+            or operation.intent_digest != canonical_digest(intent.model_dump(mode="json"))
+            or operation.scope_digest != _scope_digest(intent, binding)
+            or operation.state != "claimed"
+            or attempt.expires_at != datetime.fromisoformat(permit.expires_at)
+            or now >= attempt.expires_at
+            or now >= scope.expires_at
+        ):
             raise BuilderExecutionPolicyError("invalid_dispatch_permit")
         return attempt
 

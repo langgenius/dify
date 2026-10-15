@@ -13,7 +13,7 @@ from uuid import uuid4
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import create_engine, event, func, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -441,3 +441,138 @@ def test_claim_rows_are_unique_append_only_and_block_destructive_downgrade(claim
         with Operations.context(MigrationContext.configure(connection)):
             _migration(MIGRATION).downgrade()
     assert _count(case) == 1
+
+
+def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(claim_case):
+    """Real migration DDL must serialize its empty check with physical claims."""
+    case, permit = claim_case
+    with case.factory() as session:
+        url = session.get_bind().url
+    schema = "dispatch_race_" + uuid4().hex
+    table = "dify_builder_native_effect_dispatch_claims"
+    setup_engine = create_engine(url, poolclass=NullPool)
+    ctx = multiprocessing.get_context("fork")
+    checked_empty, release_downgrade = ctx.Event(), ctx.Event()
+    io_count = ctx.Value("i", 0)
+    processes, receivers = [], []
+
+    def engine_for_schema():
+        return create_engine(
+            url,
+            poolclass=NullPool,
+            connect_args={"options": f"-csearch_path={schema},public -clock_timeout=2000 -cstatement_timeout=10000"},
+        )
+
+    def downgrade_worker(sender):
+        engine = engine_for_schema()
+
+        def after_empty_check(_connection, _cursor, statement, _parameters, _context, _executemany):
+            # Pause only after PostgreSQL has executed the real migration read.
+            # Its table locks remain held; neither SQL nor results are replaced.
+            if statement.strip().lower() == f"select 1 from {table} limit 1":
+                checked_empty.set()
+                assert release_downgrade.wait(15), "downgrade barrier timed out"
+
+        event.listen(engine, "after_cursor_execute", after_empty_check)
+        try:
+            with engine.begin() as connection:
+                with Operations.context(MigrationContext.configure(connection)):
+                    _migration(MIGRATION).downgrade()
+            sender.send("dropped")
+        except RuntimeError as error:
+            if "dispatch claim evidence must be retained" not in str(error):
+                raise
+            sender.send("refused")
+        finally:
+            engine.dispose()
+            sender.close()
+
+    def claimant_worker(sender):
+        engine = engine_for_schema()
+        child = LedgerCase(
+            sessionmaker(engine, expire_on_commit=False), case.actor, case.ref, case.intent, MetadataOwner()
+        )
+
+        def io():
+            with io_count.get_lock():
+                io_count.value += 1
+
+        try:
+            _claim(child, permit, io=io)
+            sender.send(("claimed", None))
+        except DBAPIError as error:
+            sender.send(("blocked", getattr(error.orig, "pgcode", None)))
+        finally:
+            engine.dispose()
+            sender.close()
+
+    def start_worker(target):
+        receiver, sender = ctx.Pipe(duplex=False)
+        process = ctx.Process(target=target, args=(sender,))
+        process.start()
+        sender.close()
+        processes.append(process)
+        receivers.append(receiver)
+        return receiver
+
+    try:
+        with setup_engine.begin() as connection:
+            connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+            # Reuse the deployed immutable function body in the isolated schema.
+            # Owner/attempt tables stay real and are resolved through public.
+            definition = connection.scalar(
+                text("SELECT pg_get_functiondef('public.builder_native_immutable_ledger()'::regprocedure)")
+            )
+            connection.execute(
+                text(
+                    definition.replace(
+                        "public.builder_native_immutable_ledger", f'"{schema}".builder_native_immutable_ledger', 1
+                    )
+                )
+            )
+            connection.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
+            with Operations.context(MigrationContext.configure(connection)):
+                _migration(MIGRATION).upgrade()
+            assert connection.scalar(text(f"SELECT count(*) FROM {table}")) == 0
+        downgrade_receiver = start_worker(downgrade_worker)
+        assert checked_empty.wait(10), "downgrade never reached the real empty-table check"
+        claimant_receiver = start_worker(claimant_worker)
+        assert claimant_receiver.poll(12), "claimant did not finish or time out on the real DDL lock"
+        claim_result, sqlstate = claimant_receiver.recv()
+        release_downgrade.set()
+        assert downgrade_receiver.poll(12), "downgrade did not finish after release"
+        downgrade_result = downgrade_receiver.recv()
+        for process in processes:
+            process.join(10)
+            assert process.exitcode == 0
+        with setup_engine.connect() as connection:
+            exists = connection.scalar(text("SELECT to_regclass(:table)"), {"table": f"{schema}.{table}"}) is not None
+            retained = (
+                connection.scalar(
+                    text(f'SELECT count(*) FROM "{schema}".{table} WHERE attempt_id = :attempt'),
+                    {"attempt": permit.attempt_id},
+                )
+                if exists
+                else 0
+            )
+        if claim_result == "claimed":
+            assert io_count.value == 1
+            assert retained == 1, "downgrade erased a successfully committed physical dispatch claim"
+            assert downgrade_result == "refused"
+        else:
+            assert (claim_result, sqlstate, io_count.value) == ("blocked", "55P03", 0)
+            assert downgrade_result == "dropped"
+            assert not exists
+        _assert_one_spend(case, permit)
+    finally:
+        release_downgrade.set()
+        for process in processes:
+            if process.is_alive():
+                process.kill()
+            process.join(5)
+        for receiver in receivers:
+            receiver.close()
+        # Only the test-owned isolated schema is removed, never production rows.
+        with setup_engine.begin() as connection:
+            connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
+        setup_engine.dispose()

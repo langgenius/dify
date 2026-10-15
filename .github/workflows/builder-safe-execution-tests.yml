@@ -27,6 +27,7 @@ on:
       - 'api/services/agent/access_service.py'
       - 'dify-agent/**'
       - 'api/migrations/versions/*builder*'
+      - 'api/migrations/versions/*native*'
       - 'api/tests/**/dify_builder/**'
       - 'api/tests/**/test_builder*'
       - 'api/tests/fixtures/workflow/builder_restricted/**'
@@ -740,7 +741,7 @@ jobs:
 
               import pytest
 
-              EXPECTED = {'tests.unit_tests.services.dify_builder.native_testing.test_dispatch_claims': {'test_missing_dispatch_evidence_stops_before_authority_lookup': 3, 'test_in_process_dto_bypass_is_revalidated_before_authority_lookup': 6}, 'tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims': {'test_inert_validation_does_not_consume_and_owner_claim_commits_before_io': 1, 'test_two_processes_consume_one_owned_permit_once': 1, 'test_lost_claim_response_and_restarted_process_cannot_dispatch': 1, 'test_rollback_before_claim_commit_invokes_no_io': 1, 'test_owner_mismatch_leaves_no_claim_or_io': 5, 'test_intent_mismatch_leaves_no_claim_or_io': 8, 'test_permit_mismatch_leaves_no_claim_or_io': 4, 'test_current_authority_failure_leaves_no_claim_or_io': 7, 'test_blocked_ancestor_prevents_child_claim': 3, 'test_settlement_cannot_replay_physical_io': 4, 'test_claim_rows_are_unique_append_only_and_block_destructive_downgrade': 1}}
+              EXPECTED = {'tests.unit_tests.services.dify_builder.native_testing.test_dispatch_claims': {'test_missing_dispatch_evidence_stops_before_authority_lookup': 3, 'test_in_process_dto_bypass_is_revalidated_before_authority_lookup': 6}, 'tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims': {'test_inert_validation_does_not_consume_and_owner_claim_commits_before_io': 1, 'test_two_processes_consume_one_owned_permit_once': 1, 'test_lost_claim_response_and_restarted_process_cannot_dispatch': 1, 'test_rollback_before_claim_commit_invokes_no_io': 1, 'test_owner_mismatch_leaves_no_claim_or_io': 5, 'test_intent_mismatch_leaves_no_claim_or_io': 8, 'test_permit_mismatch_leaves_no_claim_or_io': 4, 'test_current_authority_failure_leaves_no_claim_or_io': 7, 'test_blocked_ancestor_prevents_child_claim': 3, 'test_settlement_cannot_replay_physical_io': 4, 'test_claim_rows_are_unique_append_only_and_block_destructive_downgrade': 1, 'test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim': 1}}
               REPORT = "builder-native-dispatch.xml"
               code = pytest.main(['api/tests/unit_tests/services/dify_builder/native_testing/test_dispatch_claims.py', 'api/tests/test_containers_integration_tests/core/workflow/test_builder_native_dispatch_claims.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-dispatch.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
               problems = []
