@@ -32,7 +32,10 @@ def test_capture_policy_round_trip_and_legacy_defaults(sqlite_session_factory: s
     repository.set_trace(context, "app", policy)
     assert repository.get_trace(context, "app") == policy
     with sqlite_session_factory() as session:
-        assert json.loads(session.get(App, "app").tracing) == {
+        app = session.get(App, "app")
+        assert app is not None
+        assert app.tracing is not None
+        assert json.loads(app.tracing) == {
             "enabled": True,
             "tracing_provider": "langfuse",
             "capture_content": True,

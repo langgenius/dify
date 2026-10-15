@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import Literal
 
 import pytest
 from sqlalchemy import Engine
@@ -66,6 +67,7 @@ def case(
     now = naive_utc_now()
     with sqlite_session_factory.begin() as session:
         message = session.get(Message, collection.run.source_id)
+        assert message is not None
         stored_invocation = session.get(ApplicationTraceInvocation, invocation.id)
         assert message is not None
         assert stored_invocation is not None
@@ -100,9 +102,12 @@ def complete_metadata() -> str:
 
 
 @pytest.mark.parametrize("outcome", ["succeeded", "cancelled", "failed"])
-def test_worker_terminal_survives_closed_sse_without_inventing_a_message_write(case: RecoveryCase, outcome: str):
+def test_worker_terminal_survives_closed_sse_without_inventing_a_message_write(
+    case: RecoveryCase, outcome: Literal["succeeded", "failed", "cancelled"]
+) -> None:
     with case.collection.sessions.begin() as session:
         message = session.get(Message, case.collection.run.source_id)
+        assert message is not None
         message.message_metadata = json.dumps({"usage": {"prompt_tokens": 2, "completion_tokens": 1}})
         message.answer = ""
     # A runtime final/usage flush still does not imply that an API message ended.
@@ -116,6 +121,7 @@ def test_worker_terminal_survives_closed_sse_without_inventing_a_message_write(c
         output=output,
     )
     stored = case.collection.repository.get(case.collection.run.id)
+    assert stored is not None
     trace = CanonicalTrace.model_validate(stored.outer_trace)
     root = trace.spans[0]
     assert root.metadata["message_execution_state"] == outcome
@@ -124,11 +130,13 @@ def test_worker_terminal_survives_closed_sse_without_inventing_a_message_write(c
     assert case.scheduled == [stored.id]
     with case.collection.sessions() as session:
         message = session.get(Message, case.collection.run.source_id)
+        assert message is not None
         assert message.answer == ""
+        assert message.message_metadata is not None
         assert set(json.loads(message.message_metadata)) == {"usage"}
 
 
-def test_worker_terminal_revalidates_message_tenant(case: RecoveryCase):
+def test_worker_terminal_revalidates_message_tenant(case: RecoveryCase) -> None:
     from repositories.application_trace_repository import TraceCollectionError
 
     with pytest.raises(TraceCollectionError, match="tracing_source_not_found"):
@@ -139,7 +147,9 @@ def test_worker_terminal_revalidates_message_tenant(case: RecoveryCase):
             outcome="succeeded",
             output="must not export",
         )
-    assert case.collection.repository.get(case.collection.run.id).outer_trace is None
+    stored = case.collection.repository.get(case.collection.run.id)
+    assert stored is not None
+    assert stored.outer_trace is None
 
 
 def test_recovers_real_message_terminal_once_through_existing_trace_task(case: RecoveryCase) -> None:

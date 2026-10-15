@@ -6,7 +6,9 @@ These tests do not claim acceptance by a live third-party account.
 import base64
 import json
 import os
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
+from typing import TypedDict, Unpack
 
 import httpx
 import pytest
@@ -20,6 +22,13 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
 from core.helper import ssrf_proxy
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
 from services.tracing.provider_dispatch import TraceExportUncertainError, export_trace
+
+
+class TransportOptions(TypedDict, total=False):
+    content: bytes | str
+    headers: Mapping[str, str]
+    auth: tuple[str, str]
+    max_retries: int
 
 
 @pytest.fixture
@@ -62,15 +71,19 @@ def trace() -> CanonicalTrace:
 
 
 def _response(url: str, *, body: object = None, content: bytes | None = None, status: int = 200) -> httpx.Response:
-    options = {"content": content} if content is not None else {"json": body or {}}
-    return httpx.Response(status, request=httpx.Request("POST", url), **options)
+    request = httpx.Request("POST", url)
+    if content is not None:
+        return httpx.Response(status, request=request, content=content)
+    return httpx.Response(status, request=request, json=body or {})
 
 
-def test_weave_sdk_exports_tree_session_usage_without_global_credentials(monkeypatch, trace) -> None:
+def test_weave_sdk_exports_tree_session_usage_without_global_credentials(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+) -> None:
     calls = []
     before = dict(os.environ)
 
-    def send(_method, url, **kwargs):
+    def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         body = json.loads(kwargs["content"])
         calls.append((_method, url, kwargs, body))
         start = body.get("start")
@@ -90,8 +103,10 @@ def test_weave_sdk_exports_tree_session_usage_without_global_credentials(monkeyp
     assert dict(os.environ) == before
 
 
-def test_weave_resolves_optional_entity_using_only_supplied_credentials(monkeypatch, trace) -> None:
-    def send(_method, url, **kwargs):
+def test_weave_resolves_optional_entity_using_only_supplied_credentials(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+) -> None:
+    def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         assert kwargs["auth"] == ("api", "tenant-key")
         if url.endswith("/graphql"):
             return _response(url, body={"data": {"viewer": {"entity": "default-team"}}})
@@ -103,13 +118,16 @@ def test_weave_resolves_optional_entity_using_only_supplied_credentials(monkeypa
 
     monkeypatch.setattr(ssrf_proxy, "make_request", send)
     result = export_trace("weave", {"api_key": "tenant-key", "project": "demo"}, trace)
+    assert result.trace_url is not None
     assert "/default-team/demo/" in result.trace_url
 
 
-def test_weave_partial_tree_is_uncertain_and_not_retried(monkeypatch, trace) -> None:
+def test_weave_partial_tree_is_uncertain_and_not_retried(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+) -> None:
     calls = []
 
-    def send(_method, url, **kwargs):
+    def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         calls.append(url)
         if len(calls) > 1:
             return _response(url, status=503)
@@ -122,11 +140,13 @@ def test_weave_partial_tree_is_uncertain_and_not_retried(monkeypatch, trace) -> 
     assert len(calls) == 2
 
 
-def test_mlflow_sdk_span_roundtrip_and_credential_isolation(monkeypatch, trace) -> None:
+def test_mlflow_sdk_span_roundtrip_and_credential_isolation(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+) -> None:
     calls = []
     before = dict(os.environ)
 
-    def send(_method, url, **kwargs):
+    def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         calls.append((url, kwargs))
         return _response(url, content=b"")
 
@@ -150,7 +170,9 @@ def test_mlflow_sdk_span_roundtrip_and_credential_isolation(monkeypatch, trace) 
             options["headers"]["Authorization"]
             == "Basic " + base64.b64encode(f"tenant-{'a' if index == 0 else 'b'}:password".encode()).decode()
         )
-        payload = ExportTraceServiceRequest.FromString(options["content"])
+        content = options["content"]
+        assert isinstance(content, bytes)
+        payload = ExportTraceServiceRequest.FromString(content)
         spans = [Span.from_otel_proto(span) for span in payload.resource_spans[0].scope_spans[0].spans]
         assert spans[1].parent_id == spans[0].span_id
         assert spans[1].get_attribute(SpanAttributeKey.CHAT_USAGE) == {
@@ -164,7 +186,7 @@ def test_mlflow_sdk_span_roundtrip_and_credential_isolation(monkeypatch, trace) 
     assert dict(os.environ) == before
 
 
-def test_mlflow_partial_otlp_ack_is_uncertain(monkeypatch, trace) -> None:
+def test_mlflow_partial_otlp_ack_is_uncertain(monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace) -> None:
     ack = ExportTraceServiceResponse()
     ack.partial_success.rejected_spans = 1
     monkeypatch.setattr(
@@ -178,11 +200,14 @@ def test_mlflow_partial_otlp_ack_is_uncertain(monkeypatch, trace) -> None:
     "credential_type", ["AWS_PRESIGNED_URL", "GCP_SIGNED_URL", "AZURE_SAS_URI", "AZURE_ADLS_GEN2_SAS_URI"]
 )
 @pytest.mark.parametrize("oauth", [False, True])
-def test_databricks_sdk_v3_metadata_and_native_artifact(monkeypatch, trace, credential_type, oauth) -> None:
-    calls, uploaded = [], []
+def test_databricks_sdk_v3_metadata_and_native_artifact(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace, credential_type: str, oauth: bool
+) -> None:
+    calls: list[tuple[str, str, TransportOptions]] = []
+    uploaded: list[TraceData] = []
     before = dict(os.environ)
 
-    def send(_method, url, **kwargs):
+    def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         calls.append((_method, url, kwargs))
         if url.endswith("/oidc/v1/token"):
             assert kwargs["auth"] == ("client", "client-secret")
@@ -205,7 +230,7 @@ def test_databricks_sdk_v3_metadata_and_native_artifact(monkeypatch, trace, cred
             )
         assert "Authorization" not in kwargs["headers"]
         if kwargs.get("content"):
-            uploaded.append(json.loads(kwargs["content"]))
+            uploaded.append(TraceData.from_dict(json.loads(kwargs["content"])))
         return _response(url)
 
     monkeypatch.setattr(ssrf_proxy, "make_request", send)
@@ -215,17 +240,21 @@ def test_databricks_sdk_v3_metadata_and_native_artifact(monkeypatch, trace, cred
     )
     result = export_trace("databricks", config, trace)
     assert result.trace_id == "tr-" + trace.trace_id
-    data = TraceData.from_dict(uploaded[0])
+    data = uploaded[0]
     assert len(data.spans) == 2
     assert data.spans[1].parent_id == data.spans[0].span_id
-    assert data.spans[1].get_attribute(SpanAttributeKey.CHAT_USAGE)["total_tokens"] == 5
+    usage = data.spans[1].get_attribute(SpanAttributeKey.CHAT_USAGE)
+    assert usage is not None
+    assert usage["total_tokens"] == 5
     assert data.spans[1].get_attribute(SpanAttributeKey.LLM_COST) == {"total_cost": 0.01}
     assert dict(os.environ) == before
     assert len(calls) == 3 + int(oauth) + int(credential_type == "AZURE_ADLS_GEN2_SAS_URI")
 
 
-def test_databricks_partial_metadata_delivery_is_uncertain(monkeypatch, trace) -> None:
-    def send(_method, url, **kwargs):
+def test_databricks_partial_metadata_delivery_is_uncertain(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+) -> None:
+    def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         if url.endswith("/api/3.0/mlflow/traces"):
             return _response(url, body=json.loads(kwargs["content"]))
         return _response(url, status=503)
@@ -240,7 +269,9 @@ def test_databricks_partial_metadata_delivery_is_uncertain(monkeypatch, trace) -
 
 
 @pytest.mark.parametrize("provider", ["weave", "databricks"])
-def test_success_status_with_unreadable_ack_is_uncertain(monkeypatch, trace, provider) -> None:
+def test_success_status_with_unreadable_ack_is_uncertain(
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace, provider: str
+) -> None:
     monkeypatch.setattr(ssrf_proxy, "make_request", lambda _method, url, **_kwargs: _response(url, content=b"not-json"))
     config = {
         "api_key": "secret",
