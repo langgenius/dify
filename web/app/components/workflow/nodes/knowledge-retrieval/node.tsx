@@ -40,14 +40,7 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({ data }) => {
               key={id}
               className="flex h-6.5 items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1"
             >
-              <AppIcon
-                size="xs"
-                iconType={iconInfo.icon_type}
-                icon={iconInfo.icon}
-                background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-                imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-                className="shrink-0"
-              />
+              <AppIcon size="xs" className="shrink-0" icon={iconInfo} />
               <div className="w-0 grow truncate system-xs-regular text-text-secondary">{name}</div>
             </div>
           )

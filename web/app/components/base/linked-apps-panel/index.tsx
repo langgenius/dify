@@ -33,13 +33,7 @@ const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {
     >
       <div className="flex items-center">
         <div className={cn('relative size-6 rounded-md')}>
-          <AppIcon
-            size="tiny"
-            iconType={detail.icon_type}
-            icon={detail.icon}
-            background={detail.icon_background}
-            imageUrl={detail.icon_url}
-          />
+          <AppIcon size="tiny" icon={detail} />
         </div>
         {!isMobile && (
           <div className={cn('ml-2 truncate system-sm-medium text-text-primary')}>
