@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Literal, override
 
 import jwt
 import pytest
@@ -78,6 +78,7 @@ def _signing_key(kid: str) -> CapabilitySigningKey:
 class _FailingSigningKeyRing(RotatingCapabilityKeyRing):
     """A real key ring whose signer is unavailable."""
 
+    @override
     def sign(self, claims: DifyCapabilityV2Claims) -> str:
         raise RuntimeError(f"signing HSM unavailable for {claims.action}")
 

@@ -4,7 +4,7 @@ from base64 import b64encode
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import cast
+from typing import cast, override
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -98,6 +98,7 @@ class FakeFileService:
 
 
 class _CommitFailingSession(Session):
+    @override
     def commit(self) -> None:
         raise RuntimeError("database unavailable")
 

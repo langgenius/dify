@@ -19,7 +19,11 @@ from services.knowledge_fs.control_space_commands import (
 )
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_application_service import KnowledgeFSProductApplicationService
-from services.knowledge_fs.product_authorization import DifyKnowledgeFSProductRBACPort, KnowledgeFSProductRBACPort
+from services.knowledge_fs.product_authorization import (
+    DifyKnowledgeFSProductRBACPort,
+    KnowledgeFSProductPermission,
+    KnowledgeFSProductRBACPort,
+)
 from services.knowledge_fs.product_dto import KnowledgeFSSpaceCreatePayload, KnowledgeFSSpaceUpdatePayload
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
@@ -227,9 +231,15 @@ class FakeFacade:
 
     update_space_results: list[object] = field(default_factory=list)
     update_space_calls: list[dict[str, object]] = field(default_factory=list)
+    update_space_payloads: list[KnowledgeFSSpaceUpdatePayload] = field(default_factory=list)
 
-    def update_space(self, **kwargs: object) -> object:
-        self.update_space_calls.append(kwargs)
+    def update_space(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, payload: KnowledgeFSSpaceUpdatePayload
+    ) -> object:
+        self.update_space_calls.append(
+            {"tenant_id": tenant_id, "account_id": account_id, "control_space_id": control_space_id, "payload": payload}
+        )
+        self.update_space_payloads.append(payload)
         result = self.update_space_results.pop(0)
         if isinstance(result, BaseException):
             raise result
@@ -243,12 +253,14 @@ class FakeRBAC:
     allowed: bool = True
     queued_decisions: list[bool] = field(default_factory=list)
     decide: Callable[..., bool] | None = None
-    calls: list[dict[str, object]] = field(default_factory=list)
+    permissions: list[KnowledgeFSProductPermission] = field(default_factory=list)
 
-    def workspace_permission_allowed(self, **kwargs: object) -> bool:
-        self.calls.append(kwargs)
+    def workspace_permission_allowed(
+        self, *, tenant_id: str, account_id: str, permission: KnowledgeFSProductPermission
+    ) -> bool:
+        self.permissions.append(permission)
         if self.decide is not None:
-            return self.decide(**kwargs)
+            return self.decide(tenant_id=tenant_id, account_id=account_id, permission=permission)
         if self.queued_decisions:
             return self.queued_decisions.pop(0)
         return self.allowed
@@ -314,7 +326,7 @@ def test_product_application_create_enforces_workspace_rbac_before_command() -> 
         application.create_space(tenant_id="tenant-1", account_id="account-1", payload=_create_payload())
 
     assert product.require_product_routes_calls == [{"tenant_id": "tenant-1"}]
-    assert len(rbac.calls) == 1
+    assert len(rbac.permissions) == 1
     assert commands.provision_intents == []
 
 
@@ -338,6 +350,7 @@ def test_product_application_create_preserves_model_profile_and_visibility_in_on
     intent = commands.provision_intents[-1]
     assert intent.idempotency_key == "create-once"
     assert intent.model_intent == {"pluginId": "plugin", "provider": "provider", "model": "embedding"}
+    assert intent.profile_intent is not None
     assert intent.profile_intent["rerank"] == {
         "enabled": True,
         "model": {"pluginId": "plugin", "provider": "provider", "model": "rerank"},
@@ -365,7 +378,7 @@ def test_product_application_create_passes_initial_viewers_in_the_atomic_intent(
     intent = commands.provision_intents[-1]
     assert intent.visibility is KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS
     assert intent.member_account_ids == ("member-1",)
-    assert [item["permission"].value for item in rbac.calls] == [
+    assert [permission.value for permission in rbac.permissions] == [
         "knowledge_space_create",
         "knowledge_space_access_config",
     ]
@@ -580,7 +593,7 @@ def test_product_application_update_applies_visibility_and_metadata_then_refetch
             "visibility": KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS,
         }
     ]
-    metadata = facade.update_space_calls[-1]["payload"]
+    metadata = facade.update_space_payloads[-1]
     assert metadata.name == "Renamed"
     assert metadata.icon_background is None
     assert metadata.visibility is None

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Literal, override
 
 import pytest
 
@@ -86,6 +86,7 @@ class FakeDownloadFacade(KnowledgeFSDataFacade):
         self.list_document_revisions_calls: list[dict[str, object]] = []
         self.get_document_calls: list[dict[str, object]] = []
 
+    @override
     def get_logical_document(
         self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
     ) -> KnowledgeFSLogicalDocumentResponse:
@@ -99,6 +100,7 @@ class FakeDownloadFacade(KnowledgeFSDataFacade):
         )
         return self._logical
 
+    @override
     def list_document_revisions(
         self,
         *,
@@ -122,6 +124,7 @@ class FakeDownloadFacade(KnowledgeFSDataFacade):
         assert self._revisions is not None
         return self._revisions
 
+    @override
     def get_document(
         self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
     ) -> KnowledgeFSDocumentResponse:

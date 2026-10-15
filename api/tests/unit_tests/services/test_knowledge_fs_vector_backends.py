@@ -1,11 +1,14 @@
-from dataclasses import dataclass, field, replace
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
 import pytest
-from elastic_transport import ApiResponseMeta, NodeConfig
+from elastic_transport import ApiResponseMeta, HttpHeaders, NodeConfig
 from elasticsearch import BadRequestError, NotFoundError
 from weaviate.classes.config import ConsistencyLevel, DataType, VectorDistances
+from weaviate.classes.data import DataObject
+from weaviate.classes.query import Filter
 
 from services.knowledge_fs.vector_store import (
     VectorRequest,
@@ -22,26 +25,37 @@ if TYPE_CHECKING:
     from weaviate import WeaviateClient
 
 A, B, GENERATION = (f"00000000-0000-4000-8000-{n:012d}" for n in (1, 2, 3))
-SCOPE = {"tenant_id": A, "knowledge_space_id": B, "vector_space_id": "test", "kind": "dense", "dimension": 2}
-POINT = {"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [3, 4]}
+SCOPE: dict[str, object] = {
+    "tenant_id": A,
+    "knowledge_space_id": B,
+    "vector_space_id": "test",
+    "kind": "dense",
+    "dimension": 2,
+}
+POINT: dict[str, object] = {"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [3, 4]}
+
+type FieldMappings = dict[str, dict[str, object]]
+type IndexMapping = dict[str, dict[str, FieldMappings]]
+type ElasticsearchBody = dict[str, object]
+type WeaviatePoint = DataObject[dict[str, str], None]
 
 
-def request(operation, **kwargs):
+def request(operation: str, **kwargs: object) -> VectorRequest:
     return VectorRequest.model_validate({"operation": operation, "scope": SCOPE, **kwargs})
 
 
-def fail_with_configured_store(expected):
+def fail_with_configured_store(expected: type[ElasticsearchVectorStore] | type[WeaviateVectorStore]) -> None:
     with configured_vector_client(A) as store:
         assert isinstance(store, expected)
         raise RuntimeError("failure")
 
 
-def es_error(status, name):
-    meta = ApiResponseMeta(status, "1.1", {}, 0, NodeConfig("http", "localhost", 9200))
+def es_error(status: int, name: str) -> NotFoundError | BadRequestError:
+    meta = ApiResponseMeta(status, "1.1", HttpHeaders(), 0, NodeConfig("http", "localhost", 9200))
     return (NotFoundError if status == 404 else BadRequestError)(name, meta, {"error": name})
 
 
-def es_mapping():
+def es_mapping() -> IndexMapping:
     return {
         "mappings": {
             "properties": {
@@ -57,13 +71,14 @@ def es_mapping():
 class FakeElasticsearchIndices:
     """Serves stored mappings per index; a missing index raises Elasticsearch's 404 error."""
 
-    mappings: dict[str, dict] = field(default_factory=dict)
-    queued_get_mapping_results: list[dict | Exception] = field(default_factory=list)
+    mappings: dict[str, IndexMapping] = field(default_factory=dict)
+    queued_get_mapping_results: list[dict[str, IndexMapping] | Exception] = field(default_factory=list)
     create_failure: Exception | None = None
     get_mapping_calls: list[str] = field(default_factory=list)
-    create_calls: list[dict[str, object]] = field(default_factory=list)
+    created_indexes: list[str] = field(default_factory=list)
+    created_mappings: list[dict[str, object]] = field(default_factory=list)
 
-    def get_mapping(self, *, index):
+    def get_mapping(self, *, index: str) -> dict[str, IndexMapping]:
         self.get_mapping_calls.append(index)
         if self.queued_get_mapping_results:
             result = self.queued_get_mapping_results.pop(0)
@@ -74,70 +89,90 @@ class FakeElasticsearchIndices:
             raise es_error(404, "missing")
         return {index: self.mappings[index]}
 
-    def create(self, *, index, mappings):
-        self.create_calls.append({"index": index, "mappings": mappings})
+    def create(self, *, index: str, mappings: dict[str, object]) -> None:
+        self.created_indexes.append(index)
+        self.created_mappings.append(mappings)
         if self.create_failure is not None:
             raise self.create_failure
+
+
+@dataclass(frozen=True)
+class BulkCall:
+    operations: list[dict[str, object]]
+    refresh: str
+
+    def target_indexes(self, action: str) -> set[object]:
+        """Return the `_index` of every bulk action line of the given kind."""
+        indexes: set[object] = set()
+        for operation in self.operations:
+            target = operation.get(action)
+            if isinstance(target, dict):
+                indexes.add(target.get("_index"))
+        return indexes
 
 
 @dataclass
 class FakeElasticsearch:
     indices: FakeElasticsearchIndices = field(default_factory=FakeElasticsearchIndices)
-    bulk_result: dict = field(default_factory=lambda: {"items": [{"index": {"status": 201}}]})
-    mget_result: dict = field(default_factory=lambda: {"docs": []})
-    search_result: dict = field(default_factory=lambda: {"hits": {"hits": []}})
-    bulk_calls: list[dict] = field(default_factory=list)
-    mget_calls: list[dict] = field(default_factory=list)
-    search_calls: list[dict] = field(default_factory=list)
+    bulk_result: ElasticsearchBody = field(default_factory=lambda: {"items": [{"index": {"status": 201}}]})
+    mget_result: ElasticsearchBody = field(default_factory=lambda: {"docs": list[object]()})
+    search_result: ElasticsearchBody = field(default_factory=lambda: {"hits": {"hits": list[object]()}})
+    bulk_calls: list[BulkCall] = field(default_factory=list)
+    mget_calls: list[dict[str, object]] = field(default_factory=list)
+    search_calls: list[dict[str, object]] = field(default_factory=list)
     close_count: int = 0
 
-    def bulk(self, *, operations, refresh):
-        self.bulk_calls.append({"operations": operations, "refresh": refresh})
+    def bulk(self, *, operations: list[dict[str, object]], refresh: str) -> ElasticsearchBody:
+        self.bulk_calls.append(BulkCall(operations=operations, refresh=refresh))
         return self.bulk_result
 
-    def mget(self, *, index, ids):
+    def mget(self, *, index: str, ids: list[str]) -> ElasticsearchBody:
         self.mget_calls.append({"index": index, "ids": ids})
         return self.mget_result
 
-    def search(self, **kwargs):
+    def search(self, **kwargs: object) -> ElasticsearchBody:
         self.search_calls.append(kwargs)
         return self.search_result
 
-    def close(self):
+    def close(self) -> None:
         self.close_count += 1
 
 
+type EsHarness = tuple[ElasticsearchVectorStore, FakeElasticsearch]
+
+
 @pytest.fixture
-def es():
+def es() -> EsHarness:
     scope = VectorScope.model_validate(SCOPE)
     client = FakeElasticsearch()
     client.indices.mappings = {name: es_mapping() for name in (scope.collection_name, scope.legacy_collection_name)}
     return ElasticsearchVectorStore(cast("Elasticsearch", client)), client
 
 
-def test_elasticsearch_retry_write_readback_filter_and_cosine(es):
-    es, client = es
+def test_elasticsearch_retry_write_readback_filter_and_cosine(es: EsHarness) -> None:
+    store, client = es
     for _ in range(2):
-        execute_vector_request(es, request("upsert", points=[POINT]))
+        execute_vector_request(store, request("upsert", points=[POINT]))
     write = client.bulk_calls[-1]
-    assert write["operations"][0]["index"]["_id"] == A
-    assert write["operations"][0]["index"]["_index"] == VectorScope.model_validate(SCOPE).collection_name
-    assert write["operations"][1] == {key: val for key, val in POINT.items() if key != "id"}
-    assert write["refresh"] == "wait_for"
-    client.mget_result = {"docs": [{"_id": A, "found": True, "_source": write["operations"][1]}]}
-    assert execute_vector_request(es, request("get", ids=[A]))["points"] == [POINT]
+    assert write.operations[0] == {"index": {"_index": VectorScope.model_validate(SCOPE).collection_name, "_id": A}}
+    assert write.operations[1] == {key: val for key, val in POINT.items() if key != "id"}
+    assert write.refresh == "wait_for"
+    client.mget_result = {"docs": [{"_id": A, "found": True, "_source": write.operations[1]}]}
+    assert execute_vector_request(store, request("get", ids=[A]))["points"] == [POINT]
     client.search_result = {"hits": {"hits": [{"_id": A, "_score": 0.8}]}}
-    matches = execute_vector_request(es, request("search", ids=[A], query_vector=[1, 0]))["matches"]
+    matches = execute_vector_request(store, request("search", ids=[A], query_vector=[1, 0]))["matches"]
     assert matches[0]["score"] == pytest.approx(0.6)
     search = client.search_calls[-1]
-    assert search["knn"]["filter"] == {"ids": {"values": [A]}}
+    knn = search["knn"]
+    assert isinstance(knn, dict)
+    assert knn["filter"] == {"ids": {"values": [A]}}
     assert search["allow_partial_search_results"] is False
 
 
 @pytest.mark.parametrize("operation", ["get", "search", "delete"])
 @pytest.mark.parametrize("names", ["legacy", "current", "both"])
-def test_elasticsearch_names_preserve_existing_vectors_and_cleanup(es, operation, names):
-    es, client = es
+def test_elasticsearch_names_preserve_existing_vectors_and_cleanup(es: EsHarness, operation: str, names: str) -> None:
+    store, client = es
     scope = VectorScope.model_validate(SCOPE)
     available = {
         name: mapping
@@ -151,107 +186,109 @@ def test_elasticsearch_names_preserve_existing_vectors_and_cleanup(es, operation
     client.search_result = {"hits": {"hits": [{"_id": A, "_score": 1.0}]}}
     client.bulk_result = {"items": [{"delete": {"status": 200}}]}
     result = execute_vector_request(
-        es, request(operation, ids=[A], **({"query_vector": [1, 0], "limit": 1} if operation == "search" else {}))
+        store, request(operation, ids=[A], **({"query_vector": [1, 0], "limit": 1} if operation == "search" else {}))
     )
     assert result == {
         "points": [POINT] if operation == "get" else [],
         "matches": [{"id": A, "score": 1.0}] if operation == "search" else [],
     }
     if operation == "delete":
-        assert {call["operations"][0]["delete"]["_index"] for call in client.bulk_calls} == set(available)
+        assert set().union(*(call.target_indexes("delete") for call in client.bulk_calls)) == set(available)
     else:
         calls = client.mget_calls if operation == "get" else client.search_calls
         assert {call["index"] for call in calls} == set(available)
-    assert client.indices.create_calls == []
+    assert client.indices.created_indexes == []
 
 
 @pytest.mark.parametrize("race", [False, True])
-def test_elasticsearch_first_writer_or_compatible_creation_race(es, race):
-    es, client = es
+def test_elasticsearch_first_writer_or_compatible_creation_race(es: EsHarness, race: bool) -> None:
+    store, client = es
     mapping = dict(client.indices.mappings)
     client.indices.queued_get_mapping_results = [es_error(404, "index_not_found_exception"), mapping]
     if race:
         client.indices.create_failure = es_error(400, "resource_already_exists_exception")
-    execute_vector_request(es, request("upsert", points=[POINT]))
-    created = client.indices.create_calls[-1]["mappings"]
-    assert created["properties"]["vector"]["index_options"] == {"type": "hnsw"}
+    execute_vector_request(store, request("upsert", points=[POINT]))
+    created = client.indices.created_mappings[-1]
+    properties = created["properties"]
+    assert isinstance(properties, dict)
+    assert properties["vector"]["index_options"] == {"type": "hnsw"}
     assert created["dynamic"] == "strict"
 
 
-def test_elasticsearch_creation_error_does_not_hide_configuration_failure(es):
-    es, client = es
+def test_elasticsearch_creation_error_does_not_hide_configuration_failure(es: EsHarness) -> None:
+    store, client = es
     client.indices.mappings = {}
     client.indices.create_failure = es_error(400, "mapper_parsing_exception")
     with pytest.raises(BadRequestError):
-        execute_vector_request(es, request("upsert", points=[POINT]))
+        execute_vector_request(store, request("upsert", points=[POINT]))
     assert client.bulk_calls == []
 
 
 @pytest.mark.parametrize("operation", ["search", "get", "delete"])
-def test_elasticsearch_missing_index_is_explicit_for_search(es, operation):
-    es, client = es
+def test_elasticsearch_missing_index_is_explicit_for_search(es: EsHarness, operation: str) -> None:
+    store, client = es
     client.indices.mappings = {}
     payload = request(operation, ids=[A], **({"query_vector": [1, 0]} if operation == "search" else {}))
     if operation == "search":
         with pytest.raises(VectorStoreUnavailableError, match="missing"):
-            execute_vector_request(es, payload)
+            execute_vector_request(store, payload)
     else:
-        assert execute_vector_request(es, payload) == {"points": [], "matches": []}
-    assert client.indices.create_calls == []
+        assert execute_vector_request(store, payload) == {"points": [], "matches": []}
+    assert client.indices.created_indexes == []
 
 
 @pytest.mark.parametrize("change", [{"dims": 3}, {"similarity": "l2_norm"}, {"index": False}, {"element_type": "byte"}])
-def test_elasticsearch_incompatible_index_is_never_overwritten(es, change):
-    es, client = es
+def test_elasticsearch_incompatible_index_is_never_overwritten(es: EsHarness, change: dict[str, object]) -> None:
+    store, client = es
     mapping = next(iter(client.indices.mappings.values()))["mappings"]
     mapping["properties"]["vector"].update(change)
     with pytest.raises(VectorStoreUnavailableError, match="incompatible"):
-        execute_vector_request(es, request("upsert", points=[POINT]))
+        execute_vector_request(store, request("upsert", points=[POINT]))
     assert client.bulk_calls == []
-    assert client.indices.create_calls == []
+    assert client.indices.created_indexes == []
 
 
-def test_elasticsearch_dimension_cap_fails_before_native_io(es):
-    es, client = es
+def test_elasticsearch_dimension_cap_fails_before_native_io(es: EsHarness) -> None:
+    store, client = es
     scope = {**SCOPE, "dimension": 4097}
     with pytest.raises(VectorStoreUnavailableError, match="4096"):
-        execute_vector_request(es, VectorRequest(operation="get", scope=VectorScope(**scope), ids=[A]))
+        execute_vector_request(store, VectorRequest(operation="get", scope=VectorScope.model_validate(scope), ids=[A]))
     assert client.indices.get_mapping_calls == []
 
 
 @pytest.mark.parametrize("result", [{"items": []}, {"items": [{"index": {"status": 429}}]}])
-def test_elasticsearch_partial_write_is_not_success(es, result):
-    es, client = es
+def test_elasticsearch_partial_write_is_not_success(es: EsHarness, result: dict[str, object]) -> None:
+    store, client = es
     client.bulk_result = result
     with pytest.raises(VectorStoreUnavailableError, match="acknowledged"):
-        execute_vector_request(es, request("upsert", points=[POINT]))
+        execute_vector_request(store, request("upsert", points=[POINT]))
 
 
 @pytest.mark.parametrize("result", [{"docs": []}, {"docs": [{"error": "shard unavailable"}]}])
-def test_elasticsearch_partial_read_is_not_missing_data(es, result):
-    es, client = es
+def test_elasticsearch_partial_read_is_not_missing_data(es: EsHarness, result: dict[str, object]) -> None:
+    store, client = es
     client.mget_result = result
     with pytest.raises(VectorStoreUnavailableError, match="incomplete"):
-        execute_vector_request(es, request("get", ids=[A]))
+        execute_vector_request(store, request("get", ids=[A]))
 
 
 @pytest.mark.parametrize("failure", [{"timed_out": True}, {"_shards": {"failed": 1}}])
-def test_elasticsearch_partial_search_is_not_success(es, failure):
-    es, client = es
+def test_elasticsearch_partial_search_is_not_success(es: EsHarness, failure: dict[str, object]) -> None:
+    store, client = es
     client.search_result = failure
     with pytest.raises(VectorStoreUnavailableError, match="incomplete"):
-        execute_vector_request(es, request("search", ids=[A], query_vector=[1, 0]))
+        execute_vector_request(store, request("search", ids=[A], query_vector=[1, 0]))
 
 
 @pytest.mark.parametrize("status", [200, 404])
-def test_elasticsearch_deletion_requires_visible_absence(es, status):
-    es, client = es
+def test_elasticsearch_deletion_requires_visible_absence(es: EsHarness, status: int) -> None:
+    store, client = es
     client.bulk_result = {"items": [{"delete": {"status": status}}]}
     client.mget_result = {"docs": [{"_id": A, "found": False}]}
-    execute_vector_request(es, request("delete", ids=[A]))
+    execute_vector_request(store, request("delete", ids=[A]))
     client.mget_result = {"docs": [{"_id": A, "found": True, "_source": {k: v for k, v in POINT.items() if k != "id"}}]}
     with pytest.raises(VectorStoreUnavailableError, match="not yet visible"):
-        execute_vector_request(es, request("delete", ids=[A]))
+        execute_vector_request(store, request("delete", ids=[A]))
 
 
 @pytest.mark.parametrize(
@@ -262,7 +299,9 @@ def test_elasticsearch_deletion_requires_visible_absence(es, status):
         ("http://[::1]:9201", "http://[::1]:9201"),
     ],
 )
-def test_elasticsearch_uses_dify_config_and_closes_on_failure(config_overrides, host, expected):
+def test_elasticsearch_uses_dify_config_and_closes_on_failure(
+    config_overrides: Callable[..., None], host: str, expected: str
+) -> None:
     config_overrides(
         VECTOR_STORE="elasticsearch",
         ELASTICSEARCH_HOST=host,
@@ -281,7 +320,7 @@ def test_elasticsearch_uses_dify_config_and_closes_on_failure(config_overrides, 
         native.return_value.close.assert_called_once()
 
 
-def test_elasticsearch_cloud_key_and_missing_endpoints(config_overrides):
+def test_elasticsearch_cloud_key_and_missing_endpoints(config_overrides: Callable[..., None]) -> None:
     config_overrides(
         VECTOR_STORE="elasticsearch",
         ELASTICSEARCH_USE_CLOUD=True,
@@ -308,7 +347,7 @@ class WeaviateMetadata:
 @dataclass
 class WeaviateObject:
     uuid: str = A
-    properties: dict[str, str] = field(default_factory=dict)
+    properties: Mapping[str, object] = field(default_factory=dict)
     vector: dict[str, list[float]] = field(default_factory=dict)
     metadata: WeaviateMetadata = field(default_factory=WeaviateMetadata)
 
@@ -345,11 +384,11 @@ class WeaviateProperty:
     data_type: DataType
 
 
-@dataclass(frozen=True)
+@dataclass
 class WeaviateCollectionConfig:
     description: str
     vectorizer: str
-    vector_config: dict | None
+    vector_config: dict[str, object] | None
     vector_index_config: WeaviateVectorIndexConfig | None
     multi_tenancy_config: WeaviateMultiTenancyConfig
     properties: list[WeaviateProperty]
@@ -370,7 +409,7 @@ class FakeWeaviateConfigAccessor:
         )
     )
 
-    def get(self):
+    def get(self) -> WeaviateCollectionConfig:
         return self.current
 
 
@@ -380,14 +419,14 @@ class FakeWeaviateData:
         default_factory=lambda: WeaviateInsertResult(has_errors=False, uuids={0: A})
     )
     delete_result: WeaviateDeleteResult = field(default_factory=WeaviateDeleteResult)
-    insert_calls: list[list] = field(default_factory=list)
+    insert_calls: list[list[WeaviatePoint]] = field(default_factory=list)
     delete_calls: list[object] = field(default_factory=list)
 
-    def insert_many(self, objects):
+    def insert_many(self, objects: list[WeaviatePoint]) -> WeaviateInsertResult:
         self.insert_calls.append(objects)
         return self.insert_result
 
-    def delete_many(self, *, where):
+    def delete_many(self, *, where: object) -> WeaviateDeleteResult:
         self.delete_calls.append(where)
         return self.delete_result
 
@@ -399,11 +438,11 @@ class FakeWeaviateQuery:
     fetch_calls: list[dict[str, object]] = field(default_factory=list)
     near_vector_calls: list[dict[str, object]] = field(default_factory=list)
 
-    def fetch_objects(self, **kwargs):
+    def fetch_objects(self, **kwargs: object) -> WeaviateQueryResult:
         self.fetch_calls.append(kwargs)
         return self.fetch_result
 
-    def near_vector(self, **kwargs):
+    def near_vector(self, **kwargs: object) -> WeaviateQueryResult:
         self.near_vector_calls.append(kwargs)
         return self.near_result
 
@@ -420,7 +459,7 @@ class FakeWeaviateCollectionHandle:
     collection: FakeWeaviateCollection
     consistency_levels: list[ConsistencyLevel]
 
-    def with_consistency_level(self, level):
+    def with_consistency_level(self, level: ConsistencyLevel) -> FakeWeaviateCollection:
         self.consistency_levels.append(level)
         return self.collection
 
@@ -438,18 +477,18 @@ class FakeWeaviateCollections:
     use_calls: list[str] = field(default_factory=list)
     consistency_levels: list[ConsistencyLevel] = field(default_factory=list)
 
-    def exists(self, name):
+    def exists(self, name: str) -> bool:
         self.exists_calls.append(name)
         if self.queued_exists:
             return self.queued_exists.pop(0)
         return self.existing is None or name in self.existing
 
-    def create(self, **kwargs):
+    def create(self, **kwargs: object) -> None:
         self.create_calls.append(kwargs)
         if self.create_failure is not None:
             raise self.create_failure
 
-    def use(self, name):
+    def use(self, name: str) -> FakeWeaviateCollectionHandle:
         self.use_calls.append(name)
         return FakeWeaviateCollectionHandle(collection=self.collection, consistency_levels=self.consistency_levels)
 
@@ -459,17 +498,20 @@ class FakeWeaviateClient:
     collections: FakeWeaviateCollections = field(default_factory=FakeWeaviateCollections)
     close_count: int = 0
 
-    def close(self):
+    def close(self) -> None:
         self.close_count += 1
 
 
+type WeaviateHarness = tuple[WeaviateVectorStore, FakeWeaviateClient, FakeWeaviateCollection]
+
+
 @pytest.fixture
-def weaviate():
+def weaviate() -> WeaviateHarness:
     client = FakeWeaviateClient()
     return WeaviateVectorStore(cast("WeaviateClient", client)), client, client.collections.collection
 
 
-def test_weaviate_retry_readback_authorized_search_and_cosine(weaviate):
+def test_weaviate_retry_readback_authorized_search_and_cosine(weaviate: WeaviateHarness) -> None:
     store, client, collection = weaviate
     for _ in range(2):
         execute_vector_request(store, request("upsert", points=[POINT]))
@@ -487,16 +529,16 @@ def test_weaviate_retry_readback_authorized_search_and_cosine(weaviate):
     collection.query.near_result = WeaviateQueryResult(objects=[obj])
     result = execute_vector_request(store, request("search", ids=[A], query_vector=[1, 0]))
     assert result["matches"] == [{"id": A, "score": 0.6}]
-    where = collection.query.near_vector_calls[-1]["filters"]
-    assert where.target == "_id"
-    assert where.value == [A]
+    assert collection.query.near_vector_calls[-1]["filters"] == Filter.by_id().contains_any([A])
     assert client.collections.consistency_levels[-1] == ConsistencyLevel.ALL
     assert client.collections.use_calls[-1].startswith("Knowledgefs_v1_")
 
 
 @pytest.mark.parametrize("operation", ["get", "search", "delete"])
 @pytest.mark.parametrize("names", ["legacy", "current", "both"])
-def test_weaviate_names_preserve_existing_vectors_and_cleanup(weaviate, operation, names):
+def test_weaviate_names_preserve_existing_vectors_and_cleanup(
+    weaviate: WeaviateHarness, operation: str, names: str
+) -> None:
     store, client, collection = weaviate
     scope = VectorScope.model_validate(SCOPE)
     available = {
@@ -527,7 +569,7 @@ def test_weaviate_names_preserve_existing_vectors_and_cleanup(weaviate, operatio
 
 
 @pytest.mark.parametrize("race", [False, True])
-def test_weaviate_create_or_compatible_race(weaviate, race):
+def test_weaviate_create_or_compatible_race(weaviate: WeaviateHarness, race: bool) -> None:
     store, client, collection = weaviate
     client.collections.queued_exists = [False, True]
     if race:
@@ -539,7 +581,7 @@ def test_weaviate_create_or_compatible_race(weaviate, race):
     assert len(collection.data.insert_calls) == 1
 
 
-def test_weaviate_failed_creation_is_not_hidden(weaviate):
+def test_weaviate_failed_creation_is_not_hidden(weaviate: WeaviateHarness) -> None:
     store, client, collection = weaviate
     client.collections.existing = set()
     client.collections.create_failure = RuntimeError("creation failed")
@@ -549,7 +591,7 @@ def test_weaviate_failed_creation_is_not_hidden(weaviate):
 
 
 @pytest.mark.parametrize("operation", ["search", "get", "delete"])
-def test_weaviate_missing_collection_search_fails(weaviate, operation):
+def test_weaviate_missing_collection_search_fails(weaviate: WeaviateHarness, operation: str) -> None:
     store, client, collection = weaviate
     client.collections.existing = set()
     payload = request(operation, ids=[A], **({"query_vector": [1, 0]} if operation == "search" else {}))
@@ -571,9 +613,9 @@ def test_weaviate_missing_collection_search_fails(weaviate, operation):
         ("properties", []),
     ],
 )
-def test_weaviate_incompatible_schema_is_never_written(weaviate, field, value):
+def test_weaviate_incompatible_schema_is_never_written(weaviate: WeaviateHarness, field: str, value: object) -> None:
     store, client, collection = weaviate
-    collection.config.current = replace(collection.config.current, **{field: value})
+    setattr(collection.config.current, field, value)
     with pytest.raises(VectorStoreUnavailableError, match="incompatible"):
         execute_vector_request(store, request("upsert", points=[POINT]))
     assert collection.data.insert_calls == []
@@ -582,14 +624,14 @@ def test_weaviate_incompatible_schema_is_never_written(weaviate, field, value):
 @pytest.mark.parametrize(
     "result", [WeaviateInsertResult(has_errors=True, uuids={}), WeaviateInsertResult(has_errors=False, uuids={})]
 )
-def test_weaviate_partial_batch_is_not_success(weaviate, result):
+def test_weaviate_partial_batch_is_not_success(weaviate: WeaviateHarness, result: WeaviateInsertResult) -> None:
     store, client, collection = weaviate
     collection.data.insert_result = result
     with pytest.raises(VectorStoreUnavailableError, match="acknowledged"):
         execute_vector_request(store, request("upsert", points=[POINT]))
 
 
-def test_weaviate_search_missing_distance_is_not_success(weaviate):
+def test_weaviate_search_missing_distance_is_not_success(weaviate: WeaviateHarness) -> None:
     store, client, collection = weaviate
     collection.query.near_result = WeaviateQueryResult(
         objects=[WeaviateObject(metadata=WeaviateMetadata(distance=None))]
@@ -598,7 +640,7 @@ def test_weaviate_search_missing_distance_is_not_success(weaviate):
         execute_vector_request(store, request("search", ids=[A], query_vector=[1, 0]))
 
 
-def test_weaviate_delete_requires_ack_and_visible_absence(weaviate):
+def test_weaviate_delete_requires_ack_and_visible_absence(weaviate: WeaviateHarness) -> None:
     store, client, collection = weaviate
     for _ in range(2):
         execute_vector_request(store, request("delete", ids=[A]))
@@ -620,7 +662,9 @@ def test_weaviate_delete_requires_ack_and_visible_absence(weaviate):
         ("host", "rpc:50052", False, 50052),
     ],
 )
-def test_weaviate_config_and_resource_cleanup(config_overrides, endpoint, grpc, secure, port):
+def test_weaviate_config_and_resource_cleanup(
+    config_overrides: Callable[..., None], endpoint: str, grpc: str | None, secure: bool, port: int
+) -> None:
     config_overrides(
         VECTOR_STORE="weaviate", WEAVIATE_ENDPOINT=endpoint, WEAVIATE_GRPC_ENDPOINT=grpc, WEAVIATE_API_KEY="secret"
     )
@@ -632,7 +676,7 @@ def test_weaviate_config_and_resource_cleanup(config_overrides, endpoint, grpc, 
         connect.return_value.close.assert_called_once()
 
 
-def test_weaviate_missing_and_invalid_endpoints(config_overrides):
+def test_weaviate_missing_and_invalid_endpoints(config_overrides: Callable[..., None]) -> None:
     config_overrides(VECTOR_STORE="weaviate", WEAVIATE_ENDPOINT="")
     with pytest.raises(VectorStoreUnavailableError, match="endpoint"):
         WeaviateVectorStore.from_config()

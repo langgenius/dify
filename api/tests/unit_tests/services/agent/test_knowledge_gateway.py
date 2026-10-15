@@ -412,7 +412,9 @@ def test_workflow_space_union_reads_frozen_snapshots_not_graph_soul() -> None:
     assert "workflow_agent_node_bindings.workflow_version" in sql
 
 
-def test_investigation_capture_reauthorizes_agent_and_keeps_stable_id(authorized_gateway):
+def test_investigation_capture_reauthorizes_agent_and_keeps_stable_id(
+    authorized_gateway: tuple[gateway.AgentKnowledgeGateway, FakeRuntime],
+) -> None:
     from dify_agent.protocol.knowledge_investigation import KnowledgeAttempt, KnowledgeInvestigationPayload
 
     service, runtime = authorized_gateway
