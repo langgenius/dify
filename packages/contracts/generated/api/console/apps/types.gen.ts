@@ -825,11 +825,15 @@ export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
 export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AppTraceResponse = {
+  capture_agent?: boolean
+  capture_content?: boolean
   enabled?: boolean
   tracing_provider?: string | null
 }
 
 export type AppTracePayload = {
+  capture_agent?: boolean
+  capture_content?: boolean
   enabled: boolean
   tracing_provider?: string | null
 }
@@ -837,6 +841,18 @@ export type AppTracePayload = {
 export type TracingProviderUnavailableError = ErrorResponse & {
   code: 'tracing_provider_unavailable'
   status: 400
+}
+
+export type TraceProviderCapabilitiesResponse = {
+  agent_spans: boolean
+  api_collection_enabled: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
 }
 
 export type UnsupportedTracingProviderError = ErrorResponse & {
@@ -888,6 +904,67 @@ export type TracingConfigVerificationFailedError = ErrorResponse & {
 
 export type TraceConfigAlreadyExistsError = ErrorResponse & {
   code: 'trace_config_already_exists'
+  status: 409
+}
+
+export type TraceRunStatusResponse = {
+  accepted_at?: string | null
+  attempts?: number | null
+  capabilities?: TraceProviderSupportResponse | null
+  capture_agent?: boolean | null
+  capture_content?: boolean | null
+  config_revision?: string | null
+  error_code?: string | null
+  provider?: string | null
+  queryable?: boolean | null
+  source_id: string
+  source_kind: TraceSourceKind
+  span_count?: number | null
+  span_url?: string | null
+  status:
+    | 'accepted'
+    | 'collecting'
+    | 'exporting'
+    | 'failed'
+    | 'not_collected'
+    | 'ready'
+    | 'retrying'
+    | 'uncertain'
+  trace_id?: string | null
+  trace_url?: string | null
+}
+
+export type TracingNodeNotFoundError = ErrorResponse & {
+  code: 'tracing_node_not_found'
+  status: 404
+}
+
+export type TracingSourceNotFoundError = ErrorResponse & {
+  code: 'tracing_source_not_found'
+  status: 404
+}
+
+export type TraceRunRetryPayload = {
+  acknowledge_possible_duplicates?: boolean
+}
+
+export type TracingRunNotFoundError = ErrorResponse & {
+  code: 'tracing_run_not_found'
+  status: 404
+}
+
+export type TracingAlreadyAcceptedError = ErrorResponse & {
+  code: 'tracing_already_accepted'
+  status: 409
+}
+
+export type TracingDuplicateAcknowledgementRequiredError = ErrorResponse & {
+  code: 'tracing_duplicate_acknowledgement_required'
+  status: 409
+}
+
+export type TracingRetryNotAllowedError = ErrorResponse & {
+  code: 'tracing_retry_not_allowed'
   status: 409
 }
 
@@ -2124,6 +2201,19 @@ export type TextToSpeechVoiceResponse = {
   name: string
   value: string
 }
+
+export type TraceProviderSupportResponse = {
+  agent_spans: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
+}
+
+export type TraceSourceKind = 'message' | 'node' | 'workflow'
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
@@ -6903,6 +6993,32 @@ export type PostAppsByAppIdTraceResponses = {
 export type PostAppsByAppIdTraceResponse =
   PostAppsByAppIdTraceResponses[keyof PostAppsByAppIdTraceResponses]
 
+export type GetAppsByAppIdTraceCapabilitiesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    tracing_provider: string
+  }
+  url: '/apps/{app_id}/trace-capabilities'
+}
+
+export type GetAppsByAppIdTraceCapabilitiesErrors = {
+  400: UnsupportedTracingProviderError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceCapabilitiesError =
+  GetAppsByAppIdTraceCapabilitiesErrors[keyof GetAppsByAppIdTraceCapabilitiesErrors]
+
+export type GetAppsByAppIdTraceCapabilitiesResponses = {
+  200: TraceProviderCapabilitiesResponse
+}
+
+export type GetAppsByAppIdTraceCapabilitiesResponse =
+  GetAppsByAppIdTraceCapabilitiesResponses[keyof GetAppsByAppIdTraceCapabilitiesResponses]
+
 export type DeleteAppsByAppIdTraceConfigData = {
   body?: never
   path: {
@@ -7024,6 +7140,71 @@ export type PostAppsByAppIdTraceConfigResponses = {
 
 export type PostAppsByAppIdTraceConfigResponse =
   PostAppsByAppIdTraceConfigResponses[keyof PostAppsByAppIdTraceConfigResponses]
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdData = {
+  body?: never
+  path: {
+    app_id: string
+    source_id: string
+    source_kind: 'message' | 'node' | 'workflow'
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/apps/{app_id}/trace-runs/{source_kind}/{source_id}'
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors = {
+  404: TracingNodeNotFoundError | TracingSourceNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdError =
+  GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors[keyof GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors]
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponse =
+  GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses[keyof GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses]
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryData = {
+  body: TraceRunRetryPayload
+  path: {
+    app_id: string
+    source_id: string
+    source_kind: 'message' | 'node' | 'workflow'
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/apps/{app_id}/trace-runs/{source_kind}/{source_id}/retry'
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors = {
+  404:
+    | TracingNodeNotFoundError
+    | TracingRunNotFoundError
+    | TracingSourceNotFoundError
+    | ErrorResponse
+  409:
+    | TracingAlreadyAcceptedError
+    | TracingDuplicateAcknowledgementRequiredError
+    | TracingRetryNotAllowedError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryError =
+  PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors[keyof PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors]
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponse =
+  PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses[keyof PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses]
 
 export type PostAppsByAppIdTriggerEnableData = {
   body: ParserEnable

@@ -112,6 +112,37 @@ class TestBuildForAgentApp:
         assert [layer.name for layer in request.composition.layers][0] == "agent_app_user_prompt"
 
 
+def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs(monkeypatch: pytest.MonkeyPatch):
+    from uuid import uuid4
+
+    from dify_agent.layers.execution_context import ApplicationTracingContext
+
+    tracing = ApplicationTracingContext(
+        run_id=uuid4(),
+        invocation_id=uuid4(),
+        trace_id="1" * 32,
+        parent_span_id="2" * 16,
+        session_id="private-session",
+        capture_content=False,
+    )
+    context = _ctx(_soul_with_model())
+    calls = []
+
+    def prepare(value):
+        calls.append(value)
+        return tracing
+
+    monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.prepare_agent_app", prepare)
+    result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(context)
+    layer = next(item for item in result.request.composition.layers if item.name == "execution_context")
+    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
+    redacted = next(
+        item for item in result.redacted_request["composition"]["layers"] if item["name"] == "execution_context"
+    )
+    assert redacted["config"]["tracing"] == "[REDACTED]"
+    assert calls == [context]
+
+
 class _NoToolsBuilder:
     def build_layers(self, **kwargs):
         del kwargs

@@ -11,8 +11,19 @@ from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppModelConfig
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
+from services.app.agent_app_contracts import AgentAppNotFoundError
 
 type Resolver = Literal["repository", "roster"]
+
+
+@pytest.mark.usefixtures("_inline_agent")
+def test_tracing_owner_rejects_inline_without_materializing_app(sqlite_session_factory: sessionmaker[Session]) -> None:
+    repository = AgentAppRepository(session_factory=sqlite_session_factory)
+    with pytest.raises(AgentAppNotFoundError):
+        repository.resolve_roster_app_id(tenant_id="tenant-1", agent_id="inline-agent")
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(App)) is None
+        assert session.get(Agent, "inline-agent").backing_app_id is None
 
 
 @pytest.fixture

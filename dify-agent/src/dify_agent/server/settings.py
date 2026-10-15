@@ -131,6 +131,7 @@ class ServerSettings(BaseSettings):
     server_secret_key: str | None = None
     api_token: str | None = None
     trajectory_enabled: bool = False
+    application_tracing_enabled: bool = False
     trajectory_otlp_traces_endpoint: AnyHttpUrl | None = None
     trajectory_otlp_headers: dict[str, SecretStr] = Field(default_factory=dict, repr=False)
     trajectory_service_name: str = Field(default="dify-agent-trajectory", min_length=1)

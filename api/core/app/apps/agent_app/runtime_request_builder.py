@@ -57,6 +57,7 @@ from graphon.model_runtime.entities.message_entities import ImagePromptMessageCo
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import expand_prompt_mentions
+from services.tracing.runtime_bridge import prepare_agent_app
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -188,6 +189,7 @@ class AgentAppRuntimeRequestBuilder:
                     user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
+                    tracing=prepare_agent_app(context),
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
