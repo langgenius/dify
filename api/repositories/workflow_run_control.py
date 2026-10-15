@@ -29,6 +29,7 @@ def apply_workflow_stop_to_node(
     if stopped_run is None or execution.status not in (
         WorkflowNodeExecutionStatus.RUNNING,
         WorkflowNodeExecutionStatus.PAUSED,
+        WorkflowNodeExecutionStatus.RETRY,
     ):
         return
     execution.status = WorkflowNodeExecutionStatus.FAILED

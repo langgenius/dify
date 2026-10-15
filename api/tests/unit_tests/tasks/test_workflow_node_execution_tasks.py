@@ -345,7 +345,10 @@ def test_task_repeated_delivery_updates_one_row(
 
 @pytest.mark.parametrize("writer", ["celery", "sql", "sql-data"])
 @pytest.mark.parametrize("existing", [False, True])
-@pytest.mark.parametrize("status", [WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED])
+@pytest.mark.parametrize(
+    "status",
+    [WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED, WorkflowNodeExecutionStatus.RETRY],
+)
 def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_after_stop(
     sqlite_session_factory: sessionmaker[Session], writer: str, existing: bool, status: WorkflowNodeExecutionStatus
 ) -> None:
@@ -404,3 +407,51 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
         assert stored.status == WorkflowNodeExecutionStatus.FAILED
         assert stored.finished_at == finished_at
         assert stored.error == "User requested stop"
+
+
+@pytest.mark.parametrize(
+    "status",
+    [WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED, WorkflowNodeExecutionStatus.RETRY],
+)
+def test_delayed_write_preserves_node_cleanup_before_workflow_summary_finishes(
+    sqlite_session_factory: sessionmaker[Session], status: WorkflowNodeExecutionStatus
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id=WORKFLOW_RUN_ID,
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                workflow_id=WORKFLOW_ID,
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=ACCOUNT_ID,
+            )
+        )
+        node = _stored_execution()
+        node.status = WorkflowNodeExecutionStatus.FAILED
+        node.finished_at = datetime(2026, 8, 12, 1, 1)
+        node.elapsed_time = 60
+        node.error = "Execution aborted"
+        session.add(node)
+        session.flush()
+        original = dict(session.execute(select(WorkflowNodeExecutionModel.__table__)).mappings().one())
+
+    assert save_workflow_node_execution_task.run(
+        execution_data=_execution(status=status).model_dump(),
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id=ACCOUNT_ID,
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+
+    with sqlite_session_factory() as session:
+        assert dict(session.execute(select(WorkflowNodeExecutionModel.__table__)).mappings().one()) == original
+        run = session.get(WorkflowRun, WORKFLOW_RUN_ID)
+        assert run is not None
+        assert run.status == WorkflowExecutionStatus.RUNNING
+        assert run.stop_requested_at is None

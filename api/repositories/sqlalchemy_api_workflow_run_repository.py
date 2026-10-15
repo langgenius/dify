@@ -1451,7 +1451,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     WorkflowNodeExecutionModel.tenant_id == tenant_id,
                     WorkflowNodeExecutionModel.workflow_run_id == workflow_run.id,
                     WorkflowNodeExecutionModel.status.in_(
-                        [WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED]
+                        [
+                            WorkflowNodeExecutionStatus.RUNNING,
+                            WorkflowNodeExecutionStatus.PAUSED,
+                            WorkflowNodeExecutionStatus.RETRY,
+                        ]
                     ),
                 )
             )

@@ -55,7 +55,11 @@ def save_workflow_node_execution_task(
             # Deserialize execution data
             execution = WorkflowNodeExecution.model_validate(execution_data)
 
-            if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+            if execution.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
                 apply_workflow_stop_to_node(
                     execution,
                     get_stopped_workflow_run(
@@ -161,7 +165,12 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
     if (
         node_execution.status == WorkflowNodeExecutionStatus.FAILED
         and node_execution.finished_at is not None
-        and execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED)
+        and execution.status
+        in (
+            WorkflowNodeExecutionStatus.RUNNING,
+            WorkflowNodeExecutionStatus.PAUSED,
+            WorkflowNodeExecutionStatus.RETRY,
+        )
     ):
         return
     # Update serialized data

@@ -285,7 +285,11 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Assign ordering before checking SQL so an in-flight pause cannot sort
         # after a stop that commits while the LogStore upload is pending.
         version = time.time_ns()
-        if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+        if execution.status in (
+            WorkflowNodeExecutionStatus.RUNNING,
+            WorkflowNodeExecutionStatus.PAUSED,
+            WorkflowNodeExecutionStatus.RETRY,
+        ):
             execution = execution.model_copy()
             with self._session_factory() as session:
                 apply_workflow_stop_to_node(

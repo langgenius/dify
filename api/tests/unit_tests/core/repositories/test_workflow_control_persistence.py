@@ -23,6 +23,7 @@ from models import Account, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow_run_control import apply_workflow_stop_to_node
 from tasks.workflow_execution_tasks import _update_workflow_run_from_execution
 
 
@@ -150,9 +151,20 @@ def test_logstore_pause_lifecycle_uses_sql_control_with_dual_write_disabled(
     assert api.get_workflow_pause("run-1") is None
 
 
-@pytest.mark.parametrize("record_type", ["workflow", "node"])
+@pytest.mark.parametrize(
+    ("record_type", "node_status"),
+    [
+        ("workflow", WorkflowNodeExecutionStatus.PAUSED),
+        ("node", WorkflowNodeExecutionStatus.PAUSED),
+        ("node", WorkflowNodeExecutionStatus.RETRY),
+    ],
+)
 def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
-    sqlite_session_factory: sessionmaker[Session], logstore: AliyunLogStore, mocker: MockerFixture, record_type: str
+    sqlite_session_factory: sessionmaker[Session],
+    logstore: AliyunLogStore,
+    mocker: MockerFixture,
+    record_type: str,
+    node_status: WorkflowNodeExecutionStatus,
 ) -> None:
     user = Account(name="Test", email="test@example.com")
     user.id = "account-1"
@@ -185,7 +197,7 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
         node_type="human-input",
         title="Review",
         created_at=run.started_at,
-        status=WorkflowNodeExecutionStatus.PAUSED,
+        status=node_status,
     )
     SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=sqlite_session_factory,
@@ -252,8 +264,8 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
         node_writer.save(node)
         expected_status = "failed"
         assert max(records, key=lambda row: int(row["log_version"]))["status"] == expected_status
-        stale_paused = next(row for row in records if row["status"] == "paused")
-        mocker.patch.object(logstore, "execute_sql", return_value=[stale_paused])
+        stale_node = next(row for row in records if row["status"] == node_status)
+        mocker.patch.object(logstore, "execute_sql", return_value=[stale_node])
         api = LogstoreAPIWorkflowNodeExecutionRepository(sqlite_session_factory)  # pyrefly: ignore[bad-instantiation]
         assert api.get_executions_by_workflow_run("tenant-1", "app-1", "run-1")[0].status == expected_status
         by_id = api.get_execution_by_id("node-1", "tenant-1")
@@ -262,3 +274,51 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
         assert node_writer.get_by_workflow_execution("run-1")[0].status == expected_status
         node_writer.save(node)
     assert records[-1]["status"] == expected_status
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        WorkflowNodeExecutionStatus.SUCCEEDED,
+        WorkflowNodeExecutionStatus.FAILED,
+        WorkflowNodeExecutionStatus.EXCEPTION,
+        WorkflowNodeExecutionStatus.STOPPED,
+    ],
+)
+def test_stop_preserves_completed_node_history(status: WorkflowNodeExecutionStatus) -> None:
+    finished_at = naive_utc_now()
+    stopped = WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        status=WorkflowExecutionStatus.STOPPED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        error="User requested stop",
+        finished_at=finished_at,
+        stop_requested_at=finished_at,
+    )
+    node = WorkflowNodeExecution(
+        id="node-1",
+        workflow_id="workflow-1",
+        workflow_execution_id="run-1",
+        index=1,
+        node_id="answer",
+        node_type="llm",
+        title="Answer",
+        status=status,
+        outputs={"answer": "preserved"},
+        error=None if status == WorkflowNodeExecutionStatus.SUCCEEDED else "Original terminal error",
+        elapsed_time=2.5,
+        created_at=finished_at,
+        finished_at=finished_at,
+    )
+    original = node.model_dump()
+
+    apply_workflow_stop_to_node(node, stopped)
+
+    assert node.model_dump() == original
