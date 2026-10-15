@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from dify_agent.layers.execution_context import ApplicationTracingContext
@@ -22,6 +23,23 @@ if TYPE_CHECKING:
     from services.tracing.service import ApplicationTracingService
 
 logger = logging.getLogger(__name__)
+
+
+def workflow_has_agent_v2(graph: object) -> bool:
+    """Scope the new pipeline to graphs containing the Dify Agent v2 node."""
+    from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
+
+    if isinstance(graph, str):
+        try:
+            graph = json.loads(graph)
+        except ValueError:
+            return False
+    if not isinstance(graph, Mapping) or not isinstance(graph.get("nodes"), list):
+        return False
+    return any(
+        isinstance(node, Mapping) and isinstance(node.get("data"), Mapping) and is_dify_agent_node_data(node["data"])
+        for node in graph["nodes"]
+    )
 
 
 def _service() -> ApplicationTracingService:
@@ -87,9 +105,12 @@ def freeze_workflow_run(
     workflow_id: str,
     workflow_run_id: str,
     conversation_id: object,
+    graph_data: object,
 ) -> None:
     """Freeze policy immediately after the business workflow row is saved."""
     if not dify_config.OPS_AGENT_TRACE_ENABLED:
+        return
+    if not workflow_has_agent_v2(graph_data):
         return
     try:
         explicit_session = entity.extras.get("trace_session_id")
