@@ -168,23 +168,8 @@ type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
 }
 type DropdownMenuItemVariant = MenuItemVariant
 
-type DropdownMenuArrowProps = Omit<Menu.Arrow.Props, 'className'> & {
-  className?: string
-}
-
-function DropdownMenuArrow({ className, ...props }: DropdownMenuArrowProps) {
-  return (
-    <Menu.Arrow
-      className={cn(
-        'relative block h-2.5 w-5 overflow-clip',
-        'data-[side=bottom]:-top-2.5 data-[side=left]:-right-3.75 data-[side=left]:rotate-90 data-[side=right]:-left-3.75 data-[side=right]:-rotate-90 data-[side=top]:-bottom-2.5 data-[side=top]:rotate-180',
-        "before:absolute before:bottom-0 before:left-1/2 before:size-[calc(10px*sqrt(2))] before:transform-[translate(-50%,50%)_rotate(45deg)] before:rounded-tl-sm before:border before:border-divider-subtle before:bg-components-panel-bg before:content-['']",
-        className,
-      )}
-      {...props}
-    />
-  )
-}
+const DropdownMenuArrow = Menu.Arrow
+type DropdownMenuArrowProps = Menu.Arrow.Props
 
 function DropdownMenuRadioGroup<Value = unknown>(
   props: DropdownMenuRadioGroupProps<Value>,
