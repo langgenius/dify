@@ -35,7 +35,7 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
         }}
       >
         <DatePickerLabel className="sr-only">{t(($) => $['picker.startDate'])}</DatePickerLabel>
-        <DatePickerTrigger className="h-7 w-auto px-1">
+        <DatePickerTrigger className="h-7 w-auto bg-transparent px-1">
           <DatePickerValue>{formatToLocalTime(start, locale, 'MMM D')}</DatePickerValue>
         </DatePickerTrigger>
         <DatePickerContent />
@@ -50,7 +50,7 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
         }}
       >
         <DatePickerLabel className="sr-only">{t(($) => $['picker.endDate'])}</DatePickerLabel>
-        <DatePickerTrigger className="h-7 w-auto px-1">
+        <DatePickerTrigger className="h-7 w-auto bg-transparent px-1">
           <DatePickerValue>{formatToLocalTime(end, locale, 'MMM D')}</DatePickerValue>
         </DatePickerTrigger>
         <DatePickerContent />
