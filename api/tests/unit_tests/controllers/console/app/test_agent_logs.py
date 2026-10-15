@@ -30,6 +30,7 @@ def response_mapping(value: object) -> dict[str, object]:
 @dataclass
 class LogService:
     error: Exception | None = None
+    tool_label: str | dict[str, str] = "Search"
     calls: list[LogCall] = field(default_factory=list)
 
     def get(
@@ -68,7 +69,7 @@ class LogService:
                             "status": "success",
                             "time_cost": 0,
                             "tool_name": "search",
-                            "tool_label": "Search",
+                            "tool_label": self.tool_label,
                             "tool_input": dict[str, object](),
                             "tool_output": "text output",
                             "tool_parameters": dict[str, object](),
@@ -90,23 +91,44 @@ class Services:
     agent_apps: AgentServices
 
 
-@pytest.mark.parametrize("missing", [False, True])
-def test_log_controller_delegates_context_and_serializes(monkeypatch: pytest.MonkeyPatch, missing: bool) -> None:
-    logs = LogService(AgentLogAppNotFoundError() if missing else None)
+@pytest.mark.parametrize(
+    "tool_label",
+    [
+        "Search",
+        {"en_US": "Search", "zh_Hans": "搜索"},
+    ],
+)
+def test_log_controller_delegates_context_and_serializes(
+    monkeypatch: pytest.MonkeyPatch, tool_label: str | dict[str, str]
+) -> None:
+    logs = LogService(tool_label=tool_label)
     monkeypatch.setattr(agent, "application_services", lambda: Services(AgentServices(logs)))
     endpoint = agent.AgentLogApi()
     method = unwrap(endpoint.get)
     payload = agent.AgentLogQuery(message_id=MESSAGE_ID, conversation_id=CONVERSATION_ID)
-    if missing:
-        with pytest.raises(AppNotFoundError):
-            method(endpoint, payload, CONTEXT, APP_ID)
-    else:
-        response = response_mapping(method(endpoint, payload, CONTEXT, APP_ID))
-        iterations = response["iterations"]
-        assert isinstance(iterations, list)
-        tool_calls = response_mapping(iterations[0])["tool_calls"]
-        assert isinstance(tool_calls, list)
-        assert response_mapping(tool_calls[0])["tool_output"] == "text output"
+    response = response_mapping(method(endpoint, payload, CONTEXT, APP_ID))
+    iterations = response["iterations"]
+    assert isinstance(iterations, list)
+    tool_calls = response_mapping(iterations[0])["tool_calls"]
+    assert isinstance(tool_calls, list)
+    tool_call = response_mapping(tool_calls[0])
+    assert tool_call["tool_label"] == tool_label
+    assert tool_call["tool_output"] == "text output"
+    assert logs.calls == [
+        (CONTEXT, {"app_id": str(APP_ID), "message_id": MESSAGE_ID, "conversation_id": CONVERSATION_ID})
+    ]
+
+
+def test_log_controller_translates_missing_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    logs = LogService(error=AgentLogAppNotFoundError())
+    monkeypatch.setattr(agent, "application_services", lambda: Services(AgentServices(logs)))
+    endpoint = agent.AgentLogApi()
+    method = unwrap(endpoint.get)
+    payload = agent.AgentLogQuery(message_id=MESSAGE_ID, conversation_id=CONVERSATION_ID)
+
+    with pytest.raises(AppNotFoundError):
+        method(endpoint, payload, CONTEXT, APP_ID)
+
     assert logs.calls == [
         (CONTEXT, {"app_id": str(APP_ID), "message_id": MESSAGE_ID, "conversation_id": CONVERSATION_ID})
     ]
