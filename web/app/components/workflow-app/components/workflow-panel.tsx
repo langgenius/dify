@@ -84,14 +84,12 @@ const WorkflowPanel = () => {
   )
   const versionHistoryPanelProps = useMemo(() => {
     return {
-      appMode: appDetail.mode,
       getVersionListUrl: `/apps/${appId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
       latestVersionId: appDetail.workflow?.id,
     }
-  }, [appId, appDetail.mode, appDetail.workflow?.id])
+  }, [appId, appDetail.workflow?.id])
 
   const panelProps: PanelProps = useMemo(() => {
     return {

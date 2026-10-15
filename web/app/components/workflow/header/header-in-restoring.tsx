@@ -53,7 +53,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
 
   const { handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow(resource)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore =
     !!currentVersion?.id && !!resourceId && currentVersion.version !== WorkflowVersion.Draft
@@ -65,18 +65,6 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     workflowStore.setState({ isRestoring: false })
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
-
-  const restoreVersionUrl = useCallback(
-    (versionId: string) => {
-      if (!resourceId) return ''
-      if (resource.kind === 'knowledge-pipeline')
-        return `/rag/pipelines/${resourceId}/workflows/${versionId}/restore`
-      if (resource.kind === 'snippet')
-        return `/snippets/${resourceId}/workflows/${versionId}/restore`
-      return `/apps/${resourceId}/workflows/${versionId}/restore`
-    },
-    [resourceId, resource.kind],
-  )
 
   const emitRestoreIntent = useCallback(async () => {
     if (!currentVersion || !canEmitCollaborationEvents) return
@@ -135,7 +123,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     await emitRestoreIntent()
 
     try {
-      await restoreWorkflow(restoreVersionUrl(currentVersion.id))
+      await restoreWorkflow(currentVersion.id)
       workflowStore.setState({ isRestoring: false })
       workflowStore.setState({ backupDraft: undefined })
       handleRefreshWorkflowDraft()
@@ -160,7 +148,6 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
     setShowWorkflowVersionHistoryPanel,
     emitRestoreIntent,
     restoreWorkflow,
-    restoreVersionUrl,
     workflowStore,
     handleRefreshWorkflowDraft,
     t,

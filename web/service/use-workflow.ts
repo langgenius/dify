@@ -306,11 +306,28 @@ export const useDeleteWorkflow = () => {
   })
 }
 
-export const useRestoreWorkflow = () => {
+export const useRestoreWorkflow = (resource: EditorResource) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'restore'],
-    mutationFn: (url: string) =>
-      post<CommonResponse & { updated_at: number; hash: string }>(url, {}, { silent: true }),
+    mutationFn: (versionId: string) => {
+      switch (resource.kind) {
+        case 'app':
+          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post(
+            { params: { app_id: resource.appId, workflow_id: versionId } },
+            { context: { silent: true } },
+          )
+        case 'knowledge-pipeline':
+          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post(
+            { params: { pipeline_id: resource.pipelineId, workflow_id: versionId } },
+            { context: { silent: true } },
+          )
+        case 'snippet':
+          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post(
+            { params: { snippet_id: resource.snippetId, workflow_id: versionId } },
+            { context: { silent: true } },
+          )
+      }
+    },
   })
 }
 

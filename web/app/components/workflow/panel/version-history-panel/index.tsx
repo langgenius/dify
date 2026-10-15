@@ -1,6 +1,5 @@
 'use client'
 
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { VersionHistory } from '@/types/workflow'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -48,19 +47,15 @@ const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
-  appMode?: AppMode
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
-  restoreVersionUrl: (versionId: string) => string
   updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
 
 export const VersionHistoryPanel = ({
-  appMode,
   getVersionListUrl,
   deleteVersionUrl,
-  restoreVersionUrl,
   updateVersionUrl,
   latestVersionId,
 }: VersionHistoryPanelProps) => {
@@ -265,7 +260,7 @@ export const VersionHistoryPanel = ({
   }, [resource])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow(resource)
 
   const handleRestore = useCallback(
     async (item: VersionHistory) => {
@@ -273,7 +268,7 @@ export const VersionHistoryPanel = ({
       await emitRestoreIntent(item)
 
       try {
-        await restoreWorkflow(restoreVersionUrl(item.id))
+        await restoreWorkflow(item.id)
         setCurrentVersion(item)
         workflowStore.setState({ isRestoring: false })
         workflowStore.setState({ backupDraft: undefined })
@@ -296,7 +291,6 @@ export const VersionHistoryPanel = ({
       setShowWorkflowVersionHistoryPanel,
       emitRestoreIntent,
       restoreWorkflow,
-      restoreVersionUrl,
       setCurrentVersion,
       workflowStore,
       handleRefreshWorkflowDraft,
@@ -345,7 +339,9 @@ export const VersionHistoryPanel = ({
       const { id, ...rest } = params
       await updateWorkflow(
         {
-          ...(resource.kind === 'app' && resourceId ? { appId: resourceId, appMode } : {}),
+          ...(resource.kind === 'app' && resourceId
+            ? { appId: resource.appId, appMode: resource.mode }
+            : {}),
           url: updateVersionUrl?.(id || '') || '',
           ...rest,
         },
@@ -367,9 +363,8 @@ export const VersionHistoryPanel = ({
       )
     },
     [
-      appMode,
       resourceId,
-      resource.kind,
+      resource,
       invalidateAppWorkflow,
       latestVersionId,
       t,

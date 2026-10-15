@@ -64,8 +64,6 @@ const RagPipelinePanel = () => {
       getVersionListUrl: `/rag/pipelines/${pipelineId}/workflows`,
       deleteVersionUrl: (versionId: string) =>
         `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) =>
         `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
       latestVersionId: '',

@@ -51,7 +51,8 @@ import {
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { post, ssePost } from '@/service/base'
+import { ssePost } from '@/service/base'
+import { consoleClient } from '@/service/console'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -65,6 +66,7 @@ import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useWorkflow } from '../../../hooks/use-workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
 
+// Iteration and loop runs use the SSE event callbacks that the JSON client does not expose.
 function getContainerNodeRunUrl(
   resource: EditorResource,
   type: 'iteration' | 'loop',
@@ -439,12 +441,12 @@ const useOneStepRun = <T>({
 
   const runScheduleSingleRun = useCallback(async (): Promise<NodeRunResult | null> => {
     if (resource.kind !== 'app') return null
-    const urlPath = `/apps/${resource.appId}/workflows/draft/nodes/${id}/trigger/run`
 
     try {
-      const response: any = await post(urlPath, {
-        body: JSON.stringify({}),
-      })
+      const response: any =
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post({
+          params: { app_id: resource.appId, node_id: id },
+        })
 
       if (!response) {
         const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
@@ -486,7 +488,6 @@ const useOneStepRun = <T>({
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     if (resource.kind !== 'app') return null
-    const urlPath = `/apps/${resource.appId}/workflows/draft/nodes/${id}/trigger/run`
 
     webhookSingleRunActiveRef.current = true
     const token = ++webhookSingleRunTokenRef.current
@@ -496,10 +497,11 @@ const useOneStepRun = <T>({
       webhookSingleRunAbortRef.current = controller
 
       try {
-        const response: any = await post(urlPath, {
-          body: JSON.stringify({}),
-          signal: controller.signal,
-        })
+        const response: any =
+          await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
+            { params: { app_id: resource.appId, node_id: id } },
+            { signal: controller.signal },
+          )
 
         if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
           return null
@@ -578,7 +580,6 @@ const useOneStepRun = <T>({
 
   const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
     if (resource.kind !== 'app') return null
-    const urlPath = `/apps/${resource.appId}/workflows/draft/nodes/${id}/trigger/run`
 
     pluginSingleRunActiveRef.current = true
     const token = ++pluginSingleRunTokenRef.current
@@ -588,17 +589,16 @@ const useOneStepRun = <T>({
       pluginSingleRunAbortRef.current = controller
 
       let requestError: unknown
-      const response: any = await post(urlPath, {
-        body: JSON.stringify({}),
-        signal: controller.signal,
-      })
-        .catch((error: unknown) => {
-          requestError = error
-          return null
-        })
-        .finally(() => {
-          pluginSingleRunAbortRef.current = null
-        })
+      const response: any =
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
+          .post({ params: { app_id: resource.appId, node_id: id } }, { signal: controller.signal })
+          .catch((error: unknown) => {
+            requestError = error
+            return null
+          })
+          .finally(() => {
+            pluginSingleRunAbortRef.current = null
+          })
 
       if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
         return null
