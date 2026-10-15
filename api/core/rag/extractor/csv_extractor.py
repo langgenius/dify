@@ -60,7 +60,8 @@ class CSVExtractor(BaseExtractor):
         docs = []
         try:
             # load csv file into pandas dataframe
-            df = pd.read_csv(csvfile, on_bad_lines="skip", **self.csv_args)
+            csv_args = {"on_bad_lines": "skip", **self.csv_args}
+            df = pd.read_csv(csvfile, **csv_args)
 
             # check source column exists
             if self.source_column and self.source_column not in df.columns:
