@@ -23,8 +23,8 @@ import pytest
 from flask import Flask, request
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.app.message import (
     AppGetFeedbacksApi,
@@ -33,7 +33,6 @@ from controllers.service_api.app.message import (
     MessageFeedbackPayload,
     MessageListApi,
     MessageListQuery,
-    MessageSuggestedApi,
 )
 from models.enums import EndUserType, FeedbackRating
 from models.model import App, AppMode, EndUser
@@ -282,11 +281,6 @@ class TestMessageService:
         assert hasattr(MessageService, "get_all_messages_feedbacks")
         assert callable(MessageService.get_all_messages_feedbacks)
 
-    def test_get_suggested_questions_after_answer_method_exists(self):
-        """Test MessageService.get_suggested_questions_after_answer exists."""
-        assert hasattr(MessageService, "get_suggested_questions_after_answer")
-        assert callable(MessageService.get_suggested_questions_after_answer)
-
     @patch.object(MessageService, "pagination_by_first_id")
     def test_pagination_by_first_id_returns_pagination_result(self, mock_pagination, orm_session: Session):
         """Test pagination_by_first_id returns expected format."""
@@ -386,51 +380,6 @@ class TestMessageService:
         assert len(result) == 2
         assert result[0]["rating"] == "like"
 
-    @patch.object(MessageService, "get_suggested_questions_after_answer")
-    def test_get_suggested_questions_returns_questions_list(self, mock_get_questions, orm_session: Session):
-        """Test get_suggested_questions_after_answer returns list of questions."""
-        mock_questions = ["What about this aspect?", "Can you elaborate on that?", "How does this relate to...?"]
-        mock_get_questions.return_value = mock_questions
-
-        result = MessageService.get_suggested_questions_after_answer(
-            app_model=_app(),
-            user=_end_user(),
-            message_id=str(uuid.uuid4()),
-            invoke_from=Mock(),
-            session=orm_session,
-        )
-
-        assert len(result) == 3
-        assert isinstance(result[0], str)
-
-    @patch.object(MessageService, "get_suggested_questions_after_answer")
-    def test_get_suggested_questions_raises_disabled_error(self, mock_get_questions, orm_session: Session):
-        """Test get_suggested_questions_after_answer raises SuggestedQuestionsAfterAnswerDisabledError."""
-        mock_get_questions.side_effect = SuggestedQuestionsAfterAnswerDisabledError()
-
-        with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
-            MessageService.get_suggested_questions_after_answer(
-                app_model=_app(),
-                user=_end_user(),
-                message_id=str(uuid.uuid4()),
-                invoke_from=Mock(),
-                session=orm_session,
-            )
-
-    @patch.object(MessageService, "get_suggested_questions_after_answer")
-    def test_get_suggested_questions_raises_message_not_exists_error(self, mock_get_questions, orm_session: Session):
-        """Test get_suggested_questions_after_answer raises MessageNotExistsError."""
-        mock_get_questions.side_effect = MessageNotExistsError()
-
-        with pytest.raises(MessageNotExistsError):
-            MessageService.get_suggested_questions_after_answer(
-                app_model=_app(),
-                user=_end_user(),
-                message_id="invalid_message_id",
-                invoke_from=Mock(),
-                session=orm_session,
-            )
-
 
 class TestMessageListApi:
     def test_not_chat_app(self, app: Flask) -> None:
@@ -466,7 +415,7 @@ class TestMessageListApi:
             "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
             method="GET",
         ):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(
                     api,
                     MessageListQuery.model_validate(request.args.to_dict(flat=True)),
@@ -490,7 +439,7 @@ class TestMessageListApi:
             "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
             method="GET",
         ):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(
                     api,
                     MessageListQuery.model_validate(request.args.to_dict(flat=True)),
@@ -518,7 +467,7 @@ class TestMessageFeedbackApi:
             json={"rating": "like", "content": "ok"},
         ):
             payload = MessageFeedbackPayload.model_validate(request.get_json() or {})
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, payload, app_model=app_model, end_user=end_user, message_id="m1")
 
 
@@ -549,80 +498,3 @@ class TestAppGetFeedbacksApi:
             )
 
         assert response == {"data": [feedback]}
-
-
-class TestMessageSuggestedApi:
-    def test_not_chat(self, app: Flask) -> None:
-        api = MessageSuggestedApi()
-        handler = unwrap(api.get)
-        app_model = _app(mode=AppMode.COMPLETION)
-        end_user = _end_user()
-
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
-
-    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            MessageService,
-            "get_suggested_questions_after_answer",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(MessageNotExistsError()),
-        )
-
-        api = MessageSuggestedApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
-
-    def test_disabled(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            MessageService,
-            "get_suggested_questions_after_answer",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(SuggestedQuestionsAfterAnswerDisabledError()),
-        )
-
-        api = MessageSuggestedApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(BadRequest):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
-
-    def test_internal_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            MessageService,
-            "get_suggested_questions_after_answer",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
-        )
-
-        api = MessageSuggestedApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(InternalServerError):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
-
-    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            MessageService,
-            "get_suggested_questions_after_answer",
-            lambda *_args, **_kwargs: ["q1"],
-        )
-
-        api = MessageSuggestedApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            response = handler(api, app_model=app_model, end_user=end_user, message_id="m1")
-
-        assert response == {"result": "success", "data": ["q1"]}

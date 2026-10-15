@@ -1730,6 +1730,7 @@ export const get26 = oc
   .input(z.object({ params: zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
