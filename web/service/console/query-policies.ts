@@ -5,15 +5,76 @@ import type {
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { isNotFoundError } from '@/service/http-error'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
+      workflowRunArchives: {
+        byYear: {
+          byMonth: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (task, _variables, _onMutateResult, context) => {
+                  const queryKey = consoleQuery.workflowRunArchives.get.queryKey()
+                  const deletionStatus = task.status
+                  context.client.setQueryData<GetWorkflowRunArchivesResponse>(queryKey, (data) => {
+                    if (!data) return data
+
+                    if (deletionStatus === 'completed') {
+                      const months = data.months.filter(
+                        (archive) => archive.year !== task.year || archive.month !== task.month,
+                      )
+                      return {
+                        months,
+                        summary: {
+                          archived_month_count: months.length,
+                          workflow_run_count: months.reduce(
+                            (count, archive) => count + archive.workflow_run_count,
+                            0,
+                          ),
+                          archive_bytes: months.reduce(
+                            (bytes, archive) => bytes + archive.archive_bytes,
+                            0,
+                          ),
+                          latest_archived_at: months.reduce<string | null>(
+                            (latest, archive) =>
+                              archive.latest_archived_at &&
+                              (!latest || archive.latest_archived_at > latest)
+                                ? archive.latest_archived_at
+                                : latest,
+                            null,
+                          ),
+                        },
+                      }
+                    }
+
+                    return {
+                      ...data,
+                      months: data.months.map((archive) =>
+                        archive.year === task.year && archive.month === task.month
+                          ? { ...archive, deletion_status: deletionStatus }
+                          : archive,
+                      ),
+                    }
+                  })
+                },
+                onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.workflowRunArchives.get.queryKey(),
+                  })
+                },
+              },
+            },
+          },
+        },
+      },
       rag: {
         pipelines: {
           datasourcePlugins: {
@@ -135,6 +196,39 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           skills: {
             bySkillId: {
+              restore: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      void invalidateSkillVersionQueries(
+                        consoleQuery,
+                        context.client,
+                        variables.params.skill_id,
+                      )
+                      void context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.skills.get.key(),
+                      })
+                    },
+                  },
+                },
+              },
+              versions: {
+                byVersionId: {
+                  delete: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) => {
+                        if (error) return
+                        void invalidateSkillVersionQueries(
+                          consoleQuery,
+                          context.client,
+                          variables.params.skill_id,
+                        )
+                      },
+                    },
+                  },
+                },
+              },
               delete: {
                 mutationOptions: {
                   onSettled: (_data, error, _variables, _result, context) => {
@@ -763,7 +857,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           get: {
             queryOptions: {
               retry: (failureCount, error) => {
-                if (error instanceof Response && error.status === 404) return false
+                if (isNotFoundError(error)) return false
 
                 return failureCount < 3
               },
@@ -801,10 +895,48 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAgentId: {
+          apiKeys: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) =>
+                  void Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+                        input: { params: { agent_id: variables.params.agent_id } },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+                        input: { params: { agent_id: variables.params.agent_id } },
+                      }),
+                    }),
+                  ]),
+              },
+            },
+            byApiKeyId: {
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _result, context) =>
+                    void Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+                          input: { params: { agent_id: variables.params.agent_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+                          input: { params: { agent_id: variables.params.agent_id } },
+                        }),
+                      }),
+                    ]),
+                },
+              },
+            },
+          },
           get: {
             queryOptions: {
               retry: (failureCount, error) => {
-                if (error instanceof Response && error.status === 404) return false
+                if (isNotFoundError(error)) return false
 
                 return failureCount < 3
               },
@@ -1062,6 +1194,44 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
                     oldExtensions?.filter((extension) => extension.id !== variables.params.id),
                 )
+              },
+            },
+          },
+        },
+      },
+      resourceAccessTokens: {
+        post: {
+          mutationOptions: {
+            onSettled: (_data, error, _variables, _result, context) => {
+              if (error) return
+              void context.client.invalidateQueries({
+                queryKey: consoleQuery.resourceAccessTokens.get.key(),
+              })
+            },
+          },
+        },
+        byTokenId: {
+          patch: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                })
+              },
+            },
+          },
+          relations: {
+            byRelationId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                    })
+                  },
+                },
               },
             },
           },
@@ -1432,5 +1602,18 @@ function invalidateAgentAccessQueries(
     query.agent.get.key(),
     query.agent.inviteOptions.get.key(),
     query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
+}
+
+function invalidateSkillVersionQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  skillId: string,
+) {
+  const input = { params: { skill_id: skillId } }
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.skills.bySkillId.get.key({ input }),
+    query.workspaces.current.skills.bySkillId.versions.get.key({ input }),
+    query.workspaces.current.agents.byAgentId.skills.get.key(),
   ])
 }

@@ -226,6 +226,7 @@ class TidbOnQdrantVector(BaseVector):
                         group_id or "",
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 

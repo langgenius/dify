@@ -654,3 +654,59 @@ def test_dataset_cleanup_keeps_a_leased_legacy_source_file(
         assert session.get(Document, document.id) is None
         assert session.get(UploadFile, upload_file.id) is not None
     mock_storage.delete.assert_not_called()
+
+
+@pytest.mark.parametrize("shared_tenant", [None, "same", "other"])
+def test_crawl_cache_cleanup_preserves_shared_jobs(orm_session_maker, tenant_id, dataset_id, shared_tenant):
+    from services import dataset_storage_cleanup_service as cleanup
+
+    document = _persist_document(orm_session_maker, tenant_id=tenant_id, dataset_id=dataset_id)
+    with orm_session_maker.begin() as session:
+        row = session.get(Document, document.id)
+        row.data_source_type = "website_crawl"
+        row.data_source_info = json.dumps({"provider": "firecrawl", "job_id": "job-42"})
+    if shared_tenant:
+        other = _persist_document(
+            orm_session_maker,
+            tenant_id=tenant_id if shared_tenant == "same" else str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+        )
+        with orm_session_maker.begin() as session:
+            row = session.get(Document, other.id)
+            row.data_source_type = "website_crawl"
+            row.data_source_info = json.dumps({"provider": "firecrawl", "job_id": "job-42"})
+    with patch.object(cleanup, "storage", autospec=True) as mock:
+        cleanup.cleanup_dataset_crawl_cache(tenant_id, dataset_id)
+        if shared_tenant:
+            mock.delete.assert_not_called()
+        else:
+            mock.delete.assert_called_once_with("website_files/job-42.txt")
+
+
+@pytest.mark.parametrize("error", [FileNotFoundError(), PermissionError("denied")])
+def test_crawl_cache_failure_preserves_document(orm_session_maker, tenant_id, dataset_id, error):
+    from services import dataset_storage_cleanup_service as cleanup
+
+    document = _persist_document(orm_session_maker, tenant_id=tenant_id, dataset_id=dataset_id)
+    with orm_session_maker.begin() as session:
+        row = session.get(Document, document.id)
+        row.data_source_type = "website_crawl"
+        row.data_source_info = json.dumps({"provider": "firecrawl", "job_id": "job-42"})
+    with patch.object(cleanup, "storage", autospec=True) as mock:
+        mock.delete.side_effect = error
+        if isinstance(error, PermissionError):
+            with pytest.raises(PermissionError):
+                cleanup.cleanup_dataset_crawl_cache(tenant_id, dataset_id)
+        else:
+            cleanup.cleanup_dataset_crawl_cache(tenant_id, dataset_id)
+    with orm_session_maker() as session:
+        assert session.get(Document, document.id) is not None
+
+
+@pytest.mark.parametrize(
+    "info", ["broken", "[]", '{"provider":"watercrawl","job_id":"job"}', '{"provider":"firecrawl","job_id":"../job"}']
+)
+def test_crawl_cache_ignores_invalid_or_other_provider_info(info):
+    from services.dataset_storage_cleanup_service import _crawl_cache_key
+
+    assert _crawl_cache_key(info) is None

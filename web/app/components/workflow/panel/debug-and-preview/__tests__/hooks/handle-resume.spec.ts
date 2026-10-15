@@ -416,10 +416,12 @@ describe('useChat – handleResume', () => {
     })
 
     it('should fetch suggested questions when enabled', async () => {
-      const mockGetSuggested = vi.fn().mockImplementation((_id: string, getAbortCtrl: any) => {
-        getAbortCtrl(new AbortController())
-        return Promise.resolve({ data: ['s1'] })
-      })
+      const mockGetSuggested = vi
+        .fn()
+        .mockImplementation((_id: string, onCancel: (cancel: () => void) => void) => {
+          onCancel(vi.fn())
+          return Promise.resolve({ data: ['s1'] })
+        })
       let sendCallbacks: any
       mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
         sendCallbacks = callbacks

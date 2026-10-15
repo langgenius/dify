@@ -222,11 +222,9 @@ vi.mock('../../external-api/external-api-panel', () => ({
   ),
 }))
 
-// Mock ApiKeyModal — it depends on user profile context and service APIs
-// not configured in this test. ServiceApi always mounts the controlled modal,
-// so we provide a lightweight stub.
-vi.mock('@/app/components/api-key/api-key-modal', () => ({
-  ApiKeyModal: ({ open }: { open: boolean }) => (open ? <div data-testid="api-key-modal" /> : null),
+// Service API management has its own integration coverage.
+vi.mock('@/app/components/datasets/extra-info/service-api', () => ({
+  ServiceApi: () => null,
 }))
 
 // Mock TagManagementModal

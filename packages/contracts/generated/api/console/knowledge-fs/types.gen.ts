@@ -8,6 +8,16 @@ export type KnowledgeFsjwksResponse = {
   keys: Array<KnowledgeFsjwkResponse>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type KnowledgeFsAdmittedQueryRequest = {
   activeDocumentIds?: Array<string>
   activeEntityIds?: Array<string>
@@ -2587,6 +2597,13 @@ export type GetKnowledgeFsWellKnownJwksJsonData = {
   url: '/knowledge-fs/.well-known/jwks.json'
 }
 
+export type GetKnowledgeFsWellKnownJwksJsonErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsWellKnownJwksJsonError =
+  GetKnowledgeFsWellKnownJwksJsonErrors[keyof GetKnowledgeFsWellKnownJwksJsonErrors]
+
 export type GetKnowledgeFsWellKnownJwksJsonResponses = {
   200: KnowledgeFsjwksResponse
 }
@@ -2600,6 +2617,13 @@ export type PostKnowledgeFsQueryStreamData = {
   query?: never
   url: '/knowledge-fs/query-stream'
 }
+
+export type PostKnowledgeFsQueryStreamErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsQueryStreamError =
+  PostKnowledgeFsQueryStreamErrors[keyof PostKnowledgeFsQueryStreamErrors]
 
 export type PostKnowledgeFsQueryStreamResponses = {
   200: string
@@ -2621,6 +2645,13 @@ export type GetKnowledgeFsResearchTasksByTaskIdEventsData = {
   url: '/knowledge-fs/research-tasks/{task_id}/events'
 }
 
+export type GetKnowledgeFsResearchTasksByTaskIdEventsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsResearchTasksByTaskIdEventsError =
+  GetKnowledgeFsResearchTasksByTaskIdEventsErrors[keyof GetKnowledgeFsResearchTasksByTaskIdEventsErrors]
+
 export type GetKnowledgeFsResearchTasksByTaskIdEventsResponses = {
   200: string
 }
@@ -2635,6 +2666,13 @@ export type PostKnowledgeFsSourceProviderPreviewData = {
   url: '/knowledge-fs/source-provider-preview'
 }
 
+export type PostKnowledgeFsSourceProviderPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSourceProviderPreviewError =
+  PostKnowledgeFsSourceProviderPreviewErrors[keyof PostKnowledgeFsSourceProviderPreviewErrors]
+
 export type PostKnowledgeFsSourceProviderPreviewResponses = {
   200: KnowledgeFsInitialSourcePreviewResponse
 }
@@ -2648,6 +2686,13 @@ export type PostKnowledgeFsSourceProviderPreviewJobsData = {
   query?: never
   url: '/knowledge-fs/source-provider-preview/jobs'
 }
+
+export type PostKnowledgeFsSourceProviderPreviewJobsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSourceProviderPreviewJobsError =
+  PostKnowledgeFsSourceProviderPreviewJobsErrors[keyof PostKnowledgeFsSourceProviderPreviewJobsErrors]
 
 export type PostKnowledgeFsSourceProviderPreviewJobsResponses = {
   202: KnowledgeFsInitialSourcePreviewJobCreateResponse
@@ -2665,6 +2710,13 @@ export type DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdData = {
   url: '/knowledge-fs/source-provider-preview/jobs/{job_id}'
 }
 
+export type DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdError =
+  DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdErrors[keyof DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdErrors]
+
 export type DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponses = {
   200: KnowledgeFsInitialSourcePreviewJobResponse
 }
@@ -2680,6 +2732,13 @@ export type GetKnowledgeFsSourceProviderPreviewJobsByJobIdData = {
   query?: never
   url: '/knowledge-fs/source-provider-preview/jobs/{job_id}'
 }
+
+export type GetKnowledgeFsSourceProviderPreviewJobsByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSourceProviderPreviewJobsByJobIdError =
+  GetKnowledgeFsSourceProviderPreviewJobsByJobIdErrors[keyof GetKnowledgeFsSourceProviderPreviewJobsByJobIdErrors]
 
 export type GetKnowledgeFsSourceProviderPreviewJobsByJobIdResponses = {
   200: KnowledgeFsInitialSourcePreviewJobResponse
@@ -2701,6 +2760,12 @@ export type GetKnowledgeFsSpacesData = {
   url: '/knowledge-fs/spaces'
 }
 
+export type GetKnowledgeFsSpacesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesError = GetKnowledgeFsSpacesErrors[keyof GetKnowledgeFsSpacesErrors]
+
 export type GetKnowledgeFsSpacesResponses = {
   200: KnowledgeFsSpaceListResponse
 }
@@ -2714,6 +2779,13 @@ export type PostKnowledgeFsSpacesData = {
   query?: never
   url: '/knowledge-fs/spaces'
 }
+
+export type PostKnowledgeFsSpacesErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesError =
+  PostKnowledgeFsSpacesErrors[keyof PostKnowledgeFsSpacesErrors]
 
 export type PostKnowledgeFsSpacesResponses = {
   202: KnowledgeFsSpaceCreateResponse
@@ -2731,6 +2803,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdResponses = {
   204: void
 }
@@ -2746,6 +2825,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdResponses = {
   200: KnowledgeFsSpaceDetailResponse
@@ -2763,6 +2849,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}'
 }
 
+export type PatchKnowledgeFsSpacesByControlSpaceIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdErrors]
+
 export type PatchKnowledgeFsSpacesByControlSpaceIdResponses = {
   200: KnowledgeFsSpaceDetailResponse
 }
@@ -2779,6 +2872,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdAppBindingsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/app-bindings'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdAppBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdAppBindingsError =
+  GetKnowledgeFsSpacesByControlSpaceIdAppBindingsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdAppBindingsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdAppBindingsResponses = {
   200: KnowledgeFsAppBindingListResponse
 }
@@ -2794,6 +2894,13 @@ export type PutKnowledgeFsSpacesByControlSpaceIdAppBindingsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/app-bindings'
 }
+
+export type PutKnowledgeFsSpacesByControlSpaceIdAppBindingsErrors = {
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdAppBindingsError =
+  PutKnowledgeFsSpacesByControlSpaceIdAppBindingsErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdAppBindingsErrors]
 
 export type PutKnowledgeFsSpacesByControlSpaceIdAppBindingsResponses = {
   200: KnowledgeFsAppBindingResponse
@@ -2812,6 +2919,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppI
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/app-bindings/{caller_kind}/{app_id}'
 }
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdErrors]
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdResponses = {
   204: void
@@ -2833,6 +2947,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksData = {
   url: '/knowledge-fs/spaces/{control_space_id}/background-tasks'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksError =
+  GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponses = {
   200: KnowledgeFsBackgroundTaskListResponse
 }
@@ -2850,6 +2971,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTask
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/background-tasks/{task_kind}/{task_id}/cancel'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelError =
+  PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelResponses =
   {
@@ -2870,6 +2998,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTask
   url: '/knowledge-fs/spaces/{control_space_id}/background-tasks/{task_kind}/{task_id}/retry'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryError =
+  PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryResponses = {
   200: KnowledgeFsBackgroundTaskResponse
 }
@@ -2886,6 +3021,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponses = {
   200: KnowledgeFsBulkJobResponse
@@ -2906,6 +3048,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveData = 
   url: '/knowledge-fs/spaces/{control_space_id}/document-references/resolve'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponses = {
   200: KnowledgeFsResolvedDocumentReferenceResponse
 }
@@ -2925,6 +3074,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/documents'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
   200: KnowledgeFsDocumentListResponse
 }
@@ -2940,6 +3096,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/documents'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsError =
+  PostKnowledgeFsSpacesByControlSpaceIdDocumentsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdDocumentsErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
   202: KnowledgeFsDocumentCreateAcceptedResponse
@@ -2960,6 +3123,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkData = {
   url: '/knowledge-fs/spaces/{control_space_id}/documents/bulk'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponses = {
   202: KnowledgeFsBulkDeletionAcceptedResponse
 }
@@ -2975,6 +3145,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/documents/reindex'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexError =
+  PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponses = {
   200: KnowledgeFsDocumentReindexResponse
@@ -2996,6 +3173,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses = {
   202: KnowledgeFsDurableDeletionAcceptedResponse
 }
@@ -3012,6 +3196,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses = {
   200: KnowledgeFsDocumentResponse
@@ -3030,6 +3221,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}'
 }
 
+export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors]
+
 export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses = {
   200: KnowledgeFsLogicalDocumentResponse
 }
@@ -3046,6 +3244,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalD
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponses = {
   200: KnowledgeFsDocumentMultimodalManifestResponse
@@ -3067,6 +3272,14 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalB
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal/{item_id}/asset'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponses =
   {
     200: BinaryFileResponse
@@ -3084,6 +3297,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineData
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponses = {
   200: KnowledgeFsDocumentOutlineResponse
@@ -3104,6 +3324,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsDa
   }
   url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponses = {
   200: KnowledgeFsDocumentRevisionListResponse
@@ -3128,6 +3355,14 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsBy
     url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks'
   }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses =
   {
     200: KnowledgeFsDocumentChunkListResponse
@@ -3149,6 +3384,14 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsBy
     url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}'
   }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponses =
   {
     200: KnowledgeFsDocumentChunkResponse
@@ -3166,6 +3409,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdExternalAccessData = {
   url: '/knowledge-fs/spaces/{control_space_id}/external-access'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdExternalAccessErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdExternalAccessError =
+  GetKnowledgeFsSpacesByControlSpaceIdExternalAccessErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdExternalAccessErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses = {
   200: KnowledgeFsExternalAccessResponse
 }
@@ -3181,6 +3431,13 @@ export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/external-access'
 }
+
+export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessErrors = {
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessError =
+  PutKnowledgeFsSpacesByControlSpaceIdExternalAccessErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdExternalAccessErrors]
 
 export type PutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponses = {
   200: KnowledgeFsExternalAccessResponse
@@ -3201,6 +3458,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/golden-questions'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsError =
+  GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses = {
   200: KnowledgeFsGoldenQuestionListResponse
 }
@@ -3216,6 +3480,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/golden-questions'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsError =
+  PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponses = {
   201: KnowledgeFsGoldenQuestionResponse
@@ -3233,6 +3504,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportData =
   url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/bulk-import'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportError =
+  PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponses = {
   201: KnowledgeFsGoldenQuestionBulkImportResponse
 }
@@ -3248,6 +3526,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesD
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/evidence-matches'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesError =
+  PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponses = {
   200: KnowledgeFsGoldenQuestionEvidenceMatchResponse
@@ -3266,6 +3551,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdDa
   url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses = {
   204: void
 }
@@ -3282,6 +3574,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdDat
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}'
 }
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdErrors]
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponses = {
   200: KnowledgeFsGoldenQuestionResponse
@@ -3300,6 +3599,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/jobs/{job_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses = {
   200: KnowledgeFsDocumentCompilationJobResponse
 }
@@ -3317,6 +3623,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/jobs/{job_id}'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponses = {
   200: KnowledgeFsDocumentCompilationJobResponse
 }
@@ -3333,6 +3646,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/jobs/{job_id}/retry'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryError =
+  PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponses = {
   200: KnowledgeFsDocumentCompilationJobResponse
@@ -3353,6 +3673,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsError =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
   200: KnowledgeFsLogicalDocumentListResponse
 }
@@ -3368,6 +3695,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents'
 }
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsError =
+  PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors]
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
   200: KnowledgeFsBulkDocumentAvailabilityResponse
@@ -3388,6 +3722,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkData = {
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/bulk'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponses = {
   202: KnowledgeFsBulkDeletionAcceptedResponse
 }
@@ -3403,6 +3744,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipData
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/download-zip'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipError =
+  PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses = {
   200: BinaryFileResponse
@@ -3424,6 +3772,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdD
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
   202: KnowledgeFsDurableDeletionAcceptedResponse
 }
@@ -3440,6 +3795,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
   200: KnowledgeFsLogicalDocumentResponse
@@ -3458,6 +3820,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDa
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
 }
 
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors]
+
 export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
   200: KnowledgeFsLogicalDocumentResponse
 }
@@ -3475,6 +3844,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDown
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/download'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadError =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses = {
   200: BinaryFileResponse
 }
@@ -3490,6 +3866,13 @@ export type PutKnowledgeFsSpacesByControlSpaceIdMembersData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/members'
 }
+
+export type PutKnowledgeFsSpacesByControlSpaceIdMembersErrors = {
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdMembersError =
+  PutKnowledgeFsSpacesByControlSpaceIdMembersErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdMembersErrors]
 
 export type PutKnowledgeFsSpacesByControlSpaceIdMembersResponses = {
   200: KnowledgeFsPermissionListResponse
@@ -3510,6 +3893,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdMetadataData = {
   url: '/knowledge-fs/spaces/{control_space_id}/metadata'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdMetadataErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdMetadataError =
+  GetKnowledgeFsSpacesByControlSpaceIdMetadataErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdMetadataErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdMetadataResponses = {
   200: KnowledgeFsMetadataFieldListResponse
 }
@@ -3525,6 +3915,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdMetadataData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/metadata'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdMetadataErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdMetadataError =
+  PostKnowledgeFsSpacesByControlSpaceIdMetadataErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdMetadataErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdMetadataResponses = {
   201: KnowledgeFsMetadataFieldResponse
@@ -3545,6 +3942,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/metadata/{field_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses = {
   200: KnowledgeFsMetadataFieldDeleteResponse
 }
@@ -3561,6 +3965,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/metadata/{field_id}'
 }
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdErrors]
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses = {
   200: KnowledgeFsMetadataFieldResponse
@@ -3607,6 +4018,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityData = {
   url: '/knowledge-fs/spaces/{control_space_id}/overview/activity'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityError =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponses = {
   200: KnowledgeFsOverviewActivityListResponse
 }
@@ -3626,6 +4044,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionData = {
   url: '/knowledge-fs/spaces/{control_space_id}/overview/attention'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionError =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponses = {
   200: KnowledgeFsOverviewAttentionListResponse
 }
@@ -3642,6 +4067,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdOverviewHealthData = {
   url: '/knowledge-fs/spaces/{control_space_id}/overview/health'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewHealthErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewHealthError =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewHealthErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewHealthErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewHealthResponses = {
   200: KnowledgeFsOverviewHealthResponse
 }
@@ -3657,6 +4089,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/overview/inventory'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryError =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryResponses = {
   200: KnowledgeFsOverviewInventoryResponse
@@ -3676,6 +4115,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesData = {
   url: '/knowledge-fs/spaces/{control_space_id}/overview/query-outcomes'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesError =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesResponses = {
   200: KnowledgeFsOverviewQueryOutcomesResponse
 }
@@ -3694,6 +4140,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdOverviewStatsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/overview/stats'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewStatsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdOverviewStatsError =
+  GetKnowledgeFsSpacesByControlSpaceIdOverviewStatsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdOverviewStatsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewStatsResponses = {
   200: KnowledgeFsOverviewStatsResponse
 }
@@ -3709,6 +4162,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdPermissionsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/permissions'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdPermissionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdPermissionsError =
+  GetKnowledgeFsSpacesByControlSpaceIdPermissionsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdPermissionsErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdPermissionsResponses = {
   200: KnowledgeFsPermissionListResponse
@@ -3729,6 +4189,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesData = {
   url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesError =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses = {
   200: KnowledgeFsBadCaseListResponse
 }
@@ -3744,6 +4211,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesError =
+  PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponses = {
   201: KnowledgeFsBadCaseResponse
@@ -3762,6 +4236,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdData =
   url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses = {
   200: KnowledgeFsBadCaseResponse
 }
@@ -3779,6 +4260,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdData
   url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}'
 }
 
+export type PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdErrors]
+
 export type PatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponses = {
   200: KnowledgeFsBadCaseResponse
 }
@@ -3795,6 +4283,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceR
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}/trace-reference'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceError =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponses =
   {
@@ -3818,6 +4313,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsError =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses = {
   200: KnowledgeFsQualityReplayListResponse
 }
@@ -3836,6 +4338,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsError =
+  PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses = {
   202: KnowledgeFsQualityReplayResponse
@@ -3856,6 +4365,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs/{run_id}'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponses = {
   200: KnowledgeFsQualityReplayResponse
 }
@@ -3871,6 +4387,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQueriesData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/queries'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesError =
+  PostKnowledgeFsSpacesByControlSpaceIdQueriesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdQueriesErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQueriesResponses = {
   202: KnowledgeFsQueryResponse
@@ -3888,6 +4411,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionData = {
   url: '/knowledge-fs/spaces/{control_space_id}/queries/admission'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionError =
+  PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponses = {
   200: KnowledgeFsQueryAdmissionResponse
 }
@@ -3903,6 +4433,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/query-stream-capability'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityError =
+  PostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityResponses = {
   200: KnowledgeFsQueryStreamCapabilityResponse
@@ -3923,6 +4460,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksData = {
   url: '/knowledge-fs/spaces/{control_space_id}/research-tasks'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksError =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses = {
   200: KnowledgeFsResearchTaskListResponse
 }
@@ -3939,6 +4483,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksData = {
   url: '/knowledge-fs/spaces/{control_space_id}/research-tasks'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksError =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponses = {
   202: KnowledgeFsResearchTaskResponse
 }
@@ -3954,6 +4505,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/plan'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanError =
+  PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponses = {
   200: KnowledgeFsResearchTaskPlanResponse
@@ -3972,6 +4530,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses = {
   200: KnowledgeFsResearchTaskResponse
 }
@@ -3988,6 +4553,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponses = {
   200: KnowledgeFsResearchTaskResponse
@@ -4009,6 +4581,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsDat
   url: '/knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/partials'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsError =
+  GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponses = {
   200: KnowledgeFsResearchTaskPartialListResponse
 }
@@ -4024,6 +4603,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSettingsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/settings'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsError =
+  GetKnowledgeFsSpacesByControlSpaceIdSettingsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSettingsErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSettingsResponses = {
   200: KnowledgeFsSettingsResponse
@@ -4041,6 +4627,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/settings'
 }
 
+export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsError =
+  PatchKnowledgeFsSpacesByControlSpaceIdSettingsErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdSettingsErrors]
+
 export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponses = {
   200: KnowledgeFsSettingsUpdateResponse
 }
@@ -4057,6 +4650,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdD
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponses = {
   200: KnowledgeFsProfileMigrationResponse
@@ -4077,6 +4677,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/source-connections'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses = {
   200: KnowledgeFsSourceConnectionListResponse
 }
@@ -4092,6 +4699,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/source-connections'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponses = {
   201: KnowledgeFsSourceConnectionResponse
@@ -4110,6 +4724,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionId
   url: '/knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponses = {
   200: KnowledgeFsSourceConnectionResponse
 }
@@ -4125,6 +4746,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/source-providers'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponses = {
   200: KnowledgeFsSourceProviderListResponse
@@ -4143,6 +4771,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponses = {
   200: KnowledgeFsSourceWorkflowResponse
 }
@@ -4159,6 +4794,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelDat
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponses = {
   200: KnowledgeFsSourceWorkflowResponse
@@ -4180,6 +4822,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesData 
   url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponses = {
   200: KnowledgeFsCrawlPreviewPageListResponse
 }
@@ -4196,6 +4845,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryData
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponses = {
   200: KnowledgeFsSourceWorkflowResponse
@@ -4217,6 +4873,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelection
   url: '/knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponses = {
   202: KnowledgeFsSourceWorkflowResponse
 }
@@ -4236,6 +4899,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesData = {
   url: '/knowledge-fs/spaces/{control_space_id}/sources'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesResponses = {
   200: KnowledgeFsSourceListResponse
 }
@@ -4251,6 +4921,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/sources'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesResponses = {
   201: KnowledgeFsSourceResponse
@@ -4274,6 +4951,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}'
 }
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdError =
+  DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors[keyof DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
   202: KnowledgeFsDurableDeletionAcceptedResponse
 }
@@ -4291,6 +4975,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
   200: KnowledgeFsSourceResponse
 }
@@ -4307,6 +4998,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}'
 }
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdError =
+  PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors[keyof PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors]
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
   200: KnowledgeFsSourceResponse
@@ -4328,6 +5026,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportDat
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/async-import'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponses = {
   202: KnowledgeFsSourceWorkflowResponse
 }
@@ -4348,6 +5053,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportDat
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponses = {
   202: KnowledgeFsSourceWorkflowResponse
 }
@@ -4367,6 +5079,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewDa
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponses = {
   202: KnowledgeFsSourceWorkflowResponse
@@ -4390,6 +5109,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesData = {
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponses = {
   200: KnowledgeFsSourceFilesResponse
 }
@@ -4407,6 +5133,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportData = {
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponses = {
   200: KnowledgeFsSourceImportResponse
 }
@@ -4423,6 +5156,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesDat
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponses = {
   200: KnowledgeFsSourceImportResponse
@@ -4444,6 +5184,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponses = {
   200: KnowledgeFsSourcePagesResponse
 }
@@ -4464,6 +5211,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncData = {
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponses = {
   202: KnowledgeFsSourceWorkflowResponse
 }
@@ -4480,6 +5234,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyData 
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyError =
+  GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses = {
   200: KnowledgeFsSourceSyncPolicyResponse
@@ -4498,6 +5259,13 @@ export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyData 
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy'
 }
 
+export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyError =
+  PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors]
+
 export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponses = {
   200: KnowledgeFsSourceSyncPolicyResponse
 }
@@ -4514,6 +5282,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponses = {
   200: KnowledgeFsSourceCredentialTestResponse
@@ -4535,6 +5310,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImport
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsError =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses = {
   202: KnowledgeFsSourceWorkflowResponse
 }
@@ -4551,6 +5333,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTagsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/tags'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdTagsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTagsError =
+  GetKnowledgeFsSpacesByControlSpaceIdTagsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTagsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdTagsResponses = {
   200: KnowledgeFsSpaceTagListResponse
 }
@@ -4566,6 +5355,13 @@ export type PutKnowledgeFsSpacesByControlSpaceIdTagsData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/tags'
 }
+
+export type PutKnowledgeFsSpacesByControlSpaceIdTagsErrors = {
+  default: ErrorResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdTagsError =
+  PutKnowledgeFsSpacesByControlSpaceIdTagsErrors[keyof PutKnowledgeFsSpacesByControlSpaceIdTagsErrors]
 
 export type PutKnowledgeFsSpacesByControlSpaceIdTagsResponses = {
   200: KnowledgeFsSpaceTagListResponse
@@ -4587,6 +5383,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
   url: '/knowledge-fs/spaces/{control_space_id}/traces'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesResponses = {
   200: KnowledgeFsTraceListResponse
 }
@@ -4603,6 +5406,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdData = {
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponses = {
   200: KnowledgeFsAnswerTraceResponse
@@ -4624,6 +5434,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/conflicts'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponses = {
   200: KnowledgeFsTraceEntryListResponse
 }
@@ -4643,6 +5460,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceData = {
   }
   url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/evidence'
 }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceErrors]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponses = {
   200: KnowledgeFsTraceEntryListResponse
@@ -4664,6 +5488,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingData = {
   url: '/knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/missing'
 }
 
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingErrors = {
+  default: ErrorResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingError =
+  GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingErrors[keyof GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingErrors]
+
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponses = {
   200: KnowledgeFsTraceEntryListResponse
 }
@@ -4683,6 +5514,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsData = {
   url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsError =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponses = {
   201: KnowledgeFsUploadSessionCreateResponse
 }
@@ -4700,6 +5538,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionId
   url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/abort'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortError =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponses = {
   200: KnowledgeFsUploadSessionMutationResponse
 }
@@ -4716,6 +5561,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionId
   query?: never
   url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/complete'
 }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteError =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteErrors]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponses =
   {
@@ -4737,6 +5589,14 @@ export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionId
     url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/parts/{part_number}/presign'
   }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignError =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponses =
   {
     200: KnowledgeFsPresignedUploadResponse
@@ -4757,6 +5617,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionId
   url: '/knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/small-file'
 }
 
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileError =
+  PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileErrors]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileResponses =
   {
     200: KnowledgeFsSmallFileUploadResponse
@@ -4774,6 +5641,13 @@ export type PostKnowledgeFsTasksByTaskIdStreamCapabilityData = {
   url: '/knowledge-fs/tasks/{task_id}/stream-capability'
 }
 
+export type PostKnowledgeFsTasksByTaskIdStreamCapabilityErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsTasksByTaskIdStreamCapabilityError =
+  PostKnowledgeFsTasksByTaskIdStreamCapabilityErrors[keyof PostKnowledgeFsTasksByTaskIdStreamCapabilityErrors]
+
 export type PostKnowledgeFsTasksByTaskIdStreamCapabilityResponses = {
   200: KnowledgeFsStreamCapabilityResponse
 }
@@ -4790,6 +5664,13 @@ export type PostKnowledgeFsUploadsData = {
   url: '/knowledge-fs/uploads'
 }
 
+export type PostKnowledgeFsUploadsErrors = {
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsUploadsError =
+  PostKnowledgeFsUploadsErrors[keyof PostKnowledgeFsUploadsErrors]
+
 export type PostKnowledgeFsUploadsResponses = {
   201: KnowledgeFsStagedUploadResponse
 }
@@ -4805,6 +5686,13 @@ export type DeleteKnowledgeFsUploadsByUploadIdData = {
   query?: never
   url: '/knowledge-fs/uploads/{upload_id}'
 }
+
+export type DeleteKnowledgeFsUploadsByUploadIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteKnowledgeFsUploadsByUploadIdError =
+  DeleteKnowledgeFsUploadsByUploadIdErrors[keyof DeleteKnowledgeFsUploadsByUploadIdErrors]
 
 export type DeleteKnowledgeFsUploadsByUploadIdResponses = {
   204: void

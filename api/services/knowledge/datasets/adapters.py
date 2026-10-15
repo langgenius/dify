@@ -16,7 +16,7 @@ from models import Account, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
-from services.app.query_service import AppQueryService
+from services.app.query_service import RelatedApps
 from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeSnapshotService, upgrade_discovery_response
 from services.enterprise import rbac_service
 from services.errors.base import NoPermissionError
@@ -87,7 +87,7 @@ class SQLAlchemyDatasetOperations:
         *,
         session_factory: sessionmaker[Session],
         tags: TagTargetQuery,
-        app_queries: AppQueryService,
+        app_queries: RelatedApps,
         members: MemberService,
     ) -> None:
         self._sessions = session_factory

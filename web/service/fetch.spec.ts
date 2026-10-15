@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
 import {
@@ -201,8 +202,8 @@ describe('base', () => {
       }
 
       // Assert
-      expect(caughtError).toBeInstanceOf(Response)
-      await expect((caughtError as Response).json()).resolves.toEqual({
+      expect(caughtError).toBeInstanceOf(ORPCError)
+      expect(caughtError).toMatchObject({
         code: 'unauthorized',
         message: 'Unauthorized',
         status: 401,
@@ -226,7 +227,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
     })
@@ -247,7 +248,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).not.toHaveBeenCalled()
     })
@@ -272,7 +273,7 @@ describe('base', () => {
       try {
         await expect(
           base(`/apps/${appId}/workflows/draft/system-variables`),
-        ).rejects.toBeInstanceOf(Response)
+        ).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).not.toHaveBeenCalled()
       } finally {
         markAppDeletionFailed(appId)
@@ -299,7 +300,7 @@ describe('base', () => {
 
       await expect(
         base(`/apps/${appId}/workflows/draft/conversation-variables`),
-      ).rejects.toBeInstanceOf(Response)
+      ).rejects.toBeInstanceOf(ORPCError)
       expect(toast.error).not.toHaveBeenCalled()
     })
 
@@ -322,7 +323,7 @@ describe('base', () => {
       )
 
       await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
-        Response,
+        ORPCError,
       )
       expect(toast.error).toHaveBeenCalledWith('Visible error')
     })
@@ -361,7 +362,7 @@ describe('base', () => {
       )
 
       try {
-        await expect(base(path)).rejects.toBeInstanceOf(Response)
+        await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).toHaveBeenCalledWith('Visible error')
       } finally {
         markAppDeletionFailed(appId)

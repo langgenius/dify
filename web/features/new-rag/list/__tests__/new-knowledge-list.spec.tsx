@@ -2,6 +2,7 @@ import type { InfiniteData } from '@tanstack/react-query'
 import type { KnowledgeUpgrade } from '../../upgrade/knowledge-upgrade-context-value'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { KnowledgeUpgradeContext } from '../../upgrade/knowledge-upgrade-context-value'
 import { NewKnowledgeList } from '../new-knowledge-list'
@@ -1406,7 +1407,7 @@ describe('NewKnowledgeList', () => {
   })
 
   it.each([404, 503])('shows an unavailable state for a %s response', (status) => {
-    queryMock.error = { status }
+    queryMock.error = createHttpError(new Response(null, { status }))
     renderWithNuqs(<NewKnowledgeList view="agent" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('knowledgeSpace.unavailableTitle')).toBeInTheDocument()

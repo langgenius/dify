@@ -2,25 +2,28 @@
 
 import type * as React from 'react'
 import type { InputGroupProps } from '../input-group'
-import type { MenuItemVariant } from '../overlay-shared'
-import type { Placement } from '../placement'
+import type { MenuItemVariant } from '../internal/menu'
+import type { Placement } from '../internal/placement'
 import { Menu } from '@base-ui/react/menu'
 import { cn } from '../cn'
-import { textControlGroupInputClassName } from '../form-control-shared'
 import { InputGroup } from '../input-group'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { focusRingClassName } from '../internal/focus'
+import { textControlGroupInputClassName } from '../internal/form-control'
+import {
+  menuItemClassName,
+  menuItemDestructiveClassName,
+  menuPopupBaseClassName,
+  menuPopupSurfaceClassName,
+} from '../internal/menu'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-  menuItemClassName,
-  menuItemDestructiveClassName,
-  menuPopupBaseClassName,
-  menuPopupSurfaceClassName,
-  triggerFocusClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const DropdownMenu = Menu.Root
 const DropdownMenuPortal = Menu.Portal
@@ -36,6 +39,10 @@ const useDropdownMenuFilter = Menu.useFilter
 type DropdownMenuHandle<Payload = unknown> = Menu.Handle<Payload>
 
 type DropdownMenuActions = Menu.Root.Actions
+type DropdownMenuChangeEventReason = Menu.Root.ChangeEventReason
+type DropdownMenuChangeEventDetails = Menu.Root.ChangeEventDetails
+type DropdownMenuHighlightEventReason = Menu.Root.HighlightEventReason
+type DropdownMenuHighlightEventDetails = Menu.Root.HighlightEventDetails
 
 type DropdownMenuProps<Payload = unknown> = Menu.Root.Props<Payload>
 type DropdownMenuTriggerProps<Payload = unknown> = Menu.Trigger.Props<Payload>
@@ -46,15 +53,19 @@ function DropdownMenuTrigger<Payload = unknown>({
 }: DropdownMenuTriggerProps<Payload>) {
   return (
     <Menu.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
 }
 type DropdownMenuPortalProps = Menu.Portal.Props
 type DropdownMenuSubProps = Menu.SubmenuRoot.Props
+type DropdownMenuSubChangeEventReason = Menu.SubmenuRoot.ChangeEventReason
+type DropdownMenuSubChangeEventDetails = Menu.SubmenuRoot.ChangeEventDetails
 type DropdownMenuGroupProps = Menu.Group.Props
 type DropdownMenuFilterProviderProps = Menu.FilterProvider.Props
+type DropdownMenuFilterProviderChangeEventReason = Menu.FilterProvider.ChangeEventReason
+type DropdownMenuFilterProviderChangeEventDetails = Menu.FilterProvider.ChangeEventDetails
 
 type DropdownMenuInputGroupProps = InputGroupProps
 
@@ -145,12 +156,14 @@ function DropdownMenuList({ className, ...props }: DropdownMenuListProps) {
     />
   )
 }
+type DropdownMenuRadioGroupChangeEventReason = Menu.RadioGroup.ChangeEventReason
+type DropdownMenuRadioGroupChangeEventDetails = Menu.RadioGroup.ChangeEventDetails
 type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
   Menu.RadioGroup.Props,
   'defaultValue' | 'onValueChange' | 'value'
 > & {
   defaultValue?: Value
-  onValueChange?: (value: Value, eventDetails: Menu.RadioGroup.ChangeEventDetails) => void
+  onValueChange?: (value: Value, eventDetails: DropdownMenuRadioGroupChangeEventDetails) => void
   value?: Value
 }
 type DropdownMenuItemVariant = MenuItemVariant
@@ -212,6 +225,8 @@ function DropdownMenuRadioItemIndicator({
 type DropdownMenuRadioItemIndicatorProps = Omit<Menu.RadioItemIndicator.Props, 'children'>
 
 type DropdownMenuCheckboxItemProps = Menu.CheckboxItem.Props
+type DropdownMenuCheckboxItemChangeEventReason = Menu.CheckboxItem.ChangeEventReason
+type DropdownMenuCheckboxItemChangeEventDetails = Menu.CheckboxItem.ChangeEventDetails
 
 function DropdownMenuCheckboxItem({ className, ...props }: DropdownMenuCheckboxItemProps) {
   return (
@@ -243,7 +258,9 @@ type DropdownMenuGroupLabelProps = Menu.GroupLabel.Props
 function DropdownMenuGroupLabel({ className, ...props }: DropdownMenuGroupLabelProps) {
   return (
     <Menu.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-3', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -268,7 +285,7 @@ function DropdownMenuPositioner({
       align={align}
       sideOffset={sideOffset}
       alignOffset={alignOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -465,15 +482,23 @@ export {
 export type {
   DropdownMenuActions,
   DropdownMenuArrowProps,
+  DropdownMenuChangeEventDetails,
+  DropdownMenuChangeEventReason,
+  DropdownMenuCheckboxItemChangeEventDetails,
+  DropdownMenuCheckboxItemChangeEventReason,
   DropdownMenuCheckboxItemIndicatorProps,
   DropdownMenuCheckboxItemProps,
   DropdownMenuClearProps,
   DropdownMenuContentProps,
   DropdownMenuEmptyProps,
+  DropdownMenuFilterProviderChangeEventDetails,
+  DropdownMenuFilterProviderChangeEventReason,
   DropdownMenuFilterProviderProps,
   DropdownMenuGroupLabelProps,
   DropdownMenuGroupProps,
   DropdownMenuHandle,
+  DropdownMenuHighlightEventDetails,
+  DropdownMenuHighlightEventReason,
   DropdownMenuInputGroupProps,
   DropdownMenuInputProps,
   DropdownMenuItemProps,
@@ -483,10 +508,14 @@ export type {
   DropdownMenuPortalProps,
   DropdownMenuPositionerProps,
   DropdownMenuProps,
+  DropdownMenuRadioGroupChangeEventDetails,
+  DropdownMenuRadioGroupChangeEventReason,
   DropdownMenuRadioGroupProps,
   DropdownMenuRadioItemIndicatorProps,
   DropdownMenuRadioItemProps,
   DropdownMenuSeparatorProps,
+  DropdownMenuSubChangeEventDetails,
+  DropdownMenuSubChangeEventReason,
   DropdownMenuSubContentProps,
   DropdownMenuSubProps,
   DropdownMenuSubTriggerProps,

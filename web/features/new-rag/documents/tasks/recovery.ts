@@ -1,7 +1,7 @@
 import type { DocumentProcessingTask } from '../models'
 import { consoleClient } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { documentTaskFromApi } from '../models'
-import { responseStatus } from '../request-error'
 
 export const TASK_PAGE_SIZE = 100
 export const MAX_AUTO_CURSOR_PAGES = 20
@@ -50,7 +50,7 @@ export async function findBackgroundTasks(
 }
 
 export function taskSnapshotErrorIsTransient(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === undefined || status === 408 || status === 429 || status >= 500
 }
 

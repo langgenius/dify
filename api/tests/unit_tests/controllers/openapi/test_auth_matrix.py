@@ -1315,7 +1315,8 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
     "description": "Error",
     "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorBody"}}},
 }
-"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`."""
+"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`, and what
+`ExternalApi` adds to every other operation."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls"): frozenset(
@@ -1339,7 +1340,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat"): frozenset(
         {"200", "400", "401", "403", "404", "409", "413", "422", "503", "default"}
     ),
-    ("get", "/_catalog"): frozenset({"200"}),
+    ("get", "/_catalog"): frozenset({"200", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
@@ -1359,14 +1360,19 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
-    # The five device-flow rows are the only operations with no `default`: they
-    # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
-    # so no `ErrorBody` schema is registered for them.
-    ("post", "/oauth/device/approve"): frozenset({"200"}),
-    ("post", "/oauth/device/code"): frozenset({"200"}),
-    ("post", "/oauth/device/deny"): frozenset({"200"}),
-    ("get", "/oauth/device/lookup"): frozenset({"200"}),
-    ("post", "/oauth/device/token"): frozenset({"200"}),
+    # The catalog and the five device-flow rows document their 200 with a raw
+    # `openapi_ns.response` rather than `@returns`; `ExternalApi` still gives them the
+    # `default` error every operation documents, with the same `ErrorBody` schema.
+    # Approve and deny run Console account admission; its setup and account-initialization
+    # errors are generic on that surface (handled centrally by the client), so the guards
+    # document nothing and the open `default` error covers them. Code, token, approve and
+    # deny declare the RFC 8628-style `DeviceFlowErrorResponse` for the statuses their flow
+    # errors use.
+    ("post", "/oauth/device/approve"): frozenset({"200", "404", "409", "503", "default"}),
+    ("post", "/oauth/device/code"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/device/deny"): frozenset({"200", "404", "409", "503", "default"}),
+    ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
+    ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),

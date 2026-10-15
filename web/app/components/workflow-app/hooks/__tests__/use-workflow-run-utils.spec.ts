@@ -1,5 +1,6 @@
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { AppModeEnum } from '@/types/app'
 import {
   applyRunningStateForMode,
@@ -447,7 +448,7 @@ describe('useWorkflowRun utils', () => {
     expect(setWorkflowRunningData).not.toHaveBeenCalled()
   })
 
-  it('should handle Response and non-Response trigger debug exceptions correctly', async () => {
+  it('should report both HTTP and network trigger debug failures', async () => {
     const clearAbortController = vi.fn()
     const clearListeningStateSpy = vi.fn()
     const setAbortController = vi.fn()
@@ -455,9 +456,12 @@ describe('useWorkflowRun utils', () => {
     const controllerTarget: Record<string, unknown> = {}
 
     mockPost.mockRejectedValueOnce(
-      new Response(JSON.stringify({ error: 'Plugin failed' }), {
-        headers: { 'content-type': 'application/json' },
-      }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ error: 'Plugin failed' }), {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
     )
 
     await runTriggerDebug({
@@ -491,8 +495,11 @@ describe('useWorkflowRun utils', () => {
       setWorkflowRunningData,
     })
 
-    expect(clearAbortController).toHaveBeenCalledTimes(1)
-    expect(setWorkflowRunningData).toHaveBeenCalledTimes(1)
+    expect(mockToastError).toHaveBeenLastCalledWith('network failed')
+    expect(clearAbortController).toHaveBeenCalledTimes(2)
+    expect(setWorkflowRunningData).toHaveBeenLastCalledWith(
+      createFailedWorkflowState('network failed'),
+    )
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(2)
   })
 

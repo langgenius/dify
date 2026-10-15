@@ -440,7 +440,16 @@ class DatasetService:
             pipeline_id=pipeline.id,
         )
         session.add(dataset)
+        session.flush()
+        dataset_id = dataset.id
+        creator_id = current_user.id
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            creator_id,
+            rbac_contracts.RBACResourceType.DATASET,
+            dataset_id,
+        )
         return dataset
 
     @staticmethod
@@ -508,10 +517,7 @@ class DatasetService:
             model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
-            if model_schema.features and ModelFeature.VISION in model_schema.features:
-                return True
-            else:
-                return False
+            return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
         except LLMBadRequestError:
             raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
 
@@ -1929,10 +1935,7 @@ class DocumentService:
 
     @staticmethod
     def check_archived(document):
-        if document.archived:
-            return True
-        else:
-            return False
+        return bool(document.archived)
 
     @staticmethod
     def delete_document(document, session: Session):

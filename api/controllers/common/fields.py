@@ -507,3 +507,9 @@ class Site(BaseModel):
         if self.icon and self.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(self.icon)
         return None
+
+
+class ErrorMessageResponse(ResponseModel):
+    """Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body."""
+
+    error: str

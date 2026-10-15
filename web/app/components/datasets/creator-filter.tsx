@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -13,6 +13,7 @@ import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
 import { CREATOR_FILTER_MAX_SELECTION } from './creator-filter-query'
 
 type CreatorFilterProps = {
@@ -94,11 +95,13 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
         {selectedCreators.slice(0, 3).map((creator, index) => (
           <Avatar
             key={creator.id}
-            avatar={creator.avatar_url}
-            name={creator.name}
             size="xs"
+            aria-hidden="true"
             className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
-          />
+          >
+            <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
+            <AvatarImage src={creator.avatar_url || undefined} alt="" />
+          </Avatar>
         ))}
         {value.length > 0 && (
           <span className="px-1 text-xs font-medium text-text-tertiary">+{value.length}</span>
@@ -214,11 +217,13 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
                           aria-describedby={selectionDisabled ? selectionLimitId : undefined}
                         />
                         <Avatar
-                          avatar={creator.avatar_url}
-                          name={creator.name}
                           size="xs"
+                          aria-hidden="true"
                           className="border-[0.5px] border-divider-regular"
-                        />
+                        >
+                          <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
+                          <AvatarImage src={creator.avatar_url || undefined} alt="" />
+                        </Avatar>
                         <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">
                           {creator.name}
                         </span>

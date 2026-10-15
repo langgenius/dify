@@ -1,6 +1,7 @@
 import type { KnowledgeFsPublicFailureResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TFunction } from 'i18next'
 import { zKnowledgeFsPublicFailureResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
+import { ORPCError } from '@orpc/client'
 
 export type KnowledgeFsTaskFailureMessageKey =
   | 'settings.compilationInProgress'
@@ -218,15 +219,22 @@ export function knowledgeFsTaskFailureMessageKey(
 }
 
 export async function knowledgeFsRequestFailureMessageKey(error: unknown) {
-  if (!(error instanceof Response)) return
-  try {
-    const body: unknown = await error.clone().json()
-    if (typeof body === 'object' && body !== null && 'failure' in body) {
-      const failure = zKnowledgeFsPublicFailureResponse.safeParse(body.failure)
-      if (failure.success) return knowledgeFsTaskFailureMessageKey(failure.data)
+  let body: unknown
+  if (error instanceof ORPCError) {
+    body = error.data
+  } else if (error instanceof Response) {
+    try {
+      body = await error.clone().json()
+    } catch {
+      // Malformed responses must not hide the original error or expose provider diagnostics.
+      return
     }
-  } catch {
-    // Malformed responses must not hide the original error or expose provider diagnostics.
+  } else {
+    return
+  }
+  if (typeof body === 'object' && body !== null && 'failure' in body) {
+    const failure = zKnowledgeFsPublicFailureResponse.safeParse(body.failure)
+    if (failure.success) return knowledgeFsTaskFailureMessageKey(failure.data)
   }
 }
 

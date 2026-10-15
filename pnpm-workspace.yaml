@@ -48,6 +48,7 @@ overrides:
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.28.1: ^0.28.2
+  fflate@>=0.7.0 <0.7.5: 0.7.5
   # Keep Vitest's optional DOM peer aligned with Web so browser matcher types augment one Vitest instance.
   happy-dom: 'catalog:'
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
@@ -223,7 +224,7 @@ catalog:
   mitt: 3.0.1
   motion: 13.5.1
   negotiator: 1.1.0
-  next: 16.4.0
+  next: 16.4.1
   next-themes: 0.4.6
   nuqs: 2.10.2
   open: 11.0.4

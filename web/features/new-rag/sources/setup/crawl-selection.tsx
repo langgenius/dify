@@ -110,7 +110,7 @@ export function CrawlPreviewPageSelection({
         )}
       </div>
       <div className="mt-3 flex h-79 flex-col overflow-hidden rounded-xl border border-divider-regular">
-        <label className="flex shrink-0 cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
+        <label className="flex shrink-0 cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary has-data-disabled:cursor-not-allowed">
           <Checkbox
             checked={allSelected}
             indeterminate={someSelected && !allSelected}
@@ -130,7 +130,7 @@ export function CrawlPreviewPageSelection({
             const reasonId = `${pageDescriptionPrefixId}-reason-${index}`
             return (
               <li key={page.pageId}>
-                <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
+                <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 has-data-disabled:cursor-not-allowed">
                   <Checkbox
                     checked={selectedPageIds.has(page.pageId)}
                     disabled={!selectable || selectionLimitReached || selectionLocked}

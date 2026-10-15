@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -13,6 +29,18 @@ export const zSimpleResultResponse = z.object({
  * DefaultBlockConfigsResponse
  */
 export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
+
+/**
+ * DraftWorkflowNotExistError
+ *
+ * Draft workflow need to be initialized.
+ */
+export const zDraftWorkflowNotExistError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_exist'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * SnippetDraftSyncPayload
@@ -34,6 +62,18 @@ export const zWorkflowRestoreResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * DraftWorkflowNotSyncError
+ *
+ * Workflow graph might have been modified, please refresh and resubmit.
+ */
+export const zDraftWorkflowNotSyncError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_sync'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * SnippetDraftConfigResponse
@@ -61,6 +101,78 @@ export const zSnippetLoopNodeRunPayload = z.object({
 })
 
 /**
+ * AgentNotFoundError
+ *
+ * Agent not found.
+ */
+export const zAgentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentSoulLockedError
+ *
+ * Agent Soul is locked for this workflow node.
+ */
+export const zAgentSoulLockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_soul_locked_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidComposerConfigError
+ *
+ * Invalid agent composer config.
+ */
+export const zInvalidComposerConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_composer_config_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PlaintextSecretNotAllowedError
+ *
+ * Plaintext secret values are not allowed in Agent config.
+ */
+export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('plaintext_secret_not_allowed_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentNameConflictError
+ *
+ * Agent name already exists.
+ */
+export const zAgentNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_name_conflict_error'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * WorkflowComposerCopyFromRosterPayload
  */
 export const zWorkflowComposerCopyFromRosterPayload = z.object({
@@ -68,6 +180,18 @@ export const zWorkflowComposerCopyFromRosterPayload = z.object({
   source_agent_id: z.string().min(1).max(255),
   source_snapshot_id: z.string().max(255).nullish(),
 })
+
+/**
+ * AgentVersionConflictError
+ *
+ * Agent config version changed. Please reload and try again.
+ */
+export const zAgentVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_conflict_error'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * SnippetDraftNodeRunPayload

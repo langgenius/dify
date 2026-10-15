@@ -20,9 +20,11 @@ export function KnowledgeSpaceIcon({
 }) {
   return (
     <AppIcon
-      background={background ?? DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND}
-      icon={resolveKnowledgeSpaceIcon(icon)}
-      iconType="emoji"
+      icon={{
+        icon: resolveKnowledgeSpaceIcon(icon),
+        icon_type: 'emoji',
+        icon_background: background ?? DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND,
+      }}
       size={size}
     />
   )

@@ -185,8 +185,13 @@ class OpenApiErrorFormatter:
 
     def _resolve_code(self, e: Exception, status_code: int) -> str:
         explicit = getattr(type(e), "error_code", None)
-        if isinstance(explicit, (OpenApiErrorCode, str)) and str(explicit) != "unknown":
-            return str(explicit)
+        return self.code_for(status_code, str(explicit) if isinstance(explicit, str) else None)
+
+    @staticmethod
+    def code_for(status_code: int, error_code: str | None) -> str:
+        """The wire ``code`` for an exception class's ``error_code`` (if any) at this status."""
+        if error_code is not None and error_code != "unknown":
+            return error_code
         return str(_CODE_BY_STATUS.get(status_code, OpenApiErrorCode.UNKNOWN))
 
     def _resolve_message(self, merged: dict[str, Any], status_code: int) -> str:

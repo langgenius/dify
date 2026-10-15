@@ -25,6 +25,7 @@ import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-ta
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -68,17 +69,6 @@ function taskDrawerCloseButton(element: Element | null) {
   return element
     ?.closest('[role="dialog"]')
     ?.querySelector<HTMLButtonElement>(TASK_DRAWER_CLOSE_SELECTOR)
-}
-
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
 }
 
 function DocumentsTaskDrawerHeader() {
@@ -397,7 +387,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
       if (document.activeElement === focusTarget) closeButton?.focus()
     } catch (error) {
       const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-      if (responseStatus(error) === 403) {
+      if (getHttpErrorStatus(error) === 403) {
         closeButton?.focus()
         denyWrite()
       } else if (

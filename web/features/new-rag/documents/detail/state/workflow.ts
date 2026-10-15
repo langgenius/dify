@@ -11,6 +11,7 @@ import {
 import { selectAtom } from 'jotai/utils'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -22,7 +23,6 @@ import {
   documentTaskListFromApi,
 } from '../../models'
 import { resolveDocumentTask } from '../../tasks/snapshot'
-import { responseStatus } from '../model'
 import { documentDetailDocumentIdAtom, documentDetailKnowledgeSpaceIdAtom } from './inputs'
 import { documentDetailDocumentAtom } from './queries'
 
@@ -154,7 +154,7 @@ const documentTasksQueryOptionsAtom = atom((get) => {
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     initialPageParam: null as string | null,
     refetchInterval: (query) => {
-      if (!drawerOpen || responseStatus(query.state.error) === 403) return false
+      if (!drawerOpen || getHttpErrorStatus(query.state.error) === 403) return false
       // The drawer also shows bulk and source tasks, which the document snapshot cannot update.
       const hasActiveTasks = query.state.data?.pages.some((page) =>
         page.data.some(
@@ -211,7 +211,7 @@ const documentTaskSnapshotQueryAtom = atomWithQuery((get) => {
         }
       : skipToken,
     refetchInterval: (query) => {
-      if (responseStatus(query.state.error) === 403) return false
+      if (getHttpErrorStatus(query.state.error) === 403) return false
       const task = resolveDocumentTask(
         document,
         query.state.data ? documentTaskListFromApi(query.state.data).items[0] : undefined,
@@ -265,7 +265,7 @@ const submittedJobQueryAtom = atomWithQuery((get) => {
       : skipToken,
     refetchInterval: (query) =>
       query.state.data && !compilationJobIsTerminal(query.state.data) ? 2000 : false,
-    retry: (failureCount, error) => responseStatus(error) !== 403 && failureCount < 2,
+    retry: (failureCount, error) => getHttpErrorStatus(error) !== 403 && failureCount < 2,
   })
 })
 
@@ -278,7 +278,7 @@ export const documentSubmittedJobTerminalAtom = atom((get) => {
 })
 
 export const documentSubmittedJobMissingAtom = atom(
-  (get) => responseStatus(get(submittedJobErrorAtom)) === 404,
+  (get) => getHttpErrorStatus(get(submittedJobErrorAtom)) === 404,
 )
 
 export const documentSubmissionPendingAtom = atom((get) => {
@@ -290,7 +290,7 @@ export const documentSubmissionPendingAtom = atom((get) => {
   return (
     !submittedTaskObserved &&
     !(job && compilationJobIsTerminal(job)) &&
-    responseStatus(get(submittedJobErrorAtom)) !== 404
+    getHttpErrorStatus(get(submittedJobErrorAtom)) !== 404
   )
 })
 
@@ -444,7 +444,7 @@ export const reconcileSubmittedDocumentJobAtom = atom(null, async (get, set) => 
   if (!submittedReindex) return
   const job = get(submittedJobDataAtom)
   const terminal = Boolean(job && compilationJobIsTerminal(job))
-  const missing = responseStatus(get(submittedJobErrorAtom)) === 404
+  const missing = getHttpErrorStatus(get(submittedJobErrorAtom)) === 404
   if (!terminal && !missing) return
   updateWorkflowState(get, set, (state) => ({ ...state, submittedReindex: undefined }))
   try {
@@ -515,7 +515,7 @@ export const reindexDocumentAtom = atom(
       await invalidateDocumentWorkflow(get)
       return { status: 'started' } as const
     } catch (error) {
-      if (responseStatus(error) === 403) {
+      if (getHttpErrorStatus(error) === 403) {
         updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
         await retryWritePermission(get, set, refreshWritePermission)
       }
@@ -555,7 +555,7 @@ export const cancelDocumentReindexAtom = atom(
       await invalidateDocumentWorkflow(get)
       return 'canceled' as const
     } catch (error) {
-      if (responseStatus(error) === 403) {
+      if (getHttpErrorStatus(error) === 403) {
         updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
         await retryWritePermission(get, set, refreshWritePermission)
       }

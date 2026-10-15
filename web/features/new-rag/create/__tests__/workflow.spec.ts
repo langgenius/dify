@@ -1,3 +1,4 @@
+import { createHttpError } from '@/service/http-error'
 import {
   createKnowledge,
   isDefinitiveCreationRejection,
@@ -298,7 +299,11 @@ describe('createKnowledge', () => {
 
 describe('isDefinitiveCreationRejection', () => {
   it('only treats client authorization and validation failures as definitive', () => {
-    expect(isDefinitiveCreationRejection({ status: 422 })).toBe(true)
-    expect(isDefinitiveCreationRejection({ status: 503 })).toBe(false)
+    expect(
+      isDefinitiveCreationRejection(createHttpError(new Response(null, { status: 422 }))),
+    ).toBe(true)
+    expect(
+      isDefinitiveCreationRejection(createHttpError(new Response(null, { status: 503 }))),
+    ).toBe(false)
   })
 })

@@ -1,7 +1,7 @@
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { taskGraphIsActive } from './model'
 import { backgroundTaskFromApi } from './models'
-import { responseStatus } from './request-error'
 import { TASK_PAGE_SIZE } from './tasks/recovery'
 
 export function logicalDocumentsInfiniteOptions(knowledgeSpaceId: string) {
@@ -32,7 +32,7 @@ export function documentTasksInfiniteOptions(
     }),
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     refetchInterval: (query) => {
-      if (responseStatus(query.state.error) === 403) return false
+      if (getHttpErrorStatus(query.state.error) === 403) return false
       return query.state.data?.pages.some((page) =>
         page.data.some((task) => taskGraphIsActive(backgroundTaskFromApi(task))),
       )

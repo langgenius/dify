@@ -5,13 +5,13 @@ import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { DocumentsEmpty, DocumentsList } from '../list'
 import {
   DocumentPermissionRecoveryBoundary,
   DocumentReadPermissionRecovery,
 } from '../permission-recovery/recovery-boundary'
-import { responseStatus } from '../request-error'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import {
   documentsAtom,
@@ -93,12 +93,12 @@ function DocumentQueryRecoveryNotice() {
     >
       <span className="system-xs-regular text-text-tertiary">
         {t(($) =>
-          responseStatus(documentRecovery.error) === 403
+          getHttpErrorStatus(documentRecovery.error) === 403
             ? $.documentsPermissionDescription
             : $.documentsErrorDescription,
         )}
       </span>
-      {responseStatus(documentRecovery.error) !== 403 && (
+      {getHttpErrorStatus(documentRecovery.error) !== 403 && (
         <Button
           id={DOCUMENT_RETRY_BUTTON_ID}
           ref={documentsRetryButtonRef}

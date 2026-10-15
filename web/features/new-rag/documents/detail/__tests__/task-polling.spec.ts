@@ -2,6 +2,7 @@ import type { KnowledgeFsBackgroundTaskListResponse } from '@dify/contracts/api/
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { createHttpError } from '@/service/http-error'
 import { documentDetailKnowledgeSpaceIdAtom } from '../state/inputs'
 import { documentBackgroundTasksAtom, documentTaskDrawerOpenAtom } from '../state/workflow'
 
@@ -149,7 +150,7 @@ describe('document detail task drawer polling', () => {
   it('stops polling after read permission is revoked', async () => {
     listTasks
       .mockResolvedValueOnce(taskResponse('document_bulk', 'running'))
-      .mockRejectedValue({ status: 403 })
+      .mockRejectedValue(createHttpError(new Response(null, { status: 403 })))
     store.set(documentTaskDrawerOpenAtom, true)
     await observeTasks()
     await vi.advanceTimersByTimeAsync(5001)

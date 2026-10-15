@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { createRequestId } from '../../request-id'
 import { newKnowledgeDetailPath } from '../../routes'
@@ -20,16 +21,8 @@ import { sourceWorkflowFromApi } from '../source-models'
 
 type SyncMode = 'manual' | 'interval' | 'custom'
 
-function requestStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  if ('status' in error && typeof error.status === 'number') return error.status
-  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data)
-    return typeof error.data.status === 'number' ? error.data.status : undefined
-}
-
 function isDefinitiveRequestFailure(error: unknown) {
-  const status = requestStatus(error)
+  const status = getHttpErrorStatus(error)
   return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
 }
 

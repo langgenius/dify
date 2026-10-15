@@ -19,6 +19,8 @@ import { SkillDetailPage } from '../detail/page'
 export const primaryModifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
 
 const mocks = vi.hoisted(() => ({
+  request:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
   deleteSkillMutationFn: vi.fn(),
   copyToClipboard: vi.fn(),
   downloadBlob: vi.fn(),
@@ -30,7 +32,6 @@ const mocks = vi.hoisted(() => ({
   publishSkillMutationOptions: vi.fn(),
   routerPush: vi.fn(),
   routeSkillId: 'skill-1',
-  restoreSkillMutationFn: vi.fn(),
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
   modelParameterRulesFetch: vi.fn<typeof fetch>(),
@@ -61,7 +62,6 @@ const mocks = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
   uploadSkillFile: vi.fn(),
-  versionDeleteMutationFn: vi.fn(),
   versionPatchMutationFn: vi.fn(),
 }))
 
@@ -94,10 +94,6 @@ vi.mock('@/app/components/base/markdown', () => ({
 
     return <div>{content}</div>
   },
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
 }))
 
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
@@ -179,6 +175,11 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mocks.request,
+}))
+
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ skillId: mocks.routeSkillId }),
   useRouter: () => ({
@@ -256,11 +257,7 @@ vi.mock('@/service/console', async (importOriginal) => {
                   queryOptions: mocks.skillReferencesQueryOptions,
                 },
               },
-              restore: {
-                post: {
-                  mutationOptions: () => ({ mutationFn: mocks.restoreSkillMutationFn }),
-                },
-              },
+              restore: actual.consoleQuery.workspaces.current.skills.bySkillId.restore,
               files: {
                 check: {
                   post: {
@@ -283,9 +280,9 @@ vi.mock('@/service/console', async (importOriginal) => {
                   patch: {
                     mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
                   },
-                  delete: {
-                    mutationOptions: () => ({ mutationFn: mocks.versionDeleteMutationFn }),
-                  },
+                  delete:
+                    actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId
+                      .delete,
                 },
               },
             },
@@ -688,6 +685,15 @@ export function getMocks() {
 export function resetDetailPageFixture() {
   vi.useRealTimers()
   vi.resetAllMocks()
+  mocks.request.mockImplementation(async (_url, _init, options) => {
+    const req = options.request
+    const pathname = new URL(req.url).pathname
+    if (req.method === 'POST' && /\/skills\/[^/]+\/restore$/.test(pathname))
+      return Response.json(mocks.skillDetail)
+    if (req.method === 'DELETE' && /\/skills\/[^/]+\/versions\/[^/]+$/.test(pathname))
+      return Response.json({ result: 'success' })
+    throw new Error(`Unexpected request: ${req.method} ${pathname}`)
+  })
   mocks.modelParameterRulesFetch.mockImplementation(async (input) => {
     const url = input instanceof Request ? input.url : String(input)
     if (!url.includes('/models/parameter-rules'))
@@ -830,9 +836,7 @@ export function resetDetailPageFixture() {
       : mocks.skillDetail
     return version
   })
-  mocks.restoreSkillMutationFn.mockResolvedValue({})
   mocks.versionPatchMutationFn.mockResolvedValue({})
-  mocks.versionDeleteMutationFn.mockResolvedValue({})
   mocks.sendSkillAssistMessage.mockResolvedValue(undefined)
   mocks.checkDraftFilesMutationFn.mockImplementation(
     async (input: {

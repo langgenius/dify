@@ -1,5 +1,5 @@
+import type { PopoverChangeEventDetails } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
-import type { BlockSelectorProps } from '../../../block-selector'
 import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -51,14 +51,11 @@ export const NodeTargetHandle = memo(
     )
     const isConnectable = !!availablePrevBlocks.length
 
-    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
-      (v, details) => {
-        preserveOutsideFocusRef.current =
-          details?.reason === 'outside-press' || details?.reason === 'focus-out'
-        setOpen(v)
-      },
-      [],
-    )
+    const handleOpenChange = useCallback((v: boolean, details?: PopoverChangeEventDetails) => {
+      preserveOutsideFocusRef.current =
+        details?.reason === 'outside-press' || details?.reason === 'focus-out'
+      setOpen(v)
+    }, [])
     const handleHandleClick = useCallback(
       (e: MouseEvent) => {
         e.stopPropagation()
@@ -181,14 +178,11 @@ export const NodeSourceHandle = memo(
       hasAgentV2OutputRoutes(data) ||
       data.type === BlockEnum.HumanInput ||
       data.error_strategy === ErrorHandleTypeEnum.failBranch
-    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
-      (v, details) => {
-        preserveOutsideFocusRef.current =
-          details?.reason === 'outside-press' || details?.reason === 'focus-out'
-        setOpen(v)
-      },
-      [],
-    )
+    const handleOpenChange = useCallback((v: boolean, details?: PopoverChangeEventDetails) => {
+      preserveOutsideFocusRef.current =
+        details?.reason === 'outside-press' || details?.reason === 'focus-out'
+      setOpen(v)
+    }, [])
     const handleHandleClick = useCallback((e: MouseEvent) => {
       e.stopPropagation()
       preserveOutsideFocusRef.current = false

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
 import { render } from '@/test/console/render'
 import { createQueryTestWrapper } from '@/test/query-state-testing'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
@@ -2898,7 +2899,9 @@ describe('RetrievalTestPage', () => {
   })
 
   it('treats a conflict on flagging as the trace already being an open bad case', async () => {
-    apiMock.createBadCase.mockRejectedValueOnce(new Response('', { status: 409 }))
+    apiMock.createBadCase.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 })),
+    )
     apiMock.traces = [
       {
         completed: true,

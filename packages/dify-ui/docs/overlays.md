@@ -33,7 +33,7 @@ The host must establish an isolated stacking context at its application root:
 
 ```tsx
 <body>
-  <div className="isolate h-full">{children}</div>
+  <div className="isolate">{children}</div>
 </body>
 ```
 
@@ -52,6 +52,10 @@ clipping.
 Overlays at `z-50` rely on portal DOM order; the portal mounted later appears above earlier ones.
 Toast remains one layer above ordinary overlays.
 
+Positioners hide with their anchor: Base UI marks them `data-anchor-hidden` when the anchor is
+clipped, `display: none` or unmounted, and the shared positioner class turns that into
+`visibility: hidden` plus `pointer-events: none` so a popup never lingers at the viewport origin.
+
 - Do not add call-site `z-*` overrides. Fix the owning overlay structure when content is clipped
   or hidden.
 - Do not wrap a Dify UI overlay in another manual portal.
@@ -62,6 +66,8 @@ Toast remains one layer above ordinary overlays.
 
 - Use `Dialog` for modal content that needs focus containment and scroll locking.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
+  It blocks outside-press dismissal but still closes on Escape; cancel that close in
+  `onOpenChange` when the answer must be explicit.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
 - Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
   A long action list filters with `DropdownMenuFilterProvider`; choosing a value is

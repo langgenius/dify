@@ -169,9 +169,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
@@ -210,9 +210,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           refetch?.()
           onClose()
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },

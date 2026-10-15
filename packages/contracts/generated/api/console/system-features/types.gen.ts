@@ -31,6 +31,16 @@ export type SystemFeatureModel = {
   webapp_auth: WebAppAuthModel
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type LicenseModel = {
   expired_at: string
   license_expiry_notice_enabled: boolean
@@ -94,6 +104,12 @@ export type GetSystemFeaturesData = {
   url: '/system-features'
 }
 
+export type GetSystemFeaturesErrors = {
+  default: ErrorResponse
+}
+
+export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
+
 export type GetSystemFeaturesResponses = {
   200: SystemFeatureModel
 }
@@ -106,6 +122,13 @@ export type GetSystemFeaturesLicenseData = {
   query?: never
   url: '/system-features/license'
 }
+
+export type GetSystemFeaturesLicenseErrors = {
+  default: ErrorResponse
+}
+
+export type GetSystemFeaturesLicenseError =
+  GetSystemFeaturesLicenseErrors[keyof GetSystemFeaturesLicenseErrors]
 
 export type GetSystemFeaturesLicenseResponses = {
   200: LicenseModel

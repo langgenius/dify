@@ -10,7 +10,6 @@ This module tests all aspects of the content moderation system including:
 - Configuration validation
 """
 
-from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -29,7 +28,7 @@ class TestKeywordsModeration:
     """Test suite for custom keyword-based content moderation."""
 
     @pytest.fixture
-    def keywords_config(self) -> dict[str, Any]:
+    def keywords_config(self) -> dict[str, object]:
         """
         Fixture providing a standard keywords moderation configuration.
 
@@ -49,7 +48,7 @@ class TestKeywordsModeration:
         }
 
     @pytest.fixture
-    def keywords_moderation(self, keywords_config: dict[str, Any]) -> KeywordsModeration:
+    def keywords_moderation(self, keywords_config: dict[str, object]) -> KeywordsModeration:
         """
         Fixture providing a KeywordsModeration instance.
 
@@ -65,7 +64,7 @@ class TestKeywordsModeration:
             config=keywords_config,
         )
 
-    def test_validate_config_success(self, keywords_config: dict[str, Any]) -> None:
+    def test_validate_config_success(self, keywords_config: dict[str, object]) -> None:
         """Test successful validation of keywords moderation configuration."""
         # Should not raise any exception
         KeywordsModeration.validate_config("test-tenant", keywords_config)
@@ -127,7 +126,7 @@ class TestKeywordsModeration:
         with pytest.raises(ValueError, match="inputs_config.preset_response must be less than 100 characters"):
             KeywordsModeration.validate_config("test-tenant", config)
 
-    def test_moderation_for_inputs_crlf_keywords_match(self, keywords_config: dict[str, Any]) -> None:
+    def test_moderation_for_inputs_crlf_keywords_match(self, keywords_config: dict[str, object]) -> None:
         """Keywords pasted with Windows line endings still match."""
         keywords_config["keywords"] = "spam\r\nfree money"
         moderation = KeywordsModeration(app_id="app", tenant_id="tenant", config=keywords_config)
@@ -136,7 +135,7 @@ class TestKeywordsModeration:
 
         assert result.flagged is True
 
-    def test_moderation_whitespace_only_keyword_row_is_ignored(self, keywords_config: dict[str, Any]) -> None:
+    def test_moderation_whitespace_only_keyword_row_is_ignored(self, keywords_config: dict[str, object]) -> None:
         """A whitespace-only keyword row must not flag every message."""
         keywords_config["keywords"] = "spam\n   \n "
         moderation = KeywordsModeration(app_id="app", tenant_id="tenant", config=keywords_config)
@@ -293,7 +292,7 @@ class TestOpenAIModeration:
     """Test suite for OpenAI-based content moderation."""
 
     @pytest.fixture
-    def openai_config(self) -> dict[str, Any]:
+    def openai_config(self) -> dict[str, object]:
         """
         Fixture providing OpenAI moderation configuration.
 
@@ -312,7 +311,7 @@ class TestOpenAIModeration:
         }
 
     @pytest.fixture
-    def openai_moderation(self, openai_config: dict[str, Any]) -> OpenAIModeration:
+    def openai_moderation(self, openai_config: dict[str, object]) -> OpenAIModeration:
         """
         Fixture providing an OpenAIModeration instance.
 
@@ -328,7 +327,7 @@ class TestOpenAIModeration:
             config=openai_config,
         )
 
-    def test_validate_config_success(self, openai_config: dict[str, Any]) -> None:
+    def test_validate_config_success(self, openai_config: dict[str, object]) -> None:
         """Test successful validation of OpenAI moderation configuration."""
         # Should not raise any exception
         OpenAIModeration.validate_config("test-tenant", openai_config)

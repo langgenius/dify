@@ -1,9 +1,32 @@
 import type { InputGroupInputProps } from '@langgenius/dify-ui/input-group'
-import type { Ref } from 'react'
+import type { ComponentProps, Ref } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useTranslation } from 'react-i18next'
 import { useSearchInput } from './use-search-input'
+
+type SearchInputClearProps = Pick<
+  ComponentProps<'button'>,
+  'className' | 'onClick' | 'onMouseDown' | 'tabIndex'
+> & {
+  'aria-label': string
+}
+
+// Same look as dify-ui `ComboboxClear` and `DropdownMenuClear`; change all three together.
+// Spread `clearProps` from `useSearchInput` so the button stays out of the tab order and never
+// takes focus from the input.
+export function SearchInputClear({ className, ...props }: SearchInputClearProps) {
+  return (
+    <IconButton
+      size="sm"
+      className={cn('hover:bg-components-input-bg-hover', className)}
+      {...props}
+    >
+      <span className="i-ri-close-line size-4" aria-hidden="true" />
+    </IconButton>
+  )
+}
 
 type SearchInputProps = {
   ref?: Ref<HTMLInputElement>
@@ -30,17 +53,15 @@ export function SearchInput({
   'aria-label': ariaLabel,
 }: SearchInputProps) {
   const { t } = useTranslation(['common'])
-  const { inputProps, clear } = useSearchInput({ value, onValueChange, ref })
+  const { inputProps, canClear, clearProps } = useSearchInput({ value, onValueChange, ref })
 
   return (
     <InputGroup className={className}>
       <InputGroupInput
         {...inputProps}
-        type="search"
         name={name}
         aria-describedby={ariaDescribedBy}
         aria-label={ariaLabel ?? t(($) => $['operation.search'], { ns: 'common' })}
-        className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
         placeholder={placeholder ?? t(($) => $['operation.search'], { ns: 'common' })}
         disabled={disabled}
         autoComplete="off"
@@ -55,16 +76,12 @@ export function SearchInput({
           aria-hidden="true"
         />
       </InputGroupAddon>
-      {!!inputProps.value && !disabled && (
+      {canClear && !disabled && (
         <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
-          <IconButton
-            size="sm"
+          <SearchInputClear
+            {...clearProps}
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-            className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
-            onClick={clear}
-          >
-            <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
-          </IconButton>
+          />
         </InputGroupAddon>
       )}
     </InputGroup>

@@ -715,7 +715,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(iconButton)
     await user.click(screen.getByRole('button', { name: 'Select camera style' }))
 
-    expect(iconButton.firstElementChild).toHaveStyle({ background: '#FCE7F6' })
+    expect(iconButton.firstElementChild?.firstElementChild).toHaveStyle({ background: '#FCE7F6' })
 
     await user.click(
       screen.getByRole('button', {
@@ -751,7 +751,7 @@ describe('KnowledgeSettingsPage workflows', () => {
     const iconButton = screen.getByRole('button', {
       name: 'datasetSettings.form.nameAndIcon',
     })
-    expect(iconButton.firstElementChild).toHaveStyle({ background: '#D3F8DF' })
+    expect(iconButton.firstElementChild?.firstElementChild).toHaveStyle({ background: '#D3F8DF' })
   })
 
   it('accepts 2000 description characters and blocks 2001 with a field error', async () => {

@@ -17,9 +17,9 @@ import {
   useRef,
   useState,
 } from 'react'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { taskIsActive, taskVersionIsAfter } from '../model'
 import { documentTasksInfiniteOptions } from '../queries'
-import { responseStatus } from '../request-error'
 import {
   backgroundTasksAtom,
   baseTasksAtom,
@@ -313,7 +313,7 @@ export function useTaskRuntimeController({
       } catch (error) {
         if (terminalReconciliationControllersRef.current.get(taskId) !== controller) return
         terminalReconciliationControllersRef.current.delete(taskId)
-        if (responseStatus(error) === 403) {
+        if (getHttpErrorStatus(error) === 403) {
           const currentTaskVersion = readRuntimeState().currentVersions.get(taskId)
           const deniedVersion =
             currentTaskVersion && taskVersionIsAfter(currentTaskVersion, terminalVersion)
@@ -706,7 +706,7 @@ export function useTaskRuntimeController({
               failedTaskPollGenerationsRef.current.get(task.id) !== requestGenerations.get(task.id)
             )
               continue
-            if (responseStatus(error) === 403) {
+            if (getHttpErrorStatus(error) === 403) {
               const currentTaskVersion = readRuntimeState().currentVersions.get(task.id)
               const deniedVersion =
                 currentTaskVersion && taskVersionIsAfter(currentTaskVersion, task.updatedAt)

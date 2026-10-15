@@ -623,7 +623,8 @@ describe('consoleQuery agent query defaults', () => {
     })
     const retry = getRetryFn(queryOptions)
 
-    expect(retry(0, new Response(null, { status: 404 }))).toBe(false)
+    const { createHttpError } = await import('@/service/http-error')
+    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
   })
 
   it('should retry other agent detail errors fewer than three times', async () => {
@@ -1140,6 +1141,49 @@ describe('consoleQuery agent mutation defaults', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  it.each(['creation', 'deletion'])(
+    'invalidates agent keys and access status after key %s',
+    async (operation) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      const context = createMutationContext(queryClient)
+      if (operation === 'creation') {
+        await consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions().onSuccess?.(
+          {
+            id: 'key-1',
+            token: 'app-secret',
+            type: 'app',
+            dataset_ids: [],
+            knowledge_space_ids: [],
+          },
+          { params: { agent_id: 'agent-1' } },
+          undefined,
+          context,
+        )
+      } else {
+        await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
+          .mutationOptions()
+          .onSuccess?.(
+            undefined,
+            { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
+            undefined,
+            context,
+          )
+      }
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+    },
+  )
 
   it('should invalidate roster and invite option lists after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
@@ -2332,5 +2376,67 @@ describe('workspace skill deletion cache', () => {
     } finally {
       client.clear()
     }
+  })
+})
+
+describe('consoleQuery resourceAccessTokens mutation defaults', () => {
+  const createdToken = { data: [], token: 'token' }
+  const tokenList = { data: [], has_more: false, limit: 20, page: 1, total: 0 }
+
+  it('should refresh the token list after a token is created, updated, or deleted', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const context = createMutationContext(queryClient)
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const tokens = consoleQuery.resourceAccessTokens
+
+    await tokens.post
+      .mutationOptions()
+      .onSettled?.(
+        createdToken,
+        null,
+        { body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.patch
+      .mutationOptions()
+      .onSettled?.(
+        tokenList,
+        null,
+        { params: { token_id: 'token-1' }, body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        null,
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        context,
+      )
+
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: tokens.get.key() })
+  })
+
+  it('should leave the token list alone when the mutation fails', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+
+    await consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        new Error('failed'),
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 })

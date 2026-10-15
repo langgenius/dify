@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { render } from '@/test/console/render'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { CreateKnowledgePage } from '../page'
@@ -772,7 +773,9 @@ describe('CreateKnowledgePage', () => {
       ],
       status: 'completed',
     })
-    serviceMock.getSyncPolicy.mockRejectedValue({ status: 404 })
+    serviceMock.getSyncPolicy.mockRejectedValue(
+      createHttpError(new Response(null, { status: 404 })),
+    )
     serviceMock.getWorkflow.mockResolvedValue(workflowResponse())
     serviceMock.listConnections.mockResolvedValue({
       data: [
@@ -1019,7 +1022,7 @@ describe('CreateKnowledgePage', () => {
 
   it('requires another member and creates partial access in the same request, retaining it on retry', async () => {
     const user = userEvent.setup()
-    serviceMock.create.mockRejectedValueOnce({ status: 503 })
+    serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status: 503 })))
     renderPage()
     await fillRequiredFields(user)
     await choosePermission(user, 'datasetSettings.form.permissionsInvitedMembers')
@@ -1263,7 +1266,7 @@ describe('CreateKnowledgePage', () => {
       vi.mocked(globalThis.crypto.randomUUID)
         .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
         .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
-      serviceMock.create.mockRejectedValueOnce({ status })
+      serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status })))
       renderPage()
       await fillRequiredFields(user)
 
@@ -1290,7 +1293,7 @@ describe('CreateKnowledgePage', () => {
     'keeps request identity frozen after an ambiguous %s response',
     async (status) => {
       const user = userEvent.setup()
-      serviceMock.create.mockRejectedValueOnce({ status })
+      serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status })))
       renderPage()
       await fillRequiredFields(user)
 

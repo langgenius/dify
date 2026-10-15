@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { QualityPage } from '../page'
 
@@ -656,7 +657,9 @@ describe('QualityPage', () => {
   })
 
   it('explains when evidence matching is unavailable instead of showing an unknown error', async () => {
-    serviceMock.matchEvidence.mockRejectedValueOnce(new Response(null, { status: 503 }))
+    serviceMock.matchEvidence.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 })),
+    )
     const user = userEvent.setup()
     renderPage()
 

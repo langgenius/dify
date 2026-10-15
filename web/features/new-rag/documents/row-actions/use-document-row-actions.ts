@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import {
   knowledgeFsRequestFailureMessageKey,
@@ -23,7 +24,6 @@ import {
   taskCanRetry,
 } from '../model'
 import { backgroundTaskFromApi } from '../models'
-import { responseStatus } from '../request-error'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { createDocumentRowCanEditAtom } from '../state/results'
 import {
@@ -132,7 +132,7 @@ export function useRenameDocumentAction(document: LogicalDocument) {
         invalidateDocuments()
         return true
       } catch (error) {
-        if (responseStatus(error) === 403) onWriteDenied()
+        if (getHttpErrorStatus(error) === 403) onWriteDenied()
         else toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
         return false
       } finally {
@@ -214,8 +214,8 @@ export function useToggleDocumentAvailabilityAction(
       invalidateDocuments()
       return true
     } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
-      else if (responseStatus(error) === 409) {
+      if (getHttpErrorStatus(error) === 403) onWriteDenied()
+      else if (getHttpErrorStatus(error) === 409) {
         invalidateDocuments()
         toast.warning(t(($) => $.taskActionFailed))
       } else toast.error(t(($) => $.documentsErrorDescription))
@@ -252,7 +252,7 @@ export function useRemoveDocumentAction(document: LogicalDocument) {
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
+      if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else toast.error(t(($) => $.documentsErrorDescription))
       return false
     } finally {
@@ -309,7 +309,7 @@ export function useRetryDocumentTaskAction(
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
+      if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
         toast.error(messageKey ? tError(($) => $[messageKey]) : t(($) => $.taskActionFailed))
@@ -371,7 +371,7 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
+      if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
         toast.error(

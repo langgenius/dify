@@ -32,13 +32,20 @@ from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
+from libs.external_api import error_responses
 from libs.login import login_required
 from models import Account, App
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from services.human_input_service import Form, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
@@ -82,6 +89,7 @@ class ConsoleHumanInputFormApi(Resource):
         if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.CONSOLE):
             raise NotFoundError("form not found")
 
+    @error_responses(FormSubmittedError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -102,6 +110,7 @@ class ConsoleHumanInputFormApi(Resource):
 
         return _jsonify_form_definition(form)
 
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError)
     @account_initialization_required
     @login_required
     @with_current_user

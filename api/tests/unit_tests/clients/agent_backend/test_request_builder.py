@@ -69,7 +69,7 @@ def _run_input() -> AgentBackendWorkflowNodeRunInput:
     )
 
 
-def test_request_builder_outputs_dify_agent_create_run_request():
+def test_request_builder_outputs_dify_agent_create_run_request() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     dumped = request.model_dump(mode="json")
 
@@ -88,7 +88,7 @@ def test_request_builder_outputs_dify_agent_create_run_request():
     assert "purpose" not in dumped
 
 
-def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
+def test_request_builder_separates_agent_soul_and_workflow_job_prompt() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     layers = {layer.name: layer for layer in request.composition.layers}
 
@@ -100,7 +100,7 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
     assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
 
 
-def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body():
+def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body() -> None:
     run_input = _run_input().model_copy(
         update={
             "model": AgentBackendModelConfig(
@@ -125,7 +125,7 @@ def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body(
 @pytest.mark.parametrize("agent_config_version_kind", ["snapshot", "draft"])
 def test_agent_app_request_builder_keeps_agent_soul_prompt_for_snapshot_and_draft(
     agent_config_version_kind: str,
-):
+) -> None:
     original_prompt = "  You are Iris.  \n"
     run_input = _agent_app_input().model_copy(
         update={
@@ -141,7 +141,7 @@ def test_agent_app_request_builder_keeps_agent_soul_prompt_for_snapshot_and_draf
     assert prompt_config.prefix == original_prompt
 
 
-def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft():
+def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft() -> None:
     original_prompt = "  You are Iris.  \n"
     run_input = _agent_app_input().model_copy(
         update={
@@ -155,11 +155,12 @@ def test_agent_app_request_builder_wraps_agent_soul_prompt_for_build_draft():
 
     prompt_config = PromptConfig.model_validate(layers[AGENT_SOUL_PROMPT_LAYER_ID].config)
     assert prompt_config.prefix != original_prompt
+    assert isinstance(prompt_config.prefix, str)
     assert prompt_config.prefix.startswith("You are running in build mode.")
     assert "```text\nYou are Iris.\n```" in prompt_config.prefix
 
 
-def test_agent_app_request_builder_uses_longer_fence_for_build_draft_prompt_body():
+def test_agent_app_request_builder_uses_longer_fence_for_build_draft_prompt_body() -> None:
     run_input = _agent_app_input().model_copy(
         update={
             "agent_config_version_kind": "build_draft",
@@ -175,7 +176,7 @@ def test_agent_app_request_builder_uses_longer_fence_for_build_draft_prompt_body
     assert "```python" in prompt_config.prefix
 
 
-def test_request_builder_sets_model_and_output_layer_contract_ids():
+def test_request_builder_sets_model_and_output_layer_contract_ids() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     layers = {layer.name: layer for layer in request.composition.layers}
 
@@ -192,7 +193,7 @@ def test_request_builder_sets_model_and_output_layer_contract_ids():
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
 
 
-def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
+def test_request_builder_adds_dify_plugin_tools_layer_when_configured() -> None:
     run_input = _run_input()
     run_input.tools = DifyPluginToolsLayerConfig(
         tools=[
@@ -219,7 +220,7 @@ def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
     assert tools_config.tools[0].tool_name == "current_time"
 
 
-def test_request_builder_adds_dify_core_tools_layer_when_configured():
+def test_request_builder_adds_dify_core_tools_layer_when_configured() -> None:
     run_input = _run_input()
     run_input.core_tools = DifyCoreToolsLayerConfig(
         tools=[
@@ -242,7 +243,7 @@ def test_request_builder_adds_dify_core_tools_layer_when_configured():
     assert layers[DIFY_CORE_TOOLS_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
 
 
-def test_request_builder_adds_knowledge_layer_when_configured():
+def test_request_builder_adds_knowledge_layer_when_configured() -> None:
     run_input = _run_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {
@@ -267,8 +268,8 @@ def test_request_builder_adds_knowledge_layer_when_configured():
     assert knowledge_config.sets[0].dataset_ids == ["dataset-1"]
 
 
-def test_request_builder_rejects_blank_prompts():
-    with pytest.raises(ValidationError):
+def test_request_builder_rejects_blank_prompts() -> None:
+    with pytest.raises(ValidationError, match="prompt must not be blank"):
         AgentBackendWorkflowNodeRunInput(
             model=AgentBackendModelConfig(
                 plugin_id="langgenius/openai",
@@ -281,12 +282,13 @@ def test_request_builder_rejects_blank_prompts():
                 agent_mode="workflow_run",
                 invoke_from="debugger",
             ),
+            backend_binding_ref="binding-ref-1",
             workflow_node_job_prompt=" ",
             user_prompt="hello",
         )
 
 
-def test_agent_backend_request_does_not_contain_llm_credentials():
+def test_agent_backend_request_does_not_contain_llm_credentials() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
 
     redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
@@ -317,12 +319,12 @@ def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunI
     )
 
 
-def test_workflow_request_builder_omits_shell_layer_by_default():
+def test_workflow_request_builder_omits_shell_layer_by_default() -> None:
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
 
 
-def test_workflow_request_builder_adds_shell_layer_when_include_shell():
+def test_workflow_request_builder_adds_shell_layer_when_include_shell() -> None:
     run_input = _run_input()
     run_input.include_shell = True
     run_input.shell_config = DifyShellLayerConfig(env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo")])
@@ -340,12 +342,12 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     assert shell_config.env[0].name == "PROJECT_NAME"
 
 
-def test_agent_app_request_builder_omits_shell_layer_by_default():
+def test_agent_app_request_builder_omits_shell_layer_by_default() -> None:
     request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
 
 
-def test_agent_app_request_builder_emits_multimodal_user_prompt_layer():
+def test_agent_app_request_builder_emits_multimodal_user_prompt_layer() -> None:
     run_input = _agent_app_input()
     run_input.user_files = [
         DifyUserPromptDownloadConfig(
@@ -373,7 +375,7 @@ def test_agent_app_request_builder_emits_multimodal_user_prompt_layer():
     assert "locators" not in restored_layer.config
 
 
-def test_agent_backend_log_redacts_multimodal_file_transport():
+def test_agent_backend_log_redacts_multimodal_file_transport() -> None:
     run_input = _agent_app_input()
     run_input.metadata = {"source_url": "https://example.com/docs"}
     run_input.user_files = [
@@ -402,7 +404,7 @@ def test_agent_backend_log_redacts_multimodal_file_transport():
     assert redacted["metadata"]["source_url"] == "https://example.com/docs"
 
 
-def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prompt_is_blank():
+def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prompt_is_blank() -> None:
     run_input = _agent_app_input().model_copy(
         update={"agent_soul_prompt": "   ", "agent_config_version_kind": "build_draft"}
     )
@@ -415,7 +417,7 @@ def test_agent_app_request_builder_keeps_build_draft_prompt_when_agent_soul_prom
     assert "No task prompt was provided." in prompt_config.prefix
 
 
-def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
+def test_agent_app_request_builder_adds_shell_layer_when_include_shell() -> None:
     run_input = _agent_app_input(include_shell=True)
     run_input.shell_config = DifyShellLayerConfig(env=[DifyShellEnvVarConfig(name="APP_ENV", value="enabled")])
 
@@ -429,7 +431,7 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
     assert shell_config.env[0].name == "APP_ENV"
 
 
-def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
+def test_agent_app_request_builder_adds_knowledge_layer_when_configured() -> None:
     run_input = _agent_app_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {

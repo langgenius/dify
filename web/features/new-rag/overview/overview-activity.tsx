@@ -3,7 +3,7 @@
 import type { KnowledgeFsOverviewActivityResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ActivityDateRange, ActivityOperator, ActivityRange } from './overview-activity-types'
 import type { Member } from '@/models/common'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -40,6 +40,7 @@ import {
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { useMembers } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 import { activityDatesForRange } from './overview-activity-types'
 import { EmptyInline, Panel, Skeleton } from './overview-panel'
 import {
@@ -164,7 +165,10 @@ function ActivityActor({
           S
         </span>
       ) : (
-        <Avatar avatar={actor.avatar} name={actor.name} size={size} />
+        <Avatar size={size} aria-hidden={showName || undefined} title={actor.name}>
+          <AvatarFallback>{getAvatarInitial(actor.name)}</AvatarFallback>
+          <AvatarImage src={actor.avatar || undefined} alt={showName ? '' : actor.name} />
+        </Avatar>
       )}
       {showName && <span className="truncate text-text-secondary">{actor.name}</span>}
     </>

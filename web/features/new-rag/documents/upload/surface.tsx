@@ -14,6 +14,7 @@ import {
   knowledgeFsUploadEnabledAtom,
 } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
 import {
@@ -23,7 +24,6 @@ import {
 import { getKnowledgeFsUploadQuotaFailure } from '../../upload/quota'
 import { useKnowledgeBatchUpload } from '../../upload/use-batch-upload'
 import { DocumentDropOverlay } from '../list'
-import { responseStatus } from '../request-error'
 import { documentsKnowledgeSpaceIdAtom, documentUploadAtom } from '../state/inputs'
 import {
   denyDocumentWriteAtom,
@@ -253,7 +253,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
       } catch (error) {
         const completed = completedUploadCount(uploadableFiles)
         if (completed) refreshDocuments()
-        if (responseStatus(error) === 403) {
+        if (getHttpErrorStatus(error) === 403) {
           cancel()
           denyWrite()
         } else {

@@ -25,6 +25,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 
 type DialogMode = 'create' | 'edit' | 'promote'
 type MatchPolicy = GoldenQuestionDraft['matchPolicy']
@@ -47,17 +48,6 @@ function parseTags(value: string) {
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean)
-}
-
-function errorStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  const status = 'status' in error ? error.status : undefined
-  if (typeof status === 'number') return status
-  const data = 'data' in error ? error.data : undefined
-  if (!data || typeof data !== 'object') return undefined
-  const dataStatus = 'status' in data ? data.status : undefined
-  return typeof dataStatus === 'number' ? dataStatus : undefined
 }
 
 export function GoldenQuestionDialog({
@@ -168,7 +158,7 @@ function GoldenQuestionDialogSession({
       mergeEvidenceOptions(result.candidates)
       setEvidenceQuery('')
     } catch (error) {
-      setMatchError(errorStatus(error) === 503 ? 'unavailable' : 'unknown')
+      setMatchError(getHttpErrorStatus(error) === 503 ? 'unavailable' : 'unknown')
     }
   }
 

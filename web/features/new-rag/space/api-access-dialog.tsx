@@ -7,7 +7,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiKeyModal } from '@/app/components/api-key/api-key-modal'
+import { DatasetApiKeyDialogContent } from '@/app/components/api-key/dataset-api-key-dialog-content'
+import { useDatasetApiKeyMutations } from '@/app/components/api-key/use-dataset-api-key-mutations'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
@@ -32,6 +33,7 @@ export function KnowledgeFsApiAccessDialog({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
+  const apiKeyMutations = useDatasetApiKeyMutations()
   const { data: apiBaseInfo } = useQuery(
     consoleQuery.datasets.apiBaseInfo.get.queryOptions({ context: { silent: true } }),
   )
@@ -112,12 +114,15 @@ export function KnowledgeFsApiAccessDialog({
         </DialogContent>
       </Dialog>
 
-      <ApiKeyModal
+      <Dialog
         open={apiKeyModalOpen}
-        canManage={canManageApiKey}
-        scope={{ type: 'dataset' }}
-        onOpenChange={setApiKeyModalOpen}
-      />
+        onOpenChange={(nextOpen, details) => {
+          if (!nextOpen && apiKeyMutations.pending) details.cancel()
+          else setApiKeyModalOpen(nextOpen)
+        }}
+      >
+        <DatasetApiKeyDialogContent canManage={canManageApiKey} mutations={apiKeyMutations} />
+      </Dialog>
     </>
   )
 }

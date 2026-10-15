@@ -2,8 +2,8 @@ import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { logicalDocumentFromApi } from '../../models'
-import { responseStatus } from '../model'
 import { documentDetailDocumentIdAtom, documentDetailKnowledgeSpaceIdAtom } from './inputs'
 
 const documentDetailQueryAtom = atomWithQuery((get) =>
@@ -15,7 +15,7 @@ const documentDetailQueryAtom = atomWithQuery((get) =>
       },
     },
     retry: (failureCount, error) => {
-      const status = responseStatus(error)
+      const status = getHttpErrorStatus(error)
       return status !== 403 && status !== 404 && failureCount < 2
     },
     select: logicalDocumentFromApi,

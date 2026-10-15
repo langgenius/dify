@@ -8,6 +8,7 @@ import { API_PREFIX } from '@/config'
 import { request } from '../base'
 import { reportClientError } from '../client-error'
 import { createConsoleContractLink } from './contract-loader'
+import { validateDefinedErrors } from './defined-errors'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClientContext> {
@@ -24,7 +25,7 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
         silent: options.context.silent,
       })
     },
-    interceptors: [onError((error) => reportClientError(error))],
+    interceptors: [validateDefinedErrors(contract), onError((error) => reportClientError(error))],
   })
 }
 

@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { KnowledgeSpaceShell } from '../shell'
 
@@ -388,7 +389,7 @@ describe('KnowledgeSpaceShell', () => {
   })
 
   it('shows a not-found state without rendering children', () => {
-    queryMock.error = { status: 404 }
+    queryMock.error = createHttpError(new Response(null, { status: 404 }))
 
     renderWithConsoleQuery(
       <KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>,
@@ -398,18 +399,8 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.queryByText('source content')).not.toBeInTheDocument()
   })
 
-  it('recognizes the nested status shape returned by the ORPC client', () => {
-    queryMock.error = { data: { status: 404 } }
-
-    renderWithConsoleQuery(
-      <KnowledgeSpaceShell knowledgeSpaceId="missing">source content</KnowledgeSpaceShell>,
-    )
-
-    expect(screen.getByText('knowledgeSpace.notFoundTitle')).toBeInTheDocument()
-  })
-
   it('treats forbidden detail responses as a terminal non-disclosing state', () => {
-    queryMock.error = { data: { status: 403 } }
+    queryMock.error = createHttpError(new Response(null, { status: 403 }))
 
     renderWithConsoleQuery(
       <KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>,
@@ -419,23 +410,21 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
   })
 
-  it.each([{ status: 403 }, { data: { status: 404 } }])(
-    'does not automatically retry terminal detail errors shaped as $error',
-    (error) => {
-      queryMock.error = error
+  it.each([403, 404])('does not automatically retry terminal %i detail errors', (status) => {
+    const error = createHttpError(new Response(null, { status }))
+    queryMock.error = error
 
-      renderWithConsoleQuery(
-        <KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>,
-      )
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>,
+    )
 
-      const options = useQueryOptionsMock.mock.calls[0]?.[0] as {
-        retry: (failureCount: number, queryError: unknown) => boolean
-      }
-      expect(options.retry(0, error)).toBe(false)
-      expect(options.retry(2, new Error('temporary failure'))).toBe(true)
-      expect(options.retry(3, new Error('temporary failure'))).toBe(false)
-    },
-  )
+    const options = useQueryOptionsMock.mock.calls[0]?.[0] as {
+      retry: (failureCount: number, queryError: unknown) => boolean
+    }
+    expect(options.retry(0, error)).toBe(false)
+    expect(options.retry(2, new Error('temporary failure'))).toBe(true)
+    expect(options.retry(3, new Error('temporary failure'))).toBe(false)
+  })
 
   it('marks Documents as the only current detail route', () => {
     pathnameMock.value = '/datasets/new/space-1/documents'

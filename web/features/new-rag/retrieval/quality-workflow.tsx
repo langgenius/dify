@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
 import { newKnowledgeQualityBadCasesPath, newKnowledgeQualityPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
@@ -100,7 +101,7 @@ export function RetrievalQualityWorkflow() {
         })
       } catch (error) {
         // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
-        if (!(error instanceof Response && error.status === 409)) throw error
+        if (getHttpErrorStatus(error) !== 409) throw error
       }
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({

@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { ModelAndParameter } from '../types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -23,6 +23,7 @@ import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
+import { getAvatarInitial } from '@/utils/avatar'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
@@ -167,7 +168,12 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       onOpenLog={onOpenLog}
-      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
+      questionIcon={
+        <Avatar size="xl" role="img" aria-label={userProfile.name}>
+          <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+        </Avatar>
+      }
       allToolIcons={allToolIcons}
       noSpacing
     />

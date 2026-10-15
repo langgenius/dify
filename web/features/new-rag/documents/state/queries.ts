@@ -1,6 +1,7 @@
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { sourceFromApi } from '../../sources/source-models'
 import { taskVersionIsAfter } from '../model'
 import {
@@ -13,7 +14,6 @@ import {
   documentTasksInfiniteOptions,
   logicalDocumentsInfiniteOptions,
 } from '../queries'
-import { responseStatus } from '../request-error'
 import { documentsKnowledgeSpaceIdAtom } from './inputs'
 
 const documentsQueryAtom = atomWithInfiniteQuery((get) =>
@@ -73,7 +73,7 @@ export const documentsQueryIsRefetchingAtom = selectAtom(
 export const documentsQueryRefetchAtom = selectAtom(documentsQueryAtom, (query) => query.refetch)
 
 export const documentPermissionDeniedAtom = atom(
-  (get) => responseStatus(get(documentsQueryErrorAtom)) === 403,
+  (get) => getHttpErrorStatus(get(documentsQueryErrorAtom)) === 403,
 )
 
 const sourcesQueryAtom = atomWithInfiniteQuery((get) =>
@@ -118,7 +118,7 @@ export const sourcesQueryIsPendingAtom = selectAtom(sourcesQueryAtom, (query) =>
 export const sourcesQueryRefetchAtom = selectAtom(sourcesQueryAtom, (query) => query.refetch)
 
 export const sourcePermissionDeniedAtom = atom(
-  (get) => responseStatus(get(sourcesQueryErrorAtom)) === 403,
+  (get) => getHttpErrorStatus(get(sourcesQueryErrorAtom)) === 403,
 )
 
 export const tasksQueryAtom = atomWithInfiniteQuery((get) =>
@@ -154,7 +154,7 @@ export const backgroundTasksAtom = atom(
 
 export const tasksQueryErrorAtom = selectAtom(tasksQueryAtom, (query) => query.error)
 export const taskPermissionDeniedAtom = atom(
-  (get) => responseStatus(get(tasksQueryErrorAtom)) === 403,
+  (get) => getHttpErrorStatus(get(tasksQueryErrorAtom)) === 403,
 )
 export const tasksQueryFetchNextPageAtom = selectAtom(
   tasksQueryAtom,

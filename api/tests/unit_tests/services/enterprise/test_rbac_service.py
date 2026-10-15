@@ -9,6 +9,7 @@ Local membership tests live at the application service boundary.
 from __future__ import annotations
 
 from collections.abc import Callable
+from unittest.mock import MagicMock
 
 import pytest
 from pydantic import JsonValue
@@ -1059,3 +1060,145 @@ class TestKnowledgeFSPermissions:
         assert call.endpoint == "/rbac/knowledge-fs/permission-keys/batch"
         assert call.json == {"control_space_ids": ["control-1", "control-2"]}
         assert out == {"control-1": ["dataset_readonly"], "control-2": ["dataset_retrieval_recall"]}
+
+
+@pytest.fixture
+def mock_send(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    send = MagicMock()
+    monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", send)
+    return send
+
+
+class TestCreatorDatasetAccess:
+    @staticmethod
+    def binding(**overrides: str) -> dict[str, str]:
+        return {
+            "id": "binding-1",
+            "tenant_id": "tenant-1",
+            "access_policy_id": "creator-policy",
+            "resource_type": "dataset",
+            "resource_id": "dataset-1",
+            "account_id": "creator-1",
+            **overrides,
+        }
+
+    def test_dataset_creator_is_appended_with_returned_policy(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.side_effect = [{"data": [self.binding()]}, dict[str, str]()]
+
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+
+        assert mock_send.call_count == 2
+        sync, append = mock_send.call_args_list
+        assert sync.args == ("PUT", "/rbac/access-policies/creator-member-bindings")
+        assert append.args == ("POST", "/rbac/datasets/whitelist/members/batch")
+        assert append.kwargs["tenant_id"] == "tenant-1"
+        assert append.kwargs["account_id"] == "creator-1"
+        assert append.kwargs["json"] == {
+            "data": [{"dataset_id": "dataset-1", "account_ids": ["creator-1"], "policy_id": "creator-policy"}]
+        }
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"tenant_id": "other"},
+            {"resource_id": "other"},
+            {"account_id": "other"},
+            {"resource_type": "app"},
+            {"access_policy_id": ""},
+        ],
+    )
+    def test_mismatched_binding_does_not_grant_access(
+        self,
+        mock_send: MagicMock,
+        config_overrides: Callable[..., None],
+        overrides: dict[str, str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.return_value = {"data": [self.binding(**overrides)]}
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        mock_send.assert_called_once()
+        assert "Failed to sync creator access" in caplog.text
+
+    def test_empty_response_does_not_guess_a_policy(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.return_value = {"data": list[dict[str, str]]()}
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        mock_send.assert_called_once()
+        assert "Failed to sync creator access" in caplog.text
+
+    @pytest.mark.parametrize("resource_type", ["agent"])
+    def test_other_resource_types_keep_existing_behavior(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None], resource_type: str
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.return_value = {"data": list[dict[str, str]]()}
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", resource_type, "resource-1")
+        mock_send.assert_called_once()
+
+    def test_disabled_rbac_makes_no_request(self, mock_send: MagicMock, config_overrides: Callable[..., None]) -> None:
+        config_overrides(RBAC_ENABLED=False)
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        mock_send.assert_not_called()
+
+    @pytest.mark.parametrize("failure_stage", ["sync", "append"])
+    def test_remote_failures_are_logged(
+        self,
+        mock_send: MagicMock,
+        config_overrides: Callable[..., None],
+        caplog: pytest.LogCaptureFixture,
+        failure_stage: str,
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        error = RuntimeError("RBAC unavailable")
+        mock_send.side_effect = [error] if failure_stage == "sync" else [{"data": [self.binding()]}, error]
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+        assert mock_send.call_count == (1 if failure_stage == "sync" else 2)
+        assert "Failed to sync creator access" in caplog.text
+
+    def test_only_matching_policies_are_appended_once(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.side_effect = [
+            {
+                "data": [
+                    self.binding(),
+                    self.binding(),
+                    self.binding(access_policy_id="another-creator-policy"),
+                    self.binding(account_id="another-account", access_policy_id="unrelated-policy"),
+                ]
+            },
+            dict[str, str](),
+        ]
+        svc.try_sync_creator_access_policy_member_bindings(
+            "tenant-1", "creator-1", svc.RBACResourceType.DATASET, "dataset-1"
+        )
+        assert mock_send.call_count == 2
+        assert mock_send.call_args.kwargs["json"] == {
+            "data": [
+                {"dataset_id": "dataset-1", "account_ids": ["creator-1"], "policy_id": policy}
+                for policy in ["another-creator-policy", "creator-policy"]
+            ]
+        }
+
+
+class TestCreatorAppAccess:
+    binding = staticmethod(TestCreatorDatasetAccess.binding)
+
+    def test_app_creator_is_appended_with_returned_policy(
+        self, mock_send: MagicMock, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        mock_send.side_effect = [{"data": [self.binding(resource_type="app", resource_id="app-1")]}, dict[str, str]()]
+        svc.try_sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "app", "app-1")
+        assert mock_send.call_count == 2
+        assert mock_send.call_args.args == ("POST", "/rbac/apps/whitelist/members/batch")
+        assert mock_send.call_args.kwargs["json"] == {
+            "data": [{"app_id": "app-1", "account_ids": ["creator-1"], "policy_id": "creator-policy"}]
+        }

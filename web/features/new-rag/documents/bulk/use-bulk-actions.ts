@@ -7,13 +7,13 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
 } from '../../knowledge-fs-task-error'
 import { createRequestId } from '../../request-id'
-import { responseStatus } from '../request-error'
 import {
   beginDocumentBulkActionAtom,
   documentBulkPendingActionAtom,
@@ -150,7 +150,7 @@ export function useBulkReindexAction() {
       else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
       invalidateDocumentsAndTasks()
     } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
+      if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
         toast.error(
@@ -257,7 +257,7 @@ export function useBulkAvailabilityAction() {
       if (failedIds.length) toast.warning(t(($) => $.documentsErrorDescription))
       invalidateDocuments()
     } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
+      if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else toast.error(t(($) => $.documentsErrorDescription))
     } finally {
       finish()
@@ -316,7 +316,7 @@ export function useBulkRemoveAction() {
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
-      if (responseStatus(error) === 403) onWriteDenied()
+      if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else toast.error(t(($) => $.documentsErrorDescription))
       return false
     } finally {

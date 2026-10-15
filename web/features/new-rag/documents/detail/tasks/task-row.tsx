@@ -11,6 +11,7 @@ import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-ta
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleClient } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -33,17 +34,6 @@ import { useRefreshDocumentWritePermission } from '../write-permission'
 export const DOCUMENT_TASK_DRAWER_CLOSE_ID = 'document-task-drawer-close'
 
 type TaskAction = 'cancel' | 'retry'
-
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
-}
 
 function focusDrawerCloseButton() {
   document.getElementById(DOCUMENT_TASK_DRAWER_CLOSE_ID)?.focus()
@@ -193,7 +183,7 @@ export function DocumentTaskRow({
       if (currentLifecycleRef.current !== actionLifecycle) return
       if (document.activeElement === actionFocusTarget) focusDrawerCloseButton()
     } catch (error) {
-      const permissionDenied = responseStatus(error) === 403
+      const permissionDenied = getHttpErrorStatus(error) === 403
       if (permissionDenied) void retryWritePermission(refreshWritePermission)
       else {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)

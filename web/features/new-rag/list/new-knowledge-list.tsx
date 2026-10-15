@@ -20,6 +20,7 @@ import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeUpgradeCard } from '../upgrade/knowledge-upgrade-card'
@@ -81,14 +82,8 @@ const tagIdsParser = createParser<string[]>({
   .withOptions({ history: 'push' })
 
 function isUnavailableError(error: unknown) {
-  if (!error || typeof error !== 'object') return false
-  const status = 'status' in error ? error.status : undefined
-  if (status === 404 || status === 503) return true
-
-  const data = 'data' in error ? error.data : undefined
-  if (!data || typeof data !== 'object') return false
-  const dataStatus = 'status' in data ? data.status : undefined
-  return dataStatus === 404 || dataStatus === 503
+  const status = getHttpErrorStatus(error)
+  return status === 404 || status === 503
 }
 
 export function NewKnowledgeList({

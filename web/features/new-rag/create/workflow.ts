@@ -6,6 +6,7 @@ import type {
   KnowledgeFsSpaceDetailResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { consoleClient } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from '../constants'
 
 export const NAME_MAX_LENGTH = KNOWLEDGE_NAME_MAX_LENGTH
@@ -54,17 +55,8 @@ class KnowledgeSpaceProvisioningError extends Error {
   }
 }
 
-function responseStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error) return error.status
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data) return data.status
-  }
-}
-
 function isRetryableProvisioningReadError(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   if (typeof status !== 'number') return true
 
   return (
@@ -117,7 +109,7 @@ export async function waitForKnowledgeSpaceReady(
 }
 
 export function isDefinitiveCreationRejection(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === 400 || status === 401 || status === 403 || status === 422
 }
 

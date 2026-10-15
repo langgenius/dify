@@ -34,8 +34,8 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
-import { responseStatus } from '../request-error'
 import { documentMetadataAtom, documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { denyDocumentWriteAtom, documentCanReadAtom, documentCanWriteAtom } from '../state/runtime'
 import { DocumentMetadataCreateForm } from './create-form'
@@ -89,7 +89,7 @@ function useMetadataFieldMutation() {
         ])
         return true
       } catch (error) {
-        if (responseStatus(error) === 403) denyWrite()
+        if (getHttpErrorStatus(error) === 403) denyWrite()
         else toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
         return false
       }

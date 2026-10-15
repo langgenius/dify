@@ -198,7 +198,6 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
-        "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.knowledge_fs_initial_source_preview_tasks",  # datasource previews use the standard dataset queue
@@ -206,6 +205,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.knowledge_fs_failed_retrieval_tasks",  # best-effort Workflow quality capture uses dataset workers
         "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
         "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
+        "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -227,9 +227,13 @@ def init_app(app: DifyApp) -> Celery:
     from services.knowledge_fs.lifecycle_readiness import get_configured_knowledge_fs_lifecycle_worker_readiness
 
     if get_configured_knowledge_fs_lifecycle_worker_readiness().ready:
-        imports.append("tasks.knowledge_fs_initial_source_tasks")
-        imports.append("tasks.knowledge_fs_lifecycle_tasks")
-        imports.append("tasks.knowledge_fs_source_import_tasks")
+        imports.extend(
+            [
+                "tasks.knowledge_fs_initial_source_tasks",
+                "tasks.knowledge_fs_lifecycle_tasks",
+                "tasks.knowledge_fs_source_import_tasks",
+            ]
+        )
         beat_schedule["knowledge_fs_lifecycle_worker"] = {
             "task": "tasks.knowledge_fs_lifecycle_tasks.run_knowledge_fs_lifecycle_worker",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
@@ -311,8 +315,7 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
-        imports.append("schedule.check_upgradable_plugin_task")
-        imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")
+        imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),

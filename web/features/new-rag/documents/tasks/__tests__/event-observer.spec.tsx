@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react'
 import { getDefaultStore } from 'jotai/vanilla'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { documentsKnowledgeSpaceIdAtom } from '../../state/inputs'
 import { TaskEventObserver } from '../event-observer'
 
@@ -114,7 +115,7 @@ describe('TaskEventObserver', () => {
         }
         return
       }
-      throw new Response(null, { status: 403 })
+      throw createHttpError(new Response(null, { status: 403 }))
     })
     const onPermissionDenied = vi.fn()
     const rendered = render(
@@ -156,7 +157,7 @@ describe('TaskEventObserver', () => {
         }
         return
       }
-      throw new Response(null, { status: 403 })
+      throw createHttpError(new Response(null, { status: 403 }))
     })
     const onPermissionDenied = vi.fn()
     const rendered = render(
@@ -184,7 +185,7 @@ describe('TaskEventObserver', () => {
     streamProcessingTaskEvents.mockImplementation(async function* () {
       streamCount += 1
       if (streamCount === 1) return
-      throw new Response(null, { status: 403 })
+      throw createHttpError(new Response(null, { status: 403 }))
     })
     const onPermissionDenied = vi.fn()
     const rendered = render(

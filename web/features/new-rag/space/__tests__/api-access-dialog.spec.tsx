@@ -17,8 +17,6 @@ const apiBaseInfoQueryOptionsMock = vi.hoisted(() =>
   })),
 )
 
-const apiKeyModalPropsMock = vi.hoisted(() => vi.fn())
-
 vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
@@ -27,21 +25,22 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/api-key/api-key-modal', () => ({
-  ApiKeyModal: (props: {
-    canManage: boolean
-    onOpenChange: (open: boolean) => void
-    open: boolean
-    scope: { type: string }
-  }) => {
-    apiKeyModalPropsMock(props)
-    return props.open ? (
-      <div role="dialog" aria-label="workspace-dataset-api-keys">
-        {props.scope.type}:{String(props.canManage)}
-      </div>
-    ) : null
-  },
+vi.mock('@/app/components/api-key/use-dataset-api-key-mutations', () => ({
+  useDatasetApiKeyMutations: () => ({ pending: false }),
 }))
+
+vi.mock('@/app/components/api-key/dataset-api-key-dialog-content', async () => {
+  const { DialogContent, DialogTitle } = await import('@langgenius/dify-ui/dialog')
+  return {
+    DatasetApiKeyDialogContent: (props: { canManage: boolean }) => {
+      return (
+        <DialogContent>
+          <DialogTitle>workspace-dataset-api-keys:{String(props.canManage)}</DialogTitle>
+        </DialogContent>
+      )
+    },
+  }
+})
 
 vi.mock('@/app/components/base/copy-feedback', () => ({
   CopyFeedback: ({ content }: { content: string }) => (
@@ -104,9 +103,9 @@ describe('KnowledgeFsApiAccessDialog', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
-    expect(apiKeyModalPropsMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ canManage: true, open: true, scope: { type: 'dataset' } }),
-    )
+    expect(
+      await screen.findByRole('dialog', { name: 'workspace-dataset-api-keys:true' }),
+    ).toBeInTheDocument()
   })
 
   it('does not expose API key management while Service API access is disabled', async () => {
@@ -121,8 +120,11 @@ describe('KnowledgeFsApiAccessDialog', () => {
     expect(
       screen.queryByRole('button', { name: 'dataset.serviceApi.card.apiKey' }),
     ).not.toBeInTheDocument()
-    await waitFor(() => expect(apiKeyModalPropsMock).toHaveBeenCalled())
-    expect(apiKeyModalPropsMock).toHaveBeenLastCalledWith(expect.objectContaining({ open: false }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /workspace-dataset-api-keys/ }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
   it('uses the workspace API key permission for the read-only state', () => {

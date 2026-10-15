@@ -61,10 +61,12 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     WorkflowToolParameterConfiguration,
 )
+from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import alphanumeric, dump_response, uuid_value
 from libs.login import login_required
 from models import Account
@@ -904,6 +906,7 @@ class ToolApiProviderPreviousTestApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/create")
 class ToolWorkflowProviderCreateApi(Resource):
+    @error_responses(WorkflowToolHumanInputNotSupportedError)
     @console_ns.expect(console_ns.models[WorkflowToolCreatePayload.__name__])
     @console_ns.response(200, "Workflow tool created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
@@ -934,6 +937,7 @@ class ToolWorkflowProviderCreateApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/update")
 class ToolWorkflowProviderUpdateApi(Resource):
+    @error_responses(WorkflowToolHumanInputNotSupportedError)
     @console_ns.expect(console_ns.models[WorkflowToolUpdatePayload.__name__])
     @console_ns.response(200, "Workflow tool updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required

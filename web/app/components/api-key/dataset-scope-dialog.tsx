@@ -1,5 +1,6 @@
 'use client'
 
+import type { DialogContentProps, DialogProps } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
@@ -29,7 +30,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
@@ -46,37 +47,57 @@ export type DatasetApiKeyScopeSelection = {
   knowledgeSpaceIds: string[]
 }
 
-type DatasetScopeDialogProps = {
-  open: boolean
-  isCreating: boolean
-  onOpenChange: (open: boolean) => void
-  // Emits the knowledge-base ids to scope the new key to, split by kind. Both lists empty
-  // means the key can access every knowledge base in the workspace (the "all" scope).
-  onConfirm: (selection: DatasetApiKeyScopeSelection) => void
-}
-
 const PICKER_PAGE_SIZE = 20
 
-// Scope picker shown when creating a workspace dataset API key. It lets the caller
-// grant the key access to every knowledge base or to a specific selection, then hands
-// the chosen ids back to the parent modal, which owns the create mutation.
+type DatasetScopeDialogProps = Required<Pick<DialogProps, 'open' | 'onOpenChange'>> &
+  Pick<DialogContentProps, 'finalFocus'> & {
+    isCreating: boolean
+    createDisabled: boolean
+    // Emits the knowledge-base ids to scope the new key to, split by kind. Both lists empty
+    // means the key can access every knowledge base in the workspace (the "all" scope).
+    onConfirm: (selection: DatasetApiKeyScopeSelection) => void
+  }
+
 export function DatasetScopeDialog({
   open,
-  isCreating,
+  finalFocus,
   onOpenChange,
-  onConfirm,
+  ...props
 }: DatasetScopeDialogProps) {
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && props.isCreating) details.cancel()
+        else onOpenChange(nextOpen, details)
+      }}
+    >
+      <DialogContent
+        finalFocus={finalFocus}
+        backdropProps={{ forceRender: true }}
+        className="flex w-140 flex-col overflow-hidden p-0"
+      >
+        <DatasetScopeContent {...props} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DatasetScopeContent({
+  isCreating,
+  createDisabled,
+  onConfirm,
+}: Omit<DatasetScopeDialogProps, 'open' | 'finalFocus' | 'onOpenChange'>) {
   const { t } = useTranslation(['appApi', 'common'])
+  const scopeId = useId()
   const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
   const [scope, setScope] = useState<Scope>('all')
   const [selected, setSelected] = useState<SelectedKb[]>([])
   const [keyword, setKeyword] = useState('')
 
-  // Selection state resets by remounting: the parent bumps this dialog's `key` each time
-  // it opens, so every open starts from these defaults with no reset-in-effect.
   const { data: datasetsPages, isLoading: datasetsLoading } = useInfiniteDatasets(
     { keyword },
-    { enabled: open && scope === 'specific' },
+    { enabled: scope === 'specific' },
   )
   const datasets = useMemo<SelectedKb[]>(
     () =>
@@ -99,7 +120,7 @@ export function DatasetScopeDialog({
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
     }),
-    enabled: open && scope === 'specific' && knowledgeFsEnabled,
+    enabled: scope === 'specific' && knowledgeFsEnabled,
   })
   const knowledgeSpaces = useMemo<SelectedKb[]>(
     () =>
@@ -120,12 +141,7 @@ export function DatasetScopeDialog({
 
   const removeKb = (id: string) => setSelected((prev) => prev.filter((kb) => kb.id !== id))
 
-  const canCreate = scope === 'all' || selected.length > 0
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && isCreating) return
-    onOpenChange(nextOpen)
-  }
+  const canCreate = !createDisabled && (scope === 'all' || selected.length > 0)
 
   const handleConfirm = () => {
     if (!canCreate || isCreating) return
@@ -150,200 +166,205 @@ export function DatasetScopeDialog({
   )
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex w-140 flex-col overflow-hidden p-0">
-        <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pr-14 pb-4">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['apiKeyModal.addTitle'], { ns: 'appApi' })}
-          </DialogTitle>
-          <DialogDescription className="system-sm-regular text-text-tertiary">
-            {t(($) => $['apiKeyModal.addSubtitle'], { ns: 'appApi' })}
-          </DialogDescription>
+    <form
+      className="flex min-h-0 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleConfirm()
+      }}
+    >
+      <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pr-14 pb-4">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(($) => $['apiKeyModal.addTitle'], { ns: 'appApi' })}
+        </DialogTitle>
+        <DialogDescription className="system-sm-regular text-text-tertiary">
+          {t(($) => $['apiKeyModal.addSubtitle'], { ns: 'appApi' })}
+        </DialogDescription>
+      </div>
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
+            disabled={isCreating}
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
+
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-6 py-4">
+        <div id={scopeId} className="system-sm-semibold text-text-secondary">
+          {t(($) => $['apiKeyModal.knowledgeBaseAccess'], { ns: 'appApi' })}
         </div>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-              disabled={isCreating}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-
-        <div className="flex flex-col gap-3 px-6 py-4">
-          <div className="system-sm-semibold text-text-secondary">
-            {t(($) => $['apiKeyModal.knowledgeBaseAccess'], { ns: 'appApi' })}
-          </div>
-          <RadioGroup<Scope> value={scope} onValueChange={setScope}>
-            <div className="flex flex-col gap-3">
-              <label htmlFor="api-key-scope-all" className="flex cursor-pointer items-start gap-2">
-                <Radio id="api-key-scope-all" value="all" className="mt-0.5" />
-                <div className="flex flex-col">
-                  <span className="system-sm-medium text-text-secondary">
-                    {t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })}
-                  </span>
-                  <span className="system-xs-regular text-text-tertiary">
-                    {t(($) => $['apiKeyModal.scopeAllDatasetsTip'], { ns: 'appApi' })}
-                  </span>
-                </div>
-              </label>
-              <label
-                htmlFor="api-key-scope-specific"
-                className="flex cursor-pointer items-start gap-2"
-              >
-                <Radio id="api-key-scope-specific" value="specific" className="mt-0.5" />
-                <div className="flex flex-col">
-                  <span className="system-sm-medium text-text-secondary">
-                    {t(($) => $['apiKeyModal.scopeSpecificDatasets'], { ns: 'appApi' })}
-                  </span>
-                  <span className="system-xs-regular text-text-tertiary">
-                    {t(($) => $['apiKeyModal.scopeSpecificDatasetsTip'], { ns: 'appApi' })}
-                  </span>
-                </div>
-              </label>
-            </div>
-          </RadioGroup>
-
-          {scope === 'specific' && (
-            <div className="flex flex-col gap-2">
-              <div className="system-sm-semibold text-text-secondary">
-                {t(($) => $['apiKeyModal.selectedKnowledgeBases'], { ns: 'appApi' })}
+        <RadioGroup<Scope>
+          name="knowledgeBaseScope"
+          aria-labelledby={scopeId}
+          disabled={isCreating}
+          value={scope}
+          onValueChange={setScope}
+        >
+          <div className="flex flex-col gap-3">
+            <label htmlFor={`${scopeId}-all`} className="flex cursor-pointer items-start gap-2">
+              <Radio id={`${scopeId}-all`} value="all" className="mt-0.5" />
+              <div className="flex flex-col">
+                <span className="system-sm-medium text-text-secondary">
+                  {t(($) => $['apiKeyModal.scopeAllDatasets'], { ns: 'appApi' })}
+                </span>
+                <span className="system-xs-regular text-text-tertiary">
+                  {t(($) => $['apiKeyModal.scopeAllDatasetsTip'], { ns: 'appApi' })}
+                </span>
               </div>
-              <div className="flex flex-col gap-2 rounded-lg border-[0.5px] border-divider-subtle bg-components-panel-bg p-3">
-                {selected.length === 0 ? (
-                  <div className="py-0.5 system-xs-regular text-text-tertiary">
-                    {t(($) => $['apiKeyModal.noKnowledgeBasesSelected'], { ns: 'appApi' })}
+            </label>
+            <label
+              htmlFor={`${scopeId}-specific`}
+              className="flex cursor-pointer items-start gap-2"
+            >
+              <Radio id={`${scopeId}-specific`} value="specific" className="mt-0.5" />
+              <div className="flex flex-col">
+                <span className="system-sm-medium text-text-secondary">
+                  {t(($) => $['apiKeyModal.scopeSpecificDatasets'], { ns: 'appApi' })}
+                </span>
+                <span className="system-xs-regular text-text-tertiary">
+                  {t(($) => $['apiKeyModal.scopeSpecificDatasetsTip'], { ns: 'appApi' })}
+                </span>
+              </div>
+            </label>
+          </div>
+        </RadioGroup>
+
+        {scope === 'specific' && (
+          <div className="flex flex-col gap-2">
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $['apiKeyModal.selectedKnowledgeBases'], { ns: 'appApi' })}
+            </div>
+            <div className="flex flex-col gap-2 rounded-lg border-[0.5px] border-divider-subtle bg-components-panel-bg p-3">
+              {selected.length === 0 ? (
+                <div className="py-0.5 system-xs-regular text-text-tertiary">
+                  {t(($) => $['apiKeyModal.noKnowledgeBasesSelected'], { ns: 'appApi' })}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="system-xs-regular text-text-tertiary">
+                    {t(($) => $['apiKeyModal.selectedKnowledgeBasesCount'], {
+                      ns: 'appApi',
+                      count: selected.length,
+                    })}
                   </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <div className="system-xs-regular text-text-tertiary">
-                      {t(($) => $['apiKeyModal.selectedKnowledgeBasesCount'], {
-                        ns: 'appApi',
-                        count: selected.length,
-                      })}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selected.map((kb) => (
-                        <div
-                          key={kb.id}
-                          className="flex items-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-2 py-1"
-                        >
-                          <span className="max-w-40 truncate system-xs-medium text-text-secondary">
-                            {kb.name}
-                          </span>
-                          {kb.kind === 'knowledge_space' && (
-                            <span className="shrink-0 rounded-sm bg-components-badge-bg-gray-soft px-1 system-2xs-medium-uppercase text-text-tertiary">
-                              {t(($) => $['apiKeyModal.knowledgeSpaceBadge'], { ns: 'appApi' })}
-                            </span>
-                          )}
-                          <IconButton
-                            size="xs"
-                            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
-                            className="shrink-0"
-                            onClick={() => removeKb(kb.id)}
-                          >
-                            <span aria-hidden className="i-ri-close-line size-3.5" />
-                          </IconButton>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <Combobox<SelectedKb, true>
-                  multiple
-                  items={pickerItems}
-                  filter={null}
-                  value={selected}
-                  inputValue={keyword}
-                  itemToStringLabel={(kb) => kb.name}
-                  isItemEqualToValue={(item, value) => item.id === value.id}
-                  onValueChange={setSelected}
-                  onInputValueChange={(value, details) => {
-                    // Keep the query so several results of one search can be picked.
-                    if (details.isItemPress) details.cancel()
-                    else setKeyword(value)
-                  }}
-                >
-                  <ComboboxTrigger
-                    aria-label={addLabel}
-                    render={
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        className="w-full data-popup-open:bg-components-button-secondary-bg-hover data-popup-open:inset-ring-components-button-secondary-border-hover"
-                      />
-                    }
-                  >
-                    <span aria-hidden className="mr-1 i-ri-add-line size-4" />
-                    {addLabel}
-                  </ComboboxTrigger>
-                  <ComboboxPortal>
-                    <ComboboxPositioner placement="bottom">
-                      <ComboboxPopup
-                        aria-label={searchLabel}
-                        className="w-[min(20rem,var(--available-width))]"
+                  <div className="flex flex-wrap gap-1.5">
+                    {selected.map((kb) => (
+                      <div
+                        key={kb.id}
+                        className="flex items-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-2 py-1"
                       >
-                        <ComboboxInputGroup>
-                          <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
-                        </ComboboxInputGroup>
-                        <ComboboxStatus>
-                          {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
-                        </ComboboxStatus>
-                        <ComboboxList<SelectedKb>
-                          aria-label={t(($) => $['apiKeyModal.scopeSpecificDatasets'], {
-                            ns: 'appApi',
-                          })}
+                        <span className="max-w-40 truncate system-xs-medium text-text-secondary">
+                          {kb.name}
+                        </span>
+                        {kb.kind === 'knowledge_space' && (
+                          <span className="shrink-0 rounded-sm bg-components-badge-bg-gray-soft px-1 system-2xs-medium-uppercase text-text-tertiary">
+                            {t(($) => $['apiKeyModal.knowledgeSpaceBadge'], { ns: 'appApi' })}
+                          </span>
+                        )}
+                        <IconButton
+                          size="xs"
+                          disabled={isCreating}
+                          aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${kb.name}`}
+                          className="shrink-0"
+                          onClick={() => removeKb(kb.id)}
                         >
-                          {knowledgeFsEnabled && (
-                            <ComboboxGroup items={knowledgeSpaces}>
-                              <ComboboxGroupLabel>
-                                {t(($) => $['apiKeyModal.pickerKnowledgeSpaces'], { ns: 'appApi' })}
-                              </ComboboxGroupLabel>
-                              <ComboboxCollection<SelectedKb>>
-                                {renderPickerOption}
-                              </ComboboxCollection>
-                            </ComboboxGroup>
-                          )}
-                          <ComboboxGroup items={datasets}>
-                            {knowledgeFsEnabled && (
-                              <ComboboxGroupLabel>
-                                {t(($) => $['apiKeyModal.pickerLegacyDatasets'], { ns: 'appApi' })}
-                              </ComboboxGroupLabel>
-                            )}
+                          <span aria-hidden className="i-ri-close-line size-3.5" />
+                        </IconButton>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Combobox<SelectedKb, true>
+                multiple
+                disabled={isCreating}
+                items={pickerItems}
+                filter={null}
+                value={selected}
+                inputValue={keyword}
+                itemToStringLabel={(kb) => kb.name}
+                isItemEqualToValue={(item, value) => item.id === value.id}
+                onValueChange={setSelected}
+                onInputValueChange={(value, details) => {
+                  // Keep the query so several results of one search can be picked.
+                  if (details.isItemPress) details.cancel()
+                  else setKeyword(value)
+                }}
+              >
+                <ComboboxTrigger
+                  aria-label={addLabel}
+                  render={
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      className="w-full data-popup-open:bg-components-button-secondary-bg-hover data-popup-open:inset-ring-components-button-secondary-border-hover"
+                    />
+                  }
+                >
+                  <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                  {addLabel}
+                </ComboboxTrigger>
+                <ComboboxPortal>
+                  <ComboboxPositioner placement="bottom">
+                    <ComboboxPopup
+                      aria-label={searchLabel}
+                      className="w-[min(20rem,var(--available-width))]"
+                    >
+                      <ComboboxInputGroup>
+                        <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
+                      </ComboboxInputGroup>
+                      <ComboboxStatus>
+                        {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
+                      </ComboboxStatus>
+                      <ComboboxList<SelectedKb>
+                        aria-label={t(($) => $['apiKeyModal.scopeSpecificDatasets'], {
+                          ns: 'appApi',
+                        })}
+                      >
+                        {knowledgeFsEnabled && (
+                          <ComboboxGroup items={knowledgeSpaces}>
+                            <ComboboxGroupLabel>
+                              {t(($) => $['apiKeyModal.pickerKnowledgeSpaces'], { ns: 'appApi' })}
+                            </ComboboxGroupLabel>
                             <ComboboxCollection<SelectedKb>>
                               {renderPickerOption}
                             </ComboboxCollection>
                           </ComboboxGroup>
-                        </ComboboxList>
-                        <ComboboxEmpty>
-                          {isLoading ? null : t(($) => $.noData, { ns: 'common' })}
-                        </ComboboxEmpty>
-                      </ComboboxPopup>
-                    </ComboboxPositioner>
-                  </ComboboxPortal>
-                </Combobox>
-              </div>
+                        )}
+                        <ComboboxGroup items={datasets}>
+                          {knowledgeFsEnabled && (
+                            <ComboboxGroupLabel>
+                              {t(($) => $['apiKeyModal.pickerLegacyDatasets'], { ns: 'appApi' })}
+                            </ComboboxGroupLabel>
+                          )}
+                          <ComboboxCollection<SelectedKb>>{renderPickerOption}</ComboboxCollection>
+                        </ComboboxGroup>
+                      </ComboboxList>
+                      <ComboboxEmpty>
+                        {isLoading ? null : t(($) => $.noData, { ns: 'common' })}
+                      </ComboboxEmpty>
+                    </ComboboxPopup>
+                  </ComboboxPositioner>
+                </ComboboxPortal>
+              </Combobox>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        <div className="flex shrink-0 justify-end gap-2 px-6 pb-6">
-          <Button variant="secondary" disabled={isCreating} onClick={() => handleOpenChange(false)}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!canCreate}
-            loading={isCreating}
-            onClick={handleConfirm}
-          >
-            {t(($) => $['operation.create'], { ns: 'common' })}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <div className="flex shrink-0 justify-end gap-2 px-6 pb-6">
+        <DialogClose render={<Button variant="secondary" disabled={isCreating} />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button type="submit" disabled={!canCreate} loading={isCreating}>
+          {t(($) => $['operation.create'], { ns: 'common' })}
+        </Button>
+      </div>
+    </form>
   )
 }

@@ -7,7 +7,7 @@ from controllers.openapi._catalog import attach_catalog
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
 from controllers.openapi._upload import describe_multipart_bodies
 from libs.device_flow_security import attach_anti_framing
-from libs.external_api import ExternalApi
+from libs.external_api import ErrorSpec, ExternalApi
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
@@ -17,9 +17,19 @@ attach_catalog(bp)
 class _OpenApi(ExternalApi):
     """The surface's document also names the multipart form its file-bearing bodies accept."""
 
+    error_response_model = ErrorBody
+
     @override
     def finish_document(self, document: dict[str, object]) -> dict[str, object]:
-        return describe_multipart_bodies(document)
+        return super().finish_document(describe_multipart_bodies(document))
+
+    @override
+    def error_code_for(self, spec: ErrorSpec) -> str:
+        return OpenApiErrorFormatter.code_for(spec["status"], spec["error_code"])
+
+    @override
+    def implicit_error_codes(self, status: int) -> set[str]:
+        return {OpenApiErrorFormatter.code_for(status, None)}
 
 
 api = _OpenApi(
@@ -55,6 +65,7 @@ from controllers.openapi._models import (
     CompletionRunPayload,
     DeviceCodeRequest,
     DeviceCodeResponse,
+    DeviceFlowErrorResponse,
     DeviceLookupQuery,
     DeviceLookupResponse,
     DeviceMutateRequest,
@@ -157,6 +168,7 @@ register_response_schema_models(
     DeviceTokenResponse,
     DeviceLookupResponse,
     DeviceMutateResponse,
+    DeviceFlowErrorResponse,
     FileResponse,
     ServerVersionResponse,
     HealthResponse,

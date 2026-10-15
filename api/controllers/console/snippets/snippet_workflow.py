@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -58,6 +59,7 @@ from fields.workflow_run_fields import (
 )
 from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
@@ -159,6 +161,7 @@ def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft")
 class SnippetDraftWorkflowApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_snippet_draft_workflow")
     @console_ns.response(
         200,
@@ -191,6 +194,7 @@ class SnippetDraftWorkflowApi(Resource):
         response["input_fields"] = snippet.input_fields_list
         return response
 
+    @error_responses(DraftWorkflowNotSync)
     @console_ns.doc("sync_snippet_draft_workflow")
     @console_ns.expect(console_ns.models.get(SnippetDraftSyncPayload.__name__))
     @console_ns.response(
@@ -222,7 +226,7 @@ class SnippetDraftWorkflowApi(Resource):
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
         except ValueError as e:
-            return {"message": str(e)}, 400
+            raise InvalidArgumentError(str(e)) from e
 
         return {
             "result": "success",
@@ -311,7 +315,7 @@ class SnippetPublishedWorkflowApi(Resource):
             # This domain validation remains a 400 response, so it cannot escape to
             # the request-session decorator that normally owns rollback-on-error.
             session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- translated validation response
-            return {"message": str(e)}, 400
+            raise InvalidArgumentError(str(e)) from e
 
         return {
             "result": "success",
@@ -456,7 +460,7 @@ class SnippetWorkflowByIdApi(Resource):
         update_data = req_data.model_dump(exclude_unset=True)
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            raise InvalidArgumentError("No valid fields to update")
 
         snippet_service = _snippet_service()
         workflow = snippet_service.update_workflow(
