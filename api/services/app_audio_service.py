@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
-from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
-from services.entities.message_entities import MessageActor
+from services.audio_types import AudioAppRef, AudioDraftType, AudioOutput, AudioUpload, AudioVoice
+from services.entities.message_entities import MessageAccount, MessageActor
 
 
 class AppAudio(Protocol):
@@ -11,6 +11,18 @@ class AppAudio(Protocol):
         self, *, app: AudioAppRef, audio: AudioUpload | None, end_user: str | None = None
     ) -> dict[str, str]:
         """Transcribe an upload; end_user identifies the provider caller, or None for Console callers."""
+        ...
+
+    def transcript_agent_asr(
+        self,
+        *,
+        app: AudioAppRef,
+        agent_id: str,
+        actor: MessageAccount,
+        draft_type: AudioDraftType,
+        audio: AudioUpload | None,
+    ) -> dict[str, str]:
+        """Transcribe with the Agent's shared draft or the caller's private debug build."""
         ...
 
     def transcript_tts(
@@ -22,6 +34,7 @@ class AppAudio(Protocol):
         voice: str | None,
         message_id: str | None,
         end_user: str | None = None,
+        is_draft: bool = False,
     ) -> AudioOutput | None:
         """Synthesize a message answer or explicit text for the admitted app.
 
@@ -37,5 +50,13 @@ class AppAudio(Protocol):
 
         ``end_user`` is the provider-facing user identifier, not the database
         identity used for message ownership. Console callers leave it as None.
+
+        ``is_draft`` selects Console preview rules: workflow apps read their
+        draft, and other app modes accept voice previews without published TTS
+        feature checks. Published callers leave it as False.
         """
+        ...
+
+    def get_voices(self, *, tenant_id: str, language: str) -> list[AudioVoice]:
+        """List the workspace's default TTS model voices for the requested language."""
         ...

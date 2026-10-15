@@ -2,7 +2,7 @@
 
 Provider credential queries retain their existing scoped-session behavior.
 Admitted app runtimes close their configuration sessions before entering this
-module; legacy callers continue to own their request session.
+module. Provider credential preparation remains a separate migration.
 """
 
 import io

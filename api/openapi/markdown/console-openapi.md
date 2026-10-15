@@ -531,7 +531,8 @@ Transcribe audio using the current Agent debug configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | Bad request - Speech to text disabled or unsupported audio |  |
+| 400 | Bad request - Speech to text disabled, unsupported audio, or invalid debug source |  |
+| 403 | Insufficient permissions |  |
 | 404 | Agent or build draft not found |  |
 | 413 | Audio file too large |  |
 
@@ -1289,6 +1290,7 @@ Preview an Agent TTS voice or read an Agent chat message
 | 400 | Invalid text or voice |  |
 | 403 | Insufficient permissions |  |
 | 404 | Agent not found |  |
+| 422 | Invalid request payload |  |
 
 ### [GET] /agent/{agent_id}/text-to-audio/voices
 Get available TTS voices for an Agent and language
@@ -1306,7 +1308,9 @@ Get available TTS voices for an Agent and language
 | ---- | ----------- | ------ |
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter |  |
+| 403 | Insufficient permissions |  |
 | 404 | Agent not found |  |
+| 422 | Invalid query parameters |  |
 
 ### [GET] /agent/{agent_id}/versions
 #### Parameters
@@ -2422,6 +2426,7 @@ Transcript audio to text for chat messages
 | ---- | ----------- | ------ |
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 | 400 | Bad request - No audio uploaded or unsupported type |  |
+| 404 | App not found or its mode does not support audio transcription |  |
 | 413 | Audio file too large |  |
 
 ### [GET] /apps/{app_id}/chat-conversations
@@ -3195,6 +3200,8 @@ Convert text to speech for chat messages
 | ---- | ----------- |
 | 200 | Text to speech conversion successful |
 | 400 | Bad request - Invalid parameters |
+| 404 | App not found |
+| 422 | Invalid request payload |
 
 ### [GET] /apps/{app_id}/text-to-audio/voices
 Get available TTS voices for a specific language
@@ -3212,6 +3219,9 @@ Get available TTS voices for a specific language
 | ---- | ----------- | ------ |
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter |  |
+| 403 | Insufficient permissions |  |
+| 404 | App not found |  |
+| 422 | Invalid query parameters |  |
 
 ### [GET] /apps/{app_id}/trace
 Get app tracing configuration

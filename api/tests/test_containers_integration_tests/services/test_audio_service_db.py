@@ -1,19 +1,15 @@
 """
-Integration tests for AudioService.transcript_tts message-ID path.
-
-Migrated from unit_tests/services/test_audio_service.py, replacing
-db.session.get mock patches with real Message rows persisted in PostgreSQL.
+Integration tests for TTS message preparation against real PostgreSQL rows.
 
 Covers:
-- transcript_tts with valid message_id that resolves to a real Message
-- transcript_tts returns None for invalid (non-UUID) message_id
-- transcript_tts returns None when message_id is a valid UUID but no row exists
-- transcript_tts returns None when message exists but has an empty answer
+- prepare_tts resolves a valid message_id to the owned message's answer
+- prepare_tts returns None for invalid (non-UUID) message_id
+- prepare_tts returns None when message_id is a valid UUID but no row exists
+- prepare_tts returns None when message exists but has an empty answer
 """
 
 from collections.abc import Generator
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -21,11 +17,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.account import TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, Conversation, Message
 from services.app_ref_service import AppRef, MessageRef
-from services.audio_service import AudioService
+from services.audio_service import AudioService, PreparedTextToAudio
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     create_console_account_and_tenant,
     create_console_app,
@@ -101,8 +97,8 @@ def _create_message(
     return message
 
 
-class TestAudioServiceTranscriptTTSMessageLookup:
-    """Integration tests for AudioService.transcript_tts message-ID lookup via real DB."""
+class TestAudioServiceTTSPreparationMessageLookup:
+    """Message lookup and text preparation use the caller's database session."""
 
     @pytest.fixture(autouse=True)
     def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None]:
@@ -114,7 +110,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         so the DB does not accumulate state across tests. Conversation/Message rows are
         created via flush() only, so the trailing rollback removes them.
         """
-        self._committed_rows: list = []
+        self._committed_rows: list[App | Account | Tenant | TenantAccountJoin] = []
         yield
         db_session_with_containers.rollback()
         for entity in reversed(self._committed_rows):
@@ -139,8 +135,8 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         self._committed_rows.extend([account, tenant])
         return app, account.id, tenant.id
 
-    def test_transcript_tts_with_message_id_success(self, db_session_with_containers: Session) -> None:
-        """transcript_tts invokes TTS with the message answer when message_id resolves to a real row."""
+    def test_prepare_tts_with_message_id_success(self, db_session_with_containers: Session) -> None:
+        """Preparation resolves the answer and explicit voice without calling a provider."""
         app, account_id, _ = self._setup_app_and_account(db_session_with_containers)
         conversation = _create_conversation(db_session_with_containers, app, account_id)
         message = _create_message(
@@ -151,36 +147,24 @@ class TestAudioServiceTranscriptTTSMessageLookup:
             answer="Hello from message",
         )
 
-        mock_model_instance = MagicMock()
-        mock_model_instance.invoke_tts.return_value = b"audio from message"
-        mock_model_manager = MagicMock()
-        mock_model_manager.get_default_model_instance.return_value = mock_model_instance
-
-        with patch("services.audio_provider_gateway.ModelManager.for_tenant", return_value=mock_model_manager):
-            result = AudioService.transcript_tts(
-                app_model=app,
-                session=db_session_with_containers,
-                message_ref=MessageRef(
-                    app=AppRef(tenant_id=app.tenant_id, app_id=app.id),
-                    message_id=message.id,
-                    account_id=account_id,
-                ),
-                voice="en-US-Neural",
-            )
-
-        assert result is not None
-        assert result.content_type == "audio/mpeg"
-        assert result.get_data() == b"audio from message"
-        mock_model_instance.invoke_tts.assert_called_once_with(
-            content_text="Hello from message",
+        result = AudioService.prepare_tts(
+            app_model=app,
+            session=db_session_with_containers,
+            message_ref=MessageRef(
+                app=AppRef(tenant_id=app.tenant_id, app_id=app.id),
+                message_id=message.id,
+                account_id=account_id,
+            ),
             voice="en-US-Neural",
         )
 
-    def test_transcript_tts_returns_none_for_invalid_message_id(self, db_session_with_containers: Session) -> None:
-        """transcript_tts returns None immediately when message_id is not a valid UUID."""
+        assert result == PreparedTextToAudio(text="Hello from message", voice="en-US-Neural")
+
+    def test_prepare_tts_returns_none_for_invalid_message_id(self, db_session_with_containers: Session) -> None:
+        """Preparation returns None immediately when message_id is not a valid UUID."""
         app, _, _ = self._setup_app_and_account(db_session_with_containers)
 
-        result = AudioService.transcript_tts(
+        result = AudioService.prepare_tts(
             app_model=app,
             session=db_session_with_containers,
             message_ref=MessageRef(
@@ -191,11 +175,11 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         assert result is None
 
-    def test_transcript_tts_returns_none_for_nonexistent_message(self, db_session_with_containers: Session) -> None:
-        """transcript_tts returns None when message_id is a valid UUID but no Message row exists."""
+    def test_prepare_tts_returns_none_for_nonexistent_message(self, db_session_with_containers: Session) -> None:
+        """Preparation returns None when message_id is a valid UUID but no Message row exists."""
         app, _, _ = self._setup_app_and_account(db_session_with_containers)
 
-        result = AudioService.transcript_tts(
+        result = AudioService.prepare_tts(
             app_model=app,
             session=db_session_with_containers,
             message_ref=MessageRef(
@@ -206,8 +190,8 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         assert result is None
 
-    def test_transcript_tts_returns_none_for_empty_message_answer(self, db_session_with_containers: Session) -> None:
-        """transcript_tts returns None when the resolved message has an empty answer."""
+    def test_prepare_tts_returns_none_for_empty_message_answer(self, db_session_with_containers: Session) -> None:
+        """Preparation returns None when the resolved message has an empty answer."""
         app, account_id, _ = self._setup_app_and_account(db_session_with_containers)
         conversation = _create_conversation(db_session_with_containers, app, account_id)
         message = _create_message(
@@ -219,7 +203,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
             status=MessageStatus.NORMAL,
         )
 
-        result = AudioService.transcript_tts(
+        result = AudioService.prepare_tts(
             app_model=app,
             session=db_session_with_containers,
             message_ref=MessageRef(

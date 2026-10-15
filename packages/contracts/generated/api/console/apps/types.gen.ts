@@ -5183,6 +5183,7 @@ export type PostAppsByAppIdAudioToTextData = {
 
 export type PostAppsByAppIdAudioToTextErrors = {
   400: unknown
+  404: unknown
   413: unknown
 }
 
@@ -6014,6 +6015,8 @@ export type PostAppsByAppIdTextToAudioData = {
 
 export type PostAppsByAppIdTextToAudioErrors = {
   400: unknown
+  404: unknown
+  422: unknown
 }
 
 export type PostAppsByAppIdTextToAudioResponses = {
@@ -6038,6 +6041,9 @@ export type GetAppsByAppIdTextToAudioVoicesData = {
 
 export type GetAppsByAppIdTextToAudioVoicesErrors = {
   400: unknown
+  403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type GetAppsByAppIdTextToAudioVoicesResponses = {

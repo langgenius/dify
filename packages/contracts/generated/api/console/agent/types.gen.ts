@@ -2492,6 +2492,7 @@ export type PostAgentByAgentIdAudioToTextData = {
 
 export type PostAgentByAgentIdAudioToTextErrors = {
   400: unknown
+  403: unknown
   404: unknown
   413: unknown
 }
@@ -3340,6 +3341,7 @@ export type PostAgentByAgentIdTextToAudioErrors = {
   400: unknown
   403: unknown
   404: unknown
+  422: unknown
 }
 
 export type PostAgentByAgentIdTextToAudioResponses = {
@@ -3362,7 +3364,9 @@ export type GetAgentByAgentIdTextToAudioVoicesData = {
 
 export type GetAgentByAgentIdTextToAudioVoicesErrors = {
   400: unknown
+  403: unknown
   404: unknown
+  422: unknown
 }
 
 export type GetAgentByAgentIdTextToAudioVoicesResponses = {
