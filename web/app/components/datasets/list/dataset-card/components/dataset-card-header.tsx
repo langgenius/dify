@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_ICON_CLASS_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
+import { isDatasetAvailable } from '../availability'
 
 const EXTERNAL_PROVIDER = 'external'
 const docModeInfoClassName =
@@ -26,7 +27,7 @@ type DocModeInfoProps = {
 const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocModeInfoProps) => {
   const { t } = useTranslation(['dataset'])
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
-  const isPipeline = dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline'
+  const isPipeline = isDatasetAvailable(dataset) && dataset.runtime_mode === 'rag_pipeline'
 
   if (isExternalProvider) {
     return (
@@ -113,7 +114,7 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
     <div
       className={cn(
         'flex items-center gap-x-3 pt-4 pr-14 pb-2 pl-4',
-        !dataset.embedding_available && 'opacity-30',
+        !isDatasetAvailable(dataset) && 'opacity-30',
       )}
     >
       <div className="relative shrink-0">

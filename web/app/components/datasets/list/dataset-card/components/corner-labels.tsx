@@ -2,6 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
+import { isDatasetAvailable } from '../availability'
 
 type CornerLabelsProps = {
   dataset: DataSet
@@ -10,7 +11,7 @@ type CornerLabelsProps = {
 const CornerLabels = ({ dataset }: CornerLabelsProps) => {
   const { t } = useTranslation(['dataset'])
 
-  if (!dataset.embedding_available) {
+  if (!isDatasetAvailable(dataset)) {
     return (
       <CornerLabel
         label={t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}

@@ -1,3 +1,4 @@
+import type { DatasetDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
@@ -76,6 +77,7 @@ export type DataSet = {
   embedding_model: string
   embedding_model_provider: string
   embedding_available: boolean
+  reranking_available?: DatasetDetailResponse['reranking_available']
   retrieval_model_dict: RetrievalConfig
   retrieval_model: RetrievalConfig
   tags: Tag[]

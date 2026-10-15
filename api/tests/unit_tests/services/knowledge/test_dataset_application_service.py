@@ -83,11 +83,20 @@ def test_list_applies_visibility_and_reports_model_availability(
         "data": [
             {
                 "id": "a",
+                "provider": "vendor",
                 "indexing_technique": "high_quality",
                 "embedding_model": "missing",
                 "embedding_model_provider": "provider",
+                "retrieval_model_dict": {"search_method": "semantic_search", "reranking_enable": False},
             },
-            {"id": "b", "indexing_technique": "economy", "embedding_model": None, "embedding_model_provider": None},
+            {
+                "id": "b",
+                "provider": "vendor",
+                "indexing_technique": "economy",
+                "embedding_model": None,
+                "embedding_model_provider": None,
+                "retrieval_model_dict": {"search_method": "semantic_search", "reranking_enable": False},
+            },
         ]
     }
     operations.embedding_models.return_value = set()
@@ -96,6 +105,128 @@ def test_list_applies_visibility_and_reports_model_availability(
     assert result["data"][0]["embedding_available"] is False
     assert result["data"][0]["permission_keys"] == ["dataset.edit"]
     assert result["data"][1]["embedding_available"] is True
+
+
+def test_list_reports_unavailable_reranking_dependency(
+    service: DatasetApplicationService, operations: MagicMock
+) -> None:
+    operations.visibility.return_value = DatasetVisibility()
+    operations.embedding_models.return_value = {"embedding:langgenius/jina/jina"}
+    operations.reranking_models.return_value = set()
+    operations.list_datasets.return_value = {
+        "data": [
+            {
+                "id": "dataset",
+                "provider": "vendor",
+                "indexing_technique": "high_quality",
+                "embedding_model": "embedding",
+                "embedding_model_provider": "langgenius/jina/jina",
+                "retrieval_model_dict": {
+                    "search_method": "hybrid_search",
+                    "reranking_enable": True,
+                    "reranking_mode": "reranking_model",
+                    "reranking_model": {
+                        "reranking_provider_name": "langgenius/jina/jina",
+                        "reranking_model_name": "jina-reranker-v1-base-en",
+                    },
+                },
+            }
+        ]
+    }
+
+    result = service.list_datasets(CONTEXT, DatasetListFilter())
+
+    assert result["data"][0]["embedding_available"] is True
+    assert result["data"][0]["reranking_available"] is False
+
+    operations.reranking_models.return_value = {"jina-reranker-v1-base-en:langgenius/jina/jina"}
+    result = service.list_datasets(CONTEXT, DatasetListFilter())
+    assert result["data"][0]["reranking_available"] is True
+
+
+@pytest.mark.parametrize("listing", [True, False], ids=["list", "detail"])
+@pytest.mark.parametrize(
+    ("overrides", "retrieval_overrides", "active_models", "available", "requires_reranking"),
+    [
+        ({}, {}, set(), False, True),
+        ({}, {}, {"reranker:langgenius/jina/jina"}, True, True),
+        ({}, {}, {"reranker:other/jina/jina"}, False, True),
+        ({}, {"reranking_mode": "weighted_score"}, set(), True, False),
+        ({}, {"reranking_enable": False}, set(), True, False),
+        ({"indexing_technique": "economy"}, {}, set(), True, False),
+        ({"provider": "external"}, {}, set(), True, False),
+        ({}, {"reranking_model": {}}, set(), False, True),
+        (
+            {},
+            {"reranking_model": {"reranking_provider_name": "bad/provider", "reranking_model_name": "reranker"}},
+            set(),
+            False,
+            True,
+        ),
+        ({}, {"search_method": "semantic_search", "reranking_mode": "weighted_score"}, set(), False, True),
+        ({}, {"search_method": "full_text_search", "reranking_mode": "weighted_score"}, set(), False, True),
+        ({}, {"reranking_mode": None}, set(), False, True),
+    ],
+    ids=[
+        "missing-model",
+        "active-model",
+        "different-provider",
+        "weighted-score",
+        "disabled-reranking",
+        "economy",
+        "external",
+        "unconfigured-model",
+        "invalid-provider-id",
+        "semantic-reranking",
+        "full-text-reranking",
+        "legacy-mode",
+    ],
+)
+def test_dataset_reranking_availability(
+    service: DatasetApplicationService,
+    operations: MagicMock,
+    listing: bool,
+    overrides: dict[str, object],
+    retrieval_overrides: dict[str, object],
+    active_models: set[str],
+    available: bool,
+    requires_reranking: bool,
+) -> None:
+    item = {
+        "id": "dataset",
+        "provider": "vendor",
+        "indexing_technique": "high_quality",
+        "embedding_model": "embedding",
+        "embedding_model_provider": "langgenius/jina/jina",
+        "retrieval_model_dict": {
+            "search_method": "hybrid_search",
+            "reranking_enable": True,
+            "reranking_mode": "reranking_model",
+            "reranking_model": {
+                "reranking_provider_name": "langgenius/jina/jina",
+                "reranking_model_name": "reranker",
+            },
+            **retrieval_overrides,
+        },
+        **overrides,
+    }
+    operations.visibility.return_value = DatasetVisibility()
+    operations.list_datasets.return_value = {"data": [item]}
+    operations.get_dataset.return_value = item
+    operations.embedding_models.return_value = {"embedding:langgenius/jina/jina"}
+    operations.reranking_models.return_value = active_models
+
+    if listing:
+        result = service.list_datasets(CONTEXT, DatasetListFilter())["data"][0]
+    else:
+        result = service.get_dataset(CONTEXT, dataset_id="dataset")
+
+    assert result["embedding_available"] is True
+    assert result["reranking_available"] is available
+    if requires_reranking:
+        operations.reranking_models.assert_called_once_with(CONTEXT.active_workspace_id)
+    else:
+        operations.reranking_models.assert_not_called()
 
 
 @pytest.mark.parametrize(

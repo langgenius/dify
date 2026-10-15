@@ -113,6 +113,14 @@ def test_dataset_detail_preserves_permission_keys():
     assert response["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
 
+def test_dataset_detail_preserves_reranking_availability() -> None:
+    response = _dump_dataset_detail(_dataset_detail_payload(reranking_available=False))
+
+    assert response["embedding_available"] is True
+    assert response["reranking_available"] is False
+    assert _dump_dataset_detail(_dataset_detail_payload())["reranking_available"] is None
+
+
 def test_dataset_detail_expands_legacy_null_nested_fields():
     response = _dump_dataset_detail(
         _dataset_detail_payload(

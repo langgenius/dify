@@ -63,6 +63,7 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
         "embedding_model": dataset.embedding_model,
         "embedding_model_provider": dataset.embedding_model_provider,
         "embedding_available": vars(dataset).get("embedding_available"),
+        "reranking_available": None,
         "retrieval_model_dict": dataset.retrieval_model_dict,
         "summary_index_setting": dataset.summary_index_setting,
         "tags": [{"id": tag.id, "name": tag.name, "type": tag.type} for tag in prefetch.tags.get(owner, [])],

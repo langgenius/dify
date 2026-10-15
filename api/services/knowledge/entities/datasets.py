@@ -37,6 +37,8 @@ class DatasetDetailRecord(TypedDict):
     embedding_model_provider: str | None
     # None means availability has not been evaluated by the application service.
     embedding_available: bool | None
+    # None means the retrieval dependency has not been evaluated.
+    reranking_available: bool | None
     retrieval_model_dict: Mapping[str, JsonValue]
     summary_index_setting: Mapping[str, JsonValue] | None
     tags: list[DatasetTagRecord]
