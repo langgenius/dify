@@ -2,6 +2,7 @@
 import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { FC, JSX } from 'react'
+import type { ProviderConfigError } from './provider-panel'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -20,6 +21,7 @@ const I18N_PREFIX = 'tracing'
 
 export type PopupProps = {
   appId: string
+  configErrors?: Partial<Record<TracingProvider, ProviderConfigError>>
   onConfigRemoved: (provider: TracingProvider) => void
   readOnly: boolean
   enabled: boolean
@@ -40,6 +42,7 @@ export type PopupProps = {
 
 const ConfigPopup: FC<PopupProps> = ({
   appId,
+  configErrors,
   onConfigRemoved,
   readOnly,
   enabled,
@@ -86,18 +89,21 @@ const ConfigPopup: FC<PopupProps> = ({
   const providerAllConfigured = Object.values(providerConfigs).every(Boolean)
   const providerAllNotConfigured = Object.values(providerConfigs).every((config) => !config)
 
+  const cannotEnable = !enabled && (!chosenProvider || !providerConfigs[chosenProvider])
+
   const switchContent = (
     <Switch
       aria-label={t(($) => $[`${I18N_PREFIX}.tracing`], { ns: 'app' })}
       className="ml-3"
       checked={enabled}
       onCheckedChange={onStatusChange}
-      disabled={providerAllNotConfigured}
+      disabled={cannotEnable}
     />
   )
   const arizePanel = (
     <ProviderPanel
       type={TracingProvider.arize}
+      configError={configErrors?.[TracingProvider.arize]}
       readOnly={readOnly}
       config={arizeConfig}
       isChosen={chosenProvider === TracingProvider.arize}
@@ -109,6 +115,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const phoenixPanel = (
     <ProviderPanel
       type={TracingProvider.phoenix}
+      configError={configErrors?.[TracingProvider.phoenix]}
       readOnly={readOnly}
       config={phoenixConfig}
       isChosen={chosenProvider === TracingProvider.phoenix}
@@ -120,6 +127,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const langSmithPanel = (
     <ProviderPanel
       type={TracingProvider.langSmith}
+      configError={configErrors?.[TracingProvider.langSmith]}
       readOnly={readOnly}
       config={langSmithConfig}
       isChosen={chosenProvider === TracingProvider.langSmith}
@@ -131,6 +139,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const langfusePanel = (
     <ProviderPanel
       type={TracingProvider.langfuse}
+      configError={configErrors?.[TracingProvider.langfuse]}
       readOnly={readOnly}
       config={langFuseConfig}
       isChosen={chosenProvider === TracingProvider.langfuse}
@@ -142,6 +151,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const opikPanel = (
     <ProviderPanel
       type={TracingProvider.opik}
+      configError={configErrors?.[TracingProvider.opik]}
       readOnly={readOnly}
       config={opikConfig}
       isChosen={chosenProvider === TracingProvider.opik}
@@ -153,6 +163,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const weavePanel = (
     <ProviderPanel
       type={TracingProvider.weave}
+      configError={configErrors?.[TracingProvider.weave]}
       readOnly={readOnly}
       config={weaveConfig}
       isChosen={chosenProvider === TracingProvider.weave}
@@ -164,6 +175,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const aliyunPanel = (
     <ProviderPanel
       type={TracingProvider.aliyun}
+      configError={configErrors?.[TracingProvider.aliyun]}
       readOnly={readOnly}
       config={aliyunConfig}
       isChosen={chosenProvider === TracingProvider.aliyun}
@@ -175,6 +187,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const mlflowPanel = (
     <ProviderPanel
       type={TracingProvider.mlflow}
+      configError={configErrors?.[TracingProvider.mlflow]}
       readOnly={readOnly}
       config={mlflowConfig}
       isChosen={chosenProvider === TracingProvider.mlflow}
@@ -186,6 +199,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const databricksPanel = (
     <ProviderPanel
       type={TracingProvider.databricks}
+      configError={configErrors?.[TracingProvider.databricks]}
       readOnly={readOnly}
       config={databricksConfig}
       isChosen={chosenProvider === TracingProvider.databricks}
@@ -197,6 +211,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const tencentPanel = (
     <ProviderPanel
       type={TracingProvider.tencent}
+      configError={configErrors?.[TracingProvider.tencent]}
       readOnly={readOnly}
       config={tencentConfig}
       isChosen={chosenProvider === TracingProvider.tencent}
@@ -280,7 +295,7 @@ const ConfigPopup: FC<PopupProps> = ({
                 </div>
                 {!readOnly && (
                   <>
-                    {providerAllNotConfigured ? (
+                    {cannotEnable ? (
                       <Tooltip>
                         <TooltipTrigger render={switchContent} />
                         <TooltipContent>

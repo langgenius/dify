@@ -2,6 +2,7 @@
 
 import type { AppTracePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import type { ProviderConfigError } from './provider-panel'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -89,24 +90,34 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
     ? providerIconClassMap[inUseTracingProvider]
     : undefined
 
-  const hasConfiguredTracing = [...configs.values()].some((config) => config !== null)
+  const hasConfiguredTracing =
+    !!inUseTracingProvider || [...configs.values()].some((config) => config !== null)
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({ enabled: false, tracing_provider: null }, true)
     }
   }
 
-  const failedConfigs = configQueries.filter((query) => query.isError && !query.data)
+  const configErrors: Partial<Record<TracingProvider, ProviderConfigError>> = {}
+  configQueries.forEach((query, index) => {
+    const provider = providers[index]
+    if (provider && query.isFetched && !query.data) {
+      configErrors[provider] = {
+        onRetry: () => {
+          void query.refetch()
+        },
+        isRetrying: query.isFetching,
+      }
+    }
+  })
   const statusFailed = statusQuery.isError && !tracingStatus
-  if (statusFailed || failedConfigs.length > 0) {
+  if (statusFailed) {
     return (
       <Button
         variant="secondary"
+        disabled={statusQuery.isFetching}
         onClick={() => {
-          if (statusFailed) void statusQuery.refetch()
-          failedConfigs.forEach((query) => {
-            void query.refetch()
-          })
+          void statusQuery.refetch()
         }}
       >
         {t(($) => $['tracing.title'], { ns: 'app' })}
@@ -115,71 +126,35 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
       </Button>
     )
   }
-  const isLoading = statusQuery.isPending || configQueries.some((query) => query.isPending)
+  const isLoading =
+    statusQuery.isPending || configQueries.some((query) => query.isPending && !query.isFetched)
 
   return (
     <div className={cn('flex items-center justify-between')}>
-      {!inUseTracingProvider && (
-        <ConfigButton
-          key={`unconfigured-${appId}`}
-          appId={appId}
-          readOnly={readOnly}
-          disabled={isLoading}
-          hasConfigured={false}
-          enabled={enabled}
-          onStatusChange={handleTracingEnabledChange}
-          chosenProvider={inUseTracingProvider}
-          onChooseProvider={handleChooseProvider}
-          arizeConfig={configs.get(TracingProvider.arize)}
-          phoenixConfig={configs.get(TracingProvider.phoenix)}
-          langSmithConfig={configs.get(TracingProvider.langSmith)}
-          langFuseConfig={configs.get(TracingProvider.langfuse)}
-          opikConfig={configs.get(TracingProvider.opik)}
-          weaveConfig={configs.get(TracingProvider.weave)}
-          aliyunConfig={configs.get(TracingProvider.aliyun)}
-          mlflowConfig={configs.get(TracingProvider.mlflow)}
-          databricksConfig={configs.get(TracingProvider.databricks)}
-          tencentConfig={configs.get(TracingProvider.tencent)}
-          onConfigRemoved={handleTracingConfigRemoved}
-        >
-          <>
-            <TracingIcon size="md" />
-            <span className="mx-2 system-sm-semibold text-text-secondary">
-              {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
-            </span>
-            <span className="rounded-md p-1">
-              <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-            </span>
-            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
-            <span className="rounded-md p-1">
-              <span className="i-ri-arrow-down-double-line size-4 text-text-tertiary" />
-            </span>
-          </>
-        </ConfigButton>
-      )}
-      {hasConfiguredTracing && (
-        <ConfigButton
-          key={`configured-${appId}`}
-          appId={appId}
-          readOnly={readOnly}
-          disabled={isLoading}
-          hasConfigured
-          enabled={enabled}
-          onStatusChange={handleTracingEnabledChange}
-          chosenProvider={inUseTracingProvider}
-          onChooseProvider={handleChooseProvider}
-          arizeConfig={configs.get(TracingProvider.arize)}
-          phoenixConfig={configs.get(TracingProvider.phoenix)}
-          langSmithConfig={configs.get(TracingProvider.langSmith)}
-          langFuseConfig={configs.get(TracingProvider.langfuse)}
-          opikConfig={configs.get(TracingProvider.opik)}
-          weaveConfig={configs.get(TracingProvider.weave)}
-          aliyunConfig={configs.get(TracingProvider.aliyun)}
-          mlflowConfig={configs.get(TracingProvider.mlflow)}
-          databricksConfig={configs.get(TracingProvider.databricks)}
-          tencentConfig={configs.get(TracingProvider.tencent)}
-          onConfigRemoved={handleTracingConfigRemoved}
-        >
+      <ConfigButton
+        key={appId}
+        appId={appId}
+        readOnly={readOnly}
+        disabled={isLoading}
+        hasConfigured={hasConfiguredTracing}
+        enabled={enabled}
+        onStatusChange={handleTracingEnabledChange}
+        chosenProvider={inUseTracingProvider}
+        onChooseProvider={handleChooseProvider}
+        arizeConfig={configs.get(TracingProvider.arize)}
+        phoenixConfig={configs.get(TracingProvider.phoenix)}
+        langSmithConfig={configs.get(TracingProvider.langSmith)}
+        langFuseConfig={configs.get(TracingProvider.langfuse)}
+        opikConfig={configs.get(TracingProvider.opik)}
+        weaveConfig={configs.get(TracingProvider.weave)}
+        aliyunConfig={configs.get(TracingProvider.aliyun)}
+        mlflowConfig={configs.get(TracingProvider.mlflow)}
+        databricksConfig={configs.get(TracingProvider.databricks)}
+        tencentConfig={configs.get(TracingProvider.tencent)}
+        configErrors={configErrors}
+        onConfigRemoved={handleTracingConfigRemoved}
+      >
+        {!isLoading && hasConfiguredTracing ? (
           <>
             <span className="mr-1 ml-4 flex items-center">
               <StatusDot status={enabled ? 'success' : 'disabled'} />
@@ -195,8 +170,22 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
             </span>
             <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
           </>
-        </ConfigButton>
-      )}
+        ) : (
+          <>
+            <TracingIcon size="md" />
+            <span className="mx-2 system-sm-semibold text-text-secondary">
+              {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
+            </span>
+            <span className="rounded-md p-1">
+              <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
+            </span>
+            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
+            <span className="rounded-md p-1">
+              <span className="i-ri-arrow-down-double-line size-4 text-text-tertiary" />
+            </span>
+          </>
+        )}
+      </ConfigButton>
     </div>
   )
 }

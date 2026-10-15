@@ -10,11 +10,17 @@ import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
 
+export type ProviderConfigError = {
+  onRetry: () => void
+  isRetrying: boolean
+}
+
 type Props = Readonly<{
   type: TracingProvider
   readOnly: boolean
   isChosen: boolean
   config: TraceAppConfigResponse['tracing_config']
+  configError?: ProviderConfigError
   onChoose: () => void
 }>
 
@@ -33,8 +39,8 @@ const getIconClassName = (type: TracingProvider) => {
   }[type]
 }
 
-const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, onChoose }) => {
-  const { t } = useTranslation(['app'])
+const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configError, onChoose }) => {
+  const { t } = useTranslation(['app', 'common'])
   const iconClassName = getIconClassName(type)
   const hasConfigured = !!config
 
@@ -49,7 +55,7 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, onChoose }
       role="group"
       aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
     >
-      {hasConfigured && !readOnly && (
+      {hasConfigured && !configError && !readOnly && (
         <button
           type="button"
           aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
@@ -69,26 +75,32 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, onChoose }
             </div>
           )}
         </div>
-        {!readOnly && (
-          <div className="relative flex items-center justify-between space-x-1">
-            {hasConfigured && (
-              <a
-                className={buttonVariants({ size: 'small' })}
-                href={config.project_url || undefined}
-                target="_blank"
-                rel="noopener noreferrer"
-                role={config.project_url ? undefined : 'link'}
-                aria-disabled={!config.project_url}
-              >
-                <span aria-hidden className="i-custom-vender-solid-general-eye size-3" />
-                {t(($) => $[`${I18N_PREFIX}.view`], { ns: 'app' })}
-              </a>
-            )}
-            <DialogTrigger payload={type} render={<Button size="small" />}>
-              <span aria-hidden className="i-ri-equalizer-2-line size-3" />
-              {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
-            </DialogTrigger>
-          </div>
+        {configError ? (
+          <Button size="small" disabled={configError.isRetrying} onClick={configError.onRetry}>
+            {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+          </Button>
+        ) : (
+          !readOnly && (
+            <div className="relative flex items-center justify-between space-x-1">
+              {hasConfigured && (
+                <a
+                  className={buttonVariants({ size: 'small' })}
+                  href={config.project_url || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  role={config.project_url ? undefined : 'link'}
+                  aria-disabled={!config.project_url}
+                >
+                  <span aria-hidden className="i-custom-vender-solid-general-eye size-3" />
+                  {t(($) => $[`${I18N_PREFIX}.view`], { ns: 'app' })}
+                </a>
+              )}
+              <DialogTrigger payload={type} render={<Button size="small" />}>
+                <span aria-hidden className="i-ri-equalizer-2-line size-3" />
+                {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
+              </DialogTrigger>
+            </div>
+          )
         )}
       </div>
       <div className="mt-2 system-xs-regular text-text-tertiary">

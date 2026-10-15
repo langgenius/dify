@@ -89,6 +89,129 @@ describe('Tracing overview panel', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps one disabled entry when status arrives before provider configurations', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    let resolveConfigs!: () => void
+    const configsReady = new Promise<void>((resolve) => {
+      resolveConfigs = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      if (new URL(args[2].request.url).pathname.endsWith('/trace-config')) await configsReady
+      return server(...args)
+    })
+    const { client } = renderPanel()
+    await waitFor(() =>
+      expect(
+        client.getQueryData(
+          consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        ),
+      ).toEqual({ enabled: true, tracing_provider: 'langfuse' }),
+    )
+    expect(screen.getByRole('button')).toBeDisabled()
+    resolveConfigs()
+    await waitFor(() => expect(screen.getByRole('button')).toBeEnabled())
+  })
+
+  it('keeps healthy providers usable and retries only the unavailable provider', async () => {
+    const writes = mockServer()
+    const server = request.getMockImplementation()!
+    let unavailable = true
+    let resolveRetry!: () => void
+    const retryReady = new Promise<void>((resolve) => {
+      resolveRetry = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      const url = new URL(args[2].request.url)
+      if (url.searchParams.get('tracing_provider') === 'langsmith')
+        return Response.json({ tracing_config: { api_key: 'key', project: 'project' } })
+      if (url.searchParams.get('tracing_provider') === 'phoenix') {
+        if (unavailable)
+          return Response.json(
+            { code: 'tracing_provider_unavailable', message: 'Unavailable' },
+            { status: 400 },
+          )
+        await retryReady
+      }
+      return server(...args)
+    })
+    const { client } = renderPanel()
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    const user = await openConfiguredPanel()
+    const phoenix = within(screen.getByRole('group', { name: 'app.tracing.phoenix.title' }))
+    expect(phoenix.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
+    expect(
+      phoenix.queryByRole('button', { name: 'app.tracing.phoenix.title' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('switch'))
+    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
+    expect(writes).toEqual([
+      { method: 'POST', body: { enabled: false, tracing_provider: 'langfuse' } },
+    ])
+    await user.click(screen.getByRole('button', { name: 'app.tracing.langsmith.title' }))
+    await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
+    expect(writes[1]).toEqual({
+      method: 'POST',
+      body: { enabled: true, tracing_provider: 'langsmith' },
+    })
+
+    request.mockClear()
+    unavailable = false
+    await user.click(phoenix.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
+    expect(phoenix.getByRole('button', { name: 'common.errorBoundary.tryAgain' })).toBeDisabled()
+    expect(phoenix.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
+    expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
+    resolveRetry()
+    expect(await phoenix.findByRole('button', { name: 'app.tracing.config' })).toBeEnabled()
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(
+      new URL(request.mock.calls[0]![2].request.url).searchParams.get('tracing_provider'),
+    ).toBe('phoenix')
+  })
+
+  it('allows disabling tracing when its active provider configuration is unavailable', async () => {
+    const writes = mockServer()
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (...args) => {
+      if (new URL(args[2].request.url).searchParams.get('tracing_provider') === 'langfuse')
+        return Response.json(
+          { code: 'tracing_provider_unavailable', message: 'Unavailable' },
+          { status: 400 },
+        )
+      return server(...args)
+    })
+    const { client } = renderPanel()
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    const user = await openConfiguredPanel()
+    await user.click(screen.getByRole('switch'))
+    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('switch'))
+    expect(writes).toEqual([
+      { method: 'POST', body: { enabled: false, tracing_provider: 'langfuse' } },
+    ])
+  })
+
+  it('shows one entry and requires a provider selection when saved configs have no active provider', async () => {
+    const writes = mockServer()
+    const { client } = renderPanel()
+    await waitFor(() => expect(client.isFetching()).toBe(0))
+    act(() =>
+      client.setQueryData(
+        consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        { enabled: false, tracing_provider: null },
+      ),
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button'))
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: 'app.tracing.langfuse.title' }))
+    await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
+    expect(writes).toEqual([
+      { method: 'POST', body: { enabled: true, tracing_provider: 'langfuse' } },
+    ])
+  })
+
   it('hides configuration for a read-only app with no providers', async () => {
     mockServer(false)
     const { client } = renderPanel(true)
@@ -173,8 +296,12 @@ describe('Tracing overview panel', () => {
         { method: 'POST', body: { enabled: true, tracing_provider: 'langfuse' } },
       ]),
     )
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(await screen.findByText('app.tracing.enabled')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /app.tracing.configProvider.title/ }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('switch')).toBeChecked()
   })
 
   it('reopens an edited provider from the refreshed masked config', async () => {
