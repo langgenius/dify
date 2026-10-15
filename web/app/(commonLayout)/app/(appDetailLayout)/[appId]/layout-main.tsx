@@ -1,12 +1,11 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
@@ -20,7 +19,8 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -29,9 +29,6 @@ type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
 }
-
-const isNotFoundError = (error: unknown) =>
-  typeof error === 'object' && error !== null && 'status' in error && error.status === 404
 
 const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
   if (pathname.endsWith('/workflow') || pathname.endsWith('/configuration'))
@@ -73,17 +70,17 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetail: state.setAppDetail,
     })),
   )
-  const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
-  const [appDetailRes, setAppDetailRes] = useState<AppDetailWithSite | null>(null)
-  const routeAppDetail =
-    appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
-  const { data: appName } = useQuery(
+  const {
+    data: appDetailRes,
+    error: appDetailError,
+    isPending: isLoadingAppDetail,
+  } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: appId } },
-      select: (detail) => detail.name,
     }),
   )
+  const routeAppDetail = appDetail?.id === appId ? appDetail : appDetailRes
   const shouldBlockAgentResourceAccess =
     routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
   const canViewAccessPoint =
@@ -102,45 +99,12 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
 
   useDocumentTitle(
-    `${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
+    `${pageTitle} · ${appDetailRes?.name || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
   )
 
   useEffect(() => {
-    let ignore = false
-
-    const currentAppDetail = useStore.getState().appDetail
-    if (currentAppDetail?.id === appId) {
-      return () => {
-        ignore = true
-      }
-    }
-
-    setAppDetail()
-    void Promise.resolve().then(() => {
-      if (!ignore) setIsLoadingAppDetail(true)
-    })
-    consoleClient.apps.byAppId
-      .get({ params: { app_id: appId } })
-      .then((res: AppDetailWithSite) => {
-        if (ignore) return
-
-        setAppDetailRes(res)
-      })
-      .catch((error: unknown) => {
-        if (ignore) return
-
-        if (isNotFoundError(error)) router.replace('/apps')
-      })
-      .finally(() => {
-        if (ignore) return
-
-        setIsLoadingAppDetail(false)
-      })
-
-    return () => {
-      ignore = true
-    }
-  }, [appId, router, setAppDetail])
+    if (appDetailError && !appDetailRes && isNotFoundError(appDetailError)) router.replace('/apps')
+  }, [appDetailError, appDetailRes, router])
 
   useEffect(() => {
     if (
@@ -222,9 +186,11 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     workspacePermissionKeys,
   ])
 
+  if (appDetailError && !appDetailRes && !isNotFoundError(appDetailError)) throw appDetailError
+
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content =
-    !appDetail || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
+    appDetail?.id !== appId || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
         <LoadingPlaceholder />
       </div>

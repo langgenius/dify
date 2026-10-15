@@ -16,7 +16,7 @@ from models import Account, Dataset, Document
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
-from services.app.query_service import AppQueryService
+from services.app.query_service import RelatedApps
 from services.enterprise import rbac_service
 from services.errors.base import NoPermissionError
 from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
@@ -33,6 +33,8 @@ from services.knowledge.datasets.application import (
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.entities.resource_scope import DatasetRef
+from services.rbac import contracts as rbac_contracts
+from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
 
 
@@ -89,19 +91,18 @@ class SQLAlchemyDatasetOperations:
         *,
         session_factory: sessionmaker[Session],
         tags: TagTargetQuery,
-        app_queries: AppQueryService,
+        app_queries: RelatedApps,
         external_templates: ExternalKnowledgeTemplateLookup,
+        members: MemberService,
     ) -> None:
         self._sessions = session_factory
         self._tags = tags
         self._app_queries = app_queries
         self._external_templates = external_templates
+        self._members_service = members
 
     def visibility(self, context: RequestContext) -> DatasetVisibility:
-        with self._sessions() as session:
-            permissions = rbac_service.RBACService.MyPermissions.get(
-                context.active_workspace_id, context.account_id, session=session
-            )
+        permissions = self._members_service.permissions(context.active_workspace_id, context.account_id)
         scope = (
             rbac_service.RBACService.DatasetAccess.whitelist_resources(context.active_workspace_id, context.account_id)
             if dify_config.RBAC_ENABLED
@@ -173,11 +174,10 @@ class SQLAlchemyDatasetOperations:
                 "limit": limit,
             }
 
-    @staticmethod
-    def _detail(session: Session, context: RequestContext, dataset: Dataset) -> DatasetDetailRecord:
+    def _detail(self, session: Session, context: RequestContext, dataset: Dataset) -> DatasetDetailRecord:
         result = load_dataset_detail(dataset, session=session)
-        permissions = rbac_service.RBACService.DatasetPermissions.batch_get(
-            context.active_workspace_id, context.account_id, [dataset.id], session=session
+        permissions = self._members_service.resource_permissions(
+            context.active_workspace_id, context.account_id, rbac_contracts.RBACResourceType.DATASET, [dataset.id]
         )
         result["permission_keys"] = permissions.get(dataset.id, [])
         return result
@@ -186,8 +186,8 @@ class SQLAlchemyDatasetOperations:
         with self._sessions() as session:
             dataset = require_dataset(session, ref)
             result = load_dataset_detail(dataset, session=session)
-            permissions = rbac_service.RBACService.MyPermissions.get(
-                context.active_workspace_id, context.account_id, dataset_id=ref.dataset_id, session=session
+            permissions = self._members_service.permissions(
+                context.active_workspace_id, context.account_id, dataset_id=ref.dataset_id
             )
             result["permission_keys"] = permissions.dataset.permission_keys_by_resource_ids([dataset.id]).get(
                 dataset.id, []
@@ -214,7 +214,7 @@ class SQLAlchemyDatasetOperations:
                 context.active_workspace_id,
                 context.account_id,
                 dataset_id,
-                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
         return result
 

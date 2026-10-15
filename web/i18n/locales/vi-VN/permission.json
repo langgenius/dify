@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "Theo quyền vai trò",
   "accessRule.deleteDescription": "Quy tắc truy cập này sẽ bị xóa vĩnh viễn và bị loại bỏ khỏi danh sách ủy quyền tài nguyên.",
   "accessRule.deleteTitle": "Xóa \"{{name}}\"?",
-  "accessRule.deleted": "Đã xóa quy tắc truy cập thành công",
   "accessRule.exceptionPermissionFor": "Quyền ngoại lệ cho {{name}}",
   "accessRule.expandSection": "Mở rộng {{title}}",
   "accessRule.maintainer": "Người bảo trì",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" được gán cho {{count}} thành viên. Bạn có muốn bản sao vai trò mới bao gồm cùng các thành viên đó không?",
   "role.copyMembersLoading": "Đang tải các phân công thành viên...",
   "role.copyMembersTitle": "Sao chép các phân công thành viên?",
-  "role.created": "Đã tạo vai trò thành công",
   "role.deleteDescription": "Vai trò này sẽ bị xóa vĩnh viễn và bị loại bỏ khỏi bất kỳ thành viên hoặc quy tắc truy cập nào sử dụng nó.",
   "role.deleteTitle": "Xóa \"{{name}}\"?",
-  "role.deleted": "Đã xóa vai trò thành công",
-  "role.duplicated": "Đã nhân bản vai trò thành công",
   "role.groups.builtin": "Vai trò hệ thống",
   "role.groups.custom": "Vai trò tùy chỉnh",
   "role.loading": "Đang tải vai trò...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Không có mô tả",
   "role.noMatchingRoles": "Không có vai trò phù hợp",
   "role.searchPlaceholder": "Tìm kiếm vai trò...",
-  "role.updated": "Đã cập nhật vai trò thành công",
   "role.workspaceRoles.description": "Tạo vai trò và xác định những gì mỗi vai trò có thể làm trong không gian làm việc này.",
   "role.workspaceRoles.title": "Vai trò không gian làm việc"
 }

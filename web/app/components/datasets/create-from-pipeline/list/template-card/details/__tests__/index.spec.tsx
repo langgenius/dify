@@ -207,7 +207,7 @@ describe('Details', () => {
       })
 
       renderDetails(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
+      expect(screen.getByText('📊')).toBeInTheDocument()
     })
 
     it('should handle image icon type', () => {

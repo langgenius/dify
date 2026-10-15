@@ -1,4 +1,5 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import { safe } from '@orpc/client'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -9,8 +10,8 @@ import {
 } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
+import { consoleClient } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
-import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from './use-pipeline-refresh-draft'
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
@@ -42,6 +43,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         })
       })
       return {
+        pipelineId,
         url: `/rag/pipelines/${pipelineId}/workflows/draft`,
         params: {
           graph: {
@@ -78,27 +80,25 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt, syncWorkflowDraftHash } =
         workflowStore.getState()
-      const postParams = {
-        ...baseParams,
-        params: {
-          ...baseParams.params,
-          hash: syncWorkflowDraftHash,
-        },
-      }
-
+      const [error, res, isDefined] = await safe(
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.post(
+          {
+            params: { pipeline_id: baseParams.pipelineId },
+            body: { ...baseParams.params, hash: syncWorkflowDraftHash },
+          },
+          { context: { silent: true } },
+        ),
+      )
       try {
-        const res = await syncWorkflowDraft(postParams)
+        if (error) {
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft()
+          callback?.onError?.()
+          return
+        }
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
-      } catch (error: any) {
-        if (error && error.json && !error.bodyUsed) {
-          error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
-          })
-        }
-        callback?.onError?.()
       } finally {
         callback?.onSettled?.()
       }

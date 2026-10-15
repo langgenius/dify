@@ -16,11 +16,12 @@ from services.enterprise import rbac_service
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
 from services.knowledge.entities.external import ExternalKnowledgeApiSetting, ExternalKnowledgeRetrievalRequest
 from services.knowledge.entities.resource_scope import DatasetRef
+from services.rbac.contracts import RBACResourceType
 
 
 def sync_external_dataset_creator_access(context: RequestContext, ref: DatasetRef) -> None:
     rbac_service.try_sync_creator_access_policy_member_bindings(
-        context.active_workspace_id, context.account_id, rbac_service.RBACResourceType.DATASET, ref.dataset_id
+        context.active_workspace_id, context.account_id, RBACResourceType.DATASET, ref.dataset_id
     )
 
 

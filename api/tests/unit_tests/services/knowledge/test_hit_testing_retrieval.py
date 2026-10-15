@@ -513,6 +513,7 @@ def test_signing_failure_does_not_grant_file_or_segment_access(
 @pytest.mark.parametrize("matched", [True, False])
 def test_real_metadata_filter_preserves_retrieval_and_query_history_behavior(
     gateway: DatasetHitTestingGateway,
+    sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     matched: bool,
@@ -539,14 +540,20 @@ def test_real_metadata_filter_preserves_retrieval_and_query_history_behavior(
     }
     retrieval = create_autospec(RetrievalService.retrieve, spec_set=True, return_value=[])
     monkeypatch.setattr(RetrievalService, "retrieve", retrieval)
-    assert service.hit_testing(
-        RequestContext("request", None, "viewer", REF.tenant_id),
-        dataset_id=REF.dataset_id,
-        request=HitTestingRequest("query", model, None),
-    ) == {
-        "query": {"content": "query"},
-        "records": [],
-    }
+    with sqlite_session.begin() as caller_transaction:
+        pending_document = _document("pending-document")
+        sqlite_session.add(pending_document)
+        assert service.hit_testing(
+            RequestContext("request", None, "viewer", REF.tenant_id),
+            dataset_id=REF.dataset_id,
+            request=HitTestingRequest("query", model, None),
+        ) == {
+            "query": {"content": "query"},
+            "records": [],
+        }
+        assert sqlite_session.get_transaction() is caller_transaction
+        assert caller_transaction.is_active
+        assert pending_document in sqlite_session.new
     if matched:
         retrieval.assert_called_once()
         assert retrieval.call_args.kwargs["document_ids_filter"] == ["document"]

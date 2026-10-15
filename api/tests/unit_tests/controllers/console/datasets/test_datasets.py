@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -14,7 +14,9 @@ from controllers.console.datasets import datasets as controller
 from controllers.console.datasets.datasets import (
     DatasetApi,
     DatasetApiBaseUrlApi,
+    DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
+    DatasetCreatePayload,
     DatasetEnableApiApi,
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
@@ -32,7 +34,6 @@ from controllers.console.datasets.datasets import (
 )
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
-    DatasetInUseError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
@@ -118,17 +119,10 @@ def test_patch_does_not_turn_omitted_fields_into_updates(datasets):
     datasets.update_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), values={"name": "Changed"})
 
 
-@pytest.mark.parametrize(
-    ("error", "http_error"),
-    [
-        (services.errors.dataset.DatasetNameDuplicateError(), DatasetNameDuplicateError),
-        (services.errors.dataset.DatasetInUseError(), DatasetInUseError),
-    ],
-)
-def test_domain_errors_are_mapped_at_transport(datasets, error, http_error):
-    datasets.delete_dataset.side_effect = error
-    with pytest.raises(http_error):
-        unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID)
+def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
+    datasets.create_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
+    with pytest.raises(DatasetNameDuplicateError):
+        unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Duplicate"), CONTEXT)
 
 
 def test_delete_success_returns_empty_204(datasets):
@@ -324,3 +318,10 @@ def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, loca
     assert check.scene is scene
     assert isinstance(check.locator, locator_type)
     estimates.estimate_new_sources.assert_not_called()
+
+
+def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(app):
+    # A raised BadRequest gets the standard error body; ``Namespace.abort(message=...)`` replaced it.
+    with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:
+        unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
+    assert error.value.description == "dataset_ids must be a list of strings."

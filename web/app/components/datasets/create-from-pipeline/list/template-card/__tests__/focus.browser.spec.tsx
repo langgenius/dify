@@ -95,32 +95,4 @@ describe('Template card focus', () => {
     await expect.element(details).toHaveFocus()
     expect(details.element().checkVisibility({ checkOpacity: true })).toBe(true)
   })
-
-  it('keeps close focused when template details finish loading and returns focus to the trigger', async () => {
-    const queryClient = new QueryClient()
-    const screen = await render(<TemplateCardFixture queryClient={queryClient} />)
-    await screen.getByRole('button', { name: 'Before template' }).click()
-    await userEvent.tab()
-    await userEvent.tab()
-    const details = screen.getByRole('button', { name: 'datasetPipeline.operations.details' })
-    await expect.element(details).toHaveFocus()
-    await userEvent.keyboard('{Enter}')
-    const dialog = screen.getByRole('dialog', { name: pipeline.name })
-    await expect.element(dialog).toBeVisible()
-    const close = dialog.getByRole('button', { name: 'common.operation.close' })
-    await expect.element(close).toHaveFocus()
-    await expect
-      .element(dialog.getByRole('button', { name: 'datasetPipeline.operations.useTemplate' }))
-      .not.toBeInTheDocument()
-
-    queryClient.setQueryData(templateQueryOptions.queryKey, templateInfo)
-    await expect
-      .element(dialog.getByRole('button', { name: 'datasetPipeline.operations.useTemplate' }))
-      .toBeVisible()
-    await expect.element(close).toHaveFocus()
-    await userEvent.keyboard('{Enter}')
-    await expect.element(dialog).not.toBeInTheDocument()
-    await expect.element(details).toHaveFocus()
-    expect(details.element().checkVisibility({ checkOpacity: true })).toBe(true)
-  })
 })

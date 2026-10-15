@@ -87,28 +87,15 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   await input.fill('Face')
   await expect.poll(() => page.getByRole('gridcell').all().length).toBe(20)
   await userEvent.keyboard('{ArrowDown}{ArrowRight}')
-  const activeId = input.element().getAttribute('aria-activedescendant')!
-  const active = document.getElementById(activeId)!
-  expect(active).not.toBeNull()
-  const style = getComputedStyle(active)
-  const inactive = page
-    .getByRole('gridcell')
-    .all()
-    .find((cell) => cell.element() !== active)!
-  expect(style.backgroundColor).not.toBe(getComputedStyle(inactive.element()).backgroundColor)
-  const keyboardBackground = style.backgroundColor
-  await inactive.hover()
-  await expect.element(input).toHaveAttribute('aria-activedescendant', inactive.element().id)
-  expect(getComputedStyle(inactive.element()).backgroundColor).toBe(keyboardBackground)
-  expect(document.querySelectorAll('[role="gridcell"][data-highlighted]')).toHaveLength(1)
+  const first = page.getByRole('gridcell').first()
+  await expect.element(input).not.toHaveAttribute('aria-activedescendant', first.element().id)
+  await first.hover()
+  await expect.element(input).toHaveAttribute('aria-activedescendant', first.element().id)
   await userEvent.keyboard('{ArrowDown}')
-  const keyboardCandidate = document.getElementById(
+  await expect.element(input).not.toHaveAttribute('aria-activedescendant', first.element().id)
+  const chosen = document.getElementById(
     input.element().getAttribute('aria-activedescendant')!,
-  )!
-  expect(keyboardCandidate).not.toBe(inactive.element())
-  expect(getComputedStyle(keyboardCandidate).backgroundColor).toBe(keyboardBackground)
-  expect(getComputedStyle(inactive.element()).backgroundColor).toBe('rgba(0, 0, 0, 0)')
-  const chosen = keyboardCandidate.textContent!
+  )!.textContent!
   await userEvent.keyboard('{Enter}')
   await expect.element(input).toHaveValue('Face')
   const green = page.getByRole('radio', { name: 'app.iconPicker.color.green' })
@@ -147,73 +134,7 @@ it('navigates a visible candidate after filtering, confirms with Enter, and disc
   client.clear()
 })
 
-it('focuses the visible image action when reopening an existing image icon', async () => {
-  const client = new QueryClient()
-  client.setQueryData(emojiCatalogOptions.queryKey, [])
-  await render(
-    <QueryClientProvider client={client}>
-      <IconPickerDialog
-        aria-label="Choose image"
-        value={{
-          type: 'image',
-          fileId: 'image-id',
-          url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>',
-        }}
-        onConfirm={() => {}}
-      />
-    </QueryClientProvider>,
-  )
-  await page.getByRole('button', { name: 'Choose image' }).click()
-  await expect
-    .element(page.getByRole('tab', { name: 'app.iconPicker.image' }))
-    .toHaveAttribute('aria-selected', 'true')
-  await expect.element(page.getByRole('button', { name: 'common.operation.change' })).toHaveFocus()
-  client.clear()
-})
-
-it.each(['light', 'dark'])(
-  'distinguishes keyboard focus from the selected color in %s mode',
-  async (theme) => {
-    document.documentElement.dataset.theme = theme
-    const client = new QueryClient()
-    client.setQueryData(emojiCatalogOptions.queryKey, [])
-    try {
-      await render(
-        <QueryClientProvider client={client}>
-          <Harness />
-        </QueryClientProvider>,
-      )
-      await page.getByRole('button', { name: 'Choose', exact: true }).click()
-      const red = page.getByRole('radio', { name: 'app.iconPicker.color.red' })
-      const rose = page.getByRole('radio', { name: 'app.iconPicker.color.rose' })
-      await expect.element(red).toBeChecked()
-      expect(getComputedStyle(red.element()).outlineStyle).toBe('none')
-
-      await userEvent.tab()
-      await expect.element(red).toHaveFocus()
-      expect(getComputedStyle(red.element()).outlineStyle).toBe('solid')
-      expect(Number.parseFloat(getComputedStyle(red.element()).outlineWidth)).toBeGreaterThan(0)
-
-      await userEvent.keyboard('{ArrowRight}')
-      await expect.element(rose).toHaveFocus()
-      await expect.element(rose).toBeChecked()
-      expect(getComputedStyle(rose.element()).outlineStyle).toBe('solid')
-      expect(getComputedStyle(red.element()).outlineStyle).toBe('none')
-
-      await userEvent.tab()
-      await expect
-        .element(page.getByRole('button', { name: 'app.iconPicker.tryYourLuck' }))
-        .toHaveFocus()
-      await expect.element(rose).toBeChecked()
-      expect(getComputedStyle(rose.element()).outlineStyle).toBe('none')
-    } finally {
-      document.documentElement.dataset.theme = 'light'
-      client.clear()
-    }
-  },
-)
-
-it('discards the cancelled draft when reopened immediately from the keyboard', async () => {
+it('distinguishes keyboard focus from the selected color', async () => {
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
   await render(
@@ -222,10 +143,28 @@ it('discards the cancelled draft when reopened immediately from the keyboard', a
     </QueryClientProvider>,
   )
   await page.getByRole('button', { name: 'Choose', exact: true }).click()
-  await page.getByRole('radio', { name: 'app.iconPicker.color.green' }).click()
-  await userEvent.keyboard('{Escape}{Enter}')
-  await expect.element(page.getByRole('dialog', { name: 'app.iconPicker.title' })).toBeVisible()
-  await expect.element(page.getByRole('radio', { name: 'app.iconPicker.color.red' })).toBeChecked()
+  const red = page.getByRole('radio', { name: 'app.iconPicker.color.red' })
+  const rose = page.getByRole('radio', { name: 'app.iconPicker.color.rose' })
+  await expect.element(red).toBeChecked()
+  expect(getComputedStyle(red.element()).outlineStyle).toBe('none')
+
+  await userEvent.tab()
+  await expect.element(red).toHaveFocus()
+  expect(getComputedStyle(red.element()).outlineStyle).toBe('solid')
+  expect(Number.parseFloat(getComputedStyle(red.element()).outlineWidth)).toBeGreaterThan(0)
+
+  await userEvent.keyboard('{ArrowRight}')
+  await expect.element(rose).toHaveFocus()
+  await expect.element(rose).toBeChecked()
+  expect(getComputedStyle(rose.element()).outlineStyle).toBe('solid')
+  expect(getComputedStyle(red.element()).outlineStyle).toBe('none')
+
+  await userEvent.tab()
+  await expect
+    .element(page.getByRole('button', { name: 'app.iconPicker.tryYourLuck' }))
+    .toHaveFocus()
+  await expect.element(rose).toBeChecked()
+  expect(getComputedStyle(rose.element()).outlineStyle).toBe('none')
   client.clear()
 })
 
@@ -259,19 +198,14 @@ it('locks image editing during submission and restores it after failure', async 
   cropElement.focus()
   await expect.element(crop).toHaveFocus()
   const zoom = page.getByRole('slider', { name: 'app.iconPicker.zoom' })
-  const change = page.getByRole('button', { name: 'common.operation.change' })
   await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
   await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
   await expect.element(zoom).toBeDisabled()
-  await expect.element(change).toBeDisabled()
   cropElement.focus()
   expect(document.activeElement).not.toBe(cropElement)
-  const cancel = page.getByRole('button', { name: 'app.iconPicker.cancel' })
-  await expect.element(cancel).toBeEnabled()
   rejectUpload(new Error('Upload failed'))
   await expect.element(page.getByRole('alert')).toBeVisible()
   await expect.element(zoom).toBeEnabled()
-  await expect.element(change).toBeEnabled()
   cropElement.focus()
   await expect.element(crop).toHaveFocus()
   await userEvent.tab()

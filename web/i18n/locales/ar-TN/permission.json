@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "حسب أذونات الأدوار",
   "accessRule.deleteDescription": "سيتم حذف قاعدة الوصول هذه نهائيًا وإزالتها من قائمة تفويض المورد.",
   "accessRule.deleteTitle": "حذف \"{{name}}\"؟",
-  "accessRule.deleted": "تم حذف قاعدة الوصول بنجاح",
   "accessRule.exceptionPermissionFor": "إذن استثنائي لـ {{name}}",
   "accessRule.expandSection": "توسيع {{title}}",
   "accessRule.maintainer": "مشرف الصيانة",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" مُعيَّن لـ {{count}} أعضاء. هل تريد أن تتضمن نسخة الدور الجديد الأعضاء أنفسهم؟",
   "role.copyMembersLoading": "جارٍ تحميل تعيينات الأعضاء...",
   "role.copyMembersTitle": "نسخ تعيينات الأعضاء؟",
-  "role.created": "تم إنشاء الدور بنجاح",
   "role.deleteDescription": "سيتم حذف هذا الدور نهائيًا وإزالته من أي أعضاء أو قواعد وصول تستخدمه.",
   "role.deleteTitle": "حذف \"{{name}}\"؟",
-  "role.deleted": "تم حذف الدور بنجاح",
-  "role.duplicated": "تم تكرار الدور بنجاح",
   "role.groups.builtin": "أدوار النظام",
   "role.groups.custom": "الأدوار المخصصة",
   "role.loading": "جارٍ تحميل الأدوار...",
@@ -103,7 +99,6 @@
   "role.noDescription": "لا يوجد وصف",
   "role.noMatchingRoles": "لا توجد أدوار مطابقة",
   "role.searchPlaceholder": "البحث في الأدوار...",
-  "role.updated": "تم تحديث الدور بنجاح",
   "role.workspaceRoles.description": "أنشئ أدوارًا وحدد ما يمكن لكل دور فعله في مساحة العمل هذه.",
   "role.workspaceRoles.title": "أدوار مساحة العمل"
 }

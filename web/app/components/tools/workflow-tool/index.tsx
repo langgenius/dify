@@ -1,5 +1,4 @@
 'use client'
-import type { DrawerProps } from '@langgenius/dify-ui/drawer'
 import type {
   Emoji,
   WorkflowToolOutputSource,
@@ -97,8 +96,8 @@ const WorkflowToolDrawerFrame = ({
   onHide,
   children,
 }: WorkflowToolDrawerFrameProps) => {
-  const handleOpenChange = React.useCallback<NonNullable<DrawerProps['onOpenChange']>>(
-    (open) => {
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => {
       if (!open) onHide()
     },
     [onHide],

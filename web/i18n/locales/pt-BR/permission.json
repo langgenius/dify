@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "Por permissões de função",
   "accessRule.deleteDescription": "Esta regra de acesso será excluída permanentemente e removida da lista de autorização do recurso.",
   "accessRule.deleteTitle": "Excluir \"{{name}}\"?",
-  "accessRule.deleted": "Regra de acesso excluída com sucesso",
   "accessRule.exceptionPermissionFor": "Permissão de exceção para {{name}}",
   "accessRule.expandSection": "Expandir {{title}}",
   "accessRule.maintainer": "Mantenedor",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" está atribuída a {{count}} membros. Você deseja que a cópia da nova função inclua os mesmos membros?",
   "role.copyMembersLoading": "Carregando atribuições de membros...",
   "role.copyMembersTitle": "Copiar atribuições de membros?",
-  "role.created": "Função criada com sucesso",
   "role.deleteDescription": "Esta função será excluída permanentemente e removida de quaisquer membros ou regras de acesso que a utilizem.",
   "role.deleteTitle": "Excluir \"{{name}}\"?",
-  "role.deleted": "Função excluída com sucesso",
-  "role.duplicated": "Função duplicada com sucesso",
   "role.groups.builtin": "Funções do Sistema",
   "role.groups.custom": "Funções Personalizadas",
   "role.loading": "Carregando funções...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Sem descrição",
   "role.noMatchingRoles": "Nenhuma função correspondente",
   "role.searchPlaceholder": "Pesquisar funções...",
-  "role.updated": "Função atualizada com sucesso",
   "role.workspaceRoles.description": "Crie funções e defina o que cada função pode fazer neste espaço de trabalho.",
   "role.workspaceRoles.title": "Funções do Espaço de Trabalho"
 }

@@ -3,11 +3,22 @@ from uuid import UUID
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.datasets.error import raise_hit_testing_error
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.console.datasets.error import (
+    DatasetAccessDeniedRequestError,
+    DatasetNotInitializedError,
+    raise_hit_testing_error,
+)
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import dataset_retrieval_admission
+from controllers.service_api.wraps import DATASET_TOKEN_AUTH_RESPONSES, dataset_retrieval_admission
 from extensions.ext_application_services import application_services
 from fields.hit_testing_fields import HitTestingPayload, HitTestingResponse
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.knowledge.entities.hit_testing import HitTestingRequest
@@ -22,6 +33,15 @@ register_response_schema_models(service_api_ns, HitTestingResponse)
 )
 @service_api_ns.route("/datasets/<uuid:dataset_id>/retrieve")
 class HitTestingApi(Resource):
+    @service_api_ns.doc(responses=DATASET_TOKEN_AUTH_RESPONSES)
+    @error_responses(
+        DatasetAccessDeniedRequestError,
+        DatasetNotInitializedError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Retrieve Chunks from a Knowledge Base / Test Retrieval",
         description=(

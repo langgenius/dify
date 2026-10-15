@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "ロール権限に従う",
   "accessRule.deleteDescription": "このアクセスルールは完全に削除され、リソースの認可リストから削除されます。",
   "accessRule.deleteTitle": "「{{name}}」を削除しますか？",
-  "accessRule.deleted": "アクセスルールを削除しました",
   "accessRule.exceptionPermissionFor": "{{name}} の例外権限",
   "accessRule.expandSection": "{{title}} を展開",
   "accessRule.maintainer": "メンテナー",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "「{{name}}」は {{count}} 人のメンバーに割り当てられています。新しいロールのコピーに同じメンバーを含めますか？",
   "role.copyMembersLoading": "割り当て済みメンバーを読み込み中...",
   "role.copyMembersTitle": "メンバーの割り当てもコピーしますか？",
-  "role.created": "ロールを作成しました",
   "role.deleteDescription": "このロールは完全に削除され、それを使用するメンバーまたはアクセスルールから削除されます。",
   "role.deleteTitle": "「{{name}}」を削除しますか？",
-  "role.deleted": "ロールを削除しました",
-  "role.duplicated": "ロールを複製しました",
   "role.groups.builtin": "システムロール",
   "role.groups.custom": "カスタムロール",
   "role.loading": "ロールを読み込み中...",
@@ -103,7 +99,6 @@
   "role.noDescription": "説明なし",
   "role.noMatchingRoles": "一致するロールが見つかりません",
   "role.searchPlaceholder": "ロールを検索...",
-  "role.updated": "ロールを更新しました",
   "role.workspaceRoles.description": "ロールを作成し、このワークスペースで各ロールが実行できる操作を定義します。",
   "role.workspaceRoles.title": "ワークスペースロール"
 }

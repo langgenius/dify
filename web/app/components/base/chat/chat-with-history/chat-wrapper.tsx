@@ -1,7 +1,7 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -23,6 +23,7 @@ import {
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
+import { getAvatarInitial } from '@/utils/avatar'
 import { formatBooleanInputs } from '@/utils/model-config'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
@@ -119,7 +120,9 @@ const ChatWrapper = () => {
 
         if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
+        const inputValue = inputsFormValue?.[variable]
+        if (inputValue === undefined || inputValue === null || inputValue === '')
+          hasEmptyInput = label as string
 
         if (
           (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -367,13 +370,7 @@ const ChatWrapper = () => {
       return (
         <div className="flex min-h-[50vh] items-center justify-center px-4 py-12">
           <div className="flex max-w-180 grow gap-4">
-            <AppIcon
-              size="xl"
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
+            <AppIcon size="xl" icon={appData?.site} />
             <div className="w-0 grow">
               <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
                 <Markdown content={welcomeMessage.content} />
@@ -386,13 +383,7 @@ const ChatWrapper = () => {
     }
     return (
       <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
-        <AppIcon
-          size="xl"
-          iconType={appData?.site.icon_type}
-          icon={appData?.site.icon}
-          background={appData?.site.icon_background}
-          imageUrl={appData?.site.icon_url}
-        />
+        <AppIcon size="xl" icon={appData?.site} />
         <div className="max-w-3xl px-4">
           <Markdown
             className="body-2xl-regular! text-text-tertiary!"
@@ -466,11 +457,10 @@ const ChatWrapper = () => {
         renderAgentContent={renderAgentContent}
         questionIcon={
           initUserVariables?.avatar_url ? (
-            <Avatar
-              avatar={initUserVariables.avatar_url}
-              name={initUserVariables.name || 'user'}
-              size="xl"
-            />
+            <Avatar size="xl" role="img" aria-label={initUserVariables.name || 'user'}>
+              <AvatarFallback>{getAvatarInitial(initUserVariables.name || 'user')}</AvatarFallback>
+              <AvatarImage src={initUserVariables.avatar_url} alt="" />
+            </Avatar>
           ) : undefined
         }
       />

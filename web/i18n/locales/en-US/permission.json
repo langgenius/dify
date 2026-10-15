@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "By role permissions",
   "accessRule.deleteDescription": "This access rule will be permanently deleted and removed from the resource authorization list.",
   "accessRule.deleteTitle": "Delete \"{{name}}\"?",
-  "accessRule.deleted": "Access rule deleted successfully",
   "accessRule.exceptionPermissionFor": "Exception permission for {{name}}",
   "accessRule.expandSection": "Expand {{title}}",
   "accessRule.maintainer": "Maintainer",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" is assigned to {{count}} members. Do you want the new role copy to include the same members?",
   "role.copyMembersLoading": "Loading member assignments...",
   "role.copyMembersTitle": "Copy member assignments?",
-  "role.created": "Role created successfully",
   "role.deleteDescription": "This role will be permanently deleted and removed from any members or access rules that use it.",
   "role.deleteTitle": "Delete \"{{name}}\"?",
-  "role.deleted": "Role deleted successfully",
-  "role.duplicated": "Role duplicated successfully",
   "role.groups.builtin": "System Roles",
   "role.groups.custom": "Custom Roles",
   "role.loading": "Loading roles...",
@@ -103,7 +99,6 @@
   "role.noDescription": "No description",
   "role.noMatchingRoles": "No matching roles",
   "role.searchPlaceholder": "Search roles...",
-  "role.updated": "Role updated successfully",
   "role.workspaceRoles.description": "Create roles and define what each role can do in this workspace.",
   "role.workspaceRoles.title": "Workspace Roles"
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import AppExportConfirmModal from '../export-confirm-modal'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '../use-export-app-dsl'
 
@@ -117,7 +118,9 @@ describe('useExportAppDsl', () => {
     expect(mocks.exportAppDsl).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      rejectExport(new Response(JSON.stringify({ message: 'Skill unavailable' }), { status: 400 }))
+      rejectExport(
+        createHttpError(new Response(null, { status: 400 }), { message: 'Skill unavailable' }),
+      )
     })
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('checkbox')).toBeChecked()
@@ -238,14 +241,16 @@ describe('useExportAppDsl', () => {
     })
   })
 
-  it('keeps the localized fallback when the export response has no readable message', async () => {
-    mocks.exportAppDsl.mockRejectedValue(new Response('Bad gateway', { status: 502 }))
+  it('keeps the localized failure title and exposes the HTTP status when the response has no readable message', async () => {
+    mocks.exportAppDsl.mockRejectedValue(
+      await httpErrorFromResponse(new Response('Bad gateway', { status: 502 })),
+    )
     const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })
     await act(async () => {
       await result.current.exportAppDsl({ appId: 'app-id', appName: 'App' })
     })
     expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('app.exportAppFailed', {
-      description: undefined,
+      description: 'HTTP 502',
     })
     expect(mocks.downloadBlob).not.toHaveBeenCalled()
   })
@@ -321,9 +326,11 @@ describe('useExportAppDsl', () => {
     'lets the promise toast own %s export errors without triggering a download',
     async (format) => {
       mocks.exportAppDsl.mockRejectedValue(
-        Response.json(
-          { message: "Package contains unusable Skill 'news-source-verification'" },
-          { status: 500 },
+        await httpErrorFromResponse(
+          Response.json(
+            { message: "Package contains unusable Skill 'news-source-verification'" },
+            { status: 500 },
+          ),
         ),
       )
       const { result } = renderHook(() => useExportAppDsl(), { wrapper: createWrapper() })

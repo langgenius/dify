@@ -13,7 +13,7 @@ from machinery.context import RequestContext
 from models.dataset import Dataset, DatasetQuery, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
-from services.app.query_service import AppQueryService
+from services.app.query_service import RelatedApps
 from services.errors.knowledge_retrieval import (
     ExternalHitTestingError,
     ExternalTemplateNotFoundError,
@@ -25,13 +25,16 @@ from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.external.adapters import ExternalKnowledgeGateway, sync_external_dataset_creator_access
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
 from services.tag_application_service import TagTargetQuery
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")
 REF = DatasetRef("tenant", "dataset")
 
 
 @pytest.fixture
-def operations(sqlite_session_factory: sessionmaker[Session]) -> ExternalKnowledgeApplicationService:
+def operations(
+    sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
+) -> ExternalKnowledgeApplicationService:
     with sqlite_session_factory.begin() as session:
         for workspace, template_id, dataset_id in [
             ("tenant", "template", "dataset"),
@@ -74,8 +77,9 @@ def operations(sqlite_session_factory: sessionmaker[Session]) -> ExternalKnowled
         dataset_details=SQLAlchemyDatasetOperations(
             session_factory=sqlite_session_factory,
             tags=Mock(spec=TagTargetQuery),
-            app_queries=Mock(spec=AppQueryService),
+            app_queries=Mock(spec=RelatedApps),
             external_templates=external_repository,
+            members=rbac_domain.rbac.members,
         ),
         sync_creator_access=sync_external_dataset_creator_access,
     )

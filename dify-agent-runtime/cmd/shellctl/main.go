@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,6 +30,7 @@ func run() error {
 	listen := serveCmd.String("listen", "", "address to listen on (host:port)")
 	stateDir := serveCmd.String("state-dir", "", "state directory path")
 	token := serveCmd.String("token", "", "bearer auth token")
+	requireAuthToken := serveCmd.Bool("require-auth-token", false, "require a nonblank bearer auth token")
 
 	if len(os.Args) < 2 || os.Args[1] != "serve" {
 		fmt.Fprintf(os.Stderr, "Usage: shellctl serve [flags]\n")
@@ -51,6 +53,9 @@ func run() error {
 	}
 	if *token != "" {
 		config.AuthToken = *token
+	}
+	if *requireAuthToken && strings.TrimSpace(config.AuthToken) == "" {
+		return fmt.Errorf("auth token is required: set SHELLCTL_AUTH_TOKEN or --token")
 	}
 
 	// Initialize service

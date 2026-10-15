@@ -4,6 +4,7 @@ import type {
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
+import { safe } from '@orpc/client'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
@@ -26,9 +27,8 @@ import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normaliz
 import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
-import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
 const shouldSkipDraftSync = (appId: string | undefined, isWorkflowDataLoaded: boolean) =>
@@ -90,7 +90,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const { appId, conversationVariables, syncWorkflowDraftHash, isWorkflowDataLoaded } =
       workflowStore.getState()
 
-    if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+    if (!appId || shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
     const features = featuresStore!.getState().features
     const producedNodes = produce(nodes, (draft) => {
@@ -129,6 +129,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     }
 
     return {
+      appId,
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
@@ -201,48 +202,41 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       try {
         const latestHash = workflowStore.getState().syncWorkflowDraftHash
 
-        const postParams = {
-          ...baseParams,
-          params: {
-            ...baseParams.params,
-            hash: latestHash || null,
-            ...(force ? { force: true } : {}),
-            ...(options?.environmentVariablePatch
-              ? {
-                  environment_variable_patch: {
-                    environment_variables: options.environmentVariablePatch.environmentVariables,
-                    deleted_environment_variable_ids:
-                      options.environmentVariablePatch.deletedEnvironmentVariableIds,
-                  },
-                }
-              : {}),
-          },
+        const body = {
+          ...baseParams.params,
+          hash: latestHash || null,
+          ...(force ? { force: true } : {}),
+          ...(options?.environmentVariablePatch
+            ? {
+                environment_variable_patch: {
+                  environment_variables: options.environmentVariablePatch.environmentVariables,
+                  deleted_environment_variable_ids:
+                    options.environmentVariablePatch.deletedEnvironmentVariableIds,
+                },
+              }
+            : {}),
         }
 
-        const res = await syncWorkflowDraft(postParams)
+        const [error, res, isDefined] = await safe(
+          consoleClient.apps.byAppId.workflows.draft.post(
+            { params: { app_id: baseParams.appId }, body },
+            { context: { silent: true } },
+          ),
+        )
+        if (error) {
+          const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+          if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
+
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft(true)
+          callback?.onError?.()
+          return null
+        }
+
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
-      } catch (error: unknown) {
-        const { appId, isWorkflowDataLoaded } = workflowStore.getState()
-        if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
-
-        const responseError = error as {
-          bodyUsed?: boolean
-          json?: () => Promise<{ code?: string }>
-        }
-        if (responseError.json && !responseError.bodyUsed) {
-          try {
-            const err = await responseError.json()
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft(true)
-          } catch {
-            // Non-JSON upstream errors should not surface as unhandled promise rejections.
-          }
-        }
-        callback?.onError?.()
-        return null
       } finally {
         callback?.onSettled?.()
       }

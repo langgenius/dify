@@ -185,10 +185,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             segment_content = sign_segment_content(segment, session=session)
 
                         # If summary exists, prepend it to the content
-                        if record.summary:
-                            final_content = f"{record.summary}\n{segment_content}"
-                        else:
-                            final_content = segment_content
+                        final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                         document_context_list.append(
                             DocumentContext(
@@ -203,8 +200,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             dataset = session.get(Dataset, segment.dataset_id)
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
+                                DatasetDocument.enabled.is_(True),
+                                DatasetDocument.archived.is_(False),
                             )
                             document = session.scalar(dataset_document_stmt)
                             if dataset and document:

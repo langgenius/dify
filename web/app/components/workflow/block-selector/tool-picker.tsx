@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
@@ -138,7 +137,6 @@ export function ToolPickerContent({
     if (!canManageTools) return
 
     await createCustomCollection(data)
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     hideEditCustomCollectionModal()
     invalidateCustomTools()
   }

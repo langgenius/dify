@@ -20,7 +20,6 @@
   "accessRule.defaultPermission": "Op basis van rolrechten",
   "accessRule.deleteDescription": "Deze toegangsregel wordt permanent verwijderd en uit de autorisatielijst van de resource gehaald.",
   "accessRule.deleteTitle": "\"{{name}}\" verwijderen?",
-  "accessRule.deleted": "Toegangsregel succesvol verwijderd",
   "accessRule.exceptionPermissionFor": "Uitzonderingsrecht voor {{name}}",
   "accessRule.expandSection": "{{title}} uitvouwen",
   "accessRule.maintainer": "Beheerder",
@@ -82,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" is toegewezen aan {{count}} leden. Wil je dat de nieuwe rolkopie dezelfde leden bevat?",
   "role.copyMembersLoading": "Ledentoewijzingen laden...",
   "role.copyMembersTitle": "Ledentoewijzingen kopiëren?",
-  "role.created": "Rol succesvol gemaakt",
   "role.deleteDescription": "Deze rol wordt permanent verwijderd en uit alle leden of toegangsregels die deze gebruiken gehaald.",
   "role.deleteTitle": "\"{{name}}\" verwijderen?",
-  "role.deleted": "Rol succesvol verwijderd",
-  "role.duplicated": "Rol succesvol gedupliceerd",
   "role.groups.builtin": "Systeemrollen",
   "role.groups.custom": "Aangepaste rollen",
   "role.loading": "Rollen laden...",
@@ -103,7 +99,6 @@
   "role.noDescription": "Geen beschrijving",
   "role.noMatchingRoles": "Geen overeenkomende rollen",
   "role.searchPlaceholder": "Rollen zoeken...",
-  "role.updated": "Rol succesvol bijgewerkt",
   "role.workspaceRoles.description": "Maak rollen en bepaal wat elke rol in deze werkruimte kan doen.",
   "role.workspaceRoles.title": "Werkruimterollen"
 }

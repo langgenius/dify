@@ -75,7 +75,6 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         datasetId: dataset.id,
         body,
       })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       if (onSuccess) onSuccess()
       onClose()
     } catch {
@@ -128,9 +127,15 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               <div className="flex items-center gap-x-2">
                 <IconPickerTrigger
                   aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                  className="group/edit-icon shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
+                  className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
                 >
-                  <IconPickerIcon size="medium" showEditIcon />
+                  <IconPickerIcon size="medium" />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                  >
+                    <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
+                  </span>
                 </IconPickerTrigger>
                 <Input
                   value={name}

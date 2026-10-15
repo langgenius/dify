@@ -2,8 +2,8 @@
 
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { triggerFocusClassName } from '../overlay-shared'
+import { focusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Drawer = BaseDrawer.Root
 const DrawerProvider = BaseDrawer.Provider
@@ -17,6 +17,11 @@ const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
 type DrawerActions = BaseDrawer.Root.Actions
+type DrawerSnapPoint = BaseDrawer.Root.SnapPoint
+type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
+type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
+type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
+type DrawerSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeEventDetails
 
 type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
 type DrawerHandle<Payload = unknown> = BaseDrawer.Handle<Payload>
@@ -28,7 +33,7 @@ type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
 function DrawerTrigger<Payload = unknown>({ className, ...props }: DrawerTriggerProps<Payload>) {
   return (
     <BaseDrawer.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -134,6 +139,8 @@ export {
 export type {
   DrawerActions,
   DrawerBackdropProps,
+  DrawerChangeEventDetails,
+  DrawerChangeEventReason,
   DrawerCloseProps,
   DrawerContentProps,
   DrawerDescriptionProps,
@@ -144,6 +151,9 @@ export type {
   DrawerPortalProps,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSnapPoint,
+  DrawerSnapPointChangeEventDetails,
+  DrawerSnapPointChangeEventReason,
   DrawerSwipeAreaProps,
   DrawerTitleProps,
   DrawerTriggerProps,

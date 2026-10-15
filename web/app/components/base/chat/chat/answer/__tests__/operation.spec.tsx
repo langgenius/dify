@@ -298,6 +298,7 @@ describe('Operation', () => {
       await user.keyboard('{Escape}')
       await user.click(screen.getByRole('button', { name: 'operation.cancel' }))
       await user.click(screen.getByRole('button', { name: 'operation.close' }))
+      await user.click(document.body)
       await user.click(submit)
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(onFeedback).toHaveBeenCalledTimes(1)

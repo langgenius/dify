@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import sqlalchemy as sa
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import Select, func, select, tuple_
 from sqlalchemy.orm import Session, scoped_session
 
 from core.app.file_access import DatabaseFileAccessController
@@ -348,8 +348,8 @@ def get_dataset_available_document_count(dataset: Dataset, *, session: Session) 
                 Document.dataset_id == dataset.id,
                 Document.tenant_id == dataset.tenant_id,
                 Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
             )
         )
         or 0
@@ -363,7 +363,7 @@ def get_dataset_available_segment_count(dataset: Dataset, *, session: Session) -
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.tenant_id == dataset.tenant_id,
                 DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
+                DocumentSegment.enabled.is_(True),
             )
         )
         or 0
@@ -596,9 +596,11 @@ def get_pipeline_template_creator_name(template: PipelineCustomizedTemplate, ses
 
 
 def get_pipeline_dataset(pipeline: Pipeline, session: Session | scoped_session) -> Dataset | None:
-    return session.scalar(
-        select(Dataset).where(Dataset.pipeline_id == pipeline.id, Dataset.tenant_id == pipeline.tenant_id)
-    )
+    return session.scalar(pipeline_dataset_query(pipeline.tenant_id, pipeline.id))
+
+
+def pipeline_dataset_query(workspace_id: str, pipeline_id: str) -> Select[tuple[Dataset]]:
+    return select(Dataset).where(Dataset.pipeline_id == pipeline_id, Dataset.tenant_id == workspace_id)
 
 
 @dataclass(frozen=True)
@@ -653,8 +655,8 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
         (
             sa.and_(
                 Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
             ),
             1,
         ),
