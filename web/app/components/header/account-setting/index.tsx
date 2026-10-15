@@ -102,12 +102,6 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.IP_POLICIES,
-      name: t(($) => $['settings.ipPolicies'], { ns: 'common' }),
-      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
-    },
-    {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
       name: t(($) => $['settings.rolesAndPermissions'], { ns: 'common' }),
       icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
@@ -141,6 +135,12 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
     },
     {
+      key: ACCOUNT_SETTING_TAB.IP_POLICIES,
+      name: t(($) => $['settings.ipPolicies'], { ns: 'common' }),
+      icon: <span className={cn('i-ri-shield-keyhole-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-keyhole-fill', iconClassName)} />,
+    },
+    {
       key: ACCOUNT_SETTING_TAB.PREFERENCES,
       name: t(($) => $['settings.preferences'], { ns: 'common' }),
       title: t(($) => $['account.general'], { ns: 'common' }),
@@ -154,8 +154,6 @@ export default function AccountSetting({
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
-    if (systemFeatures.deployment_edition === 'CLOUD')
-      visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
 
     if (canManageWorkspaceRoles) {
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
@@ -168,6 +166,9 @@ export default function AccountSetting({
       visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
     if (canViewWorkflowLogArchives) visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
+
+    if (systemFeatures.deployment_edition === 'CLOUD')
+      visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
 
     return visibleTabs
       .map((tab) => settingItems.find((item) => item.key === tab))

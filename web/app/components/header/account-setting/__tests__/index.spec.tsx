@@ -214,6 +214,26 @@ describe('AccountSetting', () => {
   })
 
   describe('Rendering', () => {
+    it('should place IP Policies as the last item of the Workspace group', () => {
+      renderAccountSetting()
+
+      const workspaceMenuNames = [
+        'common.settings.members',
+        'common.settings.rolesAndPermissions',
+        'common.settings.permissionSet',
+        'common.settings.billing',
+        'custom.custom',
+        'appLog.archives.title',
+        'common.settings.ipPolicies',
+      ]
+      const renderedMenuNames = screen
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label'))
+        .filter((name): name is string => workspaceMenuNames.includes(name ?? ''))
+
+      expect(renderedMenuNames).toEqual(workspaceMenuNames)
+    })
+
     it('should render the sidebar with correct menu items', () => {
       // Act
       renderAccountSetting()
