@@ -1,8 +1,172 @@
 import ast
 import inspect
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
+import pytest
+
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from models.enums import AppTriggerType, WorkflowRunTriggeredFrom
+from models.model import AppMode
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.errors.app import WorkflowNotFoundError
+from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.entities import TriggerData, WorkflowTaskData
 from tasks import async_workflow_tasks
+from tests.unit_tests.model_factories import make_account, make_app, make_workflow
+
+
+def _session_context(session: MagicMock) -> MagicMock:
+    context = MagicMock()
+    context.__enter__.return_value = session
+    context.__exit__.return_value = False
+    return context
+
+
+def test_execute_workflow_projects_the_persisted_workflow_before_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_model = make_workflow(workflow_id="workflow-1", tenant_id="tenant-1", app_id="app-1")
+    app = make_app(app_id="app-1", tenant_id="tenant-1", workflow_id=workflow_model.id)
+    user = make_account(account_id="account-1")
+    trigger_data = TriggerData(
+        app_id=app.id,
+        tenant_id=app.tenant_id,
+        workflow_id=workflow_model.id,
+        root_node_id="start",
+        inputs={"question": "hello"},
+        trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
+        trigger_from=WorkflowRunTriggeredFrom.SCHEDULE,
+    )
+    trigger_log = SimpleNamespace(
+        id="trigger-log-1",
+        app_id=app.id,
+        workflow_id=workflow_model.id,
+        trigger_data=trigger_data.model_dump_json(),
+        status=None,
+    )
+
+    session = MagicMock()
+    session.scalar.side_effect = [app, workflow_model]
+    task_session_factory = MagicMock()
+    task_session_factory.create_session.return_value = _session_context(session)
+    task_session_factory.get_session_maker.return_value = MagicMock()
+    trigger_log_repository = MagicMock()
+    trigger_log_repository.get_by_id.return_value = trigger_log
+    generator = MagicMock()
+
+    monkeypatch.setattr(async_workflow_tasks, "session_factory", task_session_factory)
+    monkeypatch.setattr(
+        async_workflow_tasks,
+        "SQLAlchemyWorkflowTriggerLogRepository",
+        MagicMock(return_value=trigger_log_repository),
+    )
+    monkeypatch.setattr(async_workflow_tasks, "_get_user", MagicMock(return_value=user))
+    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_dependencies", MagicMock())
+    monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", MagicMock(return_value=generator))
+    monkeypatch.setattr(async_workflow_tasks, "TriggerPostLayer", MagicMock(return_value=MagicMock()))
+
+    async_workflow_tasks._execute_workflow_common(
+        WorkflowTaskData(workflow_trigger_log_id=trigger_log.id),
+        MagicMock(),
+        MagicMock(),
+    )
+
+    execution_workflow = generator.generate.call_args.kwargs["workflow"]
+    assert isinstance(execution_workflow, WorkflowSnapshot)
+    assert execution_workflow == workflow_snapshot(workflow_model)
+    assert execution_workflow is not workflow_model
+
+
+def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_model = make_workflow(workflow_id="workflow-1", tenant_id="tenant-1", app_id="app-1")
+    app = make_app(app_id="app-1", tenant_id="tenant-1", workflow_id=workflow_model.id)
+    user = make_account(account_id="account-1")
+    workflow_run = SimpleNamespace(
+        id="workflow-run-1",
+        workflow_id=workflow_model.id,
+        app_id=app.id,
+        triggered_from=WorkflowRunTriggeredFrom.SCHEDULE,
+    )
+    pause_entity = MagicMock(id="pause-1", workflow_execution_id=workflow_run.id)
+    pause_entity.get_state.return_value = b"serialized-resumption-context"
+    workflow_run_repository = MagicMock()
+    workflow_run_repository.get_workflow_pause.return_value = pause_entity
+    workflow_run_repository.get_workflow_run_by_id_without_tenant.return_value = workflow_run
+
+    generate_entity = WorkflowAppGenerateEntity(
+        task_id="task-1",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            app_mode=AppMode.WORKFLOW,
+            workflow_id=workflow_model.id,
+        ),
+        inputs={},
+        files=[],
+        user_id=user.id,
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
+        workflow_execution_id=workflow_run.id,
+    )
+    resumption_context = MagicMock()
+    resumption_context.get_generate_entity.return_value = generate_entity
+    resumption_context.serialized_graph_runtime_state = "serialized-runtime-state"
+    response_stream_filter = MagicMock()
+    resumption_context.get_response_stream_filter.return_value = response_stream_filter
+    graph_runtime_state = MagicMock()
+
+    session = MagicMock()
+    session.scalar.side_effect = [workflow_model, app]
+    resumed_session_factory = MagicMock()
+    resumed_session_factory.return_value = _session_context(session)
+    generator = MagicMock()
+    execution_repository = MagicMock()
+    node_execution_repository = MagicMock()
+
+    monkeypatch.setattr(async_workflow_tasks, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(async_workflow_tasks, "sessionmaker", MagicMock(return_value=resumed_session_factory))
+    monkeypatch.setattr(
+        async_workflow_tasks.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        MagicMock(return_value=workflow_run_repository),
+    )
+    monkeypatch.setattr(
+        async_workflow_tasks.WorkflowResumptionContext,
+        "loads",
+        MagicMock(return_value=resumption_context),
+    )
+    monkeypatch.setattr(
+        async_workflow_tasks.GraphRuntimeState,
+        "from_snapshot",
+        MagicMock(return_value=graph_runtime_state),
+    )
+    monkeypatch.setattr(async_workflow_tasks, "_get_user", MagicMock(return_value=user))
+    monkeypatch.setattr(
+        async_workflow_tasks.DifyCoreRepositoryFactory,
+        "create_workflow_execution_repository",
+        MagicMock(return_value=execution_repository),
+    )
+    monkeypatch.setattr(
+        async_workflow_tasks.DifyCoreRepositoryFactory,
+        "create_workflow_node_execution_repository",
+        MagicMock(return_value=node_execution_repository),
+    )
+    monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_dependencies", MagicMock())
+    monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", MagicMock(return_value=generator))
+    monkeypatch.setattr(async_workflow_tasks, "_query_trigger_log_info", MagicMock(return_value=None))
+
+    async_workflow_tasks.resume_workflow_execution.run({"workflow_run_id": workflow_run.id})
+
+    resumed_workflow = generator.resume.call_args.kwargs["workflow"]
+    assert isinstance(resumed_workflow, WorkflowSnapshot)
+    assert resumed_workflow == workflow_snapshot(workflow_model)
+    assert resumed_workflow is not workflow_model
+    workflow_run_repository.resume_workflow_pause.assert_called_once_with(workflow_run.id, pause_entity)
+    workflow_run_repository.delete_workflow_pause.assert_called_once_with(pause_entity)
 
 
 def test_workflow_not_found_error_message_is_a_single_formatted_string():

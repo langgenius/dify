@@ -48,6 +48,7 @@ from models import WorkflowPause as WorkflowPauseModel
 from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.tools.provider_repository import ToolProviderRepository
 from services.file_service import FileService
@@ -326,10 +327,12 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         bind = self.session.get_bind()
         assert isinstance(bind, Engine)
+        sessions = sessionmaker(bind=bind, expire_on_commit=False)
         return PauseStatePersistenceLayer(
-            session_factory=sessionmaker(bind=bind, expire_on_commit=False),
+            session_factory=sessions,
             state_owner_user_id=owner_id,
             generate_entity=entity,
+            human_form_reader=HumanInputFormSubmissionRepository(sessions=sessions),
             response_stream_filter=_create_initialized_response_stream_filter(),
         )
 
