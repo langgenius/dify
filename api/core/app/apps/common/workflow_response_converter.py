@@ -72,7 +72,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import FILE_MODEL_IDENTITY, File
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -264,7 +264,7 @@ class WorkflowResponseConverter:
         task_id: str,
         workflow_id: str,
         status: WorkflowExecutionStatus,
-        graph_runtime_state: GraphRuntimeState,
+        runtime_state: RuntimeState,
         error: str | None = None,
         exceptions_count: int = 0,
     ) -> WorkflowFinishStreamResponse:
@@ -278,7 +278,7 @@ class WorkflowResponseConverter:
         finished_at = naive_utc_now()
         elapsed_time = (finished_at - started_at).total_seconds()
 
-        outputs_mapping = graph_runtime_state.outputs or {}
+        outputs_mapping = runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
 
         created_by: CreatedByDict | dict[str, object] = {}
@@ -306,8 +306,8 @@ class WorkflowResponseConverter:
                 outputs=encoded_outputs,
                 error=error,
                 elapsed_time=elapsed_time,
-                total_tokens=graph_runtime_state.total_tokens,
-                total_steps=graph_runtime_state.node_run_steps,
+                total_tokens=runtime_state.total_tokens,
+                total_steps=runtime_state.node_run_steps,
                 created_by=created_by,
                 created_at=int(started_at.timestamp()),
                 finished_at=int(finished_at.timestamp()),
@@ -321,7 +321,7 @@ class WorkflowResponseConverter:
         *,
         event: QueueWorkflowPausedEvent,
         task_id: str,
-        graph_runtime_state: GraphRuntimeState,
+        runtime_state: RuntimeState,
     ) -> list[StreamResponse]:
         run_id = self._ensure_workflow_run_id()
         started_at = self._workflow_started_at
@@ -334,7 +334,7 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
-        variable_pool = graph_runtime_state.variable_pool
+        variable_pool = runtime_state.variable_pool
         resolved_reasons = resolve_human_input_pause_reason_inputs(
             event.reasons,
             variable_pool=variable_pool,
@@ -416,8 +416,8 @@ class WorkflowResponseConverter:
                     status=WorkflowExecutionStatus.PAUSED,
                     created_at=int(started_at.timestamp()),
                     elapsed_time=elapsed_time,
-                    total_tokens=graph_runtime_state.total_tokens,
-                    total_steps=graph_runtime_state.node_run_steps,
+                    total_tokens=runtime_state.total_tokens,
+                    total_steps=runtime_state.node_run_steps,
                 ),
             )
         )

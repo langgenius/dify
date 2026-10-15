@@ -38,8 +38,7 @@ from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderErr
 from tests.unit_tests.core.model_fixtures import make_model_instance
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -64,12 +63,12 @@ class MockNodeMixin:
         node_id: str,
         data: Any,
         *,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
         mock_config: Optional["MockConfig"] = None,
         **kwargs: Any,
     ) -> None:
-        run_context = resolve_dify_run_context(graph_init_params.run_context)
+        run_context = resolve_dify_run_context(init_params.run_context)
         if isinstance(self, (LLMNode, QuestionClassifierNode, ParameterExtractorNode)):
             kwargs.setdefault("credentials_provider", DifyCredentialsProvider(run_context=run_context))
             kwargs.setdefault("model_factory", DifyModelFactory(run_context=run_context))
@@ -97,7 +96,7 @@ class MockNodeMixin:
 
         if isinstance(self, _ToolNode):
             kwargs.setdefault("tool_file_manager", DifyToolFileManager(run_context))
-            kwargs.setdefault("runtime", DifyToolNodeRuntime(graph_init_params.run_context))
+            kwargs.setdefault("runtime", DifyToolNodeRuntime(init_params.run_context))
 
         if isinstance(self, AgentNode):
             presentation_provider = MagicMock()
@@ -110,8 +109,8 @@ class MockNodeMixin:
         super().__init__(
             node_id=node_id,
             data=data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
+            init_params=init_params,
+            runtime_state=runtime_state,
             **kwargs,
         )
         self.mock_config = mock_config
@@ -664,7 +663,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
         if hasattr(self._node_data, "variables"):
             for variable_selector in self._node_data.variables:
                 variable_name = variable_selector.variable
-                value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+                value = self.runtime_state.variable_pool.get(variable_selector.value_selector)
                 variables[variable_name] = value.to_object() if value else None
 
         # Check if we have custom mock outputs configured

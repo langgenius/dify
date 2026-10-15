@@ -11,6 +11,7 @@ from typing import Any, Protocol, override
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import DifyRunContext
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.db.session_factory import session_factory
 from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage, ToolProviderType
@@ -182,7 +183,7 @@ class QualifiedJsonToolNodeRuntime(DifyToolNodeRuntime):
 
     def __init__(
         self,
-        run_context: Mapping[str, Any],
+        run_context: DifyRunContext | Mapping[str, Any],
         *,
         native_run_id: str,
         native_task_id: str,
@@ -202,6 +203,7 @@ class QualifiedJsonToolNodeRuntime(DifyToolNodeRuntime):
         self._healthy = True
 
     @staticmethod
+    @override
     def _require_no_transaction(session: Session) -> None:
         if session.in_transaction():
             raise BuilderExecutionPolicyError("json_tool_session_in_transaction")

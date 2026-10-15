@@ -55,8 +55,9 @@ def layer() -> WorkflowPersistenceLayer:
     instance._node_execution_cache = {}
     instance._node_snapshots = {}
     instance._node_sequence = 0
-    # `graph_runtime_state` is a layer-base property; stub it.
-    instance._graph_runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
+    instance._event_ancestry = persistence_mod.WorkflowEventAncestry({})
+    # `runtime_state` is a layer-base property; stub it.
+    instance._runtime_state = MagicMock(total_tokens=0, node_run_steps=0, outputs={}, exceptions_count=0)
     return instance
 
 
@@ -131,8 +132,7 @@ def _node_started_event(node_id: str = "agent-1", exec_id: str = "exec-1") -> Ma
         node_type="agent",
         node_title="Greeter",
         predecessor_node_id=None,
-        in_iteration_id=None,
-        in_loop_id=None,
+        container_id="",
         start_at=datetime(2026, 5, 26, 0, 0, 0),
     )
 

@@ -8,8 +8,7 @@ from enum import Enum, auto
 
 from configs import dify_config
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from graphon.graph_engine.command_channels import RedisChannel
-from graphon.graph_engine.manager import GraphEngineManager
+from graphon.engine.command import AbortCommand, RedisChannel
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class AppExecutionState(Enum):
 
 
 def app_task_command_channel_key(task_id: str) -> str:
-    """Redis key of the GraphEngine command channel for one app task."""
+    """Redis key of the Engine command channel for one app task."""
     return f"workflow:{task_id}:commands"
 
 
@@ -73,12 +72,12 @@ def clear_app_task_cancellation_signals(task_id: str) -> None:
         redis_client.delete(channel_key)
         if discarded:
             logger.info(
-                "Discarded %s stale GraphEngine command(s) for app task %s",
+                "Discarded %s stale Engine command(s) for app task %s",
                 len(discarded),
                 task_id,
             )
     except Exception:
-        logger.exception("Failed to clear pending GraphEngine commands for app task %s", task_id)
+        logger.exception("Failed to clear pending Engine commands for app task %s", task_id)
 
 
 class AppExecutionCoordinator:
@@ -213,7 +212,7 @@ class AppExecutionCoordinator:
             )
 
         try:
-            GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=reason)
+            RedisChannel(redis_client, f"workflow:{self._task_id}:commands").send_command(AbortCommand(reason=reason))
         except Exception:
             logger.exception(
                 "Failed to send stop command for app execution task=%s attempt=%s",

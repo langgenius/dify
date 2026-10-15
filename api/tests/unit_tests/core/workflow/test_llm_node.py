@@ -22,6 +22,7 @@ def test_dify_llm_node_finalizes_polling_when_generator_is_closed(monkeypatch: p
     node._polling_finalizer = finalizer
 
     events = node._invoke_llm_with_polling(
+        file_outputs=[],
         polling_model=cast(LLMPollingCapableProtocol, SimpleNamespace()),
         prompt_messages=[],
         stop=None,
@@ -44,6 +45,7 @@ def test_dify_llm_node_finalizes_polling_when_polling_fails(monkeypatch: pytest.
     node = object.__new__(DifyLLMNode)
     node._polling_finalizer = finalizer
     events = node._invoke_llm_with_polling(
+        file_outputs=[],
         polling_model=cast(LLMPollingCapableProtocol, SimpleNamespace()),
         prompt_messages=[],
         stop=None,

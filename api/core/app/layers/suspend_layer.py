@@ -1,10 +1,10 @@
 from typing import override
 
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent, GraphRunPausedEvent
 
 
-class SuspendLayer(GraphEngineLayer):
+class SuspendLayer(Layer):
     """ """
 
     def __init__(self) -> None:
@@ -16,7 +16,7 @@ class SuspendLayer(GraphEngineLayer):
         self._paused = False
 
     @override
-    def on_event(self, event: GraphEngineEvent):
+    def on_event(self, event: EngineEvent):
         """
         Handle the paused event, stash runtime state into storage and wait for resume.
         """

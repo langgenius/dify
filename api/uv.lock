@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -1392,7 +1392,6 @@ docs = [
 name = "dify-api"
 version = "1.17.1"
 source = { virtual = "." }
-default-groups = ["kms", "storage", "tools", "trace-all", "vdb-all"]
 dependencies = [
     { name = "aliyun-log-python-sdk" },
     { name = "azure-identity" },
@@ -1428,6 +1427,8 @@ dependencies = [
     { name = "opentelemetry-propagator-b3" },
     { name = "psycogreen" },
     { name = "psycopg2-binary" },
+    { name = "pypandoc", marker = "sys_platform == 'win32'" },
+    { name = "pypandoc-binary", marker = "sys_platform != 'win32'" },
     { name = "python-socketio" },
     { name = "readabilipy" },
     { name = "redis", extra = ["hiredis"] },
@@ -1704,7 +1705,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.201.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=2.3.0,<3.0.0" },
-    { name = "graphon", specifier = "==0.7.0" },
+    { name = "graphon", specifier = "==0.8.0" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -1718,6 +1719,8 @@ requires-dist = [
     { name = "opentelemetry-propagator-b3", specifier = ">=1.45.0,<2.0.0" },
     { name = "psycogreen", specifier = ">=1.0.2,<2.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12,<3.0.0" },
+    { name = "pypandoc", marker = "sys_platform == 'win32'", specifier = "==1.17" },
+    { name = "pypandoc-binary", marker = "sys_platform != 'win32'", specifier = "==1.17" },
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
     { name = "readabilipy", specifier = "==0.3.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
@@ -3081,18 +3084,19 @@ httpx = [
 
 [[package]]
 name = "graphon"
-version = "0.7.0"
+version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
+    { name = "defusedxml" },
     { name = "httpx" },
     { name = "json-repair" },
     { name = "jsonschema" },
+    { name = "odfdo" },
     { name = "orjson" },
     { name = "pandas", extra = ["excel"] },
     { name = "pydantic" },
     { name = "pydantic-extra-types" },
-    { name = "pypandoc" },
     { name = "pypdf" },
     { name = "pypdfium2" },
     { name = "python-docx" },
@@ -3100,12 +3104,12 @@ dependencies = [
     { name = "tiktoken" },
     { name = "transformers" },
     { name = "typing-extensions" },
-    { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
+    { name = "unstructured", extra = ["docx", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/c6/6f16398e28bceb11304f8dd743d5f4f2c1e1aedf20eef6531764edb40a7e/graphon-0.7.0.tar.gz", hash = "sha256:e3f19284432d6e4a947fb285ef36bc79eb48c41af36867b03c0d70f062fe8563", size = 266715, upload-time = "2026-07-29T10:00:51.303Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/82/a2ded2b6a7879e7ee855936db7410014cd41c1c709155a1ccfe07e208633/graphon-0.8.0.tar.gz", hash = "sha256:654ad8f5cb7ff1711cf6b09e68a6afc7fe1e552b2f8306babdb848142d0a6bf7", size = 281821, upload-time = "2026-09-09T20:03:19.606Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/9b/3b02d944a20b3693bb5bb77cbb16b3afed44a965096970c47625560c0235/graphon-0.7.0-py3-none-any.whl", hash = "sha256:6f7608aaaa65607c4935735137ed4b7029b1e6ca80202cbe829af3370cf4404e", size = 380138, upload-time = "2026-07-29T10:00:49.654Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/8d/64552a2dc8ef4d1b0c43d927301000533be75d6c51664d5a33fb1ead00ff/graphon-0.8.0-py3-none-any.whl", hash = "sha256:183b668cdd2b1b6c39e75e68778994855400c9a8e314e0bda3b59a2b0fe7e8a0", size = 400203, upload-time = "2026-09-09T20:03:18.198Z" },
 ]
 
 [[package]]
@@ -3379,8 +3383,8 @@ name = "httpcore2"
 version = "2.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/be/ad/f4f0e57345f1870f3e8cb624e058d7eca6e5a27d33bcc3311d9b618734cd/httpcore2-2.12.0.tar.gz", hash = "sha256:9293522bba0aa7c4c8e9e3f040c16575bd8868e155a77fa30c7a9085a5eae648", size = 67548, upload-time = "2026-08-18T13:22:08.211Z" }
 wheels = [
@@ -4358,6 +4362,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/0b/5f/19930f824ffeb0ad4372da4812c50edbd1434f678c90c2733e1188edfc63/oauthlib-3.3.1.tar.gz", hash = "sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9", size = 185918, upload-time = "2025-06-19T22:48:08.269Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl", hash = "sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1", size = 160065, upload-time = "2025-06-19T22:48:06.508Z" },
+]
+
+[[package]]
+name = "odfdo"
+version = "3.27.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "lxml" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/66/d1d13aad5f8466a70a230ba4709bb1b88a2cafedd34b6b4e63d785f6ae52/odfdo-3.27.1.tar.gz", hash = "sha256:79f37dc0cc1865544dd3a24ebc595ea89c6e0323848675a9f27f812e10f76ae6", size = 341759, upload-time = "2026-10-10T11:43:07.056Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/f6/04aa6e83654413508b0069f72f074788c138f0f3ccf0f8192d06f63f95b4/odfdo-3.27.1-py3-none-any.whl", hash = "sha256:3524b650815b4c5032e47bc5db14197b1013c5d22424f81a8b2337bc9bd22199", size = 439892, upload-time = "2026-10-10T11:43:05.405Z" },
 ]
 
 [[package]]
@@ -7463,9 +7480,6 @@ wheels = [
 [package.optional-dependencies]
 docx = [
     { name = "python-docx" },
-]
-epub = [
-    { name = "pypandoc-binary", marker = "sys_platform != 'win32'" },
 ]
 md = [
     { name = "markdown" },

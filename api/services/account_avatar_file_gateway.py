@@ -30,4 +30,7 @@ class SQLAlchemyAccountAvatarFileGateway(AccountAvatarFileGateway):
 
         if owned_file_id is None:
             return None
-        return file_helpers.get_signed_file_url(upload_file_id=owned_file_id)
+        from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+
+        with bind_dify_workflow_file_runtime():
+            return file_helpers.get_signed_file_url(upload_file_id=owned_file_id)

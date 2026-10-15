@@ -155,7 +155,7 @@ def test_resume_appends_chunks_to_paused_answer(unbound_session: Session) -> Non
         trace_manager=None,
         extras={},
     )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
+    queue_manager = SimpleNamespace(runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT)
     message = pipeline_module.MessageSnapshot(
         id="message-1",
@@ -209,7 +209,7 @@ def test_emit_message_trace_enqueues_message_trace() -> None:
         trace_manager=mock_trace_manager,
         extras={"trace_session_id": "session-trace-1"},
     )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
+    queue_manager = SimpleNamespace(runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
     message = pipeline_module.MessageSnapshot(
         id="msg-1",
@@ -286,7 +286,7 @@ def test_save_message_does_not_emit_trace() -> None:
         trace_manager=mock_trace_manager,
         extras={"trace_session_id": "session-trace-1"},
     )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
+    queue_manager = SimpleNamespace(runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
     message = pipeline_module.MessageSnapshot(
         id="msg-1",
@@ -353,7 +353,7 @@ def test_emit_message_trace_skips_when_no_trace_manager() -> None:
         trace_manager=None,
         extras={},
     )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
+    queue_manager = SimpleNamespace(runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
     message = pipeline_module.MessageSnapshot(
         id="msg-1",

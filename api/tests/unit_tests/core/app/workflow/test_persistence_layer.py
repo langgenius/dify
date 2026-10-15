@@ -9,16 +9,7 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
-from graphon.entities.pause_reason import SchedulingPause
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-    WorkflowType,
-)
-from graphon.graph_events import (
+from graphon.engine_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -32,9 +23,18 @@ from graphon.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+    WorkflowType,
+)
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
-from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 
 
 class _RepoRecorder:
@@ -71,11 +71,12 @@ def _make_layer(
         workflow_execution_id="run-id",
         conversation_id="conv-id",
     )
-    runtime_state = GraphRuntimeState(
+    runtime_state = RuntimeState(
+        workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(system_variables=system_variables),
         start_at=0.0,
     )
-    read_only_state = ReadOnlyGraphRuntimeStateWrapper(runtime_state)
+    read_only_state = ReadOnlyRuntimeStateWrapper(runtime_state)
 
     application_generate_entity = WorkflowAppGenerateEntity.model_construct(
         task_id="task",
@@ -734,6 +735,8 @@ class TestWorkflowPersistenceLayer:
 
         for event in events:
             layer.on_event(event)
+            if isinstance(event, GraphRunPausedEvent):
+                layer.persist_paused_state()
 
         assert called == expected_order
 
@@ -771,3 +774,16 @@ class TestWorkflowPersistenceLayer:
         layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
         assert exec_repo.saved
         assert not trace_tasks
+
+
+def test_paused_status_is_not_saved_before_joint_snapshot_barrier():
+    layer, workflow_repo, _, state = _make_layer()
+    layer.on_graph_start()
+    layer.on_event(GraphRunStartedEvent())
+    before = len(workflow_repo.saved)
+    layer.on_event(GraphRunPausedEvent())
+    assert len(workflow_repo.saved) == before
+    assert layer._workflow_execution.status == WorkflowExecutionStatus.RUNNING
+    layer.persist_paused_state()
+    assert len(workflow_repo.saved) == before + 1
+    assert layer._workflow_execution.status == WorkflowExecutionStatus.PAUSED

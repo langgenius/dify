@@ -504,7 +504,10 @@ class TestPluginModelRuntime:
 
     def test_invoke_tts_uses_bound_runtime_user_when_runtime_is_unbound(self, monkeypatch: pytest.MonkeyPatch) -> None:
         client, client_results, client_calls = _recording_model_client(monkeypatch)
-        client_results["invoke_tts"] = iter([b"chunk"])
+        from core.plugin.entities.plugin_daemon import TTSAudioChunk
+        from graphon.model_runtime.protocols.tts_runtime import TTSChunk
+
+        client_results["invoke_tts"] = iter([TTSAudioChunk(b"chunk", mime_type="audio/wav")])
         runtime = PluginModelRuntime(tenant_id="tenant", user_id=None, client=client, plugin_service=PluginService)
 
         result = runtime.invoke_tts(
@@ -515,7 +518,7 @@ class TestPluginModelRuntime:
             voice="alloy",
         )
 
-        assert list(result) == [b"chunk"]
+        assert list(result) == [TTSChunk(data=b"chunk", mime_type="audio/wav")]
         assert client_calls["invoke_tts"] == [
             call(
                 tenant_id="tenant",

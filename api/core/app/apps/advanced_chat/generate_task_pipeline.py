@@ -82,7 +82,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
@@ -209,7 +209,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
-        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._graph_runtime_state: RuntimeState | None = None
         self._message_saved_on_pause = False
         self._seed_graph_runtime_state_from_queue_manager()
 
@@ -667,11 +667,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow_id,
             status=WorkflowExecutionStatus.SUCCEEDED,
-            graph_runtime_state=validated_state,
+            runtime_state=validated_state,
         )
 
         yield from self._handle_advanced_chat_message_end_event(
-            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+            QueueAdvancedChatMessageEndEvent(), runtime_state=validated_state
         )
         yield workflow_finish_resp
 
@@ -690,12 +690,12 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow_id,
             status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
-            graph_runtime_state=validated_state,
+            runtime_state=validated_state,
             exceptions_count=event.exceptions_count,
         )
 
         yield from self._handle_advanced_chat_message_end_event(
-            QueueAdvancedChatMessageEndEvent(), graph_runtime_state=validated_state
+            QueueAdvancedChatMessageEndEvent(), runtime_state=validated_state
         )
         yield workflow_finish_resp
 
@@ -709,20 +709,20 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
-            graph_runtime_state=validated_state,
+            runtime_state=validated_state,
         )
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
                 self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
         yield from responses
-        resolved_state: GraphRuntimeState | None = None
+        resolved_state: RuntimeState | None = None
         try:
             resolved_state = self._ensure_graph_runtime_initialized()
         except ValueError:
             resolved_state = None
 
         with self._database_session() as session:
-            self._save_message(session=session, graph_runtime_state=resolved_state)
+            self._save_message(session=session, runtime_state=resolved_state)
             message = self._get_message(session=session)
             if message is not None:
                 message.status = MessageStatus.PAUSED
@@ -745,7 +745,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow_id,
             status=WorkflowExecutionStatus.FAILED,
-            graph_runtime_state=validated_state,
+            runtime_state=validated_state,
             error=event.error,
             exceptions_count=event.exceptions_count,
         )
@@ -761,7 +761,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueStopEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        runtime_state: RuntimeState | None = None,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
@@ -769,20 +769,20 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         _ = trace_manager
         resolved_state = None
         if self._workflow_run_id:
-            resolved_state = self._resolve_graph_runtime_state(graph_runtime_state)
+            resolved_state = self._resolve_graph_runtime_state(runtime_state)
 
         if self._workflow_run_id and resolved_state:
             workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                 task_id=self._application_generate_entity.task_id,
                 workflow_id=self._workflow_id,
                 status=WorkflowExecutionStatus.STOPPED,
-                graph_runtime_state=resolved_state,
+                runtime_state=resolved_state,
                 error=event.get_stop_reason(),
             )
 
             with self._database_session() as session:
                 # Save message
-                self._save_message(session=session, graph_runtime_state=resolved_state)
+                self._save_message(session=session, runtime_state=resolved_state)
             self._emit_message_trace()
 
             yield workflow_finish_resp
@@ -802,11 +802,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueAdvancedChatMessageEndEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        runtime_state: RuntimeState | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle advanced chat message end events."""
-        resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
+        resolved_state = self._ensure_graph_runtime_initialized(runtime_state)
 
         output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
             self._task_state.answer
@@ -821,7 +821,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         # Save message unless it has already been persisted on pause.
         if not self._message_saved_on_pause:
             with self._database_session() as session:
-                self._save_message(session=session, graph_runtime_state=resolved_state)
+                self._save_message(session=session, runtime_state=resolved_state)
             self._emit_message_trace()
 
         yield self._message_end_to_stream_response()
@@ -1024,7 +1024,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     break
 
                 case QueueStopEvent():
-                    yield from self._handle_stop_event(event, graph_runtime_state=None, trace_manager=trace_manager)
+                    yield from self._handle_stop_event(event, runtime_state=None, trace_manager=trace_manager)
                     break
 
                 # Handle all other events through elegant dispatch
@@ -1042,7 +1042,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 
-    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
+    def _save_message(self, *, session: Session, runtime_state: RuntimeState | None = None):
         message = self._get_message(session=session)
         if message is None:
             return
@@ -1057,8 +1057,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
 
         # Set usage first before dumping metadata
-        if graph_runtime_state and graph_runtime_state.llm_usage:
-            usage = graph_runtime_state.llm_usage
+        if runtime_state and runtime_state.llm_usage:
+            usage = runtime_state.llm_usage
             message.message_tokens = usage.prompt_tokens
             message.message_unit_price = usage.prompt_unit_price
             message.message_price_unit = usage.prompt_price_unit
@@ -1115,7 +1115,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""
-        candidate = self._base_task_pipeline.queue_manager.graph_runtime_state
+        candidate = self._base_task_pipeline.queue_manager.runtime_state
         if candidate is not None:
             self._graph_runtime_state = candidate
 

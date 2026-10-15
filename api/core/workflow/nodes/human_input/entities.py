@@ -17,7 +17,7 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
 

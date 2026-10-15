@@ -1,0 +1,55 @@
+{
+  "nodes": [
+    {
+      "id": "captured-start",
+      "data": {
+        "type": "start",
+        "variables": []
+      }
+    },
+    {
+      "id": "captured-answer",
+      "data": {
+        "type": "answer",
+        "answer": "before-pause"
+      }
+    },
+    {
+      "id": "captured-human",
+      "data": {
+        "type": "human-input",
+        "title": "Approve"
+      }
+    },
+    {
+      "id": "captured-end",
+      "data": {
+        "type": "end",
+        "outputs": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "captured-edge-0",
+      "source": "captured-start",
+      "target": "captured-answer",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "captured-edge-1",
+      "source": "captured-answer",
+      "target": "captured-human",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    },
+    {
+      "id": "captured-edge-2",
+      "source": "captured-human",
+      "target": "captured-end",
+      "sourceHandle": "source",
+      "targetHandle": "target"
+    }
+  ]
+}

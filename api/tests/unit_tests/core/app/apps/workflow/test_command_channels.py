@@ -10,7 +10,7 @@ from core.app.apps.workflow.command_channels import (
     CombinedCommandChannel,
     StopFlagCommandChannel,
 )
-from graphon.graph_engine.entities.commands import AbortCommand, PauseCommand
+from graphon.engine.command import AbortCommand, PauseCommand
 
 
 class _CommandChannelStub:
@@ -66,7 +66,7 @@ def test_combined_command_channel_continues_after_source_failure(caplog: pytest.
     combined = CombinedCommandChannel((failing, _CommandChannelStub([abort])))
 
     assert combined.fetch_commands() == [abort]
-    assert "Failed to fetch GraphEngine commands" in caplog.text
+    assert "Failed to fetch Engine commands" in caplog.text
 
 
 def test_celery_signal_command_channel_emits_abort_when_shutdown_starts() -> None:

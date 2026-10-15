@@ -106,9 +106,8 @@ class TestExecutionContext:
             # Variable should be restored to original value
             assert test_var.get() == "original_value"
 
-        # After exiting, variable stays at the value from within the context
-        # (this is expected Python contextvars behavior)
-        assert test_var.get() == "original_value"
+        # Exiting the segment restores the worker's value from before entry.
+        assert test_var.get() == "new_value"
 
     def test_enter_with_app_context(self):
         """Test enter enters app context if available."""
