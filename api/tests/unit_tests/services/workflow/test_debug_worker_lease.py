@@ -234,6 +234,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
     from graphon.runtime import GraphRuntimeState, VariablePool
     from graphon.variable_loader import DUMMY_VARIABLE_LOADER
     from models.model import AppMode
+    from repositories.workflow.definition_repository import workflow_snapshot
     from services.workflow.debug_cancellation import DebugExecutionCancellation
     from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfig
     from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
@@ -254,7 +255,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
         application_generate_entity=entity,
         queue_manager=create_autospec(AppQueueManager, instance=True, spec_set=True),
         variable_loader=DUMMY_VARIABLE_LOADER,
-        workflow=make_workflow(),
+        workflow=workflow_snapshot(make_workflow()),
         system_user_id="account",
         workflow_execution_repository=create_autospec(WorkflowExecutionRepository, instance=True, spec_set=True),
         workflow_node_execution_repository=create_autospec(
