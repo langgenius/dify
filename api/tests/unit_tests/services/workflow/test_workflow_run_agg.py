@@ -412,7 +412,9 @@ def test_pause_before_first_tool_call_preserves_its_published_definition(sqlite_
                 enable_api=False,
             )
         )
-        for workflow_id, version, marker in zip(source_workflow_ids, ("old", "new"), ("original", "republished")):
+        for workflow_id, version, marker in zip(
+            source_workflow_ids, ("old", "new"), ("original", "republished"), strict=True
+        ):
             session.add(
                 Workflow(
                     id=workflow_id,

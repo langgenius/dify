@@ -98,7 +98,7 @@ def save_workflow_node_executions_task(
         logger.exception(
             "Failed to save workflow node execution batch: %s", [data.get("id") for data in executions_data]
         )
-        raise self.retry(exc=error, countdown=60 * (2**self.request.retries))
+        raise self.retry(exc=error, countdown=60 * (2**self.request.retries)) from error
 
 
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)

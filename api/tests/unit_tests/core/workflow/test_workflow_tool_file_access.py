@@ -207,6 +207,6 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
         )
         files_output = tool_completed.node_run_result.outputs["files"]
         assert isinstance(files_output, ArrayFileSegment)
-        accepted_files = files_output.to_object()
+        accepted_files = files_output.value
         assert len(accepted_files) == 1
         assert accepted_files[0].filename == stored_file.name
