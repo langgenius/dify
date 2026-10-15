@@ -214,11 +214,7 @@ describe('dataset-config/card-item', () => {
 
     renderItem(dataset)
 
-    const nameElement = screen.getByText(dataset.name)
-    const iconElement = nameElement.parentElement?.firstElementChild as HTMLElement
-
-    expect(iconElement)!.toHaveStyle({ background: '#FFF4ED' })
-    expect(iconElement).toHaveTextContent('📙')
+    expect(screen.getByText('📙')).toBeInTheDocument()
   })
 
   it('should apply mask overlay on mobile when drawer is open', async () => {

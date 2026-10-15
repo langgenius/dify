@@ -177,15 +177,15 @@ def test_sse_transport_endpoint_validation():
 
     # Valid endpoint (same origin)
     valid_endpoint = "http://example.com/messages/session123"
-    assert transport._validate_endpoint_url(valid_endpoint) == True
+    assert transport._validate_endpoint_url(valid_endpoint) is True
 
     # Invalid endpoint (different origin)
     invalid_endpoint = "http://malicious.com/messages/session123"
-    assert transport._validate_endpoint_url(invalid_endpoint) == False
+    assert transport._validate_endpoint_url(invalid_endpoint) is False
 
     # Invalid endpoint (different scheme)
     invalid_scheme = "https://example.com/messages/session123"
-    assert transport._validate_endpoint_url(invalid_scheme) == False
+    assert transport._validate_endpoint_url(invalid_scheme) is False
 
 
 def test_sse_transport_message_parsing():

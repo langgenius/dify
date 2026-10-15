@@ -166,19 +166,7 @@ export function EnvironmentWebAppCard({
         description={t(($) => $['studio.accessPoint.webAppDescription'], {
           ns: 'deployments',
         })}
-        icon={
-          appInfo ? (
-            <AppIcon
-              size="large"
-              iconType={appInfo.icon_type}
-              icon={appInfo.icon ?? undefined}
-              background={appInfo.icon_background}
-              imageUrl={appInfo.icon_url}
-            />
-          ) : (
-            'i-ri-robot-2-line'
-          )
-        }
+        icon={appInfo ? <AppIcon size="large" icon={appInfo} /> : 'i-ri-robot-2-line'}
         status={status}
         statusLabel={statusLabel}
         highlighted={highlighted}
