@@ -1,7 +1,11 @@
+import type { PostInstructionGenerateData } from '@dify/contracts/api/console/instruction-generate/types.gen'
+import type { PostRuleGenerateData } from '@dify/contracts/api/console/rule-generate/types.gen'
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
-import type { AppModeEnum, ModelModeType } from '@/types/app'
-import { get, post, ssePost } from './base'
+import type { AppModeEnum, Model, ModelModeType } from '@/types/app'
+import { ssePost } from './base'
+import { consoleClient } from './console'
+import { narrowResponse } from './console/narrow-response'
 
 type BasicAppFirstRes = {
   prompt: string
@@ -19,7 +23,9 @@ export type GenRes = {
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
-  return post(`apps/${appId}/chat-messages/${taskId}/stop`)
+  return consoleClient.apps.byAppId.chatMessages.byTaskId.stop.post({
+    params: { app_id: appId, task_id: taskId },
+  })
 }
 
 export const sendCompletionMessage = async (
@@ -45,48 +51,58 @@ export const sendCompletionMessage = async (
   )
 }
 
+const createAbortSignal = (getAbortController?: (abortController: AbortController) => void) => {
+  const abortController = new AbortController()
+  getAbortController?.(abortController)
+  return abortController.signal
+}
+
 export const fetchSuggestedQuestions = (
   appId: string,
   messageId: string,
-  getAbortController?: any,
+  getAbortController?: (abortController: AbortController) => void,
 ) => {
-  return get(
-    `apps/${appId}/chat-messages/${messageId}/suggested-questions`,
-    {},
-    {
-      getAbortController,
-    },
+  return consoleClient.apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get(
+    { params: { app_id: appId, message_id: messageId } },
+    { signal: createAbortSignal(getAbortController) },
   )
 }
 
 export const fetchConversationMessages = (
   appId: string,
   conversation_id: string,
-  getAbortController?: any,
+  getAbortController?: (abortController: AbortController) => void,
 ) => {
-  return get(
-    `apps/${appId}/chat-messages`,
-    {
-      params: {
-        conversation_id,
-      },
-    },
-    {
-      getAbortController,
-    },
+  return consoleClient.apps.byAppId.chatMessages.get(
+    { params: { app_id: appId }, query: { conversation_id } },
+    { signal: createAbortSignal(getAbortController) },
   )
 }
 
-export const generateBasicAppFirstTimeRule = (body: Record<string, any>) => {
-  return post<BasicAppFirstRes>('/rule-generate', {
-    body,
-  })
+// The model selector keeps an unset mode as '' and generators may omit the flow id; the
+// backend validates both, so the UI request shapes are passed through as the contract bodies.
+type RuleGenerateRequest = Omit<PostRuleGenerateData['body'], 'model_config'> & {
+  model_config: Model
 }
 
-export const generateRule = (body: Record<string, any>) => {
-  return post<GenRes>('/instruction-generate', {
-    body,
-  })
+type InstructionGenerateRequest = Omit<
+  PostInstructionGenerateData['body'],
+  'model_config' | 'flow_id'
+> & {
+  model_config: Model
+  flow_id?: string
+}
+
+export const generateBasicAppFirstTimeRule = (body: RuleGenerateRequest) => {
+  return narrowResponse<BasicAppFirstRes>(
+    consoleClient.ruleGenerate.post({ body: body as PostRuleGenerateData['body'] }),
+  )
+}
+
+export const generateRule = (body: InstructionGenerateRequest) => {
+  return narrowResponse<GenRes>(
+    consoleClient.instructionGenerate.post({ body: body as PostInstructionGenerateData['body'] }),
+  )
 }
 
 export const fetchPromptTemplate = ({
@@ -100,20 +116,20 @@ export const fetchPromptTemplate = ({
   modelName: string
   hasSetDataSet: boolean
 }) => {
-  return get<
-    Promise<{
-      chat_prompt_config: ChatPromptConfig
-      completion_prompt_config: CompletionPromptConfig
-      stop: []
-    }>
-  >('/app/prompt-templates', {
-    params: {
-      app_mode: appMode,
-      model_mode: mode,
-      model_name: modelName,
-      has_context: hasSetDataSet,
-    },
-  })
+  return narrowResponse<{
+    chat_prompt_config: ChatPromptConfig
+    completion_prompt_config: CompletionPromptConfig
+    stop: []
+  }>(
+    consoleClient.app.promptTemplates.get({
+      query: {
+        app_mode: appMode,
+        model_mode: mode,
+        model_name: modelName,
+        has_context: String(hasSetDataSet),
+      },
+    }),
+  )
 }
 
 export const fetchTextGenerationMessage = ({
@@ -123,5 +139,7 @@ export const fetchTextGenerationMessage = ({
   appId: string
   messageId: string
 }) => {
-  return get<Promise<any>>(`/apps/${appId}/messages/${messageId}`)
+  return consoleClient.apps.byAppId.messages.byMessageId.get({
+    params: { app_id: appId, message_id: messageId },
+  })
 }

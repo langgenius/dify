@@ -766,7 +766,9 @@ const useOneStepRun = <T>({
           }
         } else {
           const isStartNode = data.type === BlockEnum.Start
-          const postData: Record<string, any> = {}
+          const postData: Parameters<typeof singleNodeRun>[3] & { conversation_id?: string } = {
+            inputs: submitData,
+          }
           if (isStartNode) {
             const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
             if (isChatMode) postData.conversation_id = ''
@@ -774,8 +776,6 @@ const useOneStepRun = <T>({
             postData.inputs = inputs
             postData.query = query
             postData.files = files || []
-          } else {
-            postData.inputs = submitData
           }
           res = (await singleNodeRun(flowType, flowId!, id, postData)) as any
         }

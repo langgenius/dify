@@ -6,11 +6,13 @@ const mockPost = vi.hoisted(() => vi.fn())
 
 vi.mock('./base', () => ({
   get: vi.fn(),
-  post: mockPost,
+  post: vi.fn(),
 }))
 
 vi.mock('@/service/console', () => ({
-  consoleClient: {},
+  consoleClient: {
+    apps: { byAppId: { workflows: { draft: { environmentVariables: { post: mockPost } } } } },
+  },
 }))
 
 describe('updateEnvironmentVariables', () => {
@@ -40,7 +42,8 @@ describe('updateEnvironmentVariables', () => {
       deletedEnvironmentVariableIds: ['env-2'],
     })
 
-    expect(mockPost).toHaveBeenCalledWith('apps/app-1/workflows/draft/environment-variables', {
+    expect(mockPost).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
       body: {
         environment_variables: environmentVariables,
         patch: true,

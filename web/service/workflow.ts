@@ -15,7 +15,8 @@ import type {
 } from '@/types/workflow'
 import { consoleClient } from '@/service/console'
 import { get, post } from './base'
-import { getFlowPrefix } from './utils'
+import { narrowResponse } from './console/narrow-response'
+import { callByFlowType, getFlowPrefix } from './utils'
 
 export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
 
@@ -59,10 +60,28 @@ export const singleNodeRun = (
   flowType: FlowType,
   flowId: string,
   nodeId: string,
-  params: object,
+  params: {
+    inputs: Record<string, unknown>
+    query?: string
+    files?: Record<string, unknown>[]
+  },
 ) => {
-  return post(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/run`, {
-    body: params,
+  return callByFlowType(flowType, {
+    app: () =>
+      consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.run.post({
+        params: { app_id: flowId, node_id: nodeId },
+        body: params,
+      }),
+    ragPipeline: () =>
+      consoleClient.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.run.post({
+        params: { pipeline_id: flowId, node_id: nodeId },
+        body: params,
+      }),
+    snippet: () =>
+      consoleClient.snippets.bySnippetId.workflows.draft.nodes.byNodeId.run.post({
+        params: { snippet_id: flowId, node_id: nodeId },
+        body: params,
+      }),
   })
 }
 
@@ -89,15 +108,19 @@ export const stopWorkflowRun = (url: string) => {
 }
 
 export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}) => {
-  return get(`apps/${appId}/workflows/default-workflow-block-configs/${blockType}`, {
-    params: { q: JSON.stringify(query) },
+  return consoleClient.apps.byAppId.workflows.defaultWorkflowBlockConfigs.byBlockType.get({
+    params: { app_id: appId, block_type: blockType },
+    query: { q: JSON.stringify(query) },
   })
 }
 
 export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnum, query = {}) => {
-  return get(`rag/pipelines/${pipelineId}/workflows/default-workflow-block-configs/${blockType}`, {
-    params: { q: JSON.stringify(query) },
-  })
+  return consoleClient.rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.byBlockType.get(
+    {
+      params: { pipeline_id: pipelineId, block_type: blockType },
+      query: { q: JSON.stringify(query) },
+    },
+  )
 }
 
 export const fetchCurrentValueOfConversationVariable = ({
@@ -115,9 +138,25 @@ const fetchAllInspectVarsOnePage = async (
   flowId: string,
   page: number,
 ): Promise<{ total: number; items: VarInInspect[] }> => {
-  return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`, {
-    params: { page, limit: 100 },
-  })
+  return narrowResponse<{ total: number; items: VarInInspect[] }>(
+    callByFlowType(flowType, {
+      app: () =>
+        consoleClient.apps.byAppId.workflows.draft.variables.get({
+          params: { app_id: flowId },
+          query: { page, limit: 100 },
+        }),
+      ragPipeline: () =>
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.get({
+          params: { pipeline_id: flowId },
+          query: { page, limit: 100 },
+        }),
+      snippet: () =>
+        consoleClient.snippets.bySnippetId.workflows.draft.variables.get({
+          params: { snippet_id: flowId },
+          query: { page, limit: 100 },
+        }),
+    }),
+  )
 }
 export const fetchAllInspectVars = async (
   flowType: FlowType,
@@ -144,9 +183,22 @@ export const fetchNodeInspectVars = async (
   flowId: string,
   nodeId: string,
 ): Promise<VarInInspect[]> => {
-  const { items } = (await get(
-    `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`,
-  )) as { items: VarInInspect[] }
+  const { items } = await narrowResponse<{ items: VarInInspect[] }>(
+    callByFlowType(flowType, {
+      app: () =>
+        consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.variables.get({
+          params: { app_id: flowId, node_id: nodeId },
+        }),
+      ragPipeline: () =>
+        consoleClient.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.variables.get({
+          params: { pipeline_id: flowId, node_id: nodeId },
+        }),
+      snippet: () =>
+        consoleClient.snippets.bySnippetId.workflows.draft.nodes.byNodeId.variables.get({
+          params: { snippet_id: flowId, node_id: nodeId },
+        }),
+    }),
+  )
   return items
 }
 
@@ -157,7 +209,8 @@ export const updateEnvironmentVariables = ({
 }: {
   appId: string
 } & EnvironmentVariablePatch) => {
-  return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
+  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
+    params: { app_id: appId },
     body: {
       environment_variables: environmentVariables,
       patch: true,
@@ -199,7 +252,10 @@ export const submitHumanInputForm = (
     action: string
   },
 ) => {
-  return post(`/form/human_input/${token}`, { body: data })
+  return consoleClient.form.humanInput.byFormToken.post({
+    params: { form_token: token },
+    body: data,
+  })
 }
 
 export const fetchHumanInputNodeStepRunForm = (

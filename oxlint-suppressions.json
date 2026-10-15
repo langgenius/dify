@@ -2764,7 +2764,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 21
+      "count": 20
     }
   },
   "web/app/components/workflow/nodes/_base/hooks/use-output-var-list.ts": {
@@ -4060,7 +4060,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 1
     }
   },
   "web/service/fetch.spec.ts": {
@@ -4200,11 +4200,8 @@
     "@tanstack/query/prefer-query-options": {
       "count": 9
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/service/webapp-auth.ts": {
