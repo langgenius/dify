@@ -387,6 +387,8 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       at_version: 4,
       payload: {
         title: 'Support workflow',
+        input_summary: 'A support question.',
+        output_summary: 'A helpful answer.',
         items: ['Find an answer'],
       },
     }

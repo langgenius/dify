@@ -340,6 +340,9 @@ class DifyBuilderContext:
     reply_language: str = ""  # detected user-input language (BCP-47); drives reply/localization
     requirements: dict[str, Any] = field(default_factory=dict)
     plan_items: list[str] = field(default_factory=list)
+    plan_title: str = ""
+    plan_input_summary: str = ""
+    plan_output_summary: str = ""
     plan_version_tag: str = ""
     resource_selection: dict[str, Any] = field(default_factory=dict)
     built_node_ids: list[str] = field(default_factory=list)

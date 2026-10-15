@@ -32,6 +32,7 @@ from services.dify_builder.native_constant_output_contract import (
     native_build_capability_system_rules,
     native_constant_output_system_rules,
 )
+from services.dify_builder.plan import PLAN_PRESENTATION_INSTRUCTION, WorkflowPlan, parse_plan_response
 from services.dify_builder.presentation import copy_text
 from services.dify_builder.tool_setup import reconcile_generated_tool_setup
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -452,25 +453,6 @@ def _cognition_source(goal_text: str, requirements: dict[str, Any] | None) -> st
     )
 
 
-def _plan_schema_error(data: Any) -> str:
-    """Describe shape errors without quoting source or model-generated content."""
-    if not isinstance(data, dict):
-        return f"The response must be an object, received {type(data).__name__}."
-    if "plan" not in data:
-        return "The required plan field is missing."
-    plan = data["plan"]
-    if not isinstance(plan, list):
-        return f"The plan field must be a nonempty list of strings, received {type(plan).__name__}."
-    if not plan:
-        return "The plan field must contain at least one nonblank string."
-    for index, item in enumerate(plan):
-        if not isinstance(item, str):
-            return f"The plan[{index}] field must be a nonblank string, received {type(item).__name__}."
-        if not item.strip():
-            return f"The plan[{index}] field is blank; every item must be a nonblank string."
-    return ""
-
-
 def propose_plan_v1(
     model,
     requirements: dict[str, Any],
@@ -478,15 +460,15 @@ def propose_plan_v1(
     *,
     tools: Sequence[ResourceRef] = (),
     goal_text: str = "",
-) -> list[str]:
-    """Return an intact plan or [], with at most one schema correction.
+) -> WorkflowPlan | None:
+    """Return an intact plan or None, with at most one schema correction.
 
     The service-only source default supports direct callers during sequential
     adapter migration; runtime adapters must pass the original goal explicitly.
     Structural validity alone does not prove the plan covers the source.
     """
     if model is None:
-        return []
+        return None
     system = (
         "You are a Dify workflow planner. Given the original goal and confirmed requirements, "
         "propose an ordered list of concise build steps. Preserve requested actions and outputs; "
@@ -508,10 +490,10 @@ def propose_plan_v1(
         "schema; do not invent any of them. Resource mentions, including optional or negative "
         "mentions, do not alone require using a resource."
         f"{_planner_tool_section(tools)}\n\n"
-        'Reply with ONLY JSON: {"plan": ["step", ...]}.'
+        f"{PLAN_PRESENTATION_INSTRUCTION}"
     )
     system += "\n\n" + native_constant_output_system_rules()
-    system += llm.json_language_instruction("plan steps")
+    system += llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
     source = _cognition_source(goal_text, requirements)
     user = source
     for attempt in range(2):
@@ -520,17 +502,18 @@ def propose_plan_v1(
             # so parsing and schema correction share the same two-call budget.
             text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
         except Exception:
-            return []
+            return None
         try:
             data = json_repair.loads(text)
         except Exception:
             data = None
-        issue = _plan_schema_error(data)
-        if not issue:
-            return data["plan"]
+        try:
+            return parse_plan_response(data)
+        except ValueError as exc:
+            issue = str(exc)
         if attempt == 0:
             user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
-    return []
+    return None
 
 
 def discover_resources(

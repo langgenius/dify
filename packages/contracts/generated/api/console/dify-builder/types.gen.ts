@@ -817,7 +817,9 @@ export type AssistantTurnItem = {
 }
 
 export type PlanCard = {
+  input_summary: string
   items?: Array<string>
+  output_summary: string
   reply_language?: string
   title: string | BuilderCopy | BuilderTextParts
 }

@@ -135,23 +135,83 @@ def test_analyze_impact_non_list_target_node_ids_degrades_without_raising():
 
 
 def test_propose_edit_plan_bullets():
-    m = _FakeInstance([json.dumps({"plan": ["Tighten prompt"]})])
-    assert edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH) == ["Tighten prompt"]
-
-
-def test_propose_edit_plan_none_model_degrades():
-    assert edit.propose_edit_plan(None, {"tone": "formal"}, _GRAPH) == ["Apply the requested edit"]
-
-
-def test_propose_edit_plan_provider_error_degrades():
-    out = edit.propose_edit_plan(_BoomInstance(), {"tone": "formal"}, _GRAPH)
-    assert out == ["Apply the requested edit"]
-
-
-def test_propose_edit_plan_non_list_plan_degrades():
-    m = _FakeInstance([json.dumps({"plan": "not-a-list"})])
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "title": "Make support replies formal",
+                    "input_summary": "A support question.",
+                    "output_summary": "A formal reply to the question.",
+                    "plan": ["Tighten prompt"],
+                }
+            )
+        ]
+    )
     out = edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH)
-    assert out == ["Apply the requested edit"]
+    assert out is not None
+    assert out.items == ["Tighten prompt"]
+    assert out.title == "Make support replies formal"
+    assert out.input_summary == "A support question."
+    assert out.output_summary == "A formal reply to the question."
+
+
+def test_propose_edit_plan_none_model_returns_no_approvable_plan():
+    assert edit.propose_edit_plan(None, {"tone": "formal"}, _GRAPH) is None
+
+
+def test_propose_edit_plan_provider_error_returns_no_approvable_plan():
+    out = edit.propose_edit_plan(_BoomInstance(), {"tone": "formal"}, _GRAPH)
+    assert out is None
+
+
+def test_propose_edit_plan_non_list_plan_returns_no_approvable_plan():
+    m = _FakeInstance([json.dumps({"plan": "not-a-list"})] * 2)
+    out = edit.propose_edit_plan(m, {"tone": "formal"}, _GRAPH)
+    assert out is None
+
+
+def test_edit_plan_sees_existing_workflow_inputs_and_outputs():
+    graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "question", "label": "Support question", "type": "text-input"}],
+                },
+            },
+            {"id": "llm", "data": {"type": "llm", "title": "Answer the question"}},
+            {
+                "id": "end",
+                "data": {"type": "end", "outputs": [{"variable": "answer", "value_selector": ["llm", "text"]}]},
+            },
+        ],
+        "edges": [{"source": "start", "target": "llm"}, {"source": "llm", "target": "end"}],
+    }
+    model = _RecordingInstance(
+        [
+            json.dumps(
+                {
+                    "title": "Make support replies formal",
+                    "input_summary": "A support question.",
+                    "output_summary": "A formal answer to the support question.",
+                    "plan": ["Use a formal tone in the answer"],
+                }
+            )
+        ]
+    )
+
+    plan = edit.propose_edit_plan(model, {"tone": "formal"}, graph)
+
+    assert plan is not None
+    assert plan.input_summary == "A support question."
+    assert plan.output_summary == "A formal answer to the support question."
+    assert len(model.calls) == 1
+    system, user = model.calls[0]["prompt_messages"]
+    assert "entire resulting workflow" in system.content
+    assert "remain unchanged" in system.content
+    assert "Support question" in user.content
+    assert '"value_selector": ["llm", "text"]' in user.content
 
 
 def test_build_edit_intents_validates_and_drops_bad():

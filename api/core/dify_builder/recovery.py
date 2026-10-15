@@ -101,6 +101,9 @@ def _reset_working_fields(fc: DifyBuilderContext) -> None:
     fc.verify_run_id = ""
     fc.test_input_ref = ""
     fc.plan_items = []
+    fc.plan_title = ""
+    fc.plan_input_summary = ""
+    fc.plan_output_summary = ""
     fc.plan_version_tag = ""
     fc.resource_selection = {}
     fc.built_node_ids = []

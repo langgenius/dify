@@ -10,6 +10,7 @@ from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMod
 from core.dify_builder.placeholder_agent import PlaceholderAgent
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState
+from services.dify_builder.plan import WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
@@ -19,7 +20,16 @@ REQUIREMENTS = {"endpoint": "https://example.test/upload", "output": {"format": 
 
 class RecordingAgent(PlaceholderAgent):
     def __init__(self, plan):
-        self.plan = plan
+        self.plan = (
+            WorkflowPlan(
+                title="Generate and deliver a presentation",
+                input_summary="The requested presentation content.",
+                output_summary="A presentation file delivered to the supplied endpoint.",
+                items=plan,
+            )
+            if plan
+            else None
+        )
         self.calls = []
 
     def propose_plan_v1(self, requirements, *, goal_text):
@@ -55,6 +65,9 @@ def _advance(state, plan):
         requirements={**REQUIREMENTS, "currency": "USD"},
         form_fields=[{"key": "currency", "label": "Currency", "type": "text"}],
         plan_items=["Prior accepted plan"],
+        plan_title="Prior accepted title",
+        plan_input_summary="Prior accepted input",
+        plan_output_summary="Prior accepted output",
         plan_version_tag="v2",
         resource_selection={"ids": ["existing-tool"]},
         built_node_ids=["existing-node"],
@@ -97,6 +110,10 @@ def test_runtime_cognition_receives_full_original_goal_and_confirmed_requirement
     assert agent.calls == expected_calls
     assert stored.requirements == confirmed
     assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    if state != PcState.BUILD_INITIAL_PLAN:
+        assert stored.plan_title == "Generate and deliver a presentation"
+        assert stored.plan_input_summary == "The requested presentation content."
+        assert stored.plan_output_summary == "A presentation file delivered to the supplied endpoint."
 
 
 @pytest.mark.parametrize(
@@ -114,6 +131,9 @@ def test_empty_plan_preserves_context_and_stays_at_its_waiting_gate(state, faile
     assert out.current_state == state
     for name in (
         "plan_items",
+        "plan_title",
+        "plan_input_summary",
+        "plan_output_summary",
         "plan_version_tag",
         "resource_selection",
         "built_node_ids",

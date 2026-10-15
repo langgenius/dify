@@ -557,11 +557,13 @@ class AssistantTurnItem(_Card, BuilderPresentation):
 
 @dataclass
 class PlanCard(_Card, BuilderPresentation):
-    """Final approval plan. ``items`` are ordered, human-readable steps."""
+    """Final approval plan with the resulting workflow's expected inputs and outputs."""
 
     kind: ClassVar[CardKind] = CardKind.PLAN
 
     title: BuilderText
+    input_summary: str
+    output_summary: str
     items: list[str] = field(default_factory=list)
 
 

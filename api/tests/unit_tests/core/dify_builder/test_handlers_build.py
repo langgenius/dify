@@ -357,7 +357,13 @@ def test_resource_recommendation_confirm_creates_internal_checkpoint_and_plan():
 
     env, repo = _new_env(dify=FakeBuildDifyPort())
     s = _seed_build_session(
-        repo, PcState.BUILD_RESOURCE_RECOMMENDATION, plan_items=["Retrieve", "Summarize"], plan_version_tag="v1"
+        repo,
+        PcState.BUILD_RESOURCE_RECOMMENDATION,
+        plan_items=["Retrieve", "Summarize"],
+        plan_title="Summarize quarterly reports",
+        plan_input_summary="Quarterly source reports.",
+        plan_output_summary="An executive summary.",
+        plan_version_tag="v1",
     )
     turn = Turn(
         action=Action(
@@ -377,7 +383,9 @@ def test_resource_recommendation_confirm_creates_internal_checkpoint_and_plan():
     assert cp.session_id == s.id
     assert not any(i.kind == "checkpoint" for i in res.items)
     plan = next(i for i in res.items if i.kind == "plan")
-    assert english_text(plan.payload["title"]) == "Build plan"
+    assert plan.payload["title"] == "Summarize quarterly reports"
+    assert plan.payload["input_summary"] == "Quarterly source reports."
+    assert plan.payload["output_summary"] == "An executive summary."
     assert plan.payload["items"] == res.context.plan_items
     assert "version_tag" not in plan.payload
     assert {i.kind for i in res.items} == {"decision", "plan", "assistant_turn"}
