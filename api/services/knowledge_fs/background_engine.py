@@ -5,6 +5,7 @@ request at a time. Closing its stdin or killing the owner also kills the engine'
 database leases/checkpoints then govern recovery after Celery redelivery.
 """
 
+import contextlib
 import json
 import os
 import selectors
@@ -77,15 +78,11 @@ class KnowledgeFSBackgroundEngine:
             return
         # Never kill a process group inherited across a fork: it belongs to another Celery child.
         if self._owner_pid == os.getpid():
-            try:
+            with contextlib.suppress(ProcessLookupError):
                 os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            try:
+            # Preserve the task's original exception; SIGKILL has already been requested.
+            with contextlib.suppress(subprocess.TimeoutExpired):
                 process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                # Preserve the task's original exception; SIGKILL has already been requested.
-                pass
         for stream in (process.stdin, process.stdout):
             if stream is not None:
                 stream.close()
