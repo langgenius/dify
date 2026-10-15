@@ -405,6 +405,7 @@ class TestDatasetServiceGetDatasets:
             search="Support",
             tag_ids=[tag.id],
             creator_ids=[creator.id],
+            tags=application_services().tags,
         )
 
         assert [dataset.id for dataset in datasets] == [matching_dataset.id]

@@ -54,7 +54,7 @@ it('loads shared retrieval controls without settings, then loads quality copy wh
   expect(mocks.load.mock.calls.map(([, ns]) => ns)).toEqual(['knowledgeQuality'])
 })
 
-it('loads source failure explanations only for a failing row and translates them after a locale change', async () => {
+it('loads source row namespaces once, including failure copy for row actions, and translates failures after a locale change', async () => {
   const source: Source = {
     createdAt: '2026-07-20T10:00:00Z',
     id: 'source-1',
@@ -87,7 +87,7 @@ it('loads source failure explanations only for a failing row and translates them
   const view = renderWithConsoleQuery(content(source))
   expect(await screen.findByRole('checkbox', { name: source.name })).toBeVisible()
   expect(new Set(mocks.load.mock.calls.map(([, ns]) => ns))).toEqual(
-    new Set(['knowledgeSpace', 'knowledgeSources', 'dataset', 'common']),
+    new Set(['knowledgeSpace', 'knowledgeSources', 'dataset', 'common', 'knowledgeErrors']),
   )
   mocks.load.mockClear()
   view.rerender(
@@ -114,7 +114,7 @@ it('loads source failure explanations only for a failing row and translates them
   expect(
     await screen.findByRole('button', { name: errors['taskFailure.sourceCredential'] }),
   ).toBeVisible()
-  expect(mocks.load.mock.calls.map(([, ns]) => ns)).toEqual(['knowledgeErrors'])
+  expect(mocks.load).not.toHaveBeenCalled()
   mocks.load.mockClear()
   await act(() => changeLanguage('zh-Hans'))
   expect(
