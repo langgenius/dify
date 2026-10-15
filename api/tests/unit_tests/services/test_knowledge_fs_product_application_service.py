@@ -1,14 +1,22 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import cast
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 import pytest
 
-from models.knowledge_fs import KnowledgeFSControlSpaceState, KnowledgeFSControlSpaceVisibility
+from models.knowledge_fs import (
+    KnowledgeFSControlSpace,
+    KnowledgeFSControlSpaceState,
+    KnowledgeFSControlSpaceVisibility,
+)
 from services.knowledge_fs.control_plane_service import KnowledgeFSControlPlaneService
-from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
+from services.knowledge_fs.control_space_commands import (
+    KnowledgeFSControlSpaceCommandService,
+    KnowledgeFSProvisionIntent,
+)
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_application_service import KnowledgeFSProductApplicationService
 from services.knowledge_fs.product_authorization import DifyKnowledgeFSProductRBACPort, KnowledgeFSProductRBACPort
@@ -108,28 +116,158 @@ def test_space_payloads_share_the_40_character_name_limit() -> None:
             KnowledgeFSSpaceUpdatePayload(icon_background=icon_background)
 
 
+def _control_space(
+    *, state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE
+) -> KnowledgeFSControlSpace:
+    control_space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="dify:tenant-1:product-space",
+        knowledge_space_id="space-1",
+        state=state,
+    )
+    control_space.id = "control-1"
+    return control_space
+
+
+@dataclass
+class _ProvisionResult:
+    control_space: KnowledgeFSControlSpace
+    model_setup_required: bool
+
+
+@dataclass
+class _AuthorizedControlSpace:
+    control_space: KnowledgeFSControlSpace
+
+
+@dataclass
+class _TechnicalSummary:
+    knowledge_space_id: str
+    revision: int
+
+
+@dataclass
+class _SpaceDetail:
+    technical_summary: _TechnicalSummary | None
+
+
+@dataclass
+class FakeProduct:
+    """Product reads; get_space replays queued results before falling back to `space_detail`."""
+
+    list_result: object = None
+    space_detail: object = None
+    queued_space_details: list[object] = field(default_factory=list)
+    require_product_routes_calls: list[dict[str, object]] = field(default_factory=list)
+    list_spaces_calls: list[dict[str, object]] = field(default_factory=list)
+    get_space_calls: list[dict[str, object]] = field(default_factory=list)
+    authorize_control_space_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def require_product_routes(self, **kwargs: object) -> None:
+        self.require_product_routes_calls.append(kwargs)
+
+    def list_spaces(self, **kwargs: object) -> object:
+        self.list_spaces_calls.append(kwargs)
+        return self.list_result
+
+    def get_space(self, **kwargs: object) -> object:
+        self.get_space_calls.append(kwargs)
+        if self.queued_space_details:
+            return self.queued_space_details.pop(0)
+        return self.space_detail
+
+    def authorize_control_space(self, **kwargs: object) -> _AuthorizedControlSpace:
+        self.authorize_control_space_calls.append(kwargs)
+        return _AuthorizedControlSpace(control_space=_control_space())
+
+
+@dataclass
+class FakeControlPlane:
+    update_visibility_calls: list[dict[str, object]] = field(default_factory=list)
+    replace_members_calls: list[dict[str, object]] = field(default_factory=list)
+    update_icon_background_calls: list[dict[str, object]] = field(default_factory=list)
+    advance_knowledge_space_revision_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def update_visibility(self, **kwargs: object) -> None:
+        self.update_visibility_calls.append(kwargs)
+
+    def replace_members(self, **kwargs: object) -> None:
+        self.replace_members_calls.append(kwargs)
+
+    def update_icon_background(self, **kwargs: object) -> None:
+        self.update_icon_background_calls.append(kwargs)
+
+    def advance_knowledge_space_revision(self, **kwargs: object) -> None:
+        self.advance_knowledge_space_revision_calls.append(kwargs)
+
+
+@dataclass
+class FakeCommands:
+    provision_result: _ProvisionResult = field(
+        default_factory=lambda: _ProvisionResult(
+            control_space=_control_space(state=KnowledgeFSControlSpaceState.PROVISIONING),
+            model_setup_required=False,
+        )
+    )
+    provision_intents: list[KnowledgeFSProvisionIntent] = field(default_factory=list)
+    request_deletion_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def create_provision_intent(self, intent: KnowledgeFSProvisionIntent) -> _ProvisionResult:
+        self.provision_intents.append(intent)
+        return self.provision_result
+
+    def request_deletion(self, **kwargs: object) -> None:
+        self.request_deletion_calls.append(kwargs)
+
+
+@dataclass
+class FakeFacade:
+    """Replays queued update_space outcomes; exceptions are raised in order."""
+
+    update_space_results: list[object] = field(default_factory=list)
+    update_space_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def update_space(self, **kwargs: object) -> object:
+        self.update_space_calls.append(kwargs)
+        result = self.update_space_results.pop(0)
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+
+@dataclass
+class FakeRBAC:
+    """Answers permission checks from a decision function or a queue of booleans."""
+
+    allowed: bool = True
+    queued_decisions: list[bool] = field(default_factory=list)
+    decide: Callable[..., bool] | None = None
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def workspace_permission_allowed(self, **kwargs: object) -> bool:
+        self.calls.append(kwargs)
+        if self.decide is not None:
+            return self.decide(**kwargs)
+        if self.queued_decisions:
+            return self.queued_decisions.pop(0)
+        return self.allowed
+
+
 def _application(
     *, allowed: bool = True
-) -> tuple[KnowledgeFSProductApplicationService, MagicMock, MagicMock, MagicMock, MagicMock, MagicMock]:
-    product = MagicMock()
-    control_plane = MagicMock()
-    commands = MagicMock()
-    facade = MagicMock()
-    rbac = MagicMock()
-    rbac.workspace_permission_allowed.return_value = allowed
-    commands.create_provision_intent.return_value = SimpleNamespace(
-        control_space=SimpleNamespace(id="control-1", state=KnowledgeFSControlSpaceState.PROVISIONING),
-        model_setup_required=False,
-    )
-    product.authorize_control_space.return_value = SimpleNamespace(
-        control_space=SimpleNamespace(knowledge_space_id="space-1")
-    )
+) -> tuple[KnowledgeFSProductApplicationService, FakeProduct, FakeControlPlane, FakeCommands, FakeFacade, FakeRBAC]:
+    product = FakeProduct()
+    control_plane = FakeControlPlane()
+    commands = FakeCommands()
+    facade = FakeFacade()
+    rbac = FakeRBAC(allowed=allowed)
     application = KnowledgeFSProductApplicationService(
-        product=product,
-        control_plane=control_plane,
-        commands=commands,
-        facade=facade,
-        rbac=rbac,
+        product=cast(KnowledgeFSProductService, product),
+        control_plane=cast(KnowledgeFSControlPlaneService, control_plane),
+        commands=cast(KnowledgeFSControlSpaceCommandService, commands),
+        facade=cast(KnowledgeFSDataFacade, facade),
+        rbac=cast(KnowledgeFSProductRBACPort, rbac),
     )
     return application, product, control_plane, commands, facade, rbac
 
@@ -138,8 +276,8 @@ def test_product_application_delegates_reads_without_reauthorizing() -> None:
     application, product, _control_plane, _commands, _facade, _rbac = _application()
     listed = object()
     detail = object()
-    product.list_spaces.return_value = listed
-    product.get_space.return_value = detail
+    product.list_result = listed
+    product.space_detail = detail
 
     assert (
         application.list_spaces(
@@ -153,18 +291,20 @@ def test_product_application_delegates_reads_without_reauthorizing() -> None:
         is listed
     )
     assert application.get_space(tenant_id="tenant-1", account_id="account-1", control_space_id="control-1") is detail
-    product.list_spaces.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        page=2,
-        limit=25,
-        creator_ids=["creator-1", "creator-2"],
-        tag_ids=None,
-        query="support",
-    )
-    product.get_space.assert_called_once_with(
-        tenant_id="tenant-1", account_id="account-1", control_space_id="control-1"
-    )
+    assert product.list_spaces_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "page": 2,
+            "limit": 25,
+            "creator_ids": ["creator-1", "creator-2"],
+            "tag_ids": None,
+            "query": "support",
+        }
+    ]
+    assert product.get_space_calls == [
+        {"tenant_id": "tenant-1", "account_id": "account-1", "control_space_id": "control-1"}
+    ]
 
 
 def test_product_application_create_enforces_workspace_rbac_before_command() -> None:
@@ -173,9 +313,9 @@ def test_product_application_create_enforces_workspace_rbac_before_command() -> 
     with pytest.raises(PermissionError, match="creation is not allowed"):
         application.create_space(tenant_id="tenant-1", account_id="account-1", payload=_create_payload())
 
-    product.require_product_routes.assert_called_once_with(tenant_id="tenant-1")
-    rbac.workspace_permission_allowed.assert_called_once()
-    commands.create_provision_intent.assert_not_called()
+    assert product.require_product_routes_calls == [{"tenant_id": "tenant-1"}]
+    assert len(rbac.calls) == 1
+    assert commands.provision_intents == []
 
 
 def test_product_application_create_preserves_model_profile_and_visibility_in_one_intent() -> None:
@@ -194,8 +334,8 @@ def test_product_application_create_preserves_model_profile_and_visibility_in_on
     assert response.control_space_id == "control-1"
     assert response.operation_id == "operation-1"
     assert response.model_setup_required is False
-    product.require_product_routes.assert_called_once_with(tenant_id="tenant-1")
-    intent = commands.create_provision_intent.call_args.args[0]
+    assert product.require_product_routes_calls == [{"tenant_id": "tenant-1"}]
+    intent = commands.provision_intents[-1]
     assert intent.idempotency_key == "create-once"
     assert intent.model_intent == {"pluginId": "plugin", "provider": "provider", "model": "embedding"}
     assert intent.profile_intent["rerank"] == {
@@ -209,8 +349,8 @@ def test_product_application_create_preserves_model_profile_and_visibility_in_on
     }
     assert intent.visibility is KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS
     assert intent.member_account_ids == ()
-    control_plane.update_visibility.assert_not_called()
-    control_plane.replace_members.assert_not_called()
+    assert control_plane.update_visibility_calls == []
+    assert control_plane.replace_members_calls == []
 
 
 def test_product_application_create_passes_initial_viewers_in_the_atomic_intent() -> None:
@@ -222,21 +362,21 @@ def test_product_application_create_passes_initial_viewers_in_the_atomic_intent(
 
     application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
 
-    intent = commands.create_provision_intent.call_args.args[0]
+    intent = commands.provision_intents[-1]
     assert intent.visibility is KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS
     assert intent.member_account_ids == ("member-1",)
-    assert [item.kwargs["permission"].value for item in rbac.workspace_permission_allowed.call_args_list] == [
+    assert [item["permission"].value for item in rbac.calls] == [
         "knowledge_space_create",
         "knowledge_space_access_config",
     ]
-    control_plane.update_visibility.assert_not_called()
-    control_plane.replace_members.assert_not_called()
+    assert control_plane.update_visibility_calls == []
+    assert control_plane.replace_members_calls == []
 
 
 @pytest.mark.parametrize("visibility", ["all_team_members", "partial_members"])
 def test_product_application_create_cannot_share_without_access_configuration_permission(visibility: str) -> None:
     application, _product, _control_plane, commands, _facade, rbac = _application()
-    rbac.workspace_permission_allowed.side_effect = [True, False]
+    rbac.queued_decisions = [True, False]
     payload = _create_payload(
         visibility=visibility,
         members=[{"account_id": "member-1", "role": "viewer"}] if visibility == "partial_members" else [],
@@ -245,7 +385,7 @@ def test_product_application_create_cannot_share_without_access_configuration_pe
     with pytest.raises(PermissionError, match="initial access configuration"):
         application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
 
-    commands.create_provision_intent.assert_not_called()
+    assert commands.provision_intents == []
 
 
 @pytest.mark.parametrize("visibility", ["all_team_members", "partial_members"])
@@ -254,7 +394,7 @@ def test_product_application_create_shared_space_without_enterprise_rbac(
 ) -> None:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     application, _product, _control_plane, commands, _facade, rbac = _application()
-    rbac.workspace_permission_allowed.side_effect = DifyKnowledgeFSProductRBACPort().workspace_permission_allowed
+    rbac.decide = DifyKnowledgeFSProductRBACPort().workspace_permission_allowed
     payload = _create_payload(
         visibility=visibility,
         members=[{"account_id": "member-1", "role": "viewer"}] if visibility == "partial_members" else [],
@@ -264,13 +404,13 @@ def test_product_application_create_shared_space_without_enterprise_rbac(
         response = application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
 
     assert response.control_space_id == "control-1"
-    commands.create_provision_intent.assert_called_once()
+    assert len(commands.provision_intents) == 1
     check_access.assert_not_called()
 
 
 def test_product_application_create_allows_model_setup_after_creation() -> None:
     application, _product, _control_plane, commands, _facade, _rbac = _application()
-    commands.create_provision_intent.return_value.model_setup_required = True
+    commands.provision_result.model_setup_required = True
 
     with patch(
         "services.knowledge_fs.product_application_service.uuid.uuid5",
@@ -282,7 +422,7 @@ def test_product_application_create_allows_model_setup_after_creation() -> None:
             payload=_create_payload(embedding=None, retrieval=None),
         )
 
-    intent = commands.create_provision_intent.call_args.args[0]
+    intent = commands.provision_intents[-1]
     assert intent.model_intent is None
     assert intent.profile_intent is None
     assert response.model_setup_required is True
@@ -408,15 +548,15 @@ def test_product_application_create_generates_idempotency_and_skips_default_visi
     ):
         application.create_space(tenant_id="tenant-1", account_id="account-1", payload=_create_payload())
 
-    assert commands.create_provision_intent.call_args.args[0].idempotency_key == "generated-idempotency"
-    control_plane.update_visibility.assert_not_called()
+    assert commands.provision_intents[-1].idempotency_key == "generated-idempotency"
+    assert control_plane.update_visibility_calls == []
 
 
 def test_product_application_update_applies_visibility_and_metadata_then_refetches() -> None:
     application, product, control_plane, _commands, facade, _rbac = _application()
     detail = object()
-    product.get_space.return_value = detail
-    facade.update_space.return_value = {"id": "space-1", "revision": 4}
+    product.space_detail = detail
+    facade.update_space_results = [{"id": "space-1", "revision": 4}]
     payload = KnowledgeFSSpaceUpdatePayload(
         icon_background="#FCE7F6",
         name="Renamed",
@@ -431,35 +571,41 @@ def test_product_application_update_applies_visibility_and_metadata_then_refetch
     )
 
     assert result is detail
-    product.authorize_control_space.assert_called_once()
-    control_plane.update_visibility.assert_called_once_with(
-        tenant_id="tenant-1",
-        actor_account_id="account-1",
-        control_space_id="control-1",
-        visibility=KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS,
-    )
-    metadata = facade.update_space.call_args.kwargs["payload"]
+    assert len(product.authorize_control_space_calls) == 1
+    assert control_plane.update_visibility_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "actor_account_id": "account-1",
+            "control_space_id": "control-1",
+            "visibility": KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS,
+        }
+    ]
+    metadata = facade.update_space_calls[-1]["payload"]
     assert metadata.name == "Renamed"
     assert metadata.icon_background is None
     assert metadata.visibility is None
-    control_plane.update_icon_background.assert_called_once_with(
-        tenant_id="tenant-1",
-        actor_account_id="account-1",
-        control_space_id="control-1",
-        icon_background="#FCE7F6",
-    )
-    control_plane.advance_knowledge_space_revision.assert_called_once_with(
-        tenant_id="tenant-1",
-        control_space_id="control-1",
-        knowledge_space_id="space-1",
-        revision=4,
-    )
+    assert control_plane.update_icon_background_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "actor_account_id": "account-1",
+            "control_space_id": "control-1",
+            "icon_background": "#FCE7F6",
+        }
+    ]
+    assert control_plane.advance_knowledge_space_revision_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "control_space_id": "control-1",
+            "knowledge_space_id": "space-1",
+            "revision": 4,
+        }
+    ]
 
 
 def test_product_application_updates_an_icon_background_without_remote_metadata_io() -> None:
     application, product, control_plane, _commands, facade, _rbac = _application()
     detail = object()
-    product.get_space.return_value = detail
+    product.space_detail = detail
 
     result = application.update_space(
         tenant_id="tenant-1",
@@ -469,26 +615,28 @@ def test_product_application_updates_an_icon_background_without_remote_metadata_
     )
 
     assert result is detail
-    facade.update_space.assert_not_called()
-    control_plane.update_icon_background.assert_called_once_with(
-        tenant_id="tenant-1",
-        actor_account_id="account-1",
-        control_space_id="control-1",
-        icon_background="#D3F8DF",
-    )
+    assert facade.update_space_calls == []
+    assert control_plane.update_icon_background_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "actor_account_id": "account-1",
+            "control_space_id": "control-1",
+            "icon_background": "#D3F8DF",
+        }
+    ]
 
 
 def test_product_application_update_recovers_one_stale_revision_conflict_then_syncs() -> None:
     application, product, control_plane, _commands, facade, _rbac = _application()
-    stale_detail = SimpleNamespace(
-        technical_summary=SimpleNamespace(
+    stale_detail = _SpaceDetail(
+        technical_summary=_TechnicalSummary(
             knowledge_space_id="space-1",
             revision=4,
         )
     )
     final_detail = object()
-    product.get_space.side_effect = [stale_detail, final_detail]
-    facade.update_space.side_effect = [
+    product.queued_space_details = [stale_detail, final_detail]
+    facade.update_space_results = [
         KnowledgeFSProductRequestRejectedError(status_code=409),
         {"id": "space-1", "revision": 5},
     ]
@@ -501,26 +649,26 @@ def test_product_application_update_recovers_one_stale_revision_conflict_then_sy
     )
 
     assert result is final_detail
-    assert facade.update_space.call_count == 2
-    assert control_plane.advance_knowledge_space_revision.call_args_list == [
-        call(
-            tenant_id="tenant-1",
-            control_space_id="control-1",
-            knowledge_space_id="space-1",
-            revision=4,
-        ),
-        call(
-            tenant_id="tenant-1",
-            control_space_id="control-1",
-            knowledge_space_id="space-1",
-            revision=5,
-        ),
+    assert len(facade.update_space_calls) == 2
+    assert control_plane.advance_knowledge_space_revision_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "control_space_id": "control-1",
+            "knowledge_space_id": "space-1",
+            "revision": 4,
+        },
+        {
+            "tenant_id": "tenant-1",
+            "control_space_id": "control-1",
+            "knowledge_space_id": "space-1",
+            "revision": 5,
+        },
     ]
 
 
 def test_product_application_update_does_not_retry_non_conflict_rejection() -> None:
     application, product, control_plane, _commands, facade, _rbac = _application()
-    facade.update_space.side_effect = KnowledgeFSProductRequestRejectedError(status_code=422)
+    facade.update_space_results = [KnowledgeFSProductRequestRejectedError(status_code=422)]
 
     with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
         application.update_space(
@@ -531,14 +679,14 @@ def test_product_application_update_does_not_retry_non_conflict_rejection() -> N
         )
 
     assert error.value.status_code == 422
-    facade.update_space.assert_called_once()
-    product.get_space.assert_not_called()
-    control_plane.advance_knowledge_space_revision.assert_not_called()
+    assert len(facade.update_space_calls) == 1
+    assert product.get_space_calls == []
+    assert control_plane.advance_knowledge_space_revision_calls == []
 
 
 def test_product_application_update_with_no_changes_only_refetches() -> None:
     application, product, control_plane, _commands, facade, _rbac = _application()
-    product.get_space.return_value = object()
+    product.space_detail = object()
 
     application.update_space(
         tenant_id="tenant-1",
@@ -547,9 +695,9 @@ def test_product_application_update_with_no_changes_only_refetches() -> None:
         payload=KnowledgeFSSpaceUpdatePayload(),
     )
 
-    control_plane.update_visibility.assert_not_called()
-    facade.update_space.assert_not_called()
-    product.get_space.assert_called_once()
+    assert control_plane.update_visibility_calls == []
+    assert facade.update_space_calls == []
+    assert len(product.get_space_calls) == 1
 
 
 def test_product_application_delete_authorizes_then_emits_one_command() -> None:
@@ -561,10 +709,12 @@ def test_product_application_delete_authorizes_then_emits_one_command() -> None:
     ):
         application.delete_space(tenant_id="tenant-1", account_id="account-1", control_space_id="control-1")
 
-    product.authorize_control_space.assert_called_once()
-    commands.request_deletion.assert_called_once_with(
-        tenant_id="tenant-1",
-        control_space_id="control-1",
-        operation_id="delete-operation-1",
-        idempotency_key="delete:delete-operation-1",
-    )
+    assert len(product.authorize_control_space_calls) == 1
+    assert commands.request_deletion_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "control_space_id": "control-1",
+            "operation_id": "delete-operation-1",
+            "idempotency_key": "delete:delete-operation-1",
+        }
+    ]
