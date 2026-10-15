@@ -322,6 +322,11 @@ jobs:
               "api/tests/unit_tests/libs/key_providers/test_rsa_key_provider.py",
               "api/tests/unit_tests/core/helper/test_encrypter.py",
               "api/tests/unit_tests/services/dify_builder/test_resources.py",
+              "api/tests/unit_tests/services/dify_builder/test_native_agent_catalog.py",
+              "api/tests/unit_tests/services/dify_builder/test_native_agent_binding.py",
+              "api/tests/unit_tests/services/dify_builder/test_node_policy.py",
+              "api/tests/unit_tests/core/workflow/nodes/agent_v2/test_binding_resolver.py",
+              "api/tests/unit_tests/controllers/common/test_agent_access.py",
               "api/tests/unit_tests/core/workflow/generator/test_tool_catalogue.py",
               "api/tests/unit_tests/services/tools/test_api_tool_catalogue.py",
               "api/tests/unit_tests/services/dify_builder/test_api_tool_output_context.py",
@@ -536,6 +541,73 @@ jobs:
           path: |
             builder-confirmed-tool-units.xml
             builder-confirmed-tool-units.log
+  native-continuation:
+    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      STORAGE_TYPE: opendal
+      OPENDAL_SCHEME: fs
+      OPENDAL_FS_ROOT: /tmp/dify-builder-continuation-storage
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - name: Native continuation durability on real PostgreSQL and protected storage
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-native-continuation.log
+          import xml.etree.ElementTree as ElementTree
+          from collections import Counter
+          from pathlib import Path
+
+          import pytest
+
+          EXPECTED = {'tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation': {'test_checkpoint_real_encrypted_storage_roundtrip_and_snapshot': 1, 'test_missing_checkpoint_ack_never_reports_resumable_waiting': 1, 'test_fake_checkpoint_and_cross_invocation_reference_rejected': 1, 'test_result_owner_digest_and_completed_effect_replay': 1, 'test_resume_double_submit_same_generation_and_single_worker_claim': 1, 'test_enqueue_ack_loss_republishes_same_dispatch': 1, 'test_crash_after_worker_claim_is_unknown_never_new_effect': 1, 'test_pending_resolution_requires_actual_owner_completion': 2, 'test_cancellation_stops_tree_and_projects_claimed_unknown': 1, 'test_expiry_revision_drift_and_actor_revocation_fail_resume': 1, 'test_production_dispatch_without_native_collaborator_fails_closed': 1, 'test_child_input_owner_and_unique_identity_and_completion_wakeup': 1}}
+          REPORT = "builder-native-continuation.xml"
+          code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_native_continuation.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-continuation.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
+          problems = []
+          identities = set()
+          actual = {module: Counter() for module in EXPECTED}
+          if not Path(REPORT).is_file():
+              problems.append("JUnit report missing")
+          else:
+              for case in ElementTree.parse(REPORT).getroot().iter("testcase"):
+                  classname, name = case.get("classname") or "", case.get("name") or ""
+                  identity = (classname, name)
+                  if identity in identities:
+                      problems.append(f"duplicate case {classname}::{name}")
+                  identities.add(identity)
+                  module = classname.removeprefix("api.")
+                  if module not in EXPECTED:
+                      problems.append(f"unexpected module {classname}::{name}")
+                  else:
+                      actual[module][name.split("[", 1)[0]] += 1
+                  if any(case.find(tag) is not None for tag in ("failure", "error", "skipped")):
+                      problems.append(f"nonpassing case {classname}::{name}")
+          for module, functions in EXPECTED.items():
+              print(f"COLLECTED {module}: {sum(actual[module].values())} cases", flush=True)
+              if dict(actual[module]) != functions:
+                  problems.append(f"case inventory mismatch {module}: {dict(actual[module])!r}")
+          print(f"COLLECTED total: {len(identities)} unique cases", flush=True)
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          raise SystemExit(int(code) or (1 if problems else 0))
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-native-continuation
+          path: |
+            builder-native-continuation.xml
+            builder-native-continuation.log
   native-agent-binding:
     if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
     runs-on: ubuntu-24.04
@@ -672,6 +744,49 @@ jobs:
               print(f"COMPLETENESS {problem}", flush=True)
           raise SystemExit(int(code) or (1 if problems else 0))
           PY
+      - name: Ordinary Agent compatibility and default-dependency package
+        working-directory: dify-agent
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --no-sync --extra server python -u - <<'PY' 2>&1 | tee builder-agent-regressions.log
+          import xml.etree.ElementTree as ElementTree
+          from collections import Counter
+          from pathlib import Path
+
+          import pytest
+
+          EXPECTED = {'tests.local.dify_agent.protocol.test_protocol_schemas': {'test_run_event_adapter_round_trips_typed_variants': 1, 'test_run_failed_event_error_type_is_optional_and_round_trips': 1, 'test_non_success_terminal_event_round_trips_optional_snapshot': 2, 'test_pydantic_ai_event_data_uses_agent_stream_event_model': 1, 'test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is_public': 1, 'test_protocol_package_no_longer_exports_execution_context_dto': 1, 'test_run_succeeded_event_data_requires_output': 1, 'test_run_succeeded_event_round_trips_explicit_json_null_output': 1, 'test_run_succeeded_event_round_trips_usage': 1, 'test_run_failed_event_round_trips_usage': 1, 'test_run_cancelled_event_round_trips_usage': 1, 'test_run_succeeded_event_round_trips_complete_pricing_usage': 1, 'test_create_run_request_rejects_removed_top_level_execution_context': 1, 'test_create_run_request_rejects_removed_top_level_purpose': 1, 'test_removed_non_terminal_payload_events_are_rejected': 2}, 'tests.local.dify_agent.protocol.test_working_environment': {'test_execution_binding_request_uses_opaque_backend_refs': 1, 'test_execution_binding_request_accepts_missing_or_null_home_snapshot_ref': 1, 'test_execution_binding_request_rejects_empty_home_snapshot_ref': 1, 'test_destroy_workspace_requires_workspace_ref': 1, 'test_snapshot_and_file_requests_locate_binding_directly': 1, 'test_binding_file_read_preview_uses_bounded_default_and_limit': 1}, 'tests.local.dify_agent.runtime.test_runner': {'test_native_run_restores_conversation_but_uses_current_instructions': 1, 'test_legacy_ask_human_pause_accepts_first_new_user_turn': 2, 'test_failure_saves_user_history_and_classified_event': 1, 'test_native_structured_output_uses_output_module': 2, 'test_cancellation_during_remote_observation_deletes_job_and_releases_lease': 1, 'test_bootstrap_failure_retries_and_success_is_not_repeated': 1, 'test_timeout_releases_resource_and_preserves_snapshot': 1, 'test_bad_configuration_prevents_resource_acquisition': 1, 'test_invalid_output_schema_fails_before_resource_and_model_io': 1, 'test_knowledge_user_context_is_captured_in_history_and_restored_cache': 2, 'test_empty_current_user_content_fails_before_model_io': 2}, 'tests.local.dify_agent.runtime.test_run_scheduler': {'test_default_runner_factory_passes_runtime_limits_to_runner': 1, 'test_default_runner_factory_passes_agent_observability_instance': 1, 'test_create_run_starts_background_task_and_returns_running': 1, 'test_shutdown_marks_unfinished_runs_failed_and_appends_event': 1, 'test_shutdown_failure_finalization_yields_to_concurrent_cancellation_intent': 1, 'test_cancellation_observer_failure_stops_runner_and_finalizes_failed': 1, 'test_cancellation_observer_failure_finalizes_concurrent_intent_after_runner_exit': 1, 'test_non_owner_cancel_run_stops_owner_task_and_persists_cancelled_terminal': 1, 'test_pre_enter_cancellation_does_not_copy_input_session_snapshot': 1, 'test_cancel_run_does_not_override_successful_terminal': 1, 'test_cancelled_terminal_survives_shutdown_while_runner_cleanup_is_pending': 1, 'test_failure_and_cancellation_keep_the_first_terminal': 2, 'test_shutdown_grace_allows_runner_first_completion_and_reaps_children': 1, 'test_shutdown_does_not_append_failed_after_success_wins': 1, 'test_cancel_run_rejects_finished_run': 1, 'test_create_run_accepts_blank_prompt_and_runner_fails_asynchronously': 1, 'test_create_run_accepts_invalid_output_schema_and_runner_fails_asynchronously': 1, 'test_create_run_rejects_after_shutdown_starts': 1, 'test_create_run_rejects_invalid_request_after_shutdown_without_persisting': 1, 'test_shutdown_waits_for_in_flight_create_to_register_before_cancelling': 1}, 'tests.local.dify_agent.storage.test_redis_run_store': {'test_create_run_writes_running_record_without_job_queue_and_with_retention': 1, 'test_rejects_non_positive_run_storage_bounds': 2, 'test_get_run_accepts_legacy_record_without_error_type': 1, 'test_request_cancellation_maps_eval_result_and_arguments': 1, 'test_finalize_cancellation_maps_eval_result_and_arguments': 1, 'test_finalize_failed_run_maps_eval_result_and_arguments': 1, 'test_request_cancellation_raises_when_record_is_missing': 1, 'test_wait_for_cancellation_reads_existing_intent_from_stream_start': 1, 'test_wait_for_cancellation_ignores_public_events': 1, 'test_append_event_serializes_typed_event_without_id_and_expires_run_keys': 1, 'test_append_event_keeps_only_the_configured_number_of_entries': 1, 'test_get_events_round_trips_run_succeeded_output_and_session_snapshot': 1, 'test_iter_events_ends_after_replaying_terminal_event': 3, 'test_iter_events_ends_after_live_terminal_event': 3}, 'tests.local.dify_agent.server.test_runs_routes': {'test_get_run_status_returns_failure_type': 1, 'test_create_run_accepts_effectively_blank_user_prompt_list': 1, 'test_create_run_returns_running_from_scheduler': 1, 'test_cancel_run_endpoint_returns_scheduler_result': 1, 'test_cancel_run_endpoint_maps_conflict': 1, 'test_cancel_run_endpoint_maps_missing_run': 1, 'test_create_run_accepts_valid_full_plugin_graph': 1, 'test_create_run_rejects_removed_layer_exit_signal_request': 1, 'test_create_run_accepts_closed_session_snapshot_request': 1, 'test_create_run_returns_503_when_scheduler_is_stopping': 1, 'test_create_run_does_not_map_infrastructure_failure_to_422': 1}, 'tests.local.dify_agent.server.test_app': {'test_create_app_authenticates_control_plane_routes': 4, 'test_create_app_wires_authenticated_agent_stub_connection_route': 1, 'test_create_app_wires_authenticated_agent_stub_file_upload_route': 1, 'test_create_plugin_daemon_http_client_uses_generic_outbound_httpx_construction_args': 1, 'test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construction_args': 1, 'test_create_app_lifecycle_owns_agent_observability_instance': 1, 'test_create_app_defaults_agent_observability_to_disabled': 1, 'test_create_app_passes_settings_to_server_observability': 1, 'test_server_settings_use_generic_outbound_http_args_for_shared_clients': 1, 'test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup': 2, 'test_create_app_native_owner_injection_and_truthful_capabilities': 1}, 'tests.local.dify_agent.client.test_client': {'test_sse_decoder_accepts_function_tool_result_part_alias': 1, 'test_function_tool_result_payload_normalization_supports_old_part_schema': 1, 'test_sync_methods_parse_protocol_dtos_and_send_create_request_dto': 1, 'test_async_methods_and_wait_run_parse_protocol_dtos': 1, 'test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot': 1, 'test_cancel_run_and_wait_sync_replays_when_cursor_already_points_to_cancelled_event': 1, 'test_cancel_run_and_wait_async_returns_cancelled_terminal': 1, 'test_cancel_run_and_wait_async_replays_when_cursor_already_points_to_cancelled_event': 1, 'test_sync_binding_file_methods_post_dtos_and_parse_responses': 1, 'test_async_binding_file_methods_post_dtos_and_parse_responses': 1, 'test_sync_execution_binding_client_uses_private_binding_routes': 1, 'test_sync_home_snapshot_client_parses_checkpoint_and_delete': 1, 'test_async_home_snapshot_client_parses_checkpoint_and_delete': 1, 'test_home_snapshot_client_maps_sync_validation_and_async_http_errors': 1, 'test_sync_download_binding_file_rejects_missing_reference': 1, 'test_sync_binding_file_methods_map_invalid_json_to_validation_error': 1, 'test_error_mapping_and_create_run_input_validation': 1, 'test_http_timeout_maps_to_client_timeout_error': 1, 'test_create_run_is_not_retried_after_timeout': 1, 'test_sync_sse_parser_supports_comments_multiline_data_and_id_fill': 1, 'test_sync_sse_parser_preserves_unicode_line_separators': 3, 'test_stream_events_stops_after_terminal_event': 1, 'test_stream_events_stops_after_cancelled_terminal_event': 1, 'test_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false': 1, 'test_stream_events_does_not_reconnect_after_terminal_transport_error': 1, 'test_stream_events_reconnects_from_latest_event_id': 1, 'test_stream_events_reconnects_after_http_5xx_response': 1, 'test_stream_events_raises_when_reconnects_are_exhausted': 1, 'test_stream_events_default_reconnect_budget_is_finite': 1, 'test_stream_events_enforces_total_timeout_before_connecting': 1, 'test_stream_events_observes_caller_stop_on_heartbeat': 1, 'test_malformed_sse_frame_does_not_reconnect': 1, 'test_async_stream_events_yields_terminal_event': 1, 'test_async_stream_events_enforces_total_timeout_before_connecting': 1, 'test_async_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false': 1, 'test_async_stream_events_does_not_reconnect_after_terminal_transport_error': 1, 'test_async_stream_events_reconnects_from_latest_event_after_transport_error': 1, 'test_async_stream_events_reconnects_after_eof_before_terminal': 1, 'test_async_sse_parser_preserves_unicode_line_separators': 1, 'test_async_stream_events_reconnects_after_http_5xx_response': 1, 'test_stream_timeout_can_reconnect_until_terminal': 1}, 'tests.local.dify_agent.test_client_safe_exports': {'test_client_public_exports_work_with_default_dependencies_only': 1}}
+          REPORT = "builder-agent-regressions.xml"
+          code = pytest.main(['tests/local/dify_agent/protocol/test_protocol_schemas.py', 'tests/local/dify_agent/protocol/test_working_environment.py', 'tests/local/dify_agent/runtime/test_runner.py', 'tests/local/dify_agent/runtime/test_run_scheduler.py', 'tests/local/dify_agent/storage/test_redis_run_store.py', 'tests/local/dify_agent/server/test_runs_routes.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/client/test_client.py', 'tests/local/dify_agent/test_client_safe_exports.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-agent-regressions.xml'])
+          problems = []
+          identities = set()
+          actual = {module: Counter() for module in EXPECTED}
+          if not Path(REPORT).is_file():
+              problems.append("JUnit report missing")
+          else:
+              for case in ElementTree.parse(REPORT).getroot().iter("testcase"):
+                  classname, name = case.get("classname") or "", case.get("name") or ""
+                  identity = (classname, name)
+                  if identity in identities:
+                      problems.append(f"duplicate case {classname}::{name}")
+                  identities.add(identity)
+                  module = classname.removeprefix("api.")
+                  if module not in EXPECTED:
+                      problems.append(f"unexpected module {classname}::{name}")
+                  else:
+                      actual[module][name.split("[", 1)[0]] += 1
+                  if any(case.find(tag) is not None for tag in ("failure", "error", "skipped")):
+                      problems.append(f"nonpassing case {classname}::{name}")
+          for module, functions in EXPECTED.items():
+              print(f"COLLECTED {module}: {sum(actual[module].values())} cases", flush=True)
+              if dict(actual[module]) != functions:
+                  problems.append(f"case inventory mismatch {module}: {dict(actual[module])!r}")
+          print(f"COLLECTED total: {len(identities)} unique cases", flush=True)
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          raise SystemExit(int(code) or (1 if problems else 0))
+          PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -679,6 +794,8 @@ jobs:
           path: |
             dify-agent/builder-native-agent.xml
             dify-agent/builder-native-agent.log
+            dify-agent/builder-agent-regressions.xml
+            dify-agent/builder-agent-regressions.log
   api-contract-codegen:
     if: github.event_name == 'workflow_dispatch' && inputs.contract_codegen
     runs-on: ubuntu-24.04
