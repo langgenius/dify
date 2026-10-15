@@ -411,7 +411,7 @@ class TestAgentAppRuntimeRequestBuilder:
                 size=11,
             )
             for upload_id, reference, filename in zip(
-                upload_ids, [upload_ids[0], references[1]], ["earth.png", "moon.png"]
+                upload_ids, [upload_ids[0], references[1]], ["earth.png", "moon.png"], strict=True
             )
         )
         result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(  # type: ignore[arg-type]
@@ -428,10 +428,10 @@ class TestAgentAppRuntimeRequestBuilder:
         assert isinstance(prompts[0], str)
         assert json.loads(prompts[0].splitlines()[-1]) == [
             {"filename": file.filename, "transfer_method": "local_file", "reference": reference}
-            for file, reference in zip(files, references)
+            for file, reference in zip(files, references, strict=True)
         ]
         assert len(prompts) == (3 if vision else 1)
-        for content, file in zip(prompts[1:], files):
+        for content, file in zip(prompts[1:], files, strict=False):
             if transport == "url":
                 assert isinstance(content, ImageUrl)
                 assert content.url == f"https://files.example.com/{file.filename}"

@@ -457,7 +457,7 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured() -> Non
 
 
 @pytest.mark.parametrize("mode", ["agent_app", "workflow"])
-def test_knowledge_fs_uses_only_the_shared_cli_layer_and_requires_shell(mode: str):
+def test_knowledge_fs_uses_only_the_shared_cli_layer_and_requires_shell(mode: str) -> None:
     config = DifyKnowledgeFsLayerConfig.model_validate(
         {"spaces": [{"id": "docs", "name": "Docs", "control_space_id": "00000000-0000-4000-8000-000000000001"}]}
     )
@@ -465,7 +465,7 @@ def test_knowledge_fs_uses_only_the_shared_cli_layer_and_requires_shell(mode: st
     run_input.knowledge_fs = config
     builder = AgentBackendRunRequestBuilder()
 
-    def build():
+    def build() -> CreateRunRequest:
         if isinstance(run_input, AgentBackendAgentAppRunInput):
             return builder.build_for_agent_app(run_input)
         return builder.build_for_workflow_node(run_input)

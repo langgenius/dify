@@ -21,7 +21,7 @@ def test_merge_migration_produces_a_single_head() -> None:
 
     assert migration.revision == "c4d8e2f7a1b6"
     assert migration.down_revision == ("89919253ca7a", "e6b4a2c9d731")
-    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["b2f4a6c8d901"]
+    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["c4e8a2f6b913"]
 
 
 def test_email_merge_includes_both_deployed_heads() -> None:
@@ -45,6 +45,7 @@ def test_email_merge_includes_both_deployed_heads() -> None:
     [
         ("a9c3e7f1b620", ("f7c8d9e0a1b2", "e7b2a9c4d601")),
         ("b2f4a6c8d901", ("a9c3e7f1b620", "a8c9e2f1b704")),
+        ("c4e8a2f6b913", ("b2f4a6c8d901", "f1d3c5b7a902")),
     ],
 )
 @pytest.mark.parametrize("parent_index", [0, 1])
@@ -73,6 +74,7 @@ def test_merge_upgrades_from_either_deployed_head(
     [
         ("a9c3e7f1b620", ("f7c8d9e0a1b2", "e7b2a9c4d601")),
         ("b2f4a6c8d901", ("a9c3e7f1b620", "a8c9e2f1b704")),
+        ("c4e8a2f6b913", ("b2f4a6c8d901", "f1d3c5b7a902")),
     ],
 )
 def test_merge_accepts_both_heads_already_applied(merge_revision: str, parent_heads: tuple[str, str]) -> None:
