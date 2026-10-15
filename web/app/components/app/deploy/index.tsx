@@ -12,12 +12,12 @@ import dynamic from 'next/dynamic'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getEnterpriseDocUrl } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDocLanguage } from '@/i18n/language'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
@@ -154,14 +154,15 @@ function AppDeployContent({
 }
 
 export default function AppDeploy() {
-  const appDetail = useAppStore((state) => state.appDetail)
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-
-  if (!appDetail) return <LoadingPlaceholder className="h-full" />
 
   const { canDeploy, canViewAccessPoint } = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,

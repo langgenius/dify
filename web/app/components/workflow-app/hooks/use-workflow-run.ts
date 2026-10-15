@@ -3,12 +3,12 @@ import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useRef } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -17,8 +17,9 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { usePathname } from '@/next/navigation'
+import { useParams, usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
+import { consoleQuery } from '@/service/console'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -117,6 +118,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const featuresStore = useFeaturesStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const configsMap = useConfigsMap()
   const { flowId, flowType } = configsMap
   const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)
@@ -225,13 +230,12 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         ...restCallback
       } = callback || {}
       workflowStore.setState({ historyWorkflowData: undefined })
-      const appDetail = useAppStore.getState().appDetail
       const runHistoryUrl = buildRunHistoryUrl(appDetail)
       const workflowContainer = document.getElementById('workflow-container')
 
       const { clientWidth, clientHeight } = workflowContainer!
 
-      const isInWorkflowDebug = appDetail?.mode === AppModeEnum.WORKFLOW
+      const isInWorkflowDebug = appDetail.mode === AppModeEnum.WORKFLOW
 
       const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
       const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
@@ -448,6 +452,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       doSyncWorkflowDraft,
       workflowStore,
       pathname,
+      appDetail,
       handleWorkflowFailed,
       flowId,
       handleWorkflowStarted,
@@ -496,7 +501,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       if (taskId) {
-        const appId = useAppStore.getState().appDetail?.id
         stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
         setStoppedState()
         return
@@ -523,7 +527,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       abortControllerRef.current = null
       setStoppedState()
     },
-    [workflowStore],
+    [appId, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(

@@ -1,10 +1,12 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useIsChatMode } from '../hooks/use-is-chat-mode'
 
 const MessageLogModal = dynamic(() => import('@/app/components/base/message-log-modal'), {
@@ -73,28 +75,30 @@ const WorkflowPanelOnRight = () => {
   )
 }
 const WorkflowPanel = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const versionHistoryPanelProps = useMemo(() => {
-    const appId = appDetail?.id
     return {
-      appMode: appDetail?.mode,
+      appMode: appDetail.mode,
       getVersionListUrl: `/apps/${appId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
       restoreVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
-      latestVersionId: appDetail?.workflow?.id,
+      latestVersionId: appDetail.workflow?.id,
     }
-  }, [appDetail?.id, appDetail?.mode, appDetail?.workflow?.id])
+  }, [appId, appDetail.mode, appDetail.workflow?.id])
 
   const panelProps: PanelProps = useMemo(() => {
     return {
       components: {
-        left: appDetail && <WorkflowPanelOnLeft appId={appDetail.id} />,
+        left: <WorkflowPanelOnLeft appId={appId} />,
         right: <WorkflowPanelOnRight />,
       },
       versionHistoryPanelProps,
     }
-  }, [appDetail, versionHistoryPanelProps])
+  }, [appId, versionHistoryPanelProps])
 
   return <Panel {...panelProps} />
 }

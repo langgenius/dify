@@ -18,12 +18,11 @@ import type { ModelItem } from '@/app/components/header/account-setting/model-pr
 import type { Emoji } from '@/app/components/tools/types'
 import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import type { DataSet } from '@/models/datasets'
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -36,6 +35,7 @@ import {
   getAgentToolPublishIssues,
   useAgentToolPresentation,
 } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
+import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
 import {
@@ -183,7 +183,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
-  const appMode = useAppStore.getState().appDetail?.mode
+  const { appId } = useParams<{ appId?: string }>()
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (appDetail) => appDetail.mode,
+    }),
+  )
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
   const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
@@ -651,7 +657,13 @@ export const useChecklistBeforePublish = () => {
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const appMode = useAppStore.getState().appDetail?.mode
+  const { appId } = useParams<{ appId?: string }>()
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (appDetail) => appDetail.mode,
+    }),
+  )
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 

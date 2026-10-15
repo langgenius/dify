@@ -1,4 +1,7 @@
-import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AgentSoulDifyToolConfig,
+  AppDetailWithSite,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { CommonNodeType, Node } from '../../types'
@@ -10,6 +13,8 @@ import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
@@ -128,14 +133,10 @@ vi.mock('../../nodes/_base/components/variable/utils', () => ({
   isSpecialVar: () => false,
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const state = { appDetail: { mode: 'workflow' } }
-  return {
-    useStore: {
-      getState: () => state,
-    },
-  }
-})
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 vi.mock('../../datasets-detail-store/store', () => ({
   useDatasetsDetailStore: () => ({}),
@@ -859,7 +860,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         'query',
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
+      select?: (data: AppDetailWithSite) => unknown
     }) => {
+      if (options.queryKey[0].join('.') === 'console.apps.byAppId.get') {
+        const appDetail = createAppDetailFixture({ mode: AppModeEnum.WORKFLOW })
+        return { data: options.select ? options.select(appDetail) : appDetail }
+      }
       if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
         return { data: mockModelProviders }
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
