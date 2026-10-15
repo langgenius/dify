@@ -63,7 +63,7 @@ on:
       test_scope:
         description: Select a focused lane; all always runs on build branch pushes
         type: choice
-        options: [all, native-agent, native-catalog, native-continuation, native-console, native-dispatch]
+        options: [all, native-agent, native-catalog, native-continuation, native-console, native-dispatch, native-postgres]
         default: all
 permissions:
   contents: read
@@ -72,7 +72,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-postgres:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all'))
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-postgres'))
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
