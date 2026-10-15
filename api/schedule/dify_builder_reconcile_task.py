@@ -110,4 +110,43 @@ def reconcile_interrupted_sessions() -> int:
             logger.warning("Dify Builder settled %s confirmed grant(s) left by terminal commands", repaired)
     except Exception:
         logger.exception("Dify Builder terminal confirmed grant repair failed")
+    reconcile_native_tests()
     return flagged
+
+
+def reconcile_native_tests(*, limit: int = 100) -> int:
+    """V2 outbox recovery uses durable rows; ordinary v1 jobs remain unchanged."""
+    from flask import current_app
+
+    from core.dify_builder.models import Actor
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from tasks.dify_builder_advance_task import advance_native_test
+
+    factory = current_app.extensions.get("builder_native_lifecycle_factory")
+    if factory is None:
+        return 0  # no qualified native runner configured; never fall back to v1
+    with _session_factory()() as session:
+        owners = session.execute(
+            select(DifyBuilderExecutionRequest.tenant_id, DifyBuilderExecutionRequest.actor_id)
+            .outerjoin(NativeDispatch, NativeDispatch.request_id == DifyBuilderExecutionRequest.id)
+            .join(NativeInvocationState, NativeInvocationState.request_id == DifyBuilderExecutionRequest.id)
+            .where(
+                NativeDispatch.state.in_(("queued", "published", "claimed"))
+                | (
+                    NativeInvocationState.cancellation_key.is_not(None)
+                    & NativeInvocationState.cleanup_complete.is_(False)
+                )
+            )
+            .distinct()
+            .limit(limit)
+        ).all()
+    recovered = 0
+    for tenant_id, actor_id in owners:
+        try:
+            service = factory(actor=Actor(account_id=actor_id, tenant_id=tenant_id))
+            recovered += service.reconcile(limit=limit)
+            recovered += service.publish_pending(publish=advance_native_test.delay, limit=limit)
+        except Exception:
+            logger.warning("Dify Builder native continuation requires attention (tenant=%s)", tenant_id)
+    return recovered

@@ -175,3 +175,66 @@ class NativePendingAction(Identity, InvocationOwner, Base):
     owner_ref: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     owner_version: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     operation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+
+
+class NativePayloadObject(Identity, InvocationOwner, Base):
+    """SQL acknowledgement of an encrypted immutable object, after storage readback."""
+
+    __tablename__ = "dify_builder_native_payload_objects"
+    __table_args__ = (
+        sa.UniqueConstraint("request_id", "invocation_id", "kind", "logical_key", name="native_payload_logical_key"),
+        sa.UniqueConstraint("storage_key", name="native_payload_storage_key"),
+        sa.CheckConstraint("kind IN ('context','checkpoint','result')", name="native_payload_kind"),
+    )
+    kind: Mapped[str] = mapped_column(sa.String(16), nullable=False)
+    logical_key: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    storage_key: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    payload_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    value_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+
+
+class NativeInvocationState(Identity, InvocationOwner, Base):
+    __tablename__ = "dify_builder_native_invocation_states"
+    __table_args__ = (
+        sa.UniqueConstraint("request_id", "invocation_id", name="native_state_invocation"),
+        sa.UniqueConstraint(
+            "request_id", "parent_invocation_id", "parent_operation_digest", name="native_child_occurrence"
+        ),
+        sa.CheckConstraint("generation >= 0", name="native_state_generation"),
+        sa.CheckConstraint(
+            "state IN ('running','waiting','queued','completed','stopped','unknown','cancelled')",
+            name="native_state_status",
+        ),
+    )
+    context_object_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    parent_invocation_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    parent_operation_digest: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    child_identity_digest: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    generation: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    state: Mapped[str] = mapped_column(sa.String(16), nullable=False)
+    checkpoint_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    pending_ids: Mapped[list] = mapped_column(AdjustedJSON, nullable=False)
+    wait_reason: Mapped[str | None] = mapped_column(sa.String(16), nullable=True)
+    outcome: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    resolution: Mapped[list] = mapped_column(AdjustedJSON, nullable=False)
+    cancellation_key: Mapped[str | None] = mapped_column(sa.String(64), nullable=True)
+    cleanup_complete: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+
+
+class NativeDispatch(Identity, InvocationOwner, Base):
+    """Durable outbox and single worker claim. Publish acknowledgements are advisory."""
+
+    __tablename__ = "dify_builder_native_dispatches"
+    __table_args__ = (
+        sa.UniqueConstraint("request_id", "invocation_id", "generation", name="native_dispatch_generation"),
+        sa.UniqueConstraint("request_id", "idempotency_digest", name="native_dispatch_idempotency"),
+        sa.CheckConstraint("generation >= 0", name="native_dispatch_counter"),
+        sa.CheckConstraint(
+            "state IN ('queued','published','claimed','completed','unknown','cancelled')", name="native_dispatch_state"
+        ),
+    )
+    generation: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    idempotency_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    state: Mapped[str] = mapped_column(sa.String(16), nullable=False)
+    checkpoint_id: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    claim_expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)

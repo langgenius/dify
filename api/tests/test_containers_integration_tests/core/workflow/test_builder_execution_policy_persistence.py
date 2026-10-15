@@ -198,7 +198,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "c67e12a904bf"
+    current_head = "d28f0e3c912a"
+    native_head = "c67e12a904bf"
     previous_merge = "a61e9b2c7d40"
     branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
     predecessor = "733e4c46f90e"
@@ -206,7 +207,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    native_revision = scripts.get_revision(current_head)
+    continuation_revision = scripts.get_revision(current_head)
+    assert continuation_revision is not None
+    assert continuation_revision.down_revision == native_head
+    native_revision = scripts.get_revision(native_head)
     assert native_revision is not None
     assert native_revision.down_revision == previous_merge
     current_merge = scripts.get_revision(previous_merge)
@@ -328,13 +332,23 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             )
         }
 
-        def witness(*, include_archive: bool = False, include_native: bool = False) -> dict[str, object]:
+        continuation_tables = {
+            "dify_builder_native_payload_objects",
+            "dify_builder_native_invocation_states",
+            "dify_builder_native_dispatches",
+        }
+
+        def witness(
+            *, include_archive: bool = False, include_native: bool = False, include_continuation: bool = False
+        ) -> dict[str, object]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
             if include_archive:
                 expected_tables.add("workflow_run_archive_bundles")
             if include_native:
                 expected_tables.update(native_tables)
+            if include_continuation:
+                expected_tables.update(continuation_tables)
             assert set(inspector.get_table_names(schema=schema)) == expected_tables
             return {
                 table: {
@@ -412,7 +426,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             ).scalar_one()
             is None
         )
-        assert migrate("head") == (current_head,)
+        assert migrate(native_head) == (native_head,)
         after_native = witness(include_archive=True, include_native=True)
         request_table = "dify_builder_execution_requests"
         previous_request = before[request_table]
@@ -431,6 +445,32 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         current_request["indexes"] = [index for index in current_request["indexes"] if index not in waiting_indexes]
         current_request["checks"] = previous_request["checks"]
         assert after_native == before
+        assert archive_witness() == archive_before
+
+        def native_ledger_witness() -> dict[str, object]:
+            inspector = inspect(connection)
+            result = {}
+            for table in sorted(native_tables):
+                primary_key = inspector.get_pk_constraint(table, schema=schema)
+                order = ",".join(f'"{name}"' for name in primary_key["constrained_columns"])
+                result[table] = {
+                    "columns": [
+                        (column["name"], str(column["type"]), column["nullable"], column["default"])
+                        for column in inspector.get_columns(table, schema=schema)
+                    ],
+                    "primary_key": primary_key,
+                    "indexes": inspector.get_indexes(table, schema=schema),
+                    "unique": inspector.get_unique_constraints(table, schema=schema),
+                    "checks": inspector.get_check_constraints(table, schema=schema),
+                    "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY {order}")).tuples()),
+                }
+            return result
+
+        before_continuation = witness(include_archive=True, include_native=True)
+        ledger_before = native_ledger_witness()
+        assert migrate("head") == (current_head,)
+        assert witness(include_archive=True, include_native=True, include_continuation=True) == before_continuation
+        assert native_ledger_witness() == ledger_before
         assert archive_witness() == archive_before
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
