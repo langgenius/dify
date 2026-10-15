@@ -1,7 +1,9 @@
 import inspect
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 from controllers.inner_api.knowledge_fs.texts import KnowledgeFSTextApi
@@ -17,13 +19,13 @@ PAYLOAD = {
 }
 
 
-def test_text_controller_rejects_unauthenticated_requests(app):
+def test_text_controller_rejects_unauthenticated_requests(app: Flask) -> None:
     with app.test_request_context(json=PAYLOAD):
         with pytest.raises(NotFound):
             KnowledgeFSTextApi().post()
 
 
-def test_text_controller_validates_before_opening_backend(app):
+def test_text_controller_validates_before_opening_backend(app: Flask) -> None:
     handler = KnowledgeFSTextApi()
     with (
         app.test_request_context(json={**PAYLOAD, "endpoint": "http://untrusted"}),
@@ -34,7 +36,7 @@ def test_text_controller_validates_before_opening_backend(app):
         client.assert_not_called()
 
 
-def test_text_controller_hides_provider_credentials(app):
+def test_text_controller_hides_provider_credentials(app: Flask) -> None:
     handler = KnowledgeFSTextApi()
     with (
         app.test_request_context(json=PAYLOAD),
@@ -49,9 +51,9 @@ def test_text_controller_hides_provider_credentials(app):
         assert error.value.__suppress_context__
 
 
-def test_text_controller_serializes_successful_response(app):
+def test_text_controller_serializes_successful_response(app: Flask) -> None:
     handler = KnowledgeFSTextApi()
-    result = {"points": [], "matches": [{"id": PAYLOAD["ids"][0], "score": 0.75}]}
+    result: dict[str, list[dict[str, object]]] = {"points": [], "matches": [{"id": PAYLOAD["ids"][0], "score": 0.75}]}
     with (
         app.test_request_context(json=PAYLOAD),
         patch("controllers.inner_api.knowledge_fs.texts.configured_text_client"),
@@ -60,7 +62,7 @@ def test_text_controller_serializes_successful_response(app):
         assert inspect.unwrap(handler.post)(handler) == result
 
 
-def test_text_controller_accepts_only_configured_inner_key(app, config_overrides):
+def test_text_controller_accepts_only_configured_inner_key(app: Flask, config_overrides: Callable[..., None]) -> None:
     config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
     with (
         patch("controllers.inner_api.knowledge_fs.texts.configured_text_client") as client,
@@ -79,7 +81,7 @@ def test_text_controller_accepts_only_configured_inner_key(app, config_overrides
             client.assert_called_once_with(PAYLOAD["scope"]["tenant_id"], allow_create=False)
 
 
-def test_text_controller_reports_pending_index_without_leaking_credentials(app):
+def test_text_controller_reports_pending_index_without_leaking_credentials(app: Flask) -> None:
     from services.knowledge_fs.text_store import TextIndexPendingError
 
     handler = KnowledgeFSTextApi()

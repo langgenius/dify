@@ -1,8 +1,10 @@
 import inspect
-from contextlib import nullcontext
+from collections.abc import Callable
+from contextlib import AbstractContextManager, nullcontext
 from unittest.mock import patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
 from controllers.inner_api.knowledge_fs.vectors import KnowledgeFSVectorApi, KnowledgeFSVectorQuotaExceededError
@@ -21,13 +23,13 @@ PAYLOAD = {
 }
 
 
-def test_vector_controller_rejects_unauthenticated_requests(app):
+def test_vector_controller_rejects_unauthenticated_requests(app: Flask) -> None:
     with app.test_request_context(json=PAYLOAD):
         with pytest.raises(NotFound):
             KnowledgeFSVectorApi().post()
 
 
-def test_vector_controller_validates_before_opening_backend(app):
+def test_vector_controller_validates_before_opening_backend(app: Flask) -> None:
     handler = KnowledgeFSVectorApi()
     with (
         app.test_request_context(json={**PAYLOAD, "endpoint": "http://untrusted"}),
@@ -38,7 +40,7 @@ def test_vector_controller_validates_before_opening_backend(app):
         client.assert_not_called()
 
 
-def test_vector_controller_hides_provider_credentials(app):
+def test_vector_controller_hides_provider_credentials(app: Flask) -> None:
     handler = KnowledgeFSVectorApi()
     with (
         app.test_request_context(json=PAYLOAD),
@@ -53,9 +55,9 @@ def test_vector_controller_hides_provider_credentials(app):
         assert error.value.__suppress_context__
 
 
-def test_vector_controller_serializes_successful_response(app):
+def test_vector_controller_serializes_successful_response(app: Flask) -> None:
     handler = KnowledgeFSVectorApi()
-    result = {"points": [], "matches": [{"id": PAYLOAD["ids"][0], "score": 0.75}]}
+    result: dict[str, list[dict[str, object]]] = {"points": [], "matches": [{"id": PAYLOAD["ids"][0], "score": 0.75}]}
     with (
         app.test_request_context(json=PAYLOAD),
         patch("controllers.inner_api.knowledge_fs.vectors.configured_vector_client"),
@@ -64,7 +66,7 @@ def test_vector_controller_serializes_successful_response(app):
         assert inspect.unwrap(handler.post)(handler) == result
 
 
-def test_vector_controller_accepts_only_configured_inner_key(app, config_overrides):
+def test_vector_controller_accepts_only_configured_inner_key(app: Flask, config_overrides: Callable[..., None]) -> None:
     config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
     with (
         patch("controllers.inner_api.knowledge_fs.vectors.configured_vector_client") as client,
@@ -83,7 +85,7 @@ def test_vector_controller_accepts_only_configured_inner_key(app, config_overrid
             client.assert_called_once_with(PAYLOAD["scope"]["tenant_id"], allow_create=False)
 
 
-def test_vector_controller_reports_quota_failure(app):
+def test_vector_controller_reports_quota_failure(app: Flask) -> None:
     handler = KnowledgeFSVectorApi()
     with (
         app.test_request_context(json=PAYLOAD),
@@ -98,9 +100,9 @@ def test_vector_controller_reports_quota_failure(app):
 
 
 @pytest.mark.parametrize("operation", ["get", "search", "delete", "upsert"])
-def test_only_admitted_writes_can_provision(app, operation):
+def test_only_admitted_writes_can_provision(app: Flask, operation: str) -> None:
     handler = KnowledgeFSVectorApi()
-    payload = {**PAYLOAD, "operation": operation}
+    payload: dict[str, object] = {**PAYLOAD, "operation": operation}
     if operation == "search":
         payload["query_vector"] = [1, 0]
     if operation == "upsert":
@@ -118,7 +120,7 @@ def test_only_admitted_writes_can_provision(app, operation):
         ) as execute,
     ):
 
-        def open_client(*_args, **_kwargs):
+        def open_client(*_args: object, **_kwargs: object) -> AbstractContextManager[object]:
             admit.assert_called_once()
             return nullcontext(object())
 
@@ -128,7 +130,7 @@ def test_only_admitted_writes_can_provision(app, operation):
         assert execute.call_args.kwargs["check_admission"] is False
 
 
-def test_quota_rejection_cannot_allocate_a_cluster(app):
+def test_quota_rejection_cannot_allocate_a_cluster(app: Flask) -> None:
     handler = KnowledgeFSVectorApi()
     with (
         app.test_request_context(json=PAYLOAD),
@@ -150,8 +152,9 @@ def test_quota_rejection_cannot_allocate_a_cluster(app):
         (VectorSpaceAdmissionUnavailableError("vector usage is unavailable"), 503, "vector_space_quota_unavailable"),
     ],
 )
-def test_http_quota_failure_cannot_allocate_a_cluster(config_overrides, admission_error, status_code, error_code):
-    from flask import Flask
+def test_http_quota_failure_cannot_allocate_a_cluster(
+    config_overrides: Callable[..., None], admission_error: Exception, status_code: int, error_code: str
+) -> None:
     from flask_restx import Api
 
     config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
@@ -177,7 +180,7 @@ def test_http_quota_failure_cannot_allocate_a_cluster(config_overrides, admissio
     execute.assert_not_called()
 
 
-def test_pending_cluster_returns_explicit_retry_after_without_secrets(app):
+def test_pending_cluster_returns_explicit_retry_after_without_secrets(app: Flask) -> None:
     from services.tidb_binding_service import TidbBindingPendingError
 
     handler = KnowledgeFSVectorApi()
@@ -194,8 +197,7 @@ def test_pending_cluster_returns_explicit_retry_after_without_secrets(app):
         assert "private" not in str(error.value)
 
 
-def test_http_pending_response_preserves_retry_after_header(config_overrides):
-    from flask import Flask
+def test_http_pending_response_preserves_retry_after_header(config_overrides: Callable[..., None]) -> None:
     from flask_restx import Api
 
     from services.tidb_binding_service import TidbBindingPendingError

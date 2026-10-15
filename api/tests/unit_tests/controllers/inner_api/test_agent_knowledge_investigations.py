@@ -1,11 +1,14 @@
 """Queue admission and authorization boundaries for runtime quality reports."""
 
-from unittest.mock import patch
+from collections.abc import Iterator
+from typing import TypedDict
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from flask import Flask
+from flask.testing import FlaskClient
 from flask_restx.swagger import Swagger
 
 from controllers.inner_api import api as inner_api
@@ -16,7 +19,16 @@ PATH = "/inner/api/agent/knowledge/investigations"
 HEADERS = {"X-Inner-Api-Key": "inner-key"}
 
 
-def _report() -> dict:
+class _Report(TypedDict):
+    investigation_id: str
+    execution_context: dict[str, str]
+    bindings: list[dict[str, str]]
+    query: str
+    status: str
+    attempts: list[dict[str, object]]
+
+
+def _report() -> _Report:
     spaces = [str(uuid4()), str(uuid4())]
     return {
         "investigation_id": str(uuid4()),
@@ -42,7 +54,7 @@ def _report() -> dict:
 
 
 @pytest.fixture
-def boundary():
+def boundary() -> Iterator[tuple[FlaskClient, MagicMock, MagicMock]]:
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.register_blueprint(inner_api_bp)
@@ -57,7 +69,7 @@ def boundary():
         yield app.test_client(), gateway.return_value, enqueue
 
 
-def test_queues_once_per_space_with_original_identity(boundary) -> None:
+def test_queues_once_per_space_with_original_identity(boundary: tuple[FlaskClient, MagicMock, MagicMock]) -> None:
     client, gateway, enqueue = boundary
     payload = _report()
     response = client.post(PATH, json=payload, headers=HEADERS)
@@ -75,27 +87,27 @@ def test_queues_once_per_space_with_original_identity(boundary) -> None:
     gateway.capture_investigation.assert_not_called()
 
 
-def test_revoked_scope_cannot_enqueue_a_report(boundary) -> None:
+def test_revoked_scope_cannot_enqueue_a_report(boundary: tuple[FlaskClient, MagicMock, MagicMock]) -> None:
     client, gateway, enqueue = boundary
     gateway.authorize_investigation.side_effect = KnowledgeFsError("KNOWLEDGE_SCOPE_MISMATCH", "revoked", 403)
     assert client.post(PATH, json=_report(), headers=HEADERS).status_code == 403
     enqueue.assert_not_called()
 
 
-def test_broker_failure_is_not_acknowledged_as_accepted(boundary) -> None:
+def test_broker_failure_is_not_acknowledged_as_accepted(boundary: tuple[FlaskClient, MagicMock, MagicMock]) -> None:
     client, _, enqueue = boundary
     enqueue.side_effect = OSError("broker offline")
     assert client.post(PATH, json=_report(), headers=HEADERS).status_code == 500
 
 
-def test_missing_inner_api_key_cannot_enqueue_a_report(boundary) -> None:
+def test_missing_inner_api_key_cannot_enqueue_a_report(boundary: tuple[FlaskClient, MagicMock, MagicMock]) -> None:
     client, gateway, enqueue = boundary
     assert client.post(PATH, json=_report()).status_code == 404
     gateway.authorize_investigation.assert_not_called()
     enqueue.assert_not_called()
 
 
-def test_swagger_documents_report_and_queue_admission(boundary) -> None:
+def test_swagger_documents_report_and_queue_admission(boundary: tuple[FlaskClient, MagicMock, MagicMock]) -> None:
     client, _, _ = boundary
     with client.application.test_request_context():
         schema = Swagger(inner_api).as_dict()
