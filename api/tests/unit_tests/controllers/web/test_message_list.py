@@ -1,255 +1,328 @@
-"""Unit tests for controllers.web.message message list mapping."""
+"""Web message history through real passport admission and detached SQLite reads."""
 
-from __future__ import annotations
-
-import builtins
-import inspect
 import json
-import uuid
-from datetime import datetime
-from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from unittest.mock import ANY, patch
+from collections.abc import Callable, Iterator
+from datetime import datetime, timedelta
+from decimal import Decimal
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
+from typing import override
 from uuid import uuid4
 
 import pytest
-from flask import Flask
-from flask.views import MethodView
+from sqlalchemy import delete, event, update
+from sqlalchemy.orm import Session
+from werkzeug.test import TestResponse
 
-from controllers.common.controller_schemas import MessageListQuery
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.entities.execution_extra_content import HumanInputContent
-from models.enums import ConversationFromSource, EndUserType, FeedbackFromSource, FeedbackRating
-from models.model import (
-    App,
-    AppMode,
-    Conversation,
-    EndUser,
-    Message,
-    MessageAgentThought,
-    MessageFeedback,
+from core.helper import http_client_pooling
+from graphon.file import FileTransferMethod, FileType
+from models.enums import (
+    ConversationFromSource,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageFileBelongsTo,
 )
+from models.model import App, AppMode, Conversation, EndUser, Message, MessageAgentThought, MessageFeedback, MessageFile
+from tests.unit_tests.controllers.web.test_message_feedback import _Harness
+from tests.unit_tests.controllers.web.test_message_feedback import harness as admission_harness
+from tests.unit_tests.model_factories import make_message
 
-# Ensure flask_restx.api finds MethodView during import.
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
-
-
-def _load_controller_module():
-    """Import controllers.web.message using a stub package."""
-
-    import importlib
-    import importlib.util
-    import sys
-
-    parent_module_name = "controllers.web"
-    module_name = f"{parent_module_name}.message"
-
-    if parent_module_name not in sys.modules:
-        from flask_restx import Namespace
-
-        stub = ModuleType(parent_module_name)
-        web_controller_dir = Path(__file__).resolve().parents[4] / "controllers" / "web"
-        stub.__file__ = str(web_controller_dir / "__init__.py")
-        stub.__path__ = [str(web_controller_dir)]
-        stub.__package__ = "controllers"
-        stub.__spec__ = importlib.util.spec_from_loader(parent_module_name, loader=None, is_package=True)
-        stub.web_ns = Namespace("web", description="Web API", path="/")
-        sys.modules[parent_module_name] = stub
-
-    wraps_module_name = f"{parent_module_name}.wraps"
-    if wraps_module_name not in sys.modules:
-        wraps_stub = ModuleType(wraps_module_name)
-
-        class WebApiResource:
-            pass
-
-        wraps_stub.WebApiResource = WebApiResource
-        sys.modules[wraps_module_name] = wraps_stub
-
-    return importlib.import_module(module_name)
-
-
-message_module = _load_controller_module()
-MessageListApi = message_module.MessageListApi
+harness = admission_harness
 
 
 @pytest.fixture
-def app() -> Flask:
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    return app
+def remote_files(
+    harness: _Harness, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[str, list[tuple[str, str, bool]]]]:
+    config_overrides(SSRF_PROXY_HTTP_URL="", SSRF_PROXY_HTTPS_URL="", SSRF_PROXY_ALL_URL="")
+    requests: list[tuple[str, str, bool]] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            pass
+
+        def do_HEAD(self) -> None:
+            requests.append((self.command, self.path, any(session.in_transaction() for session in harness.sessions)))
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", "42")
+            self.send_header("Content-Disposition", "attachment; filename*=UTF-8''downloaded%20image.png")
+            self.end_headers()
+
+    http_pool = http_client_pooling.HttpClientPoolFactory()
+    monkeypatch.setattr(http_client_pooling, "_factory", http_pool)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}", requests
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+        http_pool.close_all()
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(App, Conversation, EndUser, Message, MessageAgentThought, MessageFeedback)],
-    indirect=True,
-)
-def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session) -> None:
-    conversation_id = str(uuid4())
-    message_id = str(uuid4())
+def _get(harness: _Harness, **query: object) -> TestResponse:
+    return harness.app.test_client().get(
+        "/messages",
+        query_string={"conversation_id": harness.message.conversation_id, **query},
+        headers=harness.headers,
+    )
 
-    created_at = datetime(2024, 1, 1, 12, 0, 0)
-    resource_created_at = datetime(2024, 1, 1, 13, 0, 0)
-    thought_created_at = datetime(2024, 1, 1, 14, 0, 0)
 
-    retriever_resource = {
-        "id": "res-obj",
-        "message_id": message_id,
-        "position": 2,
-        "dataset_id": "ds-1",
-        "dataset_name": "dataset",
-        "document_id": "doc-1",
-        "document_name": "document",
-        "data_source_type": "file",
-        "segment_id": "seg-1",
-        "score": 0.9,
-        "hit_count": 1,
-        "word_count": 10,
-        "segment_position": 0,
-        "index_node_hash": "hash",
-        "content": "content",
-        "created_at": int(resource_created_at.timestamp()),
-    }
-
-    agent_thought = MessageAgentThought(
-        message_chain_id="chain-1",
-        message_id=message_id,
+def test_message_list_preserves_wire_shape_and_loaded_relationships(
+    harness: _Harness, remote_files: tuple[str, list[tuple[str, str, bool]]]
+) -> None:
+    remote_url, requests = remote_files
+    created_at = datetime(2024, 1, 1, 12)
+    thought = MessageAgentThought(
+        message_id=harness.message.id,
+        message_chain_id=str(uuid4()),
         position=1,
-        created_by_role="end_user",
-        created_by="end-user-1",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=harness.end_user.id,
         thought="thinking",
-        tool="tool",
-        tool_labels_str=json.dumps({"label": "value"}),
-        tool_input="{}",
-        observation="observed",
-        message_files=json.dumps(["file-a"]),
+        tool="search",
+        tool_labels_str='{"search": "Search"}',
+        message_files='["file-a"]',
     )
-    agent_thought.id = "thought-1"
-    agent_thought.created_at = thought_created_at
-
-    message_files = [
-        {"id": "file-dict", "filename": "a.txt", "type": "file", "transfer_method": "local"},
-        {"id": "file-obj", "filename": "b.txt", "type": "file", "transfer_method": "local"},
-    ]
-
-    app_model = App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Chat App",
-        mode=AppMode.CHAT,
-        enable_site=False,
-        enable_api=False,
+    thought.created_at = created_at
+    attachment = MessageFile(
+        message_id=harness.message.id,
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=harness.end_user.id,
+        belongs_to=MessageFileBelongsTo.USER,
+        url=f"{remote_url}/user-image.png",
     )
-    end_user = EndUser(
-        id="end-user-1",
-        tenant_id="tenant-1",
-        app_id=app_model.id,
-        type=EndUserType.BROWSER,
-        name="Web User",
-        session_id="session-1",
+    assistant_attachment = MessageFile(
+        message_id=harness.message.id,
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by=harness.end_user.id,
+        belongs_to=MessageFileBelongsTo.ASSISTANT,
+        url=f"{remote_url}/assistant-image.png",
     )
-    conversation = Conversation(
-        id=conversation_id,
-        app_id=app_model.id,
-        mode=AppMode.CHAT,
-        name="Conversation",
-        _inputs={},
-        status="normal",
-        from_source=ConversationFromSource.API,
-        from_end_user_id=end_user.id,
-    )
-    message = Message(
-        id=message_id,
-        app_id=app_model.id,
-        conversation_id=conversation_id,
-        parent_message_id=None,
-        _inputs={"foo": "bar"},
-        query="hello",
-        message={},
-        answer="answer",
-        message_unit_price=0,
-        message_price_unit=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
-        provider_response_latency=0,
-        total_price=0,
-        currency="USD",
-        invoke_from=InvokeFrom.SERVICE_API,
-        from_source=ConversationFromSource.API,
-        from_end_user_id=end_user.id,
-        app_mode=AppMode.CHAT,
-        message_metadata=json.dumps(
-            {
-                "meta": "value",
-                "retriever_resources": [
-                    {"id": "res-dict", "message_id": message_id, "position": 1},
-                    retriever_resource,
-                ],
-            }
-        ),
-        created_at=created_at,
-        status="normal",
-        error=None,
-    )
-    message.set_extra_contents(
-        [
-            HumanInputContent(
-                workflow_run_id=str(uuid.uuid4()),
-                submitted=True,
-            ).model_dump(mode="json")
-        ]
-    )
-    feedback = MessageFeedback(
-        app_id=app_model.id,
-        conversation_id=conversation_id,
-        message_id=message_id,
-        rating=FeedbackRating.LIKE,
-        from_source=FeedbackFromSource.USER,
-        from_end_user_id=end_user.id,
-    )
-    sqlite_session.add_all([app_model, end_user, conversation, message, feedback, agent_thought])
-    sqlite_session.commit()
+    resource_id = str(uuid4())
+    metadata = {
+        "custom": "metadata",
+        "retriever_resources": [{"id": resource_id, "message_id": harness.message.id, "position": 1}],
+    }
+    with harness.factory.begin() as session:
+        session.execute(
+            update(Message)
+            .where(Message.id == harness.message.id)
+            .values(
+                {
+                    Message._inputs: {"text": "hello", "nested": {"value": [1, None]}},
+                    Message.message_metadata: json.dumps(metadata),
+                    Message.created_at: created_at,
+                    Message.message_tokens: 3,
+                    Message.answer_tokens: 5,
+                    Message.total_price: Decimal("0.0012"),
+                    Message.provider_response_latency: 0.25,
+                }
+            )
+        )
+        session.add_all(
+            [
+                thought,
+                attachment,
+                assistant_attachment,
+                MessageFeedback(
+                    app_id=harness.target.id,
+                    conversation_id=harness.message.conversation_id,
+                    message_id=harness.message.id,
+                    rating=FeedbackRating.LIKE,
+                    from_source=FeedbackFromSource.USER,
+                    from_end_user_id=harness.end_user.id,
+                ),
+            ]
+        )
 
-    pagination = SimpleNamespace(limit=20, has_more=False, data=[message])
+    commits: list[Session] = []
 
-    def message_files_with_session(_self, *, session):
-        del session
-        return message_files
+    def record_commit(session: Session) -> None:
+        commits.append(session)
 
-    monkeypatch.setattr(Message, "message_files_with_session", message_files_with_session)
-
-    with (
-        patch.object(message_module.MessageService, "pagination_by_first_id", return_value=pagination) as mock_page,
-        patch.object(message_module.db, "session", return_value=sqlite_session),
-        app.test_request_context(f"/messages?conversation_id={conversation_id}&limit=20"),
-    ):
-        query = MessageListQuery.model_validate({"conversation_id": conversation_id, "limit": 20})
-        response = inspect.unwrap(MessageListApi.get)(MessageListApi(), query, app_model, end_user)
-
-    mock_page.assert_called_once_with(app_model, end_user, conversation_id, None, 20, session=ANY)
-    assert response["limit"] == 20
-    assert response["has_more"] is False
-    assert len(response["data"]) == 1
-
-    item = response["data"][0]
-    assert item["id"] == message_id
-    assert item["conversation_id"] == conversation_id
-    assert item["inputs"] == {"foo": "bar"}
+    event.listen(Session, "before_commit", record_commit)
+    try:
+        response = _get(harness)
+    finally:
+        event.remove(Session, "before_commit", record_commit)
+    assert response.status_code == HTTPStatus.OK
+    assert not commits
+    assert sorted(requests) == [("HEAD", "/assistant-image.png", False), ("HEAD", "/user-image.png", False)]
+    assert response.headers["Content-Type"] == "application/json"
+    body = response.get_json()
+    assert body["limit"] == 20
+    assert body["has_more"] is False
+    [item] = body["data"]
+    assert set(item) == {
+        "id",
+        "conversation_id",
+        "parent_message_id",
+        "inputs",
+        "query",
+        "answer",
+        "feedback",
+        "retriever_resources",
+        "created_at",
+        "agent_thoughts",
+        "message_files",
+        "message_tokens",
+        "answer_tokens",
+        "provider_response_latency",
+        "total_price",
+        "currency",
+        "status",
+        "error",
+        "extra_contents",
+        "total_tokens",
+        "metadata",
+    }
+    assert item["id"] == harness.message.id
+    assert item["conversation_id"] == harness.message.conversation_id
+    assert item["parent_message_id"] is None
+    assert item["inputs"] == {"text": "hello", "nested": {"value": [1, None]}}
+    assert item["query"] == "question"
     assert item["answer"] == "answer"
-    assert item["feedback"]["rating"] == "like"
-    assert item["metadata"]["meta"] == "value"
+    assert item["feedback"] == {"rating": "like"}
+    assert item["metadata"] == metadata
+    assert item["retriever_resources"][0]["id"] == resource_id
     assert item["created_at"] == int(created_at.timestamp())
+    assert item["message_tokens"] == 3
+    assert item["answer_tokens"] == 5
+    assert item["total_tokens"] == 8
+    assert Decimal(item["total_price"]) == Decimal("0.0012")
+    assert item["provider_response_latency"] == 0.25
+    assert item["currency"] == "USD"
+    assert item["status"] == "normal"
+    assert item["error"] is None
+    assert item["extra_contents"] == []
+    [actual_thought] = item["agent_thoughts"]
+    assert actual_thought["id"] == thought.id
+    assert actual_thought["chain_id"] == thought.message_chain_id
+    assert actual_thought["tool_labels"] == {"search": "Search"}
+    assert actual_thought["files"] == ["file-a"]
+    assert actual_thought["created_at"] == int(created_at.timestamp())
+    assert len(item["message_files"]) == 2
+    actual_files = {file["id"]: file for file in item["message_files"]}
+    for expected in (attachment, assistant_attachment):
+        actual_file = actual_files[expected.id]
+        assert expected.belongs_to is not None
+        assert actual_file["url"] == expected.url
+        assert actual_file["transfer_method"] == "remote_url"
+        assert actual_file["type"] == "image"
+        assert actual_file["belongs_to"] == expected.belongs_to.value
+        assert actual_file["filename"] == "downloaded image.png"
+        assert actual_file["mime_type"] == "image/png"
+        assert actual_file["size"] == 42
+    harness.assert_closed()
 
-    assert item["retriever_resources"][0]["id"] == "res-dict"
-    assert item["retriever_resources"][1]["id"] == "res-obj"
-    assert item["retriever_resources"][1]["created_at"] == int(resource_created_at.timestamp())
 
-    assert item["agent_thoughts"][0]["chain_id"] == "chain-1"
-    assert item["agent_thoughts"][0]["created_at"] == int(thought_created_at.timestamp())
-    assert item["extra_contents"][0]["workflow_run_id"] == message.extra_contents[0]["workflow_run_id"]
-    assert item["extra_contents"][0]["submitted"] == message.extra_contents[0]["submitted"]
+def test_pagination_returns_latest_slice_in_ascending_order(harness: _Harness) -> None:
+    created_at = datetime(2024, 1, 1)
+    messages = [
+        make_message(
+            message_id=str(uuid4()),
+            app_id=harness.target.id,
+            conversation_id=harness.message.conversation_id,
+            inputs={},
+            query=f"question-{index}",
+            message={},
+            answer=f"answer-{index}",
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            from_end_user_id=harness.end_user.id,
+            created_at=created_at + timedelta(seconds=index),
+        )
+        for index in (1, 2)
+    ]
+    with harness.factory.begin() as session:
+        session.execute(update(Message).where(Message.id == harness.message.id).values(created_at=created_at))
+        session.add_all(messages)
+    response = _get(harness, limit=2)
+    assert response.status_code == HTTPStatus.OK
+    body = response.get_json()
+    assert body["limit"] == 2
+    assert body["has_more"] is True
+    assert [item["id"] for item in body["data"]] == [message.id for message in messages]
+    previous = _get(harness, first_id=messages[0].id, limit=2).get_json()
+    assert previous["has_more"] is False
+    assert [item["id"] for item in previous["data"]] == [harness.message.id]
+    assert _get(harness, first_id=harness.message.id, limit=2).get_json() == {"limit": 2, "has_more": False, "data": []}
+    harness.assert_closed()
 
-    assert item["message_files"][0]["id"] == "file-dict"
-    assert item["message_files"][1]["id"] == "file-obj"
+
+def test_empty_conversation_keeps_pagination_shape(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        session.execute(delete(Message).where(Message.id == harness.message.id))
+    assert _get(harness, limit=100).get_json() == {"limit": 100, "has_more": False, "data": []}
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("field", ["app_id", "from_end_user_id", "from_account_id", "from_source"])
+def test_conversation_ownership_is_enforced(harness: _Harness, field: str) -> None:
+    value = ConversationFromSource.CONSOLE if field == "from_source" else str(uuid4())
+    with harness.factory.begin() as session:
+        session.execute(
+            update(Conversation).where(Conversation.id == harness.message.conversation_id).values({field: value})
+        )
+    response = _get(harness)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["code"] == "not_found"
+    assert response.get_json()["message"] == "Conversation Not Exists."
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("query", [{"conversation_id": str(uuid4())}, {"first_id": str(uuid4())}])
+def test_missing_conversation_or_cursor_has_precise_error(harness: _Harness, query: dict[str, str]) -> None:
+    response = _get(harness, **query)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    expected = "Conversation Not Exists." if "conversation_id" in query else "First Message Not Exists."
+    assert response.get_json()["message"] == expected
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("mode", [AppMode.COMPLETION, AppMode.WORKFLOW])
+def test_non_chat_app_is_rejected(harness: _Harness, mode: AppMode) -> None:
+    with harness.factory.begin() as session:
+        session.execute(update(App).where(App.id == harness.target.id).values(mode=mode))
+    response = _get(harness)
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "not_chat_app"
+    harness.assert_closed()
+
+
+@pytest.mark.parametrize("query", [{"limit": 0}, {"limit": 101}, {"conversation_id": "bad"}, {"first_id": "bad"}])
+def test_invalid_query_is_rejected(harness: _Harness, query: dict[str, object]) -> None:
+    response = _get(harness, **query)
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert response.get_json()["code"] == "unprocessable_entity"
+    harness.assert_closed()
+
+
+def test_corrupt_end_user_scope_is_rejected(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        session.execute(update(EndUser).where(EndUser.id == harness.end_user.id).values(app_id=str(uuid4())))
+    response = _get(harness)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["message"] == "End user not found"
+    harness.assert_closed()
+
+
+def test_missing_passport_is_rejected(harness: _Harness) -> None:
+    response = harness.app.test_client().get(
+        "/messages", query_string={"conversation_id": harness.message.conversation_id}
+    )
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.get_json()["code"] == "unauthorized"

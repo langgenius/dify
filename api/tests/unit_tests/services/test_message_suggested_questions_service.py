@@ -185,7 +185,10 @@ def harness(
 
     event.listen(db.session.session_factory, "after_begin", track_scoped)
     queries = SuggestedQuestionsQuery(
-        session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
+        session_factory=read_factory,
+        repository=MessageRepository(
+            session_factory=read_factory,
+        ),
     )
     with flask_app.app_context():
         yield _Harness(

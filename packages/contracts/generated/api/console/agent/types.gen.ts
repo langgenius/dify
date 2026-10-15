@@ -2922,6 +2922,7 @@ export type GetAgentByAgentIdChatMessagesData = {
 }
 
 export type GetAgentByAgentIdChatMessagesErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -3702,6 +3703,7 @@ export type GetAgentByAgentIdMessagesByMessageIdData = {
 }
 
 export type GetAgentByAgentIdMessagesByMessageIdErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }

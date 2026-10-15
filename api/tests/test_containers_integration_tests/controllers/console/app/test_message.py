@@ -2,7 +2,6 @@
 
 from datetime import timedelta
 from decimal import Decimal
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -11,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.console.app.message import ChatMessagesQuery, MessageFeedbackPayload
-from controllers.console.app.message import attach_message_extra_contents as _attach_message_extra_contents
 from libs.datetime_utils import naive_utc_now
 from models.enums import ConversationFromSource, FeedbackRating
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAnnotation, MessageFeedback
@@ -141,15 +139,11 @@ def test_chat_message_list_success(
     conversation_id = conversation.id
     second_id = second.id
 
-    with patch(
-        "controllers.console.app.message.attach_message_extra_contents",
-        side_effect=_attach_message_extra_contents,
-    ):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app_id}/chat-messages",
-            query_string={"conversation_id": conversation_id, "limit": 1},
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app_id}/chat-messages",
+        query_string={"conversation_id": conversation_id, "limit": 1},
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
 
     assert response.status_code == 200
     payload = response.get_json()
@@ -304,14 +298,10 @@ def test_message_api_get_success(
     conversation = _create_conversation(db_session_with_containers, app.id, account.id, app.mode)
     message = _create_message(db_session_with_containers, app.id, conversation.id, account.id)
 
-    with patch(
-        "controllers.console.app.message.attach_message_extra_contents",
-        side_effect=_attach_message_extra_contents,
-    ):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/messages/{message.id}",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
+    response = test_client_with_containers.get(
+        f"/console/api/apps/{app.id}/messages/{message.id}",
+        headers=authenticate_console_client(test_client_with_containers, account),
+    )
 
     assert response.status_code == 200
     payload = response.get_json()

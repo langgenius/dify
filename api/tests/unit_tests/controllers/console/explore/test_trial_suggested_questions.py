@@ -171,7 +171,10 @@ def harness(
         trial_enabled=True,
     )
     queries = SuggestedQuestionsQuery(
-        session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
+        session_factory=read_factory,
+        repository=MessageRepository(
+            session_factory=read_factory,
+        ),
     )
     services = _ApplicationServices(
         trial_apps=_TrialAppServices(access=TrialAppAccessService(apps=trial_apps)),
