@@ -35,7 +35,7 @@ export function AgentFormFields({
       <div className="flex items-start gap-4">
         <IconPicker value={icon} onValueChange={onIconChange}>
           <IconPickerTrigger aria-label={iconAriaLabel} className="shrink-0 rounded-full">
-            <IconPickerIcon size="xxl" rounded className="size-16 cursor-pointer" />
+            <IconPickerIcon size="xxl" shape="circle" className="size-16 cursor-pointer" />
           </IconPickerTrigger>
           <IconPickerContent />
         </IconPicker>

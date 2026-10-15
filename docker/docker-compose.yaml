@@ -550,6 +550,7 @@ services:
   # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
   local_sandbox:
     image: langgenius/dify-agent-local-sandbox:1.17.1
+    command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--require-auth-token"]
     restart: always
     env_file:
       - path: ./envs/core-services/local-sandbox.env

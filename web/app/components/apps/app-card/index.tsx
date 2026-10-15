@@ -2,7 +2,6 @@
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowOnlineUser } from '@/models/app'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -117,7 +116,7 @@ export const AppCard = memo(
     }, [app.id, onlineUsers])
     const appNameId = useId()
     const appDescriptionId = useId()
-    const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+
     const appHref = getRedirectionPath(app, maintainerPermissionOptions)
     const appCardClassName = cn(
       'inline-flex h-full w-full touch-manipulation flex-col rounded-xl outline-hidden',
@@ -130,14 +129,7 @@ export const AppCard = memo(
       <>
         <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
           <div className="relative shrink-0">
-            <AppIcon
-              size="large"
-              iconType={appIconType}
-              icon={app.icon ?? undefined}
-              background={app.icon_background}
-              imageUrl={app.icon_url}
-              decorative
-            />
+            <AppIcon size="large" icon={app} />
             <AppTypeIcon
               type={app.mode}
               wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"

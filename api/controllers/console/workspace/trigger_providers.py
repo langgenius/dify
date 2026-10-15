@@ -12,6 +12,18 @@ from controllers.common.errors import NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.wraps import (
+    RBACPermission,
+    account_initialization_required,
+    edit_permission_required,
+    is_admin_or_owner_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -33,19 +45,6 @@ from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
-
-from .. import console_ns
-from ..wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    is_admin_or_owner_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
 
 logger = logging.getLogger(__name__)
 

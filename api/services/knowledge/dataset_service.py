@@ -513,10 +513,7 @@ class DatasetService:
             model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
-            if model_schema.features and ModelFeature.VISION in model_schema.features:
-                return True
-            else:
-                return False
+            return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
         except LLMBadRequestError:
             raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
 
@@ -1934,10 +1931,7 @@ class DocumentService:
 
     @staticmethod
     def check_archived(document):
-        if document.archived:
-            return True
-        else:
-            return False
+        return bool(document.archived)
 
     @staticmethod
     def delete_document(document, session: Session):

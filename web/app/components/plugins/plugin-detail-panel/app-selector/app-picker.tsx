@@ -3,7 +3,6 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComboboxPositionerProps } from '@langgenius/dify-ui/combobox'
 import type { ReactNode } from 'react'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Combobox,
@@ -69,7 +68,6 @@ function getAppSearchText(app: AppPartial) {
 }
 
 function AppPickerOption({ app }: { app: AppPartial }) {
-  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
   return (
     <ComboboxItem
       key={app.id}
@@ -77,14 +75,7 @@ function AppPickerOption({ app }: { app: AppPartial }) {
       className="grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
     >
       <ComboboxItemText className="flex items-center gap-3">
-        <AppIcon
-          className="shrink-0"
-          size="xs"
-          iconType={appIconType}
-          icon={app.icon ?? undefined}
-          background={app.icon_background}
-          imageUrl={app.icon_url}
-        />
+        <AppIcon className="shrink-0" size="xs" icon={app} />
         <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
           <span className="mr-1">{app.name}</span>
           <span className="text-text-tertiary">({app.id.slice(0, 8)})</span>
