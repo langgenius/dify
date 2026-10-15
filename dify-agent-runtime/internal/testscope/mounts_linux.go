@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -175,12 +176,251 @@ func PrepareWorker(cfg WorkerConfig) (setupErr error) {
 	}
 	return nil
 }
+
+// readonlyBind runs during the single-owner bootstrap, after recursive private
+// propagation and before any jobs. Recursive bind preserves inherited covers;
+// remounting only the top would leave copied child mounts writable.
 func readonlyBind(source, target string) error {
-	if err := unix.Mount(source, target, "", unix.MS_BIND, ""); err != nil {
-		return WorkerSetupFailure("bind", err)
+	if err := unix.Mount(source, target, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
+		return WorkerSetupFailure("bind-recursive", err)
 	}
-	return WorkerSetupFailure("remount-readonly", unix.Mount("", target, "", unix.MS_BIND|unix.MS_REMOUNT|unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV, ""))
+	rootID, err := mountID(target)
+	if err != nil {
+		return WorkerSetupFailure("copied-mount-id", err)
+	}
+	before, err := readMountTree(rootID, target)
+	if err != nil {
+		return WorkerSetupFailure("copied-mount-tree", err)
+	}
+	for _, mount := range before {
+		// With no atime bits specified, Linux preserves all existing atime
+		// flags on a bind remount. Preserve noexec explicitly as well.
+		flags := uintptr(unix.MS_BIND | unix.MS_REMOUNT | unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NODEV)
+		flags |= mount.flags & unix.MS_NOEXEC
+		if err := unix.Mount("", mount.path, "", flags, ""); err != nil {
+			return WorkerSetupFailure("remount-readonly", err)
+		}
+	}
+	afterID, err := mountID(target)
+	if err != nil {
+		return WorkerSetupFailure("verify-mount-id", err)
+	}
+	if afterID != rootID {
+		return WorkerSetupFailure("verify-mount-id", errors.New("copied root changed"))
+	}
+	after, err := readMountTree(rootID, target)
+	if err != nil {
+		return WorkerSetupFailure("verify-mount-tree", err)
+	}
+	if err := verifyReadonlyMountTree(before, after); err != nil {
+		return WorkerSetupFailure("verify-readonly", err)
+	}
+	return nil
 }
+
+const (
+	maxMountInfoBytes   = 1 << 20
+	maxMountInfoEntries = 4096
+	maxCopiedMounts     = 256
+)
+
+type copiedMount struct {
+	id, parent uint64
+	path       string
+	flags      uintptr
+}
+
+func mountID(path string) (uint64, error) {
+	var st unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, path, unix.AT_SYMLINK_NOFOLLOW, unix.STATX_MNT_ID, &st); err != nil {
+		return 0, err
+	}
+	if st.Mask&unix.STATX_MNT_ID == 0 || st.Mnt_id == 0 {
+		return 0, errors.New("mount identity unavailable")
+	}
+	return st.Mnt_id, nil
+}
+
+func readMountTree(rootID uint64, target string) ([]copiedMount, error) {
+	f, err := os.Open("/proc/self/mountinfo")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	data, err := io.ReadAll(io.LimitReader(f, maxMountInfoBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	return parseMountTree(data, rootID, target)
+}
+
+// parseMountTree follows mount IDs so pre-existing mounts at the same target
+// are not mistaken for the copied root. Stacked mounts within the copied tree
+// are refused because pathname remounts cannot address their hidden layers.
+func parseMountTree(data []byte, rootID uint64, target string) ([]copiedMount, error) {
+	invalid := errors.New("unverifiable copied mount tree")
+	if len(data) > maxMountInfoBytes || !filepath.IsAbs(target) || filepath.Clean(target) != target || target == "/" {
+		return nil, invalid
+	}
+	entries := make(map[uint64]copiedMount)
+	children := make(map[uint64][]uint64)
+	options := make(map[uint64]string)
+	private := make(map[uint64]bool)
+	for _, line := range strings.Split(strings.TrimSuffix(string(data), "\n"), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 10 || len(entries) >= maxMountInfoEntries {
+			return nil, invalid
+		}
+		separator := -1
+		for i := 6; i < len(fields); i++ {
+			if fields[i] == "-" {
+				separator = i
+				break
+			}
+		}
+		if separator < 6 || len(fields) != separator+4 {
+			return nil, invalid
+		}
+		id, err := strconv.ParseUint(fields[0], 10, 64)
+		if err != nil || id == 0 {
+			return nil, invalid
+		}
+		parent, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			return nil, invalid
+		}
+		if _, exists := entries[id]; exists {
+			return nil, invalid
+		}
+		path, err := mountInfoPath(fields[4])
+		if err != nil {
+			return nil, invalid
+		}
+		entries[id] = copiedMount{id: id, parent: parent, path: path}
+		children[parent] = append(children[parent], id)
+		options[id] = fields[5]
+		private[id] = separator == 6
+	}
+	root, exists := entries[rootID]
+	if !exists || root.path != target {
+		return nil, invalid
+	}
+	seen := make(map[uint64]bool)
+	paths := make(map[string]bool)
+	var result []copiedMount
+	var visit func(uint64) error
+	visit = func(id uint64) error {
+		mount := entries[id]
+		if seen[id] || len(seen) >= maxCopiedMounts || paths[mount.path] || !private[id] ||
+			(mount.path != target && !strings.HasPrefix(mount.path, target+"/")) {
+			return invalid
+		}
+		seen[id] = true
+		paths[mount.path] = true
+		flags, err := mountInfoFlags(options[id])
+		if err != nil {
+			return invalid
+		}
+		mount.flags = flags
+		for _, child := range children[id] {
+			if err := visit(child); err != nil {
+				return err
+			}
+		}
+		result = append(result, mount) // Children first, then their parent.
+		return nil
+	}
+	if err := visit(rootID); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func mountInfoPath(encoded string) (string, error) {
+	var out strings.Builder
+	for i := 0; i < len(encoded); i++ {
+		if encoded[i] != '\\' {
+			out.WriteByte(encoded[i])
+			continue
+		}
+		if i+3 >= len(encoded) {
+			return "", errors.New("invalid mount path escape")
+		}
+		var b byte
+		switch encoded[i+1 : i+4] {
+		case "040":
+			b = ' '
+		case "011":
+			b = '\t'
+		case "012":
+			b = '\n'
+		case "134":
+			b = '\\'
+		default:
+			return "", errors.New("unknown mount path escape")
+		}
+		out.WriteByte(b)
+		i += 3
+	}
+	path := out.String()
+	if len(path) > 4096 || strings.ContainsRune(path, 0) || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+		return "", errors.New("invalid mount path")
+	}
+	return path, nil
+}
+
+func mountInfoFlags(options string) (uintptr, error) {
+	var flags uintptr
+	seen := make(map[string]bool)
+	mode := 0
+	for _, option := range strings.Split(options, ",") {
+		if seen[option] {
+			return 0, errors.New("duplicate mount flag")
+		}
+		seen[option] = true
+		switch option {
+		case "ro":
+			flags |= unix.MS_RDONLY
+			mode++
+		case "rw":
+			mode++
+		case "nosuid":
+			flags |= unix.MS_NOSUID
+		case "nodev":
+			flags |= unix.MS_NODEV
+		case "noexec":
+			flags |= unix.MS_NOEXEC
+		case "noatime":
+			flags |= unix.MS_NOATIME
+		case "nodiratime":
+			flags |= unix.MS_NODIRATIME
+		case "relatime":
+			flags |= unix.MS_RELATIME
+		default:
+			return 0, errors.New("unknown mount flag")
+		}
+	}
+	if mode != 1 || flags&unix.MS_NOATIME != 0 && flags&unix.MS_RELATIME != 0 {
+		return 0, errors.New("invalid mount flag combination")
+	}
+	return flags, nil
+}
+
+func verifyReadonlyMountTree(before, after []copiedMount) error {
+	invalid := errors.New("copied mount restrictions not established")
+	if len(before) != len(after) {
+		return invalid
+	}
+	required := uintptr(unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NODEV)
+	for i, mount := range before {
+		current := after[i]
+		if mount.id != current.id || mount.parent != current.parent || mount.path != current.path || current.flags != mount.flags|required {
+			return invalid
+		}
+	}
+	return nil
+}
+
 func copyTree(source, target string, remaining *int64) error {
 	info, err := os.Lstat(source)
 	if err != nil {

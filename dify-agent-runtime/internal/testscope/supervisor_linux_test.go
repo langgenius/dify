@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"golang.org/x/sys/unix"
 	"net"
 	"net/http"
@@ -447,5 +448,91 @@ func TestWorkerSetupFailureKeepsErrnoAndRedactsErrorText(t *testing.T) {
 	}
 	if WorkerSetupFailure("ready", nil) != nil {
 		t.Fatal("success became failure")
+	}
+}
+
+const copiedMountFixture = "1 0 0:1 / / rw,relatime - tmpfs synthetic rw\n" +
+	"9 1 0:2 / /copied rw,relatime - tmpfs synthetic rw\n" +
+	"10 1 0:3 / /copied rw,relatime - tmpfs synthetic rw\n" +
+	"11 10 0:4 / /copied/cover rw,noexec,noatime - tmpfs synthetic rw\n" +
+	"12 1 0:5 / /copied-extra rw - tmpfs synthetic rw\n"
+
+func TestCopiedMountTreeUsesIdentityAndPreservesEscapedPaths(t *testing.T) {
+	// The namespace root can self-parent; only cycles in the selected copied
+	// tree matter. Its parent is not part of the copied mount identity.
+	fixture := strings.Replace(copiedMountFixture, "1 0 ", "1 1 ", 1)
+	tree, err := parseMountTree([]byte(fixture), 10, "/copied")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree) != 2 || tree[0].id != 11 || tree[1].id != 10 {
+		t.Fatalf("wrong copied subtree: %+v", tree)
+	}
+	escaped := strings.ReplaceAll(copiedMountFixture, "/copied/cover", "/copied/has\\040space\\134slash")
+	tree, err = parseMountTree([]byte(escaped), 10, "/copied")
+	if err != nil || tree[0].path != "/copied/has space\\slash" {
+		t.Fatal("mountinfo escape handling lost path identity")
+	}
+}
+
+func TestCopiedMountTreeRejectsUnverifiableTopology(t *testing.T) {
+	cases := map[string]string{
+		"outside-target":         strings.ReplaceAll(copiedMountFixture, "/copied/cover", "/outside"),
+		"duplicate-path":         copiedMountFixture + "13 11 0:6 / /copied/cover rw - tmpfs synthetic rw\n",
+		"duplicate-id":           copiedMountFixture + "11 10 0:6 / /copied/another rw - tmpfs synthetic rw\n",
+		"unexpected-propagation": strings.ReplaceAll(copiedMountFixture, "rw,noexec,noatime -", "rw,noexec,noatime shared:4 -"),
+		"unknown-flags":          strings.ReplaceAll(copiedMountFixture, "rw,noexec,noatime", "rw,nosymfollow"),
+		"unknown-escape":         strings.ReplaceAll(copiedMountFixture, "/copied/cover", "/copied/\\777"),
+		"ambiguous-mode":         strings.ReplaceAll(copiedMountFixture, "rw,noexec,noatime", "rw,ro"),
+		"ambiguous-atime":        strings.ReplaceAll(copiedMountFixture, "rw,noexec,noatime", "rw,noatime,relatime"),
+		"malformed":              copiedMountFixture + "invalid\n",
+		"too-many-bytes":         strings.Repeat("x", maxMountInfoBytes+1),
+	}
+	many := copiedMountFixture
+	for i := 0; i < maxCopiedMounts; i++ {
+		many += fmt.Sprintf("%d 10 0:6 / /copied/child%d rw - tmpfs synthetic rw\n", 100+i, i)
+	}
+	cases["too-many-copied-mounts"] = many
+	for name, data := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := parseMountTree([]byte(data), 10, "/copied"); err == nil {
+				t.Fatal("unverifiable copied mount tree accepted")
+			}
+		})
+	}
+	if _, err := parseMountTree([]byte(copiedMountFixture), 99, "/copied"); err == nil {
+		t.Fatal("absent copied root accepted")
+	}
+}
+
+func TestReadonlyMountVerificationRequiresEveryMountAndInheritedFlags(t *testing.T) {
+	before, err := parseMountTree([]byte(copiedMountFixture), 10, "/copied")
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := append([]copiedMount(nil), before...)
+	for i := range after {
+		after[i].flags |= unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NODEV
+	}
+	if err := verifyReadonlyMountTree(before, after); err != nil {
+		t.Fatal(err)
+	}
+	for _, mutate := range []func([]copiedMount){
+		func(m []copiedMount) { m[0].flags &^= unix.MS_RDONLY },
+		func(m []copiedMount) { m[0].flags &^= unix.MS_NOEXEC },
+		func(m []copiedMount) { m[0].flags &^= unix.MS_NOATIME },
+		func(m []copiedMount) { m[1].flags &^= unix.MS_NODEV },
+		func(m []copiedMount) { m[1].flags &^= unix.MS_NOSUID },
+		func(m []copiedMount) { m[0].parent = 99 },
+		func(m []copiedMount) { m[0].id = 99 },
+	} {
+		changed := append([]copiedMount(nil), after...)
+		mutate(changed)
+		if verifyReadonlyMountTree(before, changed) == nil {
+			t.Fatal("weakened or changed copied mount accepted")
+		}
+	}
+	if verifyReadonlyMountTree(before, after[:1]) == nil {
+		t.Fatal("lost child mount accepted")
 	}
 }

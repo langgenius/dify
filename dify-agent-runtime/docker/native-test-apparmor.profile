@@ -52,11 +52,13 @@ profile dify-native-test-supervisor flags=(attach_disconnected,mediate_deleted) 
   mount fstype=tmpfs -> /var/lib/dify-native/scopes/*/payload/,
   mount fstype=tmpfs -> /var/lib/dify-native/scopes/*/payload/.job/,
   mount fstype=tmpfs -> /var/lib/dify-native/scopes/*/spool/,
-  mount options=(bind) /{usr,bin,sbin,lib,lib64}/ -> /var/lib/dify-native/scopes/*/payload/{usr,bin,sbin,lib,lib64}/,
-  mount options=(bind) /usr/{bin,sbin,lib,lib64}/ -> /var/lib/dify-native/scopes/*/payload/{bin,sbin,lib,lib64}/,
-  mount options=(bind) /etc/ssl/ -> /var/lib/dify-native/scopes/*/payload/etc/ssl/,
+  mount options=(rbind) /{usr,bin,sbin,lib,lib64}/ -> /var/lib/dify-native/scopes/*/payload/{usr,bin,sbin,lib,lib64}/,
+  mount options=(rbind) /usr/{bin,sbin,lib,lib64}/ -> /var/lib/dify-native/scopes/*/payload/{bin,sbin,lib,lib64}/,
+  mount options=(rbind) /etc/ssl/ -> /var/lib/dify-native/scopes/*/payload/etc/ssl/,
   mount options=(bind) /dev/{null,zero,random,urandom,tty} -> /var/lib/dify-native/scopes/*/payload/dev/{null,zero,random,urandom,tty},
-  mount options=(bind) /var/lib/dify-native/snapshots/*/ -> /var/lib/dify-native/scopes/*/payload/base/,
-  mount options=(bind) /var/lib/dify-native/scopes/*/payload/inputs/ -> /var/lib/dify-native/scopes/*/payload/inputs/,
+  mount options=(rbind) /var/lib/dify-native/snapshots/*/ -> /var/lib/dify-native/scopes/*/payload/base/,
+  mount options=(rbind) /var/lib/dify-native/scopes/*/payload/inputs/ -> /var/lib/dify-native/scopes/*/payload/inputs/,
+  # Every copied submount is remounted through the classic mediated API.
+  mount options=(ro,remount,bind,nosuid,nodev,noexec) -> /var/lib/dify-native/scopes/*/payload/**,
   mount options=(ro,remount,bind,nosuid,nodev) -> /var/lib/dify-native/scopes/*/payload/**,
 }
