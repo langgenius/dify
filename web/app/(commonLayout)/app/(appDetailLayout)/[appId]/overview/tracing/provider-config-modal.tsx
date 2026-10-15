@@ -111,7 +111,7 @@ const ProviderConfigModal: FC<Props> = ({
         <div className="space-y-4">
           {type === TracingProvider.arize && (
             <>
-              <Field name="api_key">
+              <Field disabled={saveConfig.isPending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -129,7 +129,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="space_id">
+              <Field disabled={saveConfig.isPending} name="space_id">
                 <FieldLabel>
                   Space ID
                   <span aria-hidden className="text-text-destructive">
@@ -146,7 +146,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="project">
+              <Field disabled={saveConfig.isPending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -163,11 +163,11 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="endpoint">
+              <Field disabled={saveConfig.isPending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://otlp.arize.com"
                 />
@@ -177,7 +177,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.phoenix && (
             <>
-              <Field name="api_key">
+              <Field disabled={saveConfig.isPending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -195,7 +195,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="project">
+              <Field disabled={saveConfig.isPending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -212,11 +212,11 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="endpoint">
+              <Field disabled={saveConfig.isPending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://app.phoenix.arize.com"
                 />
@@ -226,7 +226,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.aliyun && (
             <>
-              <Field name="license_key">
+              <Field disabled={saveConfig.isPending} name="license_key">
                 <FieldLabel>
                   License Key
                   <span aria-hidden className="text-text-destructive">
@@ -245,7 +245,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="endpoint">
+              <Field disabled={saveConfig.isPending} name="endpoint">
                 <FieldLabel>
                   Endpoint
                   <span aria-hidden className="text-text-destructive">
@@ -254,14 +254,14 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   required
                   defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://tracing.arms.aliyuncs.com"
                 />
                 <FieldError />
               </Field>
-              <Field name="app_name">
+              <Field disabled={saveConfig.isPending} name="app_name">
                 <FieldLabel>
                   App Name
                   <span aria-hidden className="text-text-destructive">
@@ -275,7 +275,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.tencent && (
             <>
-              <Field name="token">
+              <Field disabled={saveConfig.isPending} name="token">
                 <FieldLabel>
                   Token
                   <span aria-hidden className="text-text-destructive">
@@ -294,7 +294,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="endpoint">
+              <Field disabled={saveConfig.isPending} name="endpoint">
                 <FieldLabel>
                   Endpoint
                   <span aria-hidden className="text-text-destructive">
@@ -303,14 +303,14 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   required
                   defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://your-region.cls.tencentcs.com"
                 />
                 <FieldError />
               </Field>
-              <Field name="service_name">
+              <Field disabled={saveConfig.isPending} name="service_name">
                 <FieldLabel>
                   Service Name
                   <span aria-hidden className="text-text-destructive">
@@ -324,7 +324,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.weave && (
             <>
-              <Field name="api_key">
+              <Field disabled={saveConfig.isPending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -342,7 +342,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="project">
+              <Field disabled={saveConfig.isPending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -359,7 +359,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="entity">
+              <Field disabled={saveConfig.isPending} name="entity">
                 <FieldLabel>Entity</FieldLabel>
                 <Input
                   defaultValue={payload?.entity ?? ''}
@@ -370,21 +370,21 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="endpoint">
+              <Field disabled={saveConfig.isPending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
-                  pattern="https://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]://.+"
                   defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://trace.wandb.ai/"
                 />
                 <FieldError />
               </Field>
-              <Field name="host">
+              <Field disabled={saveConfig.isPending} name="host">
                 <FieldLabel>Host</FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   defaultValue={payload?.host ?? ''}
                   placeholder="https://api.wandb.ai"
                 />
@@ -394,7 +394,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.langSmith && (
             <>
-              <Field name="api_key">
+              <Field disabled={saveConfig.isPending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -412,7 +412,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="project">
+              <Field disabled={saveConfig.isPending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -429,11 +429,11 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="endpoint">
+              <Field disabled={saveConfig.isPending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
-                  pattern="https://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]://.+"
                   defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://api.smith.langchain.com"
                 />
@@ -443,7 +443,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.langfuse && (
             <>
-              <Field name="secret_key">
+              <Field disabled={saveConfig.isPending} name="secret_key">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -461,7 +461,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="public_key">
+              <Field disabled={saveConfig.isPending} name="public_key">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -478,7 +478,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="host">
+              <Field disabled={saveConfig.isPending} name="host">
                 <FieldLabel>
                   Host
                   <span aria-hidden className="text-text-destructive">
@@ -487,7 +487,7 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   required
                   defaultValue={payload?.host ?? ''}
                   placeholder="https://cloud.langfuse.com"
@@ -498,7 +498,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.opik && (
             <>
-              <Field name="api_key">
+              <Field disabled={saveConfig.isPending} name="api_key">
                 <FieldLabel>API Key</FieldLabel>
                 <Input
                   ref={firstInputRef}
@@ -510,7 +510,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="project">
+              <Field disabled={saveConfig.isPending} name="project">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.project ?? ''}
@@ -521,16 +521,16 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="workspace">
+              <Field disabled={saveConfig.isPending} name="workspace">
                 <FieldLabel>Workspace</FieldLabel>
                 <Input defaultValue={payload?.workspace ?? ''} placeholder="default" />
                 <FieldError />
               </Field>
-              <Field name="url">
+              <Field disabled={saveConfig.isPending} name="url">
                 <FieldLabel>Url</FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.*/api/"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.*/api/"
                   defaultValue={payload?.url ?? ''}
                   placeholder="https://www.comet.com/opik/api/"
                 />
@@ -540,7 +540,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.mlflow && (
             <>
-              <Field name="tracking_uri">
+              <Field disabled={saveConfig.isPending} name="tracking_uri">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.trackingUri`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -549,7 +549,7 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   ref={firstInputRef}
                   defaultValue={payload?.tracking_uri ?? ''}
                   required
@@ -557,7 +557,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="experiment_id">
+              <Field disabled={saveConfig.isPending} name="experiment_id">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -576,7 +576,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="username">
+              <Field disabled={saveConfig.isPending} name="username">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.username ?? ''}
@@ -587,7 +587,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="password">
+              <Field disabled={saveConfig.isPending} name="password">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.password ?? ''}
@@ -602,7 +602,7 @@ const ProviderConfigModal: FC<Props> = ({
           )}
           {type === TracingProvider.databricks && (
             <>
-              <Field name="experiment_id">
+              <Field disabled={saveConfig.isPending} name="experiment_id">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -622,7 +622,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="host">
+              <Field disabled={saveConfig.isPending} name="host">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -631,7 +631,7 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   type="url"
-                  pattern="https?://.+"
+                  pattern="[Hh][Tt][Tt][Pp][Ss]?://.+"
                   defaultValue={payload?.host ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
@@ -641,7 +641,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="client_id">
+              <Field disabled={saveConfig.isPending} name="client_id">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.client_id ?? ''}
@@ -652,7 +652,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="client_secret">
+              <Field disabled={saveConfig.isPending} name="client_secret">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.client_secret ?? ''}
@@ -663,7 +663,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field name="personal_access_token">
+              <Field disabled={saveConfig.isPending} name="personal_access_token">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })}
                 </FieldLabel>

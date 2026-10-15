@@ -424,6 +424,21 @@ describe('ProviderConfigModal', () => {
       },
     )
 
+    it.each([
+      [TracingProvider.langfuse, 'host', 'HTTPS://cloud.langfuse.com'],
+      [TracingProvider.langSmith, 'endpoint', 'HTTPS://api.smith.langchain.com'],
+      [TracingProvider.opik, 'url', 'HTTPS://www.comet.com/opik/api/'],
+    ] as const)('accepts case-insensitive URL schemes for %s', async (provider, key, value) => {
+      const user = userEvent.setup()
+      const payload = { ...validConfigs[provider], [key]: value }
+      const callbacks = renderProviderConfigModal({ type: provider, payload })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', { tracing_provider: provider, tracing_config: payload })
+    })
+
     it('displays nullable provider fields as empty without changing their submitted values', async () => {
       const user = userEvent.setup()
       const payload = { ...validConfigs[TracingProvider.mlflow], username: null }
@@ -464,11 +479,15 @@ describe('ProviderConfigModal', () => {
       try {
         await user.click(save)
         await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+        for (const input of screen.getAllByRole('textbox')) expect(input).toBeDisabled()
+        await user.type(host, '/unsaved')
+        expect(host).toHaveValue('https://draft.langfuse.com')
         await user.click(save)
-        expect(request).toHaveBeenCalledOnce()
+        await waitFor(() => expect(request).toHaveBeenCalledOnce())
         resolveResponse(Response.json({ message: 'Config rejected' }, { status: 400 }))
 
         await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
+        for (const input of screen.getAllByRole('textbox')) expect(input).toBeEnabled()
         expect(host).toHaveValue('https://draft.langfuse.com')
         expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
         expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
