@@ -2,6 +2,7 @@
 root_packages =
     enums
     core
+    errors
     core.rag.extractor.entity
     constants
     context
