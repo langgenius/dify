@@ -1410,7 +1410,7 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
-  400: MessageFeedbackRatingRequiredError | ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse

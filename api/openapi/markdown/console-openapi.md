@@ -1192,6 +1192,7 @@ Create or update Agent App message feedback
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3038,6 +3039,8 @@ Create or update message feedback (like/dislike)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7625,7 +7628,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |

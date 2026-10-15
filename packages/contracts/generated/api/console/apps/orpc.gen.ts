@@ -25,6 +25,7 @@ import {
   zInvalidRosterAgentPackageError,
   zInvalidTracingConfigError,
   zMaxKeysExceededError,
+  zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
   zNoActiveBindingError,
   zNoAudioUploadedError,
@@ -2034,7 +2035,11 @@ export const post23 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdFeedbacksBody, params: zPostAppsByAppIdFeedbacksPath }))
   .output(zPostAppsByAppIdFeedbacksResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
   post: post23,

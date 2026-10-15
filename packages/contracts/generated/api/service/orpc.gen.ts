@@ -25,6 +25,7 @@ import {
   zInvalidActionError,
   zInvalidFormDataError,
   zInvalidMetadataError,
+  zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
@@ -296,6 +297,14 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetAppFeedbacksQuery.optional() }))
   .output(zGetAppFeedbacksResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const feedbacks = {
   get: get2,
@@ -2365,6 +2374,15 @@ export const post35 = oc
     }),
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const feedbacks2 = {
   post: post35,

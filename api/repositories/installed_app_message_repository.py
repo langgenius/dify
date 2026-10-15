@@ -6,21 +6,18 @@ from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
-from models.model import App, Conversation, InstalledApp, Message, MessageAgentThought, MessageFeedback
+from models.enums import ConversationFromSource
+from models.model import App, Conversation, InstalledApp, Message, MessageAgentThought
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError
+from services.errors.message import FirstMessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_message_service import (
-    FeedbackRatingRequiredError,
     InstalledAppMessageStore,
     MessageAgentThoughtRecord,
-    MessageFeedbackEvent,
     MessageFeedbackRecord,
     MessageFileRecord,
     MessageInputValue,
     MessagePage,
-    MessageRating,
     MessageRecord,
 )
 
@@ -77,63 +74,6 @@ class SQLAlchemyInstalledAppMessageRepository(InstalledAppMessageStore):
                 limit=limit,
                 has_more=has_more,
                 data=tuple(self._to_record(message=message, session=session) for message in messages),
-            )
-
-    @override
-    def set_feedback(
-        self,
-        *,
-        installed_app: InstalledAppRef,
-        account_id: str,
-        message_id: str,
-        rating: MessageRating | None,
-        content: str | None,
-    ) -> MessageFeedbackEvent | None:
-        with self._session_factory.begin() as session:
-            app = self._get_app(session=session, installed_app=installed_app)
-            message = session.scalar(
-                select(Message).where(
-                    Message.id == message_id,
-                    Message.app_id == app.id,
-                    Message.from_source == ConversationFromSource.CONSOLE,
-                    Message.from_account_id == account_id,
-                    Message.from_end_user_id.is_(None),
-                )
-            )
-            if message is None:
-                raise MessageNotExistsError(f"Message {message_id} does not belong to this account and app.")
-            feedback = message.admin_feedback_with_session(session=session)
-            if rating is None:
-                if feedback is None:
-                    raise FeedbackRatingRequiredError(
-                        f"Message {message_id} has no admin feedback to remove; a rating is required."
-                    )
-                session.delete(feedback)
-                return None
-            if feedback is None:
-                session.add(
-                    MessageFeedback(
-                        app_id=app.id,
-                        conversation_id=message.conversation_id,
-                        message_id=message.id,
-                        rating=FeedbackRating(rating),
-                        content=content,
-                        from_source=FeedbackFromSource.ADMIN,
-                        from_end_user_id=None,
-                        from_account_id=account_id,
-                    )
-                )
-            else:
-                feedback.rating = FeedbackRating(rating)
-                feedback.content = content
-            return MessageFeedbackEvent(
-                tenant_id=app.tenant_id,
-                app_id=app.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                account_id=account_id,
-                rating=rating,
-                content=content,
             )
 
     @staticmethod
