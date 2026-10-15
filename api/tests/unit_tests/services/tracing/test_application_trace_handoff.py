@@ -3,8 +3,6 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from types import SimpleNamespace
-from typing import cast
 from uuid import UUID, uuid4
 
 import httpx
@@ -17,6 +15,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
@@ -26,7 +25,9 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from models.agent_config_entities import AgentSoulConfig
 from models.application_trace import ApplicationTraceRun
 from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Message
@@ -230,16 +231,22 @@ def test_snapshot_failure_is_persisted_and_never_falls_back(
         raise OperationalError("snapshot", {}, Exception("temporary database unavailable"))
 
     monkeypatch.setattr(case.collection.repository, "start", fail_start)
-    context = cast(
-        AgentAppRuntimeBuildContext,
-        SimpleNamespace(
-            dify_context=SimpleNamespace(
-                tenant_id=case.collection.run.tenant_id, app_id=case.collection.run.app_id, trace_session_id=None
-            ),
-            agent_id=identifier("agent"),
-            idempotency_key=case.collection.run.source_id,
-            conversation_id="conversation",
+    context = AgentAppRuntimeBuildContext(
+        dify_context=DifyRunContext(
+            tenant_id=case.collection.run.tenant_id,
+            app_id=case.collection.run.app_id,
+            user_id=identifier("user"),
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
         ),
+        agent_id=identifier("agent"),
+        idempotency_key=case.collection.run.source_id,
+        conversation_id="conversation",
+        agent_config_snapshot_id=identifier("snapshot"),
+        agent_soul=AgentSoulConfig(),
+        user_query="query",
+        binding_id=identifier("binding"),
+        backend_binding_ref="backend",
     )
     assert runtime_bridge.prepare_agent_app(context) is None
     assert dispatch(case, message_info(case), monkeypatch) == []
@@ -436,9 +443,7 @@ def test_mixed_workflow_exports_normal_llm_and_agent_calls_without_double_usage(
         max_spans=100,
         max_bytes=100000,
     )
-    monkeypatch.setattr(
-        "core.ops.unified_trace.trace_builder.db", SimpleNamespace(engine=sqlite_session_factory.kw["bind"])
-    )
+    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_session_factory.kw["bind"]))
     assert case.service.capture_terminal(workflow_info(row)) is True
     stored = case.collection.repository.get(managed.id)
     assert stored is not None
