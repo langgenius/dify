@@ -4,7 +4,12 @@ from unittest.mock import patch
 import pytest
 from celery.exceptions import Retry
 
-from services.knowledge_fs.product_dto import KnowledgeFSSourceResponse, KnowledgeFSSourceWorkflowResponse
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSSourceResponse,
+    KnowledgeFSSourceSyncPolicyPayload,
+    KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceWorkflowResponse,
+)
 from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSProductResourceNotFoundError,
@@ -18,6 +23,7 @@ from tests.unit_tests.tasks.knowledge_fs_task_fakes import (
     FacadeRuntime,
     RecordingKnowledgeFSFacade,
     RecordingRetry,
+    json_object,
     source_response,
     source_workflow_response,
 )
@@ -102,16 +108,17 @@ def test_finalize_source_import_activates_source_then_applies_policy_for_new_ver
 
     assert _run(facade) == "import-1"
 
-    policy = facade.payload("update_source_sync_policy")
+    policy = facade.payload("update_source_sync_policy", KnowledgeFSSourceSyncPolicyPayload)
     assert policy.enabled is False
     assert policy.mode == "manual"
     assert policy.expected_revision == 0
     assert policy.expected_source_version == 5
-    update = facade.payload("update_source")
+    update = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+    update_metadata = json_object(update.metadata)
     assert update.status == "active"
-    assert "parameters" not in update.metadata
-    assert update.metadata["pendingImport"] is None
-    assert update.metadata["lastImport"]["state"] == "completed"
+    assert "parameters" not in update_metadata
+    assert update_metadata["pendingImport"] is None
+    assert json_object(update_metadata["lastImport"])["state"] == "completed"
 
 
 def test_finalize_source_import_retries_policy_after_source_activation() -> None:
@@ -137,7 +144,7 @@ def test_finalize_source_import_retries_policy_after_source_activation() -> None
     assert _run(facade) == "import-1"
 
     assert facade.call_count("update_source") == 0
-    policy = facade.payload("update_source_sync_policy")
+    policy = facade.payload("update_source_sync_policy", KnowledgeFSSourceSyncPolicyPayload)
     assert policy.expected_source_version == 5
 
 
@@ -184,11 +191,13 @@ def test_finalize_source_import_recovers_a_stale_failed_marker_after_workflow_co
 
     assert _run(facade) == "import-1"
 
-    update = facade.payload("update_source")
+    update = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+
+    update_metadata = json_object(update.metadata)
     assert update.status == "active"
-    assert update.metadata["lastImport"]["state"] == "completed"
-    assert update.metadata["pendingImport"] is None
-    policy = facade.payload("update_source_sync_policy")
+    assert json_object(update_metadata["lastImport"])["state"] == "completed"
+    assert update_metadata["pendingImport"] is None
+    policy = facade.payload("update_source_sync_policy", KnowledgeFSSourceSyncPolicyPayload)
     assert policy.expected_source_version == 6
 
 
@@ -206,10 +215,12 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
 
     assert _run(facade) == "import-1"
 
-    update = facade.payload("update_source")
+    update = facade.payload("update_source", KnowledgeFSSourceUpdatePayload)
+
+    update_metadata = json_object(update.metadata)
     assert update.status == "error"
-    assert "parameters" not in update.metadata
-    assert update.metadata["lastImport"] == {
+    assert "parameters" not in update_metadata
+    assert update_metadata["lastImport"] == {
         "errorCode": "PROVIDER_FAILED",
         "errorMessage": "provider failed",
         "kind": "crawl-preview-selection",
@@ -218,7 +229,7 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
         "syncPolicy": {"enabled": False, "mode": "manual"},
         "workflowId": "import-1",
     }
-    assert update.metadata["pendingImport"] is None
+    assert update_metadata["pendingImport"] is None
     assert facade.call_count("update_source_sync_policy") == 0
 
 
