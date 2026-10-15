@@ -25,6 +25,7 @@ from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -109,6 +110,9 @@ def get_credit_usage_created_by(app_mode: AppMode | str | None) -> CreditUsageCr
 
 class DifyRunContext(BaseModel):
     builder_execution: BuilderExecutionContextValue | None = None
+    # Separate server marker: missing native authority must never select ordinary execution.
+    native_test_required: bool = False
+    native_test_ref: NativeTestContextRef | None = None
 
     tenant_id: str
     app_id: str
@@ -151,6 +155,8 @@ def build_dify_run_context(
     trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
     builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext | None = None,
+    native_test_required: bool = False,
+    native_test_ref: NativeTestContextRef | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -161,6 +167,8 @@ def build_dify_run_context(
     run_context = dict(extra_context) if extra_context else {}
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
         builder_execution=builder_execution,
+        native_test_required=native_test_required,
+        native_test_ref=native_test_ref,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -201,6 +209,9 @@ class AppGenerateEntity(BaseModel):
     # Either Builder policy variant; persisted pause/resume JSON keeps its tag and
     # every Builder transport refuses resume, so it is only ever decoded to refuse.
     builder_execution: BuilderExecutionContextValue | None = None
+    # Separate server marker: missing native authority must never select ordinary execution.
+    native_test_required: bool = False
+    native_test_ref: NativeTestContextRef | None = None
 
     @field_validator("builder_execution", mode="before")
     @classmethod

@@ -1056,6 +1056,11 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
             fc.staged_repair,
             on_canvas=env.emit_canvas,
             expected_revision=fc.last_snapshot_hash,
+            **(
+                {"confirmed_resource_ids": list(fc.resource_selection["resource_ids"])}
+                if any(item.startswith("agent:") for item in fc.resource_selection.get("resource_ids", []))
+                else {}
+            ),
             failed_run_id=(
                 env.repo.get_run(fc.failed_run_id).dify_run_id
                 if fc.source != "checklist" and fc.failed_run_id

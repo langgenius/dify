@@ -12,6 +12,7 @@ import json
 import logging
 import uuid
 from dataclasses import fields, replace
+from typing import Any
 
 from core.dify_builder.contract import (
     DecisionItem,
@@ -581,9 +582,17 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         )
 
     progress.activate("build-apply-graph")
+    confirmed_resources: dict[str, Any] = {}
+    if any(item.startswith("agent:") for item in selected_resource_ids):
+        confirmed_resources["confirmed_resource_ids"] = selected_resource_ids
     try:
         result = env.dify.apply_repair(
-            s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas, expected_revision=fc.last_snapshot_hash
+            s.app_id,
+            turn.actor,
+            to_apply,
+            on_canvas=env.emit_canvas,
+            expected_revision=fc.last_snapshot_hash,
+            **confirmed_resources,
         )
     except DraftWouldNotStartError as exc:
         # The generator's own checks passed, but the draft would fail at
@@ -1148,6 +1157,11 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
                 on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
                 failed_run_id=env.repo.get_run(fc.verify_run_id).dify_run_id if fc.verify_run_id else "",
+                **(
+                    {"confirmed_resource_ids": list(fc.resource_selection["resource_ids"])}
+                    if any(item.startswith("agent:") for item in fc.resource_selection.get("resource_ids", []))
+                    else {}
+                ),
             )
         except DraftWouldNotStartError as exc:
             # The fix applied, but apply_repair's preflight found the result

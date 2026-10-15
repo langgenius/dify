@@ -37,6 +37,8 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.native_execution import dispatch_native_worker
 from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
 
 logger = logging.getLogger(__name__)
@@ -85,6 +87,8 @@ type User = Annotated[
 
 
 class AppExecutionParams(BaseModel):
+    native_test_required: bool = False
+    native_test_ref: NativeTestContextRef | None = None
     builder_execution: BuilderExecutionContextValue | None = None
 
     app_id: str
@@ -487,6 +491,8 @@ def workflow_based_app_execution_task(
     payload: str,
 ) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
+    if exec_params.native_test_required or exec_params.native_test_ref is not None:
+        return dispatch_native_worker(ref=exec_params.native_test_ref, generation=None).model_dump(mode="json")
     if exec_params.builder_execution is not None:
         raise BuilderExecutionPolicyError("unsupported_execution_transport")
 
@@ -514,6 +520,9 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     generate_entity = resumption_context.get_generate_entity()
+    if generate_entity.native_test_required or generate_entity.native_test_ref is not None:
+        dispatch_native_worker(ref=generate_entity.native_test_ref, generation=None)
+        return
     if generate_entity.builder_execution is not None:
         raise BuilderExecutionPolicyError("unsupported_execution_transport")
 

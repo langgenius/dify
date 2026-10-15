@@ -18,8 +18,9 @@ the P2 plan's Global Constraints):
 - ``sync_draft_workflow`` has no server-side patch primitive -- ``apply_repair``
   reads the whole draft graph, mutates it client-side via
   ``graph_ops.apply_set_node_config``, and writes the whole mutated graph
-  back with ``graph_only=True``/``sync_agent_bindings=False`` so only the
-  graph changes, nothing else. A ``WorkflowHashNotEqualError`` (the draft
+  back with ``graph_only=True``/``sync_agent_bindings=False``. Confirmed native
+  Agent selections use one binding owner in the same graph transaction; all
+  final Agent nodes must be explicitly selected and prepared before sync. A ``WorkflowHashNotEqualError`` (the draft
   changed since it was read) is re-mapped to the domain ``HashMismatchError``.
 - ``run_draft`` invokes ``AppGenerateService.generate`` with
   ``invoke_from=InvokeFrom.DEBUGGER`` (runs the *draft*, not the published
@@ -44,12 +45,14 @@ the P2 plan's Global Constraints):
   matters for Agent-node workflows and is not part of this port's contract.
 """
 
+import json
 import logging
 import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
@@ -127,6 +130,14 @@ from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_draft_sync_service import notify_workflow_draft_changed
 from services.workflow_service import WorkflowService
 
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.agent_binding import (
+        AgentBindingAuthorization,
+        AgentBindingSelection,
+        AgentBindingService,
+    )
+
+
 __all__ = ["ConfirmedLaunchRecorder", "WorkflowServiceDifyPort"]
 
 
@@ -186,6 +197,97 @@ def _load_draft_workflow_or_raise(app: App, *, session: Session) -> Workflow:
     return workflow
 
 
+def _confirmed_agent_selections(graph: Graph, resource_ids: Sequence[str] | None) -> dict[str, "AgentBindingSelection"]:
+    from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection, has_native_roster_binding
+
+    confirmed = {}
+    for resource_id in resource_ids or ():
+        if resource_id.startswith("agent:"):
+            selection = AgentBindingSelection.from_resource_id(resource_id)
+            identity = (selection.agent_id, selection.snapshot_id)
+            if identity in confirmed and confirmed[identity] != selection:
+                raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+            confirmed[identity] = selection
+    result = {}
+    for node_id, data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph):
+        if not has_native_roster_binding(data):
+            raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+        binding = data["agent_binding"]
+        selection = confirmed.get((binding["agent_id"], binding["current_snapshot_id"]))
+        if selection is None:
+            raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+        result[node_id] = selection
+    return result
+
+
+def _prepare_native_agent_graph(
+    *,
+    session: Session,
+    actor: Actor,
+    workflow: Workflow,
+    graph: Graph,
+    selections: Mapping[str, "AgentBindingSelection"],
+    authorization: "AgentBindingAuthorization | None",
+) -> tuple[Graph, "AgentBindingService | None"]:
+    """Prepare all final Agent projections through one owner, in the caller's transaction."""
+    from copy import deepcopy
+
+    from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+    from models.agent import WorkflowAgentNodeBinding
+    from services.agent.workflow_publish_service import WorkflowAgentPublishService
+    from services.dify_builder.native_testing.agent_binding import AgentBindingService, has_native_roster_binding
+
+    graph = deepcopy(graph)
+    nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
+    existing = {
+        row.node_id: row
+        for row in session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == actor.tenant_id,
+                WorkflowAgentNodeBinding.app_id == workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == workflow.version,
+            )
+        ).all()
+    }
+    if not nodes and not existing and not selections:
+        return graph, None
+    if (
+        not selections
+        or set(selections) != set(nodes)
+        or not set(existing).issubset(nodes)
+        or any(not has_native_roster_binding(data) for data in nodes.values())
+    ):
+        raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+    service = AgentBindingService(session, authorization=authorization)
+    workflow.graph = json.dumps(graph)
+    for node_id in sorted(nodes):
+        data = nodes[node_id]
+        selection = selections[node_id]
+        if (data["agent_binding"]["agent_id"], data["agent_binding"]["current_snapshot_id"]) != (
+            selection.agent_id,
+            selection.snapshot_id,
+        ):
+            raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+        job = WorkflowAgentPublishService._node_job_config_from_node_data(
+            node_data=data,
+            existing_binding=existing.get(node_id),
+        )
+        prepared = service.prepare_node(
+            actor=actor,
+            workflow=workflow,
+            node_id=node_id,
+            selection=selection,
+            node_job=job,
+        )
+        for node in graph["nodes"]:
+            if node["id"] == node_id:
+                node["data"] = prepared
+        workflow.graph = json.dumps(graph)
+    return graph, service
+
+
 def _sync_graph_only(
     app: App,
     graph: Graph,
@@ -194,6 +296,8 @@ def _sync_graph_only(
     account: Account,
     session: Session,
     app_id: str,
+    *,
+    commit: bool = True,
 ) -> Workflow:
     """Write ``graph`` back to the draft via the graph-only sync both
     ``apply_repair`` and ``restore_graph`` use (no server-side patch
@@ -212,7 +316,7 @@ def _sync_graph_only(
             session=session,
             graph_only=True,
             sync_agent_bindings=False,
-            commit=True,
+            commit=commit,
             preserve_environment_variables=True,
         )
     except WorkflowHashNotEqualError as exc:
@@ -564,6 +668,7 @@ class WorkflowServiceDifyPort:
         *,
         expected_revision: str,
         failed_run_id: str | None = None,
+        confirmed_resource_ids: Sequence[str] | None = None,
     ) -> ApplyResult:
         # Build and validate against a snapshot outside the write transaction.
         # The final row lock rechecks this revision before replacing the graph.
@@ -681,6 +786,19 @@ class WorkflowServiceDifyPort:
         nodes = describe_changed_nodes(changed_nodes, before_graph, graph)
         fingerprint = graph_ops.structural_fingerprint(graph)
 
+        from services.dify_builder.native_testing.agent_binding import AgentBindingService
+
+        selections = _confirmed_agent_selections(graph, confirmed_resource_ids)
+        retirements: set[str] = set()
+        authorization = (
+            AgentBindingService.authorize(
+                actor=actor,
+                app_id=app_id,
+                agent_ids=frozenset(item.agent_id for item in selections.values()),
+            )
+            if selections
+            else None
+        )
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
@@ -690,10 +808,43 @@ class WorkflowServiceDifyPort:
                 raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
             committed_previous_graph = dict(workflow.graph_dict)
             graph = merge_canvas_presentation(before_graph, graph, committed_previous_graph)
-            updated = _sync_graph_only(app, graph, workflow, workflow.unique_hash, account, session, app_id)
+            graph, binding_service = _prepare_native_agent_graph(
+                session=session,
+                actor=actor,
+                workflow=workflow,
+                graph=graph,
+                selections=selections,
+                authorization=authorization,
+            )
+            updated = _sync_graph_only(
+                app,
+                graph,
+                workflow,
+                workflow.unique_hash,
+                account,
+                session,
+                app_id,
+                **({"commit": False} if binding_service is not None else {}),
+            )
+            if binding_service is not None:
+                retirements = binding_service.sync_prepared_bindings(
+                    actor=actor, workflow=updated, selections=selections
+                )
+                session.commit()
             new_hash = execution_revision(updated)
 
+        if binding_service is not None:
+            from events.app_event import app_draft_workflow_was_synced
+            from services.agent.retirement_service import WorkflowAgentRetirementService
+
+            WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=actor.tenant_id,
+                agent_ids=retirements,
+                account_id=actor.account_id,
+            )
+            app_draft_workflow_was_synced.send(app, synced_draft_workflow=updated)
         notify_workflow_draft_changed(updated, previous_graph=committed_previous_graph)
+
         if on_canvas is not None:
             for event in canvas_events:
                 on_canvas(event)

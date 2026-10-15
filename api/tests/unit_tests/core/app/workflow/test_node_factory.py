@@ -73,7 +73,7 @@ class TestDifyNodeFactory:
         )
 
         return DifyNodeFactory(
-            graph_init_params=SimpleNamespace(run_context=run_context),
+            graph_init_params=SimpleNamespace(run_context=run_context, workflow_id="workflow"),
             graph_runtime_state=SimpleNamespace(),
         )
 

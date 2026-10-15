@@ -46,6 +46,8 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +72,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         execution_recorder: BuilderExecutionRecorder | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -78,6 +81,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph_engine_layers=graph_engine_layers,
         )
         self._execution_recorder = execution_recorder
+        self._native_runtime = native_runtime
         self.application_generate_entity = application_generate_entity
         self._workflow = workflow
         self._sys_user_id = system_user_id
@@ -95,7 +99,42 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
         entity = self.application_generate_entity
+        native_prepared = None
+        if entity.native_test_required or entity.native_test_ref is not None:
+            if entity.native_test_ref is None:
+                raise NativeContextUnavailable("native_context_missing")
+            if self._native_runtime is None:
+                raise NativeContextUnavailable("native_runtime_unavailable")
+            resolved = self._native_runtime.resolve(entity.native_test_ref)
+            if (
+                entity.builder_execution is not None
+                or entity.single_iteration_run
+                or entity.single_loop_run
+                or (
+                    app_config.tenant_id,
+                    app_config.app_id,
+                    app_config.workflow_id,
+                    entity.user_id,
+                    entity.workflow_execution_id,
+                    entity.call_depth,
+                    self._workflow.graph_dict,
+                )
+                != (
+                    resolved.tenant_id,
+                    resolved.app_id,
+                    resolved.workflow_id,
+                    resolved.actor_id,
+                    resolved.native_run_id,
+                    resolved.call_depth,
+                    resolved.graph,
+                )
+            ):
+                raise NativeContextUnavailable("native_context_mismatch")
+            native_prepared = self._native_runtime.prepare_inputs(resolved)
+            entity.inputs = native_prepared.inputs
+            entity.files = list(native_prepared.files)
         context = entity.builder_execution
+
         if context is not None:
             # Both Builder variants share the owner/input/transport checks below; the
             # factory then admits each variant's exact node set and collaborators.
@@ -150,6 +189,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
                 builder_execution=entity.builder_execution,
+                native_test_required=entity.native_test_required,
+                native_test_ref=entity.native_test_ref,
+                native_runtime=self._native_runtime,
+                native_call_depth=entity.call_depth if entity.native_test_ref is not None else 0,
                 execution_recorder=self._execution_recorder,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -188,7 +231,11 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 variable_pool,
                 build_bootstrap_variables(
                     system_variables=system_inputs,
-                    environment_variables=self._workflow.environment_variables,
+                    environment_variables=(
+                        native_prepared.environment_variables
+                        if native_prepared is not None
+                        else self._workflow.environment_variables
+                    ),
                 ),
             )
             root_node_id = self._root_node_id or get_default_root_node_id(self._workflow.graph_dict)
@@ -205,6 +252,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
             graph = self._init_graph(
                 builder_execution=entity.builder_execution,
+                native_test_required=entity.native_test_required,
+                native_test_ref=entity.native_test_ref,
+                native_runtime=self._native_runtime,
+                native_call_depth=entity.call_depth if entity.native_test_ref is not None else 0,
                 execution_recorder=self._execution_recorder,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
@@ -270,6 +321,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_entry.graph_engine.layer(
             build_workflow_agent_workspace_retirement_layer(
                 dify_run_context=DifyRunContext(
+                    native_test_required=entity.native_test_required,
+                    native_test_ref=entity.native_test_ref,
                     tenant_id=self._workflow.tenant_id,
                     app_id=self._workflow.app_id,
                     user_id=self.application_generate_entity.user_id,

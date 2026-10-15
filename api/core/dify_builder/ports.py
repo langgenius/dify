@@ -191,6 +191,7 @@ class DifyPort(Protocol):
         *,
         expected_revision: str,
         failed_run_id: str | None = None,
+        confirmed_resource_ids: Sequence[str] | None = None,
     ) -> ApplyResult: ...
 
     def run_draft(

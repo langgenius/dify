@@ -64,6 +64,9 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -164,6 +167,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        native_test_required: bool = False,
+        native_test_ref: NativeTestContextRef | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
@@ -187,6 +193,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        native_test_required: bool = False,
+        native_test_ref: NativeTestContextRef | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -210,6 +219,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        native_test_required: bool = False,
+        native_test_ref: NativeTestContextRef | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
@@ -232,7 +244,33 @@ class WorkflowAppGenerator(BaseAppGenerator):
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        native_test_required: bool = False,
+        native_test_ref: NativeTestContextRef | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
+        native_context = None
+        native_inputs = None
+        if native_test_required or native_test_ref is not None:
+            if native_test_ref is None:
+                raise NativeContextUnavailable("native_context_missing")
+            if native_runtime is None:
+                raise NativeContextUnavailable("native_runtime_unavailable")
+            native_context = native_runtime.resolve(native_test_ref)
+            if (
+                builder_execution is not None
+                or (app_model.tenant_id, app_model.id, workflow.id, user.id, str(workflow_run_id), call_depth)
+                != (
+                    native_context.tenant_id,
+                    native_context.app_id,
+                    native_context.workflow_id,
+                    native_context.actor_id,
+                    native_context.native_run_id,
+                    native_context.call_depth,
+                )
+                or workflow.graph_dict != native_context.graph
+            ):
+                raise NativeContextUnavailable("native_context_mismatch")
+            native_inputs = native_runtime.prepare_inputs(native_context)
         try:
             if builder_execution is not None and (
                 builder_execution_admit is None
@@ -264,7 +302,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
             system_files = (
                 []
-                if builder_execution is not None
+                if builder_execution is not None or native_context is not None
                 else file_factory.build_from_mappings(
                     mappings=files,
                     tenant_id=app_model.tenant_id,
@@ -281,13 +319,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             )
 
             trace_manager = None
-            if builder_execution is None:
+            if builder_execution is None and native_context is None:
                 trace_manager = TraceQueueManager(
                     app_id=app_model.id,
                     user_id=user.id if isinstance(user, Account) else user.session_id,
                 )
 
-            inputs: Mapping[str, Any] = args["inputs"]
+            inputs: Mapping[str, Any] = native_inputs.inputs if native_inputs is not None else args["inputs"]
 
             extras = {
                 **extract_external_trace_id_from_args(args),
@@ -304,7 +342,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     builder_execution_admit.on_refusal(error, preworker=True)
                 raise error
             # Trigger inputs are already adapted event data, not Start form fields.
-            if not is_trigger_node_type(root_node_type):
+            if native_context is None and not is_trigger_node_type(root_node_type):
                 inputs = self._prepare_user_inputs(
                     user_inputs=inputs,
                     variables=app_config.variables,
@@ -317,12 +355,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 app_config=app_config,
                 file_upload_config=file_extra_config,
                 inputs=inputs,
-                files=list(system_files),
+                files=list(native_inputs.files if native_inputs is not None else system_files),
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
                 call_depth=call_depth,
                 builder_execution=builder_execution,
+                native_test_required=native_test_required,
+                native_test_ref=native_test_ref,
                 trace_manager=trace_manager,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,
@@ -384,6 +424,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 graph_engine_layers=graph_engine_layers,
                 pause_state_config=pause_state_config,
                 builder_execution_admit=builder_execution_admit,
+                native_runtime=native_runtime,
             )
 
     def resume(
@@ -407,6 +448,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         ``trace_manager`` is transient and excluded from generate-entity serialization,
         so resumed executions rebuild it here before persistence layers receive the entity.
         """
+        if application_generate_entity.native_test_required or application_generate_entity.native_test_ref is not None:
+            if application_generate_entity.native_test_ref is None:
+                raise NativeContextUnavailable("native_context_missing")
+            raise NativeContextUnavailable("native_resume_adapter_unavailable")
         if application_generate_entity.builder_execution is not None:
             raise BuilderExecutionPolicyError("unsupported_execution_transport")
         if application_generate_entity.trace_manager is None:
@@ -453,6 +498,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
@@ -513,6 +559,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
                     "builder_execution_admit": builder_execution_admit,
+                    "native_runtime": native_runtime,
                 },
             )
 
@@ -752,6 +799,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -765,6 +813,39 @@ class WorkflowAppGenerator(BaseAppGenerator):
         exit_kind: Literal["returned", "policy_refused", "stopped", "failed"] = "failed"
         try:
             with preserve_flask_contexts(flask_app, context_vars=context):
+                native_context = None
+                if (
+                    application_generate_entity.native_test_required
+                    or application_generate_entity.native_test_ref is not None
+                ):
+                    if application_generate_entity.native_test_ref is None:
+                        raise NativeContextUnavailable("native_context_missing")
+                    if native_runtime is None:
+                        raise NativeContextUnavailable("native_runtime_unavailable")
+                    native_context = native_runtime.resolve(application_generate_entity.native_test_ref)
+                    if (
+                        application_generate_entity.app_config.tenant_id,
+                        application_generate_entity.app_config.app_id,
+                        application_generate_entity.app_config.workflow_id,
+                        application_generate_entity.user_id,
+                        application_generate_entity.workflow_execution_id,
+                    ) != (
+                        native_context.tenant_id,
+                        native_context.app_id,
+                        native_context.workflow_id,
+                        native_context.actor_id,
+                        native_context.native_run_id,
+                    ):
+                        raise NativeContextUnavailable("native_context_mismatch")
+                    prepared = native_runtime.prepare_inputs(native_context)
+                    application_generate_entity = application_generate_entity.model_copy(
+                        update={
+                            "inputs": prepared.inputs,
+                            "files": list(prepared.files),
+                            "call_depth": native_context.call_depth,
+                        }
+                    )
+
                 try:
                     with session_factory.create_session() as session:
                         workflow = session.scalar(
@@ -807,8 +888,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
                             if execution_recorder is None or not execution_recorder.healthy:
                                 raise BuilderExecutionPolicyError("missing_execution_recorder")
 
-                        workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
-                        if graph_runtime_state is not None:
+                        if native_context is not None:
+                            if workflow.graph_dict != native_context.graph:
+                                raise NativeContextUnavailable("native_context_mismatch")
+                        else:
+                            workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+
+                        if graph_runtime_state is not None and native_context is None:
                             self._restore_workflow_run_graph(
                                 session=session,
                                 workflow=workflow,
@@ -837,6 +923,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         variable_loader=variable_loader,
                         workflow=workflow,
                         system_user_id=system_user_id,
+                        native_runtime=native_runtime,
                         workflow_execution_repository=workflow_execution_repository,
                         workflow_node_execution_repository=workflow_node_execution_repository,
                         root_node_id=root_node_id,
@@ -857,6 +944,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     queue_manager.publish_error(
                         InvokeAuthorizationError("Incorrect API key provided"), PublishFrom.APPLICATION_MANAGER
                     )
+                except NativeContextUnavailable as e:
+                    exit_kind = "policy_refused"
+                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
                 except ValidationError as e:
                     logger.exception("Validation Error when generating")
                     queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)

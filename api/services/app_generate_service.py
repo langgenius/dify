@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from sqlalchemy.orm import Session
 
@@ -18,7 +18,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import BuilderExecutionAdmission, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import rate_limit_context
+from core.app.features.rate_limiting.rate_limit import RateLimitGenerator, rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from core.dify_builder.execution_policy import (
@@ -59,6 +59,9 @@ _MANUAL_WORKFLOW_INVOKE_SOURCES = frozenset(
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
+    from services.dify_builder.native_testing.contracts import NativeTestContextRef
+    from services.dify_builder.native_testing.native_execution import ClosableNativeEventStream
+    from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 
 
 class AppGenerateService:
@@ -171,6 +174,67 @@ class AppGenerateService:
                 builder_execution_admit=builder_execution_admit,
             ),
         )
+
+    @classmethod
+    def generate_admitted_native(
+        cls,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account,
+        ref: NativeTestContextRef,
+        runtime: NativeRuntimeBridge,
+    ) -> ClosableNativeEventStream:
+        """Trusted native gateway retaining this service's quota and rate-limit owner.
+
+        The opaque ref is reloaded before quota or generator setup. Only the
+        server composition owner supplies runtime; client arguments never select
+        this path. It returns the existing closable rate-limited SSE iterator.
+        """
+        from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+        from services.dify_builder.native_testing.repository import native_workflow_revision
+
+        if runtime is None:
+            raise NativeContextUnavailable("native_runtime_unavailable")
+        context = runtime.resolve(ref)
+        if (
+            not isinstance(user, Account)
+            or app_model.mode != AppMode.WORKFLOW
+            or (app_model.tenant_id, app_model.id, workflow.id, user.id)
+            != (context.tenant_id, context.app_id, context.workflow_id, context.actor_id)
+            or native_workflow_revision(workflow) != context.graph_revision
+            or workflow.graph_dict != context.graph
+        ):
+            raise NativeContextUnavailable("native_context_mismatch")
+        from services.dify_builder.native_testing.native_execution import NativeGeneratorStream
+
+        def start(rate_limit: RateLimit, request_id: str) -> ClosableNativeEventStream:
+            source = WorkflowAppGenerator().generate(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                args={"inputs": context.inputs},
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+                call_depth=context.call_depth,
+                workflow_run_id=context.native_run_id,
+                native_test_required=True,
+                native_test_ref=context.ref,
+                native_runtime=runtime,
+            )
+            stream = NativeGeneratorStream(source)
+            try:
+                # This legacy owner only consumes next()/close(); its annotation
+                # is narrower than that actual iterator contract.
+                limited = rate_limit.generate(cast(Generator[str], stream), request_id=request_id)
+                if not isinstance(limited, RateLimitGenerator):
+                    raise NativeContextUnavailable("native_stream_unavailable")
+                return limited
+            except BaseException:
+                stream.close()
+                raise
+
+        return cls._run_with_guardrails(app_model=app_model, streaming=True, action=start)
 
     @classmethod
     def _run_with_guardrails(

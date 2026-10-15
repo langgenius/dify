@@ -101,6 +101,8 @@ from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 from services.dify_builder.json_tool_execution import admit_json_workflow
 from services.dify_builder.json_tool_runtime import QualifiedJsonToolNodeRuntime
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
 
 if TYPE_CHECKING:
@@ -369,10 +371,12 @@ class DifyNodeFactory(NodeFactory):
         graph_init_context: DifyGraphInitContext,
         graph_runtime_state: "GraphRuntimeState",
         execution_recorder: BuilderExecutionRecorder | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
             execution_recorder=execution_recorder,
+            native_runtime=native_runtime,
             graph_init_params=graph_init_context.to_graph_init_params(),
             graph_runtime_state=graph_runtime_state,
         )
@@ -383,13 +387,42 @@ class DifyNodeFactory(NodeFactory):
         graph_runtime_state: "GraphRuntimeState",
         *,
         execution_recorder: BuilderExecutionRecorder | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
         _request_hmac_key: bytes | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
         self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
         self.execution_recorder = execution_recorder
+        self._native_runtime = native_runtime
+        if native_runtime is not None and self._dify_context.native_test_ref is None:
+            raise NativeContextUnavailable("native_context_missing")
+        if self._dify_context.native_test_required or self._dify_context.native_test_ref is not None:
+            ref = self._dify_context.native_test_ref
+            if ref is None:
+                raise NativeContextUnavailable("native_context_missing")
+            if native_runtime is None:
+                raise NativeContextUnavailable("native_runtime_unavailable")
+            context = native_runtime.resolve(ref)
+            if self._dify_context.builder_execution is not None or (
+                self._dify_context.tenant_id,
+                self._dify_context.app_id,
+                self._dify_context.user_id,
+                graph_init_params.workflow_id,
+                graph_init_params.call_depth,
+                dict(graph_init_params.graph_config),
+            ) != (
+                context.tenant_id,
+                context.app_id,
+                context.actor_id,
+                context.workflow_id,
+                context.call_depth,
+                context.graph,
+            ):
+                raise NativeContextUnavailable("native_context_mismatch")
+            return
         context = self._dify_context.builder_execution
+
         # Exhaustive context dispatch, before ordinary eager setup. A Builder
         # context never falls through to native unrestricted construction.
         match context:
@@ -567,6 +600,7 @@ class DifyNodeFactory(NodeFactory):
         return DifyNodeFactory(
             execution_recorder=self.execution_recorder,
             _request_hmac_key=getattr(self, "_request_hmac_key", None),
+            native_runtime=self._native_runtime,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
@@ -616,6 +650,24 @@ class DifyNodeFactory(NodeFactory):
             validate_resolved_node_data=self._validate_resolved_node_data,
             pre_validate_node_data=self._validate_restricted_raw_config if context is not None else None,
         )
+        if self._native_runtime is not None:
+            ref = self._dify_context.native_test_ref
+            if ref is None:
+                raise NativeContextUnavailable("native_context_missing")
+            native_kwargs = self._native_runtime.arguments(
+                ref=ref,
+                node_id=node_id,
+                node_data=resolved_node_data,
+                node_class=node_class,
+                runtime_state=self.graph_runtime_state,
+            )
+            return node_class(
+                node_id=node_id,
+                data=resolved_node_data.model_dump(mode="python", by_alias=True),
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                **native_kwargs,
+            )
         if isinstance(context, BuilderExecutionContext):
             validate_restricted_node(
                 context=context, node_id=node_id, node_class=node_class, resolved_node_data=resolved_node_data

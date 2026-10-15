@@ -341,6 +341,9 @@ jobs:
               "api/tests/unit_tests/services/dify_builder/test_condition_evidence.py",
               "api/tests/unit_tests/services/dify_builder/test_native_constant_output_contract.py",
               "api/tests/unit_tests/services/dify_builder/test_dify_port_preflight.py",
+              "api/tests/unit_tests/services/dify_builder/test_dify_port.py",
+              "api/tests/unit_tests/services/test_app_generate_service.py",
+              "api/tests/unit_tests/core/app/workflow/test_node_factory.py",
               "api/tests/unit_tests/core/workflow/generator/test_runner.py",
               "api/tests/unit_tests/services/dify_builder/test_build_cognition.py",
               "api/tests/unit_tests/services/dify_builder/test_llm_agent.py",
@@ -874,6 +877,7 @@ jobs:
           set -o pipefail
           uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-native-foundation-units.log
           import xml.etree.ElementTree as ET
+          from collections import Counter
           from pathlib import Path
           import pytest
 
@@ -882,7 +886,39 @@ jobs:
               "api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_contracts.py",
               "api/tests/unit_tests/services/dify_builder/native_testing/test_authorization.py",
               "api/tests/unit_tests/services/dify_builder/native_testing/test_lifecycle.py",
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_context_binding.py",
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_bridge.py",
+              "api/tests/unit_tests/services/dify_builder/native_testing/test_native_execution.py",
           ]
+          new_expected = {'tests.unit_tests.services.dify_builder.native_testing.test_context_binding': {'test_agent_selection_uses_exact_confirmed_opaque_identity': 1,
+                                                                                          'test_compiled_admission_recheck_rejects_local_changes_without_writing': 4,
+                                                                                          'test_compiler_reads_actual_owner_snapshot_and_finalizes_digest': 1,
+                                                                                          'test_loaded_ref_must_exactly_match_requested_ref': 1,
+                                                                                          'test_marker_roundtrip_does_not_extend_legacy_policy_union': 1,
+                                                                                          'test_native_graph_prepares_every_agent_with_one_binding_owner': 1,
+                                                                                          'test_native_graph_refuses_unselected_agent_before_sync': 1,
+                                                                                          'test_owner_rejection_is_sanitized': 3,
+                                                                                          'test_real_apply_persists_confirmed_agent_graph_and_binding_together': 1,
+                                                                                          'test_reload_preserves_typed_inputs_and_isolates_mutable_snapshot': 1,
+                                                                                          'test_required_scope_never_falls_back_to_ordinary': 1,
+                                                                                          'test_unknown_policy_never_reaches_owner': 1,
+                                                                                          'test_unmarked_ordinary_run_does_not_load_native_state': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_native_execution': {'test_admitted_native_gateway_releases_existing_rate_limit': 4,
+                                                                                           'test_generator_refuses_missing_native_scope_before_file_or_config_work': 1,
+                                                                                           'test_native_owner_calls_existing_generator_with_reserved_id_and_server_actor': 1,
+                                                                                           'test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity': 1,
+                                                                                           'test_owner_cannot_replace_reserved_run_identity': 1,
+                                                                                           'test_resume_checks_generation_before_native_owner': 1,
+                                                                                           'test_resume_reloads_state_each_time': 1,
+                                                                                           'test_run_uses_reloaded_typed_snapshot_and_exact_native_run_id': 1,
+                                                                                           'test_worker_rejects_marker_before_payload_logger_or_ordinary_runner': 1},
+           'tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge': {'test_factory_preserves_bridge_on_runtime_clone_and_checks_owners': 1,
+                                                                                         'test_marked_factory_requires_bridge_before_eager_model_setup': 1,
+                                                                                         'test_missing_occurrence_fails_before_collaborator_construction': 1,
+                                                                                         'test_native_factory_constructs_real_registered_start_with_explicit_occurrence': 1,
+                                                                                         'test_occurrence_and_root_budget_are_passed_to_explicit_bundle': 1,
+                                                                                         'test_unmarked_factory_cannot_accept_native_bridge': 1}}
+          new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
           report = "builder-native-foundation-units.xml"
           code = pytest.main([*files, "-p", "no:benchmark", "--no-cov", "-vv", "-rA", f"--junitxml={report}"])
@@ -899,10 +935,15 @@ jobs:
                       problems.append(f"unexpected or duplicated native unit case: {identity}")
                   modules.add(module)
                   seen.add(identity)
+                  if module in new_actual:
+                      new_actual[module][identity[1].split("[", 1)[0]] += 1
                   if any(case.find(tag) is not None for tag in ("skipped", "failure", "error")):
                       problems.append(f"nonpassing native unit case: {identity}")
               if modules != expected:
                   problems.append(f"native unit module inventory mismatch: {modules}")
+          for module, functions in new_expected.items():
+              if dict(new_actual[module]) != functions:
+                  problems.append(f"NW2 function inventory mismatch: {module}: {dict(new_actual[module])}")
           for problem in problems:
               print(f"COMPLETENESS {problem}", flush=True)
           print(f"COLLECTED native units: {len(seen)} unique cases", flush=True)

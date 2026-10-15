@@ -99,6 +99,8 @@ from graphon.graph_events import (
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
@@ -202,6 +204,10 @@ class WorkflowBasedAppRunner:
         | JsonToolExecutionContext
         | None = None,
         execution_recorder: BuilderExecutionRecorder | None = None,
+        native_test_required: bool = False,
+        native_test_ref: NativeTestContextRef | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
+        native_call_depth: int = 0,
     ) -> Graph:
         """
         Init graph
@@ -216,6 +222,8 @@ class WorkflowBasedAppRunner:
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
             builder_execution=builder_execution,
+            native_test_required=native_test_required,
+            native_test_ref=native_test_ref,
             tenant_id=tenant_id or "",
             app_id=self._app_id,
             user_id=user_id,
@@ -228,13 +236,14 @@ class WorkflowBasedAppRunner:
             workflow_id=workflow_id,
             graph_config=graph_config,
             run_context=run_context,
-            call_depth=0,
+            call_depth=native_call_depth,
         )
 
         # Use the provided graph_runtime_state for consistent state management
 
         node_factory = DifyNodeFactory.from_graph_init_context(
             execution_recorder=execution_recorder,
+            native_runtime=native_runtime,
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
