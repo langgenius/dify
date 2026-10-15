@@ -2,7 +2,6 @@ import type { Shape } from '../../store/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
-import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInNormal from '../header-in-normal'
@@ -71,7 +70,7 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
   useRestoreWorkflow: () => ({
     mutateAsync: mockRestoreWorkflow,
@@ -269,12 +268,9 @@ describe('Header layout components', () => {
           isRestoring: true,
           showWorkflowVersionHistoryPanel: true,
         },
+        resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.appFlow,
-            flowId: 'flow-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
@@ -303,12 +299,9 @@ describe('Header layout components', () => {
             currentVersion,
             deleteAllInspectVars,
           },
+          resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
           hooksStoreProps: {
-            configsMap: {
-              flowType: FlowType.appFlow,
-              flowId: 'flow-1',
-              fileSettings: {},
-            },
+            fileSettings: {},
           },
           queryClient,
         },
@@ -354,12 +347,9 @@ describe('Header layout components', () => {
           backupDraft: createBackupDraft(),
           currentVersion,
         },
+        resource: { kind: 'knowledge-pipeline' as const, pipelineId: 'pipeline-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.ragPipeline,
-            flowId: 'pipeline-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
@@ -386,12 +376,9 @@ describe('Header layout components', () => {
           backupDraft: createBackupDraft(),
           currentVersion,
         },
+        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.snippet,
-            flowId: 'snippet-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 

@@ -6,7 +6,6 @@ import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import WorkflowApp from '../index'
 
 const render = (ui: ReactElement) => {
@@ -16,7 +15,7 @@ const render = (ui: ReactElement) => {
     createAppDetailFixture({
       id: 'app-1',
       name: 'Workflow App',
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [],
     }),
   )
@@ -66,11 +65,11 @@ vi.mock('../hooks/use-workflow-init', async () => {
 
   return {
     useWorkflowInit: () => {
-      useStore((state) => state.appId)
+      useStore((state) => state.syncWorkflowDraftHash)
       const workflowStore = useWorkflowStore()
 
       React.useEffect(() => {
-        workflowStore.setState({ appId: 'initialized-app' })
+        workflowStore.setState({ syncWorkflowDraftHash: 'initialized-draft' })
       }, [workflowStore])
 
       return {
@@ -115,7 +114,7 @@ vi.mock('../components/workflow-main', async () => {
     await import('@/app/components/workflow/workflow-history-store')
 
   const WorkflowMainProbe = () => {
-    const appId = useStore((state) => state.appId)
+    const appId = useStore((state) => state.syncWorkflowDraftHash)
     const hasWorkflowSlice = useStore((state) => typeof state.setNotInitialWorkflow === 'function')
     const { store } = useWorkflowHistoryStore()
 
@@ -139,6 +138,8 @@ describe('WorkflowApp provider contract', () => {
       </StrictMode>,
     )
 
-    expect(await screen.findByText('app:initialized-app history:1 slice:true')).toBeInTheDocument()
+    expect(
+      await screen.findByText('app:initialized-draft history:1 slice:true'),
+    ).toBeInTheDocument()
   })
 })

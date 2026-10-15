@@ -6,9 +6,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useEffect, useRef } from 'react'
+import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -86,7 +85,7 @@ vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 vi.mock('@/service/use-workflow', () => ({
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
-  useInvalidAllLastRun: () => vi.fn(),
+  useInvalidateAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
   useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
   useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
@@ -135,14 +134,14 @@ vi.mock('../../../hooks-store', () => ({
   useHooksStore: (
     selector: (state: {
       accessControl: { canImportExportDSL: boolean }
-      configsMap: { flowId: string; flowType: string }
+      configsMap: { flowId: string; resourceKind: string }
     }) => unknown,
   ) =>
     selector({
       accessControl: { canImportExportDSL: true },
       configsMap: {
         flowId: 'app-1',
-        flowType: 'appFlow',
+        resourceKind: 'appFlow',
       },
     }),
 }))
@@ -505,7 +504,7 @@ describe('VersionHistoryPanel', () => {
 
     render(
       <VersionHistoryPanel
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         latestVersionId="published-version-id"
         restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
@@ -519,7 +518,7 @@ describe('VersionHistoryPanel', () => {
       expect(mockUpdateWorkflow).toHaveBeenCalledWith(
         {
           appId: 'app-1',
-          appMode: AppModeEnum.WORKFLOW,
+          appMode: 'workflow' as const,
           releaseNotes: 'Updated notes',
           title: 'Updated release',
           url: '/apps/app-1/workflows/published-version-id',
@@ -537,6 +536,7 @@ function render(ui: ReactElement) {
     features: { billing: { subscription: { plan: mockPlanType } } },
   })
   return renderWithConsoleState(ui, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     wrapper: ({ children }) => (
       <NuqsTestingAdapter>
         <QueryWrapper>{children}</QueryWrapper>

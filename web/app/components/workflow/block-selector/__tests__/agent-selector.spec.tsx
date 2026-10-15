@@ -1,8 +1,10 @@
 import type { AgentRosterNodeData } from '../types'
+import type { EditorIdentity } from '@/app/components/workflow/editor-resource/state'
 import { Button } from '@langgenius/dify-ui/button'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import {
   AgentSelectorMenu,
   AgentSelectorMenuContent,
@@ -23,23 +25,28 @@ vi.mock('@/app/notifications', () => ({
   toast: { error: mocks.toastError },
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      inviteOptions: {
-        get: {
-          queryOptions: (args: unknown) => {
-            mocks.queryOptions(args)
-            return {
-              queryKey: ['agent-invite-options', args],
-              queryFn: async () => ({ data: mocks.agents }),
-            }
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      agent: {
+        inviteOptions: {
+          get: {
+            queryOptions: (args: unknown) => {
+              mocks.queryOptions(args)
+              return {
+                queryKey: ['agent-invite-options', args],
+                queryFn: async () => ({ data: mocks.agents }),
+              }
+            },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 const createAgent = (overrides: Record<string, unknown> = {}) => ({
   id: 'agent-1',
@@ -56,19 +63,23 @@ const createAgent = (overrides: Record<string, unknown> = {}) => ({
 const renderMenu = async ({
   onSelect = vi.fn<(agent: AgentRosterNodeData) => void>(),
   onStartFromScratch,
+  identity = { kind: 'app', appId: 'app-1' },
 }: {
   onSelect?: ReturnType<typeof vi.fn<(agent: AgentRosterNodeData) => void>>
   onStartFromScratch?: () => void
+  identity?: EditorIdentity
 } = {}) => {
   const user = userEvent.setup()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   render(
     <QueryClientProvider client={queryClient}>
-      <AgentSelectorMenu>
-        <AgentSelectorMenuTrigger>Open agents</AgentSelectorMenuTrigger>
-        <AgentSelectorMenuContent onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
-      </AgentSelectorMenu>
+      <EditorResourceScope identity={identity}>
+        <AgentSelectorMenu>
+          <AgentSelectorMenuTrigger>Open agents</AgentSelectorMenuTrigger>
+          <AgentSelectorMenuContent onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
+        </AgentSelectorMenu>
+      </EditorResourceScope>
     </QueryClientProvider>,
   )
 
@@ -83,6 +94,13 @@ describe('AgentSelectorMenu', () => {
     mocks.agents = []
     mocks.queryOptions.mockClear()
     mocks.toastError.mockClear()
+  })
+
+  it('does not send a snippet ID as the workflow app filter', async () => {
+    await renderMenu({ identity: { kind: 'snippet', snippetId: 'snippet-1' } })
+    expect(mocks.queryOptions).toHaveBeenCalledWith({
+      input: { query: { limit: 8, page: 1 } },
+    })
   })
 
   it('lists agents and keeps the footer actions inside the menu', async () => {
@@ -149,12 +167,14 @@ describe('AgentSelectorMenu', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <AgentSelectorMenu>
-          <AgentSelectorMenuContent onSelect={vi.fn()} />
-          <AgentSelectorMenuTrigger render={<Button loading />}>
-            Open agents
-          </AgentSelectorMenuTrigger>
-        </AgentSelectorMenu>
+        <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>
+          <AgentSelectorMenu>
+            <AgentSelectorMenuContent onSelect={vi.fn()} />
+            <AgentSelectorMenuTrigger render={<Button loading />}>
+              Open agents
+            </AgentSelectorMenuTrigger>
+          </AgentSelectorMenu>
+        </EditorResourceScope>
       </QueryClientProvider>,
     )
 

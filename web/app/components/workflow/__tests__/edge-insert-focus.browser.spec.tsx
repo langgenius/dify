@@ -5,6 +5,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { WorkflowContext } from '../context'
 import CustomEdge from '../custom-edge'
+import { EditorResourceScope } from '../editor-resource/provider'
 import { createWorkflowStore } from '../store/workflow'
 import { BlockEnum } from '../types'
 import 'reactflow/dist/style.css'
@@ -53,20 +54,22 @@ const edges = [
 function Fixture() {
   const [store] = useState(() => createWorkflowStore({}))
   return (
-    <WorkflowContext value={store}>
-      <ReactFlowProvider>
-        <button type="button">Before canvas</button>
-        <div style={{ width: 800, height: 500 }}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            edgeTypes={edgeTypes}
-            nodesFocusable={false}
-            edgesFocusable={false}
-          />
-        </div>
-      </ReactFlowProvider>
-    </WorkflowContext>
+    <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>
+      <WorkflowContext value={store}>
+        <ReactFlowProvider>
+          <button type="button">Before canvas</button>
+          <div style={{ width: 800, height: 500 }}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              edgeTypes={edgeTypes}
+              nodesFocusable={false}
+              edgesFocusable={false}
+            />
+          </div>
+        </ReactFlowProvider>
+      </WorkflowContext>
+    </EditorResourceScope>
   )
 }
 

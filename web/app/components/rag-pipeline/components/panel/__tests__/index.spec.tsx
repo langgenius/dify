@@ -1,5 +1,6 @@
 import type { PanelProps } from '@/app/components/workflow/panel'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import RagPipelinePanel from '../index'
 
 const { dynamicComponent } = vi.hoisted(() => {
@@ -54,7 +55,9 @@ vi.mock('@/app/components/workflow/panel', () => ({
 
 describe('RagPipelinePanel', () => {
   it('renders enabled panels and supplies pipeline version endpoints', () => {
-    render(<RagPipelinePanel />)
+    render(<RagPipelinePanel />, {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    })
 
     expect(screen.getByText('Record panel')).toBeInTheDocument()
     expect(screen.getByText('Test run panel')).toBeInTheDocument()

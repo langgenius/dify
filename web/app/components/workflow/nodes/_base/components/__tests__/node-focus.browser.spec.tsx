@@ -1,12 +1,31 @@
+import type { ReactElement } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '../../../../types'
 import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
+import { consoleQuery } from '@/service/console'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
+import { EditorResourceScope } from '../../../../editor-resource/provider'
 import { BlockEnum } from '../../../../types'
 import NodeControl from '../node-control'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
+
+const render = (ui: ReactElement) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
+  )
+  return renderBrowser(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>{ui}</EditorResourceScope>
+    </QueryClientTestProvider>,
+  )
+}
 
 // Plugin installation is outside node trigger and popup focus ownership.
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
@@ -23,7 +42,6 @@ vi.mock('../../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeAdd: vi.fn(), handleNodeSelect: vi.fn() }),
 }))
 vi.mock('../../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => false,
   useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
 }))
 vi.mock('../../../../hooks/use-nodes-meta-data', () => ({
@@ -43,7 +61,6 @@ vi.mock('@/app/components/workflow/store', () => ({
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      configsMap: { flowType: 'app-flow' },
       availableNodesMetaData: { nodes: [] },
       accessControl: { canRun: false },
     }),

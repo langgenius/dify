@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import { createDatasourceProvider } from '../../__tests__/datasource-fixtures'
@@ -20,20 +21,24 @@ vi.mock('@/service/use-workflow', () => ({ useWorkflowConfig: mocks.workflowConf
 const catalog = consoleQuery.rag.pipelines.datasourcePlugins.get
 
 describe('usePipelineConfig', () => {
+  let pipelineId: string
   let client: QueryClient
   let store: ReturnType<typeof createWorkflowStore>
   const wrapper = ({ children }: PropsWithChildren) =>
     createElement(
       QueryClientProvider,
       { client },
-      createElement(WorkflowContext.Provider, { value: store }, children),
+      createElement(EditorResourceScope, {
+        identity: { kind: 'knowledge-pipeline', pipelineId },
+        children: createElement(WorkflowContext.Provider, { value: store }, children),
+      }),
     )
 
   beforeEach(() => {
     vi.clearAllMocks()
     client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
     store = createWorkflowStore({ injectWorkflowStoreSliceFn: createRagPipelineSliceSlice })
-    store.setState({ pipelineId: 'pipeline-1' })
+    pipelineId = 'pipeline-1'
     mocks.request.mockResolvedValue(Response.json([]))
   })
   afterEach(() => client.clear())
@@ -74,7 +79,7 @@ describe('usePipelineConfig', () => {
   })
 
   it('does not request or hydrate datasource state before a pipeline is available', () => {
-    store.setState({ pipelineId: '' })
+    pipelineId = ''
     client.setQueryData(catalog.queryKey(), [createDatasourceProvider()])
     renderHook(usePipelineConfig, { wrapper })
 
@@ -84,12 +89,13 @@ describe('usePipelineConfig', () => {
   })
 
   it('fetches and synchronizes when the pipeline becomes available', async () => {
-    store.setState({ pipelineId: '' })
+    pipelineId = ''
     const providers = [createDatasourceProvider()]
     mocks.request.mockResolvedValue(Response.json(providers))
-    renderHook(usePipelineConfig, { wrapper })
+    const { rerender } = renderHook(usePipelineConfig, { wrapper })
 
-    act(() => store.setState({ pipelineId: 'pipeline-2' }))
+    pipelineId = 'pipeline-2'
+    rerender()
 
     await waitFor(() => expect(store.getState().dataSourceList).toEqual(providers))
   })

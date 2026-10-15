@@ -3,7 +3,6 @@ import type { KnowledgeRetrievalNodeType, MetadataFilteringCondition } from '../
 import { act, renderHook } from '@testing-library/react'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -132,7 +131,7 @@ describe('use-knowledge-metadata-config', () => {
       result.current.handleMetadataModelChange({
         provider: 'openai',
         modelId: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       result.current.handleMetadataCompletionParamsChange({ top_p: 0.3 })
     })
@@ -142,7 +141,7 @@ describe('use-knowledge-metadata-config', () => {
         metadata_model_config: {
           provider: 'openai',
           name: 'gpt-4.1-mini',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           completion_params: { top_p: 0.3 },
         },
       }),
@@ -202,7 +201,7 @@ describe('use-knowledge-metadata-config', () => {
       metadata_model_config: {
         provider: 'openai',
         name: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { temperature: 0.7 },
       },
     })
@@ -247,7 +246,7 @@ describe('use-knowledge-metadata-config', () => {
       metadata_model_config: {
         provider: 'openai',
         name: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { temperature: 0.9 },
       },
     })
@@ -274,7 +273,7 @@ describe('use-knowledge-metadata-config', () => {
     expect(inputRef.current.metadata_model_config).toEqual({
       provider: 'anthropic',
       name: 'claude-sonnet',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       completion_params: { temperature: 0.9 },
     })
   })

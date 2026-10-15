@@ -7,7 +7,6 @@ import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
@@ -229,7 +228,7 @@ describe('WorkflowApp', () => {
     mockIsWorkflowDataLoaded = true
     appDetail = createAppDetailFixture({
       id: 'app-1',
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.TestAndRun],
     })
     workflowInitState = {
@@ -359,7 +358,7 @@ describe('WorkflowApp', () => {
     searchParamsValue = 'run-1'
     appDetail = createAppDetailFixture({
       id: 'app-1',
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.ViewLayout],
     })
 

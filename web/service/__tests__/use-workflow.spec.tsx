@@ -21,7 +21,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { usePublishWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
@@ -175,7 +174,7 @@ describe('useUpdateWorkflow', () => {
     })
   })
 
-  it.each([AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT])(
+  it.each(['workflow', 'advanced-chat'] as const)(
     'should synchronize every cached app deployment reference to the updated workflow version (%s)',
     async (appMode) => {
       const queryClient = createQueryClient()
@@ -384,7 +383,7 @@ describe('useUpdateWorkflow', () => {
     await act(async () => {
       await result.current.mutateAsync({
         appId: 'app-1',
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         url: '/apps/app-1/workflows/workflow-1',
         title: 'New release',
         releaseNotes: 'New notes',

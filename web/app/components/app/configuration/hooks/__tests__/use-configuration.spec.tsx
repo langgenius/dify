@@ -12,7 +12,7 @@ import { seedAppDetail } from '@/test/console/query-data'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
@@ -24,7 +24,7 @@ const createRouteAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
     model_config: createAppModelConfigFixture({
       updated_at: 1710000000,
     }),
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     permission_keys: mockAppPermissionKeys,
     ...overrides,
   })
@@ -252,7 +252,7 @@ describe('useConfiguration', () => {
     vi.mocked(consoleClient.apps.byAppId.modelConfig.post).mockResolvedValue(undefined as never)
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'advanced',
         chat_prompt_config: {
@@ -675,7 +675,7 @@ describe('useConfiguration', () => {
     mockCurrentModelFeatures = ['vision', 'document', 'audio', 'video']
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
@@ -788,7 +788,7 @@ describe('useConfiguration', () => {
     })
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },

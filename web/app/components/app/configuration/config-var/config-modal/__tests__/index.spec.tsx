@@ -11,7 +11,7 @@ import {
   seedAppDetail,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum, TransferMethod } from '@/types/app'
+import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -37,7 +37,7 @@ vi.mock('@monaco-editor/react', async () => ({
 
 const render = (ui: React.ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: AppModeEnum.CHAT }))
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' as const }))
   return renderWithConsoleQuery(ui, { queryClient })
 }
 

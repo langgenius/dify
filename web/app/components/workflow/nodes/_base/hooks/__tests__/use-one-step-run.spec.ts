@@ -4,7 +4,6 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Mock the request boundary while preserving the single-run error owner.
 import { post } from '@/service/base'
-import { FlowType } from '@/types/common'
 import useOneStepRun from '../use-one-step-run'
 
 const mockWorkflowState = {
@@ -46,7 +45,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getBeforeNodesInSameBranch: () => [
         {
@@ -103,7 +102,7 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidLastRun: () => vi.fn(),
+  useInvalidateLastRun: () => vi.fn(),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -188,8 +187,8 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
   renderHook(() =>
     useOneStepRun({
       id: 'if-else-node',
-      flowId: 'app-id',
-      flowType: FlowType.appFlow,
+      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+
       data: {
         type,
         title: 'IF/ELSE',
@@ -263,4 +262,11 @@ describe('useOneStepRun single-run input vars', () => {
     expect(reportError).toHaveBeenCalledWith(error)
     expect(reportError.mock.calls[0]?.[0]).toBe(error)
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

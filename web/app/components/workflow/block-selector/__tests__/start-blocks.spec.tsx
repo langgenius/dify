@@ -1,7 +1,7 @@
 import type { CommonNodeType } from '../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum } from '../../types'
 import StartBlocks from '../start-blocks'
@@ -10,22 +10,22 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: vi.fn(),
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: vi.fn(),
 }))
 
 const mockUseNodes = vi.mocked(useNodes)
-const mockUseAvailableNodesMetaData = vi.mocked(useAvailableNodesMetaData)
+const mockUseAvailableNodesMetaData = vi.mocked(useWorkflowNodeCatalog)
 
 const createNode = (type: BlockEnum) =>
   ({
     data: { type } as Pick<CommonNodeType, 'type'>,
   }) as ReturnType<typeof useNodes>[number]
 
-const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> =>
+const createAvailableNodesMetaData = (): ReturnType<typeof useWorkflowNodeCatalog> =>
   ({
     nodes: [],
-  }) as unknown as ReturnType<typeof useAvailableNodesMetaData>
+  }) as unknown as ReturnType<typeof useWorkflowNodeCatalog>
 
 describe('StartBlocks', () => {
   beforeEach(() => {

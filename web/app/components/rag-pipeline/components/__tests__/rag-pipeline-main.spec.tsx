@@ -68,16 +68,10 @@ vi.mock('../../hooks/use-pipeline-start-run', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({
-    flowId: 'test-flow-id',
-    flowType: 'ragPipeline',
-    fileSettings: {},
-  }),
-}))
+vi.mock('../../hooks/use-file-settings', () => ({ useFileSettings: () => ({ enabled: true }) }))
 
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  useInspectVarsCrud: () => ({
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: () => ({
     hasNodeInspectVars: vi.fn(),
     hasSetInspectVar: vi.fn(),
     fetchInspectVarValue: vi.fn(),

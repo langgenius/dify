@@ -5,10 +5,10 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum, Resolution } from '@/types/app'
+import { Resolution } from '@/types/app'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly } from '../../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import useLLMInputManager from '../hooks/use-llm-input-manager'
 import useLLMPromptConfig from '../hooks/use-llm-prompt-config'
@@ -21,7 +21,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
   }
 })
 
@@ -69,7 +68,7 @@ vi.mock('../hooks/use-llm-structured-output-config', () => ({
 }))
 
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
 const mockUseInspectVarsCrud = vi.mocked(useInspectVarsCrud)
 const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
@@ -89,7 +88,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {
       temperature: 0.7,
     },
@@ -216,7 +215,7 @@ describe('llm/use-config', () => {
     const { result } = renderHook(() => useConfig('llm-node', inputRef.current))
 
     expect(result.current.readOnly).toBe(false)
-    expect(result.current.isChatMode).toBe(true)
+    expect(result.current.isChatflow).toBe(true)
     expect(result.current.isChatModel).toBe(true)
     expect(result.current.isCompletionModel).toBe(false)
     expect(result.current.availableVars).toEqual([
@@ -251,7 +250,7 @@ describe('llm/use-config', () => {
         {
           provider: 'openai',
           modelId: 'gpt-4.1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
         },
         { temperature: 0.3 },
       )
@@ -283,7 +282,7 @@ describe('llm/use-config', () => {
         model: expect.objectContaining({
           provider: 'openai',
           name: 'gpt-4.1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           completion_params: { temperature: 0.3 },
         }),
       }),
@@ -296,7 +295,7 @@ describe('llm/use-config', () => {
       model: {
         provider: '',
         name: '',
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         completion_params: {},
       },
     })
@@ -311,7 +310,7 @@ describe('llm/use-config', () => {
       currentModel: {
         model: 'claude-sonnet',
         model_properties: {
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
         },
       },
     } as unknown as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>)
@@ -331,7 +330,7 @@ describe('llm/use-config', () => {
           model: expect.objectContaining({
             provider: 'anthropic',
             name: 'claude-sonnet',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           }),
         }),
       )
@@ -345,7 +344,7 @@ describe('llm/use-config', () => {
       model: {
         provider: 'cached-provider',
         name: 'cached-model',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { temperature: 0.2 },
       },
     })
@@ -363,7 +362,7 @@ describe('llm/use-config', () => {
             value: {
               provider: 'shared-provider',
               name: 'shared-model',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
               completion_params: { temperature: 0.8 },
             },
             description: '',
@@ -378,7 +377,7 @@ describe('llm/use-config', () => {
     expect(result.current.model).toEqual({
       provider: 'shared-provider',
       name: 'shared-model',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       completion_params: { temperature: 0.8 },
     })
     expect(result.current.isEnvironmentModelSource).toBe(true)
@@ -404,7 +403,7 @@ describe('llm/use-config', () => {
             value: {
               provider: 'shared-provider',
               name: 'shared-completion-model',
-              mode: AppModeEnum.COMPLETION,
+              mode: 'completion' as const,
               completion_params: { top_p: 0.9 },
             },
             description: '',
@@ -439,7 +438,7 @@ describe('llm/use-config', () => {
         model: expect.objectContaining({
           provider: 'shared-provider',
           name: 'shared-completion-model',
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           completion_params: { top_p: 0.9 },
         }),
       }),
@@ -457,7 +456,7 @@ describe('llm/use-config', () => {
       model: {
         provider: 'cached-provider',
         name: 'cached-model',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { temperature: 0.4 },
       },
     })
@@ -475,7 +474,7 @@ describe('llm/use-config', () => {
             value: {
               provider: 'latest-provider',
               name: 'latest-model',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
               completion_params: { temperature: 0.8 },
             },
             description: '',
@@ -496,7 +495,7 @@ describe('llm/use-config', () => {
         model: {
           provider: 'latest-provider',
           name: 'latest-model',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           completion_params: { temperature: 0.8 },
         },
         model_selector: undefined,
@@ -505,4 +504,11 @@ describe('llm/use-config', () => {
     const updatedInputs = setInputs.mock.calls[0]![0]
     expect(updatedInputs).toHaveProperty('model_selector', undefined)
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
@@ -6,7 +7,6 @@ import * as React from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import WorkflowPanel from '../workflow-panel'
 
 type WorkflowStoreState = Partial<Shape>
@@ -26,11 +26,15 @@ const renderPanel = (initialStoreState: WorkflowStoreState) => {
     queryClient,
     createAppDetailFixture({
       id: 'app-123',
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       workflow: { id: 'workflow-version-id' },
     }),
   )
-  return renderWorkflowComponent(<WorkflowPanel />, { initialStoreState, queryClient })
+  return renderWorkflowComponent(<WorkflowPanel />, {
+    initialStoreState,
+    queryClient,
+    resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
+  })
 }
 
 vi.mock('@/app/components/workflow/panel', () => ({
@@ -48,7 +52,7 @@ vi.mock('@/app/components/workflow/panel', () => ({
       restoreVersionUrl: (versionId: string) => string
       updateVersionUrl: (versionId: string) => string
       latestVersionId?: string
-      appMode?: AppModeEnum
+      appMode?: AppMode
     }
   }) => (
     <div
@@ -108,9 +112,12 @@ vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
   default: () => <div data-testid="global-variable-panel">global-variable</div>,
 }))
 
-vi.mock('../../hooks/use-is-chat-mode', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
+})
 
 describe('WorkflowPanel', () => {
   beforeEach(() => {
@@ -136,7 +143,7 @@ describe('WorkflowPanel', () => {
     )
     expect(panel).toHaveAttribute('data-update-version-url', '/apps/app-123/workflows/version-1')
     expect(panel).toHaveAttribute('data-latest-version-id', 'workflow-version-id')
-    expect(panel).toHaveAttribute('data-app-mode', AppModeEnum.WORKFLOW)
+    expect(panel).toHaveAttribute('data-app-mode', 'workflow')
   })
 
   it('should close the selected log and reopen on the default detail tab', async () => {

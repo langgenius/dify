@@ -1,17 +1,15 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { HumanInputNodeType } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act } from '@testing-library/react'
+import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import {
-  createConsoleQueryClient,
-  renderHookWithConsoleQuery,
-  seedAppDetail,
-} from '@/test/console/query-data'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { AppModeEnum, TransferMethod } from '@/types/app'
+import { TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
@@ -92,12 +90,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   const mockSetRunInputData = vi.fn()
   const getInputVars = vi.fn()
   let currentInputs = createPayload()
-  let appDetail: { id: string; mode: AppModeEnum } | undefined
+  let appDetail: { id: string; mode: AppMode } | undefined
 
   const renderHook = <Result>(callback: () => Result) => {
     const queryClient = createConsoleQueryClient()
     if (appDetail) seedAppDetail(queryClient, createAppDetailFixture(appDetail))
-    return renderHookWithConsoleQuery(callback, { queryClient })
+    return renderHookWithConsoleQuery(callback, {
+      queryClient,
+      resource: { kind: 'app', appId: appDetail?.id ?? 'app-1', mode: 'workflow' },
+    })
   }
 
   beforeEach(() => {
@@ -105,7 +106,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     currentInputs = createPayload()
     appDetail = {
       id: 'app-1',
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
 
     mockUseTranslation.mockReturnValue({
@@ -352,13 +353,13 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     expect(result.current.showGeneratedForm).toBe(false)
   })
 
-  it('should use the advanced-chat endpoint and skip remote fetches when app detail is missing', async () => {
+  it('should use the advanced-chat endpoint for chatflow form previews', async () => {
     appDetail = {
       id: 'app-2',
-      mode: AppModeEnum.ADVANCED_CHAT,
+      mode: 'advanced-chat' as const,
     }
 
-    const { result, rerender } = renderHook(() =>
+    const { result } = renderHook(() =>
       useSingleRunFormParams({
         id: 'node-9',
         payload: currentInputs,
@@ -378,14 +379,6 @@ describe('human-input/hooks/use-single-run-form-params', () => {
         inputs: { topic: 'hello' },
       },
     )
-
-    appDetail = undefined
-    rerender()
-
-    await act(async () => {
-      const data = await result.current.handleFetchFormContent({ topic: 'skip' })
-      expect(data).toBeNull()
-    })
 
     expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledTimes(1)
   })

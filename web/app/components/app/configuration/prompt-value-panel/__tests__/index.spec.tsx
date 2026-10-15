@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'
+import { ModelModeType, Resolution } from '@/types/app'
 import PromptValuePanel from '../index'
 
 const mockOnOpenFeatures = vi.fn()
@@ -78,7 +78,7 @@ const baseContextValue: any = {
   },
   setInputs: mockSetInputs,
   canTestAndRun: true,
-  mode: AppModeEnum.COMPLETION,
+  mode: 'completion' as const,
   isAdvancedMode: false,
   completionPromptConfig: {
     prompt: { text: 'completion' },
@@ -88,7 +88,7 @@ const baseContextValue: any = {
 } as any
 
 const defaultProps: IPromptValuePanelProps = {
-  appType: AppModeEnum.COMPLETION,
+  appType: 'completion',
   onSend: mockOnSend,
   inputs: { textVar: 'initial', boolVar: false },
   visionConfig: { enabled: false, number_limits: 0, detail: Resolution.low, transfer_methods: [] },
@@ -142,10 +142,10 @@ describe('PromptValuePanel', () => {
   it('disables run when mode is not completion', () => {
     renderPanel({
       context: {
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       },
       props: {
-        appType: AppModeEnum.CHAT,
+        appType: 'chat',
       },
     })
 
