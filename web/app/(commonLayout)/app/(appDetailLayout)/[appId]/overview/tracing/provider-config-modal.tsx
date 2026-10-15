@@ -16,15 +16,14 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { docURL } from './config'
 import { TracingProvider } from './type'
@@ -41,70 +40,6 @@ type Props = Readonly<{
 
 const I18N_PREFIX = 'tracing.configProvider'
 
-const configTemplates = {
-  [TracingProvider.arize]: {
-    api_key: '',
-    space_id: '',
-    project: '',
-    endpoint: '',
-  },
-  [TracingProvider.phoenix]: {
-    api_key: '',
-    project: '',
-    endpoint: '',
-  },
-  [TracingProvider.langSmith]: {
-    api_key: '',
-    project: '',
-    endpoint: '',
-  },
-  [TracingProvider.langfuse]: {
-    public_key: '',
-    secret_key: '',
-    host: '',
-  },
-  [TracingProvider.opik]: {
-    api_key: '',
-    project: '',
-    url: '',
-    workspace: '',
-  },
-  [TracingProvider.weave]: {
-    api_key: '',
-    entity: '',
-    project: '',
-    endpoint: '',
-    host: '',
-  },
-  [TracingProvider.aliyun]: {
-    app_name: '',
-    license_key: '',
-    endpoint: '',
-  },
-  [TracingProvider.mlflow]: {
-    tracking_uri: '',
-    experiment_id: '',
-    username: '',
-    password: '',
-  },
-  [TracingProvider.databricks]: {
-    experiment_id: '',
-    host: '',
-    client_id: '',
-    client_secret: '',
-    personal_access_token: '',
-  },
-  [TracingProvider.tencent]: {
-    token: '',
-    endpoint: '',
-    service_name: '',
-  },
-} satisfies Record<TracingProvider, TraceConfigPayload['tracing_config']>
-
-type ConfigField = {
-  [Provider in TracingProvider]: keyof (typeof configTemplates)[Provider]
-}[TracingProvider]
-
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -116,42 +51,27 @@ const ProviderConfigModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const isEdit = !!payload
-  const [config, setConfig] = useState<TraceConfigPayload['tracing_config']>(
-    () => payload ?? configTemplates[type],
-  )
-
-  const handleSaved = () => {
-    toast(
-      t(($) => $['api.success'], { ns: 'common' }),
-      { type: 'success' },
-    )
-    onSaved()
-  }
   const createConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({
+      context: { silent: true },
       onSuccess: () => {
-        handleSaved()
+        onSaved()
         onChosen(type)
       },
     }),
   )
   const updateConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({
-      onSuccess: handleSaved,
+      context: { silent: true },
+      onSuccess: onSaved,
     }),
   )
   const removeConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({
-      onSuccess: () => {
-        toast(
-          t(($) => $['api.remove'], { ns: 'common' }),
-          { type: 'success' },
-        )
-        onRemoved()
-      },
+      onSuccess: onRemoved,
     }),
   )
-  const isSaving = createConfig.isPending || updateConfig.isPending
+  const saveConfig = isEdit ? updateConfig : createConfig
 
   const handleRemove = () => {
     removeConfig.mutate({
@@ -160,124 +80,12 @@ const ProviderConfigModal: FC<Props> = ({
     })
   }
 
-  const handleConfigChange = useCallback((key: ConfigField) => {
-    return (value: string) => {
-      setConfig((current) => ({
-        ...current,
-        [key]: value,
-      }))
-    }
-  }, [])
-
-  const checkValid = useCallback(() => {
-    let errorMessage = ''
-    if (type === TracingProvider.arize) {
-      if (!config.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!config.space_id)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Space ID' })
-      if (!errorMessage && !config.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.phoenix) {
-      if (!config.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!errorMessage && !config.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.langSmith) {
-      if (!config.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!errorMessage && !config.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.langfuse) {
-      if (!errorMessage && !config.secret_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
-        })
-      if (!errorMessage && !config.public_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
-        })
-      if (!errorMessage && !config.host)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Host' })
-    }
-
-    if (type === TracingProvider.weave) {
-      if (!errorMessage && !config.api_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'API Key' })
-      if (!errorMessage && !config.project)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
-        })
-    }
-
-    if (type === TracingProvider.aliyun) {
-      if (!errorMessage && !config.app_name)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'App Name' })
-      if (!errorMessage && !config.license_key)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'License Key' })
-      if (!errorMessage && !config.endpoint)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Endpoint' })
-    }
-
-    if (type === TracingProvider.mlflow) {
-      if (!errorMessage && !config.tracking_uri)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: 'Tracking URI',
-        })
-    }
-
-    if (type === TracingProvider.databricks) {
-      if (!errorMessage && !config.experiment_id)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: 'Experiment ID',
-        })
-      if (!errorMessage && !config.host)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Host' })
-    }
-
-    if (type === TracingProvider.tencent) {
-      if (!errorMessage && !config.token)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Token' })
-      if (!errorMessage && !config.endpoint)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Endpoint' })
-      if (!errorMessage && !config.service_name)
-        errorMessage = t(($) => $['errorMsg.fieldRequired'], {
-          ns: 'common',
-          field: 'Service Name',
-        })
-    }
-
-    return errorMessage
-  }, [config, t, type])
-  const handleSave = () => {
-    if (isSaving) return
-    const errorMessage = checkValid()
-    if (errorMessage) {
-      toast(errorMessage, { type: 'error' })
-      return
-    }
-    const mutation = isEdit ? updateConfig : createConfig
-    mutation.mutate({
+  const handleSave = (values: TraceConfigPayload['tracing_config']) => {
+    if (saveConfig.isPending) return
+    const config: TraceConfigPayload['tracing_config'] = {}
+    for (const [key, value] of Object.entries(values))
+      config[key] = value === '' && payload?.[key] === null ? null : value
+    saveConfig.mutate({
       params: { app_id: appId },
       body: { tracing_provider: type, tracing_config: config },
     })
@@ -299,11 +107,11 @@ const ProviderConfigModal: FC<Props> = ({
         />
       </div>
 
-      <div className="px-8 pb-8">
+      <Form<TraceConfigPayload['tracing_config']> className="px-8 pb-8" onFormSubmit={handleSave}>
         <div className="space-y-4">
           {type === TracingProvider.arize && (
             <>
-              <Field>
+              <Field name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -312,17 +120,16 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   ref={firstInputRef}
-
                   required
-                  value={config.api_key ?? ''}
-                  onValueChange={handleConfigChange('api_key')}
+                  defaultValue={payload?.api_key ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'API Key',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="space_id">
                 <FieldLabel>
                   Space ID
                   <span aria-hidden className="text-text-destructive">
@@ -331,15 +138,15 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   required
-                  value={config.space_id ?? ''}
-                  onValueChange={handleConfigChange('space_id')}
+                  defaultValue={payload?.space_id ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'Space ID',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -348,27 +155,29 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   required
-                  value={config.project ?? ''}
-                  onValueChange={handleConfigChange('project')}
+                  defaultValue={payload?.project ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
-                  value={config.endpoint ?? ''}
-                  onValueChange={handleConfigChange('endpoint')}
+                  type="url"
+                  pattern="https?://.+"
+                  defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://otlp.arize.com"
                 />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.phoenix && (
             <>
-              <Field>
+              <Field name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -377,17 +186,16 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   ref={firstInputRef}
-
                   required
-                  value={config.api_key ?? ''}
-                  onValueChange={handleConfigChange('api_key')}
+                  defaultValue={payload?.api_key ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'API Key',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -396,27 +204,29 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   required
-                  value={config.project ?? ''}
-                  onValueChange={handleConfigChange('project')}
+                  defaultValue={payload?.project ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
-                  value={config.endpoint ?? ''}
-                  onValueChange={handleConfigChange('endpoint')}
+                  type="url"
+                  pattern="https?://.+"
+                  defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://app.phoenix.arize.com"
                 />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.aliyun && (
             <>
-              <Field>
+              <Field name="license_key">
                 <FieldLabel>
                   License Key
                   <span aria-hidden className="text-text-destructive">
@@ -424,56 +234,18 @@ const ProviderConfigModal: FC<Props> = ({
                   </span>
                 </FieldLabel>
                 <Input
+                  pattern=".*\S.*"
                   ref={firstInputRef}
-
                   required
-                  value={config.license_key ?? ''}
-                  onValueChange={handleConfigChange('license_key')}
+                  defaultValue={payload?.license_key ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'License Key',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
-                <FieldLabel>Endpoint</FieldLabel>
-                <Input
-                  value={config.endpoint ?? ''}
-                  onValueChange={handleConfigChange('endpoint')}
-                  placeholder="https://tracing.arms.aliyuncs.com"
-                />
-              </Field>
-              <Field>
-                <FieldLabel>App Name</FieldLabel>
-                <Input
-                  value={config.app_name ?? ''}
-                  onValueChange={handleConfigChange('app_name')}
-                />
-              </Field>
-            </>
-          )}
-          {type === TracingProvider.tencent && (
-            <>
-              <Field>
-                <FieldLabel>
-                  Token
-                  <span aria-hidden className="text-text-destructive">
-                    *
-                  </span>
-                </FieldLabel>
-                <Input
-                  ref={firstInputRef}
-
-                  required
-                  value={config.token ?? ''}
-                  onValueChange={handleConfigChange('token')}
-                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
-                    ns: 'app',
-                    key: 'Token',
-                  })}
-                />
-              </Field>
-              <Field>
+              <Field name="endpoint">
                 <FieldLabel>
                   Endpoint
                   <span aria-hidden className="text-text-destructive">
@@ -481,31 +253,78 @@ const ProviderConfigModal: FC<Props> = ({
                   </span>
                 </FieldLabel>
                 <Input
+                  type="url"
+                  pattern="https?://.+"
                   required
-                  value={config.endpoint ?? ''}
-                  onValueChange={handleConfigChange('endpoint')}
+                  defaultValue={payload?.endpoint ?? ''}
+                  placeholder="https://tracing.arms.aliyuncs.com"
+                />
+                <FieldError />
+              </Field>
+              <Field name="app_name">
+                <FieldLabel>
+                  App Name
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input required defaultValue={payload?.app_name ?? ''} />
+                <FieldError />
+              </Field>
+            </>
+          )}
+          {type === TracingProvider.tencent && (
+            <>
+              <Field name="token">
+                <FieldLabel>
+                  Token
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  pattern=".*\S.*"
+                  ref={firstInputRef}
+                  required
+                  defaultValue={payload?.token ?? ''}
+                  placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
+                    ns: 'app',
+                    key: 'Token',
+                  })}
+                />
+                <FieldError />
+              </Field>
+              <Field name="endpoint">
+                <FieldLabel>
+                  Endpoint
+                  <span aria-hidden className="text-text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  type="url"
+                  pattern="https?://.+"
+                  required
+                  defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://your-region.cls.tencentcs.com"
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="service_name">
                 <FieldLabel>
                   Service Name
                   <span aria-hidden className="text-text-destructive">
                     *
                   </span>
                 </FieldLabel>
-                <Input
-                  required
-                  value={config.service_name ?? ''}
-                  onValueChange={handleConfigChange('service_name')}
-                  placeholder="dify_app"
-                />
+                <Input required defaultValue={payload?.service_name ?? ''} placeholder="dify_app" />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.weave && (
             <>
-              <Field>
+              <Field name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -514,17 +333,16 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   ref={firstInputRef}
-
                   required
-                  value={config.api_key ?? ''}
-                  onValueChange={handleConfigChange('api_key')}
+                  defaultValue={payload?.api_key ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'API Key',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -533,46 +351,50 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   required
-                  value={config.project ?? ''}
-                  onValueChange={handleConfigChange('project')}
+                  defaultValue={payload?.project ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="entity">
                 <FieldLabel>Entity</FieldLabel>
                 <Input
-                  value={config.entity ?? ''}
-                  onValueChange={handleConfigChange('entity')}
+                  defaultValue={payload?.entity ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'Entity',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
-                  value={config.endpoint ?? ''}
-                  onValueChange={handleConfigChange('endpoint')}
+                  type="url"
+                  pattern="https://.+"
+                  defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://trace.wandb.ai/"
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="host">
                 <FieldLabel>Host</FieldLabel>
                 <Input
-                  value={config.host ?? ''}
-                  onValueChange={handleConfigChange('host')}
+                  type="url"
+                  pattern="https?://.+"
+                  defaultValue={payload?.host ?? ''}
                   placeholder="https://api.wandb.ai"
                 />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.langSmith && (
             <>
-              <Field>
+              <Field name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -581,17 +403,16 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   ref={firstInputRef}
-
                   required
-                  value={config.api_key ?? ''}
-                  onValueChange={handleConfigChange('api_key')}
+                  defaultValue={payload?.api_key ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'API Key',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -600,27 +421,29 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   required
-                  value={config.project ?? ''}
-                  onValueChange={handleConfigChange('project')}
+                  defaultValue={payload?.project ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
-                  value={config.endpoint ?? ''}
-                  onValueChange={handleConfigChange('endpoint')}
+                  type="url"
+                  pattern="https://.+"
+                  defaultValue={payload?.endpoint ?? ''}
                   placeholder="https://api.smith.langchain.com"
                 />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.langfuse && (
             <>
-              <Field>
+              <Field name="secret_key">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -629,17 +452,16 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   ref={firstInputRef}
-
-                  value={config.secret_key ?? ''}
+                  defaultValue={payload?.secret_key ?? ''}
                   required
-                  onValueChange={handleConfigChange('secret_key')}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="public_key">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -648,15 +470,15 @@ const ProviderConfigModal: FC<Props> = ({
                 </FieldLabel>
                 <Input
                   required
-                  value={config.public_key ?? ''}
-                  onValueChange={handleConfigChange('public_key')}
+                  defaultValue={payload?.public_key ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="host">
                 <FieldLabel>
                   Host
                   <span aria-hidden className="text-text-destructive">
@@ -664,61 +486,61 @@ const ProviderConfigModal: FC<Props> = ({
                   </span>
                 </FieldLabel>
                 <Input
+                  type="url"
+                  pattern="https?://.+"
                   required
-                  value={config.host ?? ''}
-                  onValueChange={handleConfigChange('host')}
+                  defaultValue={payload?.host ?? ''}
                   placeholder="https://cloud.langfuse.com"
                 />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.opik && (
             <>
-              <Field>
+              <Field name="api_key">
                 <FieldLabel>API Key</FieldLabel>
                 <Input
                   ref={firstInputRef}
-
-                  value={config.api_key ?? ''}
-                  onValueChange={handleConfigChange('api_key')}
+                  defaultValue={payload?.api_key ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: 'API Key',
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="project">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}</FieldLabel>
                 <Input
-                  value={config.project ?? ''}
-                  onValueChange={handleConfigChange('project')}
+                  defaultValue={payload?.project ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="workspace">
                 <FieldLabel>Workspace</FieldLabel>
-                <Input
-                  value={config.workspace ?? ''}
-                  onValueChange={handleConfigChange('workspace')}
-                  placeholder="default"
-                />
+                <Input defaultValue={payload?.workspace ?? ''} placeholder="default" />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="url">
                 <FieldLabel>Url</FieldLabel>
                 <Input
-                  value={config.url ?? ''}
-                  onValueChange={handleConfigChange('url')}
+                  type="url"
+                  pattern="https?://.*/api/"
+                  defaultValue={payload?.url ?? ''}
                   placeholder="https://www.comet.com/opik/api/"
                 />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.mlflow && (
             <>
-              <Field>
+              <Field name="tracking_uri">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.trackingUri`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -726,15 +548,16 @@ const ProviderConfigModal: FC<Props> = ({
                   </span>
                 </FieldLabel>
                 <Input
+                  type="url"
+                  pattern="https?://.+"
                   ref={firstInputRef}
-
-                  value={config.tracking_uri ?? ''}
+                  defaultValue={payload?.tracking_uri ?? ''}
                   required
-                  onValueChange={handleConfigChange('tracking_uri')}
                   placeholder="http://localhost:5000"
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="experiment_id">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -742,42 +565,44 @@ const ProviderConfigModal: FC<Props> = ({
                   </span>
                 </FieldLabel>
                 <Input
+                  inputMode="numeric"
+                  pattern="\s*[0-9]+\s*"
                   required
-                  value={config.experiment_id ?? ''}
-                  onValueChange={handleConfigChange('experiment_id')}
+                  defaultValue={payload?.experiment_id ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="username">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' })}</FieldLabel>
                 <Input
-                  value={config.username ?? ''}
-                  onValueChange={handleConfigChange('username')}
+                  defaultValue={payload?.username ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="password">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })}</FieldLabel>
                 <Input
-                  value={config.password ?? ''}
-                  onValueChange={handleConfigChange('password')}
+                  defaultValue={payload?.password ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
             </>
           )}
           {type === TracingProvider.databricks && (
             <>
-              <Field>
+              <Field name="experiment_id">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -785,18 +610,19 @@ const ProviderConfigModal: FC<Props> = ({
                   </span>
                 </FieldLabel>
                 <Input
+                  inputMode="numeric"
+                  pattern="\s*[0-9]+\s*"
                   ref={firstInputRef}
-
-                  value={config.experiment_id ?? ''}
-                  onValueChange={handleConfigChange('experiment_id')}
+                  defaultValue={payload?.experiment_id ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' }),
                   })}
                   required
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="host">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -804,53 +630,60 @@ const ProviderConfigModal: FC<Props> = ({
                   </span>
                 </FieldLabel>
                 <Input
-                  value={config.host ?? ''}
-                  onValueChange={handleConfigChange('host')}
+                  type="url"
+                  pattern="https?://.+"
+                  defaultValue={payload?.host ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' }),
                   })}
                   required
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="client_id">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' })}</FieldLabel>
                 <Input
-                  value={config.client_id ?? ''}
-                  onValueChange={handleConfigChange('client_id')}
+                  defaultValue={payload?.client_id ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="client_secret">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })}</FieldLabel>
                 <Input
-                  value={config.client_secret ?? ''}
-                  onValueChange={handleConfigChange('client_secret')}
+                  defaultValue={payload?.client_secret ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
-              <Field>
+              <Field name="personal_access_token">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })}
                 </FieldLabel>
                 <Input
-                  value={config.personal_access_token ?? ''}
-                  onValueChange={handleConfigChange('personal_access_token')}
+                  defaultValue={payload?.personal_access_token ?? ''}
                   placeholder={t(($) => $[`${I18N_PREFIX}.placeholder`], {
                     ns: 'app',
                     key: t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' }),
                   })}
                 />
+                <FieldError />
               </Field>
             </>
           )}
         </div>
+        {saveConfig.error && (
+          <p role="alert" className="mt-4 system-sm-regular text-text-destructive">
+            {saveConfig.error.message}
+          </p>
+        )}
         <div className="mt-8 flex items-center justify-between gap-4">
           <a
             className="flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
@@ -910,8 +743,8 @@ const ProviderConfigModal: FC<Props> = ({
             <Button
               className="h-9 text-sm font-medium"
               variant="primary"
-              onClick={handleSave}
-              loading={isSaving}
+              type="submit"
+              loading={saveConfig.isPending}
             >
               {t(($) => $[`operation.${isEdit ? 'save' : 'saveAndEnable'}`], {
                 ns: 'common',
@@ -919,7 +752,7 @@ const ProviderConfigModal: FC<Props> = ({
             </Button>
           </div>
         </div>
-      </div>
+      </Form>
       <div className="border-t-[0.5px] border-divider-regular">
         <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
           <span

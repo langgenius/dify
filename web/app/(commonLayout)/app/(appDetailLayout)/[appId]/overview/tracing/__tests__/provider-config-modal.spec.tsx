@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { toast } from '@/app/notifications'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import ConfigBtn from '../config-button'
@@ -71,12 +72,12 @@ const validConfigs = {
   },
   [TracingProvider.mlflow]: {
     tracking_uri: 'http://localhost:5000',
-    experiment_id: 'experiment-id',
+    experiment_id: '123',
     username: 'mlflow-user',
     password: 'mlflow-password',
   },
   [TracingProvider.databricks]: {
-    experiment_id: 'experiment-id',
+    experiment_id: '123',
     host: 'https://workspace.cloud.databricks.com',
     client_id: 'client-id',
     client_secret: 'client-secret',
@@ -211,17 +212,17 @@ const invalidConfigCases: Array<{
   {
     provider: TracingProvider.mlflow,
     payload: { ...validConfigs[TracingProvider.mlflow], tracking_uri: '' },
-    missingField: 'Tracking URI',
+    missingField: 'app.tracing.configProvider.trackingUri',
   },
   {
     provider: TracingProvider.databricks,
     payload: { ...validConfigs[TracingProvider.databricks], experiment_id: '' },
-    missingField: 'Experiment ID',
+    missingField: 'app.tracing.configProvider.experimentId',
   },
   {
     provider: TracingProvider.databricks,
     payload: { ...validConfigs[TracingProvider.databricks], host: '' },
-    missingField: 'Host',
+    missingField: 'app.tracing.configProvider.databricksHost',
   },
   {
     provider: TracingProvider.tencent,
@@ -379,7 +380,7 @@ describe('ProviderConfigModal', () => {
   })
 
   describe('Saving', () => {
-    it('should add and choose the provider when saving a new config', async () => {
+    it('submits a new config with Enter and chooses the provider', async () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({ type: TracingProvider.langfuse })
 
@@ -392,7 +393,7 @@ describe('ProviderConfigModal', () => {
         'public-key',
       )
       await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
-      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+      await user.keyboard('{Enter}')
 
       await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
       await expectRequest('POST', {
@@ -400,7 +401,7 @@ describe('ProviderConfigModal', () => {
         tracing_config: validConfigs[TracingProvider.langfuse],
       })
       expect(callbacks.onChosen).toHaveBeenCalledWith(TracingProvider.langfuse)
-      expect(toast).toHaveBeenCalledWith('common.api.success', { type: 'success' })
+      expect(toast).not.toHaveBeenCalled()
     })
 
     it.each(Object.values(TracingProvider))(
@@ -446,6 +447,9 @@ describe('ProviderConfigModal', () => {
       request.mockReturnValueOnce(
         new Promise<Response>((resolve) => {
           resolveResponse = resolve
+        }).then(async (response) => {
+          if (!response.ok) throw await httpErrorFromResponse(response)
+          return response
         }),
       )
       const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -466,16 +470,64 @@ describe('ProviderConfigModal', () => {
 
         await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
         expect(host).toHaveValue('https://draft.langfuse.com')
+        expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
+        expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
+        expect(toast).not.toHaveBeenCalled()
         expect(callbacks.onSaved).not.toHaveBeenCalled()
         expect(callbacks.onChosen).not.toHaveBeenCalled()
 
         await user.click(save)
         await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
         expect(request).toHaveBeenCalledTimes(2)
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
       } finally {
         logError.mockRestore()
       }
     })
+
+    it.each([
+      [TracingProvider.langfuse, 'host', 'Host', 'ftp://cloud.langfuse.com'],
+      [TracingProvider.langSmith, 'endpoint', 'Endpoint', 'http://api.smith.langchain.com'],
+      [TracingProvider.weave, 'endpoint', 'Endpoint', 'http://trace.wandb.ai'],
+      [TracingProvider.opik, 'url', 'Url', 'https://www.comet.com/opik/'],
+      [TracingProvider.mlflow, 'experiment_id', 'app.tracing.configProvider.experimentId', '1.5'],
+      [
+        TracingProvider.databricks,
+        'experiment_id',
+        'app.tracing.configProvider.experimentId',
+        '-1',
+      ],
+      [TracingProvider.aliyun, 'license_key', 'License Key', '   '],
+      [TracingProvider.tencent, 'token', 'Token', '   '],
+    ] as const)(
+      'validates %s %s inline before sending credentials',
+      async (provider, key, label, value) => {
+        const user = userEvent.setup()
+        const callbacks = renderProviderConfigModal({
+          type: provider,
+          payload: { ...validConfigs[provider], [key]: value },
+        })
+        const field = screen.getByRole('textbox', { name: label })
+        await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+        expect(request).not.toHaveBeenCalled()
+        expect(field).toBeInvalid()
+        expect(field).toHaveFocus()
+        expect(field).toHaveAccessibleDescription()
+
+        await user.clear(field)
+        const validConfig: TraceConfigPayload['tracing_config'] = validConfigs[provider]
+        await user.type(field, validConfig[key] ?? '')
+        await user.keyboard('{Enter}')
+
+        await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+        expect(field).toBeValid()
+        await expectRequest('PATCH', {
+          tracing_provider: provider,
+          tracing_config: validConfigs[provider],
+        })
+      },
+    )
 
     it.each(invalidConfigCases)(
       'should reject $provider config when $missingField is missing',
@@ -489,7 +541,11 @@ describe('ProviderConfigModal', () => {
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
         expect(request).not.toHaveBeenCalled()
-        expect(toast).toHaveBeenCalledWith(expect.stringContaining(missingField), { type: 'error' })
+        const field = screen.getByRole('textbox', { name: missingField })
+        expect(field).toBeInvalid()
+        expect(field).toHaveFocus()
+        expect(field).toHaveAccessibleDescription()
+        expect(toast).not.toHaveBeenCalled()
       },
     )
   })
@@ -533,7 +589,7 @@ describe('ProviderConfigModal', () => {
 
       await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce())
       await expectRequest('DELETE')
-      expect(toast).toHaveBeenCalledWith('common.api.remove', { type: 'success' })
+      expect(toast).not.toHaveBeenCalled()
     })
 
     it('keeps the draft and returns focus to Remove when confirmation is canceled', async () => {
