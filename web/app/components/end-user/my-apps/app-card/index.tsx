@@ -11,12 +11,12 @@ import AppActionsMenu from './actions-menu'
 
 type Props = {
   app: EndUserApp
-  onOpen: () => void
+  href: string
   onToggleStar: () => void
   onRemove: (deleteChats: boolean) => void
 }
 
-export default function EndUserAppCard({ app, onOpen, onToggleStar, onRemove }: Props) {
+export default function EndUserAppCard({ app, href, onToggleStar, onRemove }: Props) {
   const { t } = useTranslation(['app'])
   return (
     <li className="relative flex min-w-0 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
@@ -39,14 +39,12 @@ export default function EndUserAppCard({ app, onOpen, onToggleStar, onRemove }: 
         </div>
         <div className="flex min-w-0 flex-col gap-1 py-px">
           <h2 className="system-md-semibold text-text-secondary">
-            <button
-              type="button"
-              onClick={onOpen}
-              aria-label={t(($) => $['endUser.openApp'], { ns: 'app', name: app.name })}
+            <a
+              href={href}
               className="text-start wrap-anywhere outline-hidden after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid"
             >
               {app.name}
-            </button>
+            </a>
           </h2>
           <AppTypeLabel type={app.mode} className="system-2xs-medium text-text-tertiary" />
         </div>

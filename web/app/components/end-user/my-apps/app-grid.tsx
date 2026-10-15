@@ -3,19 +3,19 @@ import EndUserAppCard from './app-card'
 
 type Props = {
   apps: readonly EndUserApp[]
-  onOpenApp: (app: EndUserApp) => void
+  getAppHref: (app: EndUserApp) => string
   onToggleStar: (id: string) => void
   onRemove: (request: RemoveAppRequest) => void
 }
 
-export default function AppGrid({ apps, onOpenApp, onToggleStar, onRemove }: Props) {
+export default function AppGrid({ apps, getAppHref, onToggleStar, onRemove }: Props) {
   return (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {apps.map((app) => (
         <EndUserAppCard
           key={app.id}
           app={app}
-          onOpen={() => onOpenApp(app)}
+          href={getAppHref(app)}
           onToggleStar={() => onToggleStar(app.id)}
           onRemove={(deleteChats) => onRemove({ app, deleteChats })}
         />

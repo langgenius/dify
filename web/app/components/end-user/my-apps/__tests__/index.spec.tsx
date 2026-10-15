@@ -38,6 +38,7 @@ const zebra: EndUserApp = {
   lastUsedAt: 300,
 }
 const apps: readonly EndUserApp[] = [alpha, beta, zebra]
+const appHref = 'https://agent-app.dify.dev/workflow/RWv44MH1ypIb8gs8'
 const appLabel = (key: string, app: EndUserApp) =>
   `app.endUser.${key}:${JSON.stringify({ name: app.name })}`
 const appNames = () => {
@@ -58,7 +59,7 @@ const setup = ({
   searchParams?: string
   onRemoveApp?: ReturnType<typeof vi.fn<(request: RemoveAppRequest) => void | Promise<void>>>
 } = {}) => {
-  const onOpenApp = vi.fn<(app: EndUserApp) => void>()
+  const getAppHref = (_app: EndUserApp) => appHref
   const onToggleStar = vi.fn<(id: string) => void>()
   const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>()
   const Harness = () => {
@@ -66,7 +67,7 @@ const setup = ({
     return (
       <MyApps
         apps={items}
-        onOpenApp={onOpenApp}
+        getAppHref={getAppHref}
         onToggleStar={(id) => {
           onToggleStar(id)
           setItems((current) =>
@@ -86,7 +87,7 @@ const setup = ({
       <Harness />
     </NuqsTestingAdapter>,
   )
-  return { ...rendered, onUrlUpdate, onOpenApp, onToggleStar, onRemoveApp }
+  return { ...rendered, onUrlUpdate, onToggleStar, onRemoveApp }
 }
 
 const openRemoval = async (
@@ -114,10 +115,9 @@ describe('MyApps', () => {
       expectedNames: [zebra.name, beta.name],
     },
   ])(
-    'restores view, search and $sort sorting from the URL and opens the selected app',
-    async ({ sort, label, expectedNames }) => {
-      const user = userEvent.setup()
-      const { onOpenApp, onUrlUpdate } = setup({
+    'restores view, search and $sort sorting from the URL with native app links',
+    ({ sort, label, expectedNames }) => {
+      const { onUrlUpdate } = setup({
         searchParams: `?view=starred&sort=${sort}&q=%20RESEARCH%20`,
       })
 
@@ -129,9 +129,11 @@ describe('MyApps', () => {
       expect(appNames()).toEqual(expectedNames)
       expect(onUrlUpdate).not.toHaveBeenCalled()
 
-      await user.click(screen.getByRole('button', { name: appLabel('openApp', beta) }))
-
-      expect(onOpenApp).toHaveBeenCalledExactlyOnceWith(beta)
+      for (const name of expectedNames) {
+        const link = screen.getByRole('link', { name })
+        expect(link).toHaveAttribute('href', appHref)
+        expect(link).not.toHaveAttribute('target')
+      }
     },
   )
 
@@ -223,7 +225,7 @@ describe('MyApps', () => {
 
   it('adds a starred app to Starred and removes it immediately when unstarred', async () => {
     const user = userEvent.setup()
-    const { onToggleStar, onOpenApp } = setup({ initialApps: [alpha] })
+    const { onToggleStar, onRemoveApp } = setup({ initialApps: [alpha] })
     await user.click(screen.getByRole('button', { name: appLabel('starApp', alpha) }))
     expect(screen.getByRole('button', { name: appLabel('unstarApp', alpha) })).toHaveAttribute(
       'aria-pressed',
@@ -232,24 +234,23 @@ describe('MyApps', () => {
     await user.click(screen.getByRole('radio', { name: 'app.endUser.starred' }))
     expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
     expect(appNames()).toEqual([alpha.name])
+    expect(screen.getByRole('link', { name: alpha.name })).toHaveAttribute('href', appHref)
 
     await user.click(screen.getByRole('button', { name: appLabel('unstarApp', alpha) }))
 
     expect(onToggleStar).toHaveBeenNthCalledWith(1, alpha.id)
     expect(onToggleStar).toHaveBeenNthCalledWith(2, alpha.id)
-    expect(onOpenApp).not.toHaveBeenCalled()
+    expect(onRemoveApp).not.toHaveBeenCalled()
     expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
     expect(screen.getByText('app.endUser.emptyAppsDescription')).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: appLabel('openApp', alpha) }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
   })
 
   it.each([false, true])(
     'confirms removal with deleteChats=%s from the corresponding menu action',
     async (deleteChats) => {
       const user = userEvent.setup()
-      const { onRemoveApp } = setup({ initialApps: [alpha] })
+      const { onRemoveApp, onToggleStar } = setup({ initialApps: [alpha] })
       const dialog = await openRemoval(user, alpha, deleteChats)
       if (deleteChats) {
         expect(dialog).toHaveAccessibleDescription(/app\.endUser\.deleteChatsDescription/)
@@ -271,6 +272,8 @@ describe('MyApps', () => {
 
       await waitFor(() => expect(dialog).not.toBeInTheDocument())
       expect(onRemoveApp).toHaveBeenCalledExactlyOnceWith({ app: alpha, deleteChats })
+      expect(onToggleStar).not.toHaveBeenCalled()
+      expect(screen.queryByRole('link', { name: alpha.name })).not.toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
       await waitFor(() =>
         expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveFocus(),
@@ -294,6 +297,7 @@ describe('MyApps', () => {
     await waitFor(() => expect(secondDialog).not.toBeInTheDocument())
     expect(onRemoveApp).toHaveBeenCalledExactlyOnceWith({ app: alpha, deleteChats: false })
     expect(appNames()).toEqual([beta.name])
+    expect(screen.getByRole('link', { name: beta.name })).toHaveAttribute('href', appHref)
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 

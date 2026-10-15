@@ -13,12 +13,12 @@ import MyAppsToolbar from './toolbar'
 
 export type MyAppsProps = {
   apps: readonly EndUserApp[]
-  onOpenApp: (app: EndUserApp) => void
+  getAppHref: (app: EndUserApp) => string
   onToggleStar: (id: string) => void
   onRemoveApp: (request: RemoveAppRequest) => void | Promise<void>
 }
 
-export default function MyApps({ apps, onOpenApp, onToggleStar, onRemoveApp }: MyAppsProps) {
+export default function MyApps({ apps, getAppHref, onToggleStar, onRemoveApp }: MyAppsProps) {
   const { t, i18n } = useTranslation(['app'])
   const [filter, setFilter] = useQueryStates(myAppsQueryParsers)
   const [removal, setRemoval] = useState<RemoveAppRequest | null>(null)
@@ -51,7 +51,7 @@ export default function MyApps({ apps, onOpenApp, onToggleStar, onRemoveApp }: M
         {visibleApps.length > 0 ? (
           <AppGrid
             apps={visibleApps}
-            onOpenApp={onOpenApp}
+            getAppHref={getAppHref}
             onToggleStar={onToggleStar}
             onRemove={(request) => {
               removalSucceededRef.current = false
