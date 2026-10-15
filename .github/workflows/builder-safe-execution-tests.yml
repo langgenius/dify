@@ -24,6 +24,8 @@ on:
       - 'api/core/workflow/**'
       - 'api/core/repositories/**'
       - 'api/models/dify_builder*.py'
+      - 'api/services/agent/access_service.py'
+      - 'dify-agent/**'
       - 'api/migrations/versions/*builder*'
       - 'api/tests/**/dify_builder/**'
       - 'api/tests/**/test_builder*'
@@ -534,6 +536,149 @@ jobs:
           path: |
             builder-confirmed-tool-units.xml
             builder-confirmed-tool-units.log
+  native-agent-binding:
+    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      STORAGE_TYPE: opendal
+      OPENDAL_SCHEME: fs
+      OPENDAL_FS_ROOT: /tmp/dify-builder-agent-storage
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - name: Native Agent catalog and atomic bindings on real PostgreSQL
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-native-agent-binding.log
+          import xml.etree.ElementTree as ElementTree
+          from collections import Counter
+          from pathlib import Path
+
+          import pytest
+
+          EXPECTED = {'tests.test_containers_integration_tests.services.test_builder_agent_binding': {'test_real_catalog_filters_publication_tenant_and_actor_before_pagination': 1, 'test_draft_graph_and_native_binding_rollback_together': 1, 'test_publication_pointer_cannot_change_between_prepare_and_native_sync': 1}}
+          REPORT = "builder-native-agent-binding.xml"
+          code = pytest.main(['api/tests/test_containers_integration_tests/services/test_builder_agent_binding.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent-binding.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
+          problems = []
+          identities = set()
+          actual = {module: Counter() for module in EXPECTED}
+          if not Path(REPORT).is_file():
+              problems.append("JUnit report missing")
+          else:
+              for case in ElementTree.parse(REPORT).getroot().iter("testcase"):
+                  classname, name = case.get("classname") or "", case.get("name") or ""
+                  identity = (classname, name)
+                  if identity in identities:
+                      problems.append(f"duplicate case {classname}::{name}")
+                  identities.add(identity)
+                  module = classname.removeprefix("api.")
+                  if module not in EXPECTED:
+                      problems.append(f"unexpected module {classname}::{name}")
+                  else:
+                      actual[module][name.split("[", 1)[0]] += 1
+                  if any(case.find(tag) is not None for tag in ("failure", "error", "skipped")):
+                      problems.append(f"nonpassing case {classname}::{name}")
+          for module, functions in EXPECTED.items():
+              print(f"COLLECTED {module}: {sum(actual[module].values())} cases", flush=True)
+              if dict(actual[module]) != functions:
+                  problems.append(f"case inventory mismatch {module}: {dict(actual[module])!r}")
+          print(f"COLLECTED total: {len(identities)} unique cases", flush=True)
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          raise SystemExit(int(code) or (1 if problems else 0))
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-native-agent-binding
+          path: |
+            builder-native-agent-binding.xml
+            builder-native-agent-binding.log
+  native-agent-protocol:
+    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      redis:
+        image: redis:6-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DIFY_AGENT_NATIVE_TEST_REDIS_URL: redis://127.0.0.1:6379/15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: dify-agent/uv.lock
+      - run: uv sync --directory dify-agent --locked --extra server --dev
+      - name: Native Agent protocol and real Redis continuation
+        working-directory: dify-agent
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --no-sync --extra server python -u - <<'PY' 2>&1 | tee builder-native-agent.log
+          import xml.etree.ElementTree as ElementTree
+          from collections import Counter
+          from pathlib import Path
+
+          import pytest
+
+          EXPECTED = {'tests.local.dify_agent.protocol.test_native_testing': {'test_reference_exact_wire_and_no_authority_fields': 1, 'test_wait_reason_survives_wire_roundtrip': 3, 'test_continue_cannot_supply_decisions_or_execution_arguments': 1, 'test_mode_and_reference_must_agree': 4, 'test_all_features_are_required': 1, 'test_http_rejects_before_scheduler_or_any_execution_boundary': 1, 'test_client_refreshes_capabilities_and_never_falls_back': 1, 'test_client_maps_unavailable_capability_endpoint_to_stable_error': 3, 'test_executable_wire_rejects_non_finite_or_non_json_arguments': 5, 'test_exact_decision_wire_contract': 4, 'test_invalid_checkpoint_does_not_enter_public_status_or_events': 1, 'test_ordinary_client_wire_remains_compatible_with_frozen_old_server': 2}, 'tests.local.dify_agent.runtime.test_native_continuation': {'test_stage_checkpoint_preserves_reason_without_faking_tool_history': 3, 'test_real_native_deferral_checkpoint_and_resume_without_reissuing_call': 2, 'test_denied_or_changed_native_arguments_never_become_model_feedback': 1, 'test_direct_runner_rejects_marked_test_before_module_loading': 1, 'test_scheduler_rejects_native_before_persistence': 1, 'test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_resumable': 2, 'test_scheduler_restores_only_matching_pinned_snapshot_before_scheduling': 1, 'test_scheduler_resume_keeps_run_and_claim_after_lost_acknowledgement': 2, 'test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback': 1, 'test_continuation_cannot_relabel_pending_approval_as_external_result': 1}, 'tests.local.dify_agent.storage.test_native_continuation_store': {'test_persistence_failure_cannot_publish_waiting': 1, 'test_mismatched_waiting_event_rejected_before_redis': 1, 'test_real_redis_atomic_claim_restart_stale_generation_and_cancellation': 1, 'test_real_redis_result_store_owner_bound_and_restart': 1}}
+          REPORT = "builder-native-agent.xml"
+          code = pytest.main(['tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
+          problems = []
+          identities = set()
+          actual = {module: Counter() for module in EXPECTED}
+          if not Path(REPORT).is_file():
+              problems.append("JUnit report missing")
+          else:
+              for case in ElementTree.parse(REPORT).getroot().iter("testcase"):
+                  classname, name = case.get("classname") or "", case.get("name") or ""
+                  identity = (classname, name)
+                  if identity in identities:
+                      problems.append(f"duplicate case {classname}::{name}")
+                  identities.add(identity)
+                  module = classname.removeprefix("api.")
+                  if module not in EXPECTED:
+                      problems.append(f"unexpected module {classname}::{name}")
+                  else:
+                      actual[module][name.split("[", 1)[0]] += 1
+                  if any(case.find(tag) is not None for tag in ("failure", "error", "skipped")):
+                      problems.append(f"nonpassing case {classname}::{name}")
+          for module, functions in EXPECTED.items():
+              print(f"COLLECTED {module}: {sum(actual[module].values())} cases", flush=True)
+              if dict(actual[module]) != functions:
+                  problems.append(f"case inventory mismatch {module}: {dict(actual[module])!r}")
+          print(f"COLLECTED total: {len(identities)} unique cases", flush=True)
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          raise SystemExit(int(code) or (1 if problems else 0))
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-native-agent
+          path: |
+            dify-agent/builder-native-agent.xml
+            dify-agent/builder-native-agent.log
   api-contract-codegen:
     if: github.event_name == 'workflow_dispatch' && inputs.contract_codegen
     runs-on: ubuntu-24.04
