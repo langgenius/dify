@@ -7,7 +7,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -18,7 +17,7 @@ import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/wor
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { usePathname, useRouter } from '@/next/navigation'
+import { redirect, usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
 import { AppModeEnum } from '@/types/app'
@@ -82,7 +81,6 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     appId, // get appId in path
   } = props
   const { t } = useTranslation(['common', 'navigation'])
-  const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -117,19 +115,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     `${pageTitle} · ${appDetail?.name || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
   )
 
-  useEffect(() => {
-    if (appDetailError && !appDetail && isNotFoundError(appDetailError)) router.replace('/apps')
-  }, [appDetailError, appDetail, router])
-
-  useEffect(() => {
-    if (redirectPath) router.replace(redirectPath)
-  }, [redirectPath, router])
-
-  if (appDetailError && !appDetail && !isNotFoundError(appDetailError)) throw appDetailError
+  if (appDetailError && !appDetail) {
+    if (isNotFoundError(appDetailError)) redirect('/apps')
+    throw appDetailError
+  }
+  if (redirectPath) redirect(redirectPath)
 
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content =
-    !appDetail || !isPermissionContextReady || redirectPath ? (
+    !appDetail || !isPermissionContextReady ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
         <LoadingPlaceholder />
       </div>
