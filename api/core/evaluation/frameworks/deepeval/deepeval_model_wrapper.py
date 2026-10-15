@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, cast, override
 
 from pydantic import BaseModel
 
+from libs.structured_output_schema import to_strict_json_schema
+
 # DeepEval reads these settings while its package is imported. Evaluation runs
 # must not load process-local dotenv files or emit framework telemetry.
 os.environ.setdefault("DEEPEVAL_DISABLE_DOTENV", "1")
@@ -66,7 +68,7 @@ class DifyDeepEvalModel(DeepEvalBaseLLM):
                 model_schema=model_instance.get_model_schema(),
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
-                json_schema=schema.model_json_schema(),
+                json_schema=to_strict_json_schema(schema.model_json_schema()),
                 model_parameters={"temperature": 0.0},
                 stream=False,
             )
