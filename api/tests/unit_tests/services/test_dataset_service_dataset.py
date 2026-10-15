@@ -637,7 +637,7 @@ class TestDatasetServiceCreationAndUpdate:
                 sqlite_session,
             )
 
-    def test_update_internal_dataset_executes_real_update_without_committing(self, sqlite_session: Session) -> None:
+    def test_update_internal_dataset_defers_reindex_dispatch_until_commit(self, sqlite_session: Session) -> None:
         dataset = _dataset(name="Before")
         sqlite_session.add(dataset)
         sqlite_session.commit()
@@ -657,11 +657,41 @@ class TestDatasetServiceCreationAndUpdate:
                 sqlite_session,
             )
 
+            # The re-index tasks must not see the pre-commit row: the UPDATE is
+            # only flushed here, so dispatch has to wait for the caller's
+            # commit (#40961).
+            vector_task.assert_not_called()
+            summary_task.assert_not_called()
+
+            sqlite_session.commit()
+
         assert updated.name == "After"
         assert updated.description == "Changed"
-        assert transaction_events == []
+        assert transaction_events == ["commit"]
         vector_task.assert_called_once_with(dataset.id, "update")
         summary_task.assert_called_once()
+
+    def test_update_internal_dataset_without_action_never_dispatches(self, sqlite_session: Session) -> None:
+        dataset = _dataset(name="Before")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        with (
+            patch.object(DatasetService, "_handle_indexing_technique_change", return_value=None),
+            patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data"),
+            patch("services.knowledge.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
+            patch("services.knowledge.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+        ):
+            DatasetService._update_internal_dataset(
+                dataset,
+                {"name": "After"},
+                _account(),
+                sqlite_session,
+            )
+            sqlite_session.commit()
+
+        vector_task.assert_not_called()
+        summary_task.assert_not_called()
 
     def test_update_pipeline_node_data_returns_for_non_pipeline_or_missing_pipeline(
         self, sqlite_session: Session
