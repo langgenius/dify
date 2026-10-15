@@ -262,6 +262,7 @@ def remap_outer_trace(
         "user_id",
         "conversation_id",
         "external_trace_id",
+        "message_execution_state",
         "linked_parent_workflow_run_id",
         "linked_parent_node_execution_id",
         "linked_parent_application_trace_id",
