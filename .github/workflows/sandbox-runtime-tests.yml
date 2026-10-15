@@ -109,10 +109,17 @@ jobs:
             if [ "$entry" = shellctl ]; then binary=shellctl; fi
             CGO_ENABLED=0 go build -o "$RUNNER_TEMP/native-runtime-bin/$binary" "./cmd/$entry"
           done
+          CGO_ENABLED=0 go test -c -tags 'integration native_scope' -o "$RUNNER_TEMP/native-runtime-bin/testscope-kernel.test" ./internal/testscope
 
       - name: Provision delegated native supervisor
         if: inputs.native_scope
         run: bash ../.github/scripts/builder-native-runtime-ci.sh provision "$RUNNER_TEMP/native-runtime-bin" "$PWD/docker"
+
+      - name: Verify inherited mount isolation on the kernel
+        if: inputs.native_scope
+        run: |
+          set -euo pipefail
+          bash ../.github/scripts/builder-native-runtime-ci.sh mount-test "$RUNNER_TEMP/native-runtime-bin" 2>&1 | go tool test2json -t -p github.com/langgenius/dify/dify-agent-runtime/internal/testscope | tee "$RUNNER_TEMP/native-runtime-mount-tests.jsonl"
 
       - name: Run real native scope tests
         if: inputs.native_scope
@@ -155,6 +162,7 @@ jobs:
         with:
           name: native-runtime-evidence
           path: |
+            ${{ runner.temp }}/native-runtime-mount-tests.jsonl
             ${{ runner.temp }}/native-runtime-tests.jsonl
             ${{ runner.temp }}/native-runtime-restart-prepare.jsonl
             ${{ runner.temp }}/native-runtime-restart-resume.jsonl

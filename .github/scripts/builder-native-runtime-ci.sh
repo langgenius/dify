@@ -103,6 +103,21 @@ case ${1:-} in
     echo 'Native supervisor did not become ready.' >&2
     exit 1
     ;;
+  mount-test)
+    owned_fixture
+    binary_dir=${2:?binary directory required}
+    [[ -x "$binary_dir/testscope-kernel.test" ]]
+    native_mount_tmp=$(mktemp -d /tmp/dify-native-mount-ci.XXXXXX)
+    trap 'sudo rmdir "$native_mount_tmp" || true' EXIT
+    sudo chown root:root "$native_mount_tmp"
+    sudo chmod 0755 "$native_mount_tmp"
+    sudo install -m 0755 "$binary_dir/testscope-kernel.test" /usr/local/libexec/dify-native-mount-test
+    timeout --kill-after=5s 90s sudo env -i \
+      PATH=/usr/local/bin:/usr/bin:/bin LANG=C TMPDIR="$native_mount_tmp" \
+      NATIVE_MOUNT_TEST_UID="$(id -u dify-native)" NATIVE_MOUNT_TEST_GID="$(id -g dify-native)" \
+      /usr/local/libexec/dify-native-mount-test \
+      -test.run '^TestReadonlyBindInheritedMounts$' -test.v=test2json -test.timeout=75s
+    ;;
   restart)
     owned_fixture
     require_manager_subgroup_support
@@ -155,7 +170,7 @@ case ${1:-} in
     sudo rm -f /etc/dify-native/supervisor.env "$marker"
     ;;
   *)
-    echo 'Usage: builder-native-runtime-ci.sh provision BIN_DIR PROFILE_DIR | restart | logs | cleanup' >&2
+    echo 'Usage: builder-native-runtime-ci.sh provision BIN_DIR PROFILE_DIR | mount-test BIN_DIR | restart | logs | cleanup' >&2
     exit 2
     ;;
 esac

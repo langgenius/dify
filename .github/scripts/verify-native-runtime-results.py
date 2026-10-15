@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 EXPECTED = {
+    "native-runtime-mount-tests.jsonl": {"TestReadonlyBindInheritedMounts"},
     "native-runtime-tests.jsonl": {
         "TestNativeScopeRealFilesystemSecretNetworkAndStdin",
         "TestNativeScopeRealBoundsAndTreeCancellation",

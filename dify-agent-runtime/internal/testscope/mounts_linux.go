@@ -112,8 +112,13 @@ func PrepareWorker(cfg WorkerConfig) (setupErr error) {
 			return err
 		}
 	}
-	stage = "mount-image"
-	for _, path := range []string{"/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc/ssl"} {
+	// Entry labels are fixed identifiers, never source/config-derived paths.
+	for _, image := range []struct{ path, label string }{
+		{"/usr", "usr"}, {"/bin", "bin"}, {"/sbin", "sbin"},
+		{"/lib", "lib"}, {"/lib64", "lib64"}, {"/etc/ssl", "ssl"},
+	} {
+		stage = "mount-image/" + image.label
+		path := image.path
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			continue
 		}
