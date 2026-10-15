@@ -49,7 +49,7 @@ class _CloserProtocol(Protocol):
 
 
 @contextmanager
-def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
+def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T]:
     yield closer
     closer.close()
 
@@ -396,7 +396,7 @@ def _create_app_with_containers() -> Flask:
 
 
 @pytest.fixture(scope="session")
-def set_up_containers_and_env() -> Generator[DifyTestContainers, None, None]:
+def set_up_containers_and_env() -> Generator[DifyTestContainers]:
     """
     Session-scoped fixture to manage test containers.
 
@@ -438,7 +438,7 @@ def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> 
 
 
 @pytest.fixture
-def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None, None, None]:
+def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None]:
     """
     Request context fixture for containerized Flask application.
 
@@ -459,7 +459,7 @@ def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator
 
 
 @pytest.fixture
-def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient, None, None]:
+def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient]:
     """
     Test client fixture for containerized Flask application.
 
@@ -480,7 +480,7 @@ def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[F
 
 
 @pytest.fixture
-def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session, None, None]:
+def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session]:
     """
     Database session fixture for containerized testing.
 
@@ -547,7 +547,7 @@ def _flush_container_redis(app: Flask) -> None:
 
 
 @pytest.fixture(autouse=True)
-def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None, None, None]:
+def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None]:
     """
     Clean DB and Redis state after tests that use the containerized Flask app.
 
@@ -569,7 +569,7 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
 
 
 @pytest.fixture(scope="package", autouse=True)
-def mock_ssrf_proxy_requests() -> Generator[None, None, None]:
+def mock_ssrf_proxy_requests() -> Generator[None]:
     """
     Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
     """

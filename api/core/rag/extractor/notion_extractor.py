@@ -1,7 +1,8 @@
 import json
 import logging
 import operator
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from types import MappingProxyType
 from typing import Any, cast, override
 
 import httpx
@@ -79,7 +80,9 @@ class NotionExtractor(BaseExtractor):
 
         return docs
 
-    def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] = {}) -> list[Document]:
+    def _get_notion_database_data(
+        self, database_id: str, query_dict: Mapping[str, Any] = MappingProxyType({})
+    ) -> list[Document]:
         """Get all the pages from a Notion database."""
         assert self._notion_access_token is not None, "Notion access token is required"
 
@@ -88,7 +91,7 @@ class NotionExtractor(BaseExtractor):
         has_more = True
 
         while has_more:
-            current_query = query_dict.copy()
+            current_query = dict(query_dict)
             if next_cursor:
                 current_query["start_cursor"] = next_cursor
 
@@ -158,7 +161,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
         while True:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
             try:
                 res = httpx.request(
                     "GET",
@@ -220,7 +223,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
         while True:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(
                 "GET",
@@ -287,7 +290,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
         while not done:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(
                 "GET",
@@ -358,7 +361,7 @@ class NotionExtractor(BaseExtractor):
         else:
             retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=obj_id)
 
-        query_dict: dict[str, Any] = {}
+        query_dict: Mapping[str, Any] = MappingProxyType({})
 
         res = httpx.request(
             "GET",

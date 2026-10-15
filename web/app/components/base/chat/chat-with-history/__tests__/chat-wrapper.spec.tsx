@@ -384,6 +384,27 @@ describe('ChatWrapper', () => {
     expect(container).not.toBeInTheDocument()
   })
 
+  it('should not disable input when a required number field is zero', () => {
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      inputsForms: [
+        { variable: 'count', label: 'Count', type: InputVarType.number, required: true },
+      ],
+      newConversationInputs: { count: 0 },
+      newConversationInputsRef: {
+        current: { count: 0 },
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      currentConversationId: '',
+    })
+
+    render(<ChatWrapper />)
+    const textboxes = screen.getAllByRole('textbox')
+    const chatInput = textboxes[textboxes.length - 1]
+    const container = getChatInputDisabledSurface(chatInput!)
+
+    expect(container).not.toBeInTheDocument()
+  })
+
   it('should disable input when file is uploading', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,

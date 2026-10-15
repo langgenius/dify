@@ -7,7 +7,7 @@ import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createAgentFixture } from '@/test/fixtures/agent'
-import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
 const loadConsoleQuery = async () => {
@@ -545,7 +545,8 @@ describe('consoleQuery agent query defaults', () => {
     })
     const retry = getRetryFn(queryOptions)
 
-    expect(retry(0, new Response(null, { status: 404 }))).toBe(false)
+    const { createHttpError } = await import('@/service/http-error')
+    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
   })
 
   it('should retry other agent detail errors fewer than three times', async () => {
@@ -653,6 +654,41 @@ describe('consoleQuery account profile mutation defaults', () => {
 })
 
 describe('consoleQuery app mutation defaults', () => {
+  it('should merge the reset token into the exact app site without replacing other detail fields', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const input = { params: { app_id: 'app-1' } }
+    const detailKey = consoleQuery.apps.byAppId.get.queryKey({ input })
+    const otherKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-2' } },
+    })
+    const original = createAppDetailFixture({ site: createAppSiteFixture() })
+    const other = createAppDetailFixture({ id: 'app-2' })
+    queryClient.setQueryData(detailKey, original)
+    queryClient.setQueryData(otherKey, other)
+    const response: AppSiteResponse = {
+      app_id: 'app-1',
+      code: 'new-site-code',
+      customize_token_strategy: 'fixed',
+      default_language: 'en-US',
+      prompt_public: false,
+      show_workflow_steps: false,
+      title: 'Unrelated response field',
+      use_icon_as_answer_icon: false,
+    }
+
+    await consoleQuery.apps.byAppId.site.accessTokenReset.post
+      .mutationOptions()
+      .onSettled?.(response, null, input, undefined, createMutationContext(queryClient))
+
+    expect(queryClient.getQueryData(detailKey)).toEqual({
+      ...original,
+      site: { ...original.site, code: response.code, access_token: response.code },
+    })
+    expect(queryClient.getQueryData(otherKey)).toEqual(other)
+    expect(original.site?.access_token).toBe('site-token')
+  })
+
   it('should invalidate the exact app detail after access mutations', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -722,6 +758,52 @@ describe('consoleQuery app mutation defaults', () => {
       }),
     })
   })
+
+  it.each(['api', 'site'] as const)(
+    'keeps complete detail and other apps when updating %s access',
+    async (kind) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const input = { params: { app_id: 'app-1' } }
+      const detailKey = consoleQuery.apps.byAppId.get.queryKey({ input })
+      const otherKey = consoleQuery.apps.byAppId.get.queryKey({
+        input: { params: { app_id: 'app-2' } },
+      })
+      const original = createAppDetailFixture({ enable_api: true, enable_site: true })
+      const other = createAppDetailFixture({ id: 'app-2' })
+      queryClient.setQueryData(detailKey, original)
+      queryClient.setQueryData(otherKey, other)
+      const updated = createAppDetailFixture({
+        name: 'Unrelated response field',
+        enable_api: false,
+        enable_site: false,
+      })
+      const context = createMutationContext(queryClient)
+
+      if (kind === 'api') {
+        await consoleQuery.apps.byAppId.apiEnable.post
+          .mutationOptions()
+          .onSettled?.(updated, null, { ...input, body: { enable_api: false } }, undefined, context)
+      } else {
+        await consoleQuery.apps.byAppId.siteEnable.post
+          .mutationOptions()
+          .onSettled?.(
+            updated,
+            null,
+            { ...input, body: { enable_site: false } },
+            undefined,
+            context,
+          )
+      }
+
+      expect(queryClient.getQueryData(detailKey)).toEqual({
+        ...original,
+        [kind === 'api' ? 'enable_api' : 'enable_site']: false,
+        updated_at: updated.updated_at,
+      })
+      expect(queryClient.getQueryData(otherKey)).toEqual(other)
+    },
+  )
 
   it('should write an updated app into its exact detail cache', async () => {
     const consoleQuery = await loadConsoleQuery()
@@ -979,6 +1061,45 @@ describe('consoleQuery agent mutation defaults', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  it.each(['creation', 'deletion'])(
+    'invalidates agent keys and access status after key %s',
+    async (operation) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      const context = createMutationContext(queryClient)
+      if (operation === 'creation') {
+        await consoleQuery.agent.byAgentId.apiKeys.post
+          .mutationOptions()
+          .onSuccess?.(
+            { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
+            { params: { agent_id: 'agent-1' } },
+            undefined,
+            context,
+          )
+      } else {
+        await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
+          .mutationOptions()
+          .onSuccess?.(
+            undefined,
+            { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
+            undefined,
+            context,
+          )
+      }
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+    },
+  )
 
   it('should invalidate roster and invite option lists after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
@@ -2171,5 +2292,67 @@ describe('workspace skill deletion cache', () => {
     } finally {
       client.clear()
     }
+  })
+})
+
+describe('consoleQuery resourceAccessTokens mutation defaults', () => {
+  const createdToken = { data: [], token: 'token' }
+  const tokenList = { data: [], has_more: false, limit: 20, page: 1, total: 0 }
+
+  it('should refresh the token list after a token is created, updated, or deleted', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const context = createMutationContext(queryClient)
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const tokens = consoleQuery.resourceAccessTokens
+
+    await tokens.post
+      .mutationOptions()
+      .onSettled?.(
+        createdToken,
+        null,
+        { body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.patch
+      .mutationOptions()
+      .onSettled?.(
+        tokenList,
+        null,
+        { params: { token_id: 'token-1' }, body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        null,
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        context,
+      )
+
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: tokens.get.key() })
+  })
+
+  it('should leave the token list alone when the mutation fails', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+
+    await consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        new Error('failed'),
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 })

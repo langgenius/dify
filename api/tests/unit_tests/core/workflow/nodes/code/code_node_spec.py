@@ -161,9 +161,9 @@ class TestCodeNodeCheckMethods:
     def test_check_number_float_value(self):
         """Test _check_number with float value."""
         node = CodeNode.__new__(CodeNode)
-        result = node._check_number(3.14, "test_var")
+        result = node._check_number(float("3.14"), "test_var")
 
-        assert result == 3.14
+        assert result == float("3.14")
 
     def test_check_number_zero(self):
         """Test _check_number with zero."""
@@ -182,9 +182,9 @@ class TestCodeNodeCheckMethods:
     def test_check_number_negative_float(self):
         """Test _check_number with negative float."""
         node = CodeNode.__new__(CodeNode)
-        result = node._check_number(-3.14159, "test_var")
+        result = node._check_number(-float("3.14159"), "test_var")
 
-        assert result == -3.14159
+        assert result == -float("3.14159")
 
 
 class TestCodeNodeConvertBooleanToInt:
@@ -218,9 +218,9 @@ class TestCodeNodeConvertBooleanToInt:
 
     def test_convert_float_returns_same(self):
         """Test converting float returns same value."""
-        result = CodeNode._convert_boolean_to_int(3.14)
+        result = CodeNode._convert_boolean_to_int(float("3.14"))
 
-        assert result == 3.14
+        assert result == float("3.14")
 
     def test_convert_zero_returns_zero(self):
         """Test converting zero returns zero."""

@@ -214,6 +214,27 @@ export const zDeviceCodeResponse = z.object({
 })
 
 /**
+ * DeviceFlowErrorResponse
+ *
+ * RFC 8628-style device-flow error. These routes keep the OAuth ``{"error": code}`` shape
+ * instead of ``ErrorBody`` because device clients parse it.
+ */
+export const zDeviceFlowErrorResponse = z.object({
+  error: z.enum([
+    'access_denied',
+    'already_resolved',
+    'approval_outcome_unknown',
+    'approve_in_progress',
+    'authorization_pending',
+    'expired_or_unknown',
+    'expired_token',
+    'slow_down',
+    'state_lost',
+    'unsupported_client',
+  ]),
+})
+
+/**
  * DeviceLookupQuery
  */
 export const zDeviceLookupQuery = z.object({
@@ -664,7 +685,7 @@ export const zSimpleResultResponse = z.object({
 /**
  * SubjectType
  */
-export const zSubjectType = z.enum(['account', 'external_sso'])
+export const zSubjectType = z.enum(['account', 'external_sso', 'resource_access'])
 
 /**
  * SupportedAppType

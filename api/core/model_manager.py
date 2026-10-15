@@ -803,7 +803,7 @@ class QuotaManagedModelInstance(ModelInstance):
         content_text: str,
         voice: str,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator[bytes, None, None]:
+    ) -> Generator[bytes]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         reservation = self._reserve_quota_for_request(effective_request_metadata)
         try:
@@ -995,9 +995,7 @@ class ModelManager:
         model_schema = model_type_instance.get_model_schema(model, model_instance.credentials)
         if not model_schema:
             return False
-        if model_schema.features and ModelFeature.VISION in model_schema.features:
-            return True
-        return False
+        return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
 
 
 class LBModelManager:
@@ -1039,9 +1037,7 @@ class LBModelManager:
         Strategy: Round Robin
         :return:
         """
-        cache_key = "model_lb_index:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model
-        )
+        cache_key = f"model_lb_index:{self._tenant_id}:{self._provider}:{self._model_type.value}:{self._model}"
 
         cooldown_load_balancing_configs = []
         max_index = len(self._load_balancing_configs)
@@ -1115,8 +1111,9 @@ model: %s""",
         :param expire: cooldown time
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         redis_client.setex(cooldown_cache_key, expire, "true")
@@ -1127,8 +1124,9 @@ model: %s""",
         :param config: model load balancing config
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         res: bool = redis_client.exists(cooldown_cache_key)
@@ -1147,9 +1145,7 @@ model: %s""",
         :param config_id: model load balancing config id
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            tenant_id, provider, model_type.value, model, config_id
-        )
+        cooldown_cache_key = f"model_lb_index:cooldown:{tenant_id}:{provider}:{model_type.value}:{model}:{config_id}"
 
         ttl = redis_client.ttl(cooldown_cache_key)
         if ttl == -2:

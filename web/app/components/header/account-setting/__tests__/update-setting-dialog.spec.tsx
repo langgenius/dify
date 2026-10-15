@@ -159,6 +159,36 @@ it('keeps an earlier category rollback separate from the current category sessio
   )
 })
 
+it('blocks another save while one is pending and rolls back a failed save without losing the open draft', async () => {
+  const pendingSave = deferred<void>()
+  saveSettings.mockReturnValue(pendingSave.promise)
+  const user = userEvent.setup()
+  renderSettings()
+  await waitFor(() =>
+    expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name'),
+  )
+  await user.click(settingsTrigger())
+  await user.click(strategy('latest'))
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.latest.name')
+  const trigger = settingsTrigger()
+  await user.click(trigger)
+  const save = screen.getByRole('button', { name: 'common.operation.save' })
+  expect(save).toBeDisabled()
+  await act(async () => {
+    pendingSave.reject(new Error('Save failed'))
+  })
+  await waitFor(() => expect(trigger).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name'))
+  expect(save).toBeEnabled()
+  expect(strategy('latest')).toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(settingsTrigger())
+  expect(strategy('disabled')).toBeChecked()
+  expect(saveSettings).toHaveBeenCalledOnce()
+})
+
 it('reports success after the submitted form has closed', async () => {
   const pendingSave = deferred<void>()
   saveSettings.mockReturnValue(pendingSave.promise)

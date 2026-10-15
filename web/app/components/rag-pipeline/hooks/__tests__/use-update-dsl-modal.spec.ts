@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { useUpdateDSLModal } from '../use-update-dsl-modal'
 
 class MockFileReader {
@@ -385,14 +386,16 @@ describe('useUpdateDSLModal', () => {
 
     it('should notify response error when importDSL rejects with a response body', async () => {
       mockImportDSL.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Missing rag_pipeline data in YAML content',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Missing rag_pipeline data in YAML content',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
         ),
       )
 
@@ -541,14 +544,16 @@ describe('useUpdateDSLModal', () => {
 
     it('should notify response error when confirm rejects with a response body', async () => {
       mockImportDSLConfirm.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Import information expired or does not exist',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Import information expired or does not exist',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
         ),
       )
 

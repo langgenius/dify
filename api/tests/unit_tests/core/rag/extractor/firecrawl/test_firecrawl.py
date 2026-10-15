@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Mapping
-from typing import Any
 from unittest.mock import MagicMock, create_autospec
 
 import pytest
@@ -15,7 +14,7 @@ from services.data_source.provider_service import DatasourceProviderService
 from services.data_source.website_service import WebsiteService
 
 
-def _response(status_code: int, json_data: Mapping[str, Any] | None = None, text: str = "") -> MagicMock:
+def _response(status_code: int, json_data: Mapping[str, object] | None = None, text: str = "") -> MagicMock:
     response = MagicMock()
     response.status_code = status_code
     response.text = text
@@ -40,8 +39,8 @@ class TestFirecrawlApp:
     def test_requests_use_bounded_timeout(self, mocker: MockerFixture) -> None:
         """Outbound requests must carry a bounded timeout so a hanging endpoint cannot block extraction."""
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mock_post = mocker.patch("httpx.post", return_value=_response(200, {"id": "job-1"}))
-        mock_get = mocker.patch("httpx.get", return_value=_response(200, {"status": "completed"}))
+        mock_post = mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(200, {"id": "job-1"}))
+        mock_get = mocker.patch("core.helper.ssrf_proxy.get", return_value=_response(200, {"status": "completed"}))
 
         app._post_request("https://custom.firecrawl.dev/v1/crawl", {}, app._prepare_headers())
         app._get_request("https://custom.firecrawl.dev/v1/crawl/job-1", app._prepare_headers())
@@ -52,7 +51,7 @@ class TestFirecrawlApp:
     def test_scrape_url_success(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mocker.patch(
-            "httpx.post",
+            "core.helper.ssrf_proxy.post",
             return_value=_response(
                 200,
                 {
@@ -80,7 +79,7 @@ class TestFirecrawlApp:
     def test_scrape_url_handles_known_error_status(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("boom"))
-        mocker.patch("httpx.post", return_value=_response(429, {"error": "limit"}))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(429, {"error": "limit"}))
 
         with pytest.raises(Exception, match="boom"):
             app.scrape_url("https://example.com")
@@ -89,21 +88,21 @@ class TestFirecrawlApp:
 
     def test_scrape_url_unknown_status_raises(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.post", return_value=_response(404, text="Not Found"))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(404, text="Not Found"))
 
         with pytest.raises(Exception, match="Failed to scrape URL. Status code: 404"):
             app.scrape_url("https://example.com")
 
     def test_crawl_url_success(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.post", return_value=_response(200, {"id": "job-1"}))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(200, {"id": "job-1"}))
 
         assert app.crawl_url("https://example.com") == "job-1"
 
     def test_crawl_url_non_200_uses_error_handler(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("crawl failed"))
-        mocker.patch("httpx.post", return_value=_response(500, {"error": "server"}))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(500, {"error": "server"}))
 
         with pytest.raises(Exception, match="crawl failed"):
             app.crawl_url("https://example.com")
@@ -112,14 +111,14 @@ class TestFirecrawlApp:
 
     def test_map_success(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.post", return_value=_response(200, {"success": True, "links": ["a", "b"]}))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(200, {"success": True, "links": ["a", "b"]}))
 
         assert app.map("https://example.com") == {"success": True, "links": ["a", "b"]}
 
     def test_map_known_error(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("map error"))
-        mocker.patch("httpx.post", return_value=_response(409, {"error": "conflict"}))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(409, {"error": "conflict"}))
 
         with pytest.raises(Exception, match="map error"):
             app.map("https://example.com")
@@ -127,7 +126,7 @@ class TestFirecrawlApp:
 
     def test_map_unknown_error_raises(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.post", return_value=_response(418, text="teapot"))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(418, text="teapot"))
 
         with pytest.raises(Exception, match="Failed to start map job. Status code: 418"):
             app.map("https://example.com")
@@ -150,7 +149,7 @@ class TestFirecrawlApp:
                 {"metadata": {"title": "skip"}},
             ],
         }
-        mocker.patch("httpx.get", return_value=_response(200, payload))
+        mocker.patch("core.helper.ssrf_proxy.get", return_value=_response(200, payload))
 
         save_calls: list[tuple[str, bytes]] = []
         delete_calls: list[str] = []
@@ -173,14 +172,19 @@ class TestFirecrawlApp:
 
     def test_check_crawl_status_completed_with_zero_total_raises(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.get", return_value=_response(200, {"status": "completed", "total": 0, "data": []}))
+        mocker.patch(
+            "core.helper.ssrf_proxy.get", return_value=_response(200, {"status": "completed", "total": 0, "data": []})
+        )
 
         with pytest.raises(Exception, match="No page found"):
             app.check_crawl_status("job-1")
 
     def test_check_crawl_status_completed_with_null_total_raises(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.get", return_value=_response(200, {"status": "completed", "total": None, "data": []}))
+        mocker.patch(
+            "core.helper.ssrf_proxy.get",
+            return_value=_response(200, {"status": "completed", "total": None, "data": []}),
+        )
 
         with pytest.raises(Exception, match="No page found"):
             app.check_crawl_status("job-1")
@@ -188,7 +192,7 @@ class TestFirecrawlApp:
     def test_check_crawl_status_non_completed(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         payload = {"status": "processing", "total": 5, "completed": 1, "data": list[object]()}
-        mocker.patch("httpx.get", return_value=_response(200, payload))
+        mocker.patch("core.helper.ssrf_proxy.get", return_value=_response(200, payload))
 
         assert app.check_crawl_status("job-1") == {
             "status": "processing",
@@ -200,7 +204,7 @@ class TestFirecrawlApp:
     def test_check_crawl_status_non_200_uses_error_handler(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("crawl error"))
-        mocker.patch("httpx.get", return_value=_response(500, {"error": "server"}))
+        mocker.patch("core.helper.ssrf_proxy.get", return_value=_response(500, {"error": "server"}))
 
         with pytest.raises(Exception, match="crawl error"):
             app.check_crawl_status("job-1")
@@ -214,7 +218,7 @@ class TestFirecrawlApp:
             "completed": 1,
             "data": [{"metadata": {"title": "a", "sourceURL": "https://a"}, "markdown": "m-a"}],
         }
-        mocker.patch("httpx.get", return_value=_response(200, payload))
+        mocker.patch("core.helper.ssrf_proxy.get", return_value=_response(200, payload))
 
         mock_storage = MagicMock()
         mock_storage.exists.return_value = False
@@ -247,7 +251,10 @@ class TestFirecrawlApp:
             "completed": 3,
             "data": [{"metadata": {"title": "p3", "description": "", "sourceURL": "https://p3"}, "markdown": "m3"}],
         }
-        mocker.patch("httpx.get", side_effect=[_response(200, page1), _response(200, page2), _response(200, page3)])
+        mocker.patch(
+            "core.helper.ssrf_proxy.get",
+            side_effect=[_response(200, page1), _response(200, page2), _response(200, page3)],
+        )
         mock_storage = MagicMock()
         mock_storage.exists.return_value = False
         mocker.patch.object(firecrawl_module, "storage", mock_storage)
@@ -269,7 +276,9 @@ class TestFirecrawlApp:
             "next": "https://custom.firecrawl.dev/v2/crawl/job-99?skip=1",
             "data": [{"metadata": {"title": "p1", "description": "", "sourceURL": "https://p1"}, "markdown": "m1"}],
         }
-        mocker.patch("httpx.get", side_effect=[_response(200, page1), _response(500, {"error": "server error"})])
+        mocker.patch(
+            "core.helper.ssrf_proxy.get", side_effect=[_response(200, page1), _response(500, {"error": "server error"})]
+        )
 
         with pytest.raises(Exception, match="fetch next crawl page"):
             app.check_crawl_status("job-99")
@@ -285,7 +294,7 @@ class TestFirecrawlApp:
             "next": "https://custom.firecrawl.dev/v2/crawl/job-cap?skip=1",
             "data": [{"metadata": {"title": "p1", "description": "", "sourceURL": "https://p1"}, "markdown": "m1"}],
         }
-        mock_get = mocker.patch("httpx.get", return_value=_response(200, page1))
+        mock_get = mocker.patch("core.helper.ssrf_proxy.get", return_value=_response(200, page1))
         mock_storage = MagicMock()
         mock_storage.exists.return_value = False
         mocker.patch.object(firecrawl_module, "storage", mock_storage)
@@ -314,11 +323,11 @@ class TestFirecrawlApp:
         resp_502_b = _response(502)
         resp_200 = _response(200)
 
-        mocker.patch("httpx.post", side_effect=[resp_502_a, resp_200])
+        mocker.patch("core.helper.ssrf_proxy.post", side_effect=[resp_502_a, resp_200])
         post_result = app._post_request("u", {"x": 1}, {"h": 1}, retries=3, backoff_factor=0.5)
         assert post_result is resp_200
 
-        mocker.patch("httpx.get", side_effect=[resp_502_b, _response(200)])
+        mocker.patch("core.helper.ssrf_proxy.get", side_effect=[resp_502_b, _response(200)])
         get_result = app._get_request("u", {"h": 1}, retries=3, backoff_factor=0.25)
         assert get_result.status_code == 200
 
@@ -329,11 +338,11 @@ class TestFirecrawlApp:
         sleep_mock = mocker.patch.object(firecrawl_module.time, "sleep")
 
         last_post = _response(502)
-        mocker.patch("httpx.post", side_effect=[_response(502), last_post])
+        mocker.patch("core.helper.ssrf_proxy.post", side_effect=[_response(502), last_post])
         assert app._post_request("u", {}, {}, retries=2).status_code == 502
 
         last_get = _response(502)
-        mocker.patch("httpx.get", side_effect=[_response(502), last_get])
+        mocker.patch("core.helper.ssrf_proxy.get", side_effect=[_response(502), last_get])
         assert app._get_request("u", {}, retries=2).status_code == 502
 
         assert sleep_mock.call_count == 4
@@ -355,26 +364,30 @@ class TestFirecrawlApp:
 
     def test_search_success(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.post", return_value=_response(200, {"success": True, "data": [{"url": "x"}]}))
+        mocker.patch(
+            "core.helper.ssrf_proxy.post", return_value=_response(200, {"success": True, "data": [{"url": "x"}]})
+        )
         assert app.search("python")["success"] is True
 
     def test_search_warning_failure(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.post", return_value=_response(200, {"success": False, "warning": "bad search"}))
+        mocker.patch(
+            "core.helper.ssrf_proxy.post", return_value=_response(200, {"success": False, "warning": "bad search"})
+        )
         with pytest.raises(Exception, match="bad search"):
             app.search("python")
 
     def test_search_known_http_error(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
         mock_handle = mocker.patch.object(app, "_handle_error", side_effect=Exception("search error"))
-        mocker.patch("httpx.post", return_value=_response(408, {"error": "timeout"}))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(408, {"error": "timeout"}))
         with pytest.raises(Exception, match="search error"):
             app.search("python")
         mock_handle.assert_called_once()
 
     def test_search_unknown_http_error(self, mocker: MockerFixture) -> None:
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
-        mocker.patch("httpx.post", return_value=_response(418, text="teapot"))
+        mocker.patch("core.helper.ssrf_proxy.post", return_value=_response(418, text="teapot"))
         with pytest.raises(Exception, match="Failed to perform search. Status code: 418"):
             app.search("python")
 

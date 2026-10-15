@@ -103,7 +103,3 @@ export const fetchHitHistoryList = (
 ) => {
   return get(`apps/${appId}/annotations/${annotationId}/hit-histories`, { params })
 }
-
-export const clearAllAnnotations = (appId: string): Promise<any> => {
-  return del(`apps/${appId}/annotations`)
-}

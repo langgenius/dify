@@ -64,10 +64,12 @@ function render(ui: ReactElement) {
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
-function submitWithKeyboard() {
+function submitWithKeyboard(
+  modifier: Pick<KeyboardEventInit, 'ctrlKey' | 'metaKey'> = { ctrlKey: true },
+) {
   const target = screen.queryByPlaceholderText('app.newApp.appNamePlaceholder') ?? document.body
-  fireEvent.keyDown(target, { key: 'Enter', ctrlKey: true })
-  fireEvent.keyUp(target, { key: 'Enter', ctrlKey: true })
+  fireEvent.keyDown(target, { key: 'Enter', ...modifier })
+  fireEvent.keyUp(target, { key: 'Enter', ...modifier })
 }
 
 describe('CreateAppModal', () => {
@@ -234,17 +236,81 @@ describe('CreateAppModal', () => {
       vi.useRealTimers()
     })
 
-    it('should submit when Mod+Enter is pressed while visible', async () => {
-      const { onConfirm, onHide } = await setup()
+    it.each([
+      { platform: 'Win32', modifier: { ctrlKey: true } },
+      { platform: 'MacIntel', modifier: { metaKey: true } },
+    ])(
+      'suspends Mod+Enter while the picker is open and resumes after it closes on $platform',
+      async ({ platform, modifier }) => {
+        vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
+        const { onConfirm, onHide } = await setup()
+        const picker = openAppIconPicker()
+        const pickerSearch = within(picker).getByPlaceholderText('app.iconPicker.search')
+        fireEvent.keyDown(pickerSearch, { key: 'Enter', ...modifier })
+        fireEvent.keyUp(pickerSearch, { key: 'Enter', ...modifier })
+        await act(async () => {
+          vi.advanceTimersByTime(300)
+        })
+        expect(onConfirm).not.toHaveBeenCalled()
+        expect(onHide).not.toHaveBeenCalled()
+        fireEvent.keyDown(pickerSearch, { key: 'Escape' })
+        await act(async () => {
+          vi.advanceTimersByTime(300)
+        })
+        expect(picker).not.toBeInTheDocument()
 
-      submitWithKeyboard()
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
+        submitWithKeyboard(modifier)
+        await act(async () => {
+          vi.advanceTimersByTime(300)
+        })
 
-      expect(onConfirm).toHaveBeenCalledTimes(1)
-      expect(onHide).toHaveBeenCalledTimes(1)
-    })
+        expect(onConfirm).toHaveBeenCalledTimes(1)
+        expect(onHide).toHaveBeenCalledTimes(1)
+      },
+    )
+
+    it.each([
+      { platform: 'Win32', modifier: { ctrlKey: true } },
+      { platform: 'MacIntel', modifier: { metaKey: true } },
+    ])(
+      'keeps the shortcut available after the outer dialog is hidden with an open picker on $platform',
+      async ({ platform, modifier }) => {
+        vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
+        const onConfirm = vi.fn().mockResolvedValue(undefined)
+        const onHide = vi.fn()
+        const modal = (show: boolean) => (
+          <CreateAppModal
+            show={show}
+            appName="Reopened App"
+            appDescription=""
+            appIconType="emoji"
+            appIcon="🤖"
+            onConfirm={onConfirm}
+            onHide={onHide}
+          />
+        )
+        const { rerender } = render(modal(true))
+        const picker = openAppIconPicker()
+
+        rerender(modal(false))
+        await act(async () => {
+          vi.advanceTimersByTime(300)
+        })
+        expect(picker).not.toBeInTheDocument()
+        rerender(modal(true))
+        expect(
+          screen.queryByRole('dialog', { name: 'app.iconPicker.title' }),
+        ).not.toBeInTheDocument()
+        submitWithKeyboard(modifier)
+        await act(async () => {
+          vi.advanceTimersByTime(300)
+        })
+
+        expect(onConfirm).toHaveBeenCalledOnce()
+        expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ name: 'Reopened App' }))
+        expect(onHide).toHaveBeenCalledOnce()
+      },
+    )
 
     it('submits instead of opening the icon picker when Mod+Enter starts on its trigger', async () => {
       const { onConfirm } = await setup()

@@ -196,7 +196,7 @@ class TidbOnQdrantVector(BaseVector):
         ids: Sequence[str] | None = None,
         batch_size: int = 64,
         group_id: str | None = None,
-    ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
+    ) -> Generator[tuple[list[str], list[rest.PointStruct]]]:
         from qdrant_client.http import models as rest
 
         texts_iterator = iter(texts)
@@ -228,6 +228,7 @@ class TidbOnQdrantVector(BaseVector):
                         group_id or "",
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 
@@ -456,7 +457,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 else:
                     idle_tidb_auth_binding = db.session.scalar(
                         select(TidbAuthBinding)
-                        .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
+                        .where(TidbAuthBinding.active.is_(False), TidbAuthBinding.status == "ACTIVE")
                         .limit(1)
                     )
                     if idle_tidb_auth_binding:

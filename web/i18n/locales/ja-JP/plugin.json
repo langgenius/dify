@@ -3,7 +3,6 @@
   "action.delete": "プラグインを削除する",
   "action.deleteContentLeft": "削除しますか",
   "action.deleteContentRight": "プラグイン？",
-  "action.deleteSuccess": "プラグインが正常に削除されました",
   "action.pluginInfo": "プラグイン情報",
   "allCategories": "すべてのカテゴリ",
   "auth.addApi": "APIキーを追加してください",

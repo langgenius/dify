@@ -21,7 +21,7 @@ from services.agent.publication_contracts import AgentPublicationState
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
 MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
 
-type WorkflowGeneration = Mapping[str, Any] | Generator[str, None, None]
+type WorkflowGeneration = Mapping[str, Any] | Generator[str]
 
 
 @dataclass(frozen=True)
@@ -149,9 +149,7 @@ class WorkflowSnapshot(WorkflowBindingScope):
             return [{variable["type"]: variable} for variable in variables]
         return variables
 
-    def walk_nodes(
-        self, specific_node_type: NodeType | None = None
-    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+    def walk_nodes(self, specific_node_type: NodeType | None = None) -> Generator[tuple[str, Mapping[str, Any]]]:
         nodes = self.graph_dict.get("nodes")
         if not isinstance(nodes, list):
             raise WorkflowDataError("nodes not found in workflow graph")

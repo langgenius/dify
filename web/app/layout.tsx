@@ -67,13 +67,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (nonce !== undefined) themeProviderProps.nonce = nonce
 
   return (
-    <html lang={locale} className="h-full" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <ReactScanLoader />
       </head>
-      <body className="h-full bg-background-body" {...datasetMap}>
+      <body className="bg-background-body" {...datasetMap}>
         <CloudAnalytics />
-        <div className="isolate h-full">
+        <div className="isolate">
           <JotaiProvider>
             <ThemeProvider {...themeProviderProps}>
               <NuqsAdapter>

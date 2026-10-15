@@ -3,7 +3,6 @@
   "action.delete": "Odstrani vtičnik",
   "action.deleteContentLeft": "Ali želite odstraniti",
   "action.deleteContentRight": "vtičnik?",
-  "action.deleteSuccess": "Vtičnik je bil uspešno odstranjen",
   "action.pluginInfo": "Informacije o vtičniku",
   "allCategories": "Vse kategorije",
   "auth.addApi": "Dodajte API ključ",
