@@ -4176,6 +4176,11 @@
       "count": 1
     }
   },
+  "web/service/use-tools.ts": {
+    "@tanstack/query/prefer-query-options": {
+      "count": 15
+    }
+  },
   "web/service/use-triggers.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 6
