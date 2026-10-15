@@ -1,6 +1,6 @@
 import pytest
 
-from models.human_input import ApprovalChannel, RecipientType
+from enums.human_input import ApprovalChannel, RecipientType
 
 
 @pytest.mark.parametrize(

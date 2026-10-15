@@ -43,19 +43,9 @@ from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
-from core.workflow.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormDefinition,
-    HumanInputNodeData,
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
+from enums.human_input import HumanInputFormStatus
 from graphon.entities import GraphInitParams, WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
@@ -83,6 +73,16 @@ from libs.helper import compact_generate_response
 from models.account import Account
 from models.enums import ConversationFromSource, MessageStatus
 from models.human_input import HumanInputForm
+from models.human_input_entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormDefinition,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from models.model import AppMode
 from tests.unit_tests.model_factories import make_message
 

@@ -8,14 +8,14 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import FormInputType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.human_input import FormInputType, RecipientType
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Message
 from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
-from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,

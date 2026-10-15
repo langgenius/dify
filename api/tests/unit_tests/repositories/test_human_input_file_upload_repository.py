@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus, RecipientType
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import CreatorUserRole, EndUserType
 from models.human_input import (
@@ -11,7 +11,6 @@ from models.human_input import (
     HumanInputFormRecipient,
     HumanInputFormUploadFile,
     HumanInputFormUploadToken,
-    RecipientType,
     StandaloneWebAppRecipientPayload,
 )
 from models.model import App, AppMode, EndUser, IconType

@@ -4,21 +4,19 @@ import pytest
 from pydantic import BaseModel
 
 from core.workflow.human_input_adapter import (
-    DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    WebAppDeliveryMethod,
-    _WebAppDeliveryConfig,
     adapt_human_input_node_data_for_graph,
     adapt_node_config_for_graph,
     adapt_node_data_for_graph,
     is_human_input_webapp_enabled,
     parse_human_input_delivery_methods,
 )
+from enums.human_input import DeliveryMethodType
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
+from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
 
 
 def test_email_delivery_config_helpers_render_and_sanitize_text() -> None:

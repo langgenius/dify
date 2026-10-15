@@ -13,6 +13,7 @@ from typing import Annotated, Any, Literal, Self, assert_never, override
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
+from enums.human_input import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file.enums import FileTransferMethod, FileType
@@ -20,9 +21,7 @@ from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
-
-from . import _exc as exc
-from .enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
+from models import _human_input_exc as exc
 
 _OUTPUT_VARIABLE_PATTERN = re.compile(
     r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}",
@@ -320,13 +319,6 @@ class HumanInputNodeData(BaseNodeData):
                 variable_mappings[qualified_variable_mapping_key] = selector
 
         return variable_mappings
-
-    def find_action_text(self, action_id: str) -> str:
-        """Resolve action display text by id."""
-        for action in self.user_actions:
-            if action.id == action_id:
-                return action.title
-        return action_id
 
     def must_resolve_action_value(self, action_id: str) -> str:
         """Resolve the selected action's workflow-facing value by id.

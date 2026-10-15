@@ -12,21 +12,16 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
-from core.workflow.nodes.human_input.entities import (
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-    UserActionConfig,
-)
-from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from enums.human_input import RecipientType, ValueSourceType
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired
 from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
-from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import ParagraphInputConfig, SelectInputConfig, StringListSource, UserActionConfig
 from models.workflow import Workflow, WorkflowType
 
 

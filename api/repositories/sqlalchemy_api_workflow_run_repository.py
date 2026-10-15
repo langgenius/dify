@@ -34,7 +34,6 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
-from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
@@ -59,6 +58,7 @@ from libs.time_parser import get_time_threshold
 from models import Message
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_entities import FormDefinition
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import (
     APIWorkflowRunRepository,
