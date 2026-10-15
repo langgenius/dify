@@ -2807,7 +2807,7 @@
   },
   "web/app/components/workflow/nodes/agent-v2/__tests__/hooks.spec.tsx": {
     "@tanstack/query/prefer-query-options": {
-      "count": 6
+      "count": 3
     }
   },
   "web/app/components/workflow/nodes/agent/__tests__/integration.spec.tsx": {
