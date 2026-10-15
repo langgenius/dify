@@ -314,11 +314,27 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             "resource_access_tokens_relation",
         )
 
-        def witness(*, include_archive: bool = False) -> dict[str, object]:
+        native_tables = {
+            "dify_builder_native_" + suffix
+            for suffix in (
+                "scopes",
+                "invocations",
+                "grants",
+                "operations",
+                "attempts",
+                "outcomes",
+                "continuations",
+                "pending_actions",
+            )
+        }
+
+        def witness(*, include_archive: bool = False, include_native: bool = False) -> dict[str, object]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
             if include_archive:
                 expected_tables.add("workflow_run_archive_bundles")
+            if include_native:
+                expected_tables.update(native_tables)
             assert set(inspector.get_table_names(schema=schema)) == expected_tables
             return {
                 table: {
@@ -381,7 +397,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
 
         archive_before = archive_witness()
         assert witness(include_archive=True) == before
-        assert migrate("head") == (current_head,)
+        assert migrate(previous_merge) == (previous_merge,)
         assert witness(include_archive=True) == before
         assert archive_witness() == archive_before
         archive_after_columns = inspect(connection).get_columns(archive_table, schema=schema)
@@ -396,6 +412,26 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             ).scalar_one()
             is None
         )
+        assert migrate("head") == (current_head,)
+        after_native = witness(include_archive=True, include_native=True)
+        request_table = "dify_builder_execution_requests"
+        previous_request = before[request_table]
+        current_request = after_native[request_table]
+        waiting_indexes = [
+            index for index in current_request["indexes"] if index["name"] == "builder_native_waiting_idx"
+        ]
+        assert len(waiting_indexes) == 1
+        assert waiting_indexes[0]["column_names"] == ["tenant_id", "app_id", "state"]
+        assert "waiting" in waiting_indexes[0]["dialect_options"]["postgresql_where"]
+        assert len(current_request["checks"]) == len(previous_request["checks"]) == 1
+        assert "waiting" in current_request["checks"][0]["sqltext"]
+        assert "builder-native-test-v1" in current_request["checks"][0]["sqltext"]
+        # Only the reviewed native waiting CHECK/index may change on the old
+        # request table; all preexisting rows/columns/other constraints persist.
+        current_request["indexes"] = [index for index in current_request["indexes"] if index not in waiting_indexes]
+        current_request["checks"] = previous_request["checks"]
+        assert after_native == before
+        assert archive_witness() == archive_before
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 

@@ -14,14 +14,14 @@ from uuid import uuid4
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import create_engine, func, inspect, select, text
+from sqlalchemy import CheckConstraint, create_engine, func, inspect, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
 from core.dify_builder.models import Actor
 from models.account import Tenant, TenantAccountJoin
-from models.dify_builder import DifyBuilderExecutionRequest
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import (
     ApprovalWait,
@@ -119,15 +119,68 @@ class LedgerCase:
         return effect
 
 
-@pytest.fixture(scope="module", autouse=True)
-def migrated_native_tables(flask_app_with_containers):
-    """All claims/races use actual Alembic tables, not create_all approximations."""
-    from extensions.ext_database import db
-
-    path = Path(__file__).parents[4] / "migrations/versions/2026_10_14_1200-c67e12a904bf_add_builder_native_testing.py"
-    spec = importlib.util.spec_from_file_location("native_race_migration", path)
+def _migration(filename):
+    path = Path(__file__).parents[4] / "migrations/versions" / filename
+    spec = importlib.util.spec_from_file_location("native_ledger_migration_" + filename, path)
+    assert spec is not None
+    assert spec.loader is not None
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
+    return migration
+
+
+def _native_migration():
+    return _migration("2026_10_14_1200-c67e12a904bf_add_builder_native_testing.py")
+
+
+def _request_migration():
+    return _migration("2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py")
+
+
+def _assert_single_request_state_check(connection, *, native):
+    """Check the real physical constraint, including SQLAlchemy PG truncation."""
+    checks = inspect(connection).get_check_constraints("dify_builder_execution_requests")
+    (model_check,) = (
+        constraint
+        for constraint in DifyBuilderExecutionRequest.__table__.constraints
+        if isinstance(constraint, CheckConstraint)
+    )
+    physical_name = connection.dialect.identifier_preparer.truncate_and_render_constraint_name(
+        model_check.name, _alembic_quote=False
+    )
+    assert len(checks) == 1, "upgrade/downgrade must replace exactly one state CHECK"
+    assert checks[0]["name"] == physical_name
+    assert ("waiting" in checks[0]["sqltext"]) is native
+
+
+def _assert_waiting_policy(connection, *, native):
+    """Actual INSERTs catch a surviving legacy CHECK or SQL NULL bypass."""
+    request_table = DifyBuilderExecutionRequest.__table__
+    for policy, allowed in (("builder-native-test-v1", native), ("builder-execution-v1", False), (None, False)):
+        identity = str(uuid4())
+        values = dict.fromkeys(
+            ("id", "tenant_id", "app_id", "workflow_id", "actor_id", "session_id", "test_input_id"), identity
+        )
+        statement = request_table.insert().values(
+            **values,
+            context={} if policy is None else {"policy_version": policy},
+            context_digest="a" * 64,
+            state="waiting",
+            observations=[],
+        )
+        if allowed:
+            connection.execute(statement)
+            connection.execute(request_table.delete().where(request_table.c.id == identity))
+        else:
+            with pytest.raises(IntegrityError), connection.begin_nested():
+                connection.execute(statement)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def migrated_native_tables(flask_app_with_containers):
+    """Rebuild the race schema through both real migrations with deployed metadata."""
+    from extensions.ext_database import db
+
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
         assert connection.dialect.name == "postgresql"
         for table in (
@@ -140,20 +193,19 @@ def migrated_native_tables(flask_app_with_containers):
             "invocations",
             "scopes",
         ):
-            connection.execute(text("DROP TABLE IF EXISTS dify_builder_native_" + table))
-        connection.execute(text("DROP FUNCTION IF EXISTS builder_native_immutable_ledger()"))
-        connection.execute(text("DROP INDEX IF EXISTS builder_native_waiting_idx"))
-        connection.execute(
-            text("ALTER TABLE dify_builder_execution_requests DROP CONSTRAINT builder_execution_request_state")
-        )
-        connection.execute(
-            text(
-                "ALTER TABLE dify_builder_execution_requests ADD CONSTRAINT builder_execution_request_state "
-                "CHECK (state IN ('prepared','running','sealed'))"
-            )
-        )
-        with Operations.context(MigrationContext.configure(connection)):
-            migration.upgrade()
+            connection.execute(text("DROP TABLE dify_builder_native_" + table))
+        connection.execute(text("DROP FUNCTION IF EXISTS public.builder_native_immutable_ledger()"))
+        # create_all/other test modules may have installed a different generation
+        # of the request table. Rebuild it via its real predecessor, including
+        # naming convention; never hand-create or conditionally drop the CHECK.
+        context = MigrationContext.configure(connection, opts={"target_metadata": db.metadata})
+        with Operations.context(context):
+            _request_migration().downgrade()
+            _request_migration().upgrade()
+            _assert_single_request_state_check(connection, native=False)
+            _native_migration().upgrade()
+            _assert_single_request_state_check(connection, native=True)
+            _assert_waiting_policy(connection, native=True)
         connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:c67e12a904bf'"))
 
 
@@ -476,43 +528,51 @@ def test_sql_checks_reject_overspend_and_invalid_outcome(ledger_case):
             session.commit()
 
 
-def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers):
+@pytest.mark.parametrize("starting_schema", ["predecessor", "model_created"])
+def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers, starting_schema):
     from extensions.ext_database import db
 
-    path = Path(__file__).parents[4] / "migrations/versions/2026_10_14_1200-c67e12a904bf_add_builder_native_testing.py"
-    spec = importlib.util.spec_from_file_location("native_migration", path)
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
+    migration = _native_migration()
+    predecessor = _request_migration()
     schema = "native_migration_" + uuid4().hex
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
         assert connection.dialect.name == "postgresql"
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(text(f'SET LOCAL search_path TO "{schema}"'))
-        connection.execute(
-            text(
-                "CREATE TABLE dify_builder_execution_requests "
-                "(LIKE public.dify_builder_execution_requests INCLUDING ALL)"
-            )
-        )
-        # LIKE generates fresh names for copied indexes; remove the partial one.
-        for index in inspect(connection).get_indexes("dify_builder_execution_requests", schema=schema):
-            if index.get("dialect_options", {}).get("postgresql_where"):
-                connection.execute(text(f'DROP INDEX "{index["name"]}"'))
-        connection.execute(
-            text("ALTER TABLE dify_builder_execution_requests DROP CONSTRAINT builder_execution_request_state")
-        )
-        connection.execute(
-            text(
-                "ALTER TABLE dify_builder_execution_requests ADD CONSTRAINT builder_execution_request_state "
-                "CHECK (state IN ('prepared','running','sealed'))"
-            )
-        )
-        with Operations.context(MigrationContext.configure(connection)):
+        context = MigrationContext.configure(connection, opts={"target_metadata": db.metadata})
+        with Operations.context(context) as operations:
+            if starting_schema == "predecessor":
+                DifyBuilderTestInput.__table__.create(connection)
+                operations.drop_column("dify_builder_test_inputs", "http_fixtures")
+                predecessor.upgrade()
+                _assert_single_request_state_check(connection, native=False)
+                _assert_waiting_policy(connection, native=False)
+            else:
+                DifyBuilderExecutionRequest.__table__.create(connection)
+                _assert_single_request_state_check(connection, native=True)
+                # The model already has the new index; remove just that index
+                # so upgrade tests replacing its convention-named CHECK.
+                operations.drop_index("builder_native_waiting_idx", table_name="dify_builder_execution_requests")
             migration.upgrade()
+            _assert_single_request_state_check(connection, native=True)
+            _assert_waiting_policy(connection, native=True)
             assert "dify_builder_native_attempts" in inspect(connection).get_table_names(schema=schema)
             migration.downgrade()
+            _assert_single_request_state_check(connection, native=False)
+            _assert_waiting_policy(connection, native=False)
             assert "dify_builder_native_attempts" not in inspect(connection).get_table_names(schema=schema)
+            # Schema-qualified downgrade must not remove the public race trigger.
+            assert connection.scalar(text("SELECT to_regprocedure('public.builder_native_immutable_ledger()')"))
             migration.upgrade()
+            _assert_single_request_state_check(connection, native=True)
+            _assert_waiting_policy(connection, native=True)
+            if starting_schema == "predecessor":
+                migration.downgrade()
+                predecessor.downgrade()
+                assert "dify_builder_execution_requests" not in inspect(connection).get_table_names(schema=schema)
+                predecessor.upgrade()
+                migration.upgrade()
+                _assert_single_request_state_check(connection, native=True)
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
