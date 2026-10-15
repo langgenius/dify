@@ -404,8 +404,6 @@ func (m *Manager) start(s *Scope) error {
 	cmd := exec.Command(self, "native-worker", cfgPath)
 	cmd.Env = []string{"PATH=/usr/local/bin:/usr/bin:/bin", "HOME=/home/dify", "LANG=C.UTF-8"}
 	cmd.ExtraFiles = []*os.File{lf, write}
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
 	cmd.SysProcAttr = &syscall.SysProcAttr{Cloneflags: unix.CLONE_NEWUSER | unix.CLONE_NEWNS | unix.CLONE_NEWPID | unix.CLONE_NEWNET | unix.CLONE_NEWIPC | unix.CLONE_NEWUTS, UidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getuid(), Size: 1}}, GidMappings: []syscall.SysProcIDMap{{ContainerID: 0, HostID: os.Getgid(), Size: 1}}, GidMappingsEnableSetgroups: false, UseCgroupFD: true, CgroupFD: int(cgfd.Fd())}
 	// This committed transition is an irreversible start gate. A crash after
 	// it is uncertain even if no PID was recorded; only kernel fencing resolves it.
@@ -413,7 +411,7 @@ func (m *Manager) start(s *Scope) error {
 		return err
 	}
 	s.Status = "launching"
-	if err = cmd.Start(); err != nil {
+	if err = startRetainedWorker(cmd); err != nil {
 		return err
 	}
 	s.PID = cmd.Process.Pid
@@ -437,6 +435,15 @@ func (m *Manager) start(s *Scope) error {
 	s.Status = "ready"
 	success = true
 	return nil
+}
+
+func startRetainedWorker(cmd *exec.Cmd) error {
+	// A nil stream connects directly to os.DevNull. io.Discard instead makes
+	// os/exec create pipes drained by this manager; after a restart a worker
+	// logging to those orphaned pipes can die from SIGPIPE, losing its namespace.
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Start()
 }
 
 func (m *Manager) startBroker(s Scope) error {
