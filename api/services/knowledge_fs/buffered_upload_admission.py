@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Generator
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import AbstractContextManager, contextmanager, suppress
 from dataclasses import dataclass
 from threading import Condition
 from typing import Protocol
@@ -94,10 +94,8 @@ class KnowledgeFSBufferedUploadAdmission:
         )
 
     def _remove_waiter(self, waiter: object) -> None:
-        try:
+        with suppress(ValueError):
             self._waiters.remove(waiter)
-        except ValueError:
-            pass
 
 
 DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION = KnowledgeFSBufferedUploadAdmission(

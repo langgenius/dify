@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import uuid
@@ -1369,11 +1370,9 @@ class Conversation(Base):
             if not workflow_run:
                 continue
 
-            try:
+            # Handle invalid status values gracefully
+            with contextlib.suppress(ValueError, KeyError):
                 status_counts[WorkflowExecutionStatus(workflow_run.status)] += 1
-            except (ValueError, KeyError):
-                # Handle invalid status values gracefully
-                pass
 
         return {
             "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
