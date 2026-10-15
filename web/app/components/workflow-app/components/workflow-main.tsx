@@ -9,7 +9,6 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
@@ -21,6 +20,8 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
@@ -54,14 +55,17 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId: routeAppId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: routeAppId } } }),
+  )
   const containerRef = useRef<HTMLDivElement>(null)
   const [collaborationGraphState, setCollaborationGraphState] = useState({
     appId: null as string | null,
     isReady: false,
   })
   const reactFlow = useReactFlow()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
   const reactFlowStore = useMemo(
     () => ({
@@ -81,12 +85,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () =>
-      getAppACLCapabilities(appDetail?.permission_keys, {
+      getAppACLCapabilities(appDetail.permission_keys, {
         currentUserId,
-        resourceMaintainer: appDetail?.maintainer,
+        resourceMaintainer: appDetail.maintainer,
         workspacePermissionKeys,
       }),
-    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+    [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const {
     startCursorTracking,

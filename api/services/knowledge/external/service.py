@@ -261,10 +261,7 @@ class ExternalDatasetService:
     @staticmethod
     def assembling_headers(authorization: Authorization, headers: dict[str, Any] | None = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
-        if headers:
-            headers = deepcopy(headers)
-        else:
-            headers = {}
+        headers = deepcopy(headers) if headers else {}
         if authorization.type == "api-key":
             if authorization.config is None:
                 raise ValueError("authorization config is required")

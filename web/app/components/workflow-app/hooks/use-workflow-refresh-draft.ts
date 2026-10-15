@@ -1,7 +1,9 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 
@@ -10,11 +12,14 @@ type RefreshWorkflowDraftOptions = {
 }
 
 export const useWorkflowRefreshDraft = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId: routeAppId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: routeAppId } } }),
+  )
   const workflowStore = useWorkflowStore()
   const refreshSequenceRef = useRef(0)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
-  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
   const handleRefreshWorkflowDraft = useCallback(
     (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {

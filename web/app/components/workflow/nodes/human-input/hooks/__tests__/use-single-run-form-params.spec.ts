@@ -2,14 +2,20 @@ import type { HumanInputNodeType } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseAppStore = vi.hoisted(() => vi.fn())
+const mockUseParams = vi.hoisted(() => vi.fn())
 const mockFetchHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
@@ -18,9 +24,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail?: { id?: string; mode?: AppModeEnum } }) => unknown) =>
-    mockUseAppStore(selector),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => mockUseParams(),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -86,7 +92,13 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   const mockSetRunInputData = vi.fn()
   const getInputVars = vi.fn()
   let currentInputs = createPayload()
-  let appDetail: { id?: string; mode?: AppModeEnum } | undefined
+  let appDetail: { id: string; mode: AppModeEnum } | undefined
+
+  const renderHook = <Result>(callback: () => Result) => {
+    const queryClient = createConsoleQueryClient()
+    if (appDetail) seedAppDetail(queryClient, createAppDetailFixture(appDetail))
+    return renderHookWithConsoleQuery(callback, { queryClient })
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -99,10 +111,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     mockUseTranslation.mockReturnValue({
       t: withSelectorKey((key: string) => key),
     })
-    mockUseAppStore.mockImplementation(
-      (selector: (state: { appDetail?: { id?: string; mode?: AppModeEnum } }) => unknown) =>
-        selector({ appDetail }),
-    )
+    mockUseParams.mockImplementation(() => ({ appId: appDetail?.id }))
     mockUseNodeCrud.mockImplementation(() => ({
       inputs: currentInputs,
     }))

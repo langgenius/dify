@@ -32,6 +32,8 @@ class ArchiveManifest(TypedDict, total=False):
 
 _manifest_adapter: TypeAdapter[ArchiveManifest] = TypeAdapter(ArchiveManifest)
 
+import contextlib
+
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from extensions.ext_database import db
@@ -338,10 +340,8 @@ class WorkflowRunRestore:
             if isinstance(column.type, DateTime):
                 value = result.get(column.key)
                 if isinstance(value, str):
-                    try:
+                    with contextlib.suppress(ValueError):
                         result[column.key] = datetime.fromisoformat(value)
-                    except ValueError:
-                        pass
 
         return result
 

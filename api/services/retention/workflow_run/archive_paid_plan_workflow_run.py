@@ -339,10 +339,7 @@ class WorkflowRunArchiver:
 
         # Initialize archive storage (will raise if not configured)
         try:
-            if not self.dry_run:
-                storage = get_archive_storage()
-            else:
-                storage = None
+            storage = get_archive_storage() if not self.dry_run else None
         except ArchiveStorageNotConfiguredError as e:
             click.echo(click.style(f"Archive storage not configured: {e}", fg="red"))
             return summary
