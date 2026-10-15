@@ -12,10 +12,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from graphon.enums import BuiltinNodeTypes
 from models import Account, App, AppMode
 from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
+from services import app_dsl_service
 from services.agent.dsl_entities import AgentPackage
 from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
@@ -543,6 +545,209 @@ def test_create_or_update_app_rejects_null_required_site_setting_before_mutation
         )
 
     assert app.name == "Existing app"
+
+
+def _workflow_import_service(
+    *,
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[AppDslService, SimpleNamespace]:
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch.setattr(app_dsl_service, "WorkflowService", Mock(return_value=workflow_service))
+    return AppDslService(session=session), workflow_service
+
+
+def test_create_or_update_app_warns_when_knowledge_retrieval_dataset_cannot_be_decrypted(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(app_dsl_service.dify_config, "DSL_EXPORT_ENCRYPT_DATASET_ID", True)
+    app = _app(tenant_id=_TENANT_ID, mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    service, workflow_service = _workflow_import_service(session=sqlite_session, monkeypatch=monkeypatch)
+
+    dataset_uuid = "55555555-5555-4555-8555-555555555555"
+    foreign_dataset_id = AppDslService.encrypt_dataset_id(dataset_id=dataset_uuid, tenant_id="foreign-tenant")
+    assert foreign_dataset_id != dataset_uuid
+
+    graph = {
+        "nodes": [
+            {
+                "id": "knowledge-node-1",
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "title": "Company docs",
+                    "dataset_ids": [foreign_dataset_id],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    service._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": graph}},
+        account=_account(tenant_id=_TENANT_ID),
+    )
+
+    imported_graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
+    assert imported_graph["nodes"][0]["data"]["dataset_ids"] == []
+    assert len(service._warnings) == 1
+    warning = service._warnings[0]
+    assert warning.code == "workflow_knowledge_retrieval_dataset_unresolved"
+    assert warning.path == "workflow.graph.nodes.0.data.dataset_ids"
+    assert warning.details["node_id"] == "knowledge-node-1"
+    assert warning.details["node_title"] == "Company docs"
+
+
+def test_create_or_update_app_emits_one_warning_per_unresolved_knowledge_retrieval_dataset(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(app_dsl_service.dify_config, "DSL_EXPORT_ENCRYPT_DATASET_ID", True)
+    app = _app(tenant_id=_TENANT_ID, mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    service, workflow_service = _workflow_import_service(session=sqlite_session, monkeypatch=monkeypatch)
+
+    dataset_uuid = "55555555-5555-4555-8555-555555555555"
+    foreign_dataset_id = AppDslService.encrypt_dataset_id(dataset_id=dataset_uuid, tenant_id="foreign-tenant")
+    graph = {
+        "nodes": [
+            {
+                "id": "knowledge-node-1",
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "dataset_ids": [foreign_dataset_id, "not-a-valid-encrypted-dataset-id"],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    service._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": graph}},
+        account=_account(tenant_id=_TENANT_ID),
+    )
+
+    imported_graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
+    assert imported_graph["nodes"][0]["data"]["dataset_ids"] == []
+    assert len(service._warnings) == 2
+
+
+def test_create_or_update_app_preserves_decryptable_knowledge_retrieval_dataset(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(app_dsl_service.dify_config, "DSL_EXPORT_ENCRYPT_DATASET_ID", True)
+    app = _app(tenant_id=_TENANT_ID, mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    service, workflow_service = _workflow_import_service(session=sqlite_session, monkeypatch=monkeypatch)
+
+    dataset_uuid = "55555555-5555-4555-8555-555555555555"
+    local_dataset_id = AppDslService.encrypt_dataset_id(dataset_id=dataset_uuid, tenant_id=_TENANT_ID)
+    graph = {
+        "nodes": [
+            {
+                "id": "knowledge-node-1",
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "dataset_ids": [local_dataset_id],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    service._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": graph}},
+        account=_account(tenant_id=_TENANT_ID),
+    )
+
+    imported_graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
+    assert imported_graph["nodes"][0]["data"]["dataset_ids"] == [dataset_uuid]
+    assert service._warnings == []
+
+
+def test_create_or_update_app_preserves_plain_uuid_knowledge_retrieval_dataset(
+    sqlite_session: Session,
+) -> None:
+    app = _app(tenant_id=_TENANT_ID, mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(app_dsl_service, "WorkflowService", Mock(return_value=workflow_service))
+    service = AppDslService(session=sqlite_session)
+
+    dataset_uuid = "55555555-5555-4555-8555-555555555555"
+    graph = {
+        "nodes": [
+            {
+                "id": "knowledge-node-1",
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "dataset_ids": [dataset_uuid],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    service._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": graph}},
+        account=_account(tenant_id=_TENANT_ID),
+    )
+
+    imported_graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
+    assert imported_graph["nodes"][0]["data"]["dataset_ids"] == [dataset_uuid]
+    assert service._warnings == []
+
+
+def test_create_or_update_app_silently_drops_empty_knowledge_retrieval_dataset_ids(
+    sqlite_session: Session,
+) -> None:
+    app = _app(tenant_id=_TENANT_ID, mode=AppMode.WORKFLOW)
+    sqlite_session.add(app)
+    sqlite_session.flush()
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
+    )
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(app_dsl_service, "WorkflowService", Mock(return_value=workflow_service))
+    service = AppDslService(session=sqlite_session)
+
+    graph = {
+        "nodes": [
+            {
+                "id": "knowledge-node-1",
+                "data": {
+                    "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "dataset_ids": [""],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    service._create_or_update_app(
+        app=app,
+        data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": graph}},
+        account=_account(tenant_id=_TENANT_ID),
+    )
+
+    imported_graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
+    assert imported_graph["nodes"][0]["data"]["dataset_ids"] == []
+    assert service._warnings == []
 
 
 def test_import_app_resolves_site_entitlement_before_database_writes(
