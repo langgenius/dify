@@ -201,8 +201,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             dataset = session.get(Dataset, segment.dataset_id)
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
+                                DatasetDocument.enabled.is_(True),
+                                DatasetDocument.archived.is_(False),
                             )
                             document = session.scalar(dataset_document_stmt)
                             if dataset and document:
