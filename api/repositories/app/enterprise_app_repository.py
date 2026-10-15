@@ -53,7 +53,7 @@ from services.entities.app_entities import RECENT_APP_MODES
 
 # App modes a Studio user can open from the app list.
 ENTERPRISE_APP_LIST_MODES: tuple[AppMode, ...] = (*RECENT_APP_MODES, AppMode.AGENT)
-_INVOKED_MESSAGE = Message.invoke_from != InvokeFrom.DEBUGGER
+_NON_DEBUGGER_MESSAGE = Message.invoke_from != InvokeFrom.DEBUGGER
 
 # Outer joins: the workspace and creator columns are None at runtime when the row is missing.
 _SummaryRow = tuple[App, str, str, str, str]
@@ -209,7 +209,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
         with self._session_factory() as session:
             rows = session.execute(
                 sa.select(Message.app_id, Message.status, in_window, sa.func.max(Message.created_at))
-                .where(Message.app_id.in_(app_ids), _INVOKED_MESSAGE)
+                .where(Message.app_id.in_(app_ids), _NON_DEBUGGER_MESSAGE)
                 .group_by(Message.app_id, Message.status)
             )
             for app_id, status, count, created_at in rows:
