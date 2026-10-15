@@ -12,6 +12,7 @@ from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 from enums.agent import WorkflowAgentBindingType
 from errors.workflow import NodeNotFoundError, WorkflowDataError
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.variables import VariableBase
@@ -181,8 +182,10 @@ class WorkflowSnapshot(WorkflowBindingScope):
         data = node_config.get("data")
         if isinstance(data, Mapping):
             node_type = data.get("type")
+        elif isinstance(data, BaseNodeData):
+            node_type = data.type
         else:
-            node_type = getattr(data, "type", None)
+            raise WorkflowDataError("node type not found in workflow graph")
         if not isinstance(node_type, str):
             raise WorkflowDataError("node type not found in workflow graph")
         return node_type

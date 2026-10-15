@@ -2,7 +2,9 @@ import json
 
 import pytest
 
-from services.workflow.contracts import WorkflowBindingScope, WorkflowTriggerError
+from errors.workflow import WorkflowDataError
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from services.workflow.contracts import WorkflowBindingScope, WorkflowSnapshot, WorkflowTriggerError
 
 
 def test_binding_scope_graph_dict_returns_independent_parsed_data() -> None:
@@ -37,6 +39,24 @@ def test_binding_scope_graph_dict_propagates_invalid_json() -> None:
 
     with pytest.raises(json.JSONDecodeError):
         _ = scope.graph_dict
+
+
+@pytest.mark.parametrize("node_type", ["start", "custom-node"])
+def test_workflow_snapshot_node_type_from_raw_graph(node_type: str) -> None:
+    assert WorkflowSnapshot.get_node_type_from_node_config({"data": {"type": node_type}}) == node_type
+
+
+@pytest.mark.parametrize("node_type", ["start", "custom-node"])
+def test_workflow_snapshot_node_type_from_validated_graph(node_type: str) -> None:
+    node_config = NodeConfigDictAdapter.validate_python({"id": "node-1", "data": {"type": node_type}})
+
+    assert WorkflowSnapshot.get_node_type_from_node_config(node_config) == node_type
+
+
+@pytest.mark.parametrize("node_data", [None, {}, {"type": None}, {"type": 123}, "start"])
+def test_workflow_snapshot_rejects_missing_or_invalid_node_type(node_data: object) -> None:
+    with pytest.raises(WorkflowDataError, match="node type not found in workflow graph"):
+        WorkflowSnapshot.get_node_type_from_node_config({"data": node_data})
 
 
 def test_workflow_trigger_error_preserves_message() -> None:
