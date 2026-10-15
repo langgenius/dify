@@ -572,21 +572,22 @@ def merge_known_keys(existing: dict, payload: dict, keys) -> dict:
 
 
 def perform_revert(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> None:
-    """Shared revert primitive (Slice 4). Emits the revert_checkpoint canvas
-    signal; then, if an active checkpoint exists, restores the pre-change draft
-    from its snapshot, invalidates the approval cards emitted since the
-    checkpoint (assistant_turns with seq >= fc.checkpoint_seq), and clears the
-    active restore point. A revert with no checkpoint (fc.checkpoint_id == "")
-    emits the signal but changes no draft -- the pre-Slice-4 record-intent-only
-    behavior, now centralized."""
-    if env.emit_canvas is not None:
-        env.emit_canvas({"event": "revert_checkpoint"})
+    """Shared revert primitive (Slice 4). Restore the pre-change draft before
+    emitting the revert_checkpoint canvas signal, invalidating approval cards
+    emitted since the checkpoint (assistant_turns with seq >= fc.checkpoint_seq),
+    and clearing the active restore point. A refused restore changes none of
+    those UI/checkpoint facts. A revert with no checkpoint (fc.checkpoint_id == "")
+    retains the signal-only pre-Slice-4 behavior and changes no draft."""
     if not fc.checkpoint_id:
+        if env.emit_canvas is not None:
+            env.emit_canvas({"event": "revert_checkpoint"})
         return
     _cp, snap = env.repo.get_checkpoint(fc.checkpoint_id)
     fc.last_snapshot_hash = env.dify.restore_graph(
         s.app_id, turn.actor, snap.graph, expected_revision=fc.last_snapshot_hash
     )
+    if env.emit_canvas is not None:
+        env.emit_canvas({"event": "revert_checkpoint"})
     fc.last_structure_fingerprint = env.dify.structural_fingerprint(snap.graph)
     env.repo.invalidate_conversation_items(s.id, fc.checkpoint_seq)
     fc.checkpoint_id = ""

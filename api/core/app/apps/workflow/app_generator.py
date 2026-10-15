@@ -813,40 +813,40 @@ class WorkflowAppGenerator(BaseAppGenerator):
         exit_kind: Literal["returned", "policy_refused", "stopped", "failed"] = "failed"
         try:
             with preserve_flask_contexts(flask_app, context_vars=context):
-                native_context = None
-                if (
-                    application_generate_entity.native_test_required
-                    or application_generate_entity.native_test_ref is not None
-                ):
-                    if application_generate_entity.native_test_ref is None:
-                        raise NativeContextUnavailable("native_context_missing")
-                    if native_runtime is None:
-                        raise NativeContextUnavailable("native_runtime_unavailable")
-                    native_context = native_runtime.resolve(application_generate_entity.native_test_ref)
-                    if (
-                        application_generate_entity.app_config.tenant_id,
-                        application_generate_entity.app_config.app_id,
-                        application_generate_entity.app_config.workflow_id,
-                        application_generate_entity.user_id,
-                        application_generate_entity.workflow_execution_id,
-                    ) != (
-                        native_context.tenant_id,
-                        native_context.app_id,
-                        native_context.workflow_id,
-                        native_context.actor_id,
-                        native_context.native_run_id,
-                    ):
-                        raise NativeContextUnavailable("native_context_mismatch")
-                    prepared = native_runtime.prepare_inputs(native_context)
-                    application_generate_entity = application_generate_entity.model_copy(
-                        update={
-                            "inputs": prepared.inputs,
-                            "files": list(prepared.files),
-                            "call_depth": native_context.call_depth,
-                        }
-                    )
-
                 try:
+                    native_context = None
+                    if (
+                        application_generate_entity.native_test_required
+                        or application_generate_entity.native_test_ref is not None
+                    ):
+                        if application_generate_entity.native_test_ref is None:
+                            raise NativeContextUnavailable("native_context_missing")
+                        if native_runtime is None:
+                            raise NativeContextUnavailable("native_runtime_unavailable")
+                        native_context = native_runtime.resolve(application_generate_entity.native_test_ref)
+                        if (
+                            application_generate_entity.app_config.tenant_id,
+                            application_generate_entity.app_config.app_id,
+                            application_generate_entity.app_config.workflow_id,
+                            application_generate_entity.user_id,
+                            application_generate_entity.workflow_execution_id,
+                        ) != (
+                            native_context.tenant_id,
+                            native_context.app_id,
+                            native_context.workflow_id,
+                            native_context.actor_id,
+                            native_context.native_run_id,
+                        ):
+                            raise NativeContextUnavailable("native_context_mismatch")
+                        prepared = native_runtime.prepare_inputs(native_context)
+                        application_generate_entity = application_generate_entity.model_copy(
+                            update={
+                                "inputs": prepared.inputs,
+                                "files": list(prepared.files),
+                                "call_depth": native_context.call_depth,
+                            }
+                        )
+
                     with session_factory.create_session() as session:
                         workflow = session.scalar(
                             select(Workflow).where(

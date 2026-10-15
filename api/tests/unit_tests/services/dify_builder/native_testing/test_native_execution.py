@@ -239,3 +239,89 @@ def test_admitted_native_gateway_releases_existing_rate_limit(owned, monkeypatch
             list(stream)
         assert closed == [True]
     assert exits == ["dummy-request-id"]
+
+
+@pytest.mark.parametrize("refusal", ["reload", "inputs"])
+def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setup(owned, monkeypatch, refusal):
+    import contextvars
+    from contextlib import nullcontext
+
+    from core.app.apps import base_app_queue_manager
+    from core.app.apps.execution_coordinator import AppExecutionState
+    from core.app.apps.workflow import app_generator
+    from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
+    from core.app.entities.queue_entities import QueueErrorEvent
+    from models.account import Account
+    from services.dify_builder.native_testing.runtime_bridge import NativePreparedInputs, NativeRuntimeBridge
+
+    factory, actor, app, workflow, _, _ = owned
+    with factory() as sql:
+        account = sql.get(Account, actor.account_id)
+        sql.expunge(account)
+    context = ResolvedNativeTestContext.model_validate(
+        {
+            **CONTEXT,
+            "tenant_id": actor.tenant_id,
+            "actor_id": actor.account_id,
+            "app_id": app.id,
+            "workflow_id": workflow.id,
+            "graph": workflow.graph_dict,
+        }
+    )
+    state = Mock(load_context=Mock(return_value=context))
+    prepare = Mock(return_value=NativePreparedInputs(inputs=context.inputs, files=(), environment_variables=()))
+    bridge = NativeRuntimeBridge(
+        state=state, collaborators=Mock(), occurrences=Mock(), node_arguments=Mock(), prepare_inputs=prepare
+    )
+    generator = app_generator.WorkflowAppGenerator()
+    launch = Mock()
+    monkeypatch.setattr(generator, "_generate", launch)
+    monkeypatch.setattr(app_generator, "db", Mock(engine=factory.kw["bind"]))
+    monkeypatch.setattr(app_generator, "DifyCoreRepositoryFactory", Mock())
+    generator.generate(
+        app_model=app,
+        workflow=workflow,
+        user=account,
+        args={"inputs": context.inputs},
+        invoke_from=app_generator.InvokeFrom.DEBUGGER,
+        streaming=True,
+        workflow_run_id=context.native_run_id,
+        native_test_required=True,
+        native_test_ref=context.ref,
+        native_runtime=bridge,
+    )
+    entity = launch.call_args.kwargs["application_generate_entity"]
+    assert state.load_context.call_count == 1
+    assert prepare.call_count == 1
+    if refusal == "reload":
+        state.load_context.side_effect = RuntimeError("private revoked credential")
+        reason = "native_context_unavailable"
+    else:
+        prepare.side_effect = NativeContextUnavailable("native_input_adapter_unavailable")
+        reason = "native_input_adapter_unavailable"
+    monkeypatch.setattr(base_app_queue_manager, "redis_client", Mock())
+    queue = WorkflowAppQueueManager(entity.task_id, actor.account_id, entity.invoke_from, "workflow")
+    monkeypatch.setattr(queue, "_is_stopped", lambda: False)
+    monkeypatch.setattr(app_generator, "preserve_flask_contexts", lambda *_args, **_kwargs: nullcontext())
+    eager = Mock(side_effect=AssertionError("ordinary SQL/setup"))
+    runner = Mock(side_effect=AssertionError("ordinary runner"))
+    monkeypatch.setattr(app_generator.session_factory, "create_session", eager)
+    monkeypatch.setattr(app_generator, "WorkflowAppRunner", runner)
+    generator._generate_worker(
+        flask_app=Mock(),
+        application_generate_entity=entity,
+        queue_manager=queue,
+        context=contextvars.copy_context(),
+        variable_loader=Mock(),
+        workflow_execution_repository=Mock(),
+        workflow_node_execution_repository=Mock(),
+        native_runtime=bridge,
+    )
+    assert queue.execution_state is AppExecutionState.TERMINAL
+    messages = list(queue.listen())
+    assert len(messages) == 1
+    assert isinstance(messages[0].event, QueueErrorEvent)
+    assert isinstance(messages[0].event.error, NativeContextUnavailable)
+    assert str(messages[0].event.error) == reason
+    eager.assert_not_called()
+    runner.assert_not_called()

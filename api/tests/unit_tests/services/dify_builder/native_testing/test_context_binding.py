@@ -252,9 +252,7 @@ def test_agent_selection_uses_exact_confirmed_opaque_identity():
         _confirmed_agent_selections(graph, ["agent:agent:changed:" + "a" * 64])
 
 
-def test_real_apply_persists_confirmed_agent_graph_and_binding_together(
-    agent_case, sqlite_session_factory, monkeypatch
-):
+def _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch):
     from sqlalchemy import select
 
     from core.dify_builder.models import MutationIntent
@@ -306,3 +304,96 @@ def test_real_apply_persists_confirmed_agent_graph_and_binding_together(
         assert any(
             n["id"] == "review" and n["data"]["agent_binding"]["agent_id"] == selection.agent_id for n in graph["nodes"]
         )
+
+
+def test_real_apply_persists_confirmed_agent_graph_and_binding_together(
+    agent_case, sqlite_session_factory, monkeypatch
+):
+    _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
+
+
+def test_agent_apply_undo_refusal_preserves_bindings_and_allows_next_apply(
+    agent_case, sqlite_session_factory, monkeypatch
+):
+    from types import SimpleNamespace
+
+    from sqlalchemy import select
+
+    from core.dify_builder.handlers_build import handle_execution
+    from core.dify_builder.models import Action, DifyBuilderContext, MutationIntent, Turn
+    from models.agent import WorkflowAgentNodeBinding
+    from models.workflow import Workflow
+    from services.dify_builder import dify_port
+    from tests.unit_tests.services.dify_builder.test_native_agent_binding import _selection
+
+    before = agent_case.workflow.graph_dict
+    _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
+    port = dify_port.WorkflowServiceDifyPort()
+    current, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
+    fc = DifyBuilderContext(checkpoint_id="before-agent", last_snapshot_hash=revision)
+    repo = Mock()
+    repo.get_checkpoint.return_value = (None, SimpleNamespace(graph=before))
+    env = SimpleNamespace(dify=port, repo=repo, emit_canvas=Mock())
+    session = SimpleNamespace(app_id=agent_case.workflow.app_id, id="builder-session")
+    with pytest.raises(BuilderExecutionPolicyError, match="native_restore_unavailable$"):
+        handle_execution(env, Turn(action=Action(kind="undo"), actor=agent_case.actor), session, fc)
+    assert fc.checkpoint_id == "before-agent"
+    assert fc.last_snapshot_hash == revision
+    env.emit_canvas.assert_not_called()
+    repo.invalidate_conversation_items.assert_not_called()
+    assert port.read_graph(session.app_id, agent_case.actor) == (current, revision)
+
+    selection = _selection(agent_case)
+    port.apply_repair(
+        session.app_id,
+        agent_case.actor,
+        [MutationIntent(op="set_node_config", args={"node_id": "review", "path": "agent_task", "value": "Updated"})],
+        expected_revision=revision,
+        confirmed_resource_ids=[f"agent:{selection.agent_id}:{selection.snapshot_id}:{selection.capability_digest}"],
+    )
+    with sqlite_session_factory() as sql:
+        graph = sql.get(Workflow, agent_case.workflow.id).graph_dict
+        rows = sql.scalars(
+            select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == agent_case.workflow.id)
+        ).all()
+        assert [row.node_id for row in rows] == ["review"]
+        assert rows[0].current_snapshot_id == selection.snapshot_id
+        assert next(n for n in graph["nodes"] if n["id"] == "review")["data"]["agent_task"] == "Updated"
+
+
+@pytest.mark.parametrize("agent_state", ["target_only", "binding_only"])
+def test_restore_refuses_native_agent_state_before_graph_sync(
+    agent_case, sqlite_session_factory, monkeypatch, agent_state
+):
+    import json
+
+    from models.workflow import Workflow
+    from services.dify_builder import dify_port
+
+    before = agent_case.workflow.graph_dict
+    _apply_confirmed_agent_and_verify_binding(agent_case, sqlite_session_factory, monkeypatch)
+    port = dify_port.WorkflowServiceDifyPort()
+    target, _ = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
+    with sqlite_session_factory() as sql:
+        sql.get(Workflow, agent_case.workflow.id).graph = json.dumps(before)
+        if agent_state == "target_only":
+            from sqlalchemy import delete
+
+            from models.agent import WorkflowAgentNodeBinding
+
+            sql.execute(
+                delete(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == agent_case.workflow.id)
+            )
+        sql.commit()
+    current, revision = port.read_graph(agent_case.workflow.app_id, agent_case.actor)
+    sync = Mock(side_effect=AssertionError("legacy graph sync"))
+    monkeypatch.setattr(dify_port, "_sync_graph_only", sync)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_restore_unavailable$"):
+        port.restore_graph(
+            agent_case.workflow.app_id,
+            agent_case.actor,
+            target if agent_state == "target_only" else before,
+            expected_revision=revision,
+        )
+    sync.assert_not_called()
+    assert port.read_graph(agent_case.workflow.app_id, agent_case.actor) == (current, revision)

@@ -868,7 +868,8 @@ class WorkflowServiceDifyPort:
         """Restore the draft to a prior snapshot graph (Slice 4 revert): write
         the whole graph back via the same graph-only sync apply_repair uses.
         Returns the new execution revision. Raises HashMismatchError if the
-        execution configuration changed since the caller read it."""
+        execution configuration changed since the caller read it. Native Agent
+        graph/binding state requires an admitted restore owner and is refused."""
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
@@ -876,6 +877,28 @@ class WorkflowServiceDifyPort:
             session.refresh(workflow, with_for_update=True)
             if execution_revision(workflow) != expected_revision:
                 raise HashMismatchError(f"workflow execution configuration changed: {app_id}")
+            from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+            from models.agent import WorkflowAgentNodeBinding
+
+            # Legacy Undo only restores a graph. It cannot restore or authorize
+            # Agent binding state; reject before either side can diverge.
+            if (
+                any(WorkflowAgentNodeValidator.iter_agent_v2_nodes(workflow.graph_dict))
+                or any(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
+                or any(
+                    session.scalars(
+                        select(WorkflowAgentNodeBinding.id)
+                        .where(
+                            WorkflowAgentNodeBinding.tenant_id == actor.tenant_id,
+                            WorkflowAgentNodeBinding.app_id == app_id,
+                            WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                            WorkflowAgentNodeBinding.workflow_version == workflow.version,
+                        )
+                        .limit(1)
+                    )
+                )
+            ):
+                raise BuilderExecutionPolicyError("native_restore_unavailable")
             updated = _sync_graph_only(app, graph, workflow, workflow.unique_hash, account, session, app_id)
             notify_workflow_draft_changed(updated)
             return execution_revision(updated)
