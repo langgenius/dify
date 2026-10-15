@@ -16,7 +16,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from core.ops.base_trace_instance import ApplicationTracingHooks, bind_application_tracing_hooks
+from core.ops.base_trace_instance import bind_application_tracing_hooks
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -176,8 +177,15 @@ def test_application_pipeline_snapshots_switch_without_constructing_sdk(
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
     trace_queue = queue.Queue()
-    hooks = MagicMock(spec=ApplicationTracingHooks)
-    hooks.queue_enabled_at_start.return_value = enabled_at_start
+    calls: list[object] = []
+    current_enabled = enabled_at_start
+
+    def queue_enabled(app_id: object) -> bool:
+        calls.append(app_id)
+        return current_enabled
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "queue_enabled_at_start", staticmethod(queue_enabled))
+    hooks = RuntimeApplicationTracingHooks()
     app = Flask(__name__)
     bind_application_tracing_hooks(app, hooks)
     with (
@@ -187,10 +195,10 @@ def test_application_pipeline_snapshots_switch_without_constructing_sdk(
         patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
     ):
         manager = TraceQueueManager(app_id="app-id")
-        hooks.queue_enabled_at_start.return_value = not enabled_at_start
+        current_enabled = not enabled_at_start
         task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
         manager.add_trace_task(task)
     legacy.assert_not_called()
-    hooks.queue_enabled_at_start.assert_called_once_with("app-id")
+    assert calls == ["app-id"]
     assert manager.trace_instance is None
     assert trace_queue.qsize() == int(enabled_at_start)
