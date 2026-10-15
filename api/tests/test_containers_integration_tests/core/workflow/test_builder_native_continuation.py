@@ -5,8 +5,10 @@ Explicit queue/runtime counters prove orchestration, not native Graphon reconstr
 
 import json
 import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from threading import Event
 from uuid import uuid4
 
 import pytest
@@ -1380,7 +1382,7 @@ def test_invocation_read_owner_must_be_paired(continuation_case):
             session.commit()
 
 
-def _quarantined_root_with_child_dispatch(c, *, claimed):
+def _root_with_child_dispatch(c, *, claimed):
     from models.dify_builder_native_tests import NativeDispatch
 
     service, child = _child_case(c)
@@ -1434,12 +1436,23 @@ def _quarantined_root_with_child_dispatch(c, *, claimed):
         child_id, generation = child_dispatch.id, child_dispatch.generation
     if claimed:
         assert c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    return child, child_id, generation, root_dispatch, checkpoint, effect, service, completed
+
+
+def _quarantine_root_dispatch(c, root_dispatch):
+    from models.dify_builder_native_tests import NativeDispatch
+
     with c.factory.begin() as session:
         session.get(NativeDispatch, root_dispatch.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(
             seconds=1
         )
     c.lifecycle.reconcile()
-    return child, child_id, generation, root_dispatch, checkpoint, effect, service, completed
+
+
+def _quarantined_root_with_child_dispatch(c, *, claimed):
+    case = _root_with_child_dispatch(c, claimed=claimed)
+    _quarantine_root_dispatch(c, case[3])
+    return case
 
 
 @pytest.mark.parametrize("claimed", [False, True])
@@ -1538,3 +1551,181 @@ def test_child_claim_rechecks_unknown_ancestor_even_with_stale_active_delivery(c
     with c.factory() as session:
         assert session.get(NativeDispatch, child_id).state == "queued"
     assert c.ledger.dispatched_attempt_count() == 0
+
+
+def _spent_child_outcome(c, child, effect, status):
+    permit = c.ledger.guard.before_call(ref=child, intent=effect)
+    assert permit.kind == "dispatch"
+    result_ref = c.store.store_result(ref=child, key=effect.key, result={"settled": True})
+    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    return NativeWorkflowOutcome(
+        status=status,
+        ref=child,
+        native_run_id=c.store.load_context(ref=child).native_run_id,
+        checkpoint_ref=None,
+        pending_operation_ids=(),
+        reason_code=None,
+        wait_reason=None,
+        native_status="succeeded" if status == "completed" else "stopped",
+        output_result_ref=result_ref if status == "completed" else None,
+    ), result_ref
+
+
+def _saved_child_recovery_facts(c, child):
+    """Capture persisted evidence, including nonzero spend, before a rejected recovery."""
+    from models.dify_builder_native_tests import (
+        NativeContinuation,
+        NativeDispatch,
+        NativeEffectAttempt,
+        NativeEffectGrant,
+        NativeEffectOperation,
+        NativeEffectOutcome,
+        NativeInvocationState,
+        NativePayloadObject,
+        NativeTestInvocation,
+        NativeTestScope,
+    )
+
+    facts = {}
+    with c.factory() as session:
+        for model in (
+            NativeContinuation,
+            NativeDispatch,
+            NativeEffectAttempt,
+            NativeEffectGrant,
+            NativeEffectOperation,
+            NativeEffectOutcome,
+            NativeInvocationState,
+            NativePayloadObject,
+            NativeTestInvocation,
+            NativeTestScope,
+        ):
+            query = select(model).where(model.request_id == child.request_id)
+            if hasattr(model, "invocation_id"):
+                query = query.where(model.invocation_id == child.invocation_id)
+            rows = session.scalars(query.order_by(model.request_id if model is NativeTestScope else model.id))
+            facts[model.__tablename__] = [
+                {column.key: getattr(row, column.key) for column in inspect(model).column_attrs} for row in rows
+            ]
+        scope = session.get(NativeTestScope, child.request_id)
+        assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (1, 1, 2)
+    return facts
+
+
+def _assert_terminal_child_recovery_retained(c, case, status, outcome, result_ref, saved):
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
+
+    child, child_id, generation, _, checkpoint, _, service, _ = case
+    with c.factory() as session:
+        state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == child.request_id,
+                NativeInvocationState.invocation_id == child.invocation_id,
+            )
+        )
+        assert (state.state, state.generation, state.checkpoint_id) == (status, generation, checkpoint.checkpoint_id)
+        assert session.get(NativeDispatch, child_id).state == "unknown"
+        assert (
+            session.scalar(
+                select(NativeTestInvocation.active).where(
+                    NativeTestInvocation.request_id == child.request_id,
+                    NativeTestInvocation.invocation_id == child.invocation_id,
+                )
+            )
+            is False
+        )
+    assert not c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.lifecycle.execute_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    assert c.store.read_checkpoint(ref=child, checkpoint=checkpoint).graph_runtime_state_json == '{"cursor":7}'
+    assert c.store.load_result(ref=child, result_ref=result_ref) == {"settled": True}
+    with pytest.raises(BuilderExecutionPolicyError, match="native_result_owner_mismatch"):
+        c.store.load_result(ref=c.ref, result_ref=result_ref)
+    if status == "cancelled":
+        with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
+            service.get_outcome(child_ref=child)
+    else:
+        assert service.get_outcome(child_ref=child) == outcome
+        service.complete(child_ref=child, outcome=outcome)  # terminal replay is idempotent
+        assert service.get_outcome(child_ref=child) == outcome
+    assert c.ledger.dispatched_attempt_count() == 1
+    assert _saved_child_recovery_facts(c, child) == saved
+
+
+@pytest.mark.parametrize("status", ["completed", "stopped"])
+def test_terminal_child_dispatch_stays_terminal_after_ancestor_recovery(continuation_case, status):
+    c = continuation_case
+    case = _root_with_child_dispatch(c, claimed=True)
+    child, child_id, _, root_dispatch, _, effect, service, _ = case
+    outcome, result_ref = _spent_child_outcome(c, child, effect, status)
+    service.complete(child_ref=child, outcome=outcome)
+    terminal = _saved_child_recovery_facts(c, child)
+    assert terminal["dify_builder_native_dispatches"][0]["state"] == "claimed"
+    assert terminal["dify_builder_native_invocation_states"][0]["state"] == status
+    _quarantine_root_dispatch(c, root_dispatch)
+
+    class RuntimeOwner:
+        def recovery_evidence(self, **_kwargs):
+            return "stopped"
+
+        def resume(self, **_kwargs):
+            pytest.fail("terminal child launched again")
+
+    c.lifecycle.runtime = RuntimeOwner()
+    c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=root_dispatch.dispatch_id)
+    saved = _saved_child_recovery_facts(c, child)
+    assert saved["dify_builder_native_dispatches"][0]["state"] == "unknown"
+    assert saved["dify_builder_native_invocation_states"][0]["state"] == status
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
+    _assert_terminal_child_recovery_retained(c, case, status, outcome, result_ref, saved)
+
+
+@pytest.mark.parametrize("status", ["completed", "stopped", "cancelled"])
+def test_child_terminal_settlement_while_recovery_proof_is_held(continuation_case, status):
+    from flask import current_app
+
+    c = continuation_case
+    case = _root_with_child_dispatch(c, claimed=True)
+    child, child_id, _, root_dispatch, _, effect, service, _ = case
+    outcome, result_ref = _spent_child_outcome(c, child, effect, "stopped" if status == "cancelled" else status)
+    _quarantine_root_dispatch(c, root_dispatch)
+    proof_entered, release_proof = Event(), Event()
+
+    class RuntimeOwner:
+        def recovery_evidence(self, *, context, dispatch_id):
+            if context.ref == child:
+                assert dispatch_id == child_id
+                proof_entered.set()
+                assert release_proof.wait(10), "terminal settlement blocked while external proof held"
+            return "stopped"
+
+        def resume(self, **_kwargs):
+            pytest.fail("terminal child launched again")
+
+    c.lifecycle.runtime = RuntimeOwner()
+    c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=root_dispatch.dispatch_id)
+    assert service.get_outcome(child_ref=child) is None
+    assert c.store.load_context(ref=child).ref == child
+    app = current_app._get_current_object()
+
+    def recover_child():
+        with app.app_context():
+            c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        recovery = executor.submit(recover_child)
+        try:
+            assert proof_entered.wait(10), "selected child never reached external proof"
+            # Separate real SQL transaction must commit before proof returns.
+            # This also catches accidentally holding the root lock during I/O.
+            if status == "cancelled":
+                c.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="proof-cancel")
+            else:
+                service.complete(child_ref=child, outcome=outcome)
+            saved = _saved_child_recovery_facts(c, child)
+        finally:
+            release_proof.set()
+        with pytest.raises(BuilderExecutionPolicyError):
+            recovery.result(timeout=15)
+    _assert_terminal_child_recovery_retained(c, case, status, outcome, result_ref, saved)
