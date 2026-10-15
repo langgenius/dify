@@ -22,7 +22,7 @@ from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models import Account
 from models.pipeline_execution import PipelineDocumentStore
-from models.workflow import Workflow
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.events import WorkflowEventPublisher
 from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
 from services.workflow.execution.adapters.node_factory import get_default_root_node_id
@@ -30,6 +30,7 @@ from services.workflow.execution.adapters.persistence import PersistenceWorkflow
 from services.workflow.execution.adapters.pipeline.pipeline_config_manager import PipelineConfig
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.variable_contracts import environment_variable_values
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class PipelineRunner:
         application_generate_entity: RagPipelineGenerateEntity,
         queue_manager: AppQueueManager,
         variable_loader: VariableLoader,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         system_user_id: str,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
@@ -139,8 +140,8 @@ class PipelineRunner:
             )
 
             rag_pipeline_variables = []
-            if workflow.rag_pipeline_variables:
-                for v in workflow.rag_pipeline_variables:
+            if workflow.rag_pipeline_variable_values:
+                for v in workflow.rag_pipeline_variable_values:
                     rag_pipeline_variable = RAGPipelineVariable.model_validate(v)
                     if (
                         rag_pipeline_variable.belong_to_node_id
@@ -158,7 +159,7 @@ class PipelineRunner:
                 variable_pool,
                 build_bootstrap_variables(
                     system_variables=system_inputs,
-                    environment_variables=workflow.environment_variables,
+                    environment_variables=environment_variable_values(workflow),
                     rag_pipeline_variables=rag_pipeline_variables,
                 ),
             )
@@ -223,7 +224,7 @@ class PipelineRunner:
 
     def _init_rag_pipeline_graph(
         self,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         graph_runtime_state: GraphRuntimeState,
         start_node_id: str | None = None,
         user_from: UserFrom = UserFrom.ACCOUNT,

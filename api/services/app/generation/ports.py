@@ -24,7 +24,17 @@ from models.model import (
     MessageFile,
     UploadFile,
 )
-from models.workflow import Workflow
+
+
+class StoredWorkflowSnapshot(Protocol):
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def tenant_id(self) -> str: ...
+
+    @property
+    def features_dict(self) -> Mapping[str, Any]: ...
 
 
 @dataclass(frozen=True)
@@ -41,7 +51,7 @@ class WorkflowSnapshot:
     features_dict: Mapping[str, Any]
 
     @classmethod
-    def from_workflow(cls, workflow: Workflow) -> "WorkflowSnapshot":
+    def from_workflow(cls, workflow: StoredWorkflowSnapshot) -> "WorkflowSnapshot":
         return cls(
             id=workflow.id,
             tenant_id=workflow.tenant_id,
