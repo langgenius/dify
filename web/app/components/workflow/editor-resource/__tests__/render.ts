@@ -31,7 +31,7 @@ function createWrapper({
     return createElement(
       QueryClientTestProvider,
       { queryClient: client },
-      createElement(EditorResourceScope, { identity: resource, children }),
+      createElement(EditorResourceScope, { resource, children }),
     )
   }
   function EditorWrapper({ children }: { children: ReactNode }) {

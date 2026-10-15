@@ -69,7 +69,7 @@ const renderWithProviders = (ui: ReactNode) => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
         <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
       </EditorResourceScope>
     </QueryClientProvider>,

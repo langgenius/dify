@@ -7,7 +7,9 @@ import { MentionInput } from './mention-input'
 
 const render = (ui: ReactElement) =>
   renderComponent(
-    <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>{ui}</EditorResourceScope>,
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
   )
 
 const mockFetchMentionableUsers = vi.hoisted(() => vi.fn())

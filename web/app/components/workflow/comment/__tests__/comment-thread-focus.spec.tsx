@@ -10,7 +10,9 @@ import { CommentThread } from '../thread'
 
 const renderWithAccountProfile = (ui: Parameters<typeof renderAccountProfile>[0]) =>
   renderAccountProfile(
-    <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>{ui}</EditorResourceScope>,
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
   )
 
 const storeState = vi.hoisted(() => ({

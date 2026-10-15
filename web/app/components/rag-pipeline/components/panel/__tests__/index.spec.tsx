@@ -72,8 +72,5 @@ describe('RagPipelinePanel', () => {
     expect(panelProps?.versionHistoryPanelProps?.deleteVersionUrl?.('version-1')).toBe(
       '/rag/pipelines/pipeline-1/workflows/version-1',
     )
-    expect(panelProps?.versionHistoryPanelProps?.restoreVersionUrl?.('version-1')).toBe(
-      '/rag/pipelines/pipeline-1/workflows/version-1/restore',
-    )
   })
 })

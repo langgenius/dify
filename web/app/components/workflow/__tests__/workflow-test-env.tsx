@@ -214,7 +214,7 @@ function createWorkflowWrapper(
       QueryClientWrapper,
       null,
       React.createElement(EditorResourceScope, {
-        identity: resource,
+        resource,
         children: React.createElement(WorkflowContext.Provider, { value: stores.store }, inner),
       }),
     )

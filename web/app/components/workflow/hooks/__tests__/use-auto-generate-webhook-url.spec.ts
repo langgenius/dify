@@ -1,4 +1,4 @@
-import type { EditorIdentity } from '../../editor-resource/state'
+import type { EditorResource } from '../../editor-resource/resource'
 import type { Node } from '../../types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -93,8 +93,11 @@ describe('useAutoGenerateWebhookUrl', () => {
         'Generate URL',
       )
     }
-    const view = (identity: EditorIdentity) =>
-      createElement(EditorResourceScope, { identity, children: createElement(GenerateButton) })
+    const view = (identity: EditorResource) =>
+      createElement(EditorResourceScope, {
+        resource: identity,
+        children: createElement(GenerateButton),
+      })
     const { rerender } = renderWorkflowFlowComponent(
       view({ kind: 'snippet', snippetId: 'snippet-1' }),
       {
@@ -109,7 +112,7 @@ describe('useAutoGenerateWebhookUrl', () => {
       webhook_url: 'https://example.com/other-webhook',
       webhook_debug_url: 'https://example.com/other-debug',
     })
-    rerender(view({ kind: 'app', appId: 'app-456' }))
+    rerender(view({ kind: 'app', appId: 'app-456', mode: 'workflow' }))
     await user.click(screen.getByRole('button', { name: 'Generate URL' }))
     await waitFor(() =>
       expect(mockRequest).toHaveBeenCalledWith(

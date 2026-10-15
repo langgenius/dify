@@ -21,7 +21,9 @@ const mockConsoleState = vi.hoisted(() => ({
 
 const render = (ui: ReactElement) =>
   renderWithConsoleState(
-    <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>{ui}</EditorResourceScope>,
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
     {
       wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
     },

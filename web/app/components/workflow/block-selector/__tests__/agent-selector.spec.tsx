@@ -1,5 +1,5 @@
 import type { AgentRosterNodeData } from '../types'
-import type { EditorIdentity } from '@/app/components/workflow/editor-resource/state'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { Button } from '@langgenius/dify-ui/button'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -63,18 +63,18 @@ const createAgent = (overrides: Record<string, unknown> = {}) => ({
 const renderMenu = async ({
   onSelect = vi.fn<(agent: AgentRosterNodeData) => void>(),
   onStartFromScratch,
-  identity = { kind: 'app', appId: 'app-1' },
+  identity = { kind: 'app', appId: 'app-1', mode: 'workflow' },
 }: {
   onSelect?: ReturnType<typeof vi.fn<(agent: AgentRosterNodeData) => void>>
   onStartFromScratch?: () => void
-  identity?: EditorIdentity
+  identity?: EditorResource
 } = {}) => {
   const user = userEvent.setup()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   render(
     <QueryClientProvider client={queryClient}>
-      <EditorResourceScope identity={identity}>
+      <EditorResourceScope resource={identity}>
         <AgentSelectorMenu>
           <AgentSelectorMenuTrigger>Open agents</AgentSelectorMenuTrigger>
           <AgentSelectorMenuContent onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
@@ -167,7 +167,7 @@ describe('AgentSelectorMenu', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>
+        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
           <AgentSelectorMenu>
             <AgentSelectorMenuContent onSelect={vi.fn()} />
             <AgentSelectorMenuTrigger render={<Button loading />}>

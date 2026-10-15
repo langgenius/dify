@@ -214,6 +214,30 @@ describe('ExportImage', () => {
     expect(screen.getByTestId('image-preview')).toHaveTextContent('Demo App-whole-workflow.svg')
   })
 
+  it('uses the refreshed App name when exporting without restarting the editor', async () => {
+    const user = userEvent.setup()
+    const queryClient = createExportQueryClient()
+    render(<ExportImage />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      queryClient,
+    })
+    await act(async () => {
+      seedAppDetail(
+        queryClient,
+        createAppDetailFixture({ id: 'app-1', mode: 'workflow', name: 'Renamed App' }),
+      )
+    })
+    await user.click(screen.getByRole('button', { name: 'workflow.common.exportImage' }))
+    const group = screen.getByRole('group', { name: 'workflow.common.currentView' })
+    await user.click(within(group).getByRole('menuitem', { name: 'workflow.common.exportPNG' }))
+    await waitFor(() =>
+      expect(mockDownloadUrl).toHaveBeenCalledWith({
+        url: 'data:image/png;base64,current',
+        fileName: 'Renamed App.png',
+      }),
+    )
+  })
+
   it('returns early when there is no app or knowledge name', async () => {
     const user = userEvent.setup()
     mockWorkflowState.appName = ''

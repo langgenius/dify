@@ -174,11 +174,11 @@ describe('Config - Rendering', () => {
     expect(screen.getByTestId('agent-tools')).toBeInTheDocument()
   })
 
-  it('should display HistoryPanel only when advanced chat completion values apply', () => {
+  it('should display HistoryPanel for a chat app using an advanced completion prompt', () => {
     const showHistoryModal = vi.fn()
     renderConfig({
       isAdvancedMode: true,
-      mode: 'advanced-chat' as const,
+      mode: 'chat' as const,
       modelModeType: ModelModeType.completion,
       hasSetBlockStatus: {
         context: false,

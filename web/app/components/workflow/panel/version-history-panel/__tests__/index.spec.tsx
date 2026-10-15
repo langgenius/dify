@@ -292,12 +292,7 @@ describe('VersionHistoryPanel', () => {
     mockHasNextPage = true
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
@@ -318,12 +313,7 @@ describe('VersionHistoryPanel', () => {
     it('should call handleLoadBackupDraft when draft version is selected on mount', async () => {
       const { VersionHistoryPanel } = await import('../index')
 
-      render(
-        <VersionHistoryPanel
-          latestVersionId="published-version-id"
-          restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-        />,
-      )
+      render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
       expect(mockHandleLoadBackupDraft).toHaveBeenCalled()
       expect(mockHandleRestoreFromPublishedWorkflow).not.toHaveBeenCalled()
@@ -332,12 +322,7 @@ describe('VersionHistoryPanel', () => {
     it('should call handleRestoreFromPublishedWorkflow when clicking published version', async () => {
       const { VersionHistoryPanel } = await import('../index')
 
-      render(
-        <VersionHistoryPanel
-          latestVersionId="published-version-id"
-          restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-        />,
-      )
+      render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
       vi.clearAllMocks()
 
@@ -351,12 +336,7 @@ describe('VersionHistoryPanel', () => {
   it('should set current version before confirming restore from context menu', async () => {
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     await waitFor(() => {
       expect(mockHandleLoadBackupDraft).toHaveBeenCalled()
@@ -372,9 +352,7 @@ describe('VersionHistoryPanel', () => {
           id: 'published-version-id',
         }),
       )
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id/restore',
-      )
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith('published-version-id')
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isRestoring: false })
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ backupDraft: undefined })
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
@@ -385,12 +363,7 @@ describe('VersionHistoryPanel', () => {
     const { VersionHistoryPanel } = await import('../index')
     mockPlanType = 'sandbox'
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     vi.clearAllMocks()
 
@@ -405,12 +378,7 @@ describe('VersionHistoryPanel', () => {
     const { VersionHistoryPanel } = await import('../index')
     mockPlanType = 'sandbox'
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     vi.clearAllMocks()
 
@@ -424,12 +392,7 @@ describe('VersionHistoryPanel', () => {
     mockPublishedEnvironments = [{ id: 'environment-id', name: 'Production' }]
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     fireEvent.click(screen.getByText('delete-published-version-id'))
 
@@ -442,12 +405,7 @@ describe('VersionHistoryPanel', () => {
   it('should allow deleting a version that is not deployed', async () => {
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     fireEvent.click(screen.getByText('delete-published-version-id'))
 
@@ -462,12 +420,7 @@ describe('VersionHistoryPanel', () => {
       version: WorkflowVersion.Draft,
     })
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     vi.clearAllMocks()
     mockRestoreWorkflow.mockRejectedValueOnce(new Error('restore failed'))
@@ -476,9 +429,7 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByText('confirm restore'))
 
     await waitFor(() => {
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id/restore',
-      )
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith('published-version-id')
     })
 
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ isRestoring: false })
@@ -504,9 +455,7 @@ describe('VersionHistoryPanel', () => {
 
     render(
       <VersionHistoryPanel
-        appMode={'workflow'}
         latestVersionId="published-version-id"
-        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
         updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
       />,
     )

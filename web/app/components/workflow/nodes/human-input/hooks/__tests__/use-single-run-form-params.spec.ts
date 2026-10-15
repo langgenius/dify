@@ -1,5 +1,5 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { HumanInputNodeType } from '../../types'
+import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
@@ -90,14 +90,18 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   const mockSetRunInputData = vi.fn()
   const getInputVars = vi.fn()
   let currentInputs = createPayload()
-  let appDetail: { id: string; mode: AppMode } | undefined
+  let appDetail: { id: string; mode: WorkflowAppMode } | undefined
 
   const renderHook = <Result>(callback: () => Result) => {
     const queryClient = createConsoleQueryClient()
     if (appDetail) seedAppDetail(queryClient, createAppDetailFixture(appDetail))
     return renderHookWithConsoleQuery(callback, {
       queryClient,
-      resource: { kind: 'app', appId: appDetail?.id ?? 'app-1', mode: 'workflow' },
+      resource: {
+        kind: 'app',
+        appId: appDetail?.id ?? 'app-1',
+        mode: appDetail?.mode ?? 'workflow',
+      },
     })
   }
 

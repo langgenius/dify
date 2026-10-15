@@ -483,6 +483,8 @@ describe('Blocks', () => {
 
 function render(ui: ReactElement) {
   return baseRender(
-    <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>{ui}</EditorResourceScope>,
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
   )
 }

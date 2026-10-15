@@ -29,7 +29,7 @@ describe('usePipelineConfig', () => {
       QueryClientProvider,
       { client },
       createElement(EditorResourceScope, {
-        identity: { kind: 'knowledge-pipeline', pipelineId },
+        resource: { kind: 'knowledge-pipeline', pipelineId },
         children: createElement(WorkflowContext.Provider, { value: store }, children),
       }),
     )

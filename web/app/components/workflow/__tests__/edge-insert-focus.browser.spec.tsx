@@ -54,7 +54,7 @@ const edges = [
 function Fixture() {
   const [store] = useState(() => createWorkflowStore({}))
   return (
-    <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
       <WorkflowContext value={store}>
         <ReactFlowProvider>
           <button type="button">Before canvas</button>

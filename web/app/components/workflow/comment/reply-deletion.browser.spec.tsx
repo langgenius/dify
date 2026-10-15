@@ -54,7 +54,7 @@ function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
   )
   return (
     <QueryClientProvider client={queryClient}>
-      <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
         <Suspense fallback={<p>Loading profile</p>}>
           <button type="button">Outside thread</button>
           <div id="workflow-container" style={{ position: 'relative', width: 1000, height: 650 }}>

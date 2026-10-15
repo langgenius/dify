@@ -30,7 +30,9 @@ const render = (ui: ReactElement) => {
   )
   return renderBrowser(
     <QueryClientTestProvider queryClient={queryClient}>
-      <EditorResourceScope identity={{ kind: 'app', appId: 'app-1' }}>{ui}</EditorResourceScope>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        {ui}
+      </EditorResourceScope>
     </QueryClientTestProvider>,
   )
 }
