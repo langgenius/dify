@@ -281,7 +281,9 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
@@ -415,7 +417,9 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
