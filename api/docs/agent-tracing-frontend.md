@@ -564,8 +564,8 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 
 | 检查范围 | 结果 |
 | --- | --- |
-| API 定向测试 | 718 passed |
-| Agent runtime 测试 | 155 passed |
+| API 定向及关联回归测试 | 963 passed（包含完整 Agent App / core ops 回归） |
+| Agent 完整本地测试集 | 932 passed / 5 skipped（平台相关跳过项以 CI 为准） |
 | preview scope 修复相关回归 | 143 passed；随后真实部署复验通过，见上表 |
 | 完整类型检查 | `make type-check` 通过；新增 strict unit tests 为 0 diagnostics |
 | 架构导入规则 | 68 contracts kept / 0 broken |
