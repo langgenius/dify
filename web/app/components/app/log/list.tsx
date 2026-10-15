@@ -8,6 +8,7 @@ import type {
   ConversationPagination,
   ConversationWithSummary,
   ConversationWithSummaryPagination,
+  GetAppsByAppIdChatMessagesData,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { ChatItemInTree } from '../../base/chat/types'
@@ -17,7 +18,7 @@ import type {
   IChatItem,
   SubmitAnnotationFunc,
 } from '@/app/components/base/chat/chat/type'
-import type { ChatMessagesRequest, LogAnnotation } from '@/models/log'
+import type { LogAnnotation } from '@/models/log'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -56,11 +57,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleClient, consoleQuery } from '@/service/console'
-import {
-  fetchChatMessages,
-  updateLogMessageAnnotations,
-  updateLogMessageFeedbacks,
-} from '@/service/log'
 import { AppSourceType } from '@/service/share'
 import { AppModeEnum } from '@/types/app'
 import PromptLogModal from '../../base/prompt-log-modal'
@@ -75,6 +71,7 @@ import {
   getDetailVarList,
   getFormattedChatList,
   getLogModelInfo,
+  getStringInputs,
   getThreadChatItems,
   isNearTopLoadMore,
   mergePaginatedChatItems,
@@ -205,22 +202,22 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     try {
       isLoadingRef.current = true
 
-      const params: ChatMessagesRequest = {
+      const params: GetAppsByAppIdChatMessagesData['query'] = {
         conversation_id: detail.id,
         limit: 10,
       }
       // Use ref for pagination anchor to avoid stale closure issues
       if (oldestAnswerIdRef.current) params.first_id = oldestAnswerIdRef.current
 
-      const messageRes = await fetchChatMessages({
-        url: `/apps/${appDetail.id}/chat-messages`,
-        params,
+      const messageRes = await consoleClient.apps.byAppId.chatMessages.get({
+        params: { app_id: appDetail.id },
+        query: params,
       })
 
       // Ignore stale responses
       if (currentRequestId !== requestIdRef.current || controller.signal.aborted) return
       if (messageRes.data.length > 0) {
-        const varValues = messageRes.data.at(-1)!.inputs
+        const varValues = getStringInputs(messageRes.data.at(-1)!.inputs)
         setVarValues(varValues)
       }
       setHasMore(messageRes.has_more)
@@ -331,7 +328,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     setIsLoading(true)
 
     try {
-      const params: ChatMessagesRequest = {
+      const params: GetAppsByAppIdChatMessagesData['query'] = {
         conversation_id: detail.id,
         limit: 10,
       }
@@ -341,9 +338,9 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
         params.first_id = oldestAnswerIdRef.current
       }
 
-      const messageRes = await fetchChatMessages({
-        url: `/apps/${appDetail.id}/chat-messages`,
-        params,
+      const messageRes = await consoleClient.apps.byAppId.chatMessages.get({
+        params: { app_id: appDetail.id },
+        query: params,
       })
 
       if (!messageRes.data || messageRes.data.length === 0) {
@@ -353,7 +350,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       }
 
       if (messageRes.data.length > 0) {
-        const varValues = messageRes.data.at(-1)!.inputs
+        const varValues = getStringInputs(messageRes.data.at(-1)!.inputs)
         setVarValues(varValues)
       }
 
@@ -652,8 +649,8 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
+    await consoleClient.apps.byAppId.feedbacks.post({
+      params: { app_id: appDetail.id },
       body: { message_id: mid, rating, content: content ?? undefined },
     })
     conversationDetailMutate()
@@ -661,8 +658,8 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
-      await updateLogMessageAnnotations({
-        url: `/apps/${appDetail.id}/annotations`,
+      await consoleClient.apps.byAppId.annotations.post({
+        params: { app_id: appDetail.id },
         body: { message_id: mid, content: value },
       })
       conversationDetailMutate()
@@ -712,16 +709,16 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
+    await consoleClient.apps.byAppId.feedbacks.post({
+      params: { app_id: appDetail.id },
       body: { message_id: mid, rating, content: content ?? undefined },
     })
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
-      await updateLogMessageAnnotations({
-        url: `/apps/${appDetail.id}/annotations`,
+      await consoleClient.apps.byAppId.annotations.post({
+        params: { app_id: appDetail.id },
         body: { message_id: mid, content: value },
       })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))

@@ -1,6 +1,12 @@
+import type { MessageDetailResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ChatItemInTree } from '../../base/chat/types'
-import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
-import type { Annotation, ChatMessage } from '@/models/log'
+import type {
+  CitationItem,
+  FeedbackType,
+  IChatItem,
+  ThoughtItem,
+} from '@/app/components/base/chat/chat/type'
+import type { Annotation } from '@/models/log'
 import type { FileResponse } from '@/types/workflow'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -10,6 +16,7 @@ import { isPlainObject } from 'es-toolkit/predicate'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import { TransferMethod } from '@/types/app'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -41,94 +48,150 @@ const getUserInputVariable = (item: unknown) => {
   return typeof variable === 'string' ? variable : undefined
 }
 
-const toFileResponse = (file: NonNullable<ChatMessage['message_files']>[number]): FileResponse => ({
+type LogMessage = MessageDetailResponse
+
+const isTransferMethod = (value: string): value is TransferMethod =>
+  (Object.values(TransferMethod) as string[]).includes(value)
+
+const toFileResponse = (file: LogMessage['message_files'][number]): FileResponse => ({
   related_id: file.id ?? file.upload_file_id,
   extension: '',
   filename: '',
   size: 0,
   mime_type: '',
-  transfer_method: file.transfer_method,
+  transfer_method: isTransferMethod(file.transfer_method)
+    ? file.transfer_method
+    : TransferMethod.local_file,
   type: file.type,
-  url: file.url,
-  upload_file_id: file.upload_file_id,
-  remote_url: file.url,
+  url: file.url ?? '',
+  upload_file_id: file.upload_file_id ?? '',
+  remote_url: file.url ?? '',
 })
 
+const toText = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
+
+// `inputs` values are untyped JSON in the console API response.
+export const getStringInputs = (inputs: LogMessage['inputs']) =>
+  Object.fromEntries(
+    Object.entries(inputs).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  )
+
+const toFeedback = (feedback?: LogMessage['feedbacks'][number]): FeedbackType | undefined =>
+  feedback?.rating === 'like' || feedback?.rating === 'dislike'
+    ? { rating: feedback.rating, content: feedback.content }
+    : undefined
+
+const toThoughtItems = (message: LogMessage): ThoughtItem[] =>
+  message.agent_thoughts.map((thought) => ({
+    id: thought.id,
+    tool: thought.tool ?? '',
+    thought: thought.thought ?? '',
+    answer: thought.answer ?? undefined,
+    tool_input: thought.tool_input ?? '',
+    // `tool_labels` is untyped JSON in the console API response.
+    tool_labels: isPlainObject(thought.tool_labels)
+      ? (thought.tool_labels as ThoughtItem['tool_labels'])
+      : undefined,
+    message_id: thought.message_id,
+    conversation_id: message.conversation_id,
+    observation: thought.observation ?? '',
+    position: thought.position,
+    files: thought.files,
+  }))
+
+// `message` and `metadata` are untyped JSON in the console API response.
+const getPromptLog = (message: LogMessage) =>
+  (Array.isArray(message.message) ? message.message : []) as NonNullable<IChatItem['log']>
+
+const getCitations = (message: LogMessage) =>
+  isPlainObject(message.metadata) && Array.isArray(message.metadata.retriever_resources)
+    ? (message.metadata.retriever_resources as CitationItem[])
+    : undefined
+
+const getAnnotation = (message: LogMessage): Annotation | undefined => {
+  if (message.annotation_hit_history) {
+    return {
+      id: message.annotation_hit_history.annotation_id,
+      authorName: message.annotation_hit_history.annotation_create_account?.name || 'N/A',
+      created_at: message.annotation_hit_history.created_at ?? undefined,
+    }
+  }
+
+  if (message.annotation) {
+    const { account } = message.annotation
+    return {
+      id: message.annotation.id,
+      authorName: account?.name || 'N/A',
+      logAnnotation: {
+        id: message.annotation.id,
+        content: message.annotation.content,
+        account: { id: account?.id ?? '', name: account?.name ?? '', email: account?.email ?? '' },
+        created_at: message.annotation.created_at ?? 0,
+      },
+      created_at: 0,
+    }
+  }
+
+  return undefined
+}
+
 export const getFormattedChatList = (
-  messages: ChatMessage[],
+  messages: LogMessage[],
   conversationId: string,
   timezone: string,
   format: string,
 ) => {
   const newChatList: IChatItem[] = []
 
-  messages.forEach((item: ChatMessage) => {
-    const questionFiles = item.message_files?.filter((file) => file.belongs_to === 'user') || []
+  messages.forEach((item) => {
+    const files = getProcessedFilesFromResponse(item.message_files.map(toFileResponse))
+    const questionFiles = getProcessedFilesFromResponse(
+      item.message_files.filter((file) => file.belongs_to === 'user').map(toFileResponse),
+    )
     newChatList.push({
       id: `question-${item.id}`,
-      content: item.inputs.query || item.inputs.default_input || item.query,
+      content: toText(item.inputs.query) || toText(item.inputs.default_input) || item.query,
       isAnswer: false,
-      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
+      message_files: questionFiles,
       parentMessageId: item.parent_message_id || undefined,
     })
 
-    const answerFiles = item.message_files?.filter((file) => file.belongs_to === 'assistant') || []
+    const answerFiles = getProcessedFilesFromResponse(
+      item.message_files.filter((file) => file.belongs_to === 'assistant').map(toFileResponse),
+    )
+    const promptLog = getPromptLog(item)
     newChatList.push({
       id: item.id,
       content: item.answer,
-      agent_thoughts: addFileInfos(
-        item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts,
-        item.message_files,
+      agent_thoughts: addFileInfos(sortAgentSorts(toThoughtItems(item)), files),
+      feedback: toFeedback(item.feedbacks.find((feedback) => feedback.from_source === 'user')),
+      adminFeedback: toFeedback(
+        item.feedbacks.find((feedback) => feedback.from_source === 'admin'),
       ),
-      feedback: item.feedbacks?.find((feedback) => feedback.from_source === 'user'),
-      adminFeedback: item.feedbacks?.find((feedback) => feedback.from_source === 'admin'),
       feedbackDisabled: false,
       isAnswer: true,
-      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
+      message_files: answerFiles,
       log: [
-        ...(item.message ?? []),
-        ...(item.message?.[item.message.length - 1]?.role !== 'assistant'
-          ? [
-              {
-                role: 'assistant',
-                text: item.answer,
-                files: item.message_files?.filter((file) => file.belongs_to === 'assistant') || [],
-              },
-            ]
+        ...promptLog,
+        ...(promptLog.at(-1)?.role !== 'assistant'
+          ? [{ role: 'assistant', text: item.answer, files: answerFiles }]
           : []),
-      ] as IChatItem['log'],
-      workflow_run_id: item.workflow_run_id,
+      ],
+      workflow_run_id: item.workflow_run_id ?? undefined,
       conversationId,
       input: {
         inputs: item.inputs,
         query: item.query,
       },
       more: {
-        time: dayjs.unix(item.created_at).tz(timezone).format(format),
+        time: item.created_at ? dayjs.unix(item.created_at).tz(timezone).format(format) : '',
         tokens: item.answer_tokens + item.message_tokens,
         latency: (item.provider_response_latency ?? 0).toFixed(2),
       },
-      citation: item.metadata?.retriever_resources,
-      annotation: (() => {
-        if (item.annotation_hit_history) {
-          return {
-            id: item.annotation_hit_history.annotation_id,
-            authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
-            created_at: item.annotation_hit_history.created_at,
-          }
-        }
-
-        if (item.annotation) {
-          return {
-            id: item.annotation.id,
-            authorName: item.annotation.account.name,
-            logAnnotation: item.annotation,
-            created_at: 0,
-          }
-        }
-
-        return undefined
-      })(),
+      citation: getCitations(item),
+      annotation: getAnnotation(item),
       parentMessageId: `question-${item.id}`,
     })
   })

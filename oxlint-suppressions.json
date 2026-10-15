@@ -441,11 +441,6 @@
       "count": 5
     }
   },
-  "web/app/components/app/log/__tests__/list-utils.spec.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/log/__tests__/list.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 9
@@ -3989,11 +3984,6 @@
   "web/models/debug.ts": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/models/log.ts": {
-    "typescript/no-explicit-any": {
-      "count": 6
     }
   },
   "web/models/pipeline.ts": {
