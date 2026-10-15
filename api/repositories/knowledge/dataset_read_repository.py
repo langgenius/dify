@@ -605,7 +605,6 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
     if not dataset_ids:
         return DatasetDetailPrefetch()
 
-    {dataset.tenant_id for dataset in datasets}
     dataset_owners = [(dataset.tenant_id, dataset.id) for dataset in datasets]
 
     app_counts = dict(

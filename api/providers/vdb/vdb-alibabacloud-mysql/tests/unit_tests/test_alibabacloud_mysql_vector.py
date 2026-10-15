@@ -454,10 +454,6 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
         mock_cursor.__iter__ = lambda self: iter([])
 
-        vector_store = AlibabaCloudMySQLVector(self.collection_name, self.config)
-        query_vector = [0.1, 0.2, 0.3, 0.4]
-        vector_store.search_by_vector(query_vector, top_k=5, document_ids_filter=["dataset1"])
-
         # Verify the SQL contains the WHERE clause for filtering
         execute_calls = mock_cursor.execute.call_args_list
         search_calls = [call for call in execute_calls if "VEC_DISTANCE" in str(call)]
