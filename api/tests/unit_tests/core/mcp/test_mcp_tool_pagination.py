@@ -122,3 +122,135 @@ def test_later_page_auth_error_restarts_clean_inventory() -> None:
     client._initialize.assert_called_once_with()
     assert cleanup == ["closed"]
     assert client._has_retried is False
+
+
+@pytest.mark.parametrize("page_sizes", [(10_000,), (9_999, 1)], ids=["single-page", "two-pages"])
+def test_exact_tool_limit_on_terminal_page(page_sizes: tuple[int, ...]) -> None:
+    pages: dict[str | None, ListToolsResult] = {}
+    expected: list[str] = []
+    for index, size in enumerate(page_sizes):
+        names = [f"page-{index}-tool-{number}" for number in range(size)]
+        expected.extend(names)
+        cursor = None if index == 0 else f"page-{index}"
+        next_cursor = f"page-{index + 1}" if index + 1 < len(page_sizes) else None
+        pages[cursor] = ListToolsResult(tools=[tool(name) for name in names], nextCursor=next_cursor)
+
+    client, requests = make_client(pages)
+
+    assert [result.name for result in client.list_tools()] == expected
+    assert len(requests) == len(page_sizes)
+
+
+@pytest.mark.parametrize("next_cursor", [None, "more"])
+@pytest.mark.parametrize("page_sizes", [(10_001,), (9_999, 2)], ids=["oversized-page", "accumulated-overflow"])
+def test_tool_limit_overflow_never_returns_partial_inventory(
+    page_sizes: tuple[int, ...], next_cursor: str | None
+) -> None:
+    pages: dict[str | None, ListToolsResult] = {}
+    for index, size in enumerate(page_sizes):
+        cursor = None if index == 0 else f"page-{index}"
+        continuation = f"page-{index + 1}" if index + 1 < len(page_sizes) else next_cursor
+        pages[cursor] = ListToolsResult(
+            tools=[tool(f"page-{index}-tool-{number}") for number in range(size)], nextCursor=continuation
+        )
+
+    client, requests = make_client(pages)
+
+    with pytest.raises(MCPConnectionError, match="10,000-tool discovery limit"):
+        client.list_tools()
+    assert len(requests) == len(page_sizes)
+
+
+@pytest.mark.parametrize("next_cursor", ["more", ""])
+@pytest.mark.parametrize("first_page_size", [10_000, 9_999], ids=["single-page", "two-pages"])
+def test_exact_tool_limit_with_continuation_fails_without_fetching_again(
+    first_page_size: int, next_cursor: str
+) -> None:
+    pages: dict[str | None, ListToolsResult] = {
+        None: ListToolsResult(
+            tools=[tool(f"tool-{number}") for number in range(first_page_size)],
+            nextCursor=next_cursor if first_page_size == 10_000 else "last-tool",
+        )
+    }
+    if first_page_size < 10_000:
+        pages["last-tool"] = ListToolsResult(tools=[tool("tool-9999")], nextCursor=next_cursor)
+    client, requests = make_client(pages)
+
+    with pytest.raises(MCPConnectionError, match="10,000-tool discovery limit"):
+        client.list_tools()
+    assert len(requests) == (1 if first_page_size == 10_000 else 2)
+
+
+@pytest.mark.parametrize("auth_retry", [False, True], ids=["base-client", "auth-retry-client"])
+def test_empty_pages_exhaust_request_budget_without_extra_request_or_auth_retry(auth_retry: bool) -> None:
+    client, _ = make_client({})
+    session = client._session
+    assert session is not None
+    if auth_retry:
+        client = MCPClientWithAuthRetry("http://127.0.0.1:1/mcp")
+        client._session = session
+    handle_auth_error = Mock()
+    if isinstance(client, MCPClientWithAuthRetry):
+        client._handle_auth_error = handle_auth_error
+
+    responses: list[ListToolsResult | AssertionError] = [
+        ListToolsResult(tools=[], nextCursor=f"fresh-cursor-{index}") for index in range(100)
+    ]
+    responses.append(AssertionError("Request 101 must not be sent"))
+    send_request = Mock(side_effect=responses)
+    session.send_request = send_request
+
+    with pytest.raises(MCPConnectionError, match="100-request discovery limit") as exc_info:
+        client.list_tools()
+    assert not isinstance(exc_info.value, MCPAuthError)
+    assert send_request.call_count == 100
+    handle_auth_error.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "last_page_tools", [[], [tool("last-page-tool")]], ids=["empty-terminal", "populated-terminal"]
+)
+def test_terminal_page_on_last_allowed_request_succeeds(last_page_tools: list[Tool]) -> None:
+    client, _ = make_client({})
+    session = client._session
+    assert session is not None
+    responses = [ListToolsResult(tools=[], nextCursor=f"fresh-cursor-{index}") for index in range(99)]
+    responses.append(ListToolsResult(tools=last_page_tools))
+    send_request = Mock(side_effect=responses)
+    session.send_request = send_request
+
+    assert client.list_tools() == last_page_tools
+    assert send_request.call_count == 100
+
+
+@pytest.mark.parametrize("error_on_first_page", [True, False], ids=["first-page", "later-page"])
+def test_session_error_propagates_unchanged(error_on_first_page: bool) -> None:
+    client, _ = make_client({})
+    session = client._session
+    assert session is not None
+    error = RuntimeError("controlled session error")
+    responses: list[ListToolsResult | RuntimeError] = []
+    if not error_on_first_page:
+        responses.append(ListToolsResult(tools=[tool("alpha")], nextCursor="more"))
+    responses.append(error)
+    send_request = Mock(side_effect=responses)
+    session.send_request = send_request
+
+    with pytest.raises(RuntimeError) as exc_info:
+        client.list_tools()
+    assert exc_info.value is error
+    assert send_request.call_count == len(responses)
+
+
+def test_empty_string_is_an_opaque_continuation_cursor() -> None:
+    client, requests = make_client(
+        {
+            None: ListToolsResult(tools=[tool("alpha")], nextCursor=""),
+            "": ListToolsResult(tools=[tool("beta")]),
+        }
+    )
+
+    assert [result.name for result in client.list_tools()] == ["alpha", "beta"]
+    assert len(requests) == 2
+    assert requests[1].params is not None
+    assert requests[1].params.cursor == ""
