@@ -184,3 +184,16 @@ def capture_terminal(info: BaseTraceInfo) -> bool:
         return _service().capture_terminal(info)
     except SQLAlchemyError:
         raise RetryableTraceDispatchError("Application tracing persistence temporarily unavailable") from None
+
+
+class RuntimeApplicationTracingHooks:
+    """Stateless app-scoped adapter; database services are created only on invocation."""
+
+    __slots__ = ()
+
+    prepare_agent_app = staticmethod(prepare_agent_app)
+    prepare_workflow_agent = staticmethod(prepare_workflow_agent)
+    freeze_workflow_run = staticmethod(freeze_workflow_run)
+    queue_enabled_at_start = staticmethod(queue_enabled_at_start)
+    capture_terminal = staticmethod(capture_terminal)
+    capture_agent_app_terminal = staticmethod(capture_agent_app_terminal)

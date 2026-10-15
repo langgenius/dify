@@ -17,6 +17,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     GenerateNameTraceInfo,
@@ -112,7 +113,9 @@ def dispatch(case: Case, info: BaseTraceInfo, monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(ops_trace_task.redis_client, "incr", failures.append)
     monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", lambda _app: Legacy())
     monkeypatch.setattr("extensions.ext_enterprise_telemetry.is_enabled", lambda: False)
-    with Flask(__name__).app_context():
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, runtime_bridge.RuntimeApplicationTracingHooks())
+    with app.app_context():
         ops_trace_task.process_trace_tasks.run({"app_id": case.collection.run.app_id, "file_id": "fixture"})
     assert failures == []
     return calls
