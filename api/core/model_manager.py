@@ -1039,9 +1039,7 @@ class LBModelManager:
         Strategy: Round Robin
         :return:
         """
-        cache_key = "model_lb_index:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model
-        )
+        cache_key = f"model_lb_index:{self._tenant_id}:{self._provider}:{self._model_type.value}:{self._model}"
 
         cooldown_load_balancing_configs = []
         max_index = len(self._load_balancing_configs)
@@ -1115,8 +1113,9 @@ model: %s""",
         :param expire: cooldown time
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         redis_client.setex(cooldown_cache_key, expire, "true")
@@ -1127,8 +1126,9 @@ model: %s""",
         :param config: model load balancing config
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         res: bool = redis_client.exists(cooldown_cache_key)
@@ -1147,9 +1147,7 @@ model: %s""",
         :param config_id: model load balancing config id
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            tenant_id, provider, model_type.value, model, config_id
-        )
+        cooldown_cache_key = f"model_lb_index:cooldown:{tenant_id}:{provider}:{model_type.value}:{model}:{config_id}"
 
         ttl = redis_client.ttl(cooldown_cache_key)
         if ttl == -2:

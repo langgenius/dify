@@ -203,7 +203,7 @@ class TestSchemaResolver:
         assert resolve_dify_schema_refs(123) == 123
         assert resolve_dify_schema_refs(True) is True
         assert resolve_dify_schema_refs(None) is None
-        assert resolve_dify_schema_refs(3.14) == 3.14
+        assert resolve_dify_schema_refs(float("3.14")) == float("3.14")
 
     def test_cache_functionality(self) -> None:
         """Test that caching works correctly"""
@@ -592,7 +592,7 @@ class TestSchemaResolverClass:
         batch_time = time.perf_counter() - start
 
         # Verify all results are identical to inputs (fast path used)
-        for original, result in zip(schemas_without_refs, results):
+        for original, result in zip(schemas_without_refs, results, strict=False):
             assert result is original
 
         # Should be very fast - each schema should take < 0.001 seconds on average

@@ -13,13 +13,16 @@ type WebhookFlowNode = Node & {
   }
 }
 
-vi.mock('@/app/components/app/store', async () =>
-  (await import('../../__tests__/service-mock-factory')).createAppStoreMock({ appId: 'app-123' }),
-)
+const routeParams = vi.hoisted(() => ({ appId: 'app-123' as string | undefined }))
+const mockRequest = vi.hoisted(() => vi.fn())
 
-const mockFetchWebhookUrl = vi.fn()
-vi.mock('@/service/apps', () => ({
-  fetchWebhookUrl: (...args: unknown[]) => mockFetchWebhookUrl(...args),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => routeParams,
+}))
+
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockRequest },
 }))
 
 describe('useAutoGenerateWebhookUrl', () => {
@@ -48,11 +51,12 @@ describe('useAutoGenerateWebhookUrl', () => {
     )
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    routeParams.appId = 'app-123'
+    mockRequest.mockReset()
   })
 
   it('should fetch and set webhook URL for a webhook trigger node', async () => {
-    mockFetchWebhookUrl.mockResolvedValue({
+    mockRequest.mockResolvedValue({
       webhook_url: 'https://example.com/webhook',
       webhook_debug_url: 'https://example.com/webhook-debug',
     })
@@ -63,7 +67,11 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('webhook-1')
     })
 
-    expect(mockFetchWebhookUrl).toHaveBeenCalledWith({ appId: 'app-123', nodeId: 'webhook-1' })
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
+      { params: { app_id: 'app-123' }, query: { node_id: 'webhook-1' } },
+      expect.any(Object),
+    )
 
     await waitFor(() => {
       const webhookNode = result.current.nodes.find((node) => node.id === 'webhook-1') as
@@ -74,6 +82,32 @@ describe('useAutoGenerateWebhookUrl', () => {
     })
   })
 
+  it('uses the current route after switching apps and skips routes without an app', async () => {
+    routeParams.appId = undefined
+    const { result, rerender } = renderAutoGenerateWebhookUrlHook()
+
+    await act(async () => {
+      await result.current.autoGenerateWebhookUrl('webhook-1')
+    })
+    expect(mockRequest).not.toHaveBeenCalled()
+
+    routeParams.appId = 'app-456'
+    rerender()
+    mockRequest.mockResolvedValue({
+      webhook_url: 'https://example.com/other-webhook',
+      webhook_debug_url: 'https://example.com/other-debug',
+    })
+    await act(async () => {
+      await result.current.autoGenerateWebhookUrl('webhook-1')
+    })
+
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
+      { params: { app_id: 'app-456' }, query: { node_id: 'webhook-1' } },
+      expect.any(Object),
+    )
+  })
+
   it('should not fetch when node is not a webhook trigger', async () => {
     const { result } = renderAutoGenerateWebhookUrlHook()
 
@@ -81,7 +115,7 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('code-1')
     })
 
-    expect(mockFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockRequest).not.toHaveBeenCalled()
 
     const codeNode = result.current.nodes.find((node) => node.id === 'code-1') as
       | WebhookFlowNode
@@ -96,7 +130,7 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('nonexistent')
     })
 
-    expect(mockFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockRequest).not.toHaveBeenCalled()
   })
 
   it('should not fetch when webhook_url already exists', async () => {
@@ -122,12 +156,12 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('webhook-1')
     })
 
-    expect(mockFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockRequest).not.toHaveBeenCalled()
   })
 
   it('should handle API errors gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockFetchWebhookUrl.mockRejectedValue(new Error('network error'))
+    mockRequest.mockRejectedValue(new Error('network error'))
 
     const { result } = renderAutoGenerateWebhookUrlHook()
 

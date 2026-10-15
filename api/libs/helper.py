@@ -329,9 +329,7 @@ class StrLen:
     def __call__(self, value):
         length = len(value)
         if length > self.max_length:
-            error = "Invalid {arg}: {val}. {arg} cannot exceed length {length}".format(
-                arg=self.argument, val=value, length=self.max_length
-            )
+            error = f"Invalid {self.argument}: {value}. {self.argument} cannot exceed length {self.max_length}"
             raise ValueError(error)
 
         return value
@@ -346,9 +344,7 @@ class DatetimeString:
         try:
             datetime.strptime(value, self.format)
         except ValueError:
-            error = "Invalid {arg}: {val}. {arg} must be conform to the format {format}".format(
-                arg=self.argument, val=value, format=self.format
-            )
+            error = f"Invalid {self.argument}: {value}. {self.argument} must be conform to the format {self.format}"
             raise ValueError(error)
 
         return value
