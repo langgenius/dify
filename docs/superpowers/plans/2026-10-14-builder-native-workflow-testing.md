@@ -10,6 +10,8 @@
 
 **Spec:** [已批准设计](../specs/2026-10-14-builder-unified-native-testing-design.md)。源码基线 `13368bd5fa91a613c65ccc1bd328fcadac732cf2`。
 
+**执行更新（2026-10-15）：** 用户要求以上游版本为主，升级目标改为正式 `0.8.0`。本文原有 0.7 路径/协议名称作为原始实施背景；实际迁移必须使用 0.8 的 `Engine`、`RuntimeState`、事件/文件注入和 snapshot 约束，并在当前上游架构验证中立暂停/停止的最小缺口。0.7 补丁不作为维护线发布目标；不修改已安装包或以 sibling 源码替代正式制品。现有 0.7 依赖锁仅在 0.8 兼容验证与相应回归通过后更新。升级不能跳过普通 Workflow、旧 v1、历史 snapshot 和完整 native 测试链。
+
 ## Global Constraints
 
 - 所有运行验证命令只在已具备依赖和隔离的 Linux 测试容器或正常 CI 内执行；不在 macOS host 执行 backend import、pytest、服务或构建。
