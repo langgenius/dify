@@ -279,7 +279,7 @@ class NativeTestApiService:
                     spent_cost_units=0,
                     budget_limits=limits,
                     budget_spent={},
-                    profile=self.admission.profile.model_dump(mode="json"),
+                    profile=dict(limits),
                 )
             )
             session.add(
