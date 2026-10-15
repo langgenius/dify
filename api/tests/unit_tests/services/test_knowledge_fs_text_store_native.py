@@ -1,42 +1,226 @@
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from elastic_transport import ApiResponseMeta, NodeConfig
 from elasticsearch import BadRequestError
-from weaviate.classes.config import Tokenization
+from weaviate.classes.config import Configure, Tokenization
 
 from services.knowledge_fs.text_store import TextScope, execute_text_request
 from services.knowledge_fs.text_store_native import ElasticsearchTextStore, WeaviateTextStore
 from services.knowledge_fs.vector_store import VectorStoreUnavailableError
 from tests.unit_tests.services.test_knowledge_fs_text_store import SCOPE, A, point, request
 
+if TYPE_CHECKING:
+    from elasticsearch import Elasticsearch
+    from weaviate import WeaviateClient
+
+
+@dataclass
+class FakeElasticsearchIndices:
+    exists_result: bool = True
+    mapping_result: dict = field(default_factory=dict)
+    create_failure: Exception | None = None
+    exists_calls: list[str] = field(default_factory=list)
+    get_mapping_calls: list[str] = field(default_factory=list)
+    create_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def exists(self, *, index):
+        self.exists_calls.append(index)
+        return self.exists_result
+
+    def create(self, *, index, mappings):
+        self.create_calls.append({"index": index, "mappings": mappings})
+        if self.create_failure is not None:
+            raise self.create_failure
+
+    def get_mapping(self, *, index):
+        self.get_mapping_calls.append(index)
+        return self.mapping_result
+
+
+@dataclass
+class FakeElasticsearch:
+    indices: FakeElasticsearchIndices = field(default_factory=FakeElasticsearchIndices)
+    bulk_result: dict = field(default_factory=dict)
+    mget_result: dict = field(default_factory=dict)
+    search_result: dict = field(default_factory=dict)
+    bulk_calls: list[dict] = field(default_factory=list)
+    mget_calls: list[dict] = field(default_factory=list)
+    search_calls: list[dict] = field(default_factory=list)
+
+    def bulk(self, *, operations, refresh):
+        self.bulk_calls.append({"operations": operations, "refresh": refresh})
+        return self.bulk_result
+
+    def mget(self, *, index, ids):
+        self.mget_calls.append({"index": index, "ids": ids})
+        return self.mget_result
+
+    def search(self, **kwargs):
+        self.search_calls.append(kwargs)
+        return self.search_result
+
+
+@dataclass
+class WeaviateMetadata:
+    score: float | None = None
+
+
+@dataclass
+class WeaviateObject:
+    uuid: str
+    properties: dict[str, str] = field(default_factory=dict)
+    metadata: WeaviateMetadata = field(default_factory=WeaviateMetadata)
+
+
+@dataclass
+class WeaviateQueryResult:
+    objects: list[WeaviateObject] = field(default_factory=list)
+
+
+@dataclass
+class WeaviateInsertResult:
+    has_errors: bool
+    uuids: list[str]
+
+
+@dataclass
+class WeaviateDeleteResult:
+    failed: int = 0
+
+
+@dataclass
+class WeaviateMultiTenancyConfig:
+    enabled: bool
+
+
+@dataclass
+class WeaviateProperty:
+    name: str
+    tokenization: Tokenization
+
+
+@dataclass
+class WeaviateCollectionConfig:
+    description: str
+    multi_tenancy_config: WeaviateMultiTenancyConfig
+    properties: list[WeaviateProperty]
+
+
+@dataclass
+class FakeWeaviateConfigAccessor:
+    current: WeaviateCollectionConfig
+
+    def get(self):
+        return self.current
+
+
+@dataclass
+class FakeWeaviateData:
+    insert_result: WeaviateInsertResult
+    delete_result: WeaviateDeleteResult = field(default_factory=WeaviateDeleteResult)
+    insert_calls: list[list] = field(default_factory=list)
+    delete_calls: list[object] = field(default_factory=list)
+
+    def insert_many(self, objects):
+        self.insert_calls.append(objects)
+        return self.insert_result
+
+    def delete_many(self, *, where):
+        self.delete_calls.append(where)
+        return self.delete_result
+
+
+@dataclass
+class FakeWeaviateQuery:
+    fetch_result: WeaviateQueryResult = field(default_factory=WeaviateQueryResult)
+    bm25_result: WeaviateQueryResult = field(default_factory=WeaviateQueryResult)
+    fetch_calls: list[dict[str, object]] = field(default_factory=list)
+    bm25_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def fetch_objects(self, **kwargs):
+        self.fetch_calls.append(kwargs)
+        return self.fetch_result
+
+    def bm25(self, **kwargs):
+        self.bm25_calls.append(kwargs)
+        return self.bm25_result
+
+
+@dataclass
+class FakeWeaviateCollection:
+    config: FakeWeaviateConfigAccessor
+    data: FakeWeaviateData
+    query: FakeWeaviateQuery = field(default_factory=FakeWeaviateQuery)
+    consistency_levels: list[object] = field(default_factory=list)
+
+    def with_consistency_level(self, level):
+        self.consistency_levels.append(level)
+        return self
+
+
+@dataclass
+class FakeWeaviateCollections:
+    """`exists` replays queued answers before falling back to `exists_result`."""
+
+    collection: FakeWeaviateCollection
+    exists_result: bool = True
+    queued_exists: list[bool] = field(default_factory=list)
+    create_failure: Exception | None = None
+    exists_calls: list[str] = field(default_factory=list)
+    create_calls: list[dict[str, object]] = field(default_factory=list)
+    use_calls: list[str] = field(default_factory=list)
+
+    def exists(self, name):
+        self.exists_calls.append(name)
+        if self.queued_exists:
+            return self.queued_exists.pop(0)
+        return self.exists_result
+
+    def create(self, **kwargs):
+        self.create_calls.append(kwargs)
+        if self.create_failure is not None:
+            raise self.create_failure
+
+    def use(self, name):
+        self.use_calls.append(name)
+        return self.collection
+
+
+@dataclass
+class FakeWeaviateClient:
+    collections: FakeWeaviateCollections
+
 
 @pytest.fixture
 def es():
-    client = MagicMock()
-    client.indices.exists.return_value = True
-    client.indices.get_mapping.return_value = {
-        TextScope(**SCOPE).collection_name: {
-            "mappings": {"properties": {"text": {"type": "text", "analyzer": "whitespace"}}}
-        }
-    }
-    client.bulk.return_value = {"items": [{"index": {"status": 201}}]}
-    client.mget.return_value = {"docs": [{"_id": A, "found": False}]}
-    client.search.return_value = {"hits": {"hits": [{"_id": A, "_score": 2.0}]}}
-    return ElasticsearchTextStore(client)
+    client = FakeElasticsearch(
+        indices=FakeElasticsearchIndices(
+            mapping_result={
+                TextScope(**SCOPE).collection_name: {
+                    "mappings": {"properties": {"text": {"type": "text", "analyzer": "whitespace"}}}
+                }
+            }
+        ),
+        bulk_result={"items": [{"index": {"status": 201}}]},
+        mget_result={"docs": [{"_id": A, "found": False}]},
+        search_result={"hits": {"hits": [{"_id": A, "_score": 2.0}]}},
+    )
+    return ElasticsearchTextStore(cast("Elasticsearch", client)), client
 
 
 def test_es_fulltext_uses_native_match_bm25_filtered_ids_and_refresh(es):
-    es.client.indices.exists.return_value = False
+    es, client = es
+    client.indices.exists_result = False
     execute_text_request(es, request("upsert", points=[point()]))
-    es.client.indices.exists.return_value = True
-    es.client.mget.return_value = {
+    client.indices.exists_result = True
+    client.mget_result = {
         "docs": [{"_id": A, "found": True, "_source": {k: v for k, v in point().items() if k != "id"}}]
     }
     assert execute_text_request(es, request("get", ids=[A]))["points"] == [point()]
     assert execute_text_request(es, request("search", ids=[A], query="refund"))["matches"] == [{"id": A, "score": 2.0}]
-    args = es.client.search.call_args.kwargs
+    args = client.search_calls[-1]
     assert args["query"] == {
         "bool": {
             "must": [{"match": {"text": {"query": "refund", "operator": "and"}}}],
@@ -44,29 +228,28 @@ def test_es_fulltext_uses_native_match_bm25_filtered_ids_and_refresh(es):
         }
     }
     assert args["allow_partial_search_results"] is False
-    assert es.client.bulk.call_args.kwargs["refresh"] == "wait_for"
-    es.client.bulk.return_value = {"items": [{"delete": {"status": 200}}]}
+    assert client.bulk_calls[-1]["refresh"] == "wait_for"
+    client.bulk_result = {"items": [{"delete": {"status": 200}}]}
     with pytest.raises(VectorStoreUnavailableError, match="not visible"):
         execute_text_request(es, request("delete", ids=[A]))
-    es.client.mget.return_value = {"docs": [{"_id": A, "found": False}]}
+    client.mget_result = {"docs": [{"_id": A, "found": False}]}
     execute_text_request(es, request("delete", ids=[A]))
 
 
 @pytest.mark.parametrize("problem", ["bulk", "schema", "read", "timed_out", "shards"])
 def test_es_rejects_partial_results_and_wrong_schema(es, problem):
+    es, client = es
     if problem == "bulk":
-        es.client.bulk.return_value = {"items": [{"index": {"status": 500}}]}
+        client.bulk_result = {"items": [{"index": {"status": 500}}]}
         payload = request("upsert", points=[point()])
     elif problem == "schema":
-        es.client.indices.get_mapping.return_value[TextScope(**SCOPE).collection_name]["mappings"]["properties"] = {}
+        client.indices.mapping_result[TextScope(**SCOPE).collection_name]["mappings"]["properties"] = {}
         payload = request("get", ids=[A])
     elif problem == "read":
-        es.client.mget.return_value = {"docs": [{"error": "unavailable"}]}
+        client.mget_result = {"docs": [{"error": "unavailable"}]}
         payload = request("get", ids=[A])
     else:
-        es.client.search.return_value.update(
-            {"timed_out": True} if problem == "timed_out" else {"_shards": {"failed": 1}}
-        )
+        client.search_result.update({"timed_out": True} if problem == "timed_out" else {"_shards": {"failed": 1}})
         payload = request("search", ids=[A], query="refund")
     with pytest.raises(VectorStoreUnavailableError):
         execute_text_request(es, payload)
@@ -74,8 +257,9 @@ def test_es_rejects_partial_results_and_wrong_schema(es, problem):
 
 @pytest.mark.parametrize("name", ["resource_already_exists_exception", "denied"])
 def test_es_creation_race_or_configuration_failure(es, name):
-    es.client.indices.exists.return_value = False
-    es.client.indices.create.side_effect = BadRequestError(
+    es, client = es
+    client.indices.exists_result = False
+    client.indices.create_failure = BadRequestError(
         name, ApiResponseMeta(400, "1.1", {}, 0, NodeConfig("http", "localhost", 9200)), {"error": name}
     )
     if name == "denied":
@@ -87,59 +271,59 @@ def test_es_creation_race_or_configuration_failure(es, name):
 
 @pytest.fixture
 def wv():
-    client = MagicMock()
-    client.collections.exists.return_value = True
-    collection = client.collections.use.return_value.with_consistency_level.return_value
-    collection.config.get.return_value = SimpleNamespace(
-        description="KnowledgeFS full-text v1; whitespace tokens; BM25",
-        multi_tenancy_config=SimpleNamespace(enabled=False),
-        properties=[SimpleNamespace(name="text", tokenization=Tokenization.WHITESPACE)],
+    collection = FakeWeaviateCollection(
+        config=FakeWeaviateConfigAccessor(
+            current=WeaviateCollectionConfig(
+                description="KnowledgeFS full-text v1; whitespace tokens; BM25",
+                multi_tenancy_config=WeaviateMultiTenancyConfig(enabled=False),
+                properties=[WeaviateProperty(name="text", tokenization=Tokenization.WHITESPACE)],
+            )
+        ),
+        data=FakeWeaviateData(insert_result=WeaviateInsertResult(has_errors=False, uuids=[A])),
+        query=FakeWeaviateQuery(
+            bm25_result=WeaviateQueryResult(objects=[WeaviateObject(uuid=A, metadata=WeaviateMetadata(score=2.0))])
+        ),
     )
-    collection.data.insert_many.return_value = SimpleNamespace(has_errors=False, uuids=[A])
-    collection.data.delete_many.return_value = SimpleNamespace(failed=0)
-    collection.query.fetch_objects.return_value = SimpleNamespace(objects=[])
-    collection.query.bm25.return_value = SimpleNamespace(
-        objects=[SimpleNamespace(uuid=A, metadata=SimpleNamespace(score=2.0))]
-    )
-    return WeaviateTextStore(client), collection
+    client = FakeWeaviateClient(collections=FakeWeaviateCollections(collection=collection))
+    return WeaviateTextStore(cast("WeaviateClient", client)), client, collection
 
 
 def test_weaviate_native_bm25_id_filter_retry_and_delete(wv):
-    store, collection = wv
-    store.client.collections.exists.return_value = False
+    store, client, collection = wv
+    client.collections.exists_result = False
     execute_text_request(store, request("upsert", points=[point()]))
-    assert store.client.collections.create.call_args.kwargs["vector_index_config"].skip
-    store.client.collections.exists.return_value = True
-    collection.query.fetch_objects.return_value = SimpleNamespace(
-        objects=[SimpleNamespace(uuid=A, properties={k: v for k, v in point().items() if k != "id"})]
+    assert client.collections.create_calls[-1]["vector_index_config"] == Configure.VectorIndex.none()
+    client.collections.exists_result = True
+    collection.query.fetch_result = WeaviateQueryResult(
+        objects=[WeaviateObject(uuid=A, properties={k: v for k, v in point().items() if k != "id"})]
     )
     assert execute_text_request(store, request("get", ids=[A]))["points"] == [point()]
     assert execute_text_request(store, request("search", ids=[A], query="退 款"))["matches"] == [
         {"id": A, "score": 2.0}
     ]
-    args = collection.query.bm25.call_args.kwargs
+    args = collection.query.bm25_calls[-1]
     assert args["query"] == "退 款"
     assert args["filters"] is not None
     with pytest.raises(VectorStoreUnavailableError, match="not visible"):
         execute_text_request(store, request("delete", ids=[A]))
-    collection.query.fetch_objects.return_value = SimpleNamespace(objects=[])
+    collection.query.fetch_result = WeaviateQueryResult(objects=[])
     execute_text_request(store, request("delete", ids=[A]))
 
 
 @pytest.mark.parametrize("problem", ["schema", "insert", "score", "delete"])
 def test_weaviate_rejects_incomplete_backend_results(wv, problem):
-    store, collection = wv
+    store, _client, collection = wv
     if problem == "schema":
-        collection.config.get.return_value.description = "wrong"
+        collection.config.current.description = "wrong"
         payload = request("get", ids=[A])
     elif problem == "insert":
-        collection.data.insert_many.return_value.has_errors = True
+        collection.data.insert_result.has_errors = True
         payload = request("upsert", points=[point()])
     elif problem == "score":
-        collection.query.bm25.return_value.objects[0].metadata.score = None
+        collection.query.bm25_result.objects[0].metadata.score = None
         payload = request("search", ids=[A], query="refund")
     else:
-        collection.data.delete_many.return_value.failed = 1
+        collection.data.delete_result.failed = 1
         payload = request("delete", ids=[A])
     with pytest.raises(VectorStoreUnavailableError):
         execute_text_request(store, payload)
@@ -147,9 +331,9 @@ def test_weaviate_rejects_incomplete_backend_results(wv, problem):
 
 @pytest.mark.parametrize("exists_after", [True, False])
 def test_weaviate_creation_race(wv, exists_after):
-    store, _ = wv
-    store.client.collections.exists.side_effect = [False, exists_after]
-    store.client.collections.create.side_effect = RuntimeError("race")
+    store, client, _collection = wv
+    client.collections.queued_exists = [False, exists_after]
+    client.collections.create_failure = RuntimeError("race")
     if exists_after:
         execute_text_request(store, request("upsert", points=[point()]))
     else:
@@ -160,11 +344,12 @@ def test_weaviate_creation_race(wv, exists_after):
 @pytest.mark.parametrize("backend", ["es", "wv"])
 @pytest.mark.parametrize("operation", ["get", "delete", "search"])
 def test_missing_native_fulltext_indexes_fail_closed_on_search(es, wv, backend, operation):
-    store = es if backend == "es" else wv[0]
     if backend == "es":
-        store.client.indices.exists.return_value = False
+        store, es_client = es
+        es_client.indices.exists_result = False
     else:
-        store.client.collections.exists.return_value = False
+        store, wv_client, _collection = wv
+        wv_client.collections.exists_result = False
     payload = request(operation, ids=[A], **({"query": "refund"} if operation == "search" else {}))
     if operation == "search":
         with pytest.raises(VectorStoreUnavailableError, match="missing"):
