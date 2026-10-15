@@ -2613,11 +2613,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/hooks/use-auto-generate-webhook-url.ts": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks/use-checklist.ts": {
     "dify/no-app-store-imports": {
       "count": 1
@@ -3505,11 +3500,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/trigger-webhook/__tests__/use-config.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -3517,11 +3507,6 @@
   },
   "web/app/components/workflow/nodes/trigger-webhook/components/parameter-table.tsx": {
     "typescript/no-non-null-asserted-optional-chain": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/trigger-webhook/use-config.ts": {
-    "dify/no-app-store-imports": {
       "count": 1
     }
   },
