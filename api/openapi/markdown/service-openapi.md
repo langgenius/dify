@@ -99,6 +99,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base query event stream | **text/event-stream**: string<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/background-tasks
 #### Parameters
@@ -115,6 +116,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | listBackgroundTasks | **application/json**: [KnowledgeFSBackgroundTaskListResponse](#knowledgefsbackgroundtasklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}
 #### Parameters
@@ -129,6 +131,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base bulk job | **application/json**: [KnowledgeFSBulkJobResponse](#knowledgefsbulkjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-batches/{batch_id}
 #### Parameters
@@ -143,6 +146,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Deletion batch status | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}
 #### Parameters
@@ -157,6 +161,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | getDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}/retry
 #### Parameters
@@ -172,6 +177,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | retryDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/document-references/resolve
 #### Parameters
@@ -187,6 +193,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | resolveDocumentReference | **application/json**: [KnowledgeFSResolvedDocumentReferenceResponse](#knowledgefsresolveddocumentreferenceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents
 #### Parameters
@@ -202,6 +209,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base documents | **application/json**: [KnowledgeFSDocumentListResponse](#knowledgefsdocumentlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/bulk
 #### Parameters
@@ -221,6 +229,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base document deletions accepted | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/documents/reindex
 #### Parameters
@@ -241,6 +250,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base document reindex queued | **application/json**: [KnowledgeFSDocumentReindexResponse](#knowledgefsdocumentreindexresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
 #### Parameters
@@ -261,6 +271,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
 #### Parameters
@@ -275,6 +286,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document | **application/json**: [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
 #### Parameters
@@ -295,6 +307,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document metadata updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline
 #### Parameters
@@ -309,6 +322,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document outline | **application/json**: [KnowledgeFSDocumentOutlineResponse](#knowledgefsdocumentoutlineresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions
 #### Parameters
@@ -325,6 +339,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document revisions | **application/json**: [KnowledgeFSDocumentRevisionListResponse](#knowledgefsdocumentrevisionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks
 #### Parameters
@@ -343,6 +358,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document chunks | **application/json**: [KnowledgeFSDocumentChunkListResponse](#knowledgefsdocumentchunklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}
 #### Parameters
@@ -359,6 +375,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document chunk | **application/json**: [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
 #### Parameters
@@ -373,6 +390,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base compilation job canceled | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
 #### Parameters
@@ -387,6 +405,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base compilation job | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}/retry
 #### Parameters
@@ -401,6 +420,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base compilation job retried | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents
 #### Parameters
@@ -416,6 +436,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | listLogicalDocuments | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
@@ -430,6 +451,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | getLogicalDocument | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks
 #### Parameters
@@ -446,6 +468,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document processing history | **application/json**: [KnowledgeFSDocumentProcessingTaskListResponse](#knowledgefsdocumentprocessingtasklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks/{task_id}
 #### Parameters
@@ -461,6 +484,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document processing task | **application/json**: [KnowledgeFSDocumentProcessingTaskResponse](#knowledgefsdocumentprocessingtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/queries/admission
 #### Parameters
@@ -480,6 +504,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base streaming query admitted through Dify API | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/query-images
 #### Parameters
@@ -499,6 +524,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Query image uploaded | **application/json**: [KnowledgeFSServiceQueryImageUploadResponse](#knowledgefsservicequeryimageuploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
 #### Parameters
@@ -514,6 +540,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research tasks | **application/json**: [KnowledgeFSResearchTaskListResponse](#knowledgefsresearchtasklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks
 #### Parameters
@@ -534,6 +561,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base research task accepted | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/plan
 #### Parameters
@@ -553,6 +581,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task plan | **application/json**: [KnowledgeFSResearchTaskPlanResponse](#knowledgefsresearchtaskplanresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
 #### Parameters
@@ -567,6 +596,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task canceled | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
 #### Parameters
@@ -581,6 +611,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/partials
 #### Parameters
@@ -597,6 +628,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task partial evidence | **application/json**: [KnowledgeFSResearchTaskPartialListResponse](#knowledgefsresearchtaskpartiallistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/resume
 #### Parameters
@@ -611,6 +643,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | resumeResearchTask | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/settings
 #### Parameters
@@ -624,6 +657,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base settings | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/settings
 #### Parameters
@@ -644,6 +678,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base settings updated | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
 | 202 | Agent Knowledge Base settings migration accepted | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}
 #### Parameters
@@ -658,6 +693,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | getProfileMigration | **application/json**: [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-connections
 #### Parameters
@@ -673,6 +709,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | listSourceConnections | **application/json**: [KnowledgeFSSourceConnectionListResponse](#knowledgefssourceconnectionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections
 #### Parameters
@@ -692,6 +729,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | createSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh
 #### Parameters
@@ -712,6 +750,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | refreshSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-providers
 #### Parameters
@@ -725,6 +764,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Source providers | **application/json**: [KnowledgeFSSourceProviderListResponse](#knowledgefssourceproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows
 #### Parameters
@@ -741,6 +781,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | listSourceWorkflows | **application/json**: [KnowledgeFSSourceWorkflowListResponse](#knowledgefssourceworkflowlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}
 #### Parameters
@@ -755,6 +796,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | getSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel
 #### Parameters
@@ -775,6 +817,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | cancelSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages
 #### Parameters
@@ -791,6 +834,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | listCrawlPreviewPages | **application/json**: [KnowledgeFSCrawlPreviewPageListResponse](#knowledgefscrawlpreviewpagelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry
 #### Parameters
@@ -805,6 +849,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | retrySourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection
 #### Parameters
@@ -826,6 +871,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | selectCrawlPreviewPages | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources
 #### Parameters
@@ -841,6 +887,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base sources | **application/json**: [KnowledgeFSSourceListResponse](#knowledgefssourcelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources
 #### Parameters
@@ -860,6 +907,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base source created | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
 #### Parameters
@@ -881,6 +929,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base source deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
 #### Parameters
@@ -895,6 +944,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
 #### Parameters
@@ -915,6 +965,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source updated | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl~~
 
@@ -933,6 +984,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base source crawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import
 #### Parameters
@@ -954,6 +1006,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | importSelectedSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview
 #### Parameters
@@ -969,6 +1022,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | previewSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files
 #### Parameters
@@ -987,6 +1041,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source files | **application/json**: [KnowledgeFSSourceFilesResponse](#knowledgefssourcefilesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import~~
 
@@ -1011,6 +1066,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base source pages imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files~~
 
@@ -1035,6 +1091,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base source files imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages
 #### Parameters
@@ -1051,6 +1108,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source pages | **application/json**: [KnowledgeFSSourcePagesResponse](#knowledgefssourcepagesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync
 #### Parameters
@@ -1066,6 +1124,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | syncSource | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
 #### Parameters
@@ -1080,6 +1139,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | getSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
 #### Parameters
@@ -1100,6 +1160,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | updateSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test
 #### Parameters
@@ -1114,6 +1175,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source credential test | **application/json**: [KnowledgeFSSourceCredentialTestResponse](#knowledgefssourcecredentialtestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports
 #### Parameters
@@ -1135,6 +1197,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | importSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
 #### Parameters
@@ -1151,6 +1214,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base traces | **application/json**: [KnowledgeFSTraceListResponse](#knowledgefstracelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}
 #### Parameters
@@ -1165,6 +1229,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base answer trace | **application/json**: [KnowledgeFSAnswerTraceResponse](#knowledgefsanswertraceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/conflicts
 #### Parameters
@@ -1181,6 +1246,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base trace conflicts | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/evidence
 #### Parameters
@@ -1197,6 +1263,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base trace evidence view | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/missing
 #### Parameters
@@ -1213,6 +1280,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base trace missing evidence | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default

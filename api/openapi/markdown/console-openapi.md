@@ -5851,6 +5851,7 @@ Initialize dataset with documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Recoverable upgrade jobs from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradeJobListResponse](#knowledgefsupgradejoblistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/metadata/built-in
 #### Responses
@@ -6800,6 +6801,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradeDiscoveryResponse](#knowledgefsupgradediscoveryresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/knowledge-fs-upgrades
 #### Parameters
@@ -6814,6 +6816,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted | **application/json**: [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}
 #### Parameters
@@ -6828,6 +6831,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Status of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base | **application/json**: [KnowledgeFSUpgradeJobResponse](#knowledgefsupgradejobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}
 #### Parameters
@@ -6842,6 +6846,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Retry of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted | **application/json**: [KnowledgeFSUpgradeRetryResponse](#knowledgefsupgraderetryresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
 #### Parameters
@@ -7948,6 +7953,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base Capability v2 public keys | **application/json**: [KnowledgeFSJWKSResponse](#knowledgefsjwksresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/query-stream
 #### Request Body
@@ -7961,6 +7967,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base query event stream | **text/event-stream**: string<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/research-tasks/{task_id}/events
 #### Parameters
@@ -7977,6 +7984,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task event stream | **text/event-stream**: string<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/source-provider-preview
 #### Request Body
@@ -7990,6 +7998,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource resources available for an initial Source | **application/json**: [KnowledgeFSInitialSourcePreviewResponse](#knowledgefsinitialsourcepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/source-provider-preview/jobs
 #### Request Body
@@ -8003,6 +8012,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Website datasource preview queued | **application/json**: [KnowledgeFSInitialSourcePreviewJobCreateResponse](#knowledgefsinitialsourcepreviewjobcreateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/source-provider-preview/jobs/{job_id}
 #### Parameters
@@ -8016,6 +8026,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Website datasource preview canceled | **application/json**: [KnowledgeFSInitialSourcePreviewJobResponse](#knowledgefsinitialsourcepreviewjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/source-provider-preview/jobs/{job_id}
 #### Parameters
@@ -8029,6 +8040,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Website datasource preview status | **application/json**: [KnowledgeFSInitialSourcePreviewJobResponse](#knowledgefsinitialsourcepreviewjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces
 #### Parameters
@@ -8046,6 +8058,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Bases | **application/json**: [KnowledgeFSSpaceListResponse](#knowledgefsspacelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces
 #### Request Body
@@ -8059,6 +8072,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base provisioning accepted | **application/json**: [KnowledgeFSSpaceCreateResponse](#knowledgefsspacecreateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}
 #### Parameters
@@ -8069,9 +8083,10 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Agent Knowledge Base deletion accepted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Agent Knowledge Base deletion accepted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}
 #### Parameters
@@ -8085,6 +8100,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base | **application/json**: [KnowledgeFSSpaceDetailResponse](#knowledgefsspacedetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}
 #### Parameters
@@ -8104,6 +8120,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base updated | **application/json**: [KnowledgeFSSpaceDetailResponse](#knowledgefsspacedetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/app-bindings
 #### Parameters
@@ -8117,6 +8134,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base app bindings | **application/json**: [KnowledgeFSAppBindingListResponse](#knowledgefsappbindinglistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /knowledge-fs/spaces/{control_space_id}/app-bindings
 #### Parameters
@@ -8136,6 +8154,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base app binding enabled | **application/json**: [KnowledgeFSAppBindingResponse](#knowledgefsappbindingresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/app-bindings/{caller_kind}/{app_id}
 #### Parameters
@@ -8148,9 +8167,10 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Agent Knowledge Base app binding revoked |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Agent Knowledge Base app binding revoked |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/background-tasks
 #### Parameters
@@ -8167,6 +8187,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base background tasks | **application/json**: [KnowledgeFSBackgroundTaskListResponse](#knowledgefsbackgroundtasklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/background-tasks/{task_kind}/{task_id}/cancel
 #### Parameters
@@ -8182,6 +8203,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base background task canceled | **application/json**: [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/background-tasks/{task_kind}/{task_id}/retry
 #### Parameters
@@ -8197,6 +8219,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base background task retried | **application/json**: [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}
 #### Parameters
@@ -8211,6 +8234,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base bulk job | **application/json**: [KnowledgeFSBulkJobResponse](#knowledgefsbulkjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/document-references/resolve
 #### Parameters
@@ -8226,6 +8250,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Resolved Agent Knowledge Base document reference | **application/json**: [KnowledgeFSResolvedDocumentReferenceResponse](#knowledgefsresolveddocumentreferenceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents
 #### Parameters
@@ -8241,6 +8266,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base documents | **application/json**: [KnowledgeFSDocumentListResponse](#knowledgefsdocumentlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/documents
 Claim a workspace-staged upload. Multipart file bodies remain accepted as a legacy compatibility path.
@@ -8262,6 +8288,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base document accepted for processing | **application/json**: [KnowledgeFSDocumentCreateAcceptedResponse](#knowledgefsdocumentcreateacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/bulk
 #### Parameters
@@ -8282,6 +8309,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base document deletions accepted | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/documents/reindex
 #### Parameters
@@ -8301,6 +8329,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document reindex queued | **application/json**: [KnowledgeFSDocumentReindexResponse](#knowledgefsdocumentreindexresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
 #### Parameters
@@ -8322,6 +8351,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
 #### Parameters
@@ -8336,6 +8366,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document | **application/json**: [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
 #### Parameters
@@ -8356,6 +8387,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document metadata updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal
 #### Parameters
@@ -8370,6 +8402,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document multimodal manifest | **application/json**: [KnowledgeFSDocumentMultimodalManifestResponse](#knowledgefsdocumentmultimodalmanifestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal/{item_id}/asset
 #### Parameters
@@ -8386,6 +8419,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document multimodal asset | **application/octet-stream**: [BinaryFileResponse](#binaryfileresponse)<br>**image/gif**: [BinaryFileResponse](#binaryfileresponse)<br>**image/jpeg**: [BinaryFileResponse](#binaryfileresponse)<br>**image/png**: [BinaryFileResponse](#binaryfileresponse)<br>**image/webp**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline
 #### Parameters
@@ -8400,6 +8434,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document outline | **application/json**: [KnowledgeFSDocumentOutlineResponse](#knowledgefsdocumentoutlineresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions
 #### Parameters
@@ -8416,6 +8451,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document revisions | **application/json**: [KnowledgeFSDocumentRevisionListResponse](#knowledgefsdocumentrevisionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks
 #### Parameters
@@ -8434,6 +8470,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document chunks | **application/json**: [KnowledgeFSDocumentChunkListResponse](#knowledgefsdocumentchunklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}
 #### Parameters
@@ -8450,6 +8487,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base document chunk | **application/json**: [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/external-access
 #### Parameters
@@ -8463,6 +8501,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base external access | **application/json**: [KnowledgeFSExternalAccessResponse](#knowledgefsexternalaccessresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /knowledge-fs/spaces/{control_space_id}/external-access
 #### Parameters
@@ -8482,6 +8521,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base external access updated | **application/json**: [KnowledgeFSExternalAccessResponse](#knowledgefsexternalaccessresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/golden-questions
 #### Parameters
@@ -8497,6 +8537,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base golden questions | **application/json**: [KnowledgeFSGoldenQuestionListResponse](#knowledgefsgoldenquestionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/golden-questions
 #### Parameters
@@ -8516,6 +8557,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base golden question created | **application/json**: [KnowledgeFSGoldenQuestionResponse](#knowledgefsgoldenquestionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/golden-questions/bulk-import
 #### Parameters
@@ -8535,6 +8577,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base golden questions imported | **application/json**: [KnowledgeFSGoldenQuestionBulkImportResponse](#knowledgefsgoldenquestionbulkimportresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/golden-questions/evidence-matches
 #### Parameters
@@ -8554,6 +8597,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base golden question evidence matches | **application/json**: [KnowledgeFSGoldenQuestionEvidenceMatchResponse](#knowledgefsgoldenquestionevidencematchresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}
 #### Parameters
@@ -8565,9 +8609,10 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Agent Knowledge Base golden question deleted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Agent Knowledge Base golden question deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}
 #### Parameters
@@ -8588,6 +8633,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base golden question updated | **application/json**: [KnowledgeFSGoldenQuestionResponse](#knowledgefsgoldenquestionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
 #### Parameters
@@ -8602,6 +8648,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base compilation job canceled | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
 #### Parameters
@@ -8616,6 +8663,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base compilation job | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}/retry
 #### Parameters
@@ -8630,6 +8678,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base compilation job retried | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents
 #### Parameters
@@ -8645,6 +8694,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base logical documents | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/logical-documents
 #### Parameters
@@ -8664,6 +8714,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base logical document availability updated | **application/json**: [KnowledgeFSBulkDocumentAvailabilityResponse](#knowledgefsbulkdocumentavailabilityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/logical-documents/bulk
 #### Parameters
@@ -8684,6 +8735,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base logical document deletions accepted | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/logical-documents/download-zip
 #### Parameters
@@ -8703,6 +8755,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base logical documents ZIP | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
@@ -8724,6 +8777,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base logical document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
@@ -8738,6 +8792,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base logical document | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
@@ -8758,6 +8813,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base logical document availability updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/download
 #### Parameters
@@ -8772,6 +8828,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base logical document | **application/octet-stream**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /knowledge-fs/spaces/{control_space_id}/members
 #### Parameters
@@ -8791,6 +8848,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base members replaced | **application/json**: [KnowledgeFSPermissionListResponse](#knowledgefspermissionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/metadata
 #### Parameters
@@ -8806,6 +8864,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base metadata fields | **application/json**: [KnowledgeFSMetadataFieldListResponse](#knowledgefsmetadatafieldlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/metadata
 #### Parameters
@@ -8825,6 +8884,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base metadata field created | **application/json**: [KnowledgeFSMetadataFieldResponse](#knowledgefsmetadatafieldresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/metadata/{field_id}
 #### Parameters
@@ -8840,6 +8900,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base metadata field deleted | **application/json**: [KnowledgeFSMetadataFieldDeleteResponse](#knowledgefsmetadatafielddeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/metadata/{field_id}
 #### Parameters
@@ -8860,6 +8921,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base metadata field updated | **application/json**: [KnowledgeFSMetadataFieldResponse](#knowledgefsmetadatafieldresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/overview/activity
 #### Parameters
@@ -8882,6 +8944,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base activity | **application/json**: [KnowledgeFSOverviewActivityListResponse](#knowledgefsoverviewactivitylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/overview/attention
 #### Parameters
@@ -8897,6 +8960,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base attention findings | **application/json**: [KnowledgeFSOverviewAttentionListResponse](#knowledgefsoverviewattentionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/overview/health
 #### Parameters
@@ -8910,6 +8974,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base health | **application/json**: [KnowledgeFSOverviewHealthResponse](#knowledgefsoverviewhealthresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/overview/inventory
 #### Parameters
@@ -8923,6 +8988,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base inventory | **application/json**: [KnowledgeFSOverviewInventoryResponse](#knowledgefsoverviewinventoryresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/overview/query-outcomes
 #### Parameters
@@ -8937,6 +9003,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base query outcomes | **application/json**: [KnowledgeFSOverviewQueryOutcomesResponse](#knowledgefsoverviewqueryoutcomesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/overview/stats
 #### Parameters
@@ -8951,6 +9018,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base Overview statistics | **application/json**: [KnowledgeFSOverviewStatsResponse](#knowledgefsoverviewstatsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/permissions
 #### Parameters
@@ -8964,6 +9032,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base permissions | **application/json**: [KnowledgeFSPermissionListResponse](#knowledgefspermissionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases
 #### Parameters
@@ -8979,6 +9048,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base bad cases | **application/json**: [KnowledgeFSBadCaseListResponse](#knowledgefsbadcaselistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases
 #### Parameters
@@ -8998,6 +9068,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base bad case created | **application/json**: [KnowledgeFSBadCaseResponse](#knowledgefsbadcaseresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}
 #### Parameters
@@ -9012,6 +9083,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base bad case | **application/json**: [KnowledgeFSBadCaseResponse](#knowledgefsbadcaseresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}
 #### Parameters
@@ -9032,6 +9104,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base bad case updated | **application/json**: [KnowledgeFSBadCaseResponse](#knowledgefsbadcaseresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}/trace-reference
 #### Parameters
@@ -9046,6 +9119,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base bad case trace reference | **application/json**: [KnowledgeFSBadCaseTraceReferenceResponse](#knowledgefsbadcasetracereferenceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/quality/replay-runs
 #### Parameters
@@ -9063,6 +9137,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base quality replay history | **application/json**: [KnowledgeFSQualityReplayListResponse](#knowledgefsqualityreplaylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/quality/replay-runs
 #### Parameters
@@ -9083,6 +9158,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base quality replay queued | **application/json**: [KnowledgeFSQualityReplayResponse](#knowledgefsqualityreplayresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/quality/replay-runs/{run_id}
 #### Parameters
@@ -9098,6 +9174,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base quality replay run | **application/json**: [KnowledgeFSQualityReplayResponse](#knowledgefsqualityreplayresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/queries~~
 
@@ -9120,6 +9197,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base query accepted | **application/json**: [KnowledgeFSQueryResponse](#knowledgefsqueryresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/queries/admission
 #### Parameters
@@ -9139,6 +9217,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base streaming query admitted through Dify API | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /knowledge-fs/spaces/{control_space_id}/query-stream-capability~~
 
@@ -9155,6 +9234,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base Dify API query stream capability | **application/json**: [KnowledgeFSQueryStreamCapabilityResponse](#knowledgefsquerystreamcapabilityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
 #### Parameters
@@ -9170,6 +9250,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research tasks | **application/json**: [KnowledgeFSResearchTaskListResponse](#knowledgefsresearchtasklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks
 #### Parameters
@@ -9189,6 +9270,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base research task accepted | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/plan
 #### Parameters
@@ -9208,6 +9290,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task plan | **application/json**: [KnowledgeFSResearchTaskPlanResponse](#knowledgefsresearchtaskplanresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
 #### Parameters
@@ -9222,6 +9305,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task canceled | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
 #### Parameters
@@ -9236,6 +9320,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/partials
 #### Parameters
@@ -9252,6 +9337,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base research task partial evidence | **application/json**: [KnowledgeFSResearchTaskPartialListResponse](#knowledgefsresearchtaskpartiallistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/settings
 #### Parameters
@@ -9265,6 +9351,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base settings | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/settings
 #### Parameters
@@ -9284,6 +9371,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base settings updated | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}
 #### Parameters
@@ -9298,6 +9386,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base settings migration | **application/json**: [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-connections
 #### Parameters
@@ -9313,6 +9402,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source connections | **application/json**: [KnowledgeFSSourceConnectionListResponse](#knowledgefssourceconnectionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections
 #### Parameters
@@ -9332,6 +9422,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base source connection created | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh
 #### Parameters
@@ -9352,6 +9443,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source connection refreshed | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-providers
 #### Parameters
@@ -9365,6 +9457,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source providers | **application/json**: [KnowledgeFSSourceProviderListResponse](#knowledgefssourceproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}
 #### Parameters
@@ -9379,6 +9472,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source workflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel
 #### Parameters
@@ -9399,6 +9493,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source workflow canceled | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages
 #### Parameters
@@ -9415,6 +9510,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base crawl preview pages | **application/json**: [KnowledgeFSCrawlPreviewPageListResponse](#knowledgefscrawlpreviewpagelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry
 #### Parameters
@@ -9429,6 +9525,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source workflow retried | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection
 #### Parameters
@@ -9450,6 +9547,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base crawl preview selection accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources
 #### Parameters
@@ -9465,6 +9563,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base sources | **application/json**: [KnowledgeFSSourceListResponse](#knowledgefssourcelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources
 #### Parameters
@@ -9484,6 +9583,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base source created | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
 #### Parameters
@@ -9506,6 +9606,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base source deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
 #### Parameters
@@ -9520,6 +9621,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
 #### Parameters
@@ -9540,6 +9642,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source updated | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/async-import
 #### Parameters
@@ -9561,6 +9664,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base Source import accepted for asynchronous reconciliation | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import
 #### Parameters
@@ -9582,6 +9686,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base selected website crawl import accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview
 #### Parameters
@@ -9597,6 +9702,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base source crawl preview accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files
 #### Parameters
@@ -9615,6 +9721,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source files | **application/json**: [KnowledgeFSSourceFilesResponse](#knowledgefssourcefilesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import
 #### Parameters
@@ -9635,6 +9742,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source pages imported | **application/json**: [KnowledgeFSSourceImportResponse](#knowledgefssourceimportresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files
 #### Parameters
@@ -9655,6 +9763,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source files imported | **application/json**: [KnowledgeFSSourceImportResponse](#knowledgefssourceimportresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages
 #### Parameters
@@ -9671,6 +9780,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source pages | **application/json**: [KnowledgeFSSourcePagesResponse](#knowledgefssourcepagesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync
 #### Parameters
@@ -9686,6 +9796,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base source sync accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
 #### Parameters
@@ -9700,6 +9811,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source sync policy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
 #### Parameters
@@ -9720,6 +9832,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source sync policy updated | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test
 #### Parameters
@@ -9734,6 +9847,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base source credential test | **application/json**: [KnowledgeFSSourceCredentialTestResponse](#knowledgefssourcecredentialtestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports
 #### Parameters
@@ -9755,6 +9869,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Agent Knowledge Base durable provider import accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tags
 #### Parameters
@@ -9768,6 +9883,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base tags | **application/json**: [KnowledgeFSSpaceTagListResponse](#knowledgefsspacetaglistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /knowledge-fs/spaces/{control_space_id}/tags
 #### Parameters
@@ -9787,6 +9903,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base tags replaced | **application/json**: [KnowledgeFSSpaceTagListResponse](#knowledgefsspacetaglistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
 #### Parameters
@@ -9803,6 +9920,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base traces | **application/json**: [KnowledgeFSTraceListResponse](#knowledgefstracelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}
 #### Parameters
@@ -9817,6 +9935,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base answer trace | **application/json**: [KnowledgeFSAnswerTraceResponse](#knowledgefsanswertraceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/conflicts
 #### Parameters
@@ -9833,6 +9952,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base trace conflicts | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/evidence
 #### Parameters
@@ -9849,6 +9969,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base trace evidence view | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/missing
 #### Parameters
@@ -9865,6 +9986,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base trace missing evidence | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions
 #### Parameters
@@ -9885,6 +10007,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base upload session created | **application/json**: [KnowledgeFSUploadSessionCreateResponse](#knowledgefsuploadsessioncreateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/abort
 #### Parameters
@@ -9905,6 +10028,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base upload session aborted | **application/json**: [KnowledgeFSUploadSessionMutationResponse](#knowledgefsuploadsessionmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/complete
 #### Parameters
@@ -9925,6 +10049,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base upload session completed | **application/json**: [KnowledgeFSUploadSessionMutationResponse](#knowledgefsuploadsessionmutationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/parts/{part_number}/presign
 #### Parameters
@@ -9946,6 +10071,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base upload part URL created | **application/json**: [KnowledgeFSPresignedUploadResponse](#knowledgefspresigneduploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/small-file
 #### Parameters
@@ -9966,6 +10092,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base small-file fallback completed | **application/json**: [KnowledgeFSSmallFileUploadResponse](#knowledgefssmallfileuploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/tasks/{task_id}/stream-capability
 #### Parameters
@@ -9985,6 +10112,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Knowledge Base task stream capability | **application/json**: [KnowledgeFSStreamCapabilityResponse](#knowledgefsstreamcapabilityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/uploads
 #### Request Body
@@ -9998,6 +10126,7 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent Knowledge Base document bytes staged in the current workspace | **application/json**: [KnowledgeFSStagedUploadResponse](#knowledgefsstageduploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /knowledge-fs/uploads/{upload_id}
 #### Parameters
@@ -10008,9 +10137,10 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Agent Knowledge Base staged upload discarded |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Agent Knowledge Base staged upload discarded |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /login
 **Authenticate user and login**
