@@ -4,29 +4,34 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import WorkflowPanel from '../workflow-panel'
-
-type AppStoreState = {
-  appDetail?: {
-    id?: string
-    mode?: AppModeEnum
-    workflow?: {
-      id?: string
-    }
-  }
-}
 
 type WorkflowStoreState = Partial<Shape>
 
 const mockUseIsChatMode = vi.fn()
 
-let appStoreState: AppStoreState
 let workflowStoreState: WorkflowStoreState
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: AppStoreState) => T) => selector(appStoreState),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-123' }),
 }))
+
+const renderPanel = (initialStoreState: WorkflowStoreState) => {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({
+      id: 'app-123',
+      mode: AppModeEnum.WORKFLOW,
+      workflow: { id: 'workflow-version-id' },
+    }),
+  )
+  return renderWorkflowComponent(<WorkflowPanel />, { initialStoreState, queryClient })
+}
 
 vi.mock('@/app/components/workflow/panel', () => ({
   default: ({
@@ -110,15 +115,6 @@ vi.mock('../../hooks/use-is-chat-mode', () => ({
 describe('WorkflowPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appStoreState = {
-      appDetail: {
-        id: 'app-123',
-        mode: AppModeEnum.WORKFLOW,
-        workflow: {
-          id: 'workflow-version-id',
-        },
-      },
-    }
     workflowStoreState = {
       historyWorkflowData: undefined,
       showDebugAndPreviewPanel: false,
@@ -129,7 +125,7 @@ describe('WorkflowPanel', () => {
   })
 
   it('should configure workflow version history urls and latest version id for the panel shell', async () => {
-    renderWorkflowComponent(<WorkflowPanel />, { initialStoreState: workflowStoreState })
+    renderPanel(workflowStoreState)
 
     const panel = await screen.findByTestId('panel')
     expect(panel).toHaveAttribute('data-version-list-url', '/apps/app-123/workflows')
@@ -152,9 +148,7 @@ describe('WorkflowPanel', () => {
       isAnswer: true,
       workflow_run_id: 'run-1',
     }
-    const { store } = renderWorkflowComponent(<WorkflowPanel />, {
-      initialStoreState: { messageLogItem },
-    })
+    const { store } = renderPanel({ messageLogItem })
     expect(await screen.findByRole('tab', { name: 'runLog.detail' })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -184,9 +178,7 @@ describe('WorkflowPanel', () => {
     }
     mockUseIsChatMode.mockReturnValue(true)
 
-    const { unmount } = renderWorkflowComponent(<WorkflowPanel />, {
-      initialStoreState: workflowStoreState,
-    })
+    const { unmount } = renderPanel(workflowStoreState)
 
     expect(await screen.findByTestId('chat-record-panel')).toBeInTheDocument()
     expect(screen.getByTestId('debug-and-preview-panel')).toBeInTheDocument()
@@ -197,7 +189,7 @@ describe('WorkflowPanel', () => {
 
     unmount()
     mockUseIsChatMode.mockReturnValue(false)
-    renderWorkflowComponent(<WorkflowPanel />, { initialStoreState: workflowStoreState })
+    renderPanel(workflowStoreState)
 
     expect(await screen.findByTestId('record-panel')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-preview-panel')).toBeInTheDocument()
