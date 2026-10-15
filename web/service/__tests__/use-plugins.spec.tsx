@@ -49,12 +49,20 @@ vi.mock('@/service/base', () => ({
   request: mockRequest,
 }))
 
-mockRequest.mockImplementation(async (url: string) => {
-  const data = await mockGet(url)
-  return new Response(JSON.stringify(data), {
-    headers: { 'Content-Type': 'application/json' },
-  })
-})
+mockRequest.mockImplementation(
+  async (url: string, _init: RequestInit, options: { request?: Request }) => {
+    const method = options.request?.method ?? 'GET'
+    const data =
+      method === 'GET'
+        ? await mockGet(url)
+        : await mockPost(new URL(url).pathname.replace('/console/api', ''), {
+            body: await options.request?.json(),
+          })
+    return new Response(JSON.stringify(data ?? {}), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  },
+)
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({
@@ -1346,7 +1354,7 @@ describe('usePluginAutoUpgradeSettings', () => {
     vi.clearAllMocks()
   })
 
-  it('does not expose frontend default settings before backend data resolves', () => {
+  it('does not expose frontend default settings before backend data resolves', async () => {
     const queryClient = createQueryClient()
     mockGet.mockReturnValue(new Promise(() => {}))
 
@@ -1355,10 +1363,10 @@ describe('usePluginAutoUpgradeSettings', () => {
     })
 
     expect(result.current.data).toBeUndefined()
-    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/auto-upgrade/fetch', {
-      params: {
-        category: PluginCategoryEnum.model,
-      },
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        `http://localhost:5001/console/api/workspaces/current/plugin/auto-upgrade/fetch?category=${PluginCategoryEnum.model}`,
+      )
     })
   })
 

@@ -23,14 +23,7 @@ import { DataSourceProvider } from '@/models/common'
 // oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
 import { post } from './base'
 import { consoleClient } from './console'
-
-/**
- * The knowledge UI types in `@/models/datasets` narrow fields that backend response models
- * declare as plain strings (indexing_technique, doc_form, permission, indexing statuses, ...).
- * Until those response models declare literal types, contract responses are narrowed to the UI
- * types at this boundary instead of re-typing every consumer.
- */
-export const narrowKnowledgeResponse = <T>(response: Promise<unknown>) => response as Promise<T>
+import { narrowResponse } from './console/narrow-response'
 
 // apis for documents in a dataset
 
@@ -64,17 +57,17 @@ export const updateDatasetSetting = ({
   datasetId: string
   body: DatasetUpdatePayload
 }): Promise<DataSet> => {
-  return narrowKnowledgeResponse(
+  return narrowResponse(
     consoleClient.datasets.byDatasetId.patch({ params: { dataset_id: datasetId }, body }),
   )
 }
 
 export const fetchDatasets = ({ params }: FetchDatasetsParams): Promise<DataSetListResponse> => {
-  return narrowKnowledgeResponse(consoleClient.datasets.get({ query: params }))
+  return narrowResponse(consoleClient.datasets.get({ query: params }))
 }
 
 export const createEmptyDataset = ({ name }: { name: string }): Promise<DataSet> => {
-  return narrowKnowledgeResponse(consoleClient.datasets.post({ body: { name } }))
+  return narrowResponse(consoleClient.datasets.post({ body: { name } }))
 }
 
 export const checkIsUsedInApp = (id: string): Promise<{ is_using: boolean }> => {
@@ -93,7 +86,7 @@ export const fetchExternalAPI = ({
 }: {
   apiTemplateId: string
 }): Promise<ExternalAPIItem> => {
-  return narrowKnowledgeResponse(
+  return narrowResponse(
     consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get({
       params: { external_knowledge_api_id: apiTemplateId },
     }),
@@ -107,7 +100,7 @@ export const updateExternalAPI = ({
   apiTemplateId: string
   body: ExternalAPIItem
 }): Promise<ExternalAPIItem> => {
-  return narrowKnowledgeResponse(
+  return narrowResponse(
     consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch({
       params: { external_knowledge_api_id: apiTemplateId },
       body,
@@ -136,7 +129,7 @@ export const createExternalAPI = ({
 }: {
   body: CreateExternalAPIReq
 }): Promise<ExternalAPIItem> => {
-  return narrowKnowledgeResponse(consoleClient.datasets.externalKnowledgeApi.post({ body }))
+  return narrowResponse(consoleClient.datasets.externalKnowledgeApi.post({ body }))
 }
 
 export const createExternalKnowledgeBase = ({
@@ -144,11 +137,11 @@ export const createExternalKnowledgeBase = ({
 }: {
   body: CreateKnowledgeBaseReq
 }): Promise<ExternalKnowledgeItem> => {
-  return narrowKnowledgeResponse(consoleClient.datasets.external.post({ body }))
+  return narrowResponse(consoleClient.datasets.external.post({ body }))
 }
 
 export const fetchDefaultProcessRule = (): Promise<ProcessRuleResponse> => {
-  return narrowKnowledgeResponse(consoleClient.datasets.processRule.get({}))
+  return narrowResponse(consoleClient.datasets.processRule.get({}))
 }
 
 export const createFirstDocument = ({
@@ -156,7 +149,7 @@ export const createFirstDocument = ({
 }: {
   body: KnowledgeConfig
 }): Promise<createDocumentResponse> => {
-  return narrowKnowledgeResponse(consoleClient.datasets.init.post({ body }))
+  return narrowResponse(consoleClient.datasets.init.post({ body }))
 }
 
 export const createDocument = ({
@@ -166,7 +159,7 @@ export const createDocument = ({
   datasetId: string
   body: KnowledgeConfig
 }): Promise<createDocumentResponse> => {
-  return narrowKnowledgeResponse(
+  return narrowResponse(
     consoleClient.datasets.byDatasetId.documents.post({ params: { dataset_id: datasetId }, body }),
   )
 }
@@ -175,7 +168,7 @@ export const fetchIndexingStatus = ({
   datasetId,
   documentId,
 }: CommonDocReq): Promise<IndexingStatusResponse> => {
-  return narrowKnowledgeResponse(
+  return narrowResponse(
     consoleClient.datasets.byDatasetId.documents.byDocumentId.indexingStatus.get({
       params: { dataset_id: datasetId, document_id: documentId },
     }),
@@ -186,7 +179,7 @@ export const fetchIndexingStatusBatch = ({
   datasetId,
   batchId,
 }: BatchReq): Promise<IndexingStatusBatchResponse> => {
-  return narrowKnowledgeResponse(
+  return narrowResponse(
     consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get({
       params: { dataset_id: datasetId, batch: batchId },
     }),
@@ -198,7 +191,7 @@ export const renameDocumentName = ({
   documentId,
   name,
 }: CommonDocReq & { name: string }): Promise<CommonResponse> => {
-  return narrowKnowledgeResponse(
+  return narrowResponse(
     consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post({
       params: { dataset_id: datasetId, document_id: documentId },
       body: { name },
@@ -244,7 +237,7 @@ export const downloadDocumentsZip = ({
 export const fetchFileIndexingEstimate = (
   body: IndexingEstimatePayload,
 ): Promise<FileIndexingEstimateResponse> => {
-  return narrowKnowledgeResponse(consoleClient.datasets.indexingEstimate.post({ body }))
+  return narrowResponse(consoleClient.datasets.indexingEstimate.post({ body }))
 }
 
 export const fetchNotionPagePreview = ({

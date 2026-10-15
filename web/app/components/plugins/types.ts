@@ -379,12 +379,6 @@ export type uploadGitHubResponse = {
   manifest: PluginDeclaration
 }
 
-export type DebugInfo = {
-  key: string
-  host: string
-  port: number
-}
-
 export const TaskStatus = {
   pending: 'pending',
   running: 'running',

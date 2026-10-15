@@ -9,10 +9,10 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 import { DocumentActionType } from '@/models/datasets'
 import { consoleClient } from '../console'
+import { narrowResponse } from '../console/narrow-response'
 import {
   downloadDocumentsZip,
   fetchDocumentDownloadUrl,
-  narrowKnowledgeResponse,
   pauseDocIndexing,
   resumeDocIndexing,
   retryErrorDocs,
@@ -48,7 +48,7 @@ export const useDocumentList = (payload: {
   return useQuery<DocumentListResponse>({
     queryKey: [...useDocumentListKey, datasetId, params],
     queryFn: () =>
-      narrowKnowledgeResponse(
+      narrowResponse(
         consoleClient.datasets.byDatasetId.documents.get({
           params: { dataset_id: datasetId },
           query: params,
@@ -165,7 +165,7 @@ export const useDocumentDetail = (payload: {
   return useQuery<DocumentDetailResponse>({
     queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId, params],
     queryFn: () =>
-      narrowKnowledgeResponse(
+      narrowResponse(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.get({
           params: { dataset_id: datasetId, document_id: documentId },
           query: params,
@@ -184,7 +184,7 @@ export const useDocumentMetadata = (payload: {
   return useQuery<DocumentDetailResponse>({
     queryKey: [...useDocumentDetailKey, 'onlyMetaData', datasetId, documentId, params],
     queryFn: () =>
-      narrowKnowledgeResponse(
+      narrowResponse(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.get({
           params: { dataset_id: datasetId, document_id: documentId },
           query: params,

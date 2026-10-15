@@ -9,7 +9,7 @@ import type {
 } from '@/models/datasets'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { consoleClient } from '../console'
-import { narrowKnowledgeResponse } from '../datasets'
+import { narrowResponse } from '../console/narrow-response'
 
 const NAME_SPACE = 'segment'
 
@@ -36,7 +36,7 @@ export const useSegmentList = (
   return useQuery<SegmentsResponse>({
     queryKey: [...useSegmentListKey, datasetId, documentId, params],
     queryFn: () => {
-      return narrowKnowledgeResponse(
+      return narrowResponse(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.get({
           params: { dataset_id: datasetId, document_id: documentId },
           query: { ...params, enabled: String(params.enabled) },
@@ -57,7 +57,7 @@ export const useUpdateSegment = () => {
       body: SegmentUpdater
     }) => {
       const { datasetId, documentId, segmentId, body } = payload
-      return narrowKnowledgeResponse<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(
+      return narrowResponse<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.patch({
           params: { dataset_id: datasetId, document_id: documentId, segment_id: segmentId },
           body,
@@ -72,7 +72,7 @@ export const useAddSegment = () => {
     mutationKey: [NAME_SPACE, 'add'],
     mutationFn: (payload: { datasetId: string; documentId: string; body: SegmentUpdater }) => {
       const { datasetId, documentId, body } = payload
-      return narrowKnowledgeResponse<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(
+      return narrowResponse<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.segment.post({
           params: { dataset_id: datasetId, document_id: documentId },
           body,
@@ -141,7 +141,7 @@ export const useChildSegmentList = (
   return useQuery({
     queryKey: [...useChildSegmentListKey, datasetId, documentId, segmentId, params],
     queryFn: () => {
-      return narrowKnowledgeResponse<ChildSegmentsResponse>(
+      return narrowResponse<ChildSegmentsResponse>(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get(
           {
             params: { dataset_id: datasetId, document_id: documentId, segment_id: segmentId },
@@ -188,7 +188,7 @@ export const useAddChildSegment = () => {
       body: { content: string }
     }) => {
       const { datasetId, documentId, segmentId, body } = payload
-      return narrowKnowledgeResponse<{ data: ChildChunkDetail }>(
+      return narrowResponse<{ data: ChildChunkDetail }>(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.post(
           {
             params: { dataset_id: datasetId, document_id: documentId, segment_id: segmentId },
@@ -211,7 +211,7 @@ export const useUpdateChildSegment = () => {
       body: { content: string }
     }) => {
       const { datasetId, documentId, segmentId, childChunkId, body } = payload
-      return narrowKnowledgeResponse<{ data: ChildChunkDetail }>(
+      return narrowResponse<{ data: ChildChunkDetail }>(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.patch(
           {
             params: {
@@ -237,7 +237,7 @@ export const useSegmentBatchImport = () => {
       body: { upload_file_id: string }
     }) => {
       const { datasetId, documentId, body } = payload
-      return narrowKnowledgeResponse<BatchImportResponse>(
+      return narrowResponse<BatchImportResponse>(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post({
           params: { dataset_id: datasetId, document_id: documentId },
           body,
@@ -252,7 +252,7 @@ export const useCheckSegmentBatchImportProgress = () => {
     mutationKey: [NAME_SPACE, 'batchImport', 'checkProgress'],
     mutationFn: (payload: { jobID: string }) => {
       const { jobID } = payload
-      return narrowKnowledgeResponse<BatchImportResponse>(
+      return narrowResponse<BatchImportResponse>(
         consoleClient.datasets.batchImportStatus.byJobId.get({ params: { job_id: jobID } }),
       )
     },

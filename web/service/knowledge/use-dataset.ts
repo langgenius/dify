@@ -14,7 +14,8 @@ import type {
 import { ORPCError } from '@orpc/client'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { consoleClient } from '../console'
-import { fetchIndexingStatusBatch, narrowKnowledgeResponse } from '../datasets'
+import { narrowResponse } from '../console/narrow-response'
+import { fetchIndexingStatusBatch } from '../datasets'
 import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset'
@@ -51,7 +52,7 @@ export const useInfiniteDatasets = (
   return useInfiniteQuery<DataSetListResponse>({
     queryKey: [...datasetListQueryKey, 'infinite', normalizedParams],
     queryFn: ({ pageParam = normalizedParams.page }) =>
-      narrowKnowledgeResponse(
+      narrowResponse(
         consoleClient.datasets.get({
           query: { ...normalizedParams, page: pageParam as number | undefined },
         }),
@@ -69,7 +70,7 @@ export const useDatasetList = (params: DatasetListRequest) => {
   return useInfiniteQuery({
     queryKey: [...datasetListQueryKey, initialPage, tag_ids, limit, include_all, keyword],
     queryFn: ({ pageParam = 1 }) =>
-      narrowKnowledgeResponse<DataSetListResponse>(
+      narrowResponse<DataSetListResponse>(
         consoleClient.datasets.get({
           query: { tag_ids, limit, include_all, keyword, page: pageParam },
         }),
@@ -90,7 +91,7 @@ export const useDatasetDetail = (datasetId: string) => {
   return useQuery({
     queryKey: [...datasetDetailQueryKeyPrefix, datasetId],
     queryFn: () =>
-      narrowKnowledgeResponse<DataSet>(
+      narrowResponse<DataSet>(
         consoleClient.datasets.byDatasetId.get({ params: { dataset_id: datasetId } }),
       ),
     enabled: !!datasetId,
@@ -106,7 +107,7 @@ export const useDatasetRelatedApps = (datasetId: string, options?: { enabled?: b
   return useQuery({
     queryKey: [NAME_SPACE, 'related-apps', datasetId],
     queryFn: () =>
-      narrowKnowledgeResponse<RelatedAppResponse>(
+      narrowResponse<RelatedAppResponse>(
         consoleClient.datasets.byDatasetId.relatedApps.get({ params: { dataset_id: datasetId } }),
       ),
     enabled: options?.enabled ?? !!datasetId,
@@ -129,7 +130,7 @@ export const useProcessRule = (documentId?: string) => {
   return useQuery<ProcessRuleResponse>({
     queryKey: [NAME_SPACE, 'process-rule', documentId],
     queryFn: () =>
-      narrowKnowledgeResponse(
+      narrowResponse(
         consoleClient.datasets.processRule.get({ query: { document_id: documentId } }),
       ),
     enabled: !!documentId,
@@ -172,7 +173,7 @@ export const useDatasetTestingRecords = (
   return useQuery<HitTestingRecordsResponse>({
     queryKey: [NAME_SPACE, 'testing-records', datasetId, params],
     queryFn: () =>
-      narrowKnowledgeResponse(
+      narrowResponse(
         consoleClient.datasets.byDatasetId.queries.get({
           params: { dataset_id: datasetId! },
           query: params,
@@ -187,7 +188,7 @@ export const useDatasetErrorDocs = (datasetId?: string) => {
   return useQuery<ErrorDocsResponse>({
     queryKey: [NAME_SPACE, 'error-docs', datasetId],
     queryFn: () =>
-      narrowKnowledgeResponse(
+      narrowResponse(
         consoleClient.datasets.byDatasetId.errorDocs.get({ params: { dataset_id: datasetId! } }),
       ),
     enabled: !!datasetId,

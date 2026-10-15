@@ -6,7 +6,7 @@ import type {
 import type { DocumentDetailResponse } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient } from '../console'
-import { narrowKnowledgeResponse } from '../datasets'
+import { narrowResponse } from '../console/narrow-response'
 import { useInvalid } from '../use-base'
 import { useDocumentListKey, useInvalidDocumentList } from './use-document'
 
@@ -17,7 +17,7 @@ export const useDatasetMetaData = (datasetId: string) => {
     {
       queryKey: [NAME_SPACE, 'dataset', datasetId],
       queryFn: () => {
-        return narrowKnowledgeResponse(
+        return narrowResponse(
           consoleClient.datasets.byDatasetId.metadata.get({ params: { dataset_id: datasetId } }),
         )
       },
@@ -99,7 +99,7 @@ export const useBuiltInMetaDataFields = () => {
   return useQuery<{ fields: BuiltInMetadataItem[] }>({
     queryKey: [NAME_SPACE, 'built-in'],
     queryFn: () => {
-      return narrowKnowledgeResponse(consoleClient.datasets.metadata.builtIn.get())
+      return narrowResponse(consoleClient.datasets.metadata.builtIn.get())
     },
   })
 }
@@ -114,7 +114,7 @@ export const useDocumentMetaData = ({
   return useQuery<DocumentDetailResponse>({
     queryKey: [NAME_SPACE, 'document', datasetId, documentId],
     queryFn: () => {
-      return narrowKnowledgeResponse(
+      return narrowResponse(
         consoleClient.datasets.byDatasetId.documents.byDocumentId.get({
           params: { dataset_id: datasetId, document_id: documentId },
           query: { metadata: 'only' },
