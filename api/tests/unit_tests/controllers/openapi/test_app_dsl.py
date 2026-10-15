@@ -305,7 +305,7 @@ def test_check_reports_credential_problems_as_warnings(app: Flask, credentials: 
     }
 
 
-@pytest.mark.usefixtures("credentials")
+@pytest.mark.usefixtures("app_query_services", "credentials")
 def test_check_uses_the_overwritten_apps_mode(app: Flask, sqlite_session: Session) -> None:
     sqlite_session.add(
         App(
@@ -325,7 +325,7 @@ def test_check_uses_the_overwritten_apps_mode(app: Flask, sqlite_session: Sessio
     assert [(row.code, row.node_id) for row in response.issues] == [(IssueCode.MODE_INCOMPATIBLE, "end")]
 
 
-@pytest.mark.usefixtures("credentials")
+@pytest.mark.usefixtures("app_query_services", "credentials")
 def test_check_answers_404_for_an_app_outside_the_workspace(app: Flask, sqlite_session: Session) -> None:
     sqlite_session.add(
         App(id="app-1", tenant_id="workspace-2", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
@@ -372,7 +372,7 @@ def test_export_answers_a_missing_workflow_with_the_openapi_error(
 def test_import_hands_the_draft_hash_to_the_save(
     app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(app_dsl, "prepare_import", lambda *_args, **_kwargs: "prepared yaml")
+    monkeypatch.setattr(app_query_services.apps.dsl_imports, "prepare", lambda *_args, **_kwargs: "prepared yaml")
     completed = Import(id="import-1", status=ImportStatus.COMPLETED, app_id="app-1")
     import_calls = _recorded_import(monkeypatch, app_query_services, completed)
 
@@ -415,7 +415,7 @@ def test_a_draft_changed_during_the_save_answers_draft_changed(
     def changed(*_args: object, **_kwargs: object) -> None:
         raise DraftChangedError()
 
-    monkeypatch.setattr(app_dsl, "prepare_import", lambda *_args, **_kwargs: "prepared yaml")
+    monkeypatch.setattr(app_query_services.apps.dsl_imports, "prepare", lambda *_args, **_kwargs: "prepared yaml")
     monkeypatch.setattr(app_query_services.apps.imports, "import_app", changed)
     monkeypatch.setattr(app_query_services.apps.imports, "confirm_import", changed)
 

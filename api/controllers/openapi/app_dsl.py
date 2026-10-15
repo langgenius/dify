@@ -43,8 +43,6 @@ from services.workflow.dsl_import import (
     DslNotCheckableError,
     DslRefusedError,
     YamlUrlFetchError,
-    check_dsl,
-    prepare_import,
 )
 from services.workflow.graph_check import IssueSeverity
 from services.workflow.graph_diff import current_draft_token
@@ -65,7 +63,7 @@ def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
 
 def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
     try:
-        return prepare_import(
+        return application_services().apps.dsl_imports.prepare(
             context,
             mode=ImportMode(body.mode),
             source=body.source,
@@ -185,7 +183,7 @@ class AppDslCheckApi(Resource):
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: DslCheckPayload):
         try:
-            issues = check_dsl(ctx, body.yaml_content, body.app_id)
+            issues = application_services().apps.dsl_imports.check(ctx, body.yaml_content, body.app_id)
         except DslNotCheckableError as error:
             raise BadRequest(str(error)) from error
         except ConsoleAppNotFoundError as error:

@@ -7,21 +7,20 @@ defaults the editor needs, and keep the secrets the draft already stores (an exp
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from contextlib import AbstractContextManager
+from dataclasses import dataclass
+from typing import Any, Protocol
 from urllib.parse import urlparse
 
 import yaml
-from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
-from core.db.session_factory import session_factory
 from core.file import remote_fetcher
 from factories import variable_factory
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
 from machinery.context import RequestContext
-from models import App, AppMode, Workflow
-from repositories.app.console_repository import require_console_app
+from models import AppMode, Workflow
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.entities.dsl_entities import ImportMode
 from services.errors.app import DraftChangedError
@@ -29,12 +28,10 @@ from services.workflow.graph_check import (
     GRAPH_MODES,
     GraphIssue,
     IssueSeverity,
+    ResourceCheck,
     check_graph,
-    credential_check,
 )
-from services.workflow.graph_diff import draft_token
 from services.workflow.node_defaults import fill_graph
-from services.workflow_service import WorkflowService
 
 
 class DslNotCheckableError(ValueError):
@@ -53,6 +50,27 @@ class DslRefusedError(Exception):
 
 def stored_secret_ids(draft: Workflow) -> set[str]:
     return {variable.id for variable in draft.environment_variables if isinstance(variable, SecretVariable)}
+
+
+@dataclass(frozen=True)
+class DslImportTarget:
+    """What the import rules read from the app a DSL overwrites."""
+
+    mode: str
+    draft_token: str | None
+    stored_secret_ids: frozenset[str]
+
+
+class DslImportStore(Protocol):
+    def load_target(self, context: RequestContext, app_id: str) -> DslImportTarget:
+        """Raises ConsoleAppNotFoundError for an app outside the workspace."""
+        ...
+
+    def credential_check(
+        self, workspace_id: str, environment: Mapping[str, VariableBase]
+    ) -> AbstractContextManager[ResourceCheck]:
+        """Publish's credential check, usable until the context exits."""
+        ...
 
 
 def fetch_yaml_url(yaml_url: str) -> str:
@@ -102,16 +120,12 @@ def _graph(workflow: Mapping[str, Any]) -> Mapping[str, Any]:
     return graph if isinstance(graph, Mapping) else {}
 
 
-def _graph_mode(data: Mapping[str, Any], app: App | None) -> AppMode:
+def _graph_mode(data: Mapping[str, Any], target: DslImportTarget | None) -> AppMode:
     """The mode the graph must fit: the overwritten app's, else the DSL's own."""
-    target = app.mode if app is not None else _section(data, "app").get("mode")
-    if target not in GRAPH_MODES:
+    mode = target.mode if target is not None else _section(data, "app").get("mode")
+    if mode not in GRAPH_MODES:
         raise DslNotCheckableError("Only workflow or advanced-chat DSLs can be checked")
-    return AppMode(target)
-
-
-def _target_app(session: Session, context: RequestContext, app_id: str | None) -> App | None:
-    return require_console_app(session, context, app_id) if app_id else None
+    return AppMode(mode)
 
 
 def _environment(workflow: Mapping[str, Any]) -> dict[str, VariableBase]:
@@ -125,22 +139,7 @@ def _environment(workflow: Mapping[str, Any]) -> dict[str, VariableBase]:
     return {variable.name: variable for variable in variables}
 
 
-def check_dsl(context: RequestContext, yaml_content: str, app_id: str | None) -> list[GraphIssue]:
-    """Every issue, errors and credential warnings alike.
-
-    Raises DslNotCheckableError for a DSL that is not a workflow graph or has a bad environment
-    variable, ConsoleAppNotFoundError for an `app_id` outside the workspace.
-    """
-    data = _parse(yaml_content)
-    workflow = _section(data, "workflow")
-    with session_factory.create_session() as session:
-        mode = _graph_mode(data, _target_app(session, context, app_id))
-        resources = credential_check(context.active_workspace_id, _environment(workflow), session)
-        return check_graph(_graph(workflow), mode=mode, resources=resources)
-
-
-def _keep_stored_secrets(workflow: Mapping[str, Any], draft: Workflow) -> None:
-    stored = stored_secret_ids(draft)
+def _keep_stored_secrets(workflow: Mapping[str, Any], stored: frozenset[str]) -> None:
     for variable in workflow.get("environment_variables") or []:
         if (
             isinstance(variable, dict)
@@ -151,23 +150,41 @@ def _keep_stored_secrets(workflow: Mapping[str, Any], draft: Workflow) -> None:
             variable["value"] = HIDDEN_VALUE
 
 
-def prepare_import(
-    context: RequestContext, *, mode: ImportMode, source: str, app_id: str | None, draft_hash: str | None
-) -> str:
-    """The YAML to hand the import. A DSL the check can't read goes through unchanged, for the import to judge.
+class DslImportService:
+    def __init__(self, *, store: DslImportStore) -> None:
+        self._store = store
 
-    A URL is fetched only after the target app and draft pass. Raises DraftChangedError, DslRefusedError,
-    YamlUrlFetchError, or ConsoleAppNotFoundError for an `app_id` outside the workspace.
-    """
-    with session_factory.create_session() as session:
-        app = _target_app(session, context, app_id)
-        draft = WorkflowService().get_draft_workflow(app_model=app, session=session) if app else None
-        if draft_hash is not None and (draft is None or draft_token(draft) != draft_hash):
+    def _target(self, context: RequestContext, app_id: str | None) -> DslImportTarget | None:
+        return self._store.load_target(context, app_id) if app_id else None
+
+    def check(self, context: RequestContext, yaml_content: str, app_id: str | None) -> list[GraphIssue]:
+        """Every issue, errors and credential warnings alike.
+
+        Raises DslNotCheckableError for a DSL that is not a workflow graph or has a bad environment
+        variable, ConsoleAppNotFoundError for an `app_id` outside the workspace.
+        """
+        data = _parse(yaml_content)
+        workflow = _section(data, "workflow")
+        mode = _graph_mode(data, self._target(context, app_id))
+        environment = _environment(workflow)
+        with self._store.credential_check(context.active_workspace_id, environment) as resources:
+            return check_graph(_graph(workflow), mode=mode, resources=resources)
+
+    def prepare(
+        self, context: RequestContext, *, mode: ImportMode, source: str, app_id: str | None, draft_hash: str | None
+    ) -> str:
+        """The YAML to hand the import. A DSL the check can't read goes through unchanged, for the import to judge.
+
+        A URL is fetched only after the target app and draft pass. Raises DraftChangedError, DslRefusedError,
+        YamlUrlFetchError, or ConsoleAppNotFoundError for an `app_id` outside the workspace.
+        """
+        target = self._target(context, app_id)
+        if draft_hash is not None and (target is None or target.draft_token != draft_hash):
             raise DraftChangedError()
         yaml_content = fetch_yaml_url(source) if mode == ImportMode.YAML_URL else source
         try:
             data = _parse(yaml_content)
-            app_mode = _graph_mode(data, app)
+            app_mode = _graph_mode(data, target)
         except DslNotCheckableError:
             return yaml_content
         workflow = _section(data, "workflow")
@@ -176,6 +193,6 @@ def prepare_import(
             raise DslRefusedError(errors)
         if "graph" in workflow:
             workflow["graph"] = fill_graph(_graph(workflow))
-        if draft is not None:
-            _keep_stored_secrets(workflow, draft)
-    return yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+        if target is not None:
+            _keep_stored_secrets(workflow, target.stored_secret_ids)
+        return yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
