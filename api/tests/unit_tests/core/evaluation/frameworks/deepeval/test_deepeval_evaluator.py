@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import cast
 
@@ -181,6 +183,49 @@ def test_evaluation_records_deepeval_reason(monkeypatch: pytest.MonkeyPatch) -> 
     assert results[0].metrics[0].name == "faithfulness"
     assert results[0].metrics[0].value == 0.875
     assert results[0].metrics[0].details == {"reason": "The response matches the supplied evidence."}
+
+
+def test_evaluation_limits_metric_plugin_requests_to_180_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
+    evaluator = DeepEvalEvaluator(DeepEvalConfig())
+    observed_timeouts: list[int] = []
+
+    @contextmanager
+    def record_timeout(timeout_seconds: int) -> Iterator[None]:
+        observed_timeouts.append(timeout_seconds)
+        yield
+
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components",
+        _fake_components,
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.use_plugin_daemon_request_timeout",
+        record_timeout,
+    )
+
+    results = evaluator.evaluate_llm(
+        [
+            EvaluationItemInput(
+                index=7,
+                inputs={"prompt": "What is the capital of France?"},
+                output="Paris",
+                expected_output="Paris",
+                context=["Paris is the capital of France."],
+            )
+        ],
+        ["faithfulness"],
+        "provider",
+        "model",
+        "tenant",
+    )
+
+    assert observed_timeouts == [180]
+    assert results[0].error is None
+    assert results[0].metrics[0].value == 0.875
 
 
 def test_semantic_similarity_is_explicitly_unsupported() -> None:
