@@ -50,8 +50,12 @@ class AudioPlugin:
     """Only the external plugin daemon is substituted, using its actual wire format."""
 
     audio: bytes = WAV_AUDIO
+    audio_chunks: tuple[bytes, ...] | None = None
     mime_type: str | None = "audio/wav"
     error: str | None = None
+    voices: list[dict[str, str]] = field(
+        default_factory=lambda: [{"name": "Fallback voice", "value": "fallback-voice"}]
+    )
     requests: list[tuple[str, dict[str, object]]] = field(default_factory=list)
 
     def invocations(self, operation: str) -> list[dict[str, object]]:
@@ -112,15 +116,35 @@ def audio_plugin(config_overrides: Callable[..., None]) -> Iterator[AudioPlugin]
             elif self.path.endswith("/speech2text/invoke"):
                 self.respond({"result": " transcript "})
             elif self.path.endswith("/tts/invoke"):
-                self.respond({"result": plugin.audio.hex(), "mime_type": plugin.mime_type})
+                body = b"".join(
+                    (
+                        "data: "
+                        + json.dumps(
+                            {
+                                "code": 0,
+                                "message": "",
+                                "data": {
+                                    "result": chunk.hex(),
+                                    "mime_type": plugin.mime_type,
+                                },
+                            }
+                        )
+                        + "\n\n"
+                    ).encode()
+                    for chunk in (plugin.audio_chunks if plugin.audio_chunks is not None else (plugin.audio,))
+                )
+                self.send_body(body, stream=True)
             elif self.path.endswith("/tts/model/voices"):
-                self.respond({"voices": [{"name": "Fallback voice", "value": "fallback-voice"}]})
+                self.respond({"voices": plugin.voices})
             else:
                 self.send_error(404)
 
         def respond(self, data: object, *, stream: bool = True, code: int = 0, message: str = "") -> None:
             envelope = json.dumps({"code": code, "message": message, "data": data})
             body = (f"data: {envelope}\n\n" if stream else envelope).encode()
+            self.send_body(body, stream=stream)
+
+        def send_body(self, body: bytes, *, stream: bool) -> None:
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream" if stream else "application/json")
             self.send_header("Content-Length", str(len(body)))
