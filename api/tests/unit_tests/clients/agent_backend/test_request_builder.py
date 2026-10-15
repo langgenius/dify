@@ -208,7 +208,12 @@ def test_context_wire_contract_omits_tracing_for_legacy_runtime(mode: str, trace
         run_input = run_input.model_copy(
             update={"execution_context": run_input.execution_context.model_copy(update={"tracing": tracing})}
         )
-    request = getattr(AgentBackendRunRequestBuilder(), f"build_for_{mode}")(run_input)
+    builder = AgentBackendRunRequestBuilder()
+    request = (
+        builder.build_for_agent_app(run_input)
+        if isinstance(run_input, AgentBackendAgentAppRunInput)
+        else builder.build_for_workflow_node(run_input)
+    )
     payload = next(
         layer.config for layer in request.composition.layers if layer.name == DIFY_EXECUTION_CONTEXT_LAYER_ID
     )

@@ -115,7 +115,15 @@ def attributes(span: Span) -> dict[str, object]:
     for item in span.attributes:
         kind = item.value.WhichOneof("value")
         assert kind is not None
-        result[item.key] = getattr(item.value, kind)
+        result[item.key] = {
+            "string_value": item.value.string_value,
+            "bool_value": item.value.bool_value,
+            "int_value": item.value.int_value,
+            "double_value": item.value.double_value,
+            "array_value": item.value.array_value,
+            "kvlist_value": item.value.kvlist_value,
+            "bytes_value": item.value.bytes_value,
+        }[kind]
     return result
 
 
