@@ -11,16 +11,9 @@ from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.common.session import with_session
-from fields.base import ResponseModel
-from libs.helper import dump_response
-from libs.login import login_required
-from models.enums import AppTriggerStatus
-from models.model import App, AppMode
-from models.trigger import AppTrigger, WorkflowWebhookTrigger
-
-from .. import console_ns
-from ..app.wraps import get_app_model
-from ..wraps import (
+from controllers.console import console_ns
+from controllers.console.app.wraps import get_app_model
+from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
@@ -29,6 +22,12 @@ from ..wraps import (
     setup_required,
     with_current_tenant_id,
 )
+from fields.base import ResponseModel
+from libs.helper import dump_response
+from libs.login import login_required
+from models.enums import AppTriggerStatus
+from models.model import App, AppMode
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
 

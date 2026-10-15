@@ -19,6 +19,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
     DeviceCodeRequest,
     DeviceCodeResponse,
+    DeviceFlowErrorResponse,
     DeviceLookupQuery,
     DeviceLookupResponse,
     DeviceMutateRequest,
@@ -94,6 +95,9 @@ def _error_response(error: OAuthDeviceError) -> tuple[dict[str, str], int]:
 class OAuthDeviceCodeApi(Resource):
     @openapi_ns.expect(openapi_ns.models[DeviceCodeRequest.__name__])
     @openapi_ns.response(HTTPStatus.OK, "Device code created", openapi_ns.models[DeviceCodeResponse.__name__])
+    @openapi_ns.response(
+        HTTPStatus.BAD_REQUEST, "Unsupported client", openapi_ns.models[DeviceFlowErrorResponse.__name__]
+    )
     @rate_limit(LIMIT_DEVICE_CODE_PER_IP)
     def post(self):
         payload = _validate_json(DeviceCodeRequest)
@@ -115,6 +119,11 @@ class OAuthDeviceTokenApi(Resource):
 
     @openapi_ns.expect(openapi_ns.models[DevicePollRequest.__name__])
     @openapi_ns.response(HTTPStatus.OK, "Device token", openapi_ns.models[DeviceTokenResponse.__name__])
+    @openapi_ns.response(
+        HTTPStatus.BAD_REQUEST,
+        "Authorization pending, polling too fast, expired, or denied",
+        openapi_ns.models[DeviceFlowErrorResponse.__name__],
+    )
     def post(self):
         payload = _validate_json(DevicePollRequest)
         try:
@@ -144,6 +153,17 @@ class OAuthDeviceLookupApi(Resource):
 class DeviceApproveApi(Resource):
     @openapi_ns.expect(openapi_ns.models[DeviceMutateRequest.__name__])
     @openapi_ns.response(HTTPStatus.OK, "Approved", openapi_ns.models[DeviceMutateResponse.__name__])
+    @openapi_ns.response(
+        HTTPStatus.NOT_FOUND, "Unknown or expired user code", openapi_ns.models[DeviceFlowErrorResponse.__name__]
+    )
+    @openapi_ns.response(
+        HTTPStatus.CONFLICT,
+        "Already resolved, in progress, or state lost",
+        openapi_ns.models[DeviceFlowErrorResponse.__name__],
+    )
+    @openapi_ns.response(
+        HTTPStatus.SERVICE_UNAVAILABLE, "Approval outcome unknown", openapi_ns.models[DeviceFlowErrorResponse.__name__]
+    )
     @console_account_admission(require_oauth_bearer_enabled=True)
     @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
     def post(self, request_context: RequestContext):
@@ -159,6 +179,17 @@ class DeviceApproveApi(Resource):
 class DeviceDenyApi(Resource):
     @openapi_ns.expect(openapi_ns.models[DeviceMutateRequest.__name__])
     @openapi_ns.response(HTTPStatus.OK, "Denied", openapi_ns.models[DeviceMutateResponse.__name__])
+    @openapi_ns.response(
+        HTTPStatus.NOT_FOUND, "Unknown or expired user code", openapi_ns.models[DeviceFlowErrorResponse.__name__]
+    )
+    @openapi_ns.response(
+        HTTPStatus.CONFLICT,
+        "Already resolved, in progress, or state lost",
+        openapi_ns.models[DeviceFlowErrorResponse.__name__],
+    )
+    @openapi_ns.response(
+        HTTPStatus.SERVICE_UNAVAILABLE, "Approval outcome unknown", openapi_ns.models[DeviceFlowErrorResponse.__name__]
+    )
     @console_account_admission(require_oauth_bearer_enabled=True)
     @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
     def post(self, _request_context: RequestContext):

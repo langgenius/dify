@@ -39,7 +39,6 @@ import {
   findBrokenMarkdownReferenceRangeAtCaret,
   findFileByPath,
   findMarkdownReferenceRangeAtCaret,
-  getAsyncSkillErrorPayload,
   getContentEditableCaretAnchor,
   getErrorCode,
   getErrorDetailNumber,
@@ -370,26 +369,19 @@ export function FileEditor({
         onDraftDetailChange(nextCachedDetail)
         return true
       } catch (error) {
-        const errorPayload = await getAsyncSkillErrorPayload(error)
-        if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+        if (getErrorCode(error) === 'skill_name_conflict') {
           toast.error(
             t(($) => $['skillManagement.errors.nameConflict'], {
-              name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+              name: getErrorDetailString(error, 'name') ?? '',
             }),
           )
           setSaveStatus('error')
           return false
         }
-        if (getErrorCode(errorPayload ?? error) === 'skill_conflict') {
+        if (getErrorCode(error) === 'skill_conflict') {
           try {
-            const currentUpdatedAt = getErrorDetailNumber(
-              errorPayload ?? error,
-              'current_updated_at',
-            )
-            const currentFileContent = getErrorDetailString(
-              errorPayload ?? error,
-              'current_file_content',
-            )
+            const currentUpdatedAt = getErrorDetailNumber(error, 'current_updated_at')
+            const currentFileContent = getErrorDetailString(error, 'current_file_content')
             let latestDetail: SkillDetailResponse | undefined
             try {
               latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {

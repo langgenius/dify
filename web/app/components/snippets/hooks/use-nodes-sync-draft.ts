@@ -5,6 +5,7 @@ import type {
   SnippetDraftSyncResponse,
   SnippetWorkflow,
 } from '@/types/snippet'
+import { safe } from '@orpc/client'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -16,18 +17,6 @@ import { consoleClient } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
 import { useSnippetDraftStore } from '../draft-store'
 import { useSnippetRefreshDraft } from './use-snippet-refresh-draft'
-
-const isSyncConflictError = (
-  error: unknown,
-): error is { bodyUsed: boolean; json: () => Promise<{ code?: string }> } => {
-  return (
-    !!error &&
-    typeof error === 'object' &&
-    'bodyUsed' in error &&
-    'json' in error &&
-    typeof error.json === 'function'
-  )
-}
 
 type SyncInputFieldsDraftCallback = SyncDraftCallback & {
   onRefresh?: (inputFields: SnippetInputField[]) => void
@@ -115,28 +104,27 @@ export const useNodesSyncDraft = (snippetId: string) => {
       const { setDraftUpdatedAt, setSyncWorkflowDraftHash, syncWorkflowDraftHash } =
         workflowStore.getState()
 
-      try {
-        const response = await consoleClient.snippets.bySnippetId.workflows.draft.post({
+      const [error, response, isDefined] = await safe(
+        consoleClient.snippets.bySnippetId.workflows.draft.post({
           params: { snippet_id: snippetId },
           body: {
             ...payload,
             hash: syncWorkflowDraftHash || undefined,
           },
-        })
+        }),
+      )
+      try {
+        if (error) {
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft(onRefresh)
+          callback?.onError?.()
+          return undefined
+        }
 
         setSyncWorkflowDraftHash(response.hash)
         setDraftUpdatedAt(response.updated_at)
         callback?.onSuccess?.()
         return response
-      } catch (error: unknown) {
-        if (isSyncConflictError(error) && !error.bodyUsed) {
-          error.json().then((err) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft(onRefresh)
-          })
-        }
-        callback?.onError?.()
-        return undefined
       } finally {
         callback?.onSettled?.()
       }

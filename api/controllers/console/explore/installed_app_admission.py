@@ -11,6 +11,7 @@ from controllers.console.explore.error import (
     WebAppAccessUnavailableHTTPError,
 )
 from extensions.ext_application_services import application_services
+from libs.external_api import document_errors
 from machinery.context import RequestContext
 from services.installed_app_access_service import (
     InstalledAppAccessDeniedError,
@@ -54,4 +55,6 @@ def get_installed_app[T, **P, R](
             raise WebAppAccessUnavailableHTTPError() from error
         return view(self, request_context, installed_app, *args, **kwargs)
 
-    return decorated
+    return document_errors(
+        decorated, InstalledAppNotFoundHTTPError, AppAccessDeniedError, WebAppAccessUnavailableHTTPError
+    )

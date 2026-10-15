@@ -185,11 +185,8 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
             expand={expand}
             appName={appTitle}
             modeLabel={appDetail ? getAppModeLabel(appDetail.mode, t) : undefined}
-            iconType={appDetail?.icon_type}
-            icon={appDetail?.icon ?? undefined}
-            background={appDetail?.icon_background}
-            imageUrl={appDetail?.icon_url}
             operationGroups={[]}
+            icon={appDetail}
           />
         )}
       </div>

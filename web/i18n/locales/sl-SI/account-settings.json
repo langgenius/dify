@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Pošlji kodo za preverjanje",
   "account.setPassword": "Nastavi geslo",
   "account.showAppLength": "Prikaz {{length}} aplikacij",
+  "account.timezoneNoResults": "Ni ustreznih časovnih pasov",
+  "account.timezoneSearchPlaceholder": "Poiščite mesta ali časovne pasove…",
   "account.verificationLabel": "Koda za preverjanje",
   "account.verificationPlaceholder": "Prilepite 6-mestno kodo",
   "account.workspaceName": "Ime delovnega prostora",

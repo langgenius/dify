@@ -272,6 +272,13 @@ def test_package_round_trip_restores_bound_agents_and_resources(
     app = _source(sqlite_session, storage, mode=mode, published=published)
     with AppPackageService().export_app(app_model=app, workflow_id="workflow-1" if published else None) as exported:
         content = exported.archive.read()
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        manifest = yaml.safe_load(archive.read("manifest.yaml"))
+        assert all(
+            "audit" not in resource
+            for group in manifest["agent_resources"].values()
+            for resource in [*group["skills"], *group["files"]]
+        )
     prepared = AppPackageService().read_package(io.BytesIO(content))
     assert prepared is not None
     with prepared:

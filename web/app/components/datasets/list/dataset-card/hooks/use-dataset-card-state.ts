@@ -110,12 +110,9 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         showConfirmDelete: true,
       }))
     } catch (e: unknown) {
-      if (e instanceof Response) {
-        const res = await e.json()
-        toast.error(res?.message || t(($) => $.unknownError, { ns: 'dataset' }))
-      } else {
-        toast.error((e as Error)?.message || t(($) => $.unknownError, { ns: 'dataset' }))
-      }
+      toast.error(
+        (e instanceof Error ? e.message : '') || t(($) => $.unknownError, { ns: 'dataset' }),
+      )
     }
   }, [dataset.id, queryClient, t])
 

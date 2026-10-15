@@ -17,9 +17,10 @@ Machine-readable catalog of every op on this surface
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /_health
 #### Responses
@@ -232,10 +233,10 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad request — invalid filename or blocked extension |  |
-| 401 | Unauthorized — invalid or expired bearer token |  |
-| 413 | File too large |  |
-| 415 | Unsupported file type |  |
+| 400 | Bad request — invalid filename or blocked extension | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Unauthorized — invalid or expired bearer token | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | File too large | **application/json**: [ErrorBody](#errorbody)<br> |
+| 415 | Unsupported file type | **application/json**: [ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -342,6 +343,10 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Approved | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
+| 404 | Unknown or expired user code | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 409 | Already resolved, in progress, or state lost | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 503 | Approval outcome unknown | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/code
 #### Request Body
@@ -355,6 +360,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device code created | **application/json**: [DeviceCodeResponse](#devicecoderesponse)<br> |
+| 400 | Unsupported client | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/deny
 #### Request Body
@@ -368,6 +375,10 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Denied | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
+| 404 | Unknown or expired user code | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 409 | Already resolved, in progress, or state lost | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 503 | Approval outcome unknown | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /oauth/device/lookup
 #### Parameters
@@ -381,6 +392,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device lookup result | **application/json**: [DeviceLookupResponse](#devicelookupresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/token
 #### Request Body
@@ -394,6 +406,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device token | **application/json**: [DeviceTokenResponse](#devicetokenresponse)<br> |
+| 400 | Authorization pending, polling too fast, expired, or denied | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /permitted-external-apps
 #### Parameters
@@ -478,7 +492,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Import completed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
-| 400 | Import failed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
+| 400 | Import failed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -495,7 +509,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}/members
@@ -806,6 +820,15 @@ Enum representing the deployment edition of the platform.
 | interval | integer |  | Yes |
 | user_code | string |  | Yes |
 | verification_uri | string |  | Yes |
+
+#### DeviceFlowErrorResponse
+
+RFC 8628-style device-flow error. These routes keep the OAuth ``{"error": code}`` shape
+instead of ``ErrorBody`` because device clients parse it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string, <br>**Available values:** "access_denied", "already_resolved", "approval_outcome_unknown", "approve_in_progress", "authorization_pending", "expired_or_unknown", "expired_token", "slow_down", "state_lost", "unsupported_client" | *Enum:* `"access_denied"`, `"already_resolved"`, `"approval_outcome_unknown"`, `"approve_in_progress"`, `"authorization_pending"`, `"expired_or_unknown"`, `"expired_token"`, `"slow_down"`, `"state_lost"`, `"unsupported_client"` | Yes |
 
 #### DeviceLookupQuery
 

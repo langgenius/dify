@@ -1,5 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import {
@@ -276,7 +277,12 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
             <label
               key={key}
               htmlFor={`${formId}-${getLabelTarget(child)}`}
-              className="my-2 system-md-semibold text-text-secondary"
+              className={cn(
+                'my-2 system-md-semibold text-text-secondary',
+                target &&
+                  str(target.properties.type) === SUPPORTED_TYPES.CHECKBOX &&
+                  'cursor-pointer',
+              )}
             >
               {getTextContent(child)}
             </label>

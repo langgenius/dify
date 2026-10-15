@@ -109,7 +109,7 @@ function SelectTrigger({ className, children, size, ...props }: SelectTriggerPro
       {...props}
     >
       <span className="min-w-0 grow truncate">{children}</span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-data-readonly/select-trigger:hidden group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary group-data-readonly/select-trigger:hidden group-[:hover:not([data-disabled])]/select-trigger:text-text-secondary data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>
@@ -206,7 +206,10 @@ function SelectList({ className, ...props }: SelectListProps) {
   return (
     <BaseSelect.List
       className={(state) =>
-        cn('max-h-80 overflow-auto p-1 outline-hidden', resolveClassName(className, state))
+        cn(
+          'max-h-80 scroll-py-1 overflow-auto p-1 outline-hidden',
+          resolveClassName(className, state),
+        )
       }
       {...props}
     />
@@ -246,7 +249,7 @@ function SelectItem<Value = unknown>({ className, ...props }: SelectItemProps<Va
     <BaseSelect.Item
       className={(state) =>
         cn(
-          'flex h-8 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden',
+          'flex h-8 items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden select-none',
           'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-state-base-hover',
           resolveClassName(className, state),
         )

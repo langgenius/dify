@@ -121,7 +121,7 @@ describe('useChat – handleStop', () => {
     expect(mockWfAbort).toHaveBeenCalledTimes(1)
   })
 
-  it('should abort suggestedQuestionsAbortController when set', async () => {
+  it('should cancel the suggested questions request when stopped', async () => {
     const mockSqAbort = vi.fn()
     let capturedCb: any
 
@@ -129,10 +129,12 @@ describe('useChat – handleStop', () => {
       capturedCb = callbacks
     })
 
-    const mockGetSuggested = vi.fn().mockImplementation((_id: string, getAbortCtrl: any) => {
-      getAbortCtrl({ abort: mockSqAbort } as any)
-      return Promise.resolve({ data: ['s'] })
-    })
+    const mockGetSuggested = vi
+      .fn()
+      .mockImplementation((_id: string, onCancel: (cancel: () => void) => void) => {
+        onCancel(mockSqAbort)
+        return Promise.resolve({ data: ['s'] })
+      })
 
     const { result } = renderHook(() =>
       useChat({ suggested_questions_after_answer: { enabled: true } }),

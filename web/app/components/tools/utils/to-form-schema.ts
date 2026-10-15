@@ -1,7 +1,7 @@
 import type { TriggerEventParameter } from '../../plugins/types'
 import type { ToolCredential, ToolParameter } from '../types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 
@@ -62,7 +62,7 @@ export type ToolFormSchema = {
   multiple?: boolean
   url?: string
   scope?: string
-  input_schema?: SchemaRoot
+  input_schema?: Field | null
 }
 
 export const toType = (type: string) => {

@@ -545,7 +545,8 @@ describe('consoleQuery agent query defaults', () => {
     })
     const retry = getRetryFn(queryOptions)
 
-    expect(retry(0, new Response(null, { status: 404 }))).toBe(false)
+    const { createHttpError } = await import('@/service/http-error')
+    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
   })
 
   it('should retry other agent detail errors fewer than three times', async () => {
@@ -1060,6 +1061,45 @@ describe('consoleQuery agent mutation defaults', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  it.each(['creation', 'deletion'])(
+    'invalidates agent keys and access status after key %s',
+    async (operation) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      const context = createMutationContext(queryClient)
+      if (operation === 'creation') {
+        await consoleQuery.agent.byAgentId.apiKeys.post
+          .mutationOptions()
+          .onSuccess?.(
+            { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
+            { params: { agent_id: 'agent-1' } },
+            undefined,
+            context,
+          )
+      } else {
+        await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
+          .mutationOptions()
+          .onSuccess?.(
+            undefined,
+            { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
+            undefined,
+            context,
+          )
+      }
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+    },
+  )
 
   it('should invalidate roster and invite option lists after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()

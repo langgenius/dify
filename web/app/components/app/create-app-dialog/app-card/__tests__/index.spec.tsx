@@ -38,6 +38,8 @@ describe('AppCard', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => vi.restoreAllMocks())
+
   it('exposes template creation only when creation is allowed', () => {
     const { rerender } = render(
       <AppCard app={app} canCreate onCreate={vi.fn()} onPreview={vi.fn()} />,
@@ -61,7 +63,9 @@ describe('AppCard', () => {
   })
 
   it('uses the remote image URL for image icons', () => {
-    render(
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
+    const { container } = render(
       <AppCard
         app={{
           ...app,
@@ -77,10 +81,8 @@ describe('AppCard', () => {
         onPreview={vi.fn()}
       />,
     )
-    expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute(
-      'src',
-      'https://example.com/remote.png',
-    )
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/remote.png')
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('tracks and opens template preview in Cloud edition', async () => {
