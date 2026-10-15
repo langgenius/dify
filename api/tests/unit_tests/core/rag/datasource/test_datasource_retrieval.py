@@ -1,6 +1,5 @@
 import inspect
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 from uuid import uuid4
@@ -380,29 +379,29 @@ class TestRetrievalServiceInternals:
     @patch("core.rag.datasource.retrieval_service.GraphRetrieval")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_graph_search_appends_reachable_chunks(
-        self, mock_get_dataset, mock_graph_retrieval, internal_dataset, internal_flask_app
+        self, mock_get_dataset, mock_graph_retrieval, internal_dataset, internal_flask_app, vector_engine
     ):
         mock_get_dataset.return_value = internal_dataset
         mock_graph_retrieval.retrieve.return_value = [create_mock_document("graph-content", "graph-1", 0.7)]
         all_documents: list[Document] = []
 
-        with (
-            patch.object(retrieval_service_module, "db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.datasource.retrieval_service.Session") as session_class,
-        ):
-            session_class.return_value.__enter__.return_value = MagicMock()
-            RetrievalService.graph_search(
-                flask_app=internal_flask_app,
-                dataset_id=internal_dataset.id,
-                query="query",
-                top_k=5,
-                all_documents=all_documents,
-            )
+        RetrievalService.graph_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=5,
+            all_documents=all_documents,
+        )
 
         assert [document.metadata["doc_id"] for document in all_documents] == ["graph-1"]
+        # The walk reads the metadata database through its own short-lived session.
+        used_session = mock_graph_retrieval.retrieve.call_args.kwargs["session"]
+        assert isinstance(used_session, Session)
+        assert used_session.bind is vector_engine
 
     @patch("core.rag.datasource.retrieval_service.GraphRetrieval")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    @pytest.mark.usefixtures("vector_engine")
     def test_graph_search_failure_is_swallowed(
         self, mock_get_dataset, mock_graph_retrieval, internal_dataset, internal_flask_app
     ):
@@ -410,18 +409,13 @@ class TestRetrievalServiceInternals:
         mock_graph_retrieval.retrieve.side_effect = RuntimeError("graph backend unreachable")
         all_documents: list[Document] = []
 
-        with (
-            patch.object(retrieval_service_module, "db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.datasource.retrieval_service.Session") as session_class,
-        ):
-            session_class.return_value.__enter__.return_value = MagicMock()
-            RetrievalService.graph_search(
-                flask_app=internal_flask_app,
-                dataset_id=internal_dataset.id,
-                query="query",
-                top_k=5,
-                all_documents=all_documents,
-            )
+        RetrievalService.graph_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=5,
+            all_documents=all_documents,
+        )
 
         # `_retrieve` raises when the shared `exceptions` list is non-empty, so a
         # graph leg that joined it would take hybrid and keyword retrieval down

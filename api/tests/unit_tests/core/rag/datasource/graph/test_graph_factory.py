@@ -7,30 +7,116 @@ document-level permissions from leaking through the graph.
 """
 
 from collections.abc import Callable
-from unittest.mock import MagicMock
+from typing import override
 
 import pytest
 from sqlalchemy.orm import Session
 
-from core.rag.datasource.graph.graph_base import BaseGraphStore, GraphStats, StoredChunkLink, StoredEntity
+from core.rag.datasource.graph.graph_base import (
+    BaseGraphStore,
+    GraphStats,
+    StoredChunkLink,
+    StoredEntity,
+    StoredRelation,
+)
 from core.rag.datasource.graph.graph_factory import GraphStore
 from core.rag.datasource.graph.neo4j.neo4j_graph_store import Neo4jGraphStore
 from core.rag.datasource.graph.postgres.postgres_graph_store import PostgresGraphStore
 from core.rag.graph.entities import ChunkGraph
 from models.dataset import Dataset
 
+type Call = tuple[str, tuple[object, ...], dict[str, object]]
+
 
 def _dataset() -> Dataset:
     return Dataset(id="dataset-1", tenant_id="tenant-1", name="kb", created_by="user-1")
 
 
-@pytest.fixture
-def backend() -> MagicMock:
-    return MagicMock()
+class _RecordingBackend(BaseGraphStore):
+    """A complete backend that records every call and answers with fixed rows."""
+
+    def __init__(self) -> None:
+        super().__init__(_dataset())
+        self.calls: list[Call] = []
+        self.entities = [StoredEntity(id="entity-1", name="acme", display_name="Acme", entity_type="ORGANIZATION")]
+        self.relations: list[StoredRelation] = []
+        self.links: list[StoredChunkLink] = []
+        self.graph_stats = GraphStats(entity_count=1)
+
+    @override
+    def add_chunk_graphs(self, chunk_graphs: list[ChunkGraph], *, session: Session) -> None:
+        self.calls.append(("add_chunk_graphs", (chunk_graphs,), {"session": session}))
+
+    @override
+    def delete_by_document_ids(self, document_ids: list[str], *, session: Session) -> None:
+        self.calls.append(("delete_by_document_ids", (document_ids,), {"session": session}))
+
+    @override
+    def delete_by_index_node_ids(self, index_node_ids: list[str], *, session: Session) -> None:
+        self.calls.append(("delete_by_index_node_ids", (index_node_ids,), {"session": session}))
+
+    @override
+    def delete(self, *, session: Session) -> None:
+        self.calls.append(("delete", (), {"session": session}))
+
+    @override
+    def get_entities_by_names(
+        self, names: list[str], *, session: Session, document_ids: list[str] | None = None
+    ) -> list[StoredEntity]:
+        self.calls.append(("get_entities_by_names", (names,), {"session": session, "document_ids": document_ids}))
+        return self.entities
+
+    @override
+    def search_entities(
+        self, keywords: list[str], limit: int, *, session: Session, document_ids: list[str] | None = None
+    ) -> list[StoredEntity]:
+        self.calls.append(("search_entities", (keywords, limit), {"session": session, "document_ids": document_ids}))
+        return self.entities
+
+    @override
+    def get_relations(
+        self, entity_ids: list[str], limit: int, *, session: Session, document_ids: list[str] | None = None
+    ) -> list[StoredRelation]:
+        self.calls.append(("get_relations", (entity_ids, limit), {"session": session, "document_ids": document_ids}))
+        return self.relations
+
+    @override
+    def get_entities_by_ids(self, entity_ids: list[str], *, session: Session) -> list[StoredEntity]:
+        self.calls.append(("get_entities_by_ids", (entity_ids,), {"session": session}))
+        return self.entities
+
+    @override
+    def list_entities(self, limit: int, *, session: Session) -> list[StoredEntity]:
+        self.calls.append(("list_entities", (limit,), {"session": session}))
+        return self.entities
+
+    @override
+    def get_chunk_links(
+        self,
+        entity_ids: list[str],
+        relation_ids: list[str],
+        *,
+        session: Session,
+        document_ids: list[str] | None = None,
+    ) -> list[StoredChunkLink]:
+        self.calls.append(
+            ("get_chunk_links", (entity_ids, relation_ids), {"session": session, "document_ids": document_ids})
+        )
+        return self.links
+
+    @override
+    def stats(self, *, session: Session) -> GraphStats:
+        self.calls.append(("stats", (), {"session": session}))
+        return self.graph_stats
 
 
 @pytest.fixture
-def store(backend: MagicMock) -> GraphStore:
+def backend() -> _RecordingBackend:
+    return _RecordingBackend()
+
+
+@pytest.fixture
+def store(backend: _RecordingBackend) -> GraphStore:
     """A facade over a recording backend, bypassing backend selection."""
     store = GraphStore.__new__(GraphStore)
     store._dataset = _dataset()
@@ -61,7 +147,9 @@ class TestBackendSelection:
 
 
 class TestDelegation:
-    def test_writes_are_passed_through(self, store: GraphStore, backend: MagicMock, sqlite_session: Session) -> None:
+    def test_writes_are_passed_through(
+        self, store: GraphStore, backend: _RecordingBackend, sqlite_session: Session
+    ) -> None:
         chunk_graphs: list[ChunkGraph] = []
 
         store.add_chunk_graphs(chunk_graphs, session=sqlite_session)
@@ -69,25 +157,30 @@ class TestDelegation:
         store.delete_by_index_node_ids(["node-1"], session=sqlite_session)
         store.delete(session=sqlite_session)
 
-        backend.add_chunk_graphs.assert_called_once_with(chunk_graphs, session=sqlite_session)
-        backend.delete_by_document_ids.assert_called_once_with(["doc-1"], session=sqlite_session)
-        backend.delete_by_index_node_ids.assert_called_once_with(["node-1"], session=sqlite_session)
-        backend.delete.assert_called_once_with(session=sqlite_session)
+        assert backend.calls == [
+            ("add_chunk_graphs", (chunk_graphs,), {"session": sqlite_session}),
+            ("delete_by_document_ids", (["doc-1"],), {"session": sqlite_session}),
+            ("delete_by_index_node_ids", (["node-1"],), {"session": sqlite_session}),
+            ("delete", (), {"session": sqlite_session}),
+        ]
 
     def test_reads_return_whatever_the_backend_returned(
-        self, store: GraphStore, backend: MagicMock, sqlite_session: Session
+        self, store: GraphStore, backend: _RecordingBackend, sqlite_session: Session
     ) -> None:
         entities = store.get_entities_by_ids(["entity-1"], session=sqlite_session)
 
-        assert entities is backend.get_entities_by_ids.return_value
-        assert store.list_entities(10, session=sqlite_session) is backend.list_entities.return_value
-        assert store.stats(session=sqlite_session) is backend.stats.return_value
+        assert entities is backend.entities
+        assert store.list_entities(10, session=sqlite_session) is backend.entities
+        assert store.stats(session=sqlite_session) is backend.graph_stats
 
-        backend.get_entities_by_ids.assert_called_once_with(["entity-1"], session=sqlite_session)
-        backend.list_entities.assert_called_once_with(10, session=sqlite_session)
+        assert backend.calls == [
+            ("get_entities_by_ids", (["entity-1"],), {"session": sqlite_session}),
+            ("list_entities", (10,), {"session": sqlite_session}),
+            ("stats", (), {"session": sqlite_session}),
+        ]
 
     def test_the_document_filter_reaches_every_read_that_takes_one(
-        self, store: GraphStore, backend: MagicMock, sqlite_session: Session
+        self, store: GraphStore, backend: _RecordingBackend, sqlite_session: Session
     ) -> None:
         document_ids = ["doc-1"]
 
@@ -99,30 +192,28 @@ class TestDelegation:
         # Dropping the filter anywhere here would let an excluded document seed
         # a query, bridge a multi-hop path, or be cited. The limits ride along
         # with it.
-        backend.get_entities_by_names.assert_called_once_with(
-            ["acme"], session=sqlite_session, document_ids=document_ids
-        )
-        backend.search_entities.assert_called_once_with(["acme"], 5, session=sqlite_session, document_ids=document_ids)
-        backend.get_relations.assert_called_once_with(
-            ["entity-1"], 7, session=sqlite_session, document_ids=document_ids
-        )
-        backend.get_chunk_links.assert_called_once_with(
-            ["entity-1"], ["relation-1"], session=sqlite_session, document_ids=document_ids
-        )
+        filtered = {"session": sqlite_session, "document_ids": document_ids}
+        assert backend.calls == [
+            ("get_entities_by_names", (["acme"],), filtered),
+            ("search_entities", (["acme"], 5), filtered),
+            ("get_relations", (["entity-1"], 7), filtered),
+            ("get_chunk_links", (["entity-1"], ["relation-1"]), filtered),
+        ]
 
     def test_reads_default_to_no_document_filter(
-        self, store: GraphStore, backend: MagicMock, sqlite_session: Session
+        self, store: GraphStore, backend: _RecordingBackend, sqlite_session: Session
     ) -> None:
         store.search_entities(["acme"], 5, session=sqlite_session)
 
-        backend.search_entities.assert_called_once_with(["acme"], 5, session=sqlite_session, document_ids=None)
+        assert backend.calls == [("search_entities", (["acme"], 5), {"session": sqlite_session, "document_ids": None})]
 
 
 class TestStorageContract:
     """Every backend method is abstract; none of them has a usable default."""
 
-    def test_no_method_has_a_silent_default_implementation(self, sqlite_session: Session) -> None:
-        backend = MagicMock()
+    def test_no_method_has_a_silent_default_implementation(
+        self, backend: _RecordingBackend, sqlite_session: Session
+    ) -> None:
         # A default that returned nothing instead of raising would surface as an
         # empty graph rather than as a backend somebody forgot to finish.
         calls: list[Callable[[], object]] = [
