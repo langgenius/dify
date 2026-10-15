@@ -4,7 +4,6 @@ import type { ParameterExtractorNodeType } from './types'
 import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { AppModeEnum } from '@/types/app'
 import { ReasoningModeType } from './types'
 
 const i18nPrefix = ''
@@ -21,7 +20,7 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
     model: {
       provider: '',
       name: '',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat',
       completion_params: {
         temperature: 0.7,
       },

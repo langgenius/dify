@@ -45,7 +45,6 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { CUSTOM_NODE } from '../constants'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
@@ -190,8 +189,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
       select: (appDetail) => appDetail.mode,
     }),
   )
-  const shouldCheckStartNode =
-    appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
+  const shouldCheckStartNode = appMode === 'workflow' || appMode === 'advanced-chat'
   const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
       select: (response) => response.data,
@@ -664,8 +662,7 @@ export const useChecklistBeforePublish = () => {
       select: (appDetail) => appDetail.mode,
     }),
   )
-  const shouldCheckStartNode =
-    appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
+  const shouldCheckStartNode = appMode === 'workflow' || appMode === 'advanced-chat'
 
   const getCheckData = useCallback(
     (

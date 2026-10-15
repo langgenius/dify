@@ -1,7 +1,6 @@
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 
 export const useIsChatMode = () => {
   const { appId } = useParams<{ appId?: string }>()
@@ -12,5 +11,5 @@ export const useIsChatMode = () => {
     }),
   )
 
-  return appMode === AppModeEnum.ADVANCED_CHAT
+  return appMode === 'advanced-chat'
 }

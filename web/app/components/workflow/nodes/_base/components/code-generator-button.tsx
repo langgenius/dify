@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { CodeLanguage } from '../../code/types'
 import type { GenRes } from '@/service/debug'
@@ -8,7 +9,6 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/config/code-generator/get-code-generator-res'
-import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../../../hooks-store'
 
 type Props = Readonly<{
@@ -48,7 +48,7 @@ const CodeGenerateBtn: FC<Props> = ({
       </IconButton>
       {showAutomatic && (
         <GetCodeGeneratorResModal
-          mode={AppModeEnum.CHAT}
+          modelMode="chat"
           isShow={showAutomatic}
           codeLanguages={codeLanguages}
           onClose={() => setShowAutomatic(false)}

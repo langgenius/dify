@@ -14,7 +14,6 @@ import { consoleQuery } from '@/service/console'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
@@ -133,7 +132,7 @@ export const useWorkflowInit = () => {
     } catch (error: unknown) {
       if (error instanceof ORPCError) {
         if (error.code === 'draft_workflow_not_exist') {
-          const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+          const isAdvancedChat = appDetail.mode === 'advanced-chat'
           const initialGraph = {
             nodes: isAdvancedChat ? nodesTemplate : [],
             edges: isAdvancedChat ? edgesTemplate : [],

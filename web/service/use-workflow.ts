@@ -24,7 +24,6 @@ import type {
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { del, get, patch, post, put } from './base'
 import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
@@ -279,8 +278,7 @@ export const useUpdateWorkflow = () => {
       if (params.appId) syncAppWorkflowVersionCaches(queryClient, params.appId, updatedWorkflow)
 
       const environmentDeploymentsQueryKey =
-        params.appId &&
-        (params.appMode === AppModeEnum.WORKFLOW || params.appMode === AppModeEnum.ADVANCED_CHAT)
+        params.appId && (params.appMode === 'workflow' || params.appMode === 'advanced-chat')
           ? syncWorkflowDeploymentCaches(queryClient, params.appId, updatedWorkflow)
           : undefined
       const invalidations = [

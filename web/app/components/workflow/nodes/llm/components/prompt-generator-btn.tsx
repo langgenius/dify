@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type { GenRes } from '@/service/debug'
@@ -8,7 +9,6 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
-import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../../../hooks-store'
 
 type Props = Readonly<{
@@ -48,7 +48,7 @@ const PromptGeneratorBtn: FC<Props> = ({
       </IconButton>
       {showAutomatic && (
         <GetAutomaticResModal
-          mode={AppModeEnum.CHAT}
+          modelMode="chat"
           isShow={showAutomatic}
           onClose={() => setShowAutomatic(false)}
           onFinished={handleAutomaticRes}

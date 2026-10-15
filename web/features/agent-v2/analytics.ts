@@ -2,7 +2,6 @@ import { skipToken, useQuery } from '@tanstack/react-query'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 
 export type AgentScope = (typeof AgentScope)[keyof typeof AgentScope]
 export const AgentScope = {
@@ -20,7 +19,7 @@ export const useInlineAgentScope = () => {
     }),
   )
 
-  return appMode === AppModeEnum.ADVANCED_CHAT ? AgentScope.InChatflow : AgentScope.InWorkflow
+  return appMode === 'advanced-chat' ? AgentScope.InChatflow : AgentScope.InWorkflow
 }
 
 export const trackAgentBuildModeRun = (agentScope: AgentScope) => {

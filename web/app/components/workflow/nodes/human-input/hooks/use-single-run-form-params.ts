@@ -10,7 +10,6 @@ import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/cha
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { getHumanInputFormDependencySelectors, isOutput } from '../utils'
 
@@ -77,7 +76,7 @@ const useSingleRunFormParams = ({
       select: (appDetail) => appDetail.mode,
     }),
   )
-  const isWorkflowMode = appMode === AppModeEnum.WORKFLOW
+  const isWorkflowMode = appMode === 'workflow'
   const fetchURL = useMemo(() => {
     if (!appId) return ''
     if (!isWorkflowMode) {

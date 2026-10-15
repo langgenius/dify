@@ -9,7 +9,6 @@ import { getIncomers, getOutgoers } from 'reactflow'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { SUPPORT_OUTPUT_VARS_NODE } from '../constants'
 import { useHooksStore } from '../hooks-store'
 import {
@@ -31,7 +30,7 @@ export const useIsChatMode = () => {
   const { data: isChatMode } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
-      select: (app) => app.mode === AppModeEnum.ADVANCED_CHAT,
+      select: (app) => app.mode === 'advanced-chat',
     }),
   )
 

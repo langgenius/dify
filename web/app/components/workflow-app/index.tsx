@@ -19,7 +19,6 @@ import { useParams, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -53,7 +52,7 @@ const WorkflowAppWithAdditionalContext = () => {
       }),
     [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const isWorkflowMode = appDetail.mode === AppModeEnum.WORKFLOW
+  const isWorkflowMode = appDetail.mode === 'workflow'
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false,

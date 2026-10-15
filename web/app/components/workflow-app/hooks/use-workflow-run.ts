@@ -22,7 +22,6 @@ import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
 import { useConfigsMap } from './use-configs-map'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
@@ -235,7 +234,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       const { clientWidth, clientHeight } = workflowContainer!
 
-      const isInWorkflowDebug = appDetail.mode === AppModeEnum.WORKFLOW
+      const isInWorkflowDebug = appDetail.mode === 'workflow'
 
       const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
       const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)

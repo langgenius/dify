@@ -14,7 +14,6 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { AppModeEnum } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
@@ -329,7 +328,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
         (isCodeBlock ? (
           <GetCodeGeneratorResModal
             isShow
-            mode={AppModeEnum.CHAT}
+            modelMode="chat"
             onClose={handleHidePromptGenerator}
             flowId={configsMap?.flowId || ''}
             nodeId={nodeId}
@@ -339,7 +338,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
           />
         ) : (
           <GetAutomaticResModal
-            mode={AppModeEnum.CHAT}
+            modelMode="chat"
             isShow
             onClose={handleHidePromptGenerator}
             onFinished={handleUpdatePrompt}

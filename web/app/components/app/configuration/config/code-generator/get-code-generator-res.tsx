@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -42,7 +42,7 @@ type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string
-  mode: AppModeEnum
+  modelMode: ModelModeType
   isShow: boolean
   codeLanguages: CodeLanguage
   onClose: () => void
@@ -53,7 +53,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   flowId,
   nodeId,
   currentCode,
-  mode,
+  modelMode,
   isShow,
   codeLanguages,
   onClose,
@@ -80,10 +80,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     return {
       name: defaultModel?.model ?? '',
       provider: defaultModel?.provider.provider ?? '',
-      mode: mode as unknown as ModelModeType,
+      mode: modelMode,
       completion_params: defaultCompletionParams,
     }
-  }, [defaultModel, mode, selectedModel, storedModel])
+  }, [defaultModel, modelMode, selectedModel, storedModel])
   const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
     useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
 

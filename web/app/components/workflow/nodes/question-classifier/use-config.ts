@@ -9,7 +9,6 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import useConfigVision from '../../hooks/use-config-vision'
 import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
@@ -49,7 +48,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === AppModeEnum.CHAT
+  const isChatModel = modelMode === 'chat'
 
   const handleVisionChange = useCallback(
     (newPayload: QuestionClassifierNodeType['vision']) => {

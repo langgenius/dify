@@ -7,7 +7,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import useConfigVision from '../../hooks/use-config-vision'
 import { useIsChatMode } from '../../hooks/use-workflow'
@@ -71,7 +70,7 @@ const useSingleRunFormParams = ({
   // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === AppModeEnum.CHAT
+  const isChatModel = modelMode === 'chat'
   const { isVisionModel } = useConfigVision(model, {
     payload: inputs.vision,
     onChange: noop,

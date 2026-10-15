@@ -64,7 +64,6 @@ import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-sche
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
-import { AppModeEnum } from '@/types/app'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { Type } from '../../../llm/types'
 
@@ -1232,7 +1231,7 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
     }
     case BlockEnum.LLM: {
       const payload = data as LLMNodeType
-      const isChatModel = payload.model?.mode === AppModeEnum.CHAT
+      const isChatModel = payload.model?.mode === 'chat'
       let prompts: string[] = []
       if (isChatModel) {
         prompts = (payload.prompt_template as PromptItem[])?.flatMap(getPromptItemTexts) || []
@@ -1571,7 +1570,7 @@ export const updateNodeVars = (
       }
       case BlockEnum.LLM: {
         const payload = data as LLMNodeType
-        const isChatModel = payload.model?.mode === AppModeEnum.CHAT
+        const isChatModel = payload.model?.mode === 'chat'
         if (isChatModel) {
           payload.prompt_template = (payload.prompt_template as PromptItem[]).map((prompt) =>
             replaceOldVarInPromptItem(prompt, oldVarSelector, newVarSelector),

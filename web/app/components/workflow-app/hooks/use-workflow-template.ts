@@ -9,7 +9,6 @@ import startDefault from '@/app/components/workflow/nodes/start/default'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { useIsChatMode } from './use-is-chat-mode'
 
 export const useWorkflowTemplate = () => {
@@ -89,7 +88,7 @@ export const useWorkflowTemplate = () => {
       edges: [startToLlmEdge, llmToAnswerEdge],
     }
   }
-  if (appDetail.mode === AppModeEnum.WORKFLOW) {
+  if (appDetail.mode === 'workflow') {
     const { newNode: startPlaceholderNode } = generateNewNode({
       data: {
         ...startPlaceholderDefault.defaultValue,
