@@ -151,7 +151,11 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       pinned: false,
       limit: 100,
     })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+  const {
+    data: appChatListData,
+    error: appChatListError,
+    isLoading: appChatListDataLoading,
+  } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
@@ -159,6 +163,20 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
+  // When the backend reports the conversation no longer exists (404), reset the
+  // active conversation for the current user so the chatbot falls back to a new
+  // conversation instead of retrying forever (issue #39484). Environment
+  // addresses carry their own 404 protocol and are not handled here.
+  useEffect(() => {
+    if (resolveWebAppAddress()?.kind === 'environment') return
+    if (!(appChatListError instanceof Response) || appChatListError.status !== 404) return
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing conversation resets the active conversation.
+    setNewConversationId('')
+    handleConversationIdInfoChange('')
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A missing conversation must clear the rendered chat.
+    setClearChatList(true)
+  }, [appChatListError, handleConversationIdInfoChange])
   const appPrevChatList = useMemo(
     () =>
       currentConversationId && appChatListData?.data.length
