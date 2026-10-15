@@ -448,6 +448,18 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * DatasetNotInitializedError
+ *
+ * The dataset is still being initialized or indexing. Please wait a moment.
+ */
+export const zDatasetNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_not_initialized'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * MetadataArgs
  */
 export const zMetadataArgs = z.object({
