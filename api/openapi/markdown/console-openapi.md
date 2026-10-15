@@ -6756,7 +6756,8 @@ Inspect the knowledge graph extracted from a dataset's documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Graph retrieved successfully | **application/json**: [DatasetGraphResponse](#datasetgraphresponse)<br> |
-| 404 | Dataset not found |  |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/graph/retry
 Retry knowledge graph extraction for the chunks that failed
@@ -6772,7 +6773,8 @@ Retry knowledge graph extraction for the chunks that failed
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retry queued | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Dataset not found |  |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/graph/stats
 Get knowledge graph statistics for a dataset
@@ -6788,7 +6790,8 @@ Get knowledge graph statistics for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Graph statistics retrieved successfully | **application/json**: [DatasetGraphStatsResponse](#datasetgraphstatsresponse)<br> |
-| 404 | Dataset not found |  |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/hit-testing
 Test dataset knowledge retrieval
