@@ -15,6 +15,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.unit_tests.config_override import apply_config_overrides
+
 
 @pytest.fixture
 def trace_queue_manager_and_task():
@@ -158,3 +160,26 @@ class TestTraceQueueManagerTelemetryGuard:
             assert called_task is trace_task
             assert trace_queue.empty()
             assert called_task.app_id == "expected-app-id"
+
+
+@pytest.mark.parametrize("enabled_at_start", [False, True])
+def test_application_pipeline_snapshots_switch_without_constructing_sdk(
+    trace_queue_manager_and_task, monkeypatch: pytest.MonkeyPatch, enabled_at_start: bool
+):
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
+    trace_queue = queue.Queue()
+    with (
+        patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
+        patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance") as legacy,
+        patch("services.tracing.runtime_bridge.queue_enabled_at_start", return_value=enabled_at_start) as policy,
+        patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
+    ):
+        manager = TraceQueueManager(app_id="app-id")
+        policy.return_value = not enabled_at_start
+        task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+        manager.add_trace_task(task)
+    legacy.assert_not_called()
+    policy.assert_called_once_with("app-id")
+    assert manager.trace_instance is None
+    assert trace_queue.qsize() == int(enabled_at_start)

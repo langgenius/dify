@@ -99,6 +99,7 @@ class FakeRunScheduler:
         stream_text_delta_flush_interval_seconds: float,
         stream_text_delta_max_chars: int,
         agent_observability: object | None = None,
+        application_observability: object | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
@@ -110,6 +111,7 @@ class FakeRunScheduler:
         self.plugin_daemon_http_client = services.plugin_daemon_http_client
         self.dify_api_http_client = services.dify_api_http_client
         self.agent_observability = agent_observability
+        self.application_observability = application_observability
         self.shutdown_called = False
         self.created.append(self)
 

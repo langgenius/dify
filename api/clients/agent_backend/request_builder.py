@@ -531,7 +531,11 @@ def redact_for_agent_backend_log(value: object) -> object:
         is_multimodal_file = value.get("type") == "image" and "filename" in value and "mime_type" in value
         for key, item in value.items():
             key_text = str(key).lower()
-            if any(part in key_text for part in _SENSITIVE_KEY_PARTS) or (is_multimodal_file and key_text == "url"):
+            if (
+                any(part in key_text for part in _SENSITIVE_KEY_PARTS)
+                or (is_multimodal_file and key_text == "url")
+                or (key_text == "tracing" and item is not None)
+            ):
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = redact_for_agent_backend_log(item)

@@ -51,6 +51,7 @@ from graphon.graph_events import (
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from repositories.entities.workflow_execution import WorkflowExecution
+from services.tracing.runtime_bridge import freeze_workflow_run
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
 )
@@ -167,6 +168,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_execution_repository.save(workflow_execution)
         self._workflow_execution = workflow_execution
+        freeze_workflow_run(
+            self._application_generate_entity,
+            workflow_id=self._workflow_info.workflow_id,
+            workflow_run_id=execution_id,
+            conversation_id=self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value),
+        )
         if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
             node_executions = self._workflow_node_execution_repository.get_by_workflow_execution(execution_id)
             self._node_execution_cache = {execution.id: execution for execution in node_executions}
