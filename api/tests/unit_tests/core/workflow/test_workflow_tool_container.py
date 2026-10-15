@@ -81,6 +81,8 @@ from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.runtime.container_state import create_container_run_state
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.variables.segments import ArrayFileSegment
+from graphon.variables.types import SegmentType
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
 
@@ -206,11 +208,20 @@ def test_workflow_tool_node_requests_child_container_and_resumes_successfully(mo
             outputs={
                 "text": build_container_value("done"),
                 "answer": build_container_value(42),
+                "files": WorkflowToolContainerHandler._build_tool_outputs({})["files"],
             },
         ),
     )
+    assert result.node_run_result.outputs["files"].value_type == SegmentType.ARRAY_FILE
+    node.runtime_state.enqueue_ready_task(ResumeTask(invocation_id="invocation", result=result))
+    restored_state = RuntimeState.from_snapshot(node.runtime_state.dumps())
+    resume_task = restored_state.ready_queue.get(timeout=0.01)
+    assert isinstance(resume_task, ResumeTask)
+    assert isinstance(resume_task.result, ContainerExecutionResult)
+    assert resume_task.result.node_run_result.outputs["files"].value_type == SegmentType.ARRAY_FILE
+    restored_node, _, _ = _workflow_tool_node(restored_state)
 
-    resumed_events = list(node._resume_container_events(result=result))
+    resumed_events = list(restored_node._resume_container_events(result=resume_task.result))
 
     assert resumed_events[:2] == [
         StreamChunkEvent(selector=["tool", "text"], chunk="done", is_final=False),
@@ -219,7 +230,18 @@ def test_workflow_tool_node_requests_child_container_and_resumes_successfully(mo
     completed = resumed_events[2]
     assert isinstance(completed, StreamCompletedEvent)
     assert completed.node_run_result.inputs == {"question": "hello"}
-    assert completed.node_run_result.outputs == {"text": "done", "answer": 42}
+    assert {key: value.to_object() for key, value in completed.node_run_result.outputs.items()} == {
+        "text": "done",
+        "answer": 42,
+        "files": [],
+    }
+    assert isinstance(completed.node_run_result.outputs["files"], ArrayFileSegment)
+    for key, value in completed.node_run_result.outputs.items():
+        restored_state.variable_pool.add(("tool", key), value)
+    files = restored_state.variable_pool.get(("tool", "files"))
+    assert files is not None
+    assert files.value_type == SegmentType.ARRAY_FILE
+    assert files.to_object() == []
     assert node.runtime_state.node_run_steps == 0
     assert completed.node_run_result.metadata[WorkflowNodeExecutionMetadataKey.TOOL_INFO] == {
         "provider_type": ToolProviderType.WORKFLOW.value,
@@ -550,6 +572,7 @@ def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -
     assert isinstance(resume_task, ResumeTask)
     assert isinstance(resume_task.result, ContainerExecutionResult)
     assert resume_task.result.steps == 2
+    assert resume_task.result.node_run_result.outputs["files"].value_type == SegmentType.ARRAY_FILE
     outputs = {key: value.to_object() for key, value in resume_task.result.node_run_result.outputs.items()}
     assert outputs == {
         "answer": "ok",
@@ -1038,8 +1061,12 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     tool_succeeded = next(
         event for event in resumed_events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "tool"
     )
-    assert tool_succeeded.node_run_result.outputs["decision"] == "approve"
-    assert json.loads(tool_succeeded.node_run_result.outputs["text"]) == {"decision": "approve"}
+    assert tool_succeeded.node_run_result.outputs["decision"].to_object() == "approve"
+    assert json.loads(tool_succeeded.node_run_result.outputs["text"].to_object()) == {"decision": "approve"}
+    files = restored_state.variable_pool.get(("tool", "files"))
+    assert files is not None
+    assert files.value_type == SegmentType.ARRAY_FILE
+    assert files.to_object() == []
     create_form_spy.assert_called_once()
     assert human_input_app_ids == ["outer-app", "outer-app"]
     assert all(

@@ -17,6 +17,7 @@ from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunSucceededEvent, NodeRunSucceededEvent
 from graphon.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
+from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile, UploadFile
 from models.enums import CreatorUserRole
 from tests.unit_tests.core.workflow.test_workflow_tool_container import _workflow_tool_node
@@ -204,6 +205,8 @@ def test_workflow_tool_dispatcher_enforces_file_ownership(
         tool_completed = next(
             event for event in events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "tool"
         )
-        accepted_files = tool_completed.node_run_result.outputs["files"]
+        files_output = tool_completed.node_run_result.outputs["files"]
+        assert isinstance(files_output, ArrayFileSegment)
+        accepted_files = files_output.to_object()
         assert len(accepted_files) == 1
         assert accepted_files[0].filename == stored_file.name
