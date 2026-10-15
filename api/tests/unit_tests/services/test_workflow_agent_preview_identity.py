@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
@@ -57,13 +58,16 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
     def events() -> Generator[NodeRunSucceededEvent | NodeRunFailedEvent]:
         # This is the real scoped lookup that failed in dev: a separate transaction
         # must see the committed caller before any runtime request is dispatched.
+        variable_pool = single_step.call_args.kwargs["variable_pool"]
+        workflow_run_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
+        assert workflow_run_id is None
         with sessions.begin() as session:
             caller = WorkflowAgentWorkspaceStore._load_execution_by_identity(
                 session=session,
                 tenant_id=tenant_id,
                 app_id=app_id,
                 workflow_id=workflow_id,
-                workflow_run_id=None,
+                workflow_run_id=workflow_run_id,
                 node_id=node_id,
                 node_execution_id=execution_id,
             )
@@ -102,7 +106,7 @@ def test_agent_preview_commits_runtime_identity_and_updates_same_row(sqlite_engi
         patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
         patch("services.workflow_service.WorkflowDraftVariableService"),
         patch("services.workflow_service.DraftVarLoader"),
-        patch("services.workflow_service.WorkflowEntry.single_step_run", return_value=(node, events())),
+        patch("services.workflow_service.WorkflowEntry.single_step_run", return_value=(node, events())) as single_step,
         patch(
             "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
             return_value=repository,
