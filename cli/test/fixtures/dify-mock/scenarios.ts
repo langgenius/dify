@@ -37,7 +37,6 @@ export type WorkspaceFixture = {
   name: string
   role: string
   status: string
-  is_current: boolean
 }
 
 export type AppFixture = {
@@ -82,14 +81,12 @@ export const WORKSPACES: WorkspaceFixture[] = [
     name: 'Default',
     role: 'owner',
     status: 'normal',
-    is_current: true,
   },
   {
     id: 'ws-2',
     name: 'Other',
     role: 'normal',
     status: 'normal',
-    is_current: false,
   },
 ]
 

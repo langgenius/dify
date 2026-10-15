@@ -50,6 +50,7 @@ difyctl login --server https://dify.example.com   # opens the browser; approve t
 difyctl help                                      # the map: every command and operation namespace
 difyctl help chatbot                              # search commands and operations by plain words
 difyctl get workspace                             # workspaces visible to this account
+difyctl describe workspace                        # the workspace difyctl uses
 difyctl get console_app --limit 5                 # list apps
 difyctl run console_app workflow --app-id <id> --inputs @vars.json --stream
 ```
@@ -63,7 +64,7 @@ difyctl has no built-in business commands. Every operation the server publishes 
 | `login`                    | Log in via the OAuth device flow                       |
 | `logout`                   | Log out of the current session                         |
 | `version`                  | Print the client and (if logged in) server versions    |
-| `use workspace <id>`       | Pin the local session to a workspace                   |
+| `use workspace <id>`       | Pin this device to a workspace you belong to           |
 | `get config [key]`         | Print the local config, or one key                     |
 | `set config <key> <value>` | Set a local config value                               |
 | `unset config <key>`       | Remove a local config value, restoring its default     |
