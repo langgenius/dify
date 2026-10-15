@@ -7,6 +7,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp, RBACCheck, Workspace
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.explore.error import RecommendedAppNotFoundError as RecommendedAppNotFoundHttpError
 from controllers.console.flask_admission import console_account_admission
@@ -26,8 +27,6 @@ from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
 from services.errors.base import NoPermissionError
 from services.recommended_app_query_service import RecommendedAppNotFoundError
-
-from .. import console_ns
 
 
 class AppImportPayload(AppImportParams):

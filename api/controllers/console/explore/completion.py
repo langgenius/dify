@@ -11,6 +11,7 @@ import services
 from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -41,8 +42,6 @@ from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotChatError, InstalledAppNotCompletionError
-
-from .. import console_ns
 
 logger = logging.getLogger(__name__)
 

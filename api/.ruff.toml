@@ -77,7 +77,6 @@ ignore = [
     "SIM105",  # suppressible-exception
     "SIM108",  # if-else-block-instead-of-if-exp
     "SIM117",  # multiple-with-statements
-    "TID252",  # allow relative imports from parent modules
 ]
 
 [lint.per-file-ignores]
