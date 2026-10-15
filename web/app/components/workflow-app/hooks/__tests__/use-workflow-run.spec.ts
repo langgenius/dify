@@ -1,6 +1,12 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useWorkflowRun } from '../use-workflow-run'
 
 type DebugAbortControllerRef = {
@@ -41,13 +47,6 @@ type WorkflowRunFailedTrackingEvent = {
 }
 
 const mocks = vi.hoisted(() => {
-  const appStoreState = {
-    appDetail: {
-      id: 'app-1',
-      mode: 'workflow',
-      name: 'Workflow App',
-    },
-  }
   const reactFlowStoreState = {
     edges: [{ id: 'edge-1' }],
     getNodes: vi.fn(),
@@ -69,7 +68,6 @@ const mocks = vi.hoisted(() => {
   })
 
   return {
-    appStoreState,
     reactFlowStoreState,
     workflowStoreState,
     workflowStoreSetState,
@@ -124,16 +122,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const useStore = Object.assign(vi.fn(), {
-    getState: () => mocks.appStoreState,
-  })
-
-  return {
-    useStore,
-  }
-})
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mocks.mockTrackEvent,
 }))
@@ -171,7 +159,9 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
   usePathname: () => '/apps/app-1/workflow',
 }))
 
@@ -227,6 +217,15 @@ vi.mock('../use-workflow-run-callbacks', async (importOriginal) => {
     }),
   }
 })
+
+const renderWorkflowRunHook = () => {
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow', name: 'Workflow App' }),
+  )
+  return renderHookWithConsoleQuery(() => useWorkflowRun(), { queryClient })
+}
 
 const createWorkflowStoreState = () => ({
   backupDraft: undefined,
@@ -290,7 +289,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should backup the current draft once and skip subsequent backups until it is cleared', () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleBackupDraft()
@@ -317,7 +316,7 @@ describe('useWorkflowRun', () => {
       environmentVariables: [{ id: 'env-backup', value: 'value' }],
     }
 
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleLoadBackupDraft()
@@ -338,7 +337,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should prepare the graph and dispatch a workflow run through ssePost for user-input mode', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -410,7 +409,7 @@ describe('useWorkflowRun', () => {
   ])(
     'should dispatch $title trigger runs through the debug runner integration',
     async ({ params, options, expectedUrl, expectedBody, expectedNodeIds, expectedIsAll }) => {
-      const { result } = renderHook(() => useWorkflowRun())
+      const { result } = renderWorkflowRunHook()
 
       await act(async () => {
         await result.current.handleRun(params, undefined, options)
@@ -434,7 +433,7 @@ describe('useWorkflowRun', () => {
   )
 
   it('should expose the workflow-failed tracker through the callback factory context', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -483,7 +482,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should split serialized workflow data into chunks when it exceeds the amplitude string limit', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -532,7 +531,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should track workflow failures when the error or workflow data is malformed', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -580,7 +579,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should lazily create audio players with the correct public and private tts urls', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ token: 'public-token' })
@@ -628,7 +627,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should stop workflow runs by task id or by aborting active debug controllers', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -678,7 +677,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should restore published workflow graph, features, and environment variables', () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleRestoreFromPublishedWorkflow({
@@ -725,7 +724,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should restore published workflows with empty environment variables as an empty list', () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleRestoreFromPublishedWorkflow({

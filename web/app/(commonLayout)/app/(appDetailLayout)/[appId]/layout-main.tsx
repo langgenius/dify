@@ -1,14 +1,14 @@
 'use client'
 
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import type { ResourceMaintainerPermissionOptions } from '@/utils/permission'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
   workspacePermissionKeysAtom,
@@ -46,6 +46,39 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
   return t(($) => $['menus.appDetail'], { ns: 'navigation' })
 }
 
+const getAppDetailRedirectPath = (
+  appDetail: AppDetailWithSite,
+  pathname: string,
+  permissionOptions: ResourceMaintainerPermissionOptions,
+) => {
+  const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, permissionOptions)
+  const isWorkflowApp =
+    appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
+  const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
+  const isLogsPath = pathname.endsWith('logs')
+  const isAnnotationsPath = pathname.endsWith('annotations')
+  const isOverviewPath = pathname.endsWith('overview')
+  const isAccessConfigPath = pathname.endsWith('access-config')
+  const isAccessPointPath = pathname.endsWith('access-point')
+  const isDeployPath = pathname.endsWith('deploy')
+  if (
+    (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
+    (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
+    (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
+    (isOverviewPath && !appACLCapabilities.canMonitor) ||
+    (isAccessConfigPath &&
+      (appDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
+    (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
+    (isDeployPath && (!isWorkflowApp || !appACLCapabilities.canDeploy))
+  )
+    return getRedirectionPath(appDetail, permissionOptions)
+
+  if (isWorkflowApp && pathname.endsWith('configuration')) return `/app/${appDetail.id}/workflow`
+  if (!isWorkflowApp && pathname.endsWith('workflow')) return `/app/${appDetail.id}/configuration`
+
+  return undefined
+}
+
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
@@ -64,133 +97,42 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { appDetail, setAppDetail } = useStore(
-    useShallow((state) => ({
-      appDetail: state.appDetail,
-      setAppDetail: state.setAppDetail,
-    })),
-  )
   const pageTitle = appDetailPageTitle(pathname, t)
-  const {
-    data: appDetailRes,
-    error: appDetailError,
-    isPending: isLoadingAppDetail,
-  } = useQuery(
+  // Not useSuspenseQuery: a missing app has to stay a returned error so it can redirect to /apps.
+  const { data: appDetail, error: appDetailError } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: appId } },
     }),
   )
-  const routeAppDetail = appDetail?.id === appId ? appDetail : appDetailRes
-  const shouldBlockAgentResourceAccess =
-    routeAppDetail?.mode === AppModeEnum.AGENT && pathname.endsWith('/access-config')
-  const canViewAccessPoint =
-    routeAppDetail?.id === appId &&
-    currentWorkspace.id &&
-    !isLoadingCurrentWorkspace &&
-    !isLoadingWorkspacePermissionKeys &&
-    !isLoadingAppDetail
-      ? getAppACLCapabilities(routeAppDetail.permission_keys, {
+  const isPermissionContextReady =
+    !!currentWorkspace.id && !isLoadingCurrentWorkspace && !isLoadingWorkspacePermissionKeys
+  const redirectPath =
+    appDetail && isPermissionContextReady
+      ? getAppDetailRedirectPath(appDetail, pathname, {
           currentUserId,
-          resourceMaintainer: routeAppDetail.maintainer,
+          resourceMaintainer: appDetail.maintainer,
           workspacePermissionKeys,
           isRbacEnabled,
-        }).canViewAccessPoint
-      : false
-  const shouldBlockAccessPointAccess = pathname.endsWith('/access-point') && !canViewAccessPoint
+        })
+      : undefined
 
   useDocumentTitle(
-    `${pageTitle} · ${appDetailRes?.name || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
+    `${pageTitle} · ${appDetail?.name || t(($) => $['menus.appDetail'], { ns: 'navigation' })}`,
   )
 
   useEffect(() => {
-    if (appDetailError && !appDetailRes && isNotFoundError(appDetailError)) router.replace('/apps')
-  }, [appDetailError, appDetailRes, router])
+    if (appDetailError && !appDetail && isNotFoundError(appDetailError)) router.replace('/apps')
+  }, [appDetailError, appDetail, router])
 
   useEffect(() => {
-    if (
-      !routeAppDetail ||
-      !currentWorkspace.id ||
-      isLoadingCurrentWorkspace ||
-      isLoadingWorkspacePermissionKeys ||
-      isLoadingAppDetail
-    )
-      return
-    if (routeAppDetail.id !== appId) return
+    if (redirectPath) router.replace(redirectPath)
+  }, [redirectPath, router])
 
-    const appACLCapabilities = getAppACLCapabilities(routeAppDetail.permission_keys, {
-      currentUserId,
-      resourceMaintainer: routeAppDetail.maintainer,
-      workspacePermissionKeys,
-      isRbacEnabled,
-    })
-    const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
-    const isLogsPath = pathname.endsWith('logs')
-    const isAnnotationsPath = pathname.endsWith('annotations')
-    const isOverviewPath = pathname.endsWith('overview')
-    const isAccessConfigPath = pathname.endsWith('access-config')
-    const isAccessPointPath = pathname.endsWith('access-point')
-    const isDeployPath = pathname.endsWith('deploy')
-    if (
-      (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
-      (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
-      (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
-      (isOverviewPath && !appACLCapabilities.canMonitor) ||
-      (isAccessConfigPath &&
-        (routeAppDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
-      (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
-      (isDeployPath &&
-        ((routeAppDetail.mode !== AppModeEnum.WORKFLOW &&
-          routeAppDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
-          !appACLCapabilities.canDeploy))
-    ) {
-      router.replace(
-        getRedirectionPath(routeAppDetail, {
-          currentUserId,
-          resourceMaintainer: routeAppDetail.maintainer,
-          workspacePermissionKeys,
-          isRbacEnabled,
-        }),
-      )
-      return
-    }
-    if (
-      (routeAppDetail.mode === AppModeEnum.WORKFLOW ||
-        routeAppDetail.mode === AppModeEnum.ADVANCED_CHAT) &&
-      pathname.endsWith('configuration')
-    ) {
-      router.replace(`/app/${appId}/workflow`)
-    } else if (
-      routeAppDetail.mode !== AppModeEnum.WORKFLOW &&
-      routeAppDetail.mode !== AppModeEnum.ADVANCED_CHAT &&
-      pathname.endsWith('workflow')
-    ) {
-      router.replace(`/app/${appId}/configuration`)
-      return
-    }
-
-    if (appDetailRes && appDetail?.id !== appDetailRes.id) setAppDetail(appDetailRes)
-  }, [
-    appDetail?.id,
-    appDetailRes,
-    appId,
-    currentUserId,
-    currentWorkspace.id,
-    isLoadingAppDetail,
-    isLoadingCurrentWorkspace,
-    isLoadingWorkspacePermissionKeys,
-    isRbacEnabled,
-    pathname,
-    routeAppDetail,
-    router,
-    setAppDetail,
-    workspacePermissionKeys,
-  ])
-
-  if (appDetailError && !appDetailRes && !isNotFoundError(appDetailError)) throw appDetailError
+  if (appDetailError && !appDetail && !isNotFoundError(appDetailError)) throw appDetailError
 
   const isWorkflowPage = pathname.endsWith('/workflow')
   const content =
-    appDetail?.id !== appId || shouldBlockAgentResourceAccess || shouldBlockAccessPointAccess ? (
+    !appDetail || !isPermissionContextReady || redirectPath ? (
       <div className="flex min-w-0 grow items-center justify-center bg-background-body">
         <LoadingPlaceholder />
       </div>

@@ -2,9 +2,12 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import { Suspense } from 'react'
-import { useStore } from '@/app/components/app/store'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -26,12 +29,19 @@ const mockNavigation = vi.hoisted(() => ({
   useRouter: vi.fn(),
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
+const render = (
+  ui: Parameters<typeof renderWithConsoleQuery>[0],
+  { cachedAppDetail }: { cachedAppDetail?: AppDetailWithSite } = {},
+) => {
+  const queryClient = createConsoleQueryClient()
+  if (cachedAppDetail) seedAppDetail(queryClient, cachedAppDetail)
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
   })
+}
 
 vi.mock('@/next/navigation', () => mockNavigation)
 
@@ -82,7 +92,6 @@ describe('AppDetailLayout', () => {
       const response = await mockAppResponse(input instanceof Request ? input.url : String(input))
       return response instanceof Response ? response : Response.json(response)
     })
-    useStore.getState().setAppDetail()
   })
 
   it('shares the app detail request with the overview observer', async () => {
@@ -206,7 +215,6 @@ describe('AppDetailLayout', () => {
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/apps'))
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should keep app detail data when navigating between pages in the same app', async () => {
@@ -219,16 +227,15 @@ describe('AppDetailLayout', () => {
     expect(mockAppResponse).toHaveBeenCalledWith(expect.stringMatching(/\/apps\/app-1$/))
     expect(mockAppResponse).toHaveBeenCalled()
 
-    mockPathname = '/app/app-1/logs'
+    mockPathname = '/app/app-1/overview'
     rerender(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
       </AppDetailLayout>,
     )
 
-    await waitForAppContent()
-    expect(mockAppResponse).toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
+    expect(screen.getByText('App page content')).toBeInTheDocument()
+    expect(mockAppResponse).toHaveBeenCalledTimes(1)
 
     unmount()
     render(
@@ -239,7 +246,32 @@ describe('AppDetailLayout', () => {
 
     await waitForAppContent()
     expect(mockAppResponse).toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('renders cached app detail content on the first render without a loading frame', () => {
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+      { cachedAppDetail: createAppDetail() },
+    )
+
+    expect(screen.getByText('App page content')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('redirects a workflow app configuration URL to its workflow page without showing content', () => {
+    mockPathname = '/app/app-1/configuration'
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+      { cachedAppDetail: createAppDetail() },
+    )
+
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
   })
 
   it('should render app detail content without owning the main skip target', async () => {
@@ -270,7 +302,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect logs pages when log and annotation access is missing', async () => {
@@ -289,7 +320,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with log and annotation access to open logs directly', async () => {
@@ -307,7 +337,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should allow users with Access Point view permission to open the page directly', async () => {
@@ -325,7 +354,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect access point pages when view permission is missing', async () => {
@@ -342,17 +370,16 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should keep cached Access Point content hidden while redirecting without view permission', async () => {
     mockPathname = '/app/app-1/access-point'
-    useStore.getState().setAppDetail(createAppDetail({ permission_keys: [] }))
 
     render(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
       </AppDetailLayout>,
+      { cachedAppDetail: createAppDetail({ permission_keys: [] }) },
     )
 
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
@@ -377,7 +404,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with app deploy ACL permission to open deploy directly', async () => {
@@ -395,7 +421,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should allow users with layout access to open workflow pages directly', async () => {
@@ -410,7 +435,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalledWith('/app/app-1/overview')
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect workflow pages when layout access is missing', async () => {
@@ -427,7 +451,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/apps')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect overview pages when monitor access is missing', async () => {
@@ -446,7 +469,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should wait for workspace permission keys before redirecting restricted pages', async () => {
@@ -495,7 +517,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect access config pages when access config access is missing', async () => {
@@ -514,7 +535,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with access config access to open access config directly', async () => {
@@ -532,7 +552,6 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
   it('should redirect Agent app access config URLs to the Agent configure page', async () => {
@@ -555,23 +574,22 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/agents/agent-1/configure')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should keep Agent app access config content hidden while redirecting cached app data', async () => {
     mockPathname = '/app/app-1/access-config'
-    useStore.getState().setAppDetail(
-      createAppDetail({
-        mode: AppModeEnum.AGENT,
-        bound_agent_id: 'agent-1',
-        permission_keys: [AppACLPermission.AccessConfig],
-      }),
-    )
 
     render(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
       </AppDetailLayout>,
+      {
+        cachedAppDetail: createAppDetail({
+          mode: AppModeEnum.AGENT,
+          bound_agent_id: 'agent-1',
+          permission_keys: [AppACLPermission.AccessConfig],
+        }),
+      },
     )
 
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
@@ -599,7 +617,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect annotation pages when log and annotation access is missing', async () => {
@@ -621,7 +638,6 @@ describe('AppDetailLayout', () => {
       expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should allow users with log and annotation access to open annotations directly', async () => {
@@ -642,6 +658,5 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
 
     expect(mockReplace).not.toHaveBeenCalled()
-    expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 })

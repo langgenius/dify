@@ -1,41 +1,56 @@
-import { renderHook } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { useIsChatMode } from '../use-is-chat-mode'
 
-const { mockStoreState } = vi.hoisted(() => ({
-  mockStoreState: {
-    appDetail: undefined as { mode?: AppModeEnum } | undefined,
-  },
+const { mockParams } = vi.hoisted(() => ({
+  mockParams: { current: {} as { appId?: string } },
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => mockParams.current,
 }))
+
+const renderWithAppMode = (mode: AppModeEnum) => {
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode }))
+  return renderHookWithConsoleQuery(() => useIsChatMode(), { queryClient })
+}
 
 describe('useIsChatMode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockStoreState.appDetail = undefined
+    mockParams.current = { appId: 'app-1' }
   })
 
   it('should return true when the app mode is ADVANCED_CHAT', () => {
-    mockStoreState.appDetail = { mode: AppModeEnum.ADVANCED_CHAT }
-
-    const { result } = renderHook(() => useIsChatMode())
+    const { result } = renderWithAppMode(AppModeEnum.ADVANCED_CHAT)
 
     expect(result.current).toBe(true)
   })
 
-  it('should return false when the app mode is not chat or app detail is missing', () => {
-    mockStoreState.appDetail = { mode: AppModeEnum.WORKFLOW }
-
-    const { result, rerender } = renderHook(() => useIsChatMode())
+  it('should return false when the app mode is WORKFLOW', () => {
+    const { result } = renderWithAppMode(AppModeEnum.WORKFLOW)
 
     expect(result.current).toBe(false)
+  })
 
-    mockStoreState.appDetail = undefined
-    rerender()
+  it('should return false without requesting app detail when there is no appId route param', () => {
+    mockParams.current = {}
+
+    const { result, queryClient } = renderHookWithConsoleQuery(() => useIsChatMode())
 
     expect(result.current).toBe(false)
+    const query = queryClient.getQueryCache().find({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: '' } } }),
+    })
+    expect(query?.state.fetchStatus).toBe('idle')
+    expect(query?.state.dataUpdateCount ?? 0).toBe(0)
   })
 })
