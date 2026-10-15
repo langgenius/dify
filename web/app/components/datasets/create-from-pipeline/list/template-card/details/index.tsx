@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { usePipelineTemplateById } from '@/service/use-pipeline'
 import ChunkStructureCard from './chunk-structure-card'
 import { useChunkStructureConfig } from './hooks'
@@ -31,6 +32,7 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
       type,
     },
     true,
+    { meta: useLoadFailureMeta() },
   )
 
   const appIcon = useMemo(() => {

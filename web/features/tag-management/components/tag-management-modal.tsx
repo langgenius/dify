@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from '../utils'
@@ -36,6 +37,7 @@ export const TagManagementModal = ({
         },
       },
       enabled: show && canManageTags,
+      meta: useLoadFailureMeta(),
     }),
   )
   const createTagMutation = useMutation(

@@ -27,7 +27,7 @@ const ProcessDocuments = ({
   onBack,
   ref,
 }: ProcessDocumentsProps) => {
-  const { isFetchingParams, paramsConfig } = useInputVariables(dataSourceNodeId)
+  const { isFetchingParams, isParamsError, paramsConfig } = useInputVariables(dataSourceNodeId)
   const initialData = useInitialData(paramsConfig?.variables || [])
   const configurations = useConfigurations(paramsConfig?.variables || [])
   const schema = generateZodSchema(configurations)
@@ -43,7 +43,11 @@ const ProcessDocuments = ({
         onPreview={onPreview}
         isRunning={isRunning}
       />
-      <Actions runDisabled={isFetchingParams || isRunning} onBack={onBack} onProcess={onProcess} />
+      <Actions
+        runDisabled={isFetchingParams || isParamsError || isRunning}
+        onBack={onBack}
+        onProcess={onProcess}
+      />
     </div>
   )
 }

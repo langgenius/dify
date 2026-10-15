@@ -13,6 +13,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { TagSearchContent } from './tag-search-content'
 
@@ -54,6 +55,7 @@ export const TagFilter = ({
           type,
         },
       },
+      meta: useLoadFailureMeta(),
     }),
   )
 

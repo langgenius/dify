@@ -17,6 +17,7 @@ import { toast } from '@/app/notifications'
 import { withRequestErrorToast } from '@/app/notifications/request-error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
+import { useLoadFailureMeta, useLoadFailureToast } from '@/hooks/use-load-failure-meta'
 import { changeLanguage } from '@/i18n/client'
 import {
   AppSourceType,
@@ -198,6 +199,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: appPinnedConversationData } = useShareConversations(
     {
       appSourceType,
@@ -207,6 +209,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     },
     {
       enabled: !!appId,
+      meta: loadFailureMeta,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     },
@@ -221,6 +224,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       },
       {
         enabled: !!appId,
+        meta: loadFailureMeta,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
       },
@@ -240,6 +244,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     },
+  )
+  // A missing Environment conversation resets to a new one below instead of reporting a failure.
+  useLoadFailureToast(
+    appChatListError instanceof EnvironmentConversationNotFoundError ? null : appChatListError,
   )
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)

@@ -140,20 +140,26 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const { data: appPinnedConversationData } = useShareConversations({
-    appSourceType,
-    appId,
-    pinned: true,
-    limit: 100,
-  })
-  const { data: appConversationData, isLoading: appConversationDataLoading } =
-    useShareConversations({
+  const loadFailureMeta = useLoadFailureMeta()
+  const { data: appPinnedConversationData } = useShareConversations(
+    {
       appSourceType,
       appId,
-      pinned: false,
+      pinned: true,
       limit: 100,
-    })
-  const loadFailureMeta = useLoadFailureMeta()
+    },
+    { meta: loadFailureMeta },
+  )
+  const { data: appConversationData, isLoading: appConversationDataLoading } =
+    useShareConversations(
+      {
+        appSourceType,
+        appId,
+        pinned: false,
+        limit: 100,
+      },
+      { meta: loadFailureMeta },
+    )
   const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
     {
       conversationId: chatShouldReloadKey,

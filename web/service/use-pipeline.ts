@@ -1,4 +1,4 @@
-import type { QueryMeta, MutationMeta, MutationOptions } from '@tanstack/react-query'
+import type { MutationMeta, MutationOptions, QueryMeta } from '@tanstack/react-query'
 import type { IconInfo } from '@/models/datasets'
 import type {
   ConversionResponse,
@@ -56,9 +56,14 @@ export const useInvalidCustomizedTemplateList = () => {
   return useInvalid([...PipelineTemplateListQueryKeyPrefix, 'customized'])
 }
 
-export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, enabled: boolean) => {
+export const usePipelineTemplateById = (
+  params: PipelineTemplateByIdRequest,
+  enabled: boolean,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   const { template_id, type } = params
   return useQuery<PipelineTemplateByIdResponse>({
+    meta,
     queryKey: [NAME_SPACE, 'template', type, template_id],
     queryFn: () => {
       return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${template_id}`, {
@@ -159,9 +164,11 @@ export const useCheckPipelineDependencies = (
 export const useDraftPipelineProcessingParams = (
   params: PipelineProcessingParamsRequest,
   enabled = true,
+  { meta }: { meta?: QueryMeta } = {},
 ) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
+    meta,
     queryKey: [NAME_SPACE, 'draft-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelineProcessingParamsResponse>(
@@ -178,9 +185,13 @@ export const useDraftPipelineProcessingParams = (
   })
 }
 
-export const usePublishedPipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
+export const usePublishedPipelineProcessingParams = (
+  params: PipelineProcessingParamsRequest,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
+    meta,
     queryKey: [NAME_SPACE, 'published-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelineProcessingParamsResponse>(

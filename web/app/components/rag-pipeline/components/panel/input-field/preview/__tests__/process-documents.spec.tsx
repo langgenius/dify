@@ -42,6 +42,7 @@ describe('ProcessDocuments preview', () => {
         node_id: 'node-2',
       },
       true,
+      { meta: { errorMessage: 'common.api.loadFailed' } },
     )
   })
 })

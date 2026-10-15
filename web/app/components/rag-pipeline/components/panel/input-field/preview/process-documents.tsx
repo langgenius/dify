@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useDraftPipelineProcessingParams } from '@/service/use-pipeline'
 import Form from './form'
 
@@ -17,6 +18,7 @@ const ProcessDocuments = ({ dataSourceNodeId }: ProcessDocumentsProps) => {
       node_id: dataSourceNodeId,
     },
     !!pipelineId && !!dataSourceNodeId,
+    { meta: useLoadFailureMeta() },
   )
 
   return (

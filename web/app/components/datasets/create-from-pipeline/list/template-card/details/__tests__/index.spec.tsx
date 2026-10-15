@@ -242,6 +242,7 @@ describe('Details', () => {
       expect(mockUsePipelineTemplateById).toHaveBeenCalledWith(
         { template_id: 'pipeline-1', type: 'customized' },
         true,
+        { meta: { errorMessage: 'common.api.loadFailed' } },
       )
     })
 
@@ -255,6 +256,7 @@ describe('Details', () => {
       expect(mockUsePipelineTemplateById).toHaveBeenCalledWith(
         { template_id: 'pipeline-1', type: 'built-in' },
         true,
+        { meta: { errorMessage: 'common.api.loadFailed' } },
       )
     })
   })

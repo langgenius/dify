@@ -1,6 +1,7 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { TagSelector } from './tag-selector'
 
@@ -24,6 +25,7 @@ export const SkillCardTags = ({
           type: 'skill',
         },
       },
+      meta: useLoadFailureMeta(),
     }),
   )
   const selectedTags = useMemo<Tag[]>(() => {

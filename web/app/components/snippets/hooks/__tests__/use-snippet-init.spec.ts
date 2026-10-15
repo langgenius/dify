@@ -1,4 +1,5 @@
 import type { SnippetWorkflow } from '@/types/snippet'
+import { ORPCError } from '@orpc/client'
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSnippetInit } from '../use-snippet-init'
@@ -11,6 +12,11 @@ const mockUseSnippetApiDetail = vi.fn()
 const mockFetchSnippetDraftWorkflow = vi.fn()
 const mockUseSnippetDefaultBlockConfigs = vi.fn()
 const mockUseSnippetPublishedWorkflow = vi.fn()
+const mockToastRequestError = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/notifications/request-error', () => ({
+  toastRequestError: (...args: unknown[]) => mockToastRequestError(...args),
+}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
@@ -211,6 +217,40 @@ describe('useSnippetInit', () => {
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
     })
+  })
+
+  it('should report a failed draft request and keep the canvas gated', async () => {
+    const error = new Error('Draft unavailable')
+    mockFetchSnippetDraftWorkflow.mockRejectedValue(error)
+
+    const { result } = renderHook(() => useSnippetInit('snippet-1'))
+
+    await waitFor(() => {
+      expect(mockToastRequestError).toHaveBeenCalledWith(error, 'common.api.loadFailed')
+    })
+    expect(result.current.isLoading).toBe(true)
+  })
+
+  it('should report a failed snippet detail request other than a missing snippet', () => {
+    const error = new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 })
+    mockUseSnippetApiDetail.mockReturnValue({ data: undefined, error, isLoading: false })
+
+    renderHook(() => useSnippetInit('snippet-1'))
+
+    expect(mockToastRequestError).toHaveBeenCalledExactlyOnceWith(error, 'common.api.loadFailed')
+  })
+
+  it('should leave a missing snippet to its not-found state', () => {
+    mockUseSnippetApiDetail.mockReturnValue({
+      data: undefined,
+      error: new ORPCError('NOT_FOUND', { status: 404 }),
+      isLoading: false,
+    })
+
+    const { result } = renderHook(() => useSnippetInit('snippet-1'))
+
+    expect(result.current.data).toBeNull()
+    expect(mockToastRequestError).not.toHaveBeenCalled()
   })
 
   it('should ignore outdated draft workflow response when snippet changes', async () => {

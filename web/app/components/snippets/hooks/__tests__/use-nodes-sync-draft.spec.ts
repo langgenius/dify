@@ -13,6 +13,7 @@ const mockPostWithKeepalive = vi.fn()
 const mockSyncDraftWorkflow = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
+const mockToastError = vi.hoisted(() => vi.fn())
 let deferSerialCallbacks = false
 let queuedSerialCallbacks: Array<() => Promise<void> | void> = []
 
@@ -80,6 +81,10 @@ vi.mock('@/service/fetch', () => ({
 }))
 
 vi.mock('@/config', () => ({ API_PREFIX: '/api' }))
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: mockToastError },
+}))
 
 vi.mock('../use-snippet-refresh-draft', () => ({
   useSnippetRefreshDraft: () => ({
@@ -150,6 +155,9 @@ describe('snippet/use-nodes-sync-draft', () => {
       })
 
       expect(mockRefreshDraft).toHaveBeenCalledTimes(refreshes)
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('Draft could not be saved', {
+        id: 'request-error:Draft could not be saved',
+      })
       expect(callback.onError).toHaveBeenCalledOnce()
       expect(callback.onSuccess).not.toHaveBeenCalled()
       expect(callback.onSettled).toHaveBeenCalledOnce()

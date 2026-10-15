@@ -2,7 +2,8 @@ import type { SnippetWorkflow } from '@/types/snippet'
 import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
+import { toastRequestError } from '@/app/notifications/request-error'
+import { useLoadFailureMeta, useLoadFailureToast } from '@/hooks/use-load-failure-meta'
 import { isNotFoundError } from '@/service/http-error'
 import {
   fetchSnippetDraftWorkflow,
@@ -50,6 +51,12 @@ type DraftWorkflowState = {
 export const useSnippetInit = (snippetId: string) => {
   const workflowStore = useWorkflowStore()
   const snippetApiDetail = useSnippetApiDetail(snippetId)
+  // A missing snippet has a page of its own.
+  useLoadFailureToast(
+    snippetApiDetail.error && !isNotFoundError(snippetApiDetail.error)
+      ? snippetApiDetail.error
+      : null,
+  )
   const [draftWorkflowState, setDraftWorkflowState] = useState<DraftWorkflowState>({
     snippetId: '',
     isLoaded: false,
@@ -97,16 +104,17 @@ export const useSnippetInit = (snippetId: string) => {
           isLoaded: true,
         })
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         // Keep the canvas gated on unexpected draft fetch failures.
         // `fetchSnippetDraftWorkflow` resolves with undefined for 404, so this
         // branch represents a real initialization failure rather than "no draft".
+        if (!ignore) toastRequestError(error, loadFailureMeta.errorMessage)
       })
 
     return () => {
       ignore = true
     }
-  }, [snippetId, workflowStore])
+  }, [loadFailureMeta.errorMessage, snippetId, workflowStore])
 
   const isDraftWorkflowLoading =
     !!snippetId && (!draftWorkflowState.isLoaded || draftWorkflowState.snippetId !== snippetId)

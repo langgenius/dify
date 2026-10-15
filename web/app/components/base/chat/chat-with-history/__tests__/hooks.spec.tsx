@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, screen, waitFor } from '@testing-library/react'
+import { createRequestErrorCaches } from '@/app/get-query-client'
 import { AppToastHost } from '@/app/notifications/host'
 import { httpErrorFromResponse } from '@/service/http-error'
 import {
@@ -88,6 +89,7 @@ const mockUpdateFeedback = vi.mocked(updateFeedback)
 
 const createQueryClient = () =>
   new QueryClient({
+    ...createRequestErrorCaches(),
     defaultOptions: {
       queries: {
         retry: false,
@@ -180,6 +182,20 @@ describe('useChatWithHistory', () => {
 
   // Scenario: share query results populate conversation lists and trigger chat list fetch.
   describe('Share queries', () => {
+    it('should report failed first loads of the conversation lists and history', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('network'))
+      mockFetchChatList.mockRejectedValue(new Error('network'))
+
+      await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(mockFetchChatList).toHaveBeenCalled()
+      })
+      // Identical load failures share one visible toast.
+      expect(await screen.findByText('common.api.loadFailed')).toBeInTheDocument()
+      expect(screen.getAllByText('common.api.loadFailed')).toHaveLength(1)
+    })
+
     it('should load pinned, unpinned, and chat list data from share queries', async () => {
       // Arrange
       const pinnedData = createConversationData({

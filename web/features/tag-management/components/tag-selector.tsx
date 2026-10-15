@@ -16,6 +16,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
@@ -92,6 +93,7 @@ export const TagSelector = ({
           type,
         },
       },
+      meta: useLoadFailureMeta(),
     }),
   )
 

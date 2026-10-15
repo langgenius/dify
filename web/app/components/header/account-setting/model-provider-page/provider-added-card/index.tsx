@@ -12,6 +12,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
@@ -73,6 +74,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     workspacePermissionKeys,
     'plugin.plugin_preferences',
   )
+  const loadFailureMeta = useLoadFailureMeta()
   const {
     data: modelList = [],
     isFetching: loading,
@@ -82,6 +84,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: currentProviderName } },
       enabled: expanded && canSetPluginPreferences,
+      meta: loadFailureMeta,
       refetchOnWindowFocus: false,
       select: normalizeModelProviderModelsResponse,
     }),

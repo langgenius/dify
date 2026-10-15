@@ -14,16 +14,16 @@ type DocumentProcessingProps = {
 }
 
 const DocumentProcessing = ({ dataSourceNodeId, onProcess, onBack }: DocumentProcessingProps) => {
-  const { isFetchingParams, paramsConfig } = useInputVariables(dataSourceNodeId)
+  const { isFetchingParams, isParamsError, paramsConfig } = useInputVariables(dataSourceNodeId)
   const initialData = useInitialData(paramsConfig?.variables || [])
   const configurations = useConfigurations(paramsConfig?.variables || [])
   const schema = generateZodSchema(configurations)
 
   const renderCustomActions = useCallback(
     (props: CustomActionsProps) => (
-      <Actions runDisabled={isFetchingParams} formParams={props} onBack={onBack} />
+      <Actions runDisabled={isFetchingParams || isParamsError} formParams={props} onBack={onBack} />
     ),
-    [isFetchingParams, onBack],
+    [isFetchingParams, isParamsError, onBack],
   )
 
   return (
