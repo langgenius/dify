@@ -60,7 +60,6 @@ select = [
 ignore = [
     "E402",    # module-import-not-at-top-of-file
     "E712",    # true-false-comparison
-    "E722",    # bare-except
     "F821",    # undefined-name
     "F841",    # unused-variable
     "FURB113", # repeated-append
