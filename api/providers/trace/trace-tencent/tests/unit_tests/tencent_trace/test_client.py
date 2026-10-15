@@ -490,7 +490,7 @@ def test_create_and_export_span_converts_attribute_types(patch_core_components: 
         parent_span_id=None,
         span_id=2,
         name="span",
-        attributes={"num": 5, "flag": True, "pi": 3.14, "text": "value"},
+        attributes={"num": 5, "flag": True, "pi": float("3.14"), "text": "value"},
         events=[],
         links=[],
         status=Status(StatusCode.OK),
@@ -502,7 +502,7 @@ def test_create_and_export_span_converts_attribute_types(patch_core_components: 
     (attrs,) = span.set_attributes.call_args.args
     assert attrs["num"] == 5
     assert attrs["flag"] is True
-    assert attrs["pi"] == 3.14
+    assert attrs["pi"] == float("3.14")
     assert attrs["text"] == "value"
 
 

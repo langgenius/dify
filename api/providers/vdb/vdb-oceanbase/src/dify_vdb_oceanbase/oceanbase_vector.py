@@ -275,7 +275,7 @@ class OceanBaseVector(BaseVector):
                 "text": doc.page_content,
                 "metadata": doc.metadata,
             }
-            for doc_id, doc, emb in zip(ids, documents, embeddings)
+            for doc_id, doc, emb in zip(ids, documents, embeddings, strict=False)
         ]
 
         for start in range(0, total, batch_size):

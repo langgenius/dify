@@ -12,6 +12,11 @@ const { mockUseAgentRosterDetail, mockUseWorkflowInlineAgentDetail } = vi.hoiste
   mockUseWorkflowInlineAgentDetail: vi.fn(),
 }))
 
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
+
 vi.mock('../../_base/components/setting-item', () => ({
   SettingItem: ({
     label,

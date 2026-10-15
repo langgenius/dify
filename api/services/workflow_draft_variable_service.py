@@ -403,7 +403,7 @@ class WorkflowDraftVariableService:
         node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
         if node_exec is None:
             logger.warning(
-                "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
+                "Node execution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
                 variable.id,
                 variable.name,
                 variable.node_execution_id,
