@@ -7,7 +7,7 @@ providing improved performance by offloading database operations to background w
 
 import logging
 from collections.abc import Sequence
-from typing import override
+from typing import Any, override
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -20,6 +20,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
 from graphon.entities import WorkflowNodeExecution
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from tasks.workflow_node_execution_tasks import (
@@ -154,7 +155,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                     self._workflow_execution_mapping[execution.workflow_execution_id].append(execution.id)
 
             # Serialize execution for Celery task
-            execution_data = execution.model_dump()
+            execution_data = self._serialize_execution(execution)
 
             # Queue the save operation as a Celery task (fire and forget)
             save_workflow_node_execution_task.delay(
@@ -186,13 +187,24 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 if execution.id not in execution_ids:
                     execution_ids.append(execution.id)
         save_workflow_node_executions_task.delay(
-            executions_data=[execution.model_dump() for execution in executions],
+            executions_data=[self._serialize_execution(execution) for execution in executions],
             tenant_id=self._tenant_id,
             app_id=self._app_id or "",
             triggered_from=self._triggered_from.value if self._triggered_from else "",
             creator_user_id=self._creator_user_id,
             creator_user_role=self._creator_user_role.value,
         )
+
+    @staticmethod
+    def _serialize_execution(execution: WorkflowNodeExecution) -> dict[str, Any]:
+        """Project runtime values before model serialization erases their segment types."""
+        converter = WorkflowRuntimeTypeConverter()
+        return {
+            **execution.model_dump(exclude={"inputs", "process_data", "outputs"}),
+            "inputs": converter.to_json_encodable(execution.inputs),
+            "process_data": converter.to_json_encodable(execution.process_data),
+            "outputs": converter.to_json_encodable(execution.outputs),
+        }
 
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:

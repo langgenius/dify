@@ -53,6 +53,7 @@ from graphon.runtime.container_state import (
     FrameRuntimeData,
 )
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.variables.segments import ArrayFileSegment
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 
 from .workflow_tool_container_types import WorkflowToolContainerPayload
@@ -475,7 +476,7 @@ class WorkflowToolContainerHandler:
         tool_outputs: dict[str, Any] = {
             **{key: value for key, value in workflow_outputs.items() if key not in _RESERVED_TOOL_OUTPUTS},
             "text": json.dumps(json_outputs, ensure_ascii=False),
-            "files": WorkflowToolContainerHandler._collect_files(workflow_outputs),
+            "files": ArrayFileSegment(value=WorkflowToolContainerHandler._collect_files(workflow_outputs)),
             "json": [json_outputs],
         }
         return {key: build_container_value(value) for key, value in tool_outputs.items()}

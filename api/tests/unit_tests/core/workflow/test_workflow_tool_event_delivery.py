@@ -163,7 +163,7 @@ def test_workflow_tool_loop_break_does_not_escape_into_enclosing_loop(monkeypatc
     assert isinstance(events[-1], GraphRunSucceededEvent)
     assert state.outputs == {"rounds": 3}
     assert [
-        event.node_run_result.outputs["loop_round"]
+        event.node_run_result.outputs["loop_round"].to_object()
         for event in persisted
         if isinstance(event, NodeRunSucceededEvent) and event.node_id == "source-loop"
     ] == [1, 1, 1]
@@ -216,8 +216,8 @@ def test_workflow_tool_persists_loop_outputs_after_graphon_normalizes_them() -> 
 
     processor.dispatch(NodeEventTask(frame_id=frame.frame_id, event=event))
 
-    assert event.node_run_result.outputs == {"counter": 2}
-    assert persisted[0].node_run_result.outputs == {"counter": 2}
+    assert {key: value.to_object() for key, value in event.node_run_result.outputs.items()} == {"counter": 2}
+    assert {key: value.to_object() for key, value in persisted[0].node_run_result.outputs.items()} == {"counter": 2}
     assert persisted[0].container_id == ""
 
 
@@ -288,7 +288,7 @@ def test_workflow_tool_delivers_source_events_to_persistence_without_exposing_th
     completed_tool = next(
         event for event in events if isinstance(event, NodeRunSucceededEvent) and event.node_id == node.id
     )
-    assert completed_tool.node_run_result.outputs["json"] == [{}]
+    assert completed_tool.node_run_result.outputs["json"].to_object() == [{}]
     assert len({event.node_run_result.process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] for event in persisted}) == 1
     assert all(event.node_id not in {"source-start", "source-end"} for event in events if isinstance(event, NodeEvent))
     if listener_fails:

@@ -18,6 +18,7 @@ from graphon.nodes.container_effects import (
 )
 from graphon.nodes.tool.exc import ToolNodeError
 from graphon.nodes.tool.tool_node import ToolNode
+from graphon.variables.segments import StringSegment
 
 if TYPE_CHECKING:
     from .node_runtime import DifyToolNodeRuntime
@@ -104,10 +105,10 @@ class DifyWorkflowToolNode(ToolNode):
         )
         if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
             text_output = node_run_result.outputs.get("text")
-            if isinstance(text_output, str) and text_output:
+            if isinstance(text_output, StringSegment) and text_output.value:
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],
-                    chunk=text_output,
+                    chunk=text_output.value,
                     is_final=False,
                 )
             yield StreamChunkEvent(
