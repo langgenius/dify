@@ -7,6 +7,7 @@ import type {
   ThoughtItem,
 } from '@/app/components/base/chat/chat/type'
 import type { Annotation } from '@/models/log'
+import type { VisionFile } from '@/types/app'
 import type { FileResponse } from '@/types/workflow'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -52,6 +53,19 @@ type LogMessage = MessageDetailResponse
 
 const isTransferMethod = (value: string): value is TransferMethod =>
   (Object.values(TransferMethod) as string[]).includes(value)
+
+// Agent thoughts keep raw message files; the agent content renderer converts them once.
+const toThoughtFiles = (item: LogMessage): VisionFile[] =>
+  item.message_files.map((file) => ({
+    id: file.id,
+    type: file.type,
+    transfer_method: isTransferMethod(file.transfer_method)
+      ? file.transfer_method
+      : TransferMethod.local_file,
+    url: file.url ?? '',
+    upload_file_id: file.upload_file_id ?? '',
+    belongs_to: file.belongs_to ?? undefined,
+  }))
 
 const toFileResponse = (file: LogMessage['message_files'][number]): FileResponse => ({
   related_id: file.id ?? file.upload_file_id,
@@ -146,7 +160,6 @@ export const getFormattedChatList = (
   const newChatList: IChatItem[] = []
 
   messages.forEach((item) => {
-    const files = getProcessedFilesFromResponse(item.message_files.map(toFileResponse))
     const questionFiles = getProcessedFilesFromResponse(
       item.message_files.filter((file) => file.belongs_to === 'user').map(toFileResponse),
     )
@@ -165,7 +178,7 @@ export const getFormattedChatList = (
     newChatList.push({
       id: item.id,
       content: item.answer,
-      agent_thoughts: addFileInfos(sortAgentSorts(toThoughtItems(item)), files),
+      agent_thoughts: addFileInfos(sortAgentSorts(toThoughtItems(item)), toThoughtFiles(item)),
       feedback: toFeedback(item.feedbacks.find((feedback) => feedback.from_source === 'user')),
       adminFeedback: toFeedback(
         item.feedbacks.find((feedback) => feedback.from_source === 'admin'),

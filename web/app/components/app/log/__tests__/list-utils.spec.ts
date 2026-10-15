@@ -1,5 +1,6 @@
 import type { MessageDetailResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
   applyAnnotationAdded,
   applyAnnotationEdited,
@@ -289,6 +290,55 @@ describe('log list utils', () => {
         false,
       ),
     ).toEqual(['https://example.com/file-1'])
+  })
+
+  it('keeps agent thought files raw so the agent renderer converts them once', () => {
+    const [, answer] = getFormattedChatList(
+      [
+        createMessage({
+          id: 'message-1',
+          agent_thoughts: [
+            {
+              id: 'thought-1',
+              message_id: 'message-1',
+              position: 1,
+              files: ['file-1'],
+              tool: 'image_generator',
+              tool_labels: {},
+            },
+          ],
+          message_files: [
+            {
+              belongs_to: 'assistant',
+              id: 'file-1',
+              filename: 'image.png',
+              transfer_method: 'tool_file',
+              type: 'image',
+              url: 'https://example.com/image.png',
+            },
+          ],
+        }),
+      ],
+      'conversation-1',
+      'UTC',
+      'YYYY-MM-DD',
+    )
+
+    const thoughtFiles = answer!.agent_thoughts![0]!.message_files!
+    expect(thoughtFiles).toEqual([
+      expect.objectContaining({
+        id: 'file-1',
+        type: 'image',
+        url: 'https://example.com/image.png',
+      }),
+    ])
+    // Mirrors AgentContent, which converts thought files for FileList.
+    const [rendered] = getProcessedFilesFromResponse(
+      thoughtFiles.map((file) => ({ ...file, related_id: file.id }) as never),
+    )
+    expect(rendered).toEqual(
+      expect.objectContaining({ supportFileType: 'image', url: 'https://example.com/image.png' }),
+    )
   })
 
   it('should handle default inputs', () => {
