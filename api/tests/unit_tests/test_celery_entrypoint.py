@@ -1,7 +1,7 @@
 import runpy
 import sys
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType
 from unittest.mock import patch
 
 import pytest
@@ -9,7 +9,8 @@ import pytest
 
 @pytest.mark.parametrize("gevent_pool", [False, True])
 def test_entrypoint_only_patches_libraries_for_a_gevent_pool(gevent_pool: bool) -> None:
-    fake_app = SimpleNamespace(app=object(), celery=object())
+    fake_app = ModuleType("app")
+    fake_app.__dict__.update(app=object(), celery=object())
     with (
         patch.dict(sys.modules, {"app": fake_app}),
         patch("gevent.monkey.is_module_patched", return_value=gevent_pool),

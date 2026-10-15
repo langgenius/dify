@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -17,6 +16,7 @@ from repositories.sqlalchemy_knowledge_fs_lifecycle_outbox_repository import (
     SQLAlchemyKnowledgeFSLifecycleOutboxRepository,
 )
 from services.knowledge_fs.observability import KnowledgeFSLifecycleTaskMetric
+from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
 
 
 def _outbox(control_space: KnowledgeFSControlSpace) -> KnowledgeFSLifecycleOutbox:
@@ -53,15 +53,15 @@ def test_add_records_only_a_low_cardinality_queued_observation(sqlite_session: S
     )
     sqlite_session.add(control_space)
     sqlite_session.flush()
-    metrics = MagicMock()
+    metrics = RecordingKnowledgeFSMetrics()
     repository = SQLAlchemyKnowledgeFSLifecycleOutboxRepository(sqlite_session, metrics=metrics)
 
     command = repository.add(_outbox(control_space))
 
-    metrics.record_lifecycle_task.assert_called_once_with(KnowledgeFSLifecycleTaskMetric(None, "provision", "queued"))
-    assert command.id not in str(metrics.record_lifecycle_task.call_args_list)
-    assert control_space.id not in str(metrics.record_lifecycle_task.call_args_list)
-    assert control_space.tenant_id not in str(metrics.record_lifecycle_task.call_args_list)
+    assert metrics.lifecycle_tasks == [KnowledgeFSLifecycleTaskMetric(None, "provision", "queued")]
+    assert command.id not in str(metrics.lifecycle_tasks)
+    assert control_space.id not in str(metrics.lifecycle_tasks)
+    assert control_space.tenant_id not in str(metrics.lifecycle_tasks)
 
 
 @pytest.mark.parametrize(
