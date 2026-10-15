@@ -260,7 +260,7 @@ describe('AppDetailLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('redirects a workflow app configuration URL to its workflow page without showing content', () => {
+  it('does not redirect between the configuration and workflow pages by app mode', () => {
     mockPathname = '/app/app-1/configuration'
 
     render(
@@ -270,8 +270,8 @@ describe('AppDetailLayout', () => {
       { cachedAppDetail: createAppDetail() },
     )
 
-    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
-    expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
+    expect(screen.getByText('App page content')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('should render app detail content without owning the main skip target', async () => {

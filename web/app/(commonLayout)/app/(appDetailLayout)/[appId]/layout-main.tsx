@@ -73,9 +73,6 @@ const getAppDetailRedirectPath = (
   )
     return getRedirectionPath(appDetail, permissionOptions)
 
-  if (isWorkflowApp && pathname.endsWith('configuration')) return `/app/${appDetail.id}/workflow`
-  if (!isWorkflowApp && pathname.endsWith('workflow')) return `/app/${appDetail.id}/configuration`
-
   return undefined
 }
 
