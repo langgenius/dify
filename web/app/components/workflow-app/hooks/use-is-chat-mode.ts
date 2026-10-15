@@ -1,8 +1,16 @@
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 
 export const useIsChatMode = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const { appId } = useParams<{ appId?: string }>()
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (appDetail) => appDetail.mode,
+    }),
+  )
 
-  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  return appMode === AppModeEnum.ADVANCED_CHAT
 }

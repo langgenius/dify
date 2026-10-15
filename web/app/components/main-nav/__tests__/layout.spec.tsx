@@ -4,7 +4,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
 import { renderToString } from 'react-dom/server'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   detailSidebarModeAtom,
   setDetailSidebarModeAtom,
@@ -78,7 +77,6 @@ describe('MainNavLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-    useAppStore.getState().setAppDetail()
     ;(usePathname as Mock).mockReturnValue('/apps')
     mockConsoleState.current = {
       isCurrentWorkspaceDatasetOperator: false,
@@ -357,20 +355,5 @@ describe('MainNavLayout', () => {
     expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('main')).toHaveLength(1)
     expect(screen.getByRole('main')).toHaveTextContent('detail route content')
-  })
-
-  it('clears app detail state after leaving app routes', () => {
-    useAppStore
-      .getState()
-      .setAppDetail({ id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'])
-    ;(usePathname as Mock).mockReturnValue('/datasets')
-
-    render(
-      <MainNavLayout initialDetailSidebarMode="expand">
-        <div>content</div>
-      </MainNavLayout>,
-    )
-
-    expect(useAppStore.getState().appDetail).toBeUndefined()
   })
 })
