@@ -57,7 +57,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
 | `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
-| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
+| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Required nonblank bearer token when the Local endpoint is configured; must match shellctl's `SHELLCTL_AUTH_TOKEN`. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
 | `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/workspace` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
 | `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
@@ -182,6 +182,25 @@ accepted only as legacy aliases for the two Local settings. New deployments
 must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
 the removed shell-provider selector.
+
+Local shellctl deployments must start with `shellctl serve --require-auth-token`
+and set `SHELLCTL_AUTH_TOKEN` to the same secret as the Agent Backend. Compose's
+`local_sandbox` command enables this check; missing, empty, or whitespace-only
+tokens fail before service initialization. E2B and Enterprise retain their
+existing token requirements, and an unset Local endpoint still disables runtime.
+
+For Compose, set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` in a shared interpolation
+source: the invoking shell, `docker/.env`, or a Compose `--env-file`. This supplies
+the same secret to Agent Backend and shellctl. Setting it only in a service env
+file is insufficient: Compose's explicit `environment` values override that
+file, including with an empty interpolated value. The legacy token alias remains
+accepted. Deploy this change with a rebuilt runtime image containing
+`--require-auth-token`; the previously published `1.17.1` image does not support
+the new flag.
+
+When shellctl path isolation is enabled, any Landlock setup error aborts the job
+with exit code `125` before its user script executes. Deployments may explicitly
+set `SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable shellctl path isolation.
 
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries
