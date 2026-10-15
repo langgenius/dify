@@ -37,14 +37,21 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
 }))
 
 const mockInstallPackageFromLocal = vi.fn()
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromLocal: () => ({
-    mutateAsync: mockInstallPackageFromLocal,
-  }),
-  usePluginTaskList: () => ({
-    handleInstallTaskStart: vi.fn(),
-  }),
-}))
+vi.mock('@/service/use-plugins', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useInstallPackageFromLocal: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockInstallPackageFromLocal(variables), ...options },
+        mutationClient,
+      ),
+    usePluginTaskList: () => ({
+      handleInstallTaskStart: vi.fn(),
+    }),
+  }
+})
 
 const mockUninstallPlugin = vi.fn()
 vi.mock('@/service/plugins', () => ({
@@ -413,7 +420,7 @@ describe('Install', () => {
   // ================================
   describe('Error Handling', () => {
     it('should call onFailed with error string', async () => {
-      mockInstallPackageFromLocal.mockRejectedValue('Installation error string')
+      mockInstallPackageFromLocal.mockRejectedValue(new Error('Installation error string'))
 
       const onFailed = vi.fn()
       render(<Install {...defaultProps} onFailed={onFailed} />)
@@ -425,8 +432,8 @@ describe('Install', () => {
       })
     })
 
-    it('should call onFailed without message when error is not string', async () => {
-      mockInstallPackageFromLocal.mockRejectedValue({ code: 'ERROR' })
+    it('should preserve the Error message in onFailed', async () => {
+      mockInstallPackageFromLocal.mockRejectedValue(new Error('Error object'))
 
       const onFailed = vi.fn()
       render(<Install {...defaultProps} onFailed={onFailed} />)
@@ -434,7 +441,7 @@ describe('Install', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.install' }))
 
       await waitFor(() => {
-        expect(onFailed).toHaveBeenCalledWith()
+        expect(onFailed).toHaveBeenCalledWith('Error object')
       })
     })
   })

@@ -235,10 +235,10 @@ describe('useDSLByCanEdit', () => {
       })
 
       await waitFor(() => {
-        expect(mockExportPipelineConfig).toHaveBeenCalledWith(
-          { params: { pipeline_id: 'test-pipeline-id' }, query: { include_secret: 'true' } },
-          { context: { silent: true } },
-        )
+        expect(mockExportPipelineConfig).toHaveBeenCalledWith({
+          params: { pipeline_id: 'test-pipeline-id' },
+          query: { include_secret: 'true' },
+        })
       })
     })
   })

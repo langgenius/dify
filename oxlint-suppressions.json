@@ -1617,9 +1617,6 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 5
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -1956,11 +1953,6 @@
   "web/app/components/header/account-setting/model-provider-page/model-selector/popup-item.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-auth-dropdown/__tests__/use-activate-credential.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-configs.tsx": {

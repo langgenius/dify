@@ -2,7 +2,7 @@ import type {
   TriggerOAuthConfig,
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -82,20 +82,33 @@ const mockVerifyBuilder = vi.fn()
 const mockConfigureOAuth = vi.fn()
 const mockDeleteOAuth = vi.fn()
 
-vi.mock('@/service/use-triggers', () => ({
-  useInitiateTriggerOAuth: () => ({
-    mutate: mockInitiateOAuth,
-  }),
-  useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockVerifyBuilder,
-  }),
-  useConfigureTriggerOAuth: () => ({
-    mutate: mockConfigureOAuth,
-  }),
-  useDeleteTriggerOAuth: () => ({
-    mutate: mockDeleteOAuth,
-  }),
-}))
+vi.mock('@/service/use-triggers', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useInitiateTriggerOAuth: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockInitiateOAuth(variables), ...options },
+        mutationClient,
+      ),
+    useVerifyAndUpdateTriggerSubscriptionBuilder: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockVerifyBuilder(variables), ...options },
+        mutationClient,
+      ),
+    useConfigureTriggerOAuth: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockConfigureOAuth(variables), ...options },
+        mutationClient,
+      ),
+    useDeleteTriggerOAuth: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDeleteOAuth(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
@@ -184,6 +197,11 @@ describe('OAuthClientSettingsModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockInitiateOAuth.mockResolvedValue({
+      authorization_url: 'https://oauth.example.com/authorize',
+      subscription_builder: createMockSubscriptionBuilder(),
+    })
+    mockVerifyBuilder.mockResolvedValue({ verified: false })
     mockUsePluginStore.mockReturnValue(mockPluginDetail)
     mockClipboardWriteText.mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
@@ -281,29 +299,35 @@ describe('OAuthClientSettingsModal', () => {
       expect(defaultCard).toHaveClass('border-[1.5px]')
     })
 
-    it('should switch to Custom client type when Custom card is clicked', () => {
+    it('should switch to Custom client type when Custom card is clicked', async () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       const customCard = screen
         .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
         .closest('div')
-      fireEvent.click(customCard!)
+      await act(async () => {
+        fireEvent.click(customCard!)
+      })
 
       expect(customCard).toHaveClass('border-[1.5px]')
     })
 
-    it('should switch back to Default client type when Default card is clicked', () => {
+    it('should switch back to Default client type when Default card is clicked', async () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       const customCard = screen
         .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
         .closest('div')
-      fireEvent.click(customCard!)
+      await act(async () => {
+        fireEvent.click(customCard!)
+      })
 
       const defaultCard = screen
         .getByText('pluginTrigger.subscription.addType.options.oauth.default')
         .closest('div')
-      fireEvent.click(defaultCard!)
+      await act(async () => {
+        fireEvent.click(defaultCard!)
+      })
 
       expect(defaultCard).toHaveClass('border-[1.5px]')
     })
@@ -319,7 +343,9 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
       const copyButton = screen.getByText('common.operation.copy')
-      fireEvent.click(copyButton)
+      await act(async () => {
+        fireEvent.click(copyButton)
+      })
 
       await waitFor(() => {
         expect(mockClipboardWriteText).toHaveBeenCalledWith('https://example.com/oauth/callback')
@@ -333,32 +359,30 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('OAuth Authorization Flow', () => {
-    it('should initiate OAuth when confirm button is clicked', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+    it('should initiate OAuth when confirm button is clicked', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalled()
     })
 
-    it('should open OAuth popup after successful configuration', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+    it('should open OAuth popup after successful configuration', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       expect(mockOpenOAuthPopup).toHaveBeenCalledWith(
         'https://oauth.example.com/authorize',
@@ -366,19 +390,14 @@ describe('OAuthClientSettingsModal', () => {
       )
     })
 
-    it('should show success toast and close modal when OAuth callback succeeds', () => {
+    it('should show success toast and close modal when OAuth callback succeeds', async () => {
       const mockOnOpenChange = vi.fn()
       const mockShowOAuthCreateModal = vi.fn()
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        const builder = createMockSubscriptionBuilder()
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: builder,
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
       mockOpenOAuthPopup.mockImplementation((url, callback) => {
         callback({ success: true })
@@ -392,7 +411,9 @@ describe('OAuthClientSettingsModal', () => {
         />,
       )
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
@@ -401,53 +422,50 @@ describe('OAuthClientSettingsModal', () => {
       expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
 
-    it('should show error toast when OAuth initiation fails', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockInitiateOAuth.mockImplementation((provider, { onError }) => {
-        onError(new Error('OAuth failed'))
-      })
+    it('should show error toast when OAuth initiation fails', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockRejectedValue(new Error('OAuth failed'))
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'pluginTrigger.modal.oauth.authorization.authFailed',
+        message: 'OAuth failed',
       })
     })
   })
 
   describe('Save Only Flow', () => {
-    it('should save configuration without authorization when cancel button is clicked', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+    it('should save configuration without authorization when cancel button is clicked', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
           provider: 'test-provider',
           enabled: false,
         }),
-        expect.any(Object),
       )
     })
 
-    it('should show success toast when save only succeeds', () => {
+    it('should show success toast when save only succeeds', async () => {
       const mockOnOpenChange = vi.fn()
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} onOpenChange={mockOnOpenChange} />)
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
@@ -458,7 +476,7 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('Remove OAuth Configuration', () => {
-    it('should call deleteOAuth when remove button is clicked', () => {
+    it('should call deleteOAuth when remove button is clicked', async () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
@@ -468,12 +486,14 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
       const removeButton = screen.getByText('common.operation.remove')
-      fireEvent.click(removeButton)
+      await act(async () => {
+        fireEvent.click(removeButton)
+      })
 
-      expect(mockDeleteOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
+      expect(mockDeleteOAuth).toHaveBeenCalledWith('test-provider')
     })
 
-    it('should show success toast when remove succeeds', () => {
+    it('should show success toast when remove succeeds', async () => {
       const mockOnOpenChange = vi.fn()
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
@@ -481,9 +501,7 @@ describe('OAuthClientSettingsModal', () => {
         params: { client_id: 'test-id', client_secret: 'test-secret' },
       })
 
-      mockDeleteOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess()
-      })
+      mockDeleteOAuth.mockResolvedValue(undefined)
 
       render(
         <OAuthClientSettingsModal
@@ -494,7 +512,9 @@ describe('OAuthClientSettingsModal', () => {
       )
 
       const removeButton = screen.getByText('common.operation.remove')
-      fireEvent.click(removeButton)
+      await act(async () => {
+        fireEvent.click(removeButton)
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
@@ -503,21 +523,21 @@ describe('OAuthClientSettingsModal', () => {
       expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
 
-    it('should show error toast when remove fails', () => {
+    it('should show error toast when remove fails', async () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
         params: { client_id: 'test-id', client_secret: 'test-secret' },
       })
 
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError(new Error('Delete failed'))
-      })
+      mockDeleteOAuth.mockRejectedValue(new Error('Delete failed'))
 
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
       const removeButton = screen.getByText('common.operation.remove')
-      fireEvent.click(removeButton)
+      await act(async () => {
+        fireEvent.click(removeButton)
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
@@ -537,11 +557,13 @@ describe('OAuthClientSettingsModal', () => {
       expect(mockOnOpenChange.mock.calls[0]?.[0]).toBe(false)
     })
 
-    it('should call onOpenChange when cancel button is clicked', () => {
+    it('should call onOpenChange when cancel button is clicked', async () => {
       const mockOnOpenChange = vi.fn()
       render(<OAuthClientSettingsModal {...defaultProps} onOpenChange={mockOnOpenChange} />)
 
-      fireEvent.click(getCancelButton())
+      await act(async () => {
+        fireEvent.click(getCancelButton())
+      })
 
       expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     })
@@ -611,45 +633,39 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('Authorization Status Polling', () => {
-    it('should initiate polling setup after OAuth starts', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+    it('should initiate polling setup after OAuth starts', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       // Verify OAuth flow was initiated
-      expect(mockInitiateOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
+      expect(mockInitiateOAuth).toHaveBeenCalledWith('test-provider')
     })
 
     it('should continue polling when verifyBuilder returns an error', async () => {
       vi.useFakeTimers()
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
-      })
-      mockVerifyBuilder.mockImplementation((params, { onError }) => {
-        onError(new Error('Verify failed'))
-      })
+      mockVerifyBuilder.mockRejectedValue(new Error('Verify failed'))
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
-      vi.advanceTimersByTime(3000)
+      await vi.advanceTimersByTimeAsync(3000)
       expect(mockVerifyBuilder).toHaveBeenCalled()
 
       // Should still be in pending state (polling continues)
@@ -660,20 +676,20 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('getErrorMessage helper', () => {
-    it('should extract error message from Error object', () => {
+    it('should extract error message from Error object', async () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
         params: { client_id: 'test-id', client_secret: 'test-secret' },
       })
 
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError(new Error('Custom error message'))
-      })
+      mockDeleteOAuth.mockRejectedValue(new Error('Custom error message'))
 
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
-      fireEvent.click(screen.getByText('common.operation.remove'))
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
@@ -681,22 +697,22 @@ describe('OAuthClientSettingsModal', () => {
       })
     })
 
-    it('should extract the backend message from an API error', () => {
+    it('should extract the backend message from an API error', async () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
         params: { client_id: 'test-id', client_secret: 'test-secret' },
       })
 
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError(
-          createHttpError(new Response(null, { status: 503 }), { message: 'Object error message' }),
-        )
-      })
+      mockDeleteOAuth.mockRejectedValue(
+        createHttpError(new Response(null, { status: 503 }), { message: 'Object error message' }),
+      )
 
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
-      fireEvent.click(screen.getByText('common.operation.remove'))
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
@@ -704,83 +720,79 @@ describe('OAuthClientSettingsModal', () => {
       })
     })
 
-    it('should use fallback message when error has no message', () => {
+    it('should use fallback message when error has no message', async () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
         params: { client_id: 'test-id', client_secret: 'test-secret' },
       })
 
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError({})
-      })
+      mockDeleteOAuth.mockRejectedValue({})
 
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
-      fireEvent.click(screen.getByText('common.operation.remove'))
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'pluginTrigger.modal.oauth.remove.failed',
+        message: 'api.actionFailed',
       })
     })
 
-    it('should use fallback when error.message is not a string', () => {
+    it('should use fallback when error.message is not a string', async () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
         params: { client_id: 'test-id', client_secret: 'test-secret' },
       })
 
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError({ message: 123 })
-      })
+      mockDeleteOAuth.mockRejectedValue({ message: 123 })
 
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
-      fireEvent.click(screen.getByText('common.operation.remove'))
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'pluginTrigger.modal.oauth.remove.failed',
+        message: 'api.actionFailed',
       })
     })
 
-    it('should use fallback when error.message is empty string', () => {
+    it('should use fallback when error.message is empty string', async () => {
       const configWithCustomEnabled = createMockOAuthConfig({
         system_configured: false,
         custom_enabled: true,
         params: { client_id: 'test-id', client_secret: 'test-secret' },
       })
 
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError({ message: '' })
-      })
+      mockDeleteOAuth.mockRejectedValue({ message: '' })
 
       render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithCustomEnabled} />)
 
-      fireEvent.click(screen.getByText('common.operation.remove'))
+      await act(async () => {
+        fireEvent.click(screen.getByText('common.operation.remove'))
+      })
 
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'pluginTrigger.modal.oauth.remove.failed',
+        message: 'api.actionFailed',
       })
     })
   })
 
   describe('OAuth callback edge cases', () => {
-    it('should not show success toast when OAuth callback returns falsy data', () => {
+    it('should not show success toast when OAuth callback returns falsy data', async () => {
       const mockOnOpenChange = vi.fn()
       const mockShowOAuthCreateModal = vi.fn()
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
       mockOpenOAuthPopup.mockImplementation((url, callback) => {
         callback(null)
@@ -794,7 +806,9 @@ describe('OAuthClientSettingsModal', () => {
         />,
       )
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       // Should not show success toast or call callbacks
       expect(mockToastNotify).not.toHaveBeenCalledWith(
@@ -805,10 +819,8 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('Custom Client Type Save Flow', () => {
-    it('should send enabled: true when custom client type is selected', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+    it('should send enabled: true when custom client type is selected', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
@@ -816,33 +828,35 @@ describe('OAuthClientSettingsModal', () => {
       const customCard = screen
         .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
         .closest('div')
-      fireEvent.click(customCard!)
+      await act(async () => {
+        fireEvent.click(customCard!)
+      })
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
           enabled: true,
         }),
-        expect.any(Object),
       )
     })
 
-    it('should send enabled: false when default client type is selected', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+    it('should send enabled: false when default client type is selected', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Default is already selected
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
           enabled: false,
         }),
-        expect.any(Object),
       )
     })
   })
@@ -926,34 +940,30 @@ describe('OAuthClientSettingsModal', () => {
       expect(getConfirmButton()).toHaveTextContent('plugin.auth.saveAndAuth')
     })
 
-    it('should show authorizing text when authorization is pending', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockInitiateOAuth.mockImplementation(() => {
-        // Don't call callback - stays pending
-      })
+    it('should show authorizing text when authorization is pending', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockReturnValue(new Promise(() => {}))
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.authorizing')
     })
   })
 
   describe('Authorization Failed Status', () => {
-    it('should set authorization status to Failed when OAuth initiation fails', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockInitiateOAuth.mockImplementation((provider, { onError }) => {
-        onError(new Error('OAuth failed'))
-      })
+    it('should set authorization status to Failed when OAuth initiation fails', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockRejectedValue(new Error('OAuth failed'))
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       // After failure, button text should return to default
       expect(getConfirmButton()).toHaveTextContent('plugin.auth.saveAndAuth')
@@ -1027,7 +1037,7 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('Form Validation on Custom Save', () => {
-    it('should not call configureOAuth when form validation fails', () => {
+    it('should not call configureOAuth when form validation fails', async () => {
       setMockFormValues({
         values: { client_id: '', client_secret: '' },
         isCheckValidated: false,
@@ -1039,9 +1049,13 @@ describe('OAuthClientSettingsModal', () => {
       const customCard = screen
         .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
         .closest('div')!
-      fireEvent.click(customCard)
+      await act(async () => {
+        fireEvent.click(customCard)
+      })
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       // Should not call configureOAuth because form validation failed
       expect(mockConfigureOAuth).not.toHaveBeenCalled()
@@ -1049,23 +1063,27 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('Client Params Hidden Value Transform', () => {
-    it('should transform client_id to hidden when unchanged', () => {
+    it('should transform client_id to hidden when unchanged', async () => {
       setMockFormValues({
         values: { client_id: 'default-client-id', client_secret: 'new-secret' },
         isCheckValidated: true,
       })
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(
-        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
-      )
+      await act(async () => {
+        fireEvent.click(
+          screen
+            .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+            .closest('div')!,
+        )
+      })
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1074,27 +1092,30 @@ describe('OAuthClientSettingsModal', () => {
             client_secret: 'new-secret',
           }),
         }),
-        expect.any(Object),
       )
     })
 
-    it('should transform client_secret to hidden when unchanged', () => {
+    it('should transform client_secret to hidden when unchanged', async () => {
       setMockFormValues({
         values: { client_id: 'new-id', client_secret: 'default-client-secret' },
         isCheckValidated: true,
       })
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(
-        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
-      )
+      await act(async () => {
+        fireEvent.click(
+          screen
+            .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+            .closest('div')!,
+        )
+      })
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1103,27 +1124,30 @@ describe('OAuthClientSettingsModal', () => {
             client_secret: '[__HIDDEN__]',
           }),
         }),
-        expect.any(Object),
       )
     })
 
-    it('should transform both client_id and client_secret to hidden when both unchanged', () => {
+    it('should transform both client_id and client_secret to hidden when both unchanged', async () => {
       setMockFormValues({
         values: { client_id: 'default-client-id', client_secret: 'default-client-secret' },
         isCheckValidated: true,
       })
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(
-        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
-      )
+      await act(async () => {
+        fireEvent.click(
+          screen
+            .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+            .closest('div')!,
+        )
+      })
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1132,27 +1156,30 @@ describe('OAuthClientSettingsModal', () => {
             client_secret: '[__HIDDEN__]',
           }),
         }),
-        expect.any(Object),
       )
     })
 
-    it('should send new values when both changed', () => {
+    it('should send new values when both changed', async () => {
       setMockFormValues({
         values: { client_id: 'new-client-id', client_secret: 'new-client-secret' },
         isCheckValidated: true,
       })
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(
-        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
-      )
+      await act(async () => {
+        fireEvent.click(
+          screen
+            .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+            .closest('div')!,
+        )
+      })
 
-      fireEvent.click(getSaveOnlyButton())
+      await act(async () => {
+        fireEvent.click(getSaveOnlyButton())
+      })
 
       expect(mockConfigureOAuth).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1161,7 +1188,6 @@ describe('OAuthClientSettingsModal', () => {
             client_secret: 'new-client-secret',
           }),
         }),
-        expect.any(Object),
       )
     })
   })
@@ -1169,22 +1195,18 @@ describe('OAuthClientSettingsModal', () => {
   describe('Polling Verification Success', () => {
     it('should call verifyBuilder and update status on success', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
-      })
-      mockVerifyBuilder.mockImplementation((params, { onSuccess }) => {
-        onSuccess({ verified: true })
-      })
+      mockVerifyBuilder.mockResolvedValue({ verified: true })
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       // Advance timer to trigger polling
       await vi.advanceTimersByTimeAsync(3000)
@@ -1203,22 +1225,18 @@ describe('OAuthClientSettingsModal', () => {
 
     it('should continue polling when not verified', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
-      })
-      mockVerifyBuilder.mockImplementation((params, { onSuccess }) => {
-        onSuccess({ verified: false })
-      })
+      mockVerifyBuilder.mockResolvedValue({ verified: false })
 
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      fireEvent.click(getConfirmButton())
+      await act(async () => {
+        fireEvent.click(getConfirmButton())
+      })
 
       // First poll
       await vi.advanceTimersByTimeAsync(3000)

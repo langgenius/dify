@@ -71,20 +71,33 @@ const mockVerifyBuilder = vi.fn()
 const mockConfigureOAuth = vi.fn()
 const mockDeleteOAuth = vi.fn()
 
-vi.mock('@/service/use-triggers', () => ({
-  useInitiateTriggerOAuth: () => ({
-    mutate: mockInitiateOAuth,
-  }),
-  useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockVerifyBuilder,
-  }),
-  useConfigureTriggerOAuth: () => ({
-    mutate: mockConfigureOAuth,
-  }),
-  useDeleteTriggerOAuth: () => ({
-    mutate: mockDeleteOAuth,
-  }),
-}))
+vi.mock('@/service/use-triggers', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useInitiateTriggerOAuth: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockInitiateOAuth(variables), ...options },
+        mutationClient,
+      ),
+    useVerifyAndUpdateTriggerSubscriptionBuilder: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockVerifyBuilder(variables), ...options },
+        mutationClient,
+      ),
+    useConfigureTriggerOAuth: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockConfigureOAuth(variables), ...options },
+        mutationClient,
+      ),
+    useDeleteTriggerOAuth: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDeleteOAuth(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
@@ -123,6 +136,10 @@ describe('useOAuthClientState', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockInitiateOAuth.mockReset().mockReturnValue(new Promise(() => {}))
+    mockConfigureOAuth.mockReset().mockResolvedValue(undefined)
+    mockDeleteOAuth.mockReset().mockResolvedValue(undefined)
+    mockVerifyBuilder.mockReset().mockResolvedValue({ verified: false })
   })
 
   afterEach(() => {
@@ -255,14 +272,12 @@ describe('useOAuthClientState', () => {
     })
 
     it('should show authorizing text when status is Pending', async () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation(() => {
-        // Don't resolve - stays pending
-      })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockReturnValue(new Promise(() => {}))
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
@@ -273,25 +288,25 @@ describe('useOAuthClientState', () => {
   })
 
   describe('setClientType', () => {
-    it('should update client type when called', () => {
+    it('should update client type when called', async () => {
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.setClientType(ClientTypeEnum.Custom)
       })
 
       expect(result.current.clientType).toBe(ClientTypeEnum.Custom)
     })
 
-    it('should toggle between client types', () => {
+    it('should toggle between client types', async () => {
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.setClientType(ClientTypeEnum.Custom)
       })
       expect(result.current.clientType).toBe(ClientTypeEnum.Custom)
 
-      act(() => {
+      await act(async () => {
         result.current.setClientType(ClientTypeEnum.Default)
       })
       expect(result.current.clientType).toBe(ClientTypeEnum.Default)
@@ -299,18 +314,18 @@ describe('useOAuthClientState', () => {
   })
 
   describe('handleRemove', () => {
-    it('should call deleteOAuth with provider name', () => {
+    it('should call deleteOAuth with provider name', async () => {
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleRemove()
       })
 
-      expect(mockDeleteOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
+      expect(mockDeleteOAuth).toHaveBeenCalledWith('test-provider')
     })
 
-    it('should call onOpenChange and show success toast on success', () => {
-      mockDeleteOAuth.mockImplementation((provider, { onSuccess }) => onSuccess())
+    it('should call onOpenChange and show success toast on success', async () => {
+      mockDeleteOAuth.mockResolvedValue(undefined)
 
       const onOpenChange = vi.fn()
       const { result } = renderHook(() =>
@@ -320,7 +335,7 @@ describe('useOAuthClientState', () => {
         }),
       )
 
-      act(() => {
+      await act(async () => {
         result.current.handleRemove()
       })
 
@@ -331,17 +346,15 @@ describe('useOAuthClientState', () => {
       })
     })
 
-    it('shows the HTTP error message when removal fails', () => {
+    it('shows the HTTP error message when removal fails', async () => {
       const error = createHttpError(new Response(null, { status: 403 }), {
         message: 'Delete failed',
       })
-      mockDeleteOAuth.mockImplementation((provider, { onError }) => {
-        onError(error)
-      })
+      mockDeleteOAuth.mockRejectedValue(error)
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleRemove()
       })
 
@@ -353,12 +366,12 @@ describe('useOAuthClientState', () => {
   })
 
   describe('handleSave', () => {
-    it('should call configureOAuth with enabled: false for Default type', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
+    it('should call configureOAuth with enabled: false for Default type', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(false)
       })
 
@@ -367,12 +380,11 @@ describe('useOAuthClientState', () => {
           provider: 'test-provider',
           enabled: false,
         }),
-        expect.any(Object),
       )
     })
 
-    it('should call configureOAuth with enabled: true for Custom type', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
+    it('should call configureOAuth with enabled: true for Custom type', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
 
       const config = createMockOAuthConfig({ system_configured: false })
       const { result } = renderHook(() =>
@@ -392,7 +404,7 @@ describe('useOAuthClientState', () => {
       // @ts-expect-error - mocking ref
       result.current.clientFormRef.current = mockFormRef
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(false)
       })
 
@@ -400,12 +412,11 @@ describe('useOAuthClientState', () => {
         expect.objectContaining({
           enabled: true,
         }),
-        expect.any(Object),
       )
     })
 
-    it('should show success toast and call onOpenChange when needAuth is false', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
+    it('should show success toast and call onOpenChange when needAuth is false', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
       const onOpenChange = vi.fn()
 
       const { result } = renderHook(() =>
@@ -415,7 +426,7 @@ describe('useOAuthClientState', () => {
         }),
       )
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(false)
       })
 
@@ -426,33 +437,31 @@ describe('useOAuthClientState', () => {
       })
     })
 
-    it('should trigger authorization when needAuth is true', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+    it('should trigger authorization when needAuth is true', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
-      expect(mockInitiateOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
+      expect(mockInitiateOAuth).toHaveBeenCalledWith('test-provider')
     })
   })
 
   describe('handleAuthorization', () => {
-    it('should set status to Pending and call initiateOAuth', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation(() => {})
+    it('should set status to Pending and call initiateOAuth', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockReturnValue(new Promise(() => {}))
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
@@ -460,18 +469,16 @@ describe('useOAuthClientState', () => {
       expect(mockInitiateOAuth).toHaveBeenCalled()
     })
 
-    it('should open OAuth popup on success', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+    it('should open OAuth popup on success', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
@@ -481,36 +488,32 @@ describe('useOAuthClientState', () => {
       )
     })
 
-    it('should set status to Failed and show error toast on error', () => {
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onError }) => {
-        onError(new Error('OAuth failed'))
-      })
+    it('should set status to Failed and show error toast on error', async () => {
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockRejectedValue(new Error('OAuth failed'))
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
       expect(result.current.authorizationStatus).toBe(AuthorizationStatusEnum.Failed)
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'pluginTrigger.modal.oauth.authorization.authFailed',
+        message: 'OAuth failed',
       })
     })
 
-    it('should call onOpenChange and showOAuthCreateModal on callback success', () => {
+    it('should call onOpenChange and showOAuthCreateModal on callback success', async () => {
       const onOpenChange = vi.fn()
       const showOAuthCreateModal = vi.fn()
       const builder = createMockSubscriptionBuilder()
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: builder,
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: builder,
       })
       mockOpenOAuthPopup.mockImplementation((url, callback) => {
         callback({ success: true })
@@ -524,7 +527,7 @@ describe('useOAuthClientState', () => {
         }),
       )
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
@@ -536,16 +539,14 @@ describe('useOAuthClientState', () => {
       })
     })
 
-    it('should not call callbacks when OAuth callback returns falsy', () => {
+    it('should not call callbacks when OAuth callback returns falsy', async () => {
       const onOpenChange = vi.fn()
       const showOAuthCreateModal = vi.fn()
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
       mockOpenOAuthPopup.mockImplementation((url, callback) => {
         callback(null)
@@ -559,7 +560,7 @@ describe('useOAuthClientState', () => {
         }),
       )
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
@@ -572,20 +573,16 @@ describe('useOAuthClientState', () => {
     it('should start polling after authorization starts', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
-      mockVerifyBuilder.mockImplementation((params, { onSuccess }) => {
-        onSuccess({ verified: false })
-      })
+      mockVerifyBuilder.mockResolvedValue({ verified: false })
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
@@ -602,20 +599,16 @@ describe('useOAuthClientState', () => {
     it('should set status to Success when verified', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
-      mockVerifyBuilder.mockImplementation((params, { onSuccess }) => {
-        onSuccess({ verified: true })
-      })
+      mockVerifyBuilder.mockResolvedValue({ verified: true })
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
@@ -630,54 +623,54 @@ describe('useOAuthClientState', () => {
       vi.useRealTimers()
     })
 
-    it('should continue polling on error', async () => {
+    it('shows verification failure while retaining polling and clears it on recovery', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
-      mockVerifyBuilder.mockImplementation((params, { onError }) => {
-        onError(new Error('Verify failed'))
-      })
+      mockVerifyBuilder.mockRejectedValue(new Error('Verify failed'))
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 
       await act(async () => {
-        vi.advanceTimersByTime(3000)
+        await vi.advanceTimersByTimeAsync(3000)
       })
 
       expect(mockVerifyBuilder).toHaveBeenCalled()
       // Status should still be Pending
       expect(result.current.authorizationStatus).toBe(AuthorizationStatusEnum.Pending)
 
+      expect(result.current.verificationError).toEqual(new Error('Verify failed'))
+      expect(mockToastNotify).not.toHaveBeenCalled()
+      mockVerifyBuilder.mockResolvedValue({ verified: false })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+      expect(mockVerifyBuilder).toHaveBeenCalledTimes(2)
+      await waitFor(() => expect(result.current.verificationError).toBeNull())
       vi.useRealTimers()
     })
 
     it('should stop polling when verified', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
 
-      mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      mockInitiateOAuth.mockImplementation((provider, { onSuccess }) => {
-        onSuccess({
-          authorization_url: 'https://oauth.example.com/authorize',
-          subscription_builder: createMockSubscriptionBuilder(),
-        })
+      mockConfigureOAuth.mockResolvedValue(undefined)
+      mockInitiateOAuth.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/authorize',
+        subscription_builder: createMockSubscriptionBuilder(),
       })
-      mockVerifyBuilder.mockImplementation((params, { onSuccess }) => {
-        onSuccess({ verified: true })
-      })
+      mockVerifyBuilder.mockResolvedValue({ verified: true })
 
       const { result } = renderHook(() => useOAuthClientState(defaultParams))
 
-      act(() => {
+      await act(async () => {
         result.current.handleSave(true)
       })
 

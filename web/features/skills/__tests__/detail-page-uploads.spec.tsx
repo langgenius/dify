@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { httpErrorFromResponse } from '@/service/http-error'
@@ -202,8 +202,16 @@ describe('SkillDetailPage uploads', () => {
         },
       ],
     })
-    mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
-    const abortSpy = vi.spyOn(XMLHttpRequest.prototype, 'abort').mockImplementation(() => undefined)
+    let rejectUpload!: (error: Error) => void
+    mocks.uploadSkillFile.mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectUpload = reject
+        }),
+    )
+    const abortSpy = vi
+      .spyOn(XMLHttpRequest.prototype, 'abort')
+      .mockImplementation(() => rejectUpload(new DOMException('Cancelled', 'AbortError')))
     renderSkillDetailPage()
 
     const folder = await waitFor(() => getFileTreeItem('references'))
@@ -216,9 +224,12 @@ describe('SkillDetailPage uploads', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    })
 
     expect(abortSpy).toHaveBeenCalledOnce()
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('retries failed file uploads from the upload status panel', async () => {

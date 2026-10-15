@@ -80,12 +80,14 @@ describe('useIndexingStatusPolling', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0)
     })
+    expect(result.current.error).toEqual(new Error('network'))
     // Advance past polling interval for retry
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500)
     })
 
     expect(result.current.isEmbeddingCompleted).toBe(true)
+    expect(result.current.error).toBeUndefined()
   })
 
   it('should detect embedding statuses', async () => {

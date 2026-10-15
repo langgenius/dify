@@ -18,12 +18,19 @@ const render = (ui: ReactElement) =>
 const mockUpdatePipeline = vi.fn()
 const mockInvalidCustomizedTemplateList = vi.fn()
 
-vi.mock('@/service/use-pipeline', () => ({
-  useUpdateTemplateInfo: () => ({
-    mutateAsync: mockUpdatePipeline,
-  }),
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-}))
+vi.mock('@/service/use-pipeline', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useUpdateTemplateInfo: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUpdatePipeline(variables), ...options },
+        mutationClient,
+      ),
+    useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
+  }
+})
 
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
@@ -165,10 +172,7 @@ describe('EditPipelineInfo', () => {
 
     it('should submit with Enter from the name input', async () => {
       const user = userEvent.setup()
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -181,10 +185,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should invalidate template list on successful save', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -197,10 +198,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should call onClose on successful save', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -287,10 +285,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save correct icon_info when starting with image icon type', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -309,16 +304,12 @@ describe('EditPipelineInfo', () => {
               icon: 'file-id-123',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should save correct icon_info when starting with emoji icon type', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -333,7 +324,6 @@ describe('EditPipelineInfo', () => {
               icon: '📊',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -358,10 +348,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should switch from image icon to emoji icon when selected', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -390,7 +377,6 @@ describe('EditPipelineInfo', () => {
               icon_background: '#F3FEE7',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -460,10 +446,7 @@ describe('EditPipelineInfo', () => {
     })
 
     it('should save with new emoji icon selection', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -484,16 +467,12 @@ describe('EditPipelineInfo', () => {
               icon_background: '#F3FEE7',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should save after confirming a real emoji selection from an image icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
@@ -517,7 +496,6 @@ describe('EditPipelineInfo', () => {
               icon_background: '#F3FEE7',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -526,10 +504,7 @@ describe('EditPipelineInfo', () => {
   // Save Request Tests
   describe('Save Request', () => {
     it('should send correct request with emoji icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       render(<EditPipelineInfo {...defaultProps} />)
 
@@ -546,16 +521,12 @@ describe('EditPipelineInfo', () => {
               icon_type: 'emoji',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should send correct request with image icon', async () => {
-      mockUpdatePipeline.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockUpdatePipeline.mockResolvedValue(undefined)
 
       const props = {
         ...defaultProps,
@@ -574,7 +545,6 @@ describe('EditPipelineInfo', () => {
               icon_type: 'image',
             }),
           }),
-          expect.any(Object),
         )
       })
     })

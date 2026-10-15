@@ -373,16 +373,8 @@ describe('ChatItem', () => {
           query: 'Hello',
           inputs: { key: 'value' },
         }),
-        expect.objectContaining({
-          onNotifyError: expect.any(Function),
-        }),
+        expect.objectContaining({}),
       )
-
-      const callbacks = handleSend.mock.calls[0]![2] as {
-        onNotifyError: (message: string) => void
-      }
-      callbacks.onNotifyError('Base model not found')
-      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should handle APP_CHAT_WITH_MULTIPLE_MODEL_RESTART event', () => {

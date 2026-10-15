@@ -39,11 +39,6 @@ type DataSourceStoreState = {
   bucket?: string
 }
 
-type DatasourceSingleRunOptions = {
-  onError?: () => void
-  onSettled?: (data?: NodeRunResult) => void
-}
-
 const mockHandleNodeDataUpdate = vi.hoisted(() => vi.fn())
 const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockMutateAsync = vi.hoisted(() => vi.fn())
@@ -251,10 +246,7 @@ describe('data-source/hooks/use-before-run-form', () => {
       },
     ]
 
-    mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
-      return Promise.resolve(payload)
-    })
+    mockMutateAsync.mockResolvedValue({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
 
     const props = createProps()
     const { result } = renderHook(() => useBeforeRunForm(props))
@@ -281,7 +273,6 @@ describe('data-source/hooks/use-before-run-form', () => {
           transfer_method: TransferMethod.local_file,
         }),
       }),
-      expect.any(Object),
     )
     expect(mockFetchNodeInspectVars).toHaveBeenCalledWith(
       FlowType.ragPipeline,
@@ -319,10 +310,7 @@ describe('data-source/hooks/use-before-run-form', () => {
       },
     ]
 
-    mockMutateAsync.mockImplementation((_payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onError?.()
-      return Promise.resolve(undefined)
-    })
+    mockMutateAsync.mockRejectedValue(new Error('Conversion failed'))
 
     const { result } = renderHook(() =>
       useBeforeRunForm(

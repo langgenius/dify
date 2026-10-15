@@ -19,16 +19,9 @@ vi.mock('@/service/console', () => ({
       byAgentId: {
         buildDraft: {
           get: {
-            queryOptions: ({ context }: { context?: { silent?: boolean } }) => ({
+            queryOptions: () => ({
               queryKey: ['agent', 'agent-1', 'build-draft'],
-              queryFn: async () => {
-                try {
-                  return await mocks.request()
-                } catch (error) {
-                  if (!context?.silent) mocks.toastError('Request failed')
-                  throw error
-                }
-              },
+              queryFn: () => mocks.request(),
             }),
           },
         },

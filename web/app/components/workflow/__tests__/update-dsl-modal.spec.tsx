@@ -597,9 +597,8 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
-        description: 'Invalid app package',
-      })
+      expect(screen.getByRole('alert')).toHaveTextContent('Invalid app package')
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 
@@ -680,9 +679,8 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('workflow.common.importFailure', {
-        description: 'Invalid app package',
-      })
+      expect(screen.getByRole('alert')).toHaveTextContent('Invalid app package')
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 

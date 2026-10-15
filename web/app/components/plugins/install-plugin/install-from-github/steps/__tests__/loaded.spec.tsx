@@ -17,10 +17,19 @@ vi.mock('@/service/plugins', () => ({
 
 const mockInstallPackageFromGitHub = vi.fn()
 const mockHandleInstallTaskStart = vi.fn()
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromGitHub: () => ({ mutateAsync: mockInstallPackageFromGitHub }),
-  usePluginTaskList: () => ({ handleInstallTaskStart: mockHandleInstallTaskStart }),
-}))
+vi.mock('@/service/use-plugins', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useInstallPackageFromGitHub: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockInstallPackageFromGitHub(variables), ...options },
+        mutationClient,
+      ),
+    usePluginTaskList: () => ({ handleInstallTaskStart: mockHandleInstallTaskStart }),
+  }
+})
 
 const mockCheck = vi.fn()
 vi.mock('../../../base/check-task-status', () => ({
@@ -370,8 +379,8 @@ describe('Loaded', () => {
       })
     })
 
-    it('should call onFailed with string error', async () => {
-      mockInstallPackageFromGitHub.mockRejectedValue('String error message')
+    it('should pass the request error message to onFailed', async () => {
+      mockInstallPackageFromGitHub.mockRejectedValue(new Error('String error message'))
 
       const onFailed = vi.fn()
       render(<Loaded {...defaultProps} onFailed={onFailed} />)
@@ -383,7 +392,7 @@ describe('Loaded', () => {
       })
     })
 
-    it('should call onFailed without message for non-string errors', async () => {
+    it('should preserve the Error message in onFaileds', async () => {
       mockInstallPackageFromGitHub.mockRejectedValue(new Error('Error object'))
 
       const onFailed = vi.fn()
@@ -392,7 +401,7 @@ describe('Loaded', () => {
       fireEvent.click(screen.getByRole('button', { name: /plugin.installModal.install/i }))
 
       await waitFor(() => {
-        expect(onFailed).toHaveBeenCalledWith()
+        expect(onFailed).toHaveBeenCalledWith('Error object')
       })
     })
   })

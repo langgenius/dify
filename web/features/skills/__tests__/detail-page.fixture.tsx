@@ -234,11 +234,17 @@ vi.mock('@/service/console', async (importOriginal) => {
             },
             bySkillId: {
               delete: {
-                mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                mutationOptions: (options: Record<string, unknown> = {}) => ({
+                  mutationFn: mocks.deleteSkillMutationFn,
+                  ...options,
+                }),
               },
               duplicate: {
                 post: {
-                  mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
+                  mutationOptions: (options: Record<string, unknown> = {}) => ({
+                    mutationFn: mocks.duplicateSkillMutationFn,
+                    ...options,
+                  }),
                 },
               },
               get: {
@@ -246,13 +252,16 @@ vi.mock('@/service/console', async (importOriginal) => {
                 queryOptions: mocks.skillDetailQueryOptions,
               },
               patch: {
-                mutationOptions: () => ({ mutationFn: mocks.skillMetadataMutationFn }),
+                mutationOptions: (options: Record<string, unknown> = {}) => ({
+                  mutationFn: mocks.skillMetadataMutationFn,
+                  ...options,
+                }),
               },
               publish: {
                 post: {
-                  mutationOptions: (options?: unknown) => {
+                  mutationOptions: (options?: { onError?: (error: unknown) => void }) => {
                     mocks.publishSkillMutationOptions(options)
-                    return { mutationFn: mocks.publishSkillMutationFn }
+                    return { ...options, mutationFn: mocks.publishSkillMutationFn }
                   },
                 },
               },
@@ -265,11 +274,17 @@ vi.mock('@/service/console', async (importOriginal) => {
               files: {
                 check: {
                   post: {
-                    mutationOptions: () => ({ mutationFn: mocks.checkDraftFilesMutationFn }),
+                    mutationOptions: (options: Record<string, unknown> = {}) => ({
+                      mutationFn: mocks.checkDraftFilesMutationFn,
+                      ...options,
+                    }),
                   },
                 },
                 patch: {
-                  mutationOptions: () => ({ mutationFn: mocks.saveDraftFileMutationFn }),
+                  mutationOptions: (options: Record<string, unknown> = {}) => ({
+                    mutationFn: mocks.saveDraftFileMutationFn,
+                    ...options,
+                  }),
                 },
               },
               versions: {
@@ -282,7 +297,10 @@ vi.mock('@/service/console', async (importOriginal) => {
                     queryOptions: mocks.skillVersionDetailQueryOptions,
                   },
                   patch: {
-                    mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
+                    mutationOptions: (options: Record<string, unknown> = {}) => ({
+                      mutationFn: mocks.versionPatchMutationFn,
+                      ...options,
+                    }),
                   },
                   delete:
                     actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId

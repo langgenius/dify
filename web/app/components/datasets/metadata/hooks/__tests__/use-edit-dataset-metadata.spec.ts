@@ -8,37 +8,50 @@ const mockDoRenameMetaData = vi.fn().mockResolvedValue({})
 const mockDoDeleteMetaData = vi.fn().mockResolvedValue({})
 const mockToggleBuiltInStatus = vi.fn().mockResolvedValue({})
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [
-        { id: '1', name: 'field_one', type: DataType.string, count: 5 },
-        { id: '2', name: 'field_two', type: DataType.number, count: 3 },
-      ],
-      built_in_field_enabled: false,
-    },
-  }),
-  useCreateMetaData: () => ({
-    mutate: mockDoAddMetaData,
-  }),
-  useRenameMeta: () => ({
-    mutate: mockDoRenameMetaData,
-  }),
-  useDeleteMetaData: () => ({
-    mutateAsync: mockDoDeleteMetaData,
-  }),
-  useUpdateBuiltInStatus: () => ({
-    mutateAsync: mockToggleBuiltInStatus,
-  }),
-  useBuiltInMetaDataFields: () => ({
-    data: {
-      fields: [
-        { name: 'created_at', type: DataType.time },
-        { name: 'modified_at', type: DataType.time },
-      ],
-    },
-  }),
-}))
+vi.mock('@/service/knowledge/use-metadata', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useDatasetMetaData: () => ({
+      data: {
+        doc_metadata: [
+          { id: '1', name: 'field_one', type: DataType.string, count: 5 },
+          { id: '2', name: 'field_two', type: DataType.number, count: 3 },
+        ],
+        built_in_field_enabled: false,
+      },
+    }),
+    useCreateMetaData: (_datasetId: string) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDoAddMetaData(variables) },
+        mutationClient,
+      ),
+    useRenameMeta: (_datasetId: string) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDoRenameMetaData(variables) },
+        mutationClient,
+      ),
+    useDeleteMetaData: (_datasetId: string) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDoDeleteMetaData(variables) },
+        mutationClient,
+      ),
+    useUpdateBuiltInStatus: (_datasetId: string) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockToggleBuiltInStatus(variables) },
+        mutationClient,
+      ),
+    useBuiltInMetaDataFields: () => ({
+      data: {
+        fields: [
+          { name: 'created_at', type: DataType.time },
+          { name: 'modified_at', type: DataType.time },
+        ],
+      },
+    }),
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   default: {

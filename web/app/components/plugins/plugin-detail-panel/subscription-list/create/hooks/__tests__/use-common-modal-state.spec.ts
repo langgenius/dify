@@ -65,32 +65,37 @@ const mockVerifyCredentials = vi.fn()
 const mockCreateBuilder = vi.fn()
 const mockBuildSubscription = vi.fn()
 const mockUpdateBuilder = vi.fn()
-let mockIsVerifyingCredentials = false
-let mockIsBuilding = false
 
-vi.mock('@/service/use-triggers', () => ({
-  useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockVerifyCredentials,
-    get isPending() {
-      return mockIsVerifyingCredentials
-    },
-  }),
-  useCreateTriggerSubscriptionBuilder: () => ({
-    mutateAsync: mockCreateBuilder,
-  }),
-  useBuildTriggerSubscription: () => ({
-    mutate: mockBuildSubscription,
-    get isPending() {
-      return mockIsBuilding
-    },
-  }),
-  useUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockUpdateBuilder,
-  }),
-  useTriggerSubscriptionBuilderLogs: () => ({
-    data: { logs: [] },
-  }),
-}))
+vi.mock('@/service/use-triggers', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useVerifyAndUpdateTriggerSubscriptionBuilder: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockVerifyCredentials(variables), ...options },
+        mutationClient,
+      ),
+    useCreateTriggerSubscriptionBuilder: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockCreateBuilder(variables), ...options },
+        mutationClient,
+      ),
+    useBuildTriggerSubscription: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockBuildSubscription(variables), ...options },
+        mutationClient,
+      ),
+    useUpdateTriggerSubscriptionBuilder: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUpdateBuilder(variables), ...options },
+        mutationClient,
+      ),
+    useTriggerSubscriptionBuilderLogs: () => ({
+      data: { logs: [] },
+    }),
+  }
+})
 
 const mockToastNotify = vi.fn()
 vi.mock('@/app/notifications', () => ({
@@ -127,8 +132,6 @@ const createFormRef = ({
 describe('useCommonModalState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsVerifyingCredentials = false
-    mockIsBuilding = false
     mockCreateBuilder.mockResolvedValue({
       subscription_builder: createMockBuilder(),
     })
@@ -158,9 +161,7 @@ describe('useCommonModalState', () => {
   })
 
   it('should verify credentials and advance to configuration step', async () => {
-    mockVerifyCredentials.mockImplementation((_payload, options) => {
-      options?.onSuccess?.()
-    })
+    mockVerifyCredentials.mockResolvedValue(undefined)
 
     const builder = createMockBuilder()
     const { result } = renderHook(() =>
@@ -178,21 +179,15 @@ describe('useCommonModalState', () => {
       values: { api_key: 'secret' },
     })
 
-    act(() => {
+    await act(async () => {
       result.current.handleVerify()
     })
 
-    expect(mockVerifyCredentials).toHaveBeenCalledWith(
-      {
-        provider: 'provider-a',
-        subscriptionBuilderId: builder.id,
-        credentials: { api_key: 'secret' },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }),
-    )
+    expect(mockVerifyCredentials).toHaveBeenCalledWith({
+      provider: 'provider-a',
+      subscriptionBuilderId: builder.id,
+      credentials: { api_key: 'secret' },
+    })
     expect(result.current.currentStep).toBe(ApiKeyStep.Configuration)
     expect(mockToastNotify).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -201,7 +196,7 @@ describe('useCommonModalState', () => {
     )
   })
 
-  it('should build subscriptions with validated automatic parameters', () => {
+  it('should build subscriptions with validated automatic parameters', async () => {
     const onClose = vi.fn()
     const builder = createMockBuilder()
     const { result } = renderHook(() =>
@@ -226,22 +221,16 @@ describe('useCommonModalState', () => {
       values: { repo_name: 'repo-a' },
     })
 
-    act(() => {
+    await act(async () => {
       result.current.handleCreate()
     })
 
-    expect(mockBuildSubscription).toHaveBeenCalledWith(
-      {
-        provider: 'provider-a',
-        subscriptionBuilderId: builder.id,
-        name: 'Subscription A',
-        parameters: { repo_name: 'repo-a' },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }),
-    )
+    expect(mockBuildSubscription).toHaveBeenCalledWith({
+      provider: 'provider-a',
+      subscriptionBuilderId: builder.id,
+      name: 'Subscription A',
+      parameters: { repo_name: 'repo-a' },
+    })
   })
 
   it('should debounce manual property updates', async () => {
@@ -266,21 +255,16 @@ describe('useCommonModalState', () => {
       isCheckValidated: true,
     })
 
-    act(() => {
+    await act(async () => {
       result.current.handleManualPropertiesChange()
       vi.advanceTimersByTime(500)
     })
 
-    expect(mockUpdateBuilder).toHaveBeenCalledWith(
-      {
-        provider: 'provider-a',
-        subscriptionBuilderId: builder.id,
-        properties: { webhook_url: 'https://hook.example.com' },
-      },
-      expect.objectContaining({
-        onError: expect.any(Function),
-      }),
-    )
+    expect(mockUpdateBuilder).toHaveBeenCalledWith({
+      provider: 'provider-a',
+      subscriptionBuilderId: builder.id,
+      properties: { webhook_url: 'https://hook.example.com' },
+    })
 
     vi.useRealTimers()
   })

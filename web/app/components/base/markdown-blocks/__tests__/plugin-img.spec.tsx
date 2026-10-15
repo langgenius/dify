@@ -9,13 +9,7 @@ import { getMarkdownImageURL } from '../utils'
 
 const { request } = vi.hoisted(() => ({
   request:
-    vi.fn<
-      (
-        url: string,
-        init: RequestInit,
-        options: { request: Request; silent?: boolean },
-      ) => Promise<Response>
-    >(),
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
 vi.mock('@/service/base', () => ({ request }))
 
@@ -84,7 +78,6 @@ it('shares normalized resource requests between image and paragraph consumers an
     pluginInfo.pluginUniqueIdentifier,
   )
   expect(options.request.method).toBe('GET')
-  expect(options.silent).toBe(true)
   const cached = queryClient.getQueryData(
     consoleQuery.workspaces.current.plugin.asset.get.queryKey({
       input: {
@@ -171,7 +164,7 @@ it('retains the marketplace fallback when the asset request fails', async () => 
   expect(URL.createObjectURL).not.toHaveBeenCalled()
 })
 
-it('inherits asset retries from the client and stays silent when the first HTTP attempt fails', async () => {
+it('inherits asset retries from the client when the first HTTP attempt fails', async () => {
   queryClient.setDefaultOptions({ queries: { retry: 2, retryDelay: 0, staleTime: 300_000 } })
   request.mockImplementationOnce(async () =>
     Response.json({ message: 'Temporarily unavailable' }, { status: 503 }),
@@ -183,7 +176,6 @@ it('inherits asset retries from the client and stays silent when the first HTTP 
     expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', 'blob:asset-1'),
   )
   expect(request).toHaveBeenCalledTimes(2)
-  expect(request.mock.calls.every(([, , options]) => options.silent === true)).toBe(true)
   expect(errorToast).not.toHaveBeenCalled()
 })
 

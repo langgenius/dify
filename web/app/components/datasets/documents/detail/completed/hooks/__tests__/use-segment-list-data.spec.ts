@@ -15,11 +15,6 @@ import { segmentImportStatus } from '@/types/dataset'
 import { useSegmentListData } from '../use-segment-list-data'
 
 // Type for mutation callbacks
-type SegmentMutationResponse = { data: SegmentDetailModel }
-type SegmentMutationCallbacks = {
-  onSuccess: (res: SegmentMutationResponse) => void
-  onSettled: () => void
-}
 
 // Mock file entity factory
 const createMockFileEntity = (overrides: Partial<FileEntity> = {}): FileEntity => ({
@@ -118,20 +113,41 @@ vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
 
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useSegmentList: () => ({
-    isLoading: false,
-    data: mockSegmentListData.current,
-  }),
-  useSegmentListKey: ['segment', 'chunkList'],
-  useChunkListAllKey: ['segment', 'chunkList', { enabled: 'all' }],
-  useChunkListEnabledKey: ['segment', 'chunkList', { enabled: true }],
-  useChunkListDisabledKey: ['segment', 'chunkList', { enabled: false }],
-  useEnableSegment: () => ({ mutateAsync: mockEnableSegment }),
-  useDisableSegment: () => ({ mutateAsync: mockDisableSegment }),
-  useDeleteSegment: () => ({ mutateAsync: mockDeleteSegment }),
-  useUpdateSegment: () => ({ mutateAsync: mockUpdateSegment }),
-}))
+vi.mock('@/service/knowledge/use-segment', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useSegmentList: () => ({
+      isLoading: false,
+      data: mockSegmentListData.current,
+    }),
+    useSegmentListKey: ['segment', 'chunkList'],
+    useChunkListAllKey: ['segment', 'chunkList', { enabled: 'all' }],
+    useChunkListEnabledKey: ['segment', 'chunkList', { enabled: true }],
+    useChunkListDisabledKey: ['segment', 'chunkList', { enabled: false }],
+    useEnableSegment: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockEnableSegment(variables), ...options },
+        mutationClient,
+      ),
+    useDisableSegment: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDisableSegment(variables), ...options },
+        mutationClient,
+      ),
+    useDeleteSegment: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDeleteSegment(variables), ...options },
+        mutationClient,
+      ),
+    useUpdateSegment: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUpdateSegment(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/service/use-base', () => ({
   useInvalid: (key: unknown[]) => {
@@ -347,7 +363,7 @@ describe('useSegmentListData', () => {
   })
 
   describe('resetList', () => {
-    it('should call clearSelection and invalidSegmentList', () => {
+    it('should call clearSelection and invalidSegmentList', async () => {
       const clearSelection = vi.fn()
 
       const { result } = renderHook(
@@ -361,7 +377,7 @@ describe('useSegmentListData', () => {
         },
       )
 
-      act(() => {
+      await act(async () => {
         result.current.resetList()
       })
 
@@ -372,11 +388,7 @@ describe('useSegmentListData', () => {
 
   describe('refreshChunkListWithStatusChanged', () => {
     it('should invalidate disabled and enabled when status is all', async () => {
-      mockEnableSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockEnableSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -398,11 +410,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should invalidate segment list when status is not all', async () => {
-      mockEnableSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockEnableSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -425,11 +433,7 @@ describe('useSegmentListData', () => {
 
   describe('onChangeSwitch', () => {
     it('should call enableSegment when enable is true', async () => {
-      mockEnableSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockEnableSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
@@ -444,11 +448,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should call disableSegment when enable is false', async () => {
-      mockDisableSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockDisableSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
@@ -462,11 +462,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should use selectedSegmentIds when segId is empty', async () => {
-      mockEnableSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockEnableSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -485,7 +481,6 @@ describe('useSegmentListData', () => {
 
       expect(mockEnableSegment).toHaveBeenCalledWith(
         expect.objectContaining({ segmentIds: ['seg-1', 'seg-2'] }),
-        expect.any(Object),
       )
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
@@ -494,11 +489,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should notify error on failure', async () => {
-      mockEnableSegment.mockImplementation(
-        async (_params, { onError }: { onError: () => void }) => {
-          onError()
-        },
-      )
+      mockEnableSegment.mockRejectedValue(new Error('Update failed'))
 
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
@@ -510,7 +501,7 @@ describe('useSegmentListData', () => {
 
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+        message: 'Update failed',
       })
     })
   })
@@ -518,11 +509,7 @@ describe('useSegmentListData', () => {
   describe('onDelete', () => {
     it('should call deleteSegment and resetList on success', async () => {
       const clearSelection = vi.fn()
-      mockDeleteSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockDeleteSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -548,11 +535,7 @@ describe('useSegmentListData', () => {
 
     it('should clear selection when deleting batch (no segId)', async () => {
       const clearSelection = vi.fn()
-      mockDeleteSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockDeleteSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -575,11 +558,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should notify error on failure', async () => {
-      mockDeleteSegment.mockImplementation(
-        async (_params, { onError }: { onError: () => void }) => {
-          onError()
-        },
-      )
+      mockDeleteSegment.mockRejectedValue(new Error('Update failed'))
 
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
@@ -591,7 +570,7 @@ describe('useSegmentListData', () => {
 
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+        message: 'Update failed',
       })
     })
   })
@@ -669,12 +648,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should call updateSegment with correct params', async () => {
-      mockUpdateSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {
-          onSuccess({ data: createMockSegment() })
-          onSettled()
-        },
-      )
+      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
       const onCloseSegmentDetail = vi.fn()
       const { result } = renderHook(
@@ -704,12 +678,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should not close modal when needRegenerate is true', async () => {
-      mockUpdateSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {
-          onSuccess({ data: createMockSegment() })
-          onSettled()
-        },
-      )
+      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
       const onCloseSegmentDetail = vi.fn()
       const { result } = renderHook(
@@ -731,12 +700,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should include attachments in params', async () => {
-      mockUpdateSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {
-          onSuccess({ data: createMockSegment() })
-          onSettled()
-        },
-      )
+      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
@@ -756,13 +720,12 @@ describe('useSegmentListData', () => {
         expect.objectContaining({
           body: expect.objectContaining({ attachment_ids: ['uploaded-1'] }),
         }),
-        expect.any(Object),
       )
     })
   })
 
   describe('viewNewlyAddedChunk', () => {
-    it('should set needScrollToBottom and not call resetList when adding new page', () => {
+    it('should set needScrollToBottom and not call resetList when adding new page', async () => {
       mockSegmentListData.current = {
         data: [],
         total: 10,
@@ -783,14 +746,14 @@ describe('useSegmentListData', () => {
         },
       )
 
-      act(() => {
+      await act(async () => {
         result.current.viewNewlyAddedChunk()
       })
 
       expect(result.current.needScrollToBottom.current).toBe(true)
     })
 
-    it('should call resetList when not adding new page', () => {
+    it('should call resetList when not adding new page', async () => {
       mockSegmentListData.current = {
         data: [],
         total: 5,
@@ -813,7 +776,7 @@ describe('useSegmentListData', () => {
         },
       )
 
-      act(() => {
+      await act(async () => {
         result.current.viewNewlyAddedChunk()
       })
 
@@ -823,12 +786,12 @@ describe('useSegmentListData', () => {
   })
 
   describe('updateSegmentInCache', () => {
-    it('should call queryClient.setQueryData', () => {
+    it('should call queryClient.setQueryData', async () => {
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
       })
 
-      act(() => {
+      await act(async () => {
         result.current.updateSegmentInCache('seg-1', (seg) => ({ ...seg, enabled: false }))
       })
 
@@ -879,12 +842,7 @@ describe('useSegmentListData', () => {
 
   describe('refreshChunkListDataWithDetailChanged', () => {
     it('should call correct invalidation for status all', async () => {
-      mockUpdateSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {
-          onSuccess({ data: createMockSegment() })
-          onSettled()
-        },
-      )
+      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
       const { result } = renderHook(
         () =>
@@ -906,12 +864,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should call correct invalidation for status true', async () => {
-      mockUpdateSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {
-          onSuccess({ data: createMockSegment() })
-          onSettled()
-        },
-      )
+      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
       const { result } = renderHook(
         () =>
@@ -933,12 +886,7 @@ describe('useSegmentListData', () => {
     })
 
     it('should call correct invalidation for status false', async () => {
-      mockUpdateSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {
-          onSuccess({ data: createMockSegment() })
-          onSettled()
-        },
-      )
+      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
       const { result } = renderHook(
         () =>
@@ -964,12 +912,7 @@ describe('useSegmentListData', () => {
     it('should set content and answer for QA mode', async () => {
       mockDocForm.current = ChunkingModeEnum.qa as ChunkingMode
 
-      mockUpdateSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {
-          onSuccess({ data: createMockSegment() })
-          onSettled()
-        },
-      )
+      mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
       const { result } = renderHook(() => useSegmentListData(defaultOptions), {
         wrapper: createWrapper(),
@@ -986,13 +929,12 @@ describe('useSegmentListData', () => {
             answer: 'answer',
           }),
         }),
-        expect.any(Object),
       )
     })
   })
 
   describe('updateSegmentsInCache', () => {
-    it('should handle undefined old data', () => {
+    it('should handle undefined old data', async () => {
       mockQueryClient.setQueryData.mockImplementation((_key, updater) => {
         const result = typeof updater === 'function' ? updater(undefined) : updater
         return result
@@ -1003,14 +945,14 @@ describe('useSegmentListData', () => {
       })
 
       // Call updateSegmentInCache which should handle undefined gracefully
-      act(() => {
+      await act(async () => {
         result.current.updateSegmentInCache('seg-1', (seg) => ({ ...seg, enabled: false }))
       })
 
       expect(mockQueryClient.setQueryData).toHaveBeenCalled()
     })
 
-    it('should map segments correctly when old data exists', () => {
+    it('should map segments correctly when old data exists', async () => {
       const mockOldData = {
         data: [
           createMockSegment({ id: 'seg-1', enabled: true }),
@@ -1032,7 +974,7 @@ describe('useSegmentListData', () => {
         wrapper: createWrapper(),
       })
 
-      act(() => {
+      await act(async () => {
         result.current.updateSegmentInCache('seg-1', (seg) => ({ ...seg, enabled: false }))
       })
 
@@ -1047,11 +989,7 @@ describe('useSegmentListData', () => {
         return result
       })
 
-      mockEnableSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockEnableSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -1093,11 +1031,7 @@ describe('useSegmentListData', () => {
         return result
       })
 
-      mockEnableSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockEnableSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>

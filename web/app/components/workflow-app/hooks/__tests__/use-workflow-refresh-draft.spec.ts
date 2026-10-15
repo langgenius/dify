@@ -22,6 +22,7 @@ let workflowStoreState: {
   appId: string
   isWorkflowDataLoaded: boolean
   debouncedSyncWorkflowDraft?: { cancel: () => void }
+  setDraftSyncError: ReturnType<typeof vi.fn>
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
   setIsSyncingWorkflowDraft: typeof mockSetIsSyncingWorkflowDraft
   setEnvironmentVariables: typeof mockSetEnvironmentVariables
@@ -63,6 +64,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       appId: 'app-1',
       isWorkflowDataLoaded: true,
       debouncedSyncWorkflowDraft: undefined,
+      setDraftSyncError: vi.fn(),
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
       setIsSyncingWorkflowDraft: mockSetIsSyncingWorkflowDraft,
       setEnvironmentVariables: mockSetEnvironmentVariables,

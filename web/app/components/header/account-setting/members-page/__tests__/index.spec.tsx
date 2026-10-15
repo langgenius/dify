@@ -223,10 +223,7 @@ describe('MembersPage', () => {
       data: { accounts: mockAccounts },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
-    mockUpdateRolesOfMember.mockImplementation((_payload, options) => {
-      options?.onSuccess?.()
-      return Promise.resolve()
-    })
+    mockUpdateRolesOfMember.mockResolvedValue(undefined)
     vi.mocked(useUpdateRolesOfMember).mockReturnValue({
       mutateAsync: mockUpdateRolesOfMember,
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
@@ -657,13 +654,10 @@ describe('MembersPage', () => {
     await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next'],
-      },
-      expect.any(Object),
-    )
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      memberId: '2',
+      roleIds: ['role-next'],
+    })
     expect(mockRefetch).toHaveBeenCalled()
     expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
     expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
@@ -684,13 +678,10 @@ describe('MembersPage', () => {
     await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
-    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
-      {
-        memberId: '2',
-        roleIds: ['role-next', 'role-extra'],
-      },
-      expect.any(Object),
-    )
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      memberId: '2',
+      roleIds: ['role-next', 'role-extra'],
+    })
   })
 
   it('should not open member details when clicking the member menu area', async () => {

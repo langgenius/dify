@@ -46,6 +46,10 @@ const mockState = vi.hoisted(() => ({
   },
 }))
 
+vi.mock('@/app/notifications', () => ({
+  toast: { error: (message: string) => mockState.mockToastCall({ type: 'error', message }) },
+}))
+
 vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(mockState.mockToastCall, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
@@ -898,7 +902,7 @@ describe('Debug', () => {
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
       const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
-        []) as [unknown, unknown, { onNotifyError: (message: string) => void }]
+        []) as [unknown, unknown, { onError: (message: string) => void }]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -913,7 +917,7 @@ describe('Debug', () => {
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
 
-      handlers.onNotifyError('Base model not found')
+      handlers.onError('Base model not found')
       expect(mockState.mockToastCall).toHaveBeenCalledWith({
         type: 'error',
         message: 'Base model not found',

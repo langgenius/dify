@@ -85,7 +85,7 @@ const mocks = vi.hoisted(() => {
     mockSseGet: vi.fn(),
     mockHandleStream: vi.fn(),
     mockPost: vi.fn(),
-    mockStopWorkflowRun: vi.fn(),
+    mockStopWorkflowRun: vi.fn().mockResolvedValue(undefined),
     mockTrackEvent: vi.fn(),
     mockGetAudioPlayer: vi.fn(),
     mockResetMsgId: vi.fn(),

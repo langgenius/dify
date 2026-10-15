@@ -187,11 +187,17 @@ vi.mock('@/service/console', () => ({
             infiniteOptions: mocks.skillsQueryOptions,
           },
           post: {
-            mutationOptions: () => ({ mutationFn: mocks.createSkillMutationFn }),
+            mutationOptions: (options: Record<string, unknown> = {}) => ({
+              ...options,
+              mutationFn: mocks.createSkillMutationFn,
+            }),
           },
           import: {
             post: {
-              mutationOptions: () => ({ mutationFn: mocks.importSkillMutationFn }),
+              mutationOptions: (options: Record<string, unknown> = {}) => ({
+                ...options,
+                mutationFn: mocks.importSkillMutationFn,
+              }),
             },
           },
           tags: {
@@ -202,7 +208,10 @@ vi.mock('@/service/console', () => ({
           },
           bySkillId: {
             delete: {
-              mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+              mutationOptions: (options: Record<string, unknown> = {}) => ({
+                ...options,
+                mutationFn: mocks.deleteSkillMutationFn,
+              }),
             },
             references: {
               get: {
@@ -211,7 +220,10 @@ vi.mock('@/service/console', () => ({
             },
             duplicate: {
               post: {
-                mutationOptions: () => ({ mutationFn: mocks.duplicateSkillMutationFn }),
+                mutationOptions: (options: Record<string, unknown> = {}) => ({
+                  ...options,
+                  mutationFn: mocks.duplicateSkillMutationFn,
+                }),
               },
             },
           },

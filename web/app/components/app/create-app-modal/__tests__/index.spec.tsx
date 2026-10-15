@@ -56,7 +56,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       apps: {
         ...actual.consoleQuery.apps,
         post: {
-          mutationOptions: () => ({
+          mutationOptions: (options: Record<string, unknown> = {}) => ({
+            ...options,
             mutationFn: ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
           }),
         },

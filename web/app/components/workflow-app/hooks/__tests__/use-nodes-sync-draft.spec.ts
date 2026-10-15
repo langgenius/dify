@@ -15,6 +15,7 @@ import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 const mockGetNodes = vi.fn()
 const mockPostWithKeepalive = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
+const mockSetDraftSyncError = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
 const mockCollaborationIsConnected = vi.fn()
@@ -39,6 +40,7 @@ let workflowStoreState: {
   syncWorkflowDraftHash: string | null
   conversationVariables: Array<Record<string, unknown>>
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
+  setDraftSyncError: typeof mockSetDraftSyncError
   setDraftUpdatedAt: typeof mockSetDraftUpdatedAt
   showConfirm: WorkflowSliceShape['showConfirm']
   setShowConfirm: typeof mockSetShowConfirm
@@ -170,6 +172,7 @@ describe('useNodesSyncDraft', () => {
       syncWorkflowDraftHash: 'hash-123',
       conversationVariables: [],
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
+      setDraftSyncError: mockSetDraftSyncError,
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
       showConfirm: undefined,
       setShowConfirm: mockSetShowConfirm,

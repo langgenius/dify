@@ -2,12 +2,13 @@ import type { PropsWithChildren } from 'react'
 import type { AgentConfigurePublishResult } from '../use-agent-configure-sync'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { Suspense } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { makeQueryClient } from '@/app/get-query-client'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
@@ -53,7 +54,7 @@ const composerPutMutationFn = vi.hoisted(() =>
 )
 
 const composerPutRequestContexts = vi.hoisted(
-  () => [] as Array<{ keepalive?: boolean; silent?: boolean } | undefined>,
+  () => [] as Array<{ keepalive?: boolean } | undefined>,
 )
 
 const composerPutMutationOptions = vi.hoisted(() =>
@@ -61,8 +62,8 @@ const composerPutMutationOptions = vi.hoisted(() =>
     (options?: {
       context?: {
         keepalive?: boolean
-        silent?: boolean
       }
+      onError?: (error: unknown) => void
       onSuccess?: (
         data: { agent_soul: Record<string, unknown> },
         variables: {
@@ -73,6 +74,7 @@ const composerPutMutationOptions = vi.hoisted(() =>
         },
       ) => void
     }) => ({
+      onError: options?.onError,
       mutationFn: async (variables: {
         params: { agent_id: string }
         body: {
@@ -114,11 +116,10 @@ const publishAgentMutationFn = vi.hoisted(() =>
 const publishAgentMutationOptions = vi.hoisted(() =>
   vi.fn(
     (options?: {
-      context?: {
-        silent?: boolean
-      }
+      onError?: (error: unknown) => void
       onSuccess?: (data: PublishAgentResponse, variables: PublishAgentVariables) => void
     }) => ({
+      onError: options?.onError,
       mutationFn: async (variables: PublishAgentVariables) => {
         const data = await publishAgentMutationFn(variables)
         options?.onSuccess?.(data, variables)
@@ -252,12 +253,7 @@ function renderUseAgentConfigureSync({
   publishEnabled?: boolean
   suspend?: boolean
 } = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
+  const queryClient = makeQueryClient()
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
     createAgentFixture(),
@@ -552,7 +548,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
-    expect(composerPutRequestContexts).toEqual([{ keepalive: true, silent: true }])
+    expect(composerPutRequestContexts).toEqual([{ keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenCalledWith(
       expect.objectContaining({
         params: {
@@ -664,10 +660,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
@@ -714,10 +707,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
 
     await act(async () => {
       saveDeferred.resolve({ agent_soul: {} })
@@ -950,9 +940,9 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
   })
 
-  it('should keep autosave failures silent and leave the local draft dirty', async () => {
+  it('should expose autosave failure status and leave the local draft dirty', async () => {
     composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
-    const { store } = renderUseAgentConfigureSync()
+    const { store, result } = renderUseAgentConfigureSync()
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -967,8 +957,9 @@ describe('useAgentConfigureSync', () => {
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Unsaved autosave prompt')
+    expect(result.current.saveError).toEqual(new Error('save failed'))
     expect(toastMock.error).not.toHaveBeenCalled()
-    expect(composerPutRequestContexts).toEqual([{ silent: true }])
+    expect(composerPutRequestContexts).toEqual([undefined])
   })
 
   it('should save the latest draft immediately when requested', async () => {
@@ -1015,7 +1006,7 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.saveDraft()).rejects.toThrow('Failed to save agent composer draft.')
+    await expect(result.current.saveDraft()).rejects.toThrow('save failed')
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Run prompt')
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
@@ -1417,7 +1408,7 @@ describe('useAgentConfigureSync', () => {
 
     await expect(result.current.publishDraft()).rejects.toEqual({ code: 'publish_failed' })
 
-    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+    expect(toastMock.error).toHaveBeenCalledWith('api.actionFailed')
   })
 
   it('should skip publish while the Composer Query is unavailable', async () => {
@@ -1620,10 +1611,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({

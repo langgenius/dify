@@ -54,15 +54,10 @@ describe('useTextGeneration', () => {
   describe('Send Flow', () => {
     it('should start streaming request and return true when not responding', async () => {
       const { result } = renderHook(() => useTextGeneration())
-      const onNotifyError = vi.fn()
       let sendResult: boolean | undefined
 
       await act(async () => {
-        sendResult = await result.current.handleSend(
-          '/console/api',
-          { query: 'hello' },
-          { onNotifyError },
-        )
+        sendResult = await result.current.handleSend('/console/api', { query: 'hello' })
       })
 
       expect(sendResult).toBe(true)
@@ -82,7 +77,6 @@ describe('useTextGeneration', () => {
           onMessageReplace: expect.any(Function),
           onCompleted: expect.any(Function),
           onError: expect.any(Function),
-          onNotifyError,
         }),
       )
     })

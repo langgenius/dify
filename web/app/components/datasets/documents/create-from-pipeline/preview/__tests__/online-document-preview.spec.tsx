@@ -33,9 +33,23 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock usePreviewOnlineDocument hook - needs mock to control mutation behavior
 const mockMutateAsync = vi.fn()
 const mockUsePreviewOnlineDocument = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePreviewOnlineDocument: () => mockUsePreviewOnlineDocument(),
-}))
+vi.mock('@/service/use-pipeline', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const queryClient = createTestQueryClient()
+  return {
+    usePreviewOnlineDocument: () => {
+      const mutation = useMutation(
+        { mutationFn: (input: unknown) => mockMutateAsync(input) },
+        queryClient,
+      )
+      return {
+        ...mutation,
+        isPending: mockUsePreviewOnlineDocument().isPending || mutation.isPending,
+      }
+    },
+  }
+})
 
 // Mock data source store - needs mock to control store state
 const mockCurrentCredentialId = 'credential-123'
@@ -75,10 +89,7 @@ describe('OnlineDocumentPreview', () => {
       mutateAsync: mockMutateAsync,
       isPending: false,
     })
-    mockMutateAsync.mockImplementation((params, callbacks) => {
-      callbacks.onSuccess({ content: 'Test content' })
-      return Promise.resolve({ content: 'Test content' })
-    })
+    mockMutateAsync.mockResolvedValue({ content: 'Test content' })
   })
 
   describe('Rendering', () => {
@@ -122,20 +133,14 @@ describe('OnlineDocumentPreview', () => {
       )
 
       await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          {
-            workspaceID: 'ws-123',
-            pageID: 'pg-456',
-            pageType: 'page',
-            pipelineId: 'pipeline-123',
-            datasourceNodeId: 'node-789',
-            credentialId: mockCurrentCredentialId,
-          },
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
-        )
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          workspaceID: 'ws-123',
+          pageID: 'pg-456',
+          pageType: 'page',
+          pipelineId: 'pipeline-123',
+          datasourceNodeId: 'node-789',
+          credentialId: mockCurrentCredentialId,
+        })
       })
     })
 
@@ -168,7 +173,6 @@ describe('OnlineDocumentPreview', () => {
           expect.objectContaining({
             pipelineId: '',
           }),
-          expect.anything(),
         )
       })
     })
@@ -202,10 +206,7 @@ describe('OnlineDocumentPreview', () => {
 
   describe('Content Display', () => {
     it('should render markdown content when loaded', async () => {
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: 'Markdown content here' })
-        return Promise.resolve({ content: 'Markdown content here' })
-      })
+      mockMutateAsync.mockResolvedValue({ content: 'Markdown content here' })
 
       render(<OnlineDocumentPreview {...defaultProps} />)
 
@@ -217,10 +218,7 @@ describe('OnlineDocumentPreview', () => {
     })
 
     it('should display character count', async () => {
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: 'Hello' }) // 5 characters
-        return Promise.resolve({ content: 'Hello' })
-      })
+      mockMutateAsync.mockResolvedValue({ content: 'Hello' })
 
       render(<OnlineDocumentPreview {...defaultProps} />)
 
@@ -232,10 +230,7 @@ describe('OnlineDocumentPreview', () => {
 
     it('should format large character counts', async () => {
       const longContent = 'a'.repeat(2500)
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: longContent })
-        return Promise.resolve({ content: longContent })
-      })
+      mockMutateAsync.mockResolvedValue({ content: longContent })
 
       render(<OnlineDocumentPreview {...defaultProps} />)
 
@@ -247,10 +242,7 @@ describe('OnlineDocumentPreview', () => {
 
     it('should show character count based on fetched content', async () => {
       // When content is set via onSuccess, character count is displayed
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: 'Test content' }) // 12 characters
-        return Promise.resolve({ content: 'Test content' })
-      })
+      mockMutateAsync.mockResolvedValue({ content: 'Test content' })
 
       render(<OnlineDocumentPreview {...defaultProps} />)
 
@@ -263,11 +255,7 @@ describe('OnlineDocumentPreview', () => {
   describe('Error Handling', () => {
     it('should show toast notification on error', async () => {
       const errorMessage = 'Failed to fetch document'
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onError(new Error(errorMessage))
-        // Return a resolved promise to avoid unhandled rejection
-        return Promise.resolve()
-      })
+      mockMutateAsync.mockRejectedValue(new Error(errorMessage))
 
       render(<OnlineDocumentPreview {...defaultProps} />)
 
@@ -278,11 +266,7 @@ describe('OnlineDocumentPreview', () => {
 
     it('should handle network errors', async () => {
       const networkError = new Error('Network Error')
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onError(networkError)
-        // Return a resolved promise to avoid unhandled rejection
-        return Promise.resolve()
-      })
+      mockMutateAsync.mockRejectedValue(networkError)
 
       render(<OnlineDocumentPreview {...defaultProps} />)
 
@@ -340,16 +324,12 @@ describe('OnlineDocumentPreview', () => {
           expect.objectContaining({
             credentialId: 'custom-credential',
           }),
-          expect.anything(),
         )
       })
     })
 
     it('should not render markdown content when content is empty and not pending', async () => {
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: '' })
-        return Promise.resolve({ content: '' })
-      })
+      mockMutateAsync.mockResolvedValue({ content: '' })
       mockUsePreviewOnlineDocument.mockReturnValue({
         mutateAsync: mockMutateAsync,
         isPending: false,

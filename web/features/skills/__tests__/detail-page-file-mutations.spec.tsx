@@ -418,7 +418,7 @@ describe('SkillDetailPage file mutations', () => {
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
-  it('shows a toast when creating a file from the file tree fails', async () => {
+  it('keeps the file name and shows an error when creating a file fails', async () => {
     const user = userEvent.setup()
     mocks.saveDraftFileMutationFn.mockRejectedValueOnce(new Error('backend exploded'))
     renderSkillDetailPage()
@@ -434,7 +434,11 @@ describe('SkillDetailPage file mutations', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('backend exploded')
+      expect(screen.getByRole('alert')).toHaveTextContent('backend exploded')
+      expect(screen.getByPlaceholderText('skill.skillManagement.detail.createFile')).toHaveValue(
+        'broken.md',
+      )
+      expect(mocks.toastError).not.toHaveBeenCalled()
     })
   })
 })

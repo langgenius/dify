@@ -114,12 +114,9 @@ const role: Role = {
 }
 
 const mockMutation = (mock: ReturnType<typeof vi.fn>) => {
-  mock.mockImplementation((_payload, options) => {
-    options?.onSuccess?.()
-    return Promise.resolve()
-  })
+  mock.mockResolvedValue(undefined)
 
-  return { mutateAsync: mock }
+  return { mutate: mock }
 }
 
 const renderPermissionsPage = () => {

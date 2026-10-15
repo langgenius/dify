@@ -9,13 +9,18 @@ import { createDataSourceStore } from '../../data-source/store'
 import { useDatasourceActions } from '../use-datasource-actions'
 
 const mockRunPublishedPipeline = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  useRunPublishedPipeline: () => ({
-    mutateAsync: mockRunPublishedPipeline,
-    isIdle: true,
-    isPending: false,
-  }),
-}))
+vi.mock('@/service/use-pipeline', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useRunPublishedPipeline: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockRunPublishedPipeline(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
@@ -211,7 +216,6 @@ describe('useDatasourceActions', () => {
         is_preview: true,
         start_node_id: 'node-1',
       }),
-      expect.anything(),
     )
   })
 

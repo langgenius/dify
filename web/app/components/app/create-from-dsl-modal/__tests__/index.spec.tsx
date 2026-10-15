@@ -66,14 +66,16 @@ vi.mock('@/service/console', async (importOriginal) => {
         imports: {
           ...actual.consoleQuery.apps.imports,
           post: {
-            mutationOptions: () => ({
+            mutationOptions: (options: Record<string, unknown> = {}) => ({
+              ...options,
               mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
             }),
           },
           byImportId: {
             confirm: {
               post: {
-                mutationOptions: () => ({
+                mutationOptions: (options: Record<string, unknown> = {}) => ({
+                  ...options,
                   mutationFn: ({ params }: { params: { import_id: string } }) =>
                     mockImportDSLConfirm({ import_id: params.import_id }),
                 }),
@@ -982,11 +984,8 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(getCreateButton())
     })
-    expect(toastMocks.error).toHaveBeenCalledTimes(2)
-    expect(toastMocks.error).toHaveBeenLastCalledWith(
-      expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
-      { description: 'Package checksum mismatch' },
-    )
+    expect(toastMocks.error).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('alert')).toHaveTextContent('Package checksum mismatch')
   })
 
   it.each([
@@ -1021,10 +1020,8 @@ describe('CreateFromDSLModal', () => {
       await user.click(await screen.findByRole('button', { name: /newApp\.Confirm/ }))
 
       await waitFor(() => {
-        expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(
-          expect.stringMatching(/newApp\.appCreateFailed/),
-          { description },
-        )
+        expect(screen.getByRole('alert')).toHaveTextContent(description)
+        expect(toastMocks.error).not.toHaveBeenCalled()
       })
       expect(onClose).not.toHaveBeenCalled()
     },
@@ -1078,10 +1075,7 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ })[0]!)
     })
-    expect(toastMocks.error).toHaveBeenCalledTimes(2)
-    expect(toastMocks.error).toHaveBeenLastCalledWith(
-      expect.stringMatching(/(?:^|\.)newApp\.appCreateFailed(?=$|:)/),
-      { description: 'boom' },
-    )
+    expect(toastMocks.error).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('alert')).toHaveTextContent('boom')
   })
 })

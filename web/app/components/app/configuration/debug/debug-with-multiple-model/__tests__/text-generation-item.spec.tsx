@@ -412,16 +412,7 @@ describe('TextGenerationItem', () => {
         expect.objectContaining({
           inputs: { name: 'World' },
         }),
-        expect.objectContaining({
-          onNotifyError: expect.any(Function),
-        }),
       )
-
-      const callbacks = handleSend.mock.calls[0]![2] as {
-        onNotifyError: (message: string) => void
-      }
-      callbacks.onNotifyError('Base model not found')
-      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should ignore other event types', () => {
@@ -478,7 +469,6 @@ describe('TextGenerationItem', () => {
             }),
           }),
         }),
-        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -519,7 +509,6 @@ describe('TextGenerationItem', () => {
             }),
           ],
         }),
-        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -558,7 +547,6 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
-        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -583,7 +571,6 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
-        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 
@@ -608,7 +595,6 @@ describe('TextGenerationItem', () => {
         expect.not.objectContaining({
           files: expect.anything(),
         }),
-        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
   })
@@ -656,7 +642,6 @@ describe('TextGenerationItem', () => {
             }),
           }),
         }),
-        expect.objectContaining({ onNotifyError: expect.any(Function) }),
       )
     })
 

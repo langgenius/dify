@@ -61,7 +61,7 @@ describe('knowledge dataset hooks', () => {
       expect(retry(3, new Error('temporary failure'))).toBe(false)
     })
 
-    it('should fetch dataset detail without silent mode', () => {
+    it('should fetch dataset detail with existing query options', () => {
       // Arrange
       mockGet.mockResolvedValue({ id: 'dataset-1' })
 

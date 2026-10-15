@@ -1,19 +1,24 @@
 import type { Credential, ModelProvider } from '../../../declarations'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { useActivateCredential } from '../use-activate-credential'
 
 const mockMutate = vi.fn()
 const mockUpdateModelProviders = vi.fn()
 const mockUpdateModelList = vi.fn()
-let mockIsPending = false
 
-vi.mock('@/service/use-models', () => ({
-  useActiveProviderCredential: () => ({
-    mutate: mockMutate,
-    isPending: mockIsPending,
-  }),
-}))
+vi.mock('@/service/use-models', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useActiveProviderCredential: (_provider: string, options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockMutate(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('../../../hooks', () => ({
   useUpdateModelProviders: () => mockUpdateModelProviders,
@@ -46,7 +51,7 @@ describe('useActivateCredential', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsPending = false
+    mockMutate.mockResolvedValue(undefined)
     toastErrorSpy.mockClear()
   })
 
@@ -57,12 +62,13 @@ describe('useActivateCredential', () => {
     expect(result.current.isActivating).toBe(false)
   })
 
-  it('should expose the pending mutation state', () => {
-    mockIsPending = true
-
+  it('should expose the pending mutation state', async () => {
+    mockMutate.mockReturnValue(new Promise(() => {}))
     const { result } = renderHook(() => useActivateCredential(createProvider()))
-
-    expect(result.current.isActivating).toBe(true)
+    act(() => {
+      void result.current.activate(createCredential())
+    })
+    await waitFor(() => expect(result.current.isActivating).toBe(true))
   })
 
   it('should skip mutation when the selected credential is already active', () => {
@@ -76,49 +82,22 @@ describe('useActivateCredential', () => {
     expect(result.current.selectedCredentialId).toBe('cred-1')
   })
 
-  it('should optimistically select the credential and refresh provider data on success', () => {
+  it('should optimistically select the credential and refresh provider data on success', async () => {
     const { result } = renderHook(() => useActivateCredential(createProvider()))
-
-    act(() => {
-      result.current.activate(createCredential())
-    })
-
+    await act(() => result.current.activate(createCredential()))
     expect(result.current.selectedCredentialId).toBe('cred-2')
-    expect(mockMutate).toHaveBeenCalledWith(
-      { credential_id: 'cred-2' },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      }),
-    )
-
-    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
-
-    act(() => {
-      callbacks.onSuccess()
-    })
-
+    expect(mockMutate).toHaveBeenCalledWith({ credential_id: 'cred-2' })
     expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, 'llm')
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, 'text-embedding')
   })
 
-  it('should reset the optimistic selection and show an error toast when activation fails', () => {
+  it('should reset the optimistic selection and show one error when activation fails', async () => {
+    mockMutate.mockRejectedValue(new Error('Activation failed'))
     const { result } = renderHook(() => useActivateCredential(createProvider()))
-
-    act(() => {
-      result.current.activate(createCredential())
-    })
-
-    expect(result.current.selectedCredentialId).toBe('cred-2')
-
-    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
-
-    act(() => {
-      callbacks.onError()
-    })
-
+    await act(() => result.current.activate(createCredential()))
     expect(result.current.selectedCredentialId).toBe('cred-1')
-    expect(toastErrorSpy).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toastErrorSpy).toHaveBeenCalledExactlyOnceWith('Activation failed')
+    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
   })
 })

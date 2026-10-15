@@ -162,7 +162,7 @@ describe('base', () => {
 
       await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
-      expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
     it('should not display an empty error toast when message and error are absent', async () => {
@@ -186,7 +186,7 @@ describe('base', () => {
       expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('should suppress a late workflow 404 for the app being deleted', async () => {
+    it('propagates a late workflow 404 without transport feedback during app deletion', async () => {
       const appId = 'deleting-app'
       markAppDeletionStarted(appId)
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -213,7 +213,7 @@ describe('base', () => {
       }
     })
 
-    it('should suppress a workflow 404 that settles after app deletion succeeds', async () => {
+    it('propagates a workflow 404 without transport feedback after app deletion succeeds', async () => {
       const appId = 'deleted-app'
       markAppDeletionStarted(appId)
       markAppDeletionSucceeded(appId)
@@ -237,7 +237,7 @@ describe('base', () => {
       expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('should restore workflow 404 notifications when app deletion fails', async () => {
+    it('keeps workflow 404 feedback out of transport after app deletion fails', async () => {
       const appId = 'failed-deletion-app'
       markAppDeletionStarted(appId)
       markAppDeletionFailed(appId)
@@ -258,7 +258,7 @@ describe('base', () => {
       await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
         ORPCError,
       )
-      expect(toast.error).toHaveBeenCalledWith('Visible error')
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
     it.each([
@@ -277,29 +277,32 @@ describe('base', () => {
         path: '/apps/deleting-app/workflows/draft/system-variables',
         status: 500,
       },
-    ])('should still display $title while an app is being deleted', async ({ path, status }) => {
-      const appId = 'deleting-app'
-      markAppDeletionStarted(appId)
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            code: 'request_failed',
-            message: 'Visible error',
-            status,
-          }),
-          {
-            status,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
+    ])(
+      'propagates $title without transport feedback while an app is being deleted',
+      async ({ path, status }) => {
+        const appId = 'deleting-app'
+        markAppDeletionStarted(appId)
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              code: 'request_failed',
+              message: 'Visible error',
+              status,
+            }),
+            {
+              status,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+        )
 
-      try {
-        await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
-        expect(toast.error).toHaveBeenCalledWith('Visible error')
-      } finally {
-        markAppDeletionFailed(appId)
-      }
-    })
+        try {
+          await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
+          expect(toast.error).not.toHaveBeenCalled()
+        } finally {
+          markAppDeletionFailed(appId)
+        }
+      },
+    )
   })
 })

@@ -59,11 +59,28 @@ const mockEnable = vi.fn()
 const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-}))
+vi.mock('@/service/knowledge/use-document', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useDocumentEnable: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockEnable(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDisable: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDisable(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDelete: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDelete(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 beforeEach(() => {
   vi.clearAllMocks()

@@ -15,17 +15,49 @@ const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 const mockRetryIndex = vi.fn()
 const mockDownloadZip = vi.fn()
-let mockIsDownloadingZip = false
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentArchive: () => ({ mutateAsync: mockArchive }),
-  useDocumentSummary: () => ({ mutateAsync: mockSummary }),
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-  useDocumentBatchRetryIndex: () => ({ mutateAsync: mockRetryIndex }),
-  useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
-}))
+vi.mock('@/service/knowledge/use-document', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useDocumentArchive: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockArchive(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentSummary: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockSummary(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentEnable: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockEnable(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDisable: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDisable(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDelete: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDelete(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentBatchRetryIndex: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockRetryIndex(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDownloadZip: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDownloadZip(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -50,7 +82,6 @@ describe('useDocumentActions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsDownloadingZip = false
   })
 
   it('should return expected functions and state', () => {

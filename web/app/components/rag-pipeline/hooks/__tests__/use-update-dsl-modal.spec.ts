@@ -78,10 +78,23 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({ mutateAsync: mockImportDSL }),
-  useImportPipelineDSLConfirm: () => ({ mutateAsync: mockImportDSLConfirm }),
-}))
+vi.mock('@/service/use-pipeline', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useImportPipelineDSL: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockImportDSL(variables), ...options },
+        mutationClient,
+      ),
+    useImportPipelineDSLConfirm: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockImportDSLConfirm(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({

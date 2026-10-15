@@ -134,12 +134,18 @@ vi.mock('@/service/console', async (importOriginal) => ({
           skills: {
             upload: {
               post: {
-                mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
+                mutationOptions: (options: Record<string, unknown> = {}) => ({
+                  ...options,
+                  mutationFn: mocks.uploadSkillMutationFn,
+                }),
               },
             },
             byName: {
               delete: {
-                mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                mutationOptions: (options: Record<string, unknown> = {}) => ({
+                  ...options,
+                  mutationFn: mocks.deleteSkillMutationFn,
+                }),
               },
               download: {
                 get: {
@@ -175,12 +181,18 @@ vi.mock('@/service/console', async (importOriginal) => ({
             skills: {
               upload: {
                 post: {
-                  mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
+                  mutationOptions: (options: Record<string, unknown> = {}) => ({
+                    ...options,
+                    mutationFn: mocks.uploadSkillMutationFn,
+                  }),
                 },
               },
               byName: {
                 delete: {
-                  mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                  mutationOptions: (options: Record<string, unknown> = {}) => ({
+                    ...options,
+                    mutationFn: mocks.deleteSkillMutationFn,
+                  }),
                 },
                 download: {
                   get: {
@@ -238,7 +250,8 @@ vi.mock('@/service/console', async (importOriginal) => ({
                 queryOptions: mocks.agentSkillBindingsQueryOptions,
               },
               put: {
-                mutationOptions: () => ({
+                mutationOptions: (options: Record<string, unknown> = {}) => ({
+                  ...options,
                   mutationFn: mocks.replaceAgentSkillBindingsMutationFn,
                 }),
               },

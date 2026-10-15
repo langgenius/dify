@@ -69,19 +69,28 @@ vi.mock('@/service/use-common', () => ({
   }),
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useDeleteSnippetMutation: () => ({
-    mutate: mockDeleteMutate,
-    isPending: false,
-  }),
-  useExportSnippetMutation: () => ({
-    mutateAsync: mockExportMutateAsync,
-  }),
-  useUpdateSnippetMutation: () => ({
-    mutate: mockUpdateMutate,
-    isPending: false,
-  }),
-}))
+vi.mock('@/service/use-snippets', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useDeleteSnippetMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDeleteMutate(variables), ...options },
+        mutationClient,
+      ),
+    useExportSnippetMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockExportMutateAsync(variables), ...options },
+        mutationClient,
+      ),
+    useUpdateSnippetMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUpdateMutate(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/utils/time', () => ({
   formatTime: () => 'formatted-time',
@@ -354,9 +363,7 @@ describe('SnippetCard', () => {
     })
 
     it('should update snippet info from the operations menu', async () => {
-      mockUpdateMutate.mockImplementation((_payload, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      mockUpdateMutate.mockResolvedValue(undefined)
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
@@ -372,29 +379,19 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
-        expect(mockUpdateMutate).toHaveBeenCalledWith(
-          {
-            params: { snippetId: 'snippet-1' },
-            body: {
-              name: 'Updated Snippet',
-              description: 'Rewrites rough drafts.',
-            },
+        expect(mockUpdateMutate).toHaveBeenCalledWith({
+          params: { snippetId: 'snippet-1' },
+          body: {
+            name: 'Updated Snippet',
+            description: 'Rewrites rough drafts.',
           },
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
-        )
+        })
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
     it('should show update errors from the mutation callback', async () => {
-      mockUpdateMutate.mockImplementation(
-        (_payload, options?: { onError?: (error: Error) => void }) => {
-          options?.onError?.(new Error('Update failed'))
-        },
-      )
+      mockUpdateMutate.mockRejectedValue(new Error('Update failed'))
 
       render(<SnippetCard snippet={createSnippet({ description: '' })} onRefresh={mockOnRefresh} />)
 
@@ -417,7 +414,6 @@ describe('SnippetCard', () => {
               description: '',
             },
           }),
-          expect.any(Object),
         )
         expect(mockToastError).toHaveBeenCalledWith('Update failed')
       })
@@ -425,9 +421,7 @@ describe('SnippetCard', () => {
     })
 
     it('should delete a snippet from the operations menu', async () => {
-      mockDeleteMutate.mockImplementation((_payload, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.()
-      })
+      mockDeleteMutate.mockResolvedValue(undefined)
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
@@ -440,25 +434,15 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() => {
-        expect(mockDeleteMutate).toHaveBeenCalledWith(
-          {
-            params: { snippetId: 'snippet-1' },
-          },
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
-        )
+        expect(mockDeleteMutate).toHaveBeenCalledWith({
+          params: { snippetId: 'snippet-1' },
+        })
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
 
     it('should show delete errors from the mutation callback', async () => {
-      mockDeleteMutate.mockImplementation(
-        (_payload, options?: { onError?: (error: Error) => void }) => {
-          options?.onError?.(new Error('Delete failed'))
-        },
-      )
+      mockDeleteMutate.mockRejectedValue(new Error('Delete failed'))
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 

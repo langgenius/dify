@@ -108,40 +108,52 @@ const mockInvalidCustomizedTemplateList = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 
 // Configurable isPending for export
-let mockIsExporting = false
 
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDatasetFromCustomized: () => ({
-    mutateAsync: mockCreateDataset,
-  }),
-}))
+vi.mock('@/service/knowledge/use-create-dataset', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useCreatePipelineDatasetFromCustomized: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockCreateDataset(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateById: () => ({
-    data: {
-      name: 'Test Pipeline',
-      description: 'Test pipeline description',
-      icon_info: { icon_type: 'emoji', icon: '📊', icon_background: '#FFF4ED', icon_url: '' },
-      chunk_structure: 'text',
-      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
-    },
-    refetch: mockGetPipelineTemplateInfo,
-  }),
-  useDeleteTemplate: () => ({
-    mutateAsync: mockDeletePipeline,
-  }),
-  useExportTemplateDSL: () => ({
-    mutateAsync: mockExportPipelineDSL,
-    get isPending() {
-      return mockIsExporting
-    },
-  }),
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-}))
+vi.mock('@/service/use-pipeline', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    usePipelineTemplateById: () => ({
+      data: {
+        name: 'Test Pipeline',
+        description: 'Test pipeline description',
+        icon_info: { icon_type: 'emoji', icon: '📊', icon_background: '#FFF4ED', icon_url: '' },
+        chunk_structure: 'text',
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      },
+      refetch: mockGetPipelineTemplateInfo,
+    }),
+    useDeleteTemplate: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDeletePipeline(variables), ...options },
+        mutationClient,
+      ),
+    useExportTemplateDSL: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockExportPipelineDSL(variables), ...options },
+        mutationClient,
+      ),
+    useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
+  }
+})
 
 // Mock plugin dependencies hook
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
@@ -183,7 +195,6 @@ describe('TemplateCard', () => {
     vi.clearAllMocks()
     mockToastSuccess.mockReset()
     mockToastError.mockReset()
-    mockIsExporting = false
     _capturedHandleDelete = undefined
     _capturedHandleExportDSL = undefined
     _capturedOpenEditModal = undefined
@@ -235,9 +246,9 @@ describe('TemplateCard', () => {
     })
 
     it('should create dataset when template is applied', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -250,9 +261,9 @@ describe('TemplateCard', () => {
     })
 
     it('should navigate to pipeline page on successful creation', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -265,9 +276,9 @@ describe('TemplateCard', () => {
     })
 
     it('should invalidate dataset list on successful creation', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -280,9 +291,9 @@ describe('TemplateCard', () => {
     })
 
     it('should show success toast on successful creation', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -295,10 +306,7 @@ describe('TemplateCard', () => {
     })
 
     it('should show error toast on creation failure', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onError(new Error('Creation failed'))
-        return Promise.resolve()
-      })
+      mockCreateDataset.mockRejectedValue(new Error('Creation failed'))
 
       render(<TemplateCard {...defaultProps} />)
       const chooseButton = screen.getByTestId('action-choose')
@@ -355,9 +363,9 @@ describe('TemplateCard', () => {
     })
 
     it('should trigger use template from details modal', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -382,9 +390,9 @@ describe('TemplateCard', () => {
   // Pipeline ID Branch Tests
   describe('Pipeline ID Branch', () => {
     it('should call handleCheckPluginDependencies when pipeline_id is present', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -397,10 +405,7 @@ describe('TemplateCard', () => {
     })
 
     it('should not call handleCheckPluginDependencies when pipeline_id is falsy', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: '' })
-        return Promise.resolve()
-      })
+      mockCreateDataset.mockResolvedValue({ dataset_id: 'new-dataset-123', pipeline_id: '' })
 
       render(<TemplateCard {...defaultProps} />)
       const chooseButton = screen.getByTestId('action-choose')
@@ -413,10 +418,7 @@ describe('TemplateCard', () => {
     })
 
     it('should not call handleCheckPluginDependencies when pipeline_id is null', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: null })
-        return Promise.resolve()
-      })
+      mockCreateDataset.mockResolvedValue({ dataset_id: 'new-dataset-123', pipeline_id: null })
 
       render(<TemplateCard {...defaultProps} />)
       const chooseButton = screen.getByTestId('action-choose')
@@ -432,36 +434,31 @@ describe('TemplateCard', () => {
   // Export DSL Tests (Branch Coverage)
   describe('Export DSL', () => {
     it('should not export when already exporting', async () => {
-      mockIsExporting = true
+      mockExportPipelineDSL.mockReturnValue(new Promise(() => {}))
 
       render(<TemplateCard {...defaultProps} />)
       const exportButton = screen.getByTestId('action-export')
       fireEvent.click(exportButton)
 
-      // Export should not be called due to isExporting check
-      expect(mockExportPipelineDSL).not.toHaveBeenCalled()
+      await waitFor(() => expect(mockExportPipelineDSL).toHaveBeenCalledTimes(1))
+      fireEvent.click(exportButton)
+      expect(mockExportPipelineDSL).toHaveBeenCalledTimes(1)
     })
 
     it('should call exportPipelineDSL on export action', async () => {
-      mockExportPipelineDSL.mockImplementation((_id, callbacks) => {
-        callbacks.onSuccess({ data: 'yaml_content' })
-        return Promise.resolve()
-      })
+      mockExportPipelineDSL.mockResolvedValue({ data: 'yaml_content' })
 
       render(<TemplateCard {...defaultProps} />)
       const exportButton = screen.getByTestId('action-export')
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(mockExportPipelineDSL).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
+        expect(mockExportPipelineDSL).toHaveBeenCalledWith('pipeline-1')
       })
     })
 
     it('should show success toast on export success', async () => {
-      mockExportPipelineDSL.mockImplementation((_id, callbacks) => {
-        callbacks.onSuccess({ data: 'yaml_content' })
-        return Promise.resolve()
-      })
+      mockExportPipelineDSL.mockResolvedValue({ data: 'yaml_content' })
 
       render(<TemplateCard {...defaultProps} />)
       const exportButton = screen.getByTestId('action-export')
@@ -473,10 +470,7 @@ describe('TemplateCard', () => {
     })
 
     it('should show error toast on export failure', async () => {
-      mockExportPipelineDSL.mockImplementation((_id, callbacks) => {
-        callbacks.onError(new Error('Export failed'))
-        return Promise.resolve()
-      })
+      mockExportPipelineDSL.mockRejectedValue(new Error('Export failed'))
 
       render(<TemplateCard {...defaultProps} />)
       const exportButton = screen.getByTestId('action-export')
@@ -489,10 +483,7 @@ describe('TemplateCard', () => {
 
     it('should call downloadBlob on successful export', async () => {
       const { downloadBlob } = await import('@/utils/download')
-      mockExportPipelineDSL.mockImplementation((_id, callbacks) => {
-        callbacks.onSuccess({ data: 'yaml_content' })
-        return Promise.resolve()
-      })
+      mockExportPipelineDSL.mockResolvedValue({ data: 'yaml_content' })
 
       render(<TemplateCard {...defaultProps} />)
       const exportButton = screen.getByTestId('action-export')
@@ -537,10 +528,7 @@ describe('TemplateCard', () => {
     })
 
     it('should call deletePipeline when confirm is clicked (onConfirmDelete)', async () => {
-      mockDeletePipeline.mockImplementation((_id, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockDeletePipeline.mockResolvedValue(undefined)
 
       render(<TemplateCard {...defaultProps} />)
       const deleteButton = screen.getByTestId('action-delete')
@@ -553,15 +541,12 @@ describe('TemplateCard', () => {
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
-        expect(mockDeletePipeline).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
+        expect(mockDeletePipeline).toHaveBeenCalledWith('pipeline-1')
       })
     })
 
     it('should invalidate template list on successful delete', async () => {
-      mockDeletePipeline.mockImplementation((_id, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockDeletePipeline.mockResolvedValue(undefined)
 
       render(<TemplateCard {...defaultProps} />)
       const deleteButton = screen.getByTestId('action-delete')
@@ -579,10 +564,7 @@ describe('TemplateCard', () => {
     })
 
     it('should close confirm dialog after successful delete', async () => {
-      mockDeletePipeline.mockImplementation((_id, callbacks) => {
-        callbacks.onSuccess()
-        return Promise.resolve()
-      })
+      mockDeletePipeline.mockResolvedValue(undefined)
 
       render(<TemplateCard {...defaultProps} />)
       const deleteButton = screen.getByTestId('action-delete')

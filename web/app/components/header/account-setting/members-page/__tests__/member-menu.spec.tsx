@@ -74,7 +74,7 @@ describe('MemberMenu', () => {
     mockUpdateRolesOfMember.mockResolvedValue(undefined)
     vi.mocked(deleteMemberOrCancelInvitation).mockResolvedValue({ result: 'success' })
     vi.mocked(useUpdateRolesOfMember).mockReturnValue({
-      mutateAsync: mockUpdateRolesOfMember,
+      mutate: mockUpdateRolesOfMember,
     } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
     vi.mocked(useWorkspaceRoleList).mockReturnValue({
       data: {

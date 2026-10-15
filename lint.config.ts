@@ -155,6 +155,72 @@ export const jsxA11yRules = {
  * Oxlint equivalent of the ESLint configurations that were active before the migration.
  * Keep rules explicit so changes in upstream presets do not silently alter the lint baseline.
  */
+const serviceImportRestrictions = {
+  paths: [
+    {
+      name: 'next',
+      message: 'Import Next APIs from the corresponding @/next module instead of next.',
+    },
+    {
+      name: 'ahooks',
+      importNames: ['useLocalStorageState'],
+      message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
+    },
+  ],
+  patterns: [
+    {
+      group: ['next/image'],
+      message: 'Do not import next/image. Use native img tags instead.',
+    },
+    {
+      group: ['next/font', 'next/font/*'],
+      message: 'Do not import next/font. Use the project font styles instead.',
+    },
+    {
+      // next/dynamic must be imported directly for compiler-generated preload metadata.
+      group: [
+        'next/*',
+        '!next/dynamic',
+        '!next/font',
+        '!next/font/*',
+        '!next/image',
+        '!next/image/*',
+      ],
+      message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
+    },
+    {
+      group: ['@base-ui/react', '@base-ui/react/*'],
+      message:
+        'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+    },
+    {
+      group: ['@floating-ui/*'],
+      message:
+        'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+    },
+    {
+      group: ['@/service/base', '@/service/base/*', '**/service/base', '**/service/base/*'],
+      message:
+        'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+    },
+    {
+      group: ['@/service/fetch', '@/service/fetch/*', '**/service/fetch', '**/service/fetch/*'],
+      message:
+        'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+    },
+    {
+      group: ['./base', './base/*', '../base', '../base/*', '../../base', '../../base/*'],
+      message:
+        'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
+    },
+    {
+      group: ['./fetch', './fetch/*', '../fetch', '../fetch/*', '../../fetch', '../../fetch/*'],
+      message:
+        'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
+    },
+  ],
+}
+
 export const lintConfig = {
   categories: {
     correctness: 'off',
@@ -962,93 +1028,7 @@ export const lintConfig = {
     {
       files: ['web/service/**/*.ts', 'web/service/**/*.tsx'],
       rules: {
-        'no-restricted-imports': [
-          'error',
-          {
-            paths: [
-              {
-                name: 'next',
-                message: 'Import Next APIs from the corresponding @/next module instead of next.',
-              },
-              {
-                name: 'ahooks',
-                importNames: ['useLocalStorageState'],
-                message:
-                  'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
-              },
-            ],
-            patterns: [
-              {
-                group: ['next/image'],
-                message: 'Do not import next/image. Use native img tags instead.',
-              },
-              {
-                group: ['next/font', 'next/font/*'],
-                message: 'Do not import next/font. Use the project font styles instead.',
-              },
-              {
-                // next/dynamic must be imported directly for compiler-generated preload metadata.
-                group: [
-                  'next/*',
-                  '!next/dynamic',
-                  '!next/font',
-                  '!next/font/*',
-                  '!next/image',
-                  '!next/image/*',
-                ],
-                message:
-                  'Import Next APIs from the corresponding @/next/* module instead of next/*.',
-              },
-              {
-                group: ['@base-ui/react', '@base-ui/react/*'],
-                message:
-                  'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: ['@floating-ui/*'],
-                message:
-                  'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
-              },
-              {
-                group: [
-                  '@/service/base',
-                  '@/service/base/*',
-                  '**/service/base',
-                  '**/service/base/*',
-                ],
-                message:
-                  'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
-              },
-              {
-                group: [
-                  '@/service/fetch',
-                  '@/service/fetch/*',
-                  '**/service/fetch',
-                  '**/service/fetch/*',
-                ],
-                message:
-                  'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
-              },
-              {
-                group: ['./base', './base/*', '../base', '../base/*', '../../base', '../../base/*'],
-                message:
-                  'Do not import legacy service/base fetch helpers. Use generated service clients or feature-specific service modules instead.',
-              },
-              {
-                group: [
-                  './fetch',
-                  './fetch/*',
-                  '../fetch',
-                  '../fetch/*',
-                  '../../fetch',
-                  '../../fetch/*',
-                ],
-                message:
-                  'Do not import low-level service/fetch helpers directly. Use generated service clients or feature-specific service modules instead.',
-              },
-            ],
-          },
-        ],
+        'no-restricted-imports': ['error', serviceImportRestrictions],
       },
     },
     {
@@ -1566,6 +1546,32 @@ export const lintConfig = {
         'typescript/restrict-template-expressions': 'error',
         'typescript/unbound-method': 'error',
         'no-useless-assignment': 'error',
+      },
+    },
+
+    {
+      files: [
+        'web/service/base.ts',
+        'web/service/fetch.ts',
+        'web/service/console/browser.ts',
+        'web/service/console/index.ts',
+        'web/service/console/query-policies.ts',
+      ],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...serviceImportRestrictions,
+            patterns: [
+              ...serviceImportRestrictions.patterns,
+              {
+                group: ['**/notifications', '**/notifications/**', '**/toast', '**/toast/**'],
+                message:
+                  'Transport must propagate errors without notification dependencies. Check indirect imports as well; see web/docs/toasts.md.',
+              },
+            ],
+          },
+        ],
       },
     },
   ],

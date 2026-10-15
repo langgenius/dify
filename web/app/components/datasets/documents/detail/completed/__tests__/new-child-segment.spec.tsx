@@ -39,11 +39,18 @@ vi.mock('../index', () => ({
 
 // Mock useAddChildSegment
 const mockAddChildSegment = vi.fn()
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useAddChildSegment: () => ({
-    mutateAsync: mockAddChildSegment,
-  }),
-}))
+vi.mock('@/service/knowledge/use-segment', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useAddChildSegment: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockAddChildSegment(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('../common/action-buttons', () => ({
   ActionButtons: ({
@@ -222,11 +229,7 @@ describe('NewChildSegmentModal', () => {
   // Successful save
   describe('Successful Save', () => {
     it('should call addChildSegment when valid content is provided', async () => {
-      mockAddChildSegment.mockImplementation((_params, options) => {
-        options.onSuccess({ data: { id: 'new-child-id' } })
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddChildSegment.mockResolvedValue({ data: { id: 'new-child-id' } })
 
       render(<NewChildSegmentModal {...defaultProps} />)
       fireEvent.change(screen.getByTestId('content-input'), {
@@ -245,17 +248,12 @@ describe('NewChildSegmentModal', () => {
               content: 'Valid content',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should show success notification after save', async () => {
-      mockAddChildSegment.mockImplementation((_params, options) => {
-        options.onSuccess({ data: { id: 'new-child-id' } })
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddChildSegment.mockResolvedValue({ data: { id: 'new-child-id' } })
 
       render(<NewChildSegmentModal {...defaultProps} />)
       fireEvent.change(screen.getByTestId('content-input'), {
@@ -326,11 +324,7 @@ describe('NewChildSegmentModal', () => {
   describe('Add Another Behavior', () => {
     it('should close modal when add another is unchecked after save', async () => {
       const mockOnCancel = vi.fn()
-      mockAddChildSegment.mockImplementation((_params, options) => {
-        options.onSuccess({ data: { id: 'new-child-id' } })
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddChildSegment.mockResolvedValue({ data: { id: 'new-child-id' } })
 
       render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
 
@@ -351,11 +345,7 @@ describe('NewChildSegmentModal', () => {
 
     it('should not close modal when add another is checked after save', async () => {
       const mockOnCancel = vi.fn()
-      mockAddChildSegment.mockImplementation((_params, options) => {
-        options.onSuccess({ data: { id: 'new-child-id' } })
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddChildSegment.mockResolvedValue({ data: { id: 'new-child-id' } })
 
       render(<NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
 
@@ -378,11 +368,7 @@ describe('NewChildSegmentModal', () => {
     it('should call viewNewlyAddedChildChunk when the toast action is clicked', async () => {
       mockParentMode = 'full-doc'
       const mockViewNewlyAddedChildChunk = vi.fn()
-      mockAddChildSegment.mockImplementation((_params, options) => {
-        options.onSuccess({ data: { id: 'new-child-id' } })
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddChildSegment.mockResolvedValue({ data: { id: 'new-child-id' } })
 
       render(
         <>
@@ -411,11 +397,7 @@ describe('NewChildSegmentModal', () => {
     it('should call onSave immediately in full-doc mode after save succeeds', async () => {
       mockParentMode = 'full-doc'
       const mockOnSave = vi.fn()
-      mockAddChildSegment.mockImplementation((_params, options) => {
-        options.onSuccess({ data: { id: 'new-child-id' } })
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddChildSegment.mockResolvedValue({ data: { id: 'new-child-id' } })
 
       render(<NewChildSegmentModal {...defaultProps} onSave={mockOnSave} />)
 
@@ -433,11 +415,7 @@ describe('NewChildSegmentModal', () => {
     it('should call onSave with the new child chunk in paragraph mode', async () => {
       mockParentMode = 'paragraph'
       const mockOnSave = vi.fn()
-      mockAddChildSegment.mockImplementation((_params, options) => {
-        options.onSuccess({ data: { id: 'new-child-id' } })
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddChildSegment.mockResolvedValue({ data: { id: 'new-child-id' } })
 
       render(<NewChildSegmentModal {...defaultProps} onSave={mockOnSave} />)
 

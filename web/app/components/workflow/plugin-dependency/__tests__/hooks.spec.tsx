@@ -18,8 +18,9 @@ vi.mock('@/service/console', () => ({
         byAppId: {
           checkDependencies: {
             get: {
-              mutationOptions: ({ context }: { context: { silent: boolean } }) => ({
-                mutationFn: (input: unknown) => mocks.request(input, context),
+              mutationOptions: (options: { onError?: (error: unknown) => void }) => ({
+                ...options,
+                mutationFn: (input: unknown) => mocks.request(input),
               }),
             },
           },
@@ -60,7 +61,7 @@ describe('usePluginDependencies', () => {
     expect(useStore.getState().dependencies).toEqual([
       { ...dependency, value: { ...dependency.value, version: undefined } },
     ])
-    expect(mocks.request).toHaveBeenCalledWith({ params: { app_id: 'app-1' } }, { silent: true })
+    expect(mocks.request).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
     await act(async () => result.current.handleCheckPluginDependencies('app-1'))
     expect(useStore.getState().dependencies).toEqual([])
   })

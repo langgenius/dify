@@ -44,20 +44,28 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useUpdateSnippetMutation: () => ({
-    mutate: mockUpdateMutate,
-    isPending: false,
-  }),
-  useExportSnippetMutation: () => ({
-    mutateAsync: mockExportMutateAsync,
-    isPending: false,
-  }),
-  useDeleteSnippetMutation: () => ({
-    mutate: mockDeleteMutate,
-    isPending: false,
-  }),
-}))
+vi.mock('@/service/use-snippets', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useUpdateSnippetMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUpdateMutate(variables), ...options },
+        mutationClient,
+      ),
+    useExportSnippetMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockExportMutateAsync(variables), ...options },
+        mutationClient,
+      ),
+    useDeleteSnippetMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDeleteMutate(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 type MockCreateSnippetDialogProps = {
   isOpen: boolean
@@ -170,11 +178,7 @@ describe('SnippetInfoDropdown', () => {
   describe('Edit Snippet', () => {
     it('should open the edit dialog and submit snippet updates', async () => {
       const user = userEvent.setup()
-      mockUpdateMutate.mockImplementation(
-        (_variables: unknown, options?: { onSuccess?: () => void }) => {
-          options?.onSuccess?.()
-        },
-      )
+      mockUpdateMutate.mockResolvedValue(undefined)
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
       await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
@@ -190,19 +194,13 @@ describe('SnippetInfoDropdown', () => {
 
       await user.click(screen.getByRole('button', { name: 'submit-edit' }))
 
-      expect(mockUpdateMutate).toHaveBeenCalledWith(
-        {
-          params: { snippetId: mockSnippet.id },
-          body: {
-            name: 'Updated snippet',
-            description: 'Updated description',
-          },
+      expect(mockUpdateMutate).toHaveBeenCalledWith({
+        params: { snippetId: mockSnippet.id },
+        body: {
+          name: 'Updated snippet',
+          description: 'Updated description',
         },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }),
-      )
+      })
     })
   })
 
@@ -248,11 +246,7 @@ describe('SnippetInfoDropdown', () => {
   describe('Delete Snippet', () => {
     it('should confirm deletion and redirect to the snippets list', async () => {
       const user = userEvent.setup()
-      mockDeleteMutate.mockImplementation(
-        (_variables: unknown, options?: { onSuccess?: () => void }) => {
-          options?.onSuccess?.()
-        },
-      )
+      mockDeleteMutate.mockResolvedValue(undefined)
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
@@ -264,15 +258,9 @@ describe('SnippetInfoDropdown', () => {
 
       await user.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
-      expect(mockDeleteMutate).toHaveBeenCalledWith(
-        {
-          params: { snippetId: mockSnippet.id },
-        },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }),
-      )
+      expect(mockDeleteMutate).toHaveBeenCalledWith({
+        params: { snippetId: mockSnippet.id },
+      })
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.deleted')
       expect(mockReplace).toHaveBeenCalledWith('/snippets')
     })

@@ -133,17 +133,12 @@ describe('trigger subscription builder verification', () => {
       })
     })
 
-    expect(mocks.verifyAndUpdate).toHaveBeenCalledWith(
-      {
-        params: {
-          provider: 'langgenius/gmail_trigger/gmail_trigger',
-          subscription_builder_id: 'builder-1',
-        },
-        body: {},
+    expect(mocks.verifyAndUpdate).toHaveBeenCalledWith({
+      params: {
+        provider: 'langgenius/gmail_trigger/gmail_trigger',
+        subscription_builder_id: 'builder-1',
       },
-      {
-        context: { silent: true },
-      },
-    )
+      body: {},
+    })
   })
 })

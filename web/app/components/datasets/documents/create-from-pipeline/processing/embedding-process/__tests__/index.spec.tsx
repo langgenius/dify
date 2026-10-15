@@ -56,7 +56,7 @@ let mockFetchIndexingStatus: Mock
 let mockIndexingStatusData: IndexingStatusResponse[] = []
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useIndexingStatusBatch: () => ({
-    mutateAsync: mockFetchIndexingStatus,
+    mutate: mockFetchIndexingStatus,
   }),
   useProcessRule: () => ({
     data: {

@@ -11,6 +11,7 @@ const mockGetNodesReadOnly = vi.fn()
 const mockUseNodesReadOnlyByCanEdit = vi.fn()
 const mockPostWithKeepalive = vi.fn()
 const mockSyncDraftWorkflow = vi.fn()
+const mockSetDraftSyncError = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
 const mockSetSyncWorkflowDraftHash = vi.fn()
 let deferSerialCallbacks = false
@@ -24,6 +25,7 @@ let reactFlowState: {
 
 let workflowStoreState: {
   syncWorkflowDraftHash: string | null
+  setDraftSyncError: typeof mockSetDraftSyncError
   setDraftUpdatedAt: typeof mockSetDraftUpdatedAt
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
 }
@@ -106,6 +108,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     }
     workflowStoreState = {
       syncWorkflowDraftHash: 'draft-hash',
+      setDraftSyncError: mockSetDraftSyncError,
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
     }

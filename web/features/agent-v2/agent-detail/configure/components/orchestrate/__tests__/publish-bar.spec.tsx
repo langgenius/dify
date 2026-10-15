@@ -117,17 +117,14 @@ vi.mock('@/service/console', () => ({
         referencingWorkflows: {
           get: {
             queryOptions: ({
-              context,
               enabled = true,
               input,
             }: {
-              context?: { silent?: boolean }
               enabled?: boolean
               input: { params: { agent_id: string } }
             }) => ({
               queryKey: ['agent-referencing-workflows', input],
               enabled,
-              context,
               queryFn: async () => {
                 workflowReferences.fetchCount++
                 if (workflowReferences.shouldFail)

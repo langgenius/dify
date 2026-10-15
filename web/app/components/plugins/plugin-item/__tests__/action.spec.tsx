@@ -402,7 +402,6 @@ describe('Action Component', () => {
 
     it('should handle uninstall error gracefully', async () => {
       // Arrange
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
       mockUninstallPlugin.mockRejectedValue(new Error('Network error'))
       const props = createActionProps({
         isShowDelete: true,
@@ -417,10 +416,12 @@ describe('Action Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(consoleError).toHaveBeenCalledWith('uninstallPlugin error', expect.any(Error))
+        expect(mockToastNotify).toHaveBeenCalledExactlyOnceWith({
+          type: 'error',
+          message: 'Network error',
+        })
+        expect(getDeleteConfirmButton()).toBeInTheDocument()
       })
-
-      consoleError.mockRestore()
     })
 
     it('should show loading state during deletion', async () => {

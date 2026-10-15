@@ -58,7 +58,7 @@ describe('useSnippetRefreshDraft', () => {
     vi.clearAllMocks()
   })
 
-  it('should refresh the draft workflow through the silent draft fetcher', async () => {
+  it('should refresh the draft workflow through the draft fetcher', async () => {
     const draftWorkflow = createDraftWorkflow()
     const onSuccess = vi.fn()
     mockFetchSnippetDraftWorkflow.mockResolvedValueOnce(draftWorkflow)

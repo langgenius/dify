@@ -216,7 +216,7 @@ describe('CrawlSelectionForm', () => {
     await screen.findByRole('checkbox', { name: 'Getting started' })
 
     expect(policyQueryOptionsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ context: { silent: true } }),
+      expect.objectContaining({ input: expect.any(Object) }),
     )
   })
 

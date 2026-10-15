@@ -38,15 +38,33 @@ A success toast is appropriate when the result is not on screen: a background jo
 
 ## Errors
 
-- When a request fails and the server returns an error message, the request layer shows that message unless the request is `silent`; see `afterResponseErrorCode` in [request layer]. Do not add a second toast for the same failure in `catch` or `onError`.
-- To present a request error differently, make the request `silent` (`{ context: { silent: true } }` for generated clients) and show the error inline. A `silent` request with no other error presentation fails without any feedback.
-- Failures that never reach the request layer, such as a rejected clipboard write or a client-side exception, still need their own feedback.
-- Client-side validation belongs at the field through the [form contract], never in a toast.
+The request layer propagates errors. It does not present them. Authentication recovery, cancellation, structured error decoding, and retries are independent of notification policy.
+
+| Owner                              | Error feedback                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------- |
+| `defaultOptions.mutations.onError` | Default business error toast, excluding cancellation.                                 |
+| `useMutation({ onError })`         | Replaces the default; owns complete feedback, including when it also rolls back data. |
+| `mutate(input, { onError })`       | Runs in addition to the hook or default callback; does not suppress either.           |
+| `mutateAsync` catch                | Handles the rejected promise; does not suppress mutation feedback.                    |
+| Direct requests and streams        | The business interaction owns feedback and pending-state cleanup.                     |
+
+Do not put an overridable default toast in `MutationCache.onError`, or suppress feedback with an empty `onError`. Generated mutation options must retain shared invalidation, cache updates, and rollback callbacks. Required data maintenance belongs in hook callbacks or awaited operations, because invocation callbacks may not run after unmount.
+
+For a composed operation, assign one error owner across its requests. Keep form input and unsaved drafts on failure. Autosave reports failure at the save status; existing version-conflict refresh behavior still applies. Stream owners handle HTTP failures, stream errors, and network interruption through `onError`, finish their pending state, and avoid duplicate feedback from completion callbacks. Active cancellation must not produce a failure toast. Success feedback stays with the business interaction.
+
+Query error presentation is deferred to a later PR. Removing request-layer notifications removes default toasts for initial Query failures and background refetch failures. Preserve existing Query error UI, retry settings, and caching. Do not introduce QueryCache notifications or notification-related query metadata as part of this migration.
+
+Client-side validation belongs at the field through the [form contract], never in a toast. Clipboard and other client-side failures still need their own business feedback.
+
+## Transport Boundary
+
+`service/fetch.ts`, `service/base.ts`, and Console transport adapters must not depend on notification modules, either directly or through re-exports, helpers, or dynamic imports. Check the transitive local import graph when changing their dependencies. Business error helpers such as `app/notifications/error.ts` belong at consumers; moving automatic toasts into a generic request wrapper violates the same boundary.
+
+Do not add notification flags, compatibility aliases, URL-based toast suppression, or notification deduplication to the transport. OAuth silent authorization and unrelated logging or validation controls retain their own semantics.
 
 ## Existing Code
 
-Many existing calls predate these rules and are migrated in batches. Do not copy them into new code, and do not remove an error toast without confirming the request layer covers that failure.
+Before removing a consumer's error feedback, identify the hook callback, visible error state, or enclosing business operation that takes responsibility. A rejected promise or rollback alone does not present an error.
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
 [form contract]: ../../packages/dify-ui/docs/forms.md
-[request layer]: ../service/fetch.ts

@@ -72,7 +72,7 @@ vi.mock('@/service/base', () => ({
   ssePost: (url: string, ...args: unknown[]) => mockSsePost(url, ...args),
 }))
 
-const mockStopWorkflowRun = vi.fn()
+const mockStopWorkflowRun = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/service/workflow', () => ({
   stopWorkflowRun: (url: string) => mockStopWorkflowRun(url),
 }))

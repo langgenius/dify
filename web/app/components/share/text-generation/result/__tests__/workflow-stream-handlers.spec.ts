@@ -450,6 +450,27 @@ describe('createWorkflowStreamHandlers', () => {
     }
   }
 
+  it('ends failed HTTP and interrupted stream runs with one error notification', () => {
+    const setup = setupHandlers()
+    setup.handlers.onError?.('Connection lost')
+    setup.handlers.onError?.('Duplicate terminal event')
+    expect(setup.notify).toHaveBeenCalledExactlyOnceWith({
+      type: 'error',
+      message: 'Connection lost',
+    })
+    expect(setup.setRespondingFalse).toHaveBeenCalledOnce()
+    expect(setup.resetRunState).toHaveBeenCalledOnce()
+    expect(setup.onCompleted).toHaveBeenCalledExactlyOnceWith('', 3, false)
+  })
+
+  it('cleans up an actively cancelled stream without reporting failure', () => {
+    const setup = setupHandlers()
+    setup.handlers.onError?.('AbortError: The operation was aborted.')
+    expect(setup.notify).not.toHaveBeenCalled()
+    expect(setup.setRespondingFalse).toHaveBeenCalledOnce()
+    expect(setup.resetRunState).toHaveBeenCalledOnce()
+  })
+
   it('should process workflow success and paused events', () => {
     const setup = setupHandlers({ isPublicAPI: true })
     const handlers = setup.handlers as Required<

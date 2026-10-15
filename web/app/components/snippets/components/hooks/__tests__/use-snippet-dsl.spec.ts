@@ -7,11 +7,22 @@ import { useSnippetDSL } from '../use-snippet-dsl'
 
 const mockMutateAsync = vi.fn()
 
-vi.mock('@/service/use-snippets', () => ({
-  useExportSnippetMutation: vi.fn(() => ({
-    mutateAsync: mockMutateAsync,
-  })),
-}))
+vi.mock('@/service/use-snippets', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const queryClient = createTestQueryClient()
+  return {
+    useExportSnippetMutation: vi.fn((options: Record<string, unknown> = {}) =>
+      useMutation(
+        {
+          mutationFn: (variables: unknown) => mockMutateAsync(variables),
+          ...options,
+        },
+        queryClient,
+      ),
+    ),
+  }
+})
 
 vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),

@@ -39,22 +39,70 @@ const mockSync = vi.fn()
 const mockSyncWebsite = vi.fn()
 const mockPause = vi.fn()
 const mockResume = vi.fn()
-let isDownloadPending = false
 
 const mockGenerateSummary = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentArchive: () => ({ mutateAsync: mockArchive }),
-  useDocumentUnArchive: () => ({ mutateAsync: mockUnArchive }),
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-  useDocumentDownload: () => ({ mutateAsync: mockDownload, isPending: isDownloadPending }),
-  useSyncDocument: () => ({ mutateAsync: mockSync }),
-  useSyncWebsite: () => ({ mutateAsync: mockSyncWebsite }),
-  useDocumentPause: () => ({ mutateAsync: mockPause }),
-  useDocumentResume: () => ({ mutateAsync: mockResume }),
-  useDocumentSummary: () => ({ mutateAsync: mockGenerateSummary }),
-}))
+vi.mock('@/service/knowledge/use-document', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useDocumentArchive: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockArchive(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentUnArchive: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUnArchive(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentEnable: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockEnable(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDisable: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDisable(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDelete: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDelete(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentDownload: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDownload(variables), ...options },
+        mutationClient,
+      ),
+    useSyncDocument: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockSync(variables), ...options },
+        mutationClient,
+      ),
+    useSyncWebsite: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockSyncWebsite(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentPause: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockPause(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentResume: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockResume(variables), ...options },
+        mutationClient,
+      ),
+    useDocumentSummary: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockGenerateSummary(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 // Mock downloadUrl utility
 const mockDownloadUrl = vi.fn()
@@ -65,7 +113,6 @@ vi.mock('@/utils/download', () => ({
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
-  isDownloadPending = false
 })
 
 describe('Operations', () => {

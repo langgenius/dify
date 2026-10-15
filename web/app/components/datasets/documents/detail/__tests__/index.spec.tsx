@@ -69,16 +69,25 @@ vi.mock('@/service/knowledge/use-document', () => ({
   useInvalidDocumentList: () => mocks.invalidDocumentList,
 }))
 
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useCheckSegmentBatchImportProgress: () => ({
-    mutateAsync: mocks.checkProgress,
-  }),
-  useSegmentBatchImport: () => ({
-    mutateAsync: mocks.batchImport,
-  }),
-  useSegmentListKey: ['segment-list'],
-  useChildSegmentListKey: ['child-segment-list'],
-}))
+vi.mock('@/service/knowledge/use-segment', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useCheckSegmentBatchImportProgress: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mocks.checkProgress(variables), ...options },
+        mutationClient,
+      ),
+    useSegmentBatchImport: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mocks.batchImport(variables), ...options },
+        mutationClient,
+      ),
+    useSegmentListKey: ['segment-list'],
+    useChildSegmentListKey: ['child-segment-list'],
+  }
+})
 
 vi.mock('@/service/use-base', () => ({
   useInvalid: (key: unknown) => {
@@ -526,6 +535,7 @@ describe('DocumentDetail', () => {
 
     it('should call segmentBatchImport on confirm', async () => {
       mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+      mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'completed' })
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('batch-btn'))
 
@@ -533,16 +543,10 @@ describe('DocumentDetail', () => {
         fireEvent.click(screen.getByTestId('batch-confirm'))
       })
 
-      expect(mocks.batchImport).toHaveBeenCalledWith(
-        {
-          url: '/datasets/ds-1/documents/doc-1/segments/batch_import',
-          body: { upload_file_id: 'file-1' },
-        },
-        expect.objectContaining({
-          onSuccess: expect.any(Function),
-          onError: expect.any(Function),
-        }),
-      )
+      expect(mocks.batchImport).toHaveBeenCalledWith({
+        url: '/datasets/ds-1/documents/doc-1/segments/batch_import',
+        body: { upload_file_id: 'file-1' },
+      })
     })
   })
 

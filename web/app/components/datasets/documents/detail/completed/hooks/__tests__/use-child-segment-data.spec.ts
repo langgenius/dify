@@ -12,11 +12,6 @@ import * as React from 'react'
 import { useChildSegmentData } from '../use-child-segment-data'
 
 // Type for mutation callbacks
-type MutationResponse = { data: ChildChunkDetail }
-type MutationCallbacks = {
-  onSuccess: (res: MutationResponse) => void
-  onSettled: () => void
-}
 type _ErrorCallback = { onSuccess?: () => void; onError: () => void }
 
 // Hoisted Mocks
@@ -80,15 +75,28 @@ vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
 
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useChildSegmentList: () => ({
-    isLoading: false,
-    data: mockChildSegmentListData.current,
-  }),
-  useChildSegmentListKey: ['segment', 'childChunkList'],
-  useDeleteChildSegment: () => ({ mutateAsync: mockDeleteChildSegment }),
-  useUpdateChildSegment: () => ({ mutateAsync: mockUpdateChildSegment }),
-}))
+vi.mock('@/service/knowledge/use-segment', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useChildSegmentList: () => ({
+      isLoading: false,
+      data: mockChildSegmentListData.current,
+    }),
+    useChildSegmentListKey: ['segment', 'childChunkList'],
+    useDeleteChildSegment: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockDeleteChildSegment(variables), ...options },
+        mutationClient,
+      ),
+    useUpdateChildSegment: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUpdateChildSegment(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/service/use-base', () => ({
   useInvalid: () => mockInvalidChildSegmentList,
@@ -183,12 +191,12 @@ describe('useChildSegmentData', () => {
   })
 
   describe('resetChildList', () => {
-    it('should call invalidChildSegmentList', () => {
+    it('should call invalidChildSegmentList', async () => {
       const { result } = renderHook(() => useChildSegmentData(defaultOptions), {
         wrapper: createWrapper(),
       })
 
-      act(() => {
+      await act(async () => {
         result.current.resetChildList()
       })
 
@@ -201,11 +209,7 @@ describe('useChildSegmentData', () => {
       mockParentMode.current = 'paragraph'
       const updateSegmentInCache = vi.fn()
 
-      mockDeleteChildSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockDeleteChildSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -233,11 +237,7 @@ describe('useChildSegmentData', () => {
     it('should delete child chunk and reset list in full-doc mode', async () => {
       mockParentMode.current = 'full-doc'
 
-      mockDeleteChildSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockDeleteChildSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(() => useChildSegmentData(defaultOptions), {
         wrapper: createWrapper(),
@@ -251,11 +251,7 @@ describe('useChildSegmentData', () => {
     })
 
     it('should notify error on failure', async () => {
-      mockDeleteChildSegment.mockImplementation(
-        async (_params, { onError }: { onError: () => void }) => {
-          onError()
-        },
-      )
+      mockDeleteChildSegment.mockRejectedValue(new Error('Update failed'))
 
       const { result } = renderHook(() => useChildSegmentData(defaultOptions), {
         wrapper: createWrapper(),
@@ -267,7 +263,7 @@ describe('useChildSegmentData', () => {
 
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+        message: 'Update failed',
       })
     })
   })
@@ -295,19 +291,14 @@ describe('useChildSegmentData', () => {
       const onCloseChildSegmentDetail = vi.fn()
       const refreshChunkListDataWithDetailChanged = vi.fn()
 
-      mockUpdateChildSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: MutationCallbacks) => {
-          onSuccess({
-            data: createMockChildChunk({
-              content: 'updated content',
-              type: 'customized',
-              word_count: 50,
-              updated_at: 1700000001,
-            }),
-          })
-          onSettled()
-        },
-      )
+      mockUpdateChildSegment.mockResolvedValue({
+        data: createMockChildChunk({
+          content: 'updated content',
+          type: 'customized',
+          word_count: 50,
+          updated_at: 1700000001,
+        }),
+      })
 
       const { result } = renderHook(
         () =>
@@ -338,19 +329,14 @@ describe('useChildSegmentData', () => {
       mockParentMode.current = 'full-doc'
       const onCloseChildSegmentDetail = vi.fn()
 
-      mockUpdateChildSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: MutationCallbacks) => {
-          onSuccess({
-            data: createMockChildChunk({
-              content: 'updated content',
-              type: 'customized',
-              word_count: 50,
-              updated_at: 1700000001,
-            }),
-          })
-          onSettled()
-        },
-      )
+      mockUpdateChildSegment.mockResolvedValue({
+        data: createMockChildChunk({
+          content: 'updated content',
+          type: 'customized',
+          word_count: 50,
+          updated_at: 1700000001,
+        }),
+      })
 
       const { result } = renderHook(
         () =>
@@ -372,7 +358,7 @@ describe('useChildSegmentData', () => {
   })
 
   describe('onSaveNewChildChunk', () => {
-    it('should update parent cache in paragraph mode', () => {
+    it('should update parent cache in paragraph mode', async () => {
       mockParentMode.current = 'paragraph'
       const updateSegmentInCache = vi.fn()
       const refreshChunkListDataWithDetailChanged = vi.fn()
@@ -390,7 +376,7 @@ describe('useChildSegmentData', () => {
         },
       )
 
-      act(() => {
+      await act(async () => {
         result.current.onSaveNewChildChunk(newChildChunk)
       })
 
@@ -398,14 +384,14 @@ describe('useChildSegmentData', () => {
       expect(refreshChunkListDataWithDetailChanged).toHaveBeenCalled()
     })
 
-    it('should reset child list in full-doc mode', () => {
+    it('should reset child list in full-doc mode', async () => {
       mockParentMode.current = 'full-doc'
 
       const { result } = renderHook(() => useChildSegmentData(defaultOptions), {
         wrapper: createWrapper(),
       })
 
-      act(() => {
+      await act(async () => {
         result.current.onSaveNewChildChunk(createMockChildChunk())
       })
 
@@ -414,7 +400,7 @@ describe('useChildSegmentData', () => {
   })
 
   describe('viewNewlyAddedChildChunk', () => {
-    it('should set needScrollToBottom and not reset when adding new page', () => {
+    it('should set needScrollToBottom and not reset when adding new page', async () => {
       mockChildSegmentListData.current = { data: [], total: 10, total_pages: 1, page: 1, limit: 20 }
 
       const { result } = renderHook(
@@ -428,14 +414,14 @@ describe('useChildSegmentData', () => {
         },
       )
 
-      act(() => {
+      await act(async () => {
         result.current.viewNewlyAddedChildChunk()
       })
 
       expect(result.current.needScrollToBottom.current).toBe(true)
     })
 
-    it('should call resetChildList when not adding new page', () => {
+    it('should call resetChildList when not adding new page', async () => {
       mockChildSegmentListData.current = { data: [], total: 5, total_pages: 1, page: 1, limit: 20 }
 
       const { result } = renderHook(
@@ -449,7 +435,7 @@ describe('useChildSegmentData', () => {
         },
       )
 
-      act(() => {
+      await act(async () => {
         result.current.viewNewlyAddedChildChunk()
       })
 
@@ -495,11 +481,7 @@ describe('useChildSegmentData', () => {
       mockParentMode.current = 'paragraph'
       const updateSegmentInCache = vi.fn()
 
-      mockDeleteChildSegment.mockImplementation(
-        async (_params, { onSuccess }: { onSuccess: () => void }) => {
-          onSuccess()
-        },
-      )
+      mockDeleteChildSegment.mockResolvedValue(undefined)
 
       const { result } = renderHook(
         () =>
@@ -537,20 +519,15 @@ describe('useChildSegmentData', () => {
       const onCloseChildSegmentDetail = vi.fn()
       const refreshChunkListDataWithDetailChanged = vi.fn()
 
-      mockUpdateChildSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: MutationCallbacks) => {
-          onSuccess({
-            data: createMockChildChunk({
-              id: 'child-1',
-              content: 'new content',
-              type: 'customized',
-              word_count: 50,
-              updated_at: 1700000001,
-            }),
-          })
-          onSettled()
-        },
-      )
+      mockUpdateChildSegment.mockResolvedValue({
+        data: createMockChildChunk({
+          id: 'child-1',
+          content: 'new content',
+          type: 'customized',
+          word_count: 50,
+          updated_at: 1700000001,
+        }),
+      })
 
       const { result } = renderHook(
         () =>
@@ -591,20 +568,15 @@ describe('useChildSegmentData', () => {
       mockParentMode.current = 'full-doc'
       const onCloseChildSegmentDetail = vi.fn()
 
-      mockUpdateChildSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: MutationCallbacks) => {
-          onSuccess({
-            data: createMockChildChunk({
-              id: 'child-1',
-              content: 'new content',
-              type: 'customized',
-              word_count: 50,
-              updated_at: 1700000001,
-            }),
-          })
-          onSettled()
-        },
-      )
+      mockUpdateChildSegment.mockResolvedValue({
+        data: createMockChildChunk({
+          id: 'child-1',
+          content: 'new content',
+          type: 'customized',
+          word_count: 50,
+          updated_at: 1700000001,
+        }),
+      })
 
       const { result } = renderHook(
         () =>
@@ -650,20 +622,15 @@ describe('useChildSegmentData', () => {
         },
       )
 
-      mockUpdateChildSegment.mockImplementation(
-        async (_params, { onSuccess, onSettled }: MutationCallbacks) => {
-          onSuccess({
-            data: createMockChildChunk({
-              id: 'child-1',
-              content: 'new content',
-              type: 'customized',
-              word_count: 50,
-              updated_at: 1700000001,
-            }),
-          })
-          onSettled()
-        },
-      )
+      mockUpdateChildSegment.mockResolvedValue({
+        data: createMockChildChunk({
+          id: 'child-1',
+          content: 'new content',
+          type: 'customized',
+          word_count: 50,
+          updated_at: 1700000001,
+        }),
+      })
 
       const { result } = renderHook(
         () =>

@@ -87,6 +87,7 @@ describe('useNodesSyncDraft', () => {
       syncWorkflowDraftHash: 'test-hash',
       ragPipelineVariables: [],
       setSyncWorkflowDraftHash: vi.fn(),
+      setDraftSyncError: vi.fn(),
       setDraftUpdatedAt: vi.fn(),
     })
 
@@ -297,6 +298,7 @@ describe('useNodesSyncDraft', () => {
         syncWorkflowDraftHash: 'initial-hash',
         ragPipelineVariables: [],
         setSyncWorkflowDraftHash: vi.fn(),
+        setDraftSyncError: vi.fn(),
         setDraftUpdatedAt: vi.fn(),
       }
       workflowState.setSyncWorkflowDraftHash.mockImplementation((hash: string) => {
@@ -421,6 +423,7 @@ describe('useNodesSyncDraft', () => {
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
         setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
+        setDraftSyncError: vi.fn(),
         setDraftUpdatedAt: mockSetDraftUpdatedAt,
       })
 
@@ -511,6 +514,7 @@ describe('useNodesSyncDraft', () => {
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [],
         setSyncWorkflowDraftHash: vi.fn(),
+        setDraftSyncError: vi.fn(),
         setDraftUpdatedAt: vi.fn(),
       })
       mockGetNodes.mockReturnValue([
@@ -534,6 +538,7 @@ describe('useNodesSyncDraft', () => {
         syncWorkflowDraftHash: 'test-hash',
         ragPipelineVariables: [{ variable: 'input', type: 'text-input' }],
         setSyncWorkflowDraftHash: vi.fn(),
+        setDraftSyncError: vi.fn(),
         setDraftUpdatedAt: vi.fn(),
       })
       mockGetNodes.mockReturnValue([

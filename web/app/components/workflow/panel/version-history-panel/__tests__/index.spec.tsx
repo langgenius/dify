@@ -83,38 +83,51 @@ type MockVersionHistoryItemProps = {
 
 vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
-  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
-  useInvalidAllLastRun: () => vi.fn(),
-  useResetWorkflowVersionHistory: () => vi.fn(),
-  useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
-  useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
-  useWorkflowVersionHistory: () => ({
-    data: {
-      pages: [
-        {
-          items: [
-            createVersionHistory({
-              id: 'draft-version-id',
-              version: WorkflowVersion.Draft,
-            }),
-            createVersionHistory({
-              id: 'published-version-id',
-              version: '2024-01-01T00:00:00Z',
-              marked_name: 'v1.0',
-              marked_comment: 'First release',
-              environments: mockPublishedEnvironments,
-            }),
-          ],
-        },
-      ],
-    },
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockHasNextPage,
-    isFetching: mockIsFetching,
-  }),
-}))
+vi.mock('@/service/use-workflow', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
+    useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
+    useInvalidAllLastRun: () => vi.fn(),
+    useResetWorkflowVersionHistory: () => vi.fn(),
+    useRestoreWorkflow: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockRestoreWorkflow(variables), ...options },
+        mutationClient,
+      ),
+    useUpdateWorkflow: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockUpdateWorkflow(variables), ...options },
+        mutationClient,
+      ),
+    useWorkflowVersionHistory: () => ({
+      data: {
+        pages: [
+          {
+            items: [
+              createVersionHistory({
+                id: 'draft-version-id',
+                version: WorkflowVersion.Draft,
+              }),
+              createVersionHistory({
+                id: 'published-version-id',
+                version: '2024-01-01T00:00:00Z',
+                marked_name: 'v1.0',
+                marked_comment: 'First release',
+                environments: mockPublishedEnvironments,
+              }),
+            ],
+          },
+        ],
+      },
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockHasNextPage,
+      isFetching: mockIsFetching,
+    }),
+  }
+})
 
 vi.mock('../../../hooks/use-DSL', () => ({
   useDSL: () => ({ handleExportDSL: mockHandleExportDSL }),
@@ -489,18 +502,7 @@ describe('VersionHistoryPanel', () => {
   })
 
   it('should refresh the published workflow after editing the latest app version', async () => {
-    mockUpdateWorkflow.mockImplementation(
-      async (
-        _params,
-        options?: {
-          onSuccess?: () => void
-          onSettled?: () => void
-        },
-      ) => {
-        options?.onSuccess?.()
-        options?.onSettled?.()
-      },
-    )
+    mockUpdateWorkflow.mockResolvedValue(undefined)
     const { VersionHistoryPanel } = await import('../index')
 
     render(
@@ -516,16 +518,13 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
-      expect(mockUpdateWorkflow).toHaveBeenCalledWith(
-        {
-          appId: 'app-1',
-          appMode: AppModeEnum.WORKFLOW,
-          releaseNotes: 'Updated notes',
-          title: 'Updated release',
-          url: '/apps/app-1/workflows/published-version-id',
-        },
-        expect.any(Object),
-      )
+      expect(mockUpdateWorkflow).toHaveBeenCalledWith({
+        appId: 'app-1',
+        appMode: AppModeEnum.WORKFLOW,
+        releaseNotes: 'Updated notes',
+        title: 'Updated release',
+        url: '/apps/app-1/workflows/published-version-id',
+      })
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
   })

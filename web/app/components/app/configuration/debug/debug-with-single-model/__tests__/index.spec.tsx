@@ -87,6 +87,8 @@ const { mockSsePost, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
+vi.mock('@/app/notifications', () => ({ toast: { error: mockToastError } }))
+
 vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: mockToastError,
@@ -616,15 +618,13 @@ describe('DebugWithSingleModel', () => {
 
       expect(mockSsePost.mock.calls[0]![0]).toBe('apps/test-app-id/chat-messages')
       expect(mockSsePost.mock.calls[0]![2]).toEqual(
-        expect.objectContaining({
-          onNotifyError: expect.any(Function),
-        }),
+        expect.objectContaining({ onError: expect.any(Function) }),
       )
 
       const callbacks = mockSsePost.mock.calls[0]![2] as {
-        onNotifyError: (message: string) => void
+        onError: (message: string) => void
       }
-      callbacks.onNotifyError('Base model not found')
+      callbacks.onError('Base model not found')
       expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 

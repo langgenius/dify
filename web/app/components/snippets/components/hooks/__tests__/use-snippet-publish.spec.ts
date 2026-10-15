@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { useSnippetPublish } from '../use-snippet-publish'
 
@@ -8,8 +8,6 @@ const mockSetQueryData = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn<() => Promise<boolean>>()
 
-let isPending = false
-
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
@@ -17,7 +15,8 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQueryClient: () => ({
     setQueryData: mockSetQueryData,
   }),
@@ -27,12 +26,18 @@ vi.mock('@/service/use-workflow', () => ({
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 
-vi.mock('@/service/use-snippet-workflows', () => ({
-  usePublishSnippetWorkflowMutation: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending,
-  }),
-}))
+vi.mock('@/service/use-snippet-workflows', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    usePublishSnippetWorkflowMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        { mutationFn: (variables: unknown) => mockMutateAsync(variables), ...options },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
@@ -51,7 +56,6 @@ vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
 describe('useSnippetPublish', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    isPending = false
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockMutateAsync.mockResolvedValue({ created_at: 1_712_345_678 })
   })
@@ -122,15 +126,12 @@ describe('useSnippetPublish', () => {
     })
   })
 
-  it('should expose publishing pending state', () => {
-    isPending = true
-
-    const { result } = renderHook(() =>
-      useSnippetPublish({
-        snippetId: 'snippet-1',
-      }),
-    )
-
-    expect(result.current.isPublishing).toBe(true)
+  it('should expose publishing pending state', async () => {
+    mockMutateAsync.mockReturnValue(new Promise(() => {}))
+    const { result } = renderHook(() => useSnippetPublish({ snippetId: 'snippet-1' }))
+    act(() => {
+      void result.current.handlePublish()
+    })
+    await waitFor(() => expect(result.current.isPublishing).toBe(true))
   })
 })

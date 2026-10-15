@@ -37,16 +37,29 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useImportSnippetDSLMutation: () => ({
-    isPending: false,
-    mutateAsync: serviceMocks.importMutateAsync,
-  }),
-  useConfirmSnippetImportMutation: () => ({
-    isPending: false,
-    mutateAsync: serviceMocks.confirmMutateAsync,
-  }),
-}))
+vi.mock('@/service/use-snippets', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useImportSnippetDSLMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        {
+          mutationFn: (variables: unknown) => serviceMocks.importMutateAsync(variables),
+          ...options,
+        },
+        mutationClient,
+      ),
+    useConfirmSnippetImportMutation: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        {
+          mutationFn: (variables: unknown) => serviceMocks.confirmMutateAsync(variables),
+          ...options,
+        },
+        mutationClient,
+      ),
+  }
+})
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   Uploader: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
@@ -152,29 +165,32 @@ describe('ImportSnippetDSLDialog', () => {
     })
   })
 
-  it.each(['import', 'confirm'])('leaves HTTP %s failures to the request layer', async (step) => {
-    const user = userEvent.setup()
-    const onClose = vi.fn()
-    const error = await httpErrorFromResponse(
-      Response.json({ message: 'Invalid DSL' }, { status: 400 }),
-    )
-    if (step === 'import') serviceMocks.importMutateAsync.mockRejectedValue(error)
-    else {
-      serviceMocks.importMutateAsync.mockResolvedValue({ id: 'import-1', status: 'pending' })
-      serviceMocks.confirmMutateAsync.mockRejectedValue(error)
-    }
+  it.each(['import', 'confirm'])(
+    'reports HTTP %s failures once and retains the form',
+    async (step) => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      const error = await httpErrorFromResponse(
+        Response.json({ message: 'Invalid DSL' }, { status: 400 }),
+      )
+      if (step === 'import') serviceMocks.importMutateAsync.mockRejectedValue(error)
+      else {
+        serviceMocks.importMutateAsync.mockResolvedValue({ id: 'import-1', status: 'pending' })
+        serviceMocks.confirmMutateAsync.mockRejectedValue(error)
+      }
 
-    render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
-    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-    if (step === 'confirm') {
-      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
-      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({ importId: 'import-1' })
-    }
-    expect(serviceMocks.importMutateAsync).toHaveBeenCalledOnce()
-    expect(toastMocks.error).not.toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
-  })
+      render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
+      await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      if (step === 'confirm') {
+        await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+        expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({ importId: 'import-1' })
+      }
+      expect(serviceMocks.importMutateAsync).toHaveBeenCalledOnce()
+      await waitFor(() => expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith('Invalid DSL'))
+      expect(onClose).not.toHaveBeenCalled()
+    },
+  )
 
   it('should disable import without snippet create permission', async () => {
     const user = userEvent.setup()

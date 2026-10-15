@@ -90,20 +90,35 @@ const render = (ui: ReactElement) => {
 }
 
 // Mock service hooks
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromMarketPlace: () => ({
-    mutateAsync: mockInstallPackageFromMarketPlace,
-  }),
-  useUpdatePackageFromMarketPlace: () => ({
-    mutateAsync: mockUpdatePackageFromMarketPlace,
-  }),
-  usePluginDeclarationFromMarketPlace: () => ({
-    data: mockPluginDeclaration,
-  }),
-  usePluginTaskList: () => ({
-    handleInstallTaskStart: mockHandleInstallTaskStart,
-  }),
-}))
+vi.mock('@/service/use-plugins', async () => {
+  const { useMutation } = await import('@tanstack/react-query')
+  const { createTestQueryClient } = await import('@/test/query-client')
+  const mutationClient = createTestQueryClient()
+  return {
+    useInstallPackageFromMarketPlace: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        {
+          mutationFn: (variables: unknown) => mockInstallPackageFromMarketPlace(variables),
+          ...options,
+        },
+        mutationClient,
+      ),
+    useUpdatePackageFromMarketPlace: (options: Record<string, unknown> = {}) =>
+      useMutation(
+        {
+          mutationFn: (variables: unknown) => mockUpdatePackageFromMarketPlace(variables),
+          ...options,
+        },
+        mutationClient,
+      ),
+    usePluginDeclarationFromMarketPlace: () => ({
+      data: mockPluginDeclaration,
+    }),
+    usePluginTaskList: () => ({
+      handleInstallTaskStart: mockHandleInstallTaskStart,
+    }),
+  }
+})
 
 // Mock checkTaskStatus
 vi.mock('../../../base/check-task-status', () => ({
@@ -608,8 +623,8 @@ describe('Install Component (steps/install.tsx)', () => {
   // Error Handling Tests
   // ================================
   describe('Error Handling', () => {
-    it('should call onFailed with string error', async () => {
-      mockInstallPackageFromMarketPlace.mockRejectedValue('String error message')
+    it('should pass the request error message to onFailed', async () => {
+      mockInstallPackageFromMarketPlace.mockRejectedValue(new Error('String error message'))
       render(<Install {...defaultProps} />)
 
       await act(async () => {
@@ -621,7 +636,7 @@ describe('Install Component (steps/install.tsx)', () => {
       })
     })
 
-    it('should call onFailed without message for non-string error', async () => {
+    it('should preserve the Error message in onFailed', async () => {
       mockInstallPackageFromMarketPlace.mockRejectedValue(new Error('Error object'))
       render(<Install {...defaultProps} />)
 
@@ -630,7 +645,7 @@ describe('Install Component (steps/install.tsx)', () => {
       })
 
       await waitFor(() => {
-        expect(defaultProps.onFailed).toHaveBeenCalledWith()
+        expect(defaultProps.onFailed).toHaveBeenCalledWith('Error object')
       })
     })
   })

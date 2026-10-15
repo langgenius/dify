@@ -381,16 +381,12 @@ describe('PipelineSettings', () => {
             pipeline_id: mockPipelineId,
             original_document_id: 'document-456',
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should navigate to documents list after successful process', async () => {
-      mockMutateAsync.mockImplementation((_request, options) => {
-        options?.onSuccess?.()
-        return Promise.resolve({})
-      })
+      mockMutateAsync.mockResolvedValue(undefined)
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -404,10 +400,7 @@ describe('PipelineSettings', () => {
     })
 
     it('should invalidate document cache after successful process', async () => {
-      mockMutateAsync.mockImplementation((_request, options) => {
-        options?.onSuccess?.()
-        return Promise.resolve({})
-      })
+      mockMutateAsync.mockResolvedValue(undefined)
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -449,17 +442,13 @@ describe('PipelineSettings', () => {
             is_preview: true,
             pipeline_id: mockPipelineId,
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should update estimateData on successful preview', async () => {
       const mockOutputs = { chunks: [], total_tokens: 50 }
-      mockMutateAsync.mockImplementation((_req, opts) => {
-        opts?.onSuccess?.({ data: { outputs: mockOutputs } })
-        return Promise.resolve({ data: { outputs: mockOutputs } })
-      })
+      mockMutateAsync.mockResolvedValue({ data: { outputs: mockOutputs } })
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -494,17 +483,14 @@ describe('PipelineSettings', () => {
       // Assert - inputs come from initialData which is transformed by useInitialData
       // Since usePublishedPipelineProcessingParams returns empty variables, inputs is {}
       await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          {
-            pipeline_id: mockPipelineId,
-            inputs: {},
-            start_node_id: 'node-xyz',
-            datasource_type: DatasourceType.localFile,
-            datasource_info_list: [{ related_id: 'file-1', name: 'test.pdf', extension: 'pdf' }],
-            is_preview: true,
-          },
-          expect.any(Object),
-        )
+        expect(mockMutateAsync).toHaveBeenCalledWith({
+          pipeline_id: mockPipelineId,
+          inputs: {},
+          start_node_id: 'node-xyz',
+          datasource_type: DatasourceType.localFile,
+          datasource_info_list: [{ related_id: 'file-1', name: 'test.pdf', extension: 'pdf' }],
+          is_preview: true,
+        })
       })
     })
   })
@@ -584,10 +570,7 @@ describe('PipelineSettings', () => {
 
     it('should update estimateData after successful preview', async () => {
       const mockEstimateData = { chunks: [], total_tokens: 50 }
-      mockMutateAsync.mockImplementation((_req, opts) => {
-        opts?.onSuccess?.({ data: { outputs: mockEstimateData } })
-        return Promise.resolve({ data: { outputs: mockEstimateData } })
-      })
+      mockMutateAsync.mockResolvedValue({ data: { outputs: mockEstimateData } })
       const props = createDefaultProps()
 
       renderWithProviders(<PipelineSettings {...props} />)
@@ -608,10 +591,7 @@ describe('PipelineSettings', () => {
       )
 
       await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          expect.objectContaining({ is_preview: false }),
-          expect.any(Object),
-        )
+        expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ is_preview: false }))
       })
     })
 
@@ -623,10 +603,7 @@ describe('PipelineSettings', () => {
       fireEvent.click(screen.getByTestId('preview-btn'))
 
       await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          expect.objectContaining({ is_preview: true }),
-          expect.any(Object),
-        )
+        expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ is_preview: true }))
       })
     })
 
