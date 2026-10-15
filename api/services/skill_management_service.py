@@ -4664,16 +4664,23 @@ class SkillManagementService:
         text_parts: list[str] = []
         destination_skip_depth: int | None = None
         depth = 0
+        unicode_skip = 1
+        unicode_skip_stack: list[int] = []
+        fallback_remaining = 0
         index = 0
         while index < len(source):
             char = source[index]
             if char == "{":
+                unicode_skip_stack.append(unicode_skip)
+                fallback_remaining = 0
                 depth += 1
                 index += 1
                 if source[index : index + 1] == "\\" and source[index + 1 : index + 2] == "*":
                     destination_skip_depth = depth
                 continue
             if char == "}":
+                unicode_skip = unicode_skip_stack.pop() if unicode_skip_stack else 1
+                fallback_remaining = 0
                 if destination_skip_depth is not None and depth <= destination_skip_depth:
                     destination_skip_depth = None
                 depth = max(0, depth - 1)
@@ -4683,7 +4690,11 @@ class SkillManagementService:
                 index += 1
                 continue
             if char != "\\":
-                text_parts.append("\n" if char in "\r\n" else char)
+                if fallback_remaining:
+                    if char not in "\r\n\x00":
+                        fallback_remaining -= 1
+                else:
+                    text_parts.append("\n" if char in "\r\n" else char)
                 index += 1
                 continue
 
@@ -4691,7 +4702,15 @@ class SkillManagementService:
             if match:
                 word = match.group(1)
                 value = match.group(2)
-                if word in {"par", "line"}:
+                index += len(match.group(0))
+                if fallback_remaining:
+                    # A control word (including its binary payload) counts as one fallback character.
+                    fallback_remaining -= 1
+                    if word == "bin" and value is not None:
+                        index += max(0, int(value))
+                elif word == "uc" and value is not None:
+                    unicode_skip = max(0, int(value))
+                elif word in {"par", "line"}:
                     text_parts.append("\n")
                 elif word == "tab":
                     text_parts.append("\t")
@@ -4700,21 +4719,22 @@ class SkillManagementService:
                     if codepoint < 0:
                         codepoint += 65536
                     text_parts.append(chr(codepoint))
-                index += len(match.group(0))
-                if word == "u" and source[index : index + 2].startswith("\\'"):
-                    index += 4
-                elif word == "u" and index < len(source):
-                    index += 1
+                    fallback_remaining = unicode_skip
                 continue
 
             if source[index : index + 2] == "\\'":
-                try:
-                    text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
-                except ValueError:
-                    pass
+                if fallback_remaining:
+                    fallback_remaining -= 1
+                else:
+                    try:
+                        text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
+                    except ValueError:
+                        pass
                 index += 4
                 continue
-            if index + 1 < len(source):
+            if fallback_remaining:
+                fallback_remaining -= 1
+            elif index + 1 < len(source):
                 text_parts.append(source[index + 1])
             index += 2
 
