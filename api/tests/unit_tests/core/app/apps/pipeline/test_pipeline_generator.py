@@ -21,6 +21,7 @@ from models.enums import DataSourceType, EndUserType
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.data_source.provider_service import DatasourceProviderService
 from services.errors.app import WorkflowNotFoundError
@@ -507,7 +508,7 @@ def test_single_iteration_generate_dataset_required(generator):
     with pytest.raises(WorkflowNotFoundError):
         generator.single_iteration_generate(
             pipeline,
-            _build_workflow(),
+            workflow_snapshot(_build_workflow()),
             "node",
             _build_user(),
             {"inputs": {"a": 1}},

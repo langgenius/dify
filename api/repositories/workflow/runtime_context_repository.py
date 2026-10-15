@@ -1,18 +1,20 @@
 """Load detached execution inputs in short, owner-scoped transactions."""
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.orm.attributes import set_committed_value
 
-from models import Workflow, WorkflowRun
-from models.dataset import Dataset, Pipeline
+from models import WorkflowRun
+from models.dataset import Pipeline
 from models.human_input_contracts import PauseFormSnapshot
 from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
-from repositories.workflow.definition_repository import WorkflowDefinitionStore
+from repositories.workflow.definition_repository import WorkflowDefinitionStore, workflow_snapshot
 from services.errors.app import WorkflowNotFoundError
+from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.execution.ports import PipelineDatasetSnapshot
 
 
 class WorkflowRuntimeContextRepository:
@@ -29,7 +31,7 @@ class WorkflowRuntimeContextRepository:
             form_ids=form_ids,
         )
 
-    def pipeline_workflow(self, *, tenant_id: str, pipeline_id: str, draft: bool) -> Workflow:
+    def pipeline_workflow(self, *, tenant_id: str, pipeline_id: str, draft: bool) -> WorkflowSnapshot:
         with self._sessions() as session:
             pipeline = session.scalar(
                 select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == tenant_id)
@@ -43,10 +45,9 @@ class WorkflowRuntimeContextRepository:
             )
             if workflow is None:
                 raise WorkflowNotFoundError("Workflow not initialized" if draft else "Workflow not published")
-            session.expunge(workflow)
-            return workflow
+            return workflow_snapshot(workflow)
 
-    def pipeline_dataset(self, *, tenant_id: str, pipeline_id: str) -> Dataset:
+    def pipeline_dataset(self, *, tenant_id: str, pipeline_id: str) -> PipelineDatasetSnapshot:
         with self._sessions() as session:
             pipeline = session.scalar(
                 select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == tenant_id)
@@ -56,10 +57,16 @@ class WorkflowRuntimeContextRepository:
             dataset = get_pipeline_dataset(pipeline, session=session)
             if dataset is None:
                 raise WorkflowNotFoundError("Pipeline dataset not found")
-            session.expunge(dataset)
-            return dataset
+            return PipelineDatasetSnapshot(
+                id=dataset.id,
+                tenant_id=dataset.tenant_id,
+                name=dataset.name,
+                description=dataset.description,
+                chunk_structure=dataset.chunk_structure,
+                built_in_field_enabled=dataset.built_in_field_enabled,
+            )
 
-    def restore_graph(self, workflow: Workflow, workflow_run_id: str | None) -> None:
+    def restore_graph(self, workflow: WorkflowSnapshot, workflow_run_id: str | None) -> WorkflowSnapshot:
         if workflow_run_id is None:
             raise WorkflowNotFoundError("Workflow run id is required when resuming")
         with self._sessions() as session:
@@ -73,9 +80,9 @@ class WorkflowRuntimeContextRepository:
             )
         if graph is None:
             raise WorkflowNotFoundError(f"Workflow run graph not found: {workflow_run_id}")
-        set_committed_value(workflow, "graph", graph)
+        return replace(workflow, graph=graph)
 
-    def workflow(self, *, tenant_id: str, app_id: str, workflow_id: str) -> Workflow:
+    def workflow(self, *, tenant_id: str, app_id: str, workflow_id: str) -> WorkflowSnapshot:
         with self._sessions() as session:
             # Use the common definition selection rule, including owner checks.
             workflow = WorkflowDefinitionStore.get_by_id(
@@ -83,5 +90,4 @@ class WorkflowRuntimeContextRepository:
             )
             if workflow is None:
                 raise WorkflowNotFoundError("Workflow not found")
-            session.expunge(workflow)
-            return workflow
+            return workflow_snapshot(workflow)

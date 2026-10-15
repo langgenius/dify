@@ -36,7 +36,7 @@ from core.repositories.factory import (
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
-from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
+from models import Account, EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
@@ -45,6 +45,7 @@ from services.app.generation.input_adapter import AppInputAdapter
 from services.data_source.provider_service import DatasourceProviderService
 from services.rag_pipeline.document_preparation import prepare_pipeline_document
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.pipeline.pipeline_config_manager import PipelineConfigManager
 from services.workflow.execution.adapters.pipeline.pipeline_queue_manager import PipelineQueueManager
 from services.workflow.execution.adapters.pipeline.pipeline_runner import PipelineRunner
@@ -65,7 +66,7 @@ class PipelineGenerator(AppInputAdapter):
         runtime: WorkflowRuntime,
         documents: PipelineDocumentStore,
         datasource_providers: DatasourceProviderService,
-        draft_variable_loader: Callable[[Workflow, str], VariableLoader] | None = None,
+        draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
     ) -> None:
         self._runtime = runtime
@@ -76,7 +77,7 @@ class PipelineGenerator(AppInputAdapter):
         self._documents = documents
         self._datasource_providers = datasource_providers
 
-    def load_workflow(self, pipeline: Pipeline, invoke_from: InvokeFrom) -> Workflow:
+    def load_workflow(self, pipeline: Pipeline, invoke_from: InvokeFrom) -> WorkflowSnapshot:
         return self._runtime.contexts.pipeline_workflow(
             tenant_id=pipeline.tenant_id, pipeline_id=pipeline.id, draft=invoke_from == InvokeFrom.DEBUGGER
         )
@@ -86,7 +87,7 @@ class PipelineGenerator(AppInputAdapter):
         self,
         *,
         pipeline: Pipeline,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -101,7 +102,7 @@ class PipelineGenerator(AppInputAdapter):
         self,
         *,
         pipeline: Pipeline,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -116,7 +117,7 @@ class PipelineGenerator(AppInputAdapter):
         self,
         *,
         pipeline: Pipeline,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -130,7 +131,7 @@ class PipelineGenerator(AppInputAdapter):
         self,
         *,
         pipeline: Pipeline,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -278,7 +279,7 @@ class PipelineGenerator(AppInputAdapter):
                 id=dataset.id,
                 name=dataset.name,
                 description=dataset.description,
-                chunk_structure=dataset.chunk_structure,
+                chunk_structure=dataset.chunk_structure or "text_model",
             ).model_dump(),
             "documents": [
                 PipelineDocument(
@@ -381,7 +382,7 @@ class PipelineGenerator(AppInputAdapter):
     def single_iteration_generate(
         self,
         pipeline: Pipeline,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -471,7 +472,7 @@ class PipelineGenerator(AppInputAdapter):
     def single_loop_generate(
         self,
         pipeline: Pipeline,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -620,7 +621,7 @@ class PipelineGenerator(AppInputAdapter):
     def _handle_response(
         self,
         application_generate_entity: RagPipelineGenerateEntity,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         queue_manager: AppQueueManager,
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
@@ -669,7 +670,7 @@ class PipelineGenerator(AppInputAdapter):
         datasource_type: DatasourceProviderType,
         datasource_info_list: list[Mapping[str, Any]],
         pipeline: Pipeline,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         start_node_id: str,
         user: Account | EndUser,
     ) -> list[Mapping[str, Any]]:
