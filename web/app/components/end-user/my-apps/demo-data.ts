@@ -1,6 +1,5 @@
 import type { EndUserApp } from './model'
 import { AppModeEnum } from '@/types/app'
-import { basePath } from '@/utils/var'
 
 // Design samples only. Replace the route's demo owner when the end-user API is available.
 export const demoApps: readonly EndUserApp[] = [
@@ -42,9 +41,8 @@ export const demoApps: readonly EndUserApp[] = [
     name: 'Customer Brief',
     description: 'Summarize customer context before your next conversation.',
     mode: AppModeEnum.CHAT,
-    icon: '',
-    iconUrl: `${basePath}/end-user/notion.svg`,
-    iconBackground: 'var(--color-components-panel-bg)',
+    icon: '🏖️',
+    iconBackground: 'var(--color-components-icon-bg-violet-soft)',
     starred: true,
     connectionStatus: 'ready',
     lastUsedAt: 1,
