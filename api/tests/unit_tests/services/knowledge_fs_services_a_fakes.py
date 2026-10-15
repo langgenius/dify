@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from libs.datetime_utils import naive_utc_now
 from models.knowledge_fs import KnowledgeFSUpgradeJob
@@ -38,3 +40,28 @@ class UnusedSessionFactory:
     def __call__(self) -> Iterator[UnusedSession]:
         self.opened += 1
         yield UnusedSession()
+
+
+class RecordedCall(NamedTuple):
+    args: tuple[object, ...]
+    kwargs: dict[str, object]
+
+
+@dataclass
+class CallRecorder:
+    """Callable stand-in that records every call and returns or raises a fixed outcome."""
+
+    result: object = None
+    error: Exception | None = None
+    calls: list[RecordedCall] = field(default_factory=list)
+
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        self.calls.append(RecordedCall(args, kwargs))
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+    @property
+    def last(self) -> RecordedCall:
+        assert self.calls, "expected at least one call"
+        return self.calls[-1]
