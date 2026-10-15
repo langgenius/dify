@@ -41,10 +41,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
     @override
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
-        if self._fixed_separator:
-            chunks = text.split(self._fixed_separator)
-        else:
-            chunks = [text]
+        chunks = text.split(self._fixed_separator) if self._fixed_separator else [text]
 
         final_chunks = []
         chunks_lengths = self._length_function(chunks)
@@ -74,18 +71,12 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
 
         # Now that we have the separator, split the text
         if separator:
-            if separator == " ":
-                splits = re.split(r" +", text)
-            else:
-                splits = text.split(separator)
+            splits = re.split(r" +", text) if separator == " " else text.split(separator)
             if self._keep_separator:
                 splits = [s + separator for s in splits[:-1]] + splits[-1:]
         else:
             splits = list(text)
-        if separator == "\n":
-            splits = [s for s in splits if s != ""]
-        else:
-            splits = [s for s in splits if (s not in {"", "\n"})]
+        splits = [s for s in splits if s != ""] if separator == "\n" else [s for s in splits if s not in {"", "\n"}]
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator

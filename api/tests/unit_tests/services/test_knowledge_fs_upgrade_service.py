@@ -1196,11 +1196,9 @@ def test_runner_source_failure_is_retryable_or_persisted(
 
     from tasks import knowledge_fs_initial_source_tasks as source_tasks
 
-    error: Exception
-    if not_ready:
-        error = source_tasks.KnowledgeFSInitialSourceNotReadyError("busy")
-    else:
-        error = RuntimeError("source failed")
+    error: Exception = (
+        source_tasks.KnowledgeFSInitialSourceNotReadyError("busy") if not_ready else RuntimeError("source failed")
+    )
     monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", MagicMock(side_effect=error))
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
 

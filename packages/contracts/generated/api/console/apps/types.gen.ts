@@ -864,7 +864,7 @@ export type TraceAppConfigResponse = {
   is_active?: boolean | null
   result?: string | null
   tracing_config?: {
-    [key: string]: unknown
+    [key: string]: string | null
   } | null
   tracing_provider?: string | null
   updated_at?: string | null
@@ -872,7 +872,7 @@ export type TraceAppConfigResponse = {
 
 export type TraceConfigPayload = {
   tracing_config: {
-    [key: string]: unknown
+    [key: string]: string | null
   }
   tracing_provider: string
 }

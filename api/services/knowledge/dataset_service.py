@@ -1838,9 +1838,9 @@ class DocumentService:
                 Document.tenant_id == dataset_ref.tenant_id,
                 Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_ids),
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
         return documents
@@ -1850,7 +1850,7 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
             )
         ).all()
 
@@ -1861,9 +1861,9 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
 
@@ -2405,7 +2405,7 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                             Document.name.in_(file_names),
                         )
                     ).all()
@@ -2460,7 +2460,7 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.NOTION_IMPORT,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                         )
                     ).all()
                 )
@@ -2519,10 +2519,7 @@ class DocumentService:
                         "only_main_content": website_info.only_main_content,
                         "mode": "crawl",
                     }
-                    if len(url) > 255:
-                        document_name = url[:200] + "..."
-                    else:
-                        document_name = url
+                    document_name = url[:200] + "..." if len(url) > 255 else url
                     document = DocumentService.build_document(
                         dataset,
                         dataset_process_rule.id,
@@ -2906,8 +2903,8 @@ class DocumentService:
             session.scalar(
                 select(func.count(Document.id)).where(
                     Document.completed_at.isnot(None),
-                    Document.enabled == True,
-                    Document.archived == False,
+                    Document.enabled.is_(True),
+                    Document.archived.is_(False),
                     Document.tenant_id == current_user.current_tenant_id,
                 )
             )
@@ -3007,7 +3004,7 @@ class DocumentService:
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == account.current_tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
-                                DataSourceOauthBinding.disabled == False,
+                                DataSourceOauthBinding.disabled.is_(False),
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )
