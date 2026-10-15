@@ -21,7 +21,7 @@ class _FakeCursor:
     fetchone_value: object = (1,)
     fetchall_value: list[tuple[object, ...]] = field(default_factory=list)
     execute_error: BaseException | Callable[..., None] | None = None
-    executed: list[tuple[object, ...]] = field(default_factory=list)
+    executed: list[tuple[str, *tuple[object, ...]]] = field(default_factory=list)
     executemany_calls: list[tuple[str, Sequence[object]]] = field(default_factory=list)
 
     def __enter__(self) -> "_FakeCursor":
@@ -72,17 +72,19 @@ def cursor(connection: _FakeConnection) -> _FakeCursor:
 
 
 @pytest.fixture
-def store(connection: _FakeConnection):
+def store(connection: _FakeConnection) -> TidbTextStore:
     return TidbTextStore(connection)  # type: ignore[arg-type]
 
 
-def test_native_tidb_ddl_write_readback_query_and_delete(store, connection, cursor):
+def test_native_tidb_ddl_write_readback_query_and_delete(
+    store: TidbTextStore, connection: _FakeConnection, cursor: _FakeCursor
+) -> None:
     cursor.fetchone_queue = [None, None, (1,)]
     execute_text_request(store, request("upsert", points=[point()]))
     sqls = [call[0] for call in cursor.executed]
     assert any("FULLTEXT INDEX" in sql and "MULTILINGUAL" in sql for sql in sqls)
     assert "ON DUPLICATE KEY UPDATE id=id" in cursor.executemany_calls[-1][0]
-    cursor.fetchone_queue = []
+    cursor.fetchone_queue.clear()
     cursor.fetchone_value = (1,)
     cursor.fetchall_value = [(A, GENERATION, point()["content_hash"], point()["text"])]
     assert execute_text_request(store, request("get", ids=[A]))["points"] == [point()]
@@ -96,7 +98,7 @@ def test_native_tidb_ddl_write_readback_query_and_delete(store, connection, curs
     assert "CONCAT(' ',text,' ') LIKE %s ESCAPE '!'" in sql
     assert "id IN (%s)" in sql
     assert params == ("退 款", "退 款", A, "% 款 %", "% 退 %", 10)
-    cursor.fetchall_value = []
+    cursor.fetchall_value = list[tuple[object, ...]]()
     execute_text_request(store, request("delete", ids=[A]))
     cursor.fetchall_value = [(A, GENERATION, point()["content_hash"], point()["text"])]
     with pytest.raises(VectorStoreUnavailableError, match="not visible"):
@@ -106,7 +108,9 @@ def test_native_tidb_ddl_write_readback_query_and_delete(store, connection, curs
 
 
 @pytest.mark.parametrize("operation", ["get", "delete", "search"])
-def test_missing_index_distinct_from_provider_failure(store, cursor, operation):
+def test_missing_index_distinct_from_provider_failure(
+    store: TidbTextStore, cursor: _FakeCursor, operation: str
+) -> None:
     cursor.fetchone_value = None
     payload = request(operation, ids=[A], **({"query": "refund"} if operation == "search" else {}))
     if operation == "search":
@@ -120,17 +124,19 @@ def test_missing_index_distinct_from_provider_failure(store, cursor, operation):
 
 
 @pytest.mark.parametrize("replica", [None, (0,)])
-def test_unready_columnar_index_requires_retry(store, cursor, replica):
+def test_unready_columnar_index_requires_retry(
+    store: TidbTextStore, cursor: _FakeCursor, replica: tuple[int, ...] | None
+) -> None:
     cursor.fetchone_queue = [(1,), replica]
     with pytest.raises(TextIndexPendingError):
         execute_text_request(store, request("search", ids=[A], query="refund"))
 
 
 @pytest.mark.parametrize("code", [1061, 8200])
-def test_concurrent_ddl_only_accepts_duplicate_index(store, cursor, code):
+def test_concurrent_ddl_only_accepts_duplicate_index(store: TidbTextStore, cursor: _FakeCursor, code: int) -> None:
     cursor.fetchone_queue = [(1,), None, (1,)]
 
-    def execute(sql, *_args):
+    def execute(sql: str, *_args: object) -> None:
         if "ALTER TABLE" in sql:
             raise pymysql.err.OperationalError(code, "duplicate or unsupported")
 
@@ -142,7 +148,7 @@ def test_concurrent_ddl_only_accepts_duplicate_index(store, cursor, code):
             execute_text_request(store, request("upsert", points=[point()]))
 
 
-def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(config_overrides):
+def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(config_overrides: Callable[..., None]) -> None:
     config_overrides(VECTOR_STORE="tidb_on_qdrant")
     config_overrides(TIDB_API_URL="https://cloud.example.test")
     config_overrides(TIDB_PUBLIC_KEY="test-public")
@@ -180,7 +186,7 @@ def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(config_over
     _sql_endpoint.cache_clear()
 
 
-def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(config_overrides):
+def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(config_overrides: Callable[..., None]) -> None:
     _sql_endpoint.cache_clear()
     config_overrides(TIDB_API_URL=None)
     with pytest.raises(VectorStoreUnavailableError, match="not configured"):

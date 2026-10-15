@@ -1,8 +1,10 @@
 import threading
 import uuid
+from collections.abc import Callable, Generator, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import TypedDict, Unpack
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -40,6 +42,17 @@ class _Environment:
     get: MagicMock
 
 
+class _CredentialFields(TypedDict, total=False):
+    account: str
+    password: str
+    qdrant_endpoint: str | None
+
+
+class _BindingFields(_CredentialFields, total=False):
+    active: bool
+    status: TidbAuthBindingStatus
+
+
 class _UnusedEmbeddings(Embeddings):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         raise NotImplementedError
@@ -55,12 +68,14 @@ class _UnusedEmbeddings(Embeddings):
 
 
 @pytest.fixture
-def environment(sqlite_engine, monkeypatch, config_overrides):
+def environment(
+    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> Generator[_Environment]:
     monkeypatch.setattr(service, "db", _Db(engine=sqlite_engine))
     lock = threading.Lock()
 
     @contextmanager
-    def acquire(*_args, **_kwargs):
+    def acquire(*_args: object, **_kwargs: object) -> Iterator[None]:
         with lock:
             yield
 
@@ -93,30 +108,28 @@ def environment(sqlite_engine, monkeypatch, config_overrides):
         yield _Environment(engine=sqlite_engine, tenants=tenants, redis=redis, create=create, get=get)
 
 
-def add_binding(env, *, tenant=None, active=False, status=TidbAuthBindingStatus.ACTIVE, **changes):
-    fields = {
-        "tenant_id": tenant,
-        "cluster_id": uuid.uuid4().hex,
-        "cluster_name": "cluster",
-        "account": "account",
-        "password": "password",
-        "qdrant_endpoint": "https://qdrant.tenant.test",
-        "active": active,
-        "status": status,
-    }
-    fields.update(changes)
+def add_binding(env: _Environment, *, tenant: str | None = None, **changes: Unpack[_BindingFields]) -> TidbAuthBinding:
     with Session(env.engine, expire_on_commit=False) as session, session.begin():
-        binding = TidbAuthBinding(**fields)
+        binding = TidbAuthBinding(
+            tenant_id=tenant,
+            cluster_id=uuid.uuid4().hex,
+            cluster_name="cluster",
+            account=changes.get("account", "account"),
+            password=changes.get("password", "password"),
+            qdrant_endpoint=changes.get("qdrant_endpoint", "https://qdrant.tenant.test"),
+            active=changes.get("active", False),
+            status=changes.get("status", TidbAuthBindingStatus.ACTIVE),
+        )
         session.add(binding)
     return binding
 
 
-def bindings(env):
+def bindings(env: _Environment) -> Sequence[TidbAuthBinding]:
     with Session(env.engine) as session:
         return session.scalars(select(TidbAuthBinding)).all()
 
 
-def test_existing_binding_routes_to_its_tenant_without_allocation(environment):
+def test_existing_binding_routes_to_its_tenant_without_allocation(environment: _Environment) -> None:
     env = environment
     other = add_binding(env, tenant=env.tenants[1].id, active=True)
     own = add_binding(env, tenant=env.tenants[0].id, active=True)
@@ -127,7 +140,7 @@ def test_existing_binding_routes_to_its_tenant_without_allocation(environment):
     env.get.assert_not_called()
 
 
-def test_read_without_binding_never_allocates(environment):
+def test_read_without_binding_never_allocates(environment: _Environment) -> None:
     with pytest.raises(service.TidbBindingUnavailableError, match="no active"):
         service.resolve_tidb_auth_binding(environment.tenants[0].id, allow_create=False)
     environment.create.assert_not_called()
@@ -135,7 +148,9 @@ def test_read_without_binding_never_allocates(environment):
     assert bindings(environment) == []
 
 
-def test_idle_claim_is_persisted_without_cloud_credentials(environment, config_overrides):
+def test_idle_claim_is_persisted_without_cloud_credentials(
+    environment: _Environment, config_overrides: Callable[..., None]
+) -> None:
     env = environment
     idle = add_binding(env)
     config_overrides(TIDB_PUBLIC_KEY=None, TIDB_PRIVATE_KEY=None)
@@ -159,7 +174,7 @@ def test_idle_claim_is_persisted_without_cloud_credentials(environment, config_o
         {"password": ""},
     ],
 )
-def test_unusable_idle_cluster_is_not_claimed(environment, invalid):
+def test_unusable_idle_cluster_is_not_claimed(environment: _Environment, invalid: _BindingFields) -> None:
     env = environment
     unusable = add_binding(env, **invalid)
     usable = add_binding(env)
@@ -168,7 +183,7 @@ def test_unusable_idle_cluster_is_not_claimed(environment, invalid):
     env.create.assert_not_called()
 
 
-def test_assigned_inactive_cluster_cannot_be_claimed_by_another_tenant(environment):
+def test_assigned_inactive_cluster_cannot_be_claimed_by_another_tenant(environment: _Environment) -> None:
     env = environment
     assigned = add_binding(env, tenant=env.tenants[1].id)
     idle = add_binding(env)
@@ -176,17 +191,19 @@ def test_assigned_inactive_cluster_cannot_be_claimed_by_another_tenant(environme
     assert next(item for item in bindings(env) if item.id == assigned.id).tenant_id == env.tenants[1].id
 
 
-def test_legacy_global_endpoint_fallback_can_claim_idle_cluster(environment, config_overrides):
+def test_legacy_global_endpoint_fallback_can_claim_idle_cluster(
+    environment: _Environment, config_overrides: Callable[..., None]
+) -> None:
     idle = add_binding(environment, qdrant_endpoint=None)
     config_overrides(TIDB_ON_QDRANT_URL="https://legacy.test")
     assert service.resolve_tidb_auth_binding(environment.tenants[0].id, allow_create=True).id == idle.id
 
 
-def test_creation_reserves_before_cloud_call_and_resumes_same_cluster(environment):
+def test_creation_reserves_before_cloud_call_and_resumes_same_cluster(environment: _Environment) -> None:
     env = environment
     tenant_id = env.tenants[0].id
 
-    def create(**kwargs):
+    def create(**kwargs: object) -> str:
         stored = bindings(env)
         assert len(stored) == 1
         assert stored[0].tenant_id == tenant_id
@@ -216,7 +233,9 @@ def test_creation_reserves_before_cloud_call_and_resumes_same_cluster(environmen
 @pytest.mark.parametrize(
     "cluster", [None, [], {"state": "CREATING"}, {"state": "ACTIVE"}, {"state": "ACTIVE", "userPrefix": "p"}]
 )
-def test_pending_cluster_is_not_marked_ready_until_endpoint_and_account_exist(environment, cluster):
+def test_pending_cluster_is_not_marked_ready_until_endpoint_and_account_exist(
+    environment: _Environment, cluster: object
+) -> None:
     env = environment
     add_binding(env, tenant=env.tenants[0].id, active=True, status=TidbAuthBindingStatus.CREATING)
     env.get.return_value = cluster
@@ -226,7 +245,7 @@ def test_pending_cluster_is_not_marked_ready_until_endpoint_and_account_exist(en
     env.create.assert_not_called()
 
 
-def test_readiness_network_failure_keeps_cluster_for_retry(environment):
+def test_readiness_network_failure_keeps_cluster_for_retry(environment: _Environment) -> None:
     env = environment
     own = add_binding(env, tenant=env.tenants[0].id, active=True, status=TidbAuthBindingStatus.CREATING)
     env.get.side_effect = RuntimeError("secret provider response")
@@ -237,7 +256,7 @@ def test_readiness_network_failure_keeps_cluster_for_retry(environment):
     env.create.assert_not_called()
 
 
-def test_uncertain_create_is_not_reissued_on_retry(environment):
+def test_uncertain_create_is_not_reissued_on_retry(environment: _Environment) -> None:
     env = environment
     env.create.side_effect = TimeoutError("private cloud credentials")
     with pytest.raises(service.TidbBindingUnavailableError, match="reconciliation"):
@@ -249,7 +268,9 @@ def test_uncertain_create_is_not_reissued_on_retry(environment):
     env.create.assert_called_once()
 
 
-def test_missing_config_does_not_reserve_or_call_cloud(environment, config_overrides):
+def test_missing_config_does_not_reserve_or_call_cloud(
+    environment: _Environment, config_overrides: Callable[..., None]
+) -> None:
     config_overrides(TIDB_PRIVATE_KEY=None)
     with pytest.raises(service.TidbBindingUnavailableError, match="not configured"):
         service.resolve_tidb_auth_binding(environment.tenants[0].id, allow_create=True)
@@ -257,14 +278,14 @@ def test_missing_config_does_not_reserve_or_call_cloud(environment, config_overr
     environment.create.assert_not_called()
 
 
-def test_unknown_tenant_cannot_allocate_cluster(environment):
+def test_unknown_tenant_cannot_allocate_cluster(environment: _Environment) -> None:
     with pytest.raises(service.TidbBindingUnavailableError, match="does not exist"):
         service.resolve_tidb_auth_binding(str(uuid.uuid4()), allow_create=True)
     assert bindings(environment) == []
     environment.create.assert_not_called()
 
 
-def test_lock_contention_is_retryable_and_never_creates_without_lock(environment):
+def test_lock_contention_is_retryable_and_never_creates_without_lock(environment: _Environment) -> None:
     environment.redis.lock.side_effect = LockError("busy")
     with pytest.raises(service.TidbBindingPendingError):
         service.resolve_tidb_auth_binding(environment.tenants[0].id, allow_create=True)
@@ -272,7 +293,7 @@ def test_lock_contention_is_retryable_and_never_creates_without_lock(environment
     environment.create.assert_not_called()
 
 
-def test_binding_created_by_another_request_is_rechecked_under_lock(environment):
+def test_binding_created_by_another_request_is_rechecked_under_lock(environment: _Environment) -> None:
     env = environment
     own = add_binding(env, tenant=env.tenants[0].id, active=True)
     with patch.object(service, "_load_binding", return_value=None):
@@ -280,16 +301,16 @@ def test_binding_created_by_another_request_is_rechecked_under_lock(environment)
     env.create.assert_not_called()
 
 
-def test_concurrent_first_writes_create_once(environment):
+def test_concurrent_first_writes_create_once(environment: _Environment) -> None:
     env = environment
     started, finish = threading.Event(), threading.Event()
 
-    def create(**_kwargs):
+    def create(**_kwargs: object) -> str:
         started.set()
         assert finish.wait(5)
         return "one-cluster"
 
-    def resolve():
+    def resolve() -> None:
         with pytest.raises(service.TidbBindingPendingError):
             service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
 
@@ -307,7 +328,7 @@ def test_concurrent_first_writes_create_once(environment):
     assert bindings(env)[0].cluster_id == "one-cluster"
 
 
-def test_concurrent_tenants_claim_different_idle_clusters(environment):
+def test_concurrent_tenants_claim_different_idle_clusters(environment: _Environment) -> None:
     env = environment
     idle = {add_binding(env).id, add_binding(env).id}
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -320,14 +341,16 @@ def test_concurrent_tenants_claim_different_idle_clusters(environment):
     env.create.assert_not_called()
 
 
-def test_binding_revoked_during_readiness_is_not_reactivated(environment):
+def test_binding_revoked_during_readiness_is_not_reactivated(environment: _Environment) -> None:
     env = environment
     own = add_binding(env, tenant=env.tenants[0].id, active=True, status=TidbAuthBindingStatus.CREATING)
     ready = env.get.return_value
 
-    def revoke(*_args):
+    def revoke(*_args: object) -> object:
         with Session(env.engine) as session, session.begin():
-            session.get(TidbAuthBinding, own.id).active = False
+            row = session.get(TidbAuthBinding, own.id)
+            assert row is not None
+            row.active = False
         return ready
 
     env.get.side_effect = revoke
@@ -337,7 +360,9 @@ def test_binding_revoked_during_readiness_is_not_reactivated(environment):
 
 
 @pytest.mark.parametrize("missing", [{"account": ""}, {"password": ""}, {"qdrant_endpoint": None}])
-def test_incomplete_active_binding_is_not_silently_replaced(environment, missing):
+def test_incomplete_active_binding_is_not_silently_replaced(
+    environment: _Environment, missing: _CredentialFields
+) -> None:
     env = environment
     add_binding(env, tenant=env.tenants[0].id, active=True, **missing)
     with pytest.raises(service.TidbBindingUnavailableError, match="incomplete"):
@@ -345,7 +370,7 @@ def test_incomplete_active_binding_is_not_silently_replaced(environment, missing
     env.create.assert_not_called()
 
 
-def test_cloud_create_reuses_configured_budget_and_has_bounded_timeout(config_overrides):
+def test_cloud_create_reuses_configured_budget_and_has_bounded_timeout(config_overrides: Callable[..., None]) -> None:
     config_overrides(TIDB_SPEND_LIMIT=12)
     response = httpx.Response(200, json={"clusterId": "created"}, request=httpx.Request("POST", "https://cloud.test"))
     with patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client") as http:
@@ -375,7 +400,7 @@ def test_cloud_create_reuses_configured_budget_and_has_bounded_timeout(config_ov
 @pytest.mark.parametrize(
     "response", [httpx.Response(500), httpx.Response(200, json={}), httpx.Response(200, json={"clusterId": 1})]
 )
-def test_invalid_create_response_never_becomes_a_cluster_binding(response):
+def test_invalid_create_response_never_becomes_a_cluster_binding(response: httpx.Response) -> None:
     response.request = httpx.Request("POST", "https://cloud.test")
     with patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client") as http:
         http.post.return_value = response
@@ -385,7 +410,7 @@ def test_invalid_create_response_never_becomes_a_cluster_binding(response):
             )
 
 
-def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environment):
+def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environment: _Environment) -> None:
     from dify_vdb_tidb_on_qdrant import tidb_on_qdrant_vector as legacy
 
     binding = add_binding(environment, tenant=environment.tenants[0].id, active=True)
@@ -405,7 +430,7 @@ def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environm
     assert vector.call_args.kwargs["config"].api_key == "account:password"
 
 
-def test_legacy_dataset_factory_bounds_readiness_wait(environment):
+def test_legacy_dataset_factory_bounds_readiness_wait(environment: _Environment) -> None:
     from dify_vdb_tidb_on_qdrant import tidb_on_qdrant_vector as legacy
 
     dataset = Dataset(id=str(uuid.uuid4()), tenant_id=environment.tenants[0].id)
