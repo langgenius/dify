@@ -2,15 +2,9 @@ import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { I18nText } from '@/i18n/language'
-import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
-}
-
-export type SetupStatusResponse = {
-  step: 'finished' | 'not_started'
-  setup_at?: Date
 }
 
 export type InitValidateStatusResponse = {
@@ -89,14 +83,4 @@ export type ExternalDataTool = {
   config?: {
     api_based_extension_id?: string
   } & Record<string, AppConfigJsonValue>
-}
-
-export type StructuredOutputRulesRequestBody = {
-  instruction: string
-  model_config: Model
-}
-
-export type StructuredOutputRulesResponse = {
-  output: string
-  error?: string
 }

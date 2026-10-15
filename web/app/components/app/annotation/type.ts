@@ -8,12 +8,6 @@ export type AnnotationItemBasic = {
 
 export type AnnotationItem = Annotation
 
-export type AnnotationCreateResponse = AnnotationItem & {
-  account?: {
-    name?: string
-  }
-}
-
 export type HitHistoryItem = AnnotationHitHistory
 
 export type EmbeddingModelConfig = {

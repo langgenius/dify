@@ -10,7 +10,7 @@ import { consoleQuery } from './console'
 
 const NAME_SPACE = 'common'
 
-export const commonQueryKeys = {
+const commonQueryKeys = {
   forgotPasswordValidity: (token?: string | null) =>
     [NAME_SPACE, 'forgot-password-validity', token] as const,
 }

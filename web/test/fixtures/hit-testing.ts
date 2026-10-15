@@ -7,7 +7,7 @@ type HitTestingSegmentOverrides = Partial<Omit<HitTestingSegment, 'document'>> &
   document?: Partial<HitTestingSegment['document']>
 }
 
-export const createHitTestingSegmentFixture = ({
+const createHitTestingSegmentFixture = ({
   document,
   ...overrides
 }: HitTestingSegmentOverrides = {}): HitTestingSegment => ({
