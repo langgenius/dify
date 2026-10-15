@@ -176,7 +176,7 @@ const useAdvancedPromptConfig = ({
             )
 
           if (
-            ['advanced-chat', 'agent-chat', 'chat'].includes(appMode) &&
+            (appMode === 'agent-chat' || appMode === 'chat') &&
             completionPromptConfig.conversation_histories_role.assistant_prefix &&
             completionPromptConfig.conversation_histories_role.user_prefix
           )
