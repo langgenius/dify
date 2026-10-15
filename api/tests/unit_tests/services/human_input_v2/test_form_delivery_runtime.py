@@ -165,6 +165,9 @@ def test_factory_runs_v2_and_reuses_persisted_approval(context: Context, monkeyp
 
 @pytest.fixture
 def context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Context]:
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", Mock())
     engine = sa.create_engine(f"sqlite:///{tmp_path / 'runtime.sqlite'}", connect_args={"timeout": 15})
 
     @sa.event.listens_for(engine, "connect")
@@ -502,6 +505,7 @@ def test_im_assessment_controls_message_form_and_auth_without_losing_email(conte
         im_delivery = next(d for d in deliveries if isinstance(d.target_snapshot, IMUserTargetSnapshot))
         assert im_delivery.target_snapshot.message_type == ("card" if supports_card else "link")
         assert im_delivery.auth_type == (SubmissionAuthType.IM if supports_card else SubmissionAuthType.CONSOLE)
+        assert im_delivery.target_snapshot.message_locator == "provider-message"
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 2
     assert adapter.dynamic_card_messaging.send_card.call_count == int(supports_card)
     assert adapter.messaging.send_text.call_count == int(not supports_card)
@@ -1558,6 +1562,7 @@ def test_card_send_failure_does_not_change_saved_auth_or_send_an_im_link(context
         )
         assert delivery.auth_type == SubmissionAuthType.IM
         assert delivery.target_snapshot.message_type == "card"
+        assert delivery.target_snapshot.message_locator is None
 
 
 @pytest.fixture
@@ -1598,6 +1603,436 @@ def console_approval(context: Context):
             WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="approval-checkpoint")
         )
     return created.form.id, token
+
+
+def test_submission_fans_out_each_created_im_card_after_commit(context: Context, console_approval, monkeypatch):
+    from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
+    from repositories.human_input_v2.delivery_attempt_repository import DeliveryAttemptCreateParams, DeliveryStatus
+    from repositories.human_input_v2.delivery_repository import (
+        DeliveryCreateParams,
+        IMMessageType,
+        IMUserTargetSnapshot,
+        SubmissionAuthType,
+    )
+    from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
+    from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    form_id, token = console_approval
+    expected_delivery_ids = set()
+    with context.sessions.begin() as session:
+        recipient = session.scalars(sa.select(HumanInputRecipient)).one()
+        for owner, delivery_form, message_type, status in (
+            (_TENANT, form_id, IMMessageType.CARD, DeliveryStatus.SUCCEEDED),
+            (_TENANT, form_id, IMMessageType.CARD, DeliveryStatus.SUCCEEDED),
+            (_TENANT, form_id, IMMessageType.CARD, DeliveryStatus.FAILED),
+            (_TENANT, form_id, IMMessageType.LINK, DeliveryStatus.SUCCEEDED),
+            (TenantId(str(uuid4())), form_id, IMMessageType.CARD, DeliveryStatus.SUCCEEDED),
+            (_TENANT, str(uuid4()), IMMessageType.CARD, DeliveryStatus.SUCCEEDED),
+        ):
+            delivery = SQLAlchemyDeliveryRepository(session).create_delivery(
+                tenant_id=owner,
+                form_id=delivery_form,
+                params=DeliveryCreateParams(
+                    recipient_id=recipient.id,
+                    token_hash=uuid4().hex,
+                    auth_type=SubmissionAuthType.IM,
+                    target_snapshot=IMUserTargetSnapshot(
+                        im_provider=IMProvider.SLACK,
+                        im_tenant_id="provider-team",
+                        im_provider_user_id="im-user",
+                        message_type=message_type,
+                    ),
+                ),
+            )
+            SQLAlchemyDeliveryAttemptRepository(session, owner, delivery_form).record_attempt(
+                delivery.id,
+                DeliveryAttemptCreateParams(status, None, {"accepted": True, "message_locator": delivery.id}),
+            )
+            if status == DeliveryStatus.SUCCEEDED:
+                SQLAlchemyDeliveryRepository(session).set_im_message_locator(
+                    tenant_id=owner,
+                    form_id=delivery_form,
+                    delivery_id=delivery.id,
+                    message_locator=MessageLocator(delivery.id),
+                )
+            if (owner, delivery_form, message_type, status) == (
+                _TENANT,
+                form_id,
+                IMMessageType.CARD,
+                DeliveryStatus.SUCCEEDED,
+            ):
+                expected_delivery_ids.add(delivery.id)
+                # Multiple accepted attempts still fan out once per delivery.
+                SQLAlchemyDeliveryAttemptRepository(session, owner, delivery_form).record_attempt(
+                    delivery.id,
+                    DeliveryAttemptCreateParams(status, None, {"accepted": True, "message_locator": delivery.id}),
+                )
+                SQLAlchemyDeliveryAttemptRepository(session, owner, delivery_form).record_attempt(
+                    delivery.id, DeliveryAttemptCreateParams(DeliveryStatus.FAILED, "Later resend failed", {})
+                )
+
+    published = []
+
+    def publish(task, *, kwargs):
+        with context.sessions() as session:
+            assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+        published.append((task.name, kwargs))
+
+    monkeypatch.setattr(resume_app_execution, "apply_async", lambda **kwargs: publish(resume_app_execution, **kwargs))
+    monkeypatch.setattr(
+        update_human_input_im_card_task,
+        "apply_async",
+        lambda **kwargs: publish(update_human_input_im_card_task, **kwargs),
+    )
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
+    )
+    card_updates = [kwargs for name, kwargs in published if "delivery_id" in kwargs]
+    assert {update["delivery_id"] for update in card_updates} == expected_delivery_ids
+    assert len(card_updates) == len(expected_delivery_ids)
+    assert all(update["tenant_id"] == _TENANT and update["form_id"] == form_id for update in card_updates)
+
+
+@pytest.fixture
+def created_im_cards(context: Context, console_approval, providers, monkeypatch):
+    from core.human_input_v2.im_integration.adapters.entities import MessageAccepted
+    from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
+    from models.model import App, AppMode
+    from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot
+    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
+    from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+    from services.human_input_v2.delivery_service import HumanInputDeliveryService, ResolvedMessageTemplate
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    form_id, token = console_approval
+    with context.sessions.begin() as session:
+        App.__table__.create(session.get_bind())
+        session.add(
+            App(
+                id=_APP, tenant_id=_TENANT, name="IM approval", mode=AppMode.WORKFLOW, enable_api=True, enable_site=True
+            )
+        )
+    _add_im(context)
+    adapter, _ = providers
+    adapter.dynamic_card_messaging.send_card.side_effect = [
+        MessageAccepted(MessageLocator("opaque-card-one")),
+        MessageAccepted(MessageLocator("opaque-card-two")),
+    ]
+    adapter.dynamic_card_messaging.replace_with_static.return_value = None
+    with context.sessions() as session:
+        form = SQLAlchemyFormRepository(session, _TENANT, _APP).get_form_by_id(form_id)
+        recipient = SQLAlchemyRecipientRepository(session, _TENANT, form_id).list_recipients()[0]
+    for _ in range(2):
+        HumanInputDeliveryService(session_factory=context.sessions, email_client=None).deliver(
+            form=form,
+            recipient=recipient,
+            message_template=ResolvedMessageTemplate(subject="Review", body="Open {{#url#}}"),
+        )
+    with context.sessions() as session:
+        deliveries = {
+            delivery.id
+            for delivery in session.scalars(sa.select(HumanInputDelivery))
+            if isinstance(delivery.target_snapshot, IMUserTargetSnapshot)
+        }
+    published = Mock()
+    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", published)
+    resumed = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", resumed)
+    return form_id, token, deliveries, adapter, published, resumed
+
+
+def test_im_card_tasks_replace_exact_cards_with_committed_submission(context: Context, created_im_cards):
+    from core.human_input_v2.im_integration.adapters.entities import StaticCardIntent
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    form_id, token, deliveries, adapter, published, _ = created_im_cards
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted {{#$output.note#}}"}
+    )
+    assert {call.kwargs["kwargs"]["delivery_id"] for call in published.call_args_list} == deliveries
+    adapter.dynamic_card_messaging.replace_with_static.assert_not_called()
+    active: set[object] = set()
+    engine = context.sessions.kw["bind"]
+    sa.event.listen(engine, "begin", lambda conn: active.add(conn))
+    sa.event.listen(engine, "commit", lambda conn: active.discard(conn))
+    sa.event.listen(engine, "rollback", lambda conn: active.discard(conn))
+    replacements = []
+
+    def replace_card(locator, intent):
+        assert not active, "Card updates must not hold a DB transaction"
+        replacements.append((locator, intent))
+
+    adapter.dynamic_card_messaging.replace_with_static.side_effect = replace_card
+    # Bindings may change after delivery; replacement still targets the saved card.
+    with context.sessions.begin() as session:
+        session.execute(sa.delete(HumanInputIMBinding))
+    for call in published.call_args_list:
+        update_human_input_im_card_task.run(**call.kwargs["kwargs"])
+    assert {locator for locator, _ in replacements} == {"opaque-card-one", "opaque-card-two"}
+    assert len(replacements) == 2
+    assert all(
+        intent == StaticCardIntent("Frozen\n\nReview: Accepted {{#$output.note#}}\n\nSubmitted: Approve")
+        for _, intent in replacements
+    )
+    # Redelivery renders the identical committed state, without another submission.
+    update_human_input_im_card_task.run(**published.call_args_list[0].kwargs["kwargs"])
+    assert replacements[2] == replacements[0]
+
+
+def test_im_card_updates_do_not_depend_on_attempt_history(context: Context, created_im_cards):
+    import json
+
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    _, token, deliveries, adapter, published, _ = created_im_cards
+    with context.sessions.begin() as session:
+        snapshots = session.scalars(
+            sa.select(sa.type_coerce(HumanInputDelivery.target_snapshot, sa.Text)).where(
+                HumanInputDelivery.id.in_(deliveries)
+            )
+        ).all()
+        assert {json.loads(snapshot).get("message_locator") for snapshot in snapshots} == {
+            "opaque-card-one",
+            "opaque-card-two",
+        }
+        attempts = session.scalars(
+            sa.select(HumanInputDeliveryAttempt).where(HumanInputDeliveryAttempt.delivery_id.in_(deliveries))
+        ).all()
+        assert {attempt.response.root["message_locator"] for attempt in attempts} == {
+            "opaque-card-one",
+            "opaque-card-two",
+        }
+        session.execute(
+            sa.delete(HumanInputDeliveryAttempt).where(HumanInputDeliveryAttempt.delivery_id.in_(deliveries))
+        )
+
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
+    )
+    assert {call.kwargs["kwargs"]["delivery_id"] for call in published.call_args_list} == deliveries
+    for call in published.call_args_list:
+        update_human_input_im_card_task.run(**call.kwargs["kwargs"])
+    calls = adapter.dynamic_card_messaging.replace_with_static.call_args_list
+    assert {call.args[0] for call in calls} == {"opaque-card-one", "opaque-card-two"}
+
+
+@pytest.mark.usefixtures("providers")
+def test_attempt_storage_failure_rolls_back_the_accepted_card_identity(context: Context, monkeypatch):
+    from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot
+    from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
+    from services.human_input_v2.delivery_service import HumanInputDeliveryService, ResolvedMessageTemplate
+
+    _add_im(context)
+    created = context.prepare(_node(Initiator()))
+    assert isinstance(created, CreatedForm)
+    monkeypatch.setattr(
+        SQLAlchemyDeliveryAttemptRepository, "record_attempt", Mock(side_effect=ValueError("Attempt storage failed"))
+    )
+    with pytest.raises(ValueError, match="Attempt storage failed"):
+        HumanInputDeliveryService(session_factory=context.sessions, email_client=None).deliver(
+            form=created.form,
+            recipient=created.recipients[0],
+            message_template=ResolvedMessageTemplate(subject="Review", body="Open {{#url#}}"),
+        )
+    with context.sessions() as session:
+        cards = [
+            record
+            for record in session.scalars(sa.select(HumanInputDelivery))
+            if isinstance(record.target_snapshot, IMUserTargetSnapshot)
+        ]
+        assert len(cards) == 1
+        assert cards[0].target_snapshot.message_locator is None
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 0
+
+
+def test_im_card_update_uses_delivery_identity_when_attempt_history_conflicts(context: Context, created_im_cards):
+    from repositories.human_input_v2.delivery_attempt_repository import DeliveryAttemptCreateParams, DeliveryStatus
+    from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
+    from services.human_input_v2.im_card_service import HumanInputIMCardService
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+
+    form_id, token, deliveries, adapter, _, _ = created_im_cards
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
+    )
+    delivery_id = next(iter(deliveries))
+    with context.sessions.begin() as session:
+        expected_locator = session.get(HumanInputDelivery, delivery_id).target_snapshot.message_locator
+        SQLAlchemyDeliveryAttemptRepository(session, _TENANT, form_id).record_attempt(
+            delivery_id,
+            DeliveryAttemptCreateParams(
+                DeliveryStatus.SUCCEEDED, None, {"accepted": True, "message_locator": "conflicting-card"}
+            ),
+        )
+
+    updater = HumanInputIMCardService(session_factory=context.sessions)
+    updater.update_card(tenant_id=_TENANT, form_id=form_id, delivery_id=delivery_id)
+    assert adapter.dynamic_card_messaging.replace_with_static.call_args.args[0] == expected_locator
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "waiting",
+        "tenant",
+        "app_owner",
+        "form",
+        "delivery",
+        "provider",
+        "provider_tenant",
+        "channel",
+        "email",
+        "im_link",
+        "unaccepted",
+    ],
+)
+def test_im_card_update_ignores_unrelated_or_unavailable_cards(context: Context, created_im_cards, scenario):
+    from repositories.human_input_v2.delivery_repository import (
+        DeliveryTargetType,
+        EmailTargetSnapshot,
+        IMMessageType,
+    )
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    form_id, token, deliveries, adapter, _, _ = created_im_cards
+    delivery_id = next(iter(deliveries))
+    if scenario != "waiting":
+        HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+            account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
+        )
+    with context.sessions.begin() as session:
+        if scenario == "channel":
+            session.execute(sa.delete(HumanInputIMChannel))
+        elif scenario in ("provider", "provider_tenant"):
+            channel = session.scalars(sa.select(HumanInputIMChannel)).one()
+            if scenario == "provider":
+                channel.provider = IMProvider.FEISHU
+            else:
+                channel.provider_tenant_id = "another-provider-tenant"
+        elif scenario == "app_owner":
+            from models.model import App
+
+            session.get(App, _APP).tenant_id = str(uuid4())
+        elif scenario in ("email", "im_link", "unaccepted"):
+            delivery = session.get(HumanInputDelivery, delivery_id)
+            if scenario == "email":
+                delivery.target_type = DeliveryTargetType.EMAIL
+                delivery.target_snapshot = EmailTargetSnapshot(email_address="member@example.com")
+            else:
+                target = delivery.target_snapshot
+                delivery.target_snapshot = target.model_copy(
+                    update={
+                        "message_locator": None if scenario == "unaccepted" else target.message_locator,
+                        "message_type": IMMessageType.LINK if scenario == "im_link" else IMMessageType.CARD,
+                    }
+                )
+    update_human_input_im_card_task.run(
+        tenant_id=str(uuid4()) if scenario == "tenant" else _TENANT,
+        form_id=str(uuid4()) if scenario == "form" else form_id,
+        delivery_id=str(uuid4()) if scenario == "delivery" else delivery_id,
+    )
+    adapter.dynamic_card_messaging.replace_with_static.assert_not_called()
+
+
+def test_card_publication_failure_keeps_other_deliveries_and_workflow_resume(
+    context: Context, created_im_cards, caplog
+):
+    from kombu.exceptions import OperationalError
+
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+
+    form_id, token, deliveries, _, published, resumed = created_im_cards
+    published.side_effect = [OperationalError("broker unavailable"), None]
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
+    )
+    assert published.call_count == len(deliveries)
+    resumed.assert_called_once_with(kwargs={"payload": {"workflow_run_id": _RUN}})
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+    assert "Failed to enqueue Human Input IM card update" in caplog.text
+
+
+@pytest.mark.parametrize("failure_kind", ["unknown", "stale_reference", "invalid_reference", "unsupported"])
+def test_im_card_update_failure_is_an_independent_follow_up(context: Context, created_im_cards, failure_kind):
+    from core.human_input_v2.im_integration.adapters.entities import ReplacementError, ReplacementErrorKind
+    from services.human_input_v2.im_card_service import HumanInputIMCardService, IMCardUpdateRetryableError
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    form_id, token, deliveries, adapter, _, resumed = created_im_cards
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
+    )
+    if failure_kind == "unsupported":
+        adapter.dynamic_card_messaging = None
+    else:
+        adapter.dynamic_card_messaging.replace_with_static.return_value = ReplacementError(
+            ReplacementErrorKind(failure_kind), "Provider replacement failed"
+        )
+    task_kwargs = {"tenant_id": _TENANT, "form_id": form_id, "delivery_id": next(iter(deliveries))}
+    # Exercise the retry signal directly; Celery owns backoff at the task boundary.
+    updater = HumanInputIMCardService(session_factory=context.sessions)
+    if failure_kind == "unknown":
+        with pytest.raises(IMCardUpdateRetryableError):
+            updater.update_card(**task_kwargs)
+    else:
+        update_human_input_im_card_task.run(**task_kwargs)
+    resumed.assert_called_once()
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+
+
+def test_im_card_task_retries_unknown_outcome_with_the_same_static_content(context: Context, created_im_cards):
+    from core.human_input_v2.im_integration.adapters.entities import ReplacementError, ReplacementErrorKind
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    form_id, token, deliveries, adapter, _, _ = created_im_cards
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
+    )
+    adapter.dynamic_card_messaging.replace_with_static.side_effect = [
+        ReplacementError(ReplacementErrorKind.UNKNOWN, "Provider temporarily unavailable"),
+        None,
+    ]
+    result = update_human_input_im_card_task.apply(
+        kwargs={"tenant_id": _TENANT, "form_id": form_id, "delivery_id": next(iter(deliveries))}
+    )
+    assert result.successful()
+    calls = adapter.dynamic_card_messaging.replace_with_static.call_args_list
+    assert len(calls) == 2
+    assert calls[0] == calls[1]
+
+
+def test_im_callback_redelivery_republishes_cards_after_workflow_resume(context: Context, created_im_cards):
+    from repositories.human_input_v2.im_channel_repository import IMChannelId
+    from services.human_input_v2.submission_service import HumanInputSubmissionService, IMFormActor
+
+    form_id, _, deliveries, adapter, published, resumed = created_im_cards
+    with context.sessions() as session:
+        channel = session.scalars(sa.select(HumanInputIMChannel)).one()
+        actor = IMFormActor(IMChannelId(channel.id), IMProvider.SLACK, "provider-team", "im-user")
+    token = adapter.dynamic_card_messaging.send_card.call_args_list[0].args[2]
+    service = HumanInputSubmissionService(session_factory=context.sessions)
+    service.submit_im_form(actor=actor, form_token=token, action="approve", inputs={"note": "Accepted"})
+    with context.sessions.begin() as session:
+        original_submitted_at = session.get(HumanInputForm, form_id).submitted_at
+        session.get(WorkflowRun, _RUN).status = WorkflowExecutionStatus.SUCCEEDED
+    published.reset_mock()
+    resumed.reset_mock()
+    service.submit_im_form(actor=actor, form_token=token, action="approve", inputs={"note": "Accepted"})
+    assert {call.kwargs["kwargs"]["delivery_id"] for call in published.call_args_list} == deliveries
+    resumed.assert_not_called()
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, form_id).submitted_at == original_submitted_at
 
 
 def test_console_approve_http_commits_before_resuming(context: Context, console_approval, monkeypatch):

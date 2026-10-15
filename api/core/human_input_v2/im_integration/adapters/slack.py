@@ -843,12 +843,17 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
             decoded_locator = _SlackLocatorPayload.decode(str(locator))
         except (binascii.Error, UnicodeDecodeError, ValidationError, ValueError):
             return ReplacementError(ReplacementErrorKind.INVALID_REFERENCE, "The Slack message reference is invalid.")
+        blocks: list[dict[str, str]] = []
+        # Top-level text uses mrkdwn; a Markdown block preserves CommonMark.
+        # Retain text fallback beyond Slack's Markdown limit instead of rejecting the update.
+        if intent.rendered_content and len(intent.rendered_content) <= MarkdownBlock.text_max_length:
+            blocks.append({"type": "markdown", "text": intent.rendered_content})
         try:
             response = self._client.chat_update(
                 channel=decoded_locator.channel_id,
                 ts=decoded_locator.message_ts,
                 text=intent.rendered_content,
-                blocks=[],
+                blocks=blocks,
             )
         except SlackApiError as error:
             error_code = _slack_error_code(error)

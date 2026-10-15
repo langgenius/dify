@@ -352,8 +352,53 @@ def test_real_web_client_round_trips_credentials_directory_messages_and_cards(
     assert update_parameters["channel"] == "sanitized-channel"
     assert update_parameters["ts"] == "1000.000002"
     assert update_parameters["text"] == "Sanitized static content"
-    assert update_parameters["blocks"] == []
+    assert update_parameters["blocks"] == [{"type": "markdown", "text": "Sanitized static content"}]
     assert "markdown_text" not in update_parameters
+
+
+@pytest.mark.parametrize(
+    ("content", "expected_blocks"),
+    [
+        (
+            "# Hello\n\n**Name**\nAccepted\n\n[Details](https://example.com)\n\nSubmitted: approve",
+            [
+                {
+                    "type": "markdown",
+                    "text": "# Hello\n\n**Name**\nAccepted\n\n[Details](https://example.com)\n\nSubmitted: approve",
+                }
+            ],
+        ),
+        ("x" * 12_000, [{"type": "markdown", "text": "x" * 12_000}]),
+        ("x" * 12_001, []),
+    ],
+    ids=("commonmark", "markdown-limit", "oversized-text-fallback"),
+)
+def test_real_web_client_static_replacement_preserves_content_without_interactive_blocks(
+    monkeypatch: pytest.MonkeyPatch,
+    slack_api_server: _SlackApiServer,
+    content: str,
+    expected_blocks: list[dict[str, str]],
+) -> None:
+    state = slack_api_server.state
+    state.enqueue("chat.postMessage", {"ok": True, "channel": "D0123456789", "ts": "1712345678.123456"})
+    state.enqueue("chat.update", {"ok": True})
+    adapter, _ = _adapter(monkeypatch, slack_api_server)
+    accepted = adapter.dynamic_card_messaging.send_card(
+        ProviderUserId("U0123456789"),
+        _intent(),
+        CorrelationToken("sanitized-correlation"),
+    )
+    assert isinstance(accepted, MessageAccepted)
+    replacement = adapter.dynamic_card_messaging.replace_with_static(accepted.locator, StaticCardIntent(content))
+
+    assert replacement is None
+    updates = state.requests_for("chat.update")
+    assert len(updates) == 1
+    parameters = updates[0].parameters()
+    assert parameters["channel"] == "D0123456789"
+    assert parameters["ts"] == "1712345678.123456"
+    assert parameters["text"] == content
+    assert parameters["blocks"] == expected_blocks
 
 
 def test_real_web_client_reuses_card_reference_across_in_process_adapter_instances(

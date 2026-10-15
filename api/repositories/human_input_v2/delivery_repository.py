@@ -9,6 +9,7 @@ from typing import Annotated, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, NaiveDatetime
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.shared.values import RecipientId, TenantId
 
 
@@ -56,6 +57,8 @@ class IMUserTargetSnapshot(BaseModel):
     im_provider_user_id: str
     # Records the assessed presentation; auth_type governs submission.
     message_type: IMMessageType = Field(strict=False)
+    # None until the provider confirms acceptance. Preserve the opaque value.
+    message_locator: MessageLocator | None = None
 
 
 class EmailTargetSnapshot(BaseModel):
@@ -94,7 +97,7 @@ class DeliveryCreateParams:
 
 @dataclass(frozen=True, slots=True)
 class Delivery:
-    """Frozen delivery snapshot, independent of ORM lifetime and current bindings."""
+    """Delivery snapshot with frozen access facts and its accepted message identity."""
 
     id: str
     tenant_id: TenantId
@@ -108,16 +111,36 @@ class Delivery:
 
 
 class DeliveryRepository(Protocol):
-    """Delivery creation and token-based lookup of frozen access information.
+    """Delivery creation, frozen access lookup, and accepted IM message identities.
 
     The caller owns the transaction; implementations never commit or roll it
     back. Callers guarantee that the recipient exists and belongs to the supplied
     tenant and form; creation does not recheck membership. Token lookup establishes
     the candidate delivery's owner context from storage. Targets and authentication
-    facts are frozen at creation; this repository does not resolve recipients,
+    facts are frozen at creation; an accepted message's locator is added to its IM
+    snapshot after sending. This repository does not resolve recipients,
     select endpoints, authenticate actors, generate tokens, or send messages.
     All timestamps are naive UTC.
     """
+
+    def list_deliveries(self, *, tenant_id: TenantId, form_id: str) -> tuple[Delivery, ...]:
+        """Read the form's owner-scoped deliveries, ordered by ID."""
+        ...
+
+    def get_delivery(self, *, tenant_id: TenantId, form_id: str, delivery_id: str) -> Delivery | None:
+        """Read one owner-scoped delivery; missing or foreign-owned returns None."""
+        ...
+
+    def set_im_message_locator(
+        self, *, tenant_id: TenantId, form_id: str, delivery_id: str, message_locator: MessageLocator
+    ) -> Delivery | None:
+        """Save the exact accepted IM message identity in the caller's transaction.
+
+        Return None for an absent or foreign-owned delivery. The same locator
+        is idempotent. A different locator or a non-IM target raises ValueError.
+        Subsequent failed attempts never clear the accepted message identity.
+        """
+        ...
 
     def create_delivery(self, *, tenant_id: TenantId, form_id: str, params: DeliveryCreateParams) -> Delivery:
         """Create one delivery with generated ID and timestamps.

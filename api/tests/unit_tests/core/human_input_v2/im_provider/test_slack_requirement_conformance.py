@@ -747,7 +747,7 @@ def test_message_locator_can_be_reused_across_adapter_instances(mocker: MockerFi
     assert update_parameters["channel"] == "D0123456789"
     assert update_parameters["ts"] == "1712345678.123456"
     assert update_parameters["text"] == "Sanitized static content"
-    assert update_parameters["blocks"] == []
+    assert update_parameters["blocks"] == [{"type": "markdown", "text": "Sanitized static content"}]
     assert "markdown_text" not in update_parameters
 
 

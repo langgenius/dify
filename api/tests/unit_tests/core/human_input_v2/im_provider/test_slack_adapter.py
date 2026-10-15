@@ -723,7 +723,7 @@ def test_static_replacement_accepts_locator_across_adapter_instances(mocker) -> 
             "channel": "D0123456789",
             "ts": "1712345678.123456",
             "text": "Submitted",
-            "blocks": [],
+            "blocks": [{"type": "markdown", "text": "Submitted"}],
         }
     ]
 
@@ -748,7 +748,7 @@ def test_static_replacement_updates_the_exact_message_from_a_valid_locator(mocke
             "channel": "dm-1",
             "ts": "1000.000001",
             "text": "Submitted",
-            "blocks": [],
+            "blocks": [{"type": "markdown", "text": "Submitted"}],
         }
     ]
 
@@ -913,7 +913,7 @@ def test_static_replacement_validates_reference_before_one_exact_mutation(mocker
     assert update_call["channel"] == "dm-1"
     assert update_call["ts"] == "1000.000001"
     assert update_call["text"] == "Submitted"
-    assert update_call["blocks"] == []
+    assert update_call["blocks"] == [{"type": "markdown", "text": "Submitted"}]
     assert "markdown_text" not in update_call
 
 

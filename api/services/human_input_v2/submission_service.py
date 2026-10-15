@@ -351,7 +351,22 @@ class HumanInputSubmissionService:
                     form = result
             if after_submission is not None:
                 after_submission(session, form, recipient)
+        self._enqueue_card_updates(form)
         return form
+
+    def _enqueue_card_updates(self, form: Form) -> None:
+        from services.human_input_v2.im_card_service import HumanInputIMCardService
+
+        try:
+            HumanInputIMCardService(session_factory=self._session_factory).enqueue_updates(form)
+        except Exception:
+            # Card synchronization is an independent follow-up. A failure must
+            # not change the accepted submission or suppress workflow resume.
+            logger.exception(
+                "Failed to fan out Human Input IM card updates tenant_id=%s form_id=%s",
+                form.tenant_id,
+                form.id,
+            )
 
     @staticmethod
     def _enqueue_resume(form: Form) -> None:
@@ -522,17 +537,17 @@ class HumanInputSubmissionService:
                 or submission.raw_submission_inputs != inputs
             ):
                 raise HumanInputFormError(HumanInputFormErrorCode.ALREADY_SUBMITTED)
-            if form.workflow_run_id is None:
-                return
-            repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
-            run = repository.get_workflow_run_by_id_for_update(
-                session, tenant_id=form.tenant_id, app_id=form.app_id, run_id=form.workflow_run_id
-            )
-            if run is None or run.status != WorkflowExecutionStatus.PAUSED:
-                return
-        from tasks.app_generate.workflow_execute_task import resume_app_execution
-
-        resume_app_execution.apply_async(kwargs={"payload": {"workflow_run_id": form.workflow_run_id}})
+            should_resume = False
+            if form.workflow_run_id is not None:
+                repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+                run = repository.get_workflow_run_by_id_for_update(
+                    session, tenant_id=form.tenant_id, app_id=form.app_id, run_id=form.workflow_run_id
+                )
+                should_resume = run is not None and run.status == WorkflowExecutionStatus.PAUSED
+        # A callback redelivery can also repair card publication after resume.
+        self._enqueue_card_updates(form)
+        if should_resume:
+            self._enqueue_resume(form)
 
 
 def _ensure_form_waiting(form: Form) -> None:

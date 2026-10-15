@@ -31,6 +31,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     MessageSendingError,
     ProviderUserId,
 )
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import Initiator
@@ -295,8 +296,20 @@ class HumanInputDeliveryService:
             )
         return delivery
 
-    def _record(self, delivery: Delivery, outcome: DeliveryAttemptCreateParams) -> DeliveryAttempt:
+    def _record(
+        self, delivery: Delivery, outcome: DeliveryAttemptCreateParams, *, message_locator: MessageLocator | None
+    ) -> DeliveryAttempt:
         with self._session_factory() as session, session.begin():
+            if message_locator is not None:
+                updated = SQLAlchemyDeliveryRepository(session).set_im_message_locator(
+                    tenant_id=delivery.tenant_id,
+                    form_id=delivery.form_id,
+                    delivery_id=delivery.id,
+                    message_locator=message_locator,
+                )
+                if updated is None:
+                    raise ValueError("The original delivery is missing while recording its message identity")
+            # The accepted message identity and send outcome must commit together.
             attempt = SQLAlchemyDeliveryAttemptRepository(session, delivery.tenant_id, delivery.form_id).record_attempt(
                 delivery.id, outcome
             )
@@ -351,7 +364,9 @@ class HumanInputDeliveryService:
                     result = adapter.messaging.send_text(user_id, f"{template.subject}\n\n{body}")
             except DynamicCardMessagingError:
                 result = MessageSendingError("The provider could not send the assessed card")
+            message_locator = None
             if isinstance(result, MessageAccepted):
+                message_locator = result.locator
                 outcome = DeliveryAttemptCreateParams(
                     DeliveryStatus.SUCCEEDED, None, {"accepted": True, "message_locator": str(result.locator)}
                 )
@@ -359,7 +374,7 @@ class HumanInputDeliveryService:
                 outcome = DeliveryAttemptCreateParams(
                     DeliveryStatus.FAILED, "IM provider did not confirm acceptance", {"accepted": False}
                 )
-            return self._record(delivery, outcome)
+            return self._record(delivery, outcome, message_locator=message_locator)
         finally:
             adapter.close()
 
@@ -387,7 +402,7 @@ class HumanInputDeliveryService:
             )
         else:
             outcome = DeliveryAttemptCreateParams(DeliveryStatus.SUCCEEDED, None, {"accepted": True})
-        return self._record(delivery, outcome)
+        return self._record(delivery, outcome, message_locator=None)
 
     @staticmethod
     def _request_url(token: SecretStr, auth_type: SubmissionAuthType) -> str:
