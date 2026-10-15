@@ -50,12 +50,13 @@ export const useDSLImport = ({
     },
     [t],
   )
-  const notifyRequestError = (error: Error) =>
-    notifyError(getErrorMessage(error)?.trim() || undefined)
-  const { mutateAsync: importDSL } = useImportPipelineDSL({ onError: notifyRequestError })
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm({
-    onError: notifyRequestError,
-  })
+  const notifyRequestError = useCallback(
+    (error: unknown) => notifyError(getErrorMessage(error)?.trim() || undefined),
+    [notifyError],
+  )
+  // The import handlers report every failure, including the steps after the request.
+  const { mutateAsync: importDSL } = useImportPipelineDSL({ onError: () => {} })
+  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm({ onError: () => {} })
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -131,8 +132,8 @@ export const useDSLImport = ({
       } else {
         notifyError(response.error)
       }
-    } catch {
-      // The import mutation reports its failure.
+    } catch (error) {
+      notifyRequestError(error)
     } finally {
       isCreatingRef.current = false
     }
@@ -144,6 +145,7 @@ export const useDSLImport = ({
     importDSL,
     t,
     notifyError,
+    notifyRequestError,
     onSuccess,
     onClose,
     handleCheckPluginDependencies,
@@ -168,12 +170,20 @@ export const useDSLImport = ({
       } else if (status === DSLImportStatus.FAILED) {
         notifyError(error)
       }
-    } catch {
-      // The confirm mutation reports its failure.
+    } catch (error) {
+      notifyRequestError(error)
     } finally {
       setIsConfirming(false)
     }
-  }, [importId, importDSLConfirm, notifyError, onSuccess, handleCheckPluginDependencies, push])
+  }, [
+    importId,
+    importDSLConfirm,
+    notifyError,
+    notifyRequestError,
+    onSuccess,
+    handleCheckPluginDependencies,
+    push,
+  ])
   const handleCancelConfirm = useCallback(() => {
     setShowConfirmModal(false)
   }, [])

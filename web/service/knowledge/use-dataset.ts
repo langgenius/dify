@@ -1,4 +1,4 @@
-import type { MutationOptions } from '@tanstack/react-query'
+import type { QueryMeta, MutationOptions } from '@tanstack/react-query'
 import type { CommonResponse } from '@/models/common'
 import type {
   DataSet,
@@ -37,6 +37,7 @@ const normalizeDatasetsParams = (params: Partial<FetchDatasetsParams['params']> 
 
 type UseInfiniteDatasetsOptions = {
   enabled?: boolean
+  meta?: QueryMeta
   refetchOnMount?: boolean | 'always'
   staleTime?: number
   refetchOnReconnect?: boolean
@@ -69,9 +70,10 @@ export const useInfiniteDatasets = (
   })
 }
 
-export const useDatasetList = (params: DatasetListRequest) => {
+export const useDatasetList = (params: DatasetListRequest, { meta }: { meta?: QueryMeta } = {}) => {
   const { initialPage, tag_ids, limit, include_all, keyword } = params
   return useInfiniteQuery({
+    meta,
     queryKey: [...datasetListQueryKey, initialPage, tag_ids, limit, include_all, keyword],
     queryFn: ({ pageParam = 1 }) => {
       const urlParams = qs.stringify(

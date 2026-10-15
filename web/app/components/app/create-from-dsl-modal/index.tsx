@@ -29,7 +29,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -106,13 +106,17 @@ function CreateFromDSLModal({
       },
     )
   }
+  // importMutation reports the failure of the whole import.
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions({ onError: () => {} }),
+  )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
       if (
         source.type === CreateFromDSLModalTab.FROM_FILE &&
         source.file.name.toLowerCase().endsWith('.ifpkg')
       )
-        return consoleClient.apps.imports.post({ body: { file: source.file } })
+        return requestImport({ body: { file: source.file } })
 
       const body =
         source.type === CreateFromDSLModalTab.FROM_FILE
@@ -125,7 +129,7 @@ function CreateFromDSLModal({
               yaml_url: source.url,
             } satisfies AppImportPayload)
 
-      return consoleClient.apps.imports.post({ body })
+      return requestImport({ body })
     },
     onError: showImportFailed,
   })

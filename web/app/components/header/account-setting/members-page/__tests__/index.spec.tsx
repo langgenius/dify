@@ -260,6 +260,9 @@ describe('MembersPage', () => {
     expect(screen.getByText('Test Workspace'))!.toBeInTheDocument()
     expect(screen.getByText('Owner User'))!.toBeInTheDocument()
     expect(screen.getByText('Admin User'))!.toBeInTheDocument()
+    expect(useMembers).toHaveBeenCalledWith(expect.anything(), {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
   })
 
   it('should expose member columns and keep row data separate from the details button', () => {

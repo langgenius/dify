@@ -7,6 +7,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useIsChatMode } from '../hooks/use-workflow'
@@ -34,7 +35,9 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const shouldFetchHistory = open && !!historyUrl
-  const { data, isLoading } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
+  const { data, isLoading } = useWorkflowRunHistory(historyUrl, shouldFetchHistory, {
+    meta: useLoadFailureMeta(),
+  })
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

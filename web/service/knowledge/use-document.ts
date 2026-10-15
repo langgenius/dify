@@ -1,4 +1,4 @@
-import type { UseQueryOptions } from '@tanstack/react-query'
+import type { QueryMeta, UseQueryOptions } from '@tanstack/react-query'
 import type {
   DocumentDownloadResponse,
   DocumentDownloadZipRequest,
@@ -38,8 +38,9 @@ export const useDocumentList = (payload: {
     status?: string
   }
   refetchInterval?: DocumentListRefetchInterval
+  meta?: QueryMeta
 }) => {
-  const { query, datasetId, refetchInterval } = payload
+  const { query, datasetId, refetchInterval, meta } = payload
   const { keyword, page, limit, sort, status } = query
   const normalizedStatus = normalizeStatusForQuery(status)
   const params: Record<string, number | string> = {
@@ -50,6 +51,7 @@ export const useDocumentList = (payload: {
   if (sort) params.sort = sort
   if (normalizedStatus && normalizedStatus !== 'all') params.status = normalizedStatus
   return useQuery<DocumentListResponse>({
+    meta,
     queryKey: [...useDocumentListKey, datasetId, params],
     queryFn: () =>
       get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {

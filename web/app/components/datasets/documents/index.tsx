@@ -8,6 +8,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import {
@@ -67,9 +68,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     setSelectedIds,
   } = useDocumentsPageState()
 
+  const loadFailureMeta = useLoadFailureMeta()
   // Fetch document list
   const { data: documentsRes, isLoading: isListLoading } = useDocumentList({
     datasetId,
+    meta: loadFailureMeta,
     query: {
       page: currPage + 1,
       limit,

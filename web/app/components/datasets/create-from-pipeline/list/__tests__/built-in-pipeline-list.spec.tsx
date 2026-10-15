@@ -132,6 +132,7 @@ describe('BuiltInPipelineList', () => {
       expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'built-in' }),
         expect.any(Boolean),
+        { meta: { errorMessage: 'common.api.loadFailed' } },
       )
     })
   })
@@ -169,6 +170,7 @@ describe('BuiltInPipelineList', () => {
       expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
         expect.objectContaining({ language: 'zh-Hans' }),
         expect.any(Boolean),
+        expect.anything(),
       )
     })
 
@@ -184,6 +186,7 @@ describe('BuiltInPipelineList', () => {
       expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
         expect.objectContaining({ language: 'ja-JP' }),
         expect.any(Boolean),
+        expect.anything(),
       )
     })
 
@@ -200,6 +203,7 @@ describe('BuiltInPipelineList', () => {
       expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
         expect.objectContaining({ language: 'en-US' }),
         expect.any(Boolean),
+        expect.anything(),
       )
     })
 
@@ -215,6 +219,7 @@ describe('BuiltInPipelineList', () => {
       expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
         expect.objectContaining({ language: 'en-US' }),
         expect.any(Boolean),
+        expect.anything(),
       )
     })
   })

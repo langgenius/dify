@@ -15,6 +15,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { consoleQuery } from '@/service/console'
@@ -39,7 +40,7 @@ const MembersPage = () => {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data, refetch } = useMembers(language)
+  const { data, refetch } = useMembers(language, { meta: useLoadFailureMeta() })
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [invitationResults, setInvitationResults] = useState<
     MemberInviteResponse['invitation_results'] | null

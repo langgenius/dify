@@ -362,6 +362,7 @@ describe('Logs Container', () => {
       const callArg = getMockCallParams()
       expect(callArg).toMatchObject({
         appId: defaultProps.appDetail.id,
+        meta: { errorMessage: 'common.api.loadFailed' },
         params: expect.objectContaining({
           page: 1,
           detail: true,

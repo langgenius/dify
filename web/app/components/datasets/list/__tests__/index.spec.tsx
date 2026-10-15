@@ -449,6 +449,7 @@ describe('List', () => {
         expect.objectContaining({
           include_all: false,
         }),
+        { meta: { errorMessage: 'common.api.loadFailed' } },
       )
     })
 
@@ -461,6 +462,7 @@ describe('List', () => {
         expect.objectContaining({
           keyword: '',
         }),
+        { meta: { errorMessage: 'common.api.loadFailed' } },
       )
     })
 
@@ -473,6 +475,7 @@ describe('List', () => {
         expect.objectContaining({
           tag_ids: [],
         }),
+        { meta: { errorMessage: 'common.api.loadFailed' } },
       )
     })
   })
@@ -646,6 +649,7 @@ describe('List', () => {
       await waitFor(() =>
         expect(useDatasetList).toHaveBeenLastCalledWith(
           expect.objectContaining({ keyword: 'missing' }),
+          expect.anything(),
         ),
       )
 

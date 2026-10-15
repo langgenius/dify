@@ -1,10 +1,13 @@
 import { useTranslation } from 'react-i18next'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { usePipelineTemplateList } from '@/service/use-pipeline'
 import TemplateCard from './template-card'
 
 const CustomizedList = () => {
   const { t } = useTranslation(['datasetPipeline'])
-  const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'customized' })
+  const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'customized' }, true, {
+    meta: useLoadFailureMeta(),
+  })
   const list = pipelineList?.pipeline_templates || []
 
   if (isLoading || list.length === 0) return null

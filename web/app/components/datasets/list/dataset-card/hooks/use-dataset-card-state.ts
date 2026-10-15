@@ -111,7 +111,9 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         showConfirmDelete: true,
       }))
     } catch (e: unknown) {
-      toastRequestError(e)
+      toastRequestError(e, undefined, {
+        fallback: t(($) => $.unknownError, { ns: 'dataset' }),
+      })
     }
   }, [dataset.id, queryClient, t])
 

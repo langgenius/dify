@@ -283,6 +283,24 @@ describe('useUpdateDSLModal', () => {
       expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('test-pipeline-id', true)
     })
 
+    it('should notify error when the dependency check fails after a completed import', async () => {
+      mockHandleCheckPluginDependencies.mockRejectedValue(new Error('Dependency check failed'))
+
+      const { result } = renderUpdateDSLModal()
+      act(() => {
+        result.current.handleFile(createFile())
+      })
+
+      await act(async () => {
+        await (result.current.handleImport as unknown as AsyncFn)()
+      })
+
+      expect(toastMocks.call).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error', message: 'Dependency check failed' }),
+      )
+      expect(result.current.loading).toBe(false)
+    })
+
     it('should notify warning on COMPLETED_WITH_WARNINGS status', async () => {
       mockImportDSL.mockResolvedValue({
         id: 'import-id',
@@ -397,6 +415,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
+      expect(toastMocks.call).toHaveBeenCalledTimes(1)
       expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
@@ -114,16 +115,19 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(requestQueryParams, ['period']),
   }
 
+  const loadFailureMeta = useLoadFailureMeta()
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, refetch: mutateChatList } = useChatConversations({
     appId: isChatMode ? appDetail.id : '',
     params: query,
+    meta: loadFailureMeta,
   })
 
   const { data: completionConversations, refetch: mutateCompletionList } =
     useCompletionConversations({
       appId: !isChatMode ? appDetail.id : '',
       params: query,
+      meta: loadFailureMeta,
     })
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total

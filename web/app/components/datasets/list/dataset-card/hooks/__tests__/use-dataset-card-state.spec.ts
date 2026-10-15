@@ -8,6 +8,11 @@ import { useDatasetCardState } from '../use-dataset-card-state'
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
+  toastError: vi.fn(),
+}))
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: mocks.toastError },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -80,5 +85,17 @@ describe('useDatasetCardState', () => {
     expect(deleteRequest.url).toContain('/datasets/dataset-1')
     expect(result.current.modalState.showConfirmDelete).toBe(false)
     expect(onSuccess).toHaveBeenCalledOnce()
+  })
+
+  it('reports a failed usage check even when the server gives no reason', async () => {
+    mocks.request.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    const { result } = renderDatasetCardState()
+
+    await act(result.current.detectIsUsedByApp)
+
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('dataset.unknownError', {
+      id: 'request-error:dataset.unknownError',
+    })
+    expect(result.current.modalState.showConfirmDelete).toBe(false)
   })
 })

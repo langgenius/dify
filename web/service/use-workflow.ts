@@ -51,8 +51,13 @@ export const useAppWorkflow = (appID: string, options?: UseAppWorkflowOptions) =
 
 const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
 
-export const useWorkflowRunHistory = (url?: string, enabled = true) => {
+export const useWorkflowRunHistory = (
+  url?: string,
+  enabled = true,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   return useQuery<WorkflowRunHistoryResponse>({
+    meta,
     queryKey: [...WorkflowRunHistoryKey, url],
     queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
     enabled: !!url && enabled,

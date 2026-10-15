@@ -25,6 +25,7 @@ import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useRouter } from '@/next/navigation'
 import {
   useDatasetApiBaseUrl,
@@ -69,13 +70,17 @@ function LegacyList({
     'dataset.external.connect',
   )
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
-  const datasetListQuery = useDatasetList({
-    initialPage: 1,
-    tag_ids: tagIDs,
-    limit: 30,
-    include_all: includeAll,
-    keyword: searchKeywords,
-  })
+  const loadFailureMeta = useLoadFailureMeta()
+  const datasetListQuery = useDatasetList(
+    {
+      initialPage: 1,
+      tag_ids: tagIDs,
+      limit: 30,
+      include_all: includeAll,
+      keyword: searchKeywords,
+    },
+    { meta: loadFailureMeta },
+  )
   const pages = datasetListQuery.data?.pages ?? []
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0

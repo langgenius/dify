@@ -20,7 +20,8 @@ const isExpectedRequestError = (error: unknown) =>
  * that handle a failure imperatively decide here whether it deserves a toast.
  *
  * `title` names the failed action; the server message then explains it underneath. Without a
- * title only failures whose response body carries a message are shown.
+ * title only failures whose response body carries a message are shown, unless a `fallback` stands
+ * in for the missing message.
  */
 // Only a message from the response body explains a failure; the status text an empty body falls
 // back to (such as `HTTP 500`) does not.
@@ -34,10 +35,14 @@ const getServerMessage = (error: unknown) => {
   )
 }
 
-export function toastRequestError(error: unknown, title?: string) {
+export function toastRequestError(
+  error: unknown,
+  title?: string,
+  { fallback }: { fallback?: string } = {},
+) {
   if (isExpectedRequestError(error)) return
   const serverMessage = getServerMessage(error)
-  const text = title ?? serverMessage
+  const text = title ?? serverMessage ?? fallback
   if (!text) return
   const description = title && serverMessage !== title ? serverMessage : undefined
   // Identical failures, such as several queries hitting the same outage, share one visible toast.

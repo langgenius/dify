@@ -17,6 +17,7 @@ import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useKnowledge } from '@/hooks/use-knowledge'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
@@ -44,7 +45,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets(
     { page: 1 },
-    { enabled: isShow, staleTime: 0, refetchOnMount: 'always' },
+    { enabled: isShow, staleTime: 0, refetchOnMount: 'always', meta: useLoadFailureMeta() },
   )
   const datasets = useMemo(() => {
     const pages = data?.pages || []

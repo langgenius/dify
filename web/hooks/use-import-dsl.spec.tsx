@@ -44,24 +44,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 
   return {
     ...actual,
-    consoleClient: {
-      ...actual.consoleClient,
-      apps: {
-        ...actual.consoleClient.apps,
-        imports: {
-          ...actual.consoleClient.apps.imports,
-          post: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
-          byImportId: {
-            ...actual.consoleClient.apps.imports.byImportId,
-            confirm: {
-              ...actual.consoleClient.apps.imports.byImportId.confirm,
-              post: ({ params }: { params: { import_id: string } }) =>
-                mockImportDSLConfirm({ import_id: params.import_id }),
-            },
-          },
-        },
-      },
-    },
     consoleQuery: {
       ...actual.consoleQuery,
       account: {
@@ -77,14 +59,16 @@ vi.mock('@/service/console', async (importOriginal) => {
         imports: {
           ...actual.consoleQuery.apps.imports,
           post: {
-            mutationOptions: () => ({
+            mutationOptions: (options?: Record<string, unknown>) => ({
+              ...options,
               mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
             }),
           },
           byImportId: {
             confirm: {
               post: {
-                mutationOptions: () => ({
+                mutationOptions: (options?: Record<string, unknown>) => ({
+                  ...options,
                   mutationFn: ({ params }: { params: { import_id: string } }) =>
                     mockImportDSLConfirm({ import_id: params.import_id }),
                 }),

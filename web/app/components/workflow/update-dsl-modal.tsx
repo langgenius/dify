@@ -14,7 +14,7 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getErrorMessage } from '@/utils/error-message'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
@@ -134,17 +134,21 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
     )
   }
 
+  // importMutation reports the failure of the whole import.
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions({ onError: () => {} }),
+  )
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
       if (file.name.toLowerCase().endsWith('.ifpkg'))
-        return consoleClient.apps.imports.post({ body: { file, app_id: appId } })
+        return requestImport({ body: { file, app_id: appId } })
 
       const content = await file.text()
       if (!content || !validateDSLContent(content, appMode)) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
       }
-      return consoleClient.apps.imports.post({
+      return requestImport({
         body: {
           mode: DSLImportMode.YAML_CONTENT,
           yaml_content: content,

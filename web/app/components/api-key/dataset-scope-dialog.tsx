@@ -26,6 +26,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 
 type Scope = 'all' | 'specific'
@@ -58,7 +59,7 @@ export function DatasetScopeDialog({
   // it opens, so every open starts from these defaults with no reset-in-effect.
   const { data: datasetsPages, isLoading } = useInfiniteDatasets(
     { keyword },
-    { enabled: open && scope === 'specific' },
+    { enabled: open && scope === 'specific', meta: useLoadFailureMeta() },
   )
   const datasets = useMemo<SelectedKb[]>(
     () =>

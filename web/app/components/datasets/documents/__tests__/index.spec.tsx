@@ -333,6 +333,9 @@ describe('Documents', () => {
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('documents-list')).toBeInTheDocument()
       expect(screen.getByTestId('list-documents-count')).toHaveTextContent('2')
+      expect(useDocumentList).toHaveBeenCalledWith(
+        expect.objectContaining({ meta: { errorMessage: 'common.api.loadFailed' } }),
+      )
     })
 
     it('should render loading state when isLoading is true', () => {

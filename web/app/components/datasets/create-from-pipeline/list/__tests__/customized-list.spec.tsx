@@ -110,7 +110,9 @@ describe('CustomizedList', () => {
       })
 
       render(<CustomizedList />)
-      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith({ type: 'customized' })
+      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith({ type: 'customized' }, true, {
+        meta: { errorMessage: 'common.api.loadFailed' },
+      })
     })
   })
 

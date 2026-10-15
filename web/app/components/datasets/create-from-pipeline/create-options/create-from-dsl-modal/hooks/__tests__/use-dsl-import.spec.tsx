@@ -518,6 +518,42 @@ describe('useDSLImport', () => {
         })
       })
 
+      expect(toastMocks.record).toHaveBeenCalledTimes(1)
+
+      vi.useRealTimers()
+    })
+
+    it('should report a failed dependency check after the import completes', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockResolvedValue(
+        createImportDSLResponse({
+          status: 'completed',
+          pipeline_id: 'pipeline-123',
+        }),
+      )
+      mockHandleCheckPluginDependencies.mockRejectedValue(new Error('network'))
+
+      const { result } = renderHook(
+        () =>
+          useDSLImport({
+            activeTab: CreateFromDSLModalTab.FROM_URL,
+            dslUrl: 'https://example.com/test.pipeline',
+          }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'network',
+        })
+      })
+
       vi.useRealTimers()
     })
 

@@ -103,6 +103,7 @@ describe('Logs', () => {
     expect(mockUseChatConversations).toHaveBeenCalledWith(
       expect.objectContaining({
         appId: 'app-1',
+        meta: { errorMessage: 'common.api.loadFailed' },
       }),
     )
     expect(screen.getByRole('heading', { name: /(?:^|\.)title(?=$|:)/ })).toBeInTheDocument()
@@ -134,6 +135,7 @@ describe('Logs', () => {
     expect(mockUseCompletionConversations).toHaveBeenCalledWith(
       expect.objectContaining({
         appId: 'app-2',
+        meta: { errorMessage: 'common.api.loadFailed' },
       }),
     )
     expect(screen.getByText('empty-logs')).toBeInTheDocument()

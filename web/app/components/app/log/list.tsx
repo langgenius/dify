@@ -54,6 +54,7 @@ import { toast } from '@/app/notifications'
 import { toastRequestError, withRequestErrorToast } from '@/app/notifications/request-error'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import useTimestamp from '@/hooks/use-timestamp'
 import {
   fetchChatMessages,
@@ -636,7 +637,7 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
 }) => {
   // Text Generator App Session Details Including Message List
   const { data: conversationDetail, refetch: conversationDetailMutate } =
-    useCompletionConversationDetail(appDetail.id, conversationId)
+    useCompletionConversationDetail(appDetail.id, conversationId, { meta: useLoadFailureMeta() })
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
@@ -692,7 +693,9 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   conversationId,
   onClose,
 }) => {
-  const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId)
+  const { data: conversationDetail } = useChatConversationDetail(appDetail.id, conversationId, {
+    meta: useLoadFailureMeta(),
+  })
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {

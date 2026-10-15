@@ -57,12 +57,13 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     },
     [t],
   )
-  const notifyRequestError = (error: Error) =>
-    notifyError(getErrorMessage(error)?.trim() || undefined)
-  const { mutateAsync: importDSL } = useImportPipelineDSL({ onError: notifyRequestError })
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm({
-    onError: notifyRequestError,
-  })
+  const notifyRequestError = useCallback(
+    (error: unknown) => notifyError(getErrorMessage(error)?.trim() || undefined),
+    [notifyError],
+  )
+  // The import handlers report every failure, including the steps after the request.
+  const { mutateAsync: importDSL } = useImportPipelineDSL({ onError: () => {} })
+  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm({ onError: () => {} })
   const updateWorkflow = useCallback(
     async (pipelineId: string) => {
       const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(
@@ -136,9 +137,8 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       else if (status === DSLImportStatus.PENDING)
         showVersionMismatch(id, imported_dsl_version, current_dsl_version)
       else notifyError(response.error)
-    } catch {
-      // The import mutation reports its failure.
-      setLoading(false)
+    } catch (error) {
+      notifyRequestError(error)
     }
     isCreatingRef.current = false
   }, [
@@ -149,6 +149,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     completeImport,
     showVersionMismatch,
     notifyError,
+    notifyRequestError,
   ])
   const onUpdateDSLConfirm: MouseEventHandler = useCallback(async () => {
     if (!importId) return
@@ -159,11 +160,10 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         return
       }
       if (status === DSLImportStatus.FAILED) notifyError(error)
-    } catch {
-      // The confirm mutation reports its failure.
-      setLoading(false)
+    } catch (error) {
+      notifyRequestError(error)
     }
-  }, [importId, importDSLConfirm, completeImport, notifyError])
+  }, [importId, importDSLConfirm, completeImport, notifyError, notifyRequestError])
   return {
     currentFile,
     handleFile,

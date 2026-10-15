@@ -4,6 +4,11 @@ import { AppSourceType } from '@/service/share'
 import { AudioPlayer } from '../audio'
 
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())
+const mockToastRequestError = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/notifications/request-error', () => ({
+  toastRequestError: (...args: unknown[]) => mockToastRequestError(...args),
+}))
 
 vi.mock('@/service/share', () => ({
   AppSourceType: {
@@ -665,9 +670,10 @@ describe('AudioPlayer', () => {
       expect(callback).toHaveBeenCalledWith('play')
     })
 
-    it('should emit error callback when stream request throws', async () => {
+    it('should emit error callback and report the failure when stream request throws', async () => {
       const callback = vi.fn()
-      mockTextToAudioStream.mockRejectedValue(new Error('network failed'))
+      const error = new Error('network failed')
+      mockTextToAudioStream.mockRejectedValue(error)
       const player = new AudioPlayer('/text-to-audio', false, 'msg-2', 'world', undefined, callback)
 
       player.playAudio()
@@ -675,6 +681,7 @@ describe('AudioPlayer', () => {
       await waitFor(() => {
         expect(callback).toHaveBeenCalledWith('error')
       })
+      expect(mockToastRequestError).toHaveBeenCalledExactlyOnceWith(error)
       expect(player.isLoadData).toBe(false)
     })
 

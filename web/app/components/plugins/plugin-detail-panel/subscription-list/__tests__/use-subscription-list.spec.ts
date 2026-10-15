@@ -41,14 +41,16 @@ describe('useSubscriptionList', () => {
 
     const { result } = renderHook(() => useSubscriptionList())
 
-    expect(mockTriggerSubscriptions).toHaveBeenCalledWith('test-provider')
+    expect(mockTriggerSubscriptions).toHaveBeenCalledWith('test-provider', true, {
+      meta: { errorMessage: 'common.api.loadFailed' },
+    })
     expect(result.current.detail).toEqual(mockDetail)
   })
 
   it('should request subscriptions with empty provider when detail is missing', () => {
     const { result } = renderHook(() => useSubscriptionList())
 
-    expect(mockTriggerSubscriptions).toHaveBeenCalledWith('')
+    expect(mockTriggerSubscriptions).toHaveBeenCalledWith('', true, expect.anything())
     expect(result.current.detail).toBeUndefined()
   })
 

@@ -1,3 +1,4 @@
+import type { QueryMeta } from '@tanstack/react-query'
 import type {
   ModelParameterRule,
   ModelProvider,
@@ -110,8 +111,12 @@ type MemberResponse = {
   accounts: Member[] | null
 }
 
-export const useMembers = (language?: AccessControlTemplateLanguage) => {
+export const useMembers = (
+  language?: AccessControlTemplateLanguage,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   return useQuery<MemberResponse>({
+    meta,
     queryKey: [...commonQueryKeys.members, language],
     queryFn: () =>
       get<MemberResponse>('/workspaces/current/members', {

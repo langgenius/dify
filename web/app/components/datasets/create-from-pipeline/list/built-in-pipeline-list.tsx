@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useLocale } from '#i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { LanguagesSupported } from '@/i18n/language'
 import { usePipelineTemplateList } from '@/service/use-pipeline'
 import CreateCard from './create-card'
@@ -20,6 +21,7 @@ const BuiltInPipelineList = () => {
   const { data: pipelineList, isLoading } = usePipelineTemplateList(
     { type: 'built-in', language },
     enableMarketplace,
+    { meta: useLoadFailureMeta() },
   )
   const list = pipelineList?.pipeline_templates || []
 

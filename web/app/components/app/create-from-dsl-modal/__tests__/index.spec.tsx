@@ -41,15 +41,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
-    consoleClient: {
-      ...actual.consoleClient,
-      apps: {
-        ...actual.consoleClient.apps,
-        imports: {
-          post: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
-        },
-      },
-    },
     consoleQuery: {
       ...actual.consoleQuery,
       features: actual.consoleQuery.features,
@@ -65,6 +56,12 @@ vi.mock('@/service/console', async (importOriginal) => {
         ...actual.consoleQuery.apps,
         imports: {
           ...actual.consoleQuery.apps.imports,
+          post: {
+            mutationOptions: (options?: Record<string, unknown>) => ({
+              ...options,
+              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
+            }),
+          },
           byImportId: {
             confirm: {
               post: {

@@ -64,6 +64,19 @@ describe('toastRequestError', () => {
     })
   })
 
+  it('should fall back to the caller message only when the server gives none', () => {
+    toastRequestError(new TypeError('Failed to fetch'), undefined, { fallback: 'Unknown error' })
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('Unknown error', {
+      id: 'request-error:Unknown error',
+    })
+
+    vi.mocked(toast.error).mockClear()
+    toastRequestError(requestError('Dataset is locked'), undefined, { fallback: 'Unknown error' })
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('Dataset is locked', {
+      id: 'request-error:Dataset is locked',
+    })
+  })
+
   it.each([
     { title: 'unauthorized responses', error: requestError('Unauthorized', { status: 401 }) },
     {

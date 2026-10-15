@@ -1,4 +1,4 @@
-import type { MutationMeta, MutationOptions } from '@tanstack/react-query'
+import type { QueryMeta, MutationMeta, MutationOptions } from '@tanstack/react-query'
 import type { IconInfo } from '@/models/datasets'
 import type {
   ConversionResponse,
@@ -37,8 +37,13 @@ import { useInvalid } from './use-base'
 const NAME_SPACE = 'pipeline'
 
 const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
-export const usePipelineTemplateList = (params: PipelineTemplateListParams, enabled = true) => {
+export const usePipelineTemplateList = (
+  params: PipelineTemplateListParams,
+  enabled = true,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   return useQuery<PipelineTemplateListResponse>({
+    meta,
     queryKey: [...PipelineTemplateListQueryKeyPrefix, params],
     queryFn: () => {
       return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })

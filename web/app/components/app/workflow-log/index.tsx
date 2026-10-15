@@ -16,6 +16,7 @@ import EmptyElement from '@/app/components/app/log/empty-element'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useWorkflowLogs } from '@/service/use-log'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
@@ -81,9 +82,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(requestQueryParams, ['period', 'status']),
   }
 
+  const loadFailureMeta = useLoadFailureMeta()
   const { data: workflowLogs, refetch: mutate } = useWorkflowLogs({
     appId: appDetail.id,
     params: query,
+    meta: loadFailureMeta,
   })
   const total = workflowLogs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1

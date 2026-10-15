@@ -1,4 +1,4 @@
-import type { MutationMeta } from '@tanstack/react-query'
+import type { QueryMeta, MutationMeta } from '@tanstack/react-query'
 import type { FormOption } from '@/app/components/base/form/types'
 import type {
   ParametersSchema,
@@ -591,8 +591,13 @@ export const useTriggerProviderInfo = (provider: string, enabled = true) => {
   })
 }
 
-export const useTriggerSubscriptions = (provider: string, enabled = true) => {
+export const useTriggerSubscriptions = (
+  provider: string,
+  enabled = true,
+  { meta }: { meta?: QueryMeta } = {},
+) => {
   return useQuery<TriggerSubscription[]>({
+    meta,
     queryKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.list.get.queryKey({
         input: { params: { provider } },

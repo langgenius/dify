@@ -1,3 +1,4 @@
+import { useLoadFailureMeta } from '@/hooks/use-load-failure-meta'
 import { useTriggerSubscriptions } from '@/service/use-triggers'
 import { usePluginStore } from '../store'
 
@@ -8,7 +9,7 @@ export const useSubscriptionList = () => {
     data: subscriptions,
     isLoading,
     refetch,
-  } = useTriggerSubscriptions(detail?.provider || '')
+  } = useTriggerSubscriptions(detail?.provider || '', true, { meta: useLoadFailureMeta() })
 
   return {
     detail,
