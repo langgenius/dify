@@ -2,11 +2,13 @@
 
 import hashlib
 import json
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
 from core.dify_builder.models import Graph
 from graphon.enums import BuiltinNodeTypes
+from services.dify_builder.execution_contracts import canonical_digest
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
@@ -140,7 +142,7 @@ def execution_revision(workflow: "Workflow") -> str:
     Key-provider access is required there to compare the same configuration
     that will be mutated, including any concurrent secret changes.
     """
-    graph = _normalized_graph(dict(workflow.graph_dict))
+    graph = normalize_execution_graph(dict(workflow.graph_dict))
     content = {
         "graph": graph,
         "features": workflow.features_dict,
@@ -150,22 +152,36 @@ def execution_revision(workflow: "Workflow") -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def _normalized_graph(graph: Graph) -> Graph:
+def _normalized_node_data(data: Mapping[str, object]) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in data.items()
+        if key != "selected"
+        and not key.startswith("_")
+        and not (data.get("type") in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP} and key in {"width", "height"})
+    }
+
+
+def node_config_digest(data: Mapping[str, object]) -> str:
+    """Bind admitted native node configuration using the execution revision's exclusions.
+
+    Callers still validate the original raw configuration and implementation.
+    Canvas selection and transient data must not reintroduce a revision conflict
+    when native node construction rechecks the admitted binding.
+    """
+    config = _normalized_node_data(data)
+    config.setdefault("version", "1")
+    return canonical_digest(config)
+
+
+def normalize_execution_graph(graph: Graph) -> Graph:
+    """Retain execution configuration while excluding known canvas presentation paths."""
     graph = dict(graph)
     graph.pop("viewport", None)
     graph["nodes"] = [
         {
             **{key: value for key, value in node.items() if key not in _NODE_PRESENTATION_FIELDS},
-            "data": {
-                key: value
-                for key, value in node.get("data", {}).items()
-                if key != "selected"
-                and not key.startswith("_")
-                and not (
-                    node.get("data", {}).get("type") in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}
-                    and key in {"width", "height"}
-                )
-            },
+            "data": _normalized_node_data(node.get("data", {})),
         }
         for node in graph.get("nodes", [])
         if node.get("type") != "custom-note"
@@ -191,5 +207,5 @@ def _normalized_graph(graph: Graph) -> Graph:
 def executable_graph_revision(graph: Graph) -> str:
     """Opaque digest of executable graph configuration; preserves array order."""
     return hashlib.sha256(
-        json.dumps(_normalized_graph(graph), sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(normalize_execution_graph(graph), sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()

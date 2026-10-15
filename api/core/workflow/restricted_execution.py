@@ -29,6 +29,7 @@ from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
+from services.dify_builder.revision import node_config_digest
 from services.dify_builder.template_execution import validate_template_configuration, validate_template_source
 
 _AUDITED_CLASSES = {
@@ -74,7 +75,7 @@ def validate_restricted_raw_node(
         binding is None
         or binding.implementation != f"{node_class.__module__}.{node_class.__qualname__}"
         or binding.node_version != "1"
-        or binding.normalized_config_digest != canonical_digest({**raw_node_data, "version": "1"})
+        or binding.normalized_config_digest != node_config_digest(raw_node_data)
     ):
         raise BuilderExecutionPolicyError("execution_binding_mismatch")
     if node_class is TemplateTransformNode:

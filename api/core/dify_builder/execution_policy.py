@@ -226,6 +226,7 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
     from graphon.nodes.http_request.node import HttpRequestNode
     from graphon.nodes.start.start_node import StartNode
     from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
+    from services.dify_builder.revision import node_config_digest
     from services.dify_builder.template_execution import validate_template_configuration, validate_template_source
 
     admit_raw_execution_metadata(snapshot)
@@ -278,7 +279,7 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
                 node_id=node_id,
                 implementation=f"{cls.__module__}.{cls.__qualname__}",
                 node_version="1",
-                normalized_config_digest=canonical_digest({**data, "version": "1"}),
+                normalized_config_digest=node_config_digest(data),
             )
         )
         types[node_id], raw_data[node_id] = node_type, data
