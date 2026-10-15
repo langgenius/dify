@@ -577,17 +577,16 @@ export const Workflow: FC<WorkflowProps> = memo(
     const dataSourceList = useStore((s) => s.dataSourceList)
     // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
     const resource = useAtomValue(editorResourceAtom)
-    const resourceId = getEditorResourceId(resource)
     const [isLoadedVars, setIsLoadedVars] = useState(false)
     const [vars, setVars] = useState<VarInInspect[]>([])
     useEffect(() => {
       ;(async () => {
-        if (!resource.kind || !resourceId) return
+        if (!getEditorResourceId(resource)) return
         const data = await fetchAllInspectVars(resource)
         setVars(data)
         setIsLoadedVars(true)
       })()
-    }, [resource.kind, resourceId])
+    }, [resource])
     useEffect(() => {
       if (schemaTypeDefinitions && isLoadedVars) {
         fetchInspectVars({

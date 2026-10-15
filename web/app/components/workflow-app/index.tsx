@@ -150,7 +150,7 @@ const WorkflowAppWrapper = () => {
   if (!isWorkflowAppMode(mode)) throw new Error('This app does not have a workflow editor')
 
   return (
-    <EditorResourceScope identity={{ kind: 'app', appId }}>
+    <EditorResourceScope resource={{ kind: 'app', appId, mode }}>
       <WorkflowContextProvider
         injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
       >

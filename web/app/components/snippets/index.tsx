@@ -80,7 +80,7 @@ const SnippetPage = () => {
 
 const SnippetPageWrapper = ({ snippetId }: SnippetPageProps) => {
   return (
-    <EditorResourceScope identity={{ kind: 'snippet', snippetId }}>
+    <EditorResourceScope resource={{ kind: 'snippet', snippetId }}>
       <WorkflowContextProvider>
         <SnippetPage />
       </WorkflowContextProvider>

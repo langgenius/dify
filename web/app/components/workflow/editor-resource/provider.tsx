@@ -1,28 +1,22 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { EditorIdentity } from './state'
+import type { EditorResource } from './resource'
 import { ScopeProvider } from 'jotai-scope'
-import { editorIdentityStateAtom } from './state'
+import { getEditorResourceId } from './resource'
+import { editorResourceAtom } from './state'
 
 export function EditorResourceScope({
-  identity,
+  resource,
   children,
 }: {
-  identity: EditorIdentity
+  resource: EditorResource
   children: ReactNode
 }) {
-  const id =
-    identity.kind === 'app'
-      ? identity.appId
-      : identity.kind === 'knowledge-pipeline'
-        ? identity.pipelineId
-        : identity.snippetId
-
   return (
     <ScopeProvider
-      key={`${identity.kind}:${id}`}
-      atoms={[[editorIdentityStateAtom, identity]]}
+      key={`${resource.kind}:${getEditorResourceId(resource)}`}
+      atoms={[[editorResourceAtom, resource]]}
       name="WorkflowEditor"
     >
       {children}

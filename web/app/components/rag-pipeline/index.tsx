@@ -49,7 +49,7 @@ const RagPipelineWrapper = () => {
   if (!pipelineId) return <Conversion />
 
   return (
-    <EditorResourceScope identity={{ kind: 'knowledge-pipeline', pipelineId }}>
+    <EditorResourceScope resource={{ kind: 'knowledge-pipeline', pipelineId }}>
       <WorkflowContextProvider injectWorkflowStoreSliceFn={createRagPipelineSliceSlice}>
         <RagPipeline />
       </WorkflowContextProvider>
