@@ -9,16 +9,9 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping, Sequence
 from typing import assert_never, override
 
-from core.human_input_v2.resolved_form import (
-    FileInput,
-    FileListInput,
-    MarkdownFragment,
-    ParagraphInput,
-    ResolvedForm,
-    SelectInput,
-)
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.session_binding import default_session_binding
+from factories.human_input_v2_form_presentation import render_filled_content
 from graphon.entities.graph_init_params import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, WorkflowNodeExecutionStatus
@@ -28,7 +21,7 @@ from graphon.node_events.node import HumanInputFormFilledEvent, HumanInputFormTi
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime.graph_runtime_state import GraphRuntimeState
-from graphon.variables.segments import ArrayFileSegment, Segment, StringSegment
+from graphon.variables.segments import Segment, StringSegment
 
 from .entities import HUMAN_INPUT_V2_VERSION, DynamicEmail, HumanInputNodeData
 from .events import NodeRunHumanInputV2FormRequiredEvent
@@ -107,7 +100,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 assert submission is not None, "Submitted form must contain its accepted submission"
                 action = next(action for action in resolved.actions if action.id == submission.selected_action_id)
                 inputs = submission.normalized_submission_data
-                content = _render_filled_content(resolved, inputs)
+                content = render_filled_content(resolved, inputs)
                 yield HumanInputFormFilledEvent(
                     node_title=resolved.title,
                     action_id=action.id,
@@ -177,27 +170,3 @@ def _special_outputs(action_id: str, action_value: str, rendered_content: str) -
         "__action_value": StringSegment(value=action_value),
         "__rendered_content": StringSegment(value=rendered_content),
     }
-
-
-def _render_filled_content(form: ResolvedForm, inputs: Mapping[str, Segment]) -> str:
-    # Render source-ordered parts once: submitted text containing output markers
-    # must not be interpreted as another template substitution.
-    fragments: list[str] = []
-    for part in form.parts:
-        if isinstance(part, MarkdownFragment):
-            fragments.append(part.text)
-            continue
-        segment = inputs.get(part.output_variable_name)
-        if segment is None or segment.to_object() is None:
-            continue
-        match part:
-            case ParagraphInput() | SelectInput():
-                fragments.append(segment.text)
-            case FileInput():
-                fragments.append("[file]")
-            case FileListInput():
-                assert isinstance(segment, ArrayFileSegment), "Accepted file-list input must retain its Segment type"
-                fragments.append(f"[{len(segment.value)} files]")
-            case _:
-                assert_never(part)
-    return "".join(fragments)

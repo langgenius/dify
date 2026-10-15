@@ -52,7 +52,7 @@ from graphon.graph_events import (
 from graphon.node_events import StreamCompletedEvent
 from graphon.node_events.node import HumanInputFormFilledEvent, HumanInputFormTimeoutEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
+from graphon.variables.segments import ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from repositories.human_input_v2.form_repository import Form, FormSubmission
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
 
@@ -614,6 +614,37 @@ def test_filled_rendering_does_not_reinterpret_submission_as_a_template(form):
     values["answer"] = StringSegment(value="{{#$output.files#}}")
     node, _ = build_node(replace(form, submission=replace(form.submission, normalized_submission_data=values)))
     assert list(node.run())[1].rendered_content == "Answer: {{#$output.files#}}; files: [0 files]"
+
+
+def test_filled_rendering_skips_missing_and_null_inputs_and_preserves_select_text(form: Form) -> None:
+    form = submit(form)
+    assert form.submission is not None
+    form = replace(
+        form,
+        resolved_form=form.resolved_form.model_copy(
+            update={
+                "parts": (
+                    MarkdownFragment(text="Before "),
+                    ParagraphInput(output_variable_name="missing", default_value="unused"),
+                    ParagraphInput(output_variable_name="null", default_value=None),
+                    SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value=None),
+                    MarkdownFragment(text=" after"),
+                )
+            }
+        ),
+        submission=replace(
+            form.submission,
+            normalized_submission_data={"null": NoneSegment(), "choice": StringSegment(value="Yes")},
+        ),
+    )
+
+    node, _ = build_node(form)
+    events = list(node.run())
+
+    assert isinstance(events[1], NodeRunHumanInputFormFilledEvent)
+    assert isinstance(events[2], NodeRunSucceededEvent)
+    assert events[1].rendered_content == "Before Yes after"
+    assert events[2].node_run_result.outputs["__rendered_content"].text == "Before Yes after"
 
 
 def test_waiting_projection_freezes_select_options_and_deduplicates_slots(form):
