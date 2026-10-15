@@ -36,7 +36,10 @@ from controllers.inner_api.plugin.plugin import (
     PluginModelCatalogApi,
     PluginUploadFileRequestApi,
 )
+from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.plugin.entities.request import RequestInvokeDatasource, RequestInvokeTextEmbedding, RequestListModels
 from core.workflow.file_reference import build_file_reference
+from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_tenant
@@ -50,6 +53,10 @@ def _user() -> Account:
     user = Account(name="Test User", email="user@example.com")
     user.id = "user-id"
     return user
+
+
+def _text_embedding_payload() -> RequestInvokeTextEmbedding:
+    return RequestInvokeTextEmbedding(provider="openai", model="text-embedding-3-small", texts=["hello"])
 
 
 def _extract_raw_post(cls):
@@ -121,9 +128,9 @@ class TestPluginInvokeTextEmbeddingApi:
 
         result = raw_post(
             api_instance,
-            user_model=MagicMock(id="user-id"),
-            tenant_model=MagicMock(id="tenant-id"),
-            payload=MagicMock(),
+            user_model=_user(),
+            tenant_model=_tenant(),
+            payload=_text_embedding_payload(),
         )
 
         assert result == {
@@ -141,9 +148,9 @@ class TestPluginInvokeTextEmbeddingApi:
 
         result = raw_post(
             api_instance,
-            user_model=MagicMock(id="user-id"),
-            tenant_model=MagicMock(id="tenant-id"),
-            payload=MagicMock(),
+            user_model=_user(),
+            tenant_model=_tenant(),
+            payload=_text_embedding_payload(),
         )
 
         assert result == {
@@ -184,9 +191,9 @@ class TestPluginModelCatalogApi:
     @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
     def test_post_lists_models_in_the_resolved_tenant_scope(self, mock_invocation, api_instance, app: Flask):
         mock_invocation.list_models.return_value = {"items": [], "next_offset": None}
-        mock_tenant = MagicMock(id="tenant-id")
-        mock_user = MagicMock(id="user-id")
-        mock_payload = MagicMock()
+        mock_tenant = _tenant()
+        mock_user = _user()
+        mock_payload = RequestListModels(model_type=ModelType.LLM)
 
         raw_post = _extract_raw_post(PluginModelCatalogApi)
         result = raw_post(
@@ -218,11 +225,19 @@ class TestPluginInvokeDatasourceApi:
         api_instance,
         app: Flask,
     ):
-        mock_tenant = MagicMock(id="tenant-id")
-        mock_user = MagicMock(id="user-id")
-        mock_payload = MagicMock()
-        invocation = MagicMock()
-        stream = MagicMock()
+        mock_tenant = _tenant()
+        mock_user = _user()
+        mock_payload = RequestInvokeDatasource(
+            tenant_id="tenant-id",
+            user_id="user-id",
+            provider="langgenius/notion_datasource/notion_datasource",
+            datasource="notion_datasource",
+            datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
+            credential_id="credential-id",
+            operation="get_online_document_pages",
+        )
+        invocation = object()
+        stream = object()
         mock_invocation.invoke.return_value = invocation
         mock_invocation.convert_to_event_stream.return_value = stream
         mock_length_prefixed_response.return_value = "response"

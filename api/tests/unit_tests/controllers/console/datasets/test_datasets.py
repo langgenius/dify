@@ -1,4 +1,5 @@
 import datetime
+from dataclasses import dataclass
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec, patch
@@ -42,7 +43,7 @@ from controllers.console.datasets.error import (
     IndexingEstimateError,
 )
 from machinery.context import RequestContext
-from models.knowledge_fs import KnowledgeFSUpgradeJobStatus, KnowledgeFSUpgradeStage
+from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus, KnowledgeFSUpgradeStage
 from services.data_source.entities.notion_import import NotionPageType
 from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
@@ -344,32 +345,41 @@ def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, loca
     estimates.estimate_new_sources.assert_not_called()
 
 
-def _upgrade_job(dataset_id: str = str(DATASET_ID), **overrides):
-    values = {
-        "id": "upgrade-job-1",
-        "old_dataset_id": dataset_id,
-        "new_control_space_id": None,
-        "status": KnowledgeFSUpgradeJobStatus.QUEUED,
-        "stage": KnowledgeFSUpgradeStage.VALIDATING,
-        "snapshot_at": datetime.datetime(2026, 8, 17, tzinfo=datetime.UTC),
-        "total_documents": 1,
-        "completed_documents": 0,
-        "total_sources": 0,
-        "completed_sources": 0,
-        "last_error_code": None,
-        "last_error_message": None,
-        "completed_at": None,
-    }
-    values.update(overrides)
-    return SimpleNamespace(**values)
+def _upgrade_job(job_id: str = "upgrade-job-1") -> KnowledgeFSUpgradeJob:
+    job = KnowledgeFSUpgradeJob(
+        tenant_id="tenant-1",
+        old_dataset_id=str(DATASET_ID),
+        requested_by_account_id="account-1",
+        owner_account_id="account-1",
+        idempotency_key="upgrade-request-1",
+        snapshot_at=datetime.datetime(2026, 8, 17, tzinfo=datetime.UTC),
+        config_snapshot={},
+        permission_snapshot={},
+        app_binding_snapshot=[],
+        tag_ids_snapshot=[],
+        status=KnowledgeFSUpgradeJobStatus.QUEUED,
+        stage=KnowledgeFSUpgradeStage.VALIDATING,
+        total_documents=1,
+    )
+    job.id = job_id
+    return job
+
+
+@dataclass(frozen=True)
+class _UpgradeKnowledgeServices:
+    upgrades: KnowledgeUpgradeApplicationService
+
+
+@dataclass(frozen=True)
+class _UpgradeApplicationServices:
+    knowledge: _UpgradeKnowledgeServices
 
 
 @pytest.fixture
 def upgrades(monkeypatch):
     service = create_autospec(KnowledgeUpgradeApplicationService, instance=True, spec_set=True)
-    monkeypatch.setattr(
-        controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(upgrades=service))
-    )
+    services = _UpgradeApplicationServices(knowledge=_UpgradeKnowledgeServices(upgrades=service))
+    monkeypatch.setattr(controller, "application_services", lambda: services)
     return service
 
 
@@ -384,7 +394,7 @@ def test_upgrade_writes_require_dataset_edit_permission() -> None:
 
 
 def test_upgrade_jobs_serializes_recoverable_jobs(app, upgrades):
-    upgrades.list_recoverable_jobs.return_value = [_upgrade_job(id="job-1")]
+    upgrades.list_recoverable_jobs.return_value = [_upgrade_job(job_id="job-1")]
     with app.test_request_context("/datasets/knowledge-fs-upgrade-jobs"):
         response = unwrap(DatasetKnowledgeFSUpgradeJobsApi.get)(DatasetKnowledgeFSUpgradeJobsApi(), CONTEXT)
     upgrades.list_recoverable_jobs.assert_called_once_with(CONTEXT)
@@ -453,7 +463,7 @@ def test_upgrade_job_status_maps_missing_job_to_not_found(app, upgrades):
 
 
 def test_upgrade_retry_returns_queued(app, upgrades):
-    upgrades.retry.return_value = _upgrade_job(id="job-1")
+    upgrades.retry.return_value = _upgrade_job(job_id="job-1")
     with app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"):
         response, status = unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(
             DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1"

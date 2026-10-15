@@ -4,12 +4,12 @@ import ast
 import inspect
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
-from types import FunctionType, SimpleNamespace
+from types import FunctionType
 from typing import Never
-from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -27,6 +27,10 @@ from controllers.console.knowledge_fs.error import (
 from controllers.console.wraps import RBACPermission
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
+from models import Account
+from models.enums import ApiTokenType
+from models.model import ApiToken
+from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceIntentConflictError
 from services.knowledge_fs.download_service import KnowledgeFSDownloadUnavailableError
 from services.knowledge_fs.object_storage import KnowledgeFSObjectMetadata
@@ -55,8 +59,62 @@ from services.knowledge_fs.service_api_authorization import (
     KnowledgeFSServiceApiScopeError,
 )
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.controllers.knowledge_fs_controller_fakes import FakeComponent, FakeRuntime, Recorder, invocation
 
 _API_ROOT = Path(__file__).resolve().parents[3]
+
+
+@dataclass(frozen=True)
+class _FacadeRuntime[T]:
+    facade: T
+
+
+@dataclass(frozen=True)
+class _BrokerRuntime[T]:
+    broker: T
+
+
+def _account(account_id: str = "account-1") -> Account:
+    account = Account(name="Test User", email="user@example.com")
+    account.id = account_id
+    return account
+
+
+def _dataset_api_token(tenant_id: str | None = "tenant-1") -> ApiToken:
+    api_token = ApiToken()
+    api_token.id = "token-1"
+    api_token.tenant_id = tenant_id
+    api_token.type = ApiTokenType.DATASET
+    api_token.token = "dataset-test-key"
+    return api_token
+
+
+def _issued_capability(
+    *, token: str, operation_id: str, knowledge_space_id: str = "space-1"
+) -> KnowledgeFSIssuedProductCapability:
+    return KnowledgeFSIssuedProductCapability(
+        token=token,
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+        operation_id=operation_id,
+        knowledge_space_id=knowledge_space_id,
+        knowledge_space_revision=1,
+        trace_id="trace-1",
+    )
+
+
+def _service_profile(control_space_id: str) -> KnowledgeFSServiceApiProfile:
+    return KnowledgeFSServiceApiProfile(
+        tenant_id="tenant-1",
+        control_space_id=control_space_id,
+        api_token_id="token-1",
+        principal_id="token-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=1,
+        membership_epoch=0,
+        space_acl_epoch=0,
+        external_access_epoch=0,
+        content_policy_revision=0,
+    )
 
 
 def _rbac_wrapper(view: FunctionType) -> FunctionType:
@@ -194,12 +252,19 @@ def test_console_and_service_api_routes_are_registered() -> None:
 def test_initial_website_preview_job_routes_delegate_to_namespace_capabilities(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    account = SimpleNamespace(id="account-1")
-    preview_service = SimpleNamespace(require_visible_credential=MagicMock())
-    facade = SimpleNamespace(
-        create_namespace_source_preview=MagicMock(return_value=SimpleNamespace(job_id="job-1")),
-        get_namespace_source_preview=MagicMock(
-            return_value=KnowledgeFSNamespacePreviewJobResponse(
+    account = _account()
+    preview_service = FakeComponent(require_visible_credential=Recorder())
+    facade = FakeComponent(
+        create_namespace_source_preview=Recorder(
+            KnowledgeFSNamespacePreviewJobResponse(
+                job_id="job-1",
+                status="queued",
+                configuration_fingerprint="f" * 64,
+                expires_at="2030-01-01T00:00:00Z",
+            )
+        ),
+        get_namespace_source_preview=Recorder(
+            KnowledgeFSNamespacePreviewJobResponse(
                 job_id="job-1",
                 status="completed",
                 configuration_fingerprint="f" * 64,
@@ -213,8 +278,8 @@ def test_initial_website_preview_job_routes_delegate_to_namespace_capabilities(
                 ],
             )
         ),
-        cancel_namespace_source_preview=MagicMock(
-            return_value=KnowledgeFSNamespacePreviewJobResponse(
+        cancel_namespace_source_preview=Recorder(
+            KnowledgeFSNamespacePreviewJobResponse(
                 job_id="job-1",
                 status="consumed",
                 configuration_fingerprint="f" * 64,
@@ -224,7 +289,7 @@ def test_initial_website_preview_job_routes_delegate_to_namespace_capabilities(
     )
     monkeypatch.setattr(console_resources, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(console_resources, "KnowledgeFSInitialSourcePreviewService", lambda _: preview_service)
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     app = Flask(__name__)
 
     with app.test_request_context(
@@ -243,8 +308,8 @@ def test_initial_website_preview_job_routes_delegate_to_namespace_capabilities(
         )
     assert status == 202
     assert response == {"job_id": "job-1", "status": "pending"}
-    preview_service.require_visible_credential.assert_called_once()
-    facade.create_namespace_source_preview.assert_called_once()
+    assert len(preview_service.require_visible_credential.calls) == 1
+    assert len(facade.create_namespace_source_preview.calls) == 1
 
     with app.test_request_context():
         response = inspect.unwrap(console_resources.KnowledgeFSInitialSourcePreviewJobApi.get)(
@@ -301,12 +366,12 @@ def test_document_download_routes_deny_callers_without_dataset_download_permissi
     method_name: FunctionType,
     path_args: dict[str, str],
 ) -> None:
-    permission_gate = MagicMock(side_effect=Forbidden())
+    permission_gate = Recorder(raises=Forbidden())
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account(), "tenant-1"),
     )
     monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
@@ -321,13 +386,15 @@ def test_document_download_routes_deny_callers_without_dataset_download_permissi
     with pytest.raises(Forbidden):
         permission_wrapper(api_class(), **path_args)
 
-    permission_gate.assert_called_once_with(
-        "tenant-1",
-        "account-1",
-        scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_type=None,
-        resource_id=None,
-    )
+    assert permission_gate.calls == [
+        invocation(
+            "tenant-1",
+            "account-1",
+            scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+            resource_type=None,
+            resource_id=None,
+        )
+    ]
 
 
 def test_single_document_download_allows_dataset_download_permission_and_keeps_tenant_scope(
@@ -341,20 +408,20 @@ def test_single_document_download_allows_dataset_download_permission_and_keeps_t
         sha256="a" * 64,
         size_bytes=4,
     )
-    facade = SimpleNamespace(prepare_logical_document_download=MagicMock(return_value=descriptor))
-    download_service = SimpleNamespace(load_stream=MagicMock(return_value=iter((b"body",))))
-    permission_gate = MagicMock()
+    facade = FakeComponent(prepare_logical_document_download=Recorder(descriptor))
+    download_service = FakeComponent(load_stream=Recorder(iter((b"body",))))
+    permission_gate = Recorder(True)
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account(), "tenant-1"),
     )
     monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
     permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get)
     app = Flask(__name__)
@@ -368,42 +435,44 @@ def test_single_document_download_allows_dataset_download_permission_and_keeps_t
 
     assert response.get_data() == b"body"
     assert response.headers["Content-Disposition"] == "attachment; filename*=UTF-8''guide.md"
-    permission_gate.assert_called_once_with(
-        "tenant-1",
-        "account-1",
-        scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
-        resource_type=None,
-        resource_id=None,
-    )
-    facade.prepare_logical_document_download.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="control-1",
-        document_id="document-1",
-    )
+    assert permission_gate.calls == [
+        invocation(
+            "tenant-1",
+            "account-1",
+            scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+            resource_type=None,
+            resource_id=None,
+        )
+    ]
+    assert facade.prepare_logical_document_download.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            document_id="document-1",
+        )
+    ]
 
 
 def test_single_document_download_preserves_resource_not_found_after_permission_allows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    facade = SimpleNamespace(
-        prepare_logical_document_download=MagicMock(
-            side_effect=KnowledgeFSProductResourceNotFoundError("document not found")
-        )
+    facade = FakeComponent(
+        prepare_logical_document_download=Recorder(raises=KnowledgeFSProductResourceNotFoundError("document not found"))
     )
-    permission_gate = MagicMock()
-    download_service_factory = MagicMock()
+    permission_gate = Recorder(True)
+    download_service_factory = Recorder()
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account(), "tenant-1"),
     )
     monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", download_service_factory)
     permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get)
     app = Flask(__name__)
@@ -415,14 +484,16 @@ def test_single_document_download_preserves_resource_not_found_after_permission_
             document_id="document-1",
         )
 
-    permission_gate.assert_called_once()
-    facade.prepare_logical_document_download.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="foreign-control",
-        document_id="document-1",
-    )
-    download_service_factory.assert_not_called()
+    assert len(permission_gate.calls) == 1
+    assert facade.prepare_logical_document_download.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="foreign-control",
+            document_id="document-1",
+        )
+    ]
+    assert download_service_factory.calls == []
 
 
 def test_single_document_download_maps_storage_unavailable_after_permission_allows(
@@ -436,22 +507,22 @@ def test_single_document_download_maps_storage_unavailable_after_permission_allo
         sha256="a" * 64,
         size_bytes=4,
     )
-    facade = SimpleNamespace(prepare_logical_document_download=MagicMock(return_value=descriptor))
-    download_service = SimpleNamespace(
-        load_stream=MagicMock(side_effect=KnowledgeFSDownloadUnavailableError("storage unavailable"))
+    facade = FakeComponent(prepare_logical_document_download=Recorder(descriptor))
+    download_service = FakeComponent(
+        load_stream=Recorder(raises=KnowledgeFSDownloadUnavailableError("storage unavailable"))
     )
-    permission_gate = MagicMock()
+    permission_gate = Recorder(True)
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account(), "tenant-1"),
     )
     monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
     permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get)
     app = Flask(__name__)
@@ -463,8 +534,8 @@ def test_single_document_download_maps_storage_unavailable_after_permission_allo
             document_id="document-1",
         )
 
-    permission_gate.assert_called_once()
-    download_service.load_stream.assert_called_once_with(descriptor)
+    assert len(permission_gate.calls) == 1
+    assert download_service.load_stream.calls == [invocation(descriptor)]
 
 
 def test_batch_document_download_maps_storage_unavailable_after_permission_allows(
@@ -478,22 +549,26 @@ def test_batch_document_download_maps_storage_unavailable_after_permission_allow
         sha256="a" * 64,
         size_bytes=4,
     )
-    facade = SimpleNamespace(prepare_logical_document_download=MagicMock(return_value=descriptor))
-    zip_context = MagicMock()
-    zip_context.__enter__.side_effect = KnowledgeFSDownloadUnavailableError("storage unavailable")
-    download_service = SimpleNamespace(build_zip_tempfile=MagicMock(return_value=zip_context))
-    permission_gate = MagicMock()
+    facade = FakeComponent(prepare_logical_document_download=Recorder(descriptor))
+
+    @contextmanager
+    def unavailable_zip() -> Generator[Never]:
+        raise KnowledgeFSDownloadUnavailableError("storage unavailable")
+        yield
+
+    download_service = FakeComponent(build_zip_tempfile=Recorder(unavailable_zip()))
+    permission_gate = Recorder(True)
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         common_wraps,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account(), "tenant-1"),
     )
     monkeypatch.setattr("controllers.common.rbac.checks.RBACService.CheckAccess.check", permission_gate)
     # The download routes carry the knowledge rate limit too; it needs a logged-in account.
     monkeypatch.setattr(console_wraps, "check_knowledge_rate_limit", lambda: None)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
     permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentsDownloadApi.post)
     app = Flask(__name__)
@@ -507,8 +582,8 @@ def test_batch_document_download_maps_storage_unavailable_after_permission_allow
             control_space_id="control-1",
         )
 
-    permission_gate.assert_called_once()
-    download_service.build_zip_tempfile.assert_called_once_with([descriptor])
+    assert len(permission_gate.calls) == 1
+    assert download_service.build_zip_tempfile.calls == [invocation([descriptor])]
 
 
 def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
@@ -631,9 +706,9 @@ def test_document_multimodal_manifest_console_bff_exposes_only_authorized_asset_
             f"tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/documents/{document_id}/assets/figure-1-full.png"
         )
     )
-    facade = SimpleNamespace(get_document_multimodal_manifest=MagicMock(return_value=manifest))
+    facade = FakeComponent(get_document_multimodal_manifest=Recorder(manifest))
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     apply_config_overrides(monkeypatch, CONSOLE_API_URL="")
     app = Flask(__name__)
 
@@ -653,12 +728,14 @@ def test_document_multimodal_manifest_console_bff_exposes_only_authorized_asset_
     assert item["parse_element_id"] == "parse-element-1"
     assert "objectKey" not in str(response)
     assert "sha256" not in str(response)
-    facade.get_document_multimodal_manifest.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="control-1",
-        document_id=document_id,
-    )
+    assert facade.get_document_multimodal_manifest.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            document_id=document_id,
+        )
+    ]
 
 
 def test_document_multimodal_asset_console_bff_reauthorizes_and_streams_scoped_images(
@@ -669,10 +746,10 @@ def test_document_multimodal_asset_console_bff_reauthorizes_and_streams_scoped_i
         f"tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/documents/{document_id}/assets/figure-1-full.png"
     )
     manifest = _document_multimodal_manifest(object_key=object_key)
-    facade = SimpleNamespace(get_document_multimodal_manifest=MagicMock(return_value=manifest))
-    object_storage = SimpleNamespace(
-        head_object=MagicMock(
-            return_value=KnowledgeFSObjectMetadata(
+    facade = FakeComponent(get_document_multimodal_manifest=Recorder(manifest))
+    object_storage = FakeComponent(
+        head_object=Recorder(
+            KnowledgeFSObjectMetadata(
                 checksum_sha256_base64="checksum",
                 content_type="image/png",
                 key=object_key,
@@ -681,10 +758,10 @@ def test_document_multimodal_asset_console_bff_reauthorizes_and_streams_scoped_i
             )
         )
     )
-    download_service = SimpleNamespace(load_stream=MagicMock(return_value=iter((b"im", b"age"))))
-    download_service_factory = MagicMock(return_value=download_service)
+    download_service = FakeComponent(load_stream=Recorder(iter((b"im", b"age"))))
+    download_service_factory = Recorder(download_service)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSObjectStorageService", lambda: object_storage)
     monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", download_service_factory)
     app = Flask(__name__)
@@ -703,9 +780,9 @@ def test_document_multimodal_asset_console_bff_reauthorizes_and_streams_scoped_i
     assert response.headers["Content-Disposition"] == "inline"
     assert response.headers["Content-Security-Policy"] == "default-src 'none'; sandbox"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
-    object_storage.head_object.assert_called_once_with(key=object_key)
-    download_service_factory.assert_called_once_with(object_storage=object_storage)
-    download_service.load_stream.assert_called_once()
+    assert object_storage.head_object.calls == [invocation(key=object_key)]
+    assert download_service_factory.calls == [invocation(object_storage=object_storage)]
+    assert len(download_service.load_stream.calls) == 1
 
 
 def test_document_multimodal_asset_console_bff_rejects_cross_document_object_keys(
@@ -718,10 +795,10 @@ def test_document_multimodal_asset_console_bff_rejects_cross_document_object_key
             "documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2cff/assets/foreign.png"
         )
     )
-    facade = SimpleNamespace(get_document_multimodal_manifest=MagicMock(return_value=manifest))
-    object_storage_factory = MagicMock()
+    facade = FakeComponent(get_document_multimodal_manifest=Recorder(manifest))
+    object_storage_factory = Recorder()
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     monkeypatch.setattr(console_resources, "KnowledgeFSObjectStorageService", object_storage_factory)
     app = Flask(__name__)
     get = inspect.unwrap(console_resources.KnowledgeFSSpaceDocumentMultimodalAssetApi.get)
@@ -734,7 +811,7 @@ def test_document_multimodal_asset_console_bff_rejects_cross_document_object_key
             item_id="figure:1",
         )
 
-    object_storage_factory.assert_not_called()
+    assert object_storage_factory.calls == []
 
 
 def test_source_workflow_import_contract_is_discriminated_idempotent_and_accepted() -> None:
@@ -785,7 +862,7 @@ def test_small_file_console_bff_reads_only_through_facade_and_returns_no_capabil
             )
 
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=Facade()))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: _FacadeRuntime(facade=Facade()))
     app = Flask(__name__)
 
     with app.test_request_context(
@@ -851,7 +928,7 @@ def test_document_upload_console_bff_reads_only_through_facade_and_returns_accep
             )
 
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=Facade()))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: _FacadeRuntime(facade=Facade()))
     app = Flask(__name__)
 
     with app.test_request_context(
@@ -876,11 +953,14 @@ def test_document_upload_console_bff_reads_only_through_facade_and_returns_accep
 def test_staged_document_claim_passes_only_upload_id_to_the_admission_service(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    staged_uploads = MagicMock()
-    staged_uploads.claim.return_value = KnowledgeFSDocumentStagedUploadAcceptedResponse(
-        upload_id="staged-1",
-        document_asset_id="asset-1",
-        compilation_job_id="job-1",
+    staged_uploads = FakeComponent(
+        claim=Recorder(
+            KnowledgeFSDocumentStagedUploadAcceptedResponse(
+                upload_id="staged-1",
+                document_asset_id="asset-1",
+                compilation_job_id="job-1",
+            )
+        )
     )
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_staged_uploads", lambda: staged_uploads)
@@ -897,8 +977,8 @@ def test_staged_document_claim_passes_only_upload_id_to_the_admission_service(
         "document_asset_id": "asset-1",
         "compilation_job_id": "job-1",
     }
-    staged_uploads.claim.assert_called_once()
-    assert staged_uploads.claim.call_args.kwargs["payload"].upload_id == "staged-1"
+    assert len(staged_uploads.claim.calls) == 1
+    assert staged_uploads.claim.last_call.kwargs["payload"].upload_id == "staged-1"
 
 
 @pytest.mark.parametrize("file_size_limit_mb", [15, 50])
@@ -922,8 +1002,7 @@ def test_workspace_staging_upload_persists_before_space_creation(
                 admission_events.append("release")
 
     admission = RecordingAdmission()
-    staged_uploads = MagicMock()
-    staged_uploads.stage.return_value = KnowledgeFSStagedUploadResponse(
+    staged = KnowledgeFSStagedUploadResponse(
         id="staged-1",
         file_name="notes.md",
         content_type="text/markdown",
@@ -935,10 +1014,10 @@ def test_workspace_staging_upload_persists_before_space_creation(
     def stage(**_: object) -> KnowledgeFSStagedUploadResponse:
         assert admission.active
         admission_events.append("stage")
-        return staged_uploads.stage.return_value
+        return staged
 
-    staged_uploads.stage.side_effect = stage
-    account = SimpleNamespace(id="account-1")
+    staged_uploads = FakeComponent(stage=Recorder(effect=stage))
+    account = _account()
     monkeypatch.setattr(console_resources, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(console_resources, "_staged_uploads", lambda: staged_uploads)
     monkeypatch.setattr(console_resources, "DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION", admission)
@@ -960,14 +1039,16 @@ def test_workspace_staging_upload_persists_before_space_creation(
     assert status == 201
     assert response["id"] == "staged-1"
     assert admission_events == [f"admit:{file_size_limit_mb * 1024 * 1024}", "stage", "release"]
-    staged_uploads.stage.assert_called_once_with(
-        tenant_id="tenant-1",
-        account=account,
-        file_name="notes.md",
-        content_type="text/markdown",
-        body=b"# Notes",
-        file_size_limit_mb=file_size_limit_mb,
-    )
+    assert staged_uploads.stage.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account=account,
+            file_name="notes.md",
+            content_type="text/markdown",
+            body=b"# Notes",
+            file_size_limit_mb=file_size_limit_mb,
+        )
+    ]
 
 
 def test_workspace_staging_zero_byte_plan_limit_returns_request_too_large_before_admission(
@@ -978,8 +1059,8 @@ def test_workspace_staging_zero_byte_plan_limit_returns_request_too_large_before
             _ = reserved_bytes
             raise AssertionError("a disabled upload limit must fail before admission")
 
-    staged_uploads = MagicMock()
-    account = SimpleNamespace(id="account-1")
+    staged_uploads = FakeComponent(stage=Recorder())
+    account = _account()
     monkeypatch.setattr(console_resources, "current_account_with_tenant", lambda: (account, "tenant-1"))
     monkeypatch.setattr(console_resources, "_staged_uploads", lambda: staged_uploads)
     monkeypatch.setattr(console_resources, "DEFAULT_KNOWLEDGE_FS_BUFFERED_UPLOAD_ADMISSION", FailingAdmission())
@@ -1000,7 +1081,7 @@ def test_workspace_staging_zero_byte_plan_limit_returns_request_too_large_before
             post(console_resources.KnowledgeFSStagedUploadsApi())
 
     assert rejected.value.status_code == 413
-    staged_uploads.stage.assert_not_called()
+    assert staged_uploads.stage.calls == []
 
 
 def test_logical_document_delete_accepts_initial_row_version(
@@ -1031,7 +1112,7 @@ def test_logical_document_delete_accepts_initial_row_version(
             )
 
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=Facade()))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: _FacadeRuntime(facade=Facade()))
     app = Flask(__name__)
 
     with app.test_request_context(
@@ -1261,7 +1342,7 @@ def test_jwks_http_resource_returns_only_public_keys(monkeypatch: pytest.MonkeyP
             {"alg": "RS256", "e": "AQAB", "kid": "previous", "kty": "RSA", "n": "modulus-2", "use": "sig"},
         ]
     }
-    issuer = SimpleNamespace(public_jwks=lambda: public_jwks)
+    issuer = FakeComponent(public_jwks=Recorder(public_jwks))
     apply_config_overrides(
         monkeypatch,
         KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
@@ -1293,14 +1374,9 @@ def test_service_profile_authorizes_the_dataset_key_for_the_route_space(monkeypa
         external_access_epoch=0,
         content_policy_revision=0,
     )
-    authorization = MagicMock()
-    authorization.authorize.return_value = profile
-    runtime = SimpleNamespace(service_api_authorization=authorization)
-    monkeypatch.setattr(
-        service_resources,
-        "validate_and_get_api_token",
-        MagicMock(return_value=SimpleNamespace(id="token-1", tenant_id="tenant-1")),
-    )
+    authorization = FakeComponent(authorize=Recorder(profile))
+    runtime = FakeRuntime(service_api_authorization=authorization)
+    monkeypatch.setattr(service_resources, "validate_and_get_api_token", Recorder(_dataset_api_token()))
     app = Flask(__name__)
     with app.test_request_context(headers={"Authorization": "Bearer dataset-test-key"}):
         result = service_resources._profile(
@@ -1310,22 +1386,24 @@ def test_service_profile_authorizes_the_dataset_key_for_the_route_space(monkeypa
         )
 
     assert result is profile
-    authorization.authorize.assert_called_once_with(
-        api_token_id="token-1",
-        tenant_id="tenant-1",
-        control_space_id="control-2",
-    )
+    assert authorization.authorize.calls == [
+        invocation(
+            api_token_id="token-1",
+            tenant_id="tenant-1",
+            control_space_id="control-2",
+        )
+    ]
 
 
 def test_service_profile_applies_the_knowledge_rate_limit_before_authorizing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Every KnowledgeFS service route shares the legacy dataset service API rate limit."""
-    authorization = MagicMock()
-    runtime = SimpleNamespace(service_api_authorization=authorization)
-    api_token = SimpleNamespace(id="token-1", tenant_id="tenant-1")
-    monkeypatch.setattr(service_resources, "validate_and_get_api_token", MagicMock(return_value=api_token))
-    rate_limit = MagicMock(side_effect=Forbidden("rate limited"))
+    authorization = FakeComponent(authorize=Recorder())
+    runtime = FakeRuntime(service_api_authorization=authorization)
+    api_token = _dataset_api_token()
+    monkeypatch.setattr(service_resources, "validate_and_get_api_token", Recorder(api_token))
+    rate_limit = Recorder(raises=Forbidden("rate limited"))
     monkeypatch.setattr(service_resources, "check_knowledge_rate_limit", rate_limit)
 
     with pytest.raises(Forbidden, match="rate limited"):
@@ -1335,18 +1413,14 @@ def test_service_profile_applies_the_knowledge_rate_limit_before_authorizing(
             control_space_id="control-2",
         )
 
-    rate_limit.assert_called_once_with(api_token)
-    authorization.authorize.assert_not_called()
+    assert rate_limit.calls == [invocation(api_token)]
+    assert authorization.authorize.calls == []
 
 
 def test_service_profile_rejects_a_dataset_key_without_a_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
-    authorization = MagicMock()
-    runtime = SimpleNamespace(service_api_authorization=authorization)
-    monkeypatch.setattr(
-        service_resources,
-        "validate_and_get_api_token",
-        MagicMock(return_value=SimpleNamespace(id="token-1", tenant_id=None)),
-    )
+    authorization = FakeComponent(authorize=Recorder())
+    runtime = FakeRuntime(service_api_authorization=authorization)
+    monkeypatch.setattr(service_resources, "validate_and_get_api_token", Recorder(_dataset_api_token(tenant_id=None)))
 
     with pytest.raises(KnowledgeFSServiceApiAuthorizationError, match="not workspace-scoped"):
         service_resources._profile(
@@ -1355,7 +1429,7 @@ def test_service_profile_rejects_a_dataset_key_without_a_workspace(monkeypatch: 
             control_space_id="control-2",
         )
 
-    authorization.authorize.assert_not_called()
+    assert authorization.authorize.calls == []
 
 
 def test_product_modules_do_not_import_dify_dataset_or_document_services() -> None:
@@ -1415,20 +1489,16 @@ def test_query_stream_capability_issues_exact_space_grant_without_token_in_url(
     calls: list[dict[str, object]] = []
 
     class Broker:
-        def issue_interactive(self, **kwargs: object) -> SimpleNamespace:
+        def issue_interactive(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
             calls.append(kwargs)
-            return SimpleNamespace(
-                token="query-capability",
-                trace_id="trace-1",
-                expires_at=datetime(2030, 1, 1, tzinfo=UTC),
-            )
+            return _issued_capability(token="query-capability", operation_id="createQuery")
 
     apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
         "_console_services",
-        lambda: SimpleNamespace(broker=Broker()),
+        lambda: _BrokerRuntime(broker=Broker()),
     )
     app = Flask(__name__)
 
@@ -1458,21 +1528,16 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
     calls: list[dict[str, object]] = []
 
     class Broker:
-        def issue_interactive(self, **kwargs: object) -> SimpleNamespace:
+        def issue_interactive(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
             calls.append(kwargs)
-            return SimpleNamespace(
-                token="query-capability",
-                trace_id="trace-1",
-                expires_at=datetime(2030, 1, 1, tzinfo=UTC),
-                knowledge_space_id="space-1",
-            )
+            return _issued_capability(token="query-capability", operation_id="createQuery")
 
     apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
         "_console_services",
-        lambda: SimpleNamespace(broker=Broker()),
+        lambda: _BrokerRuntime(broker=Broker()),
     )
     app = Flask(__name__)
 
@@ -1503,10 +1568,14 @@ def test_query_admission_binds_validated_mode_to_resolved_kfs_space(monkeypatch:
 def test_console_query_stream_proxy_forwards_only_the_admitted_capability(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    close = MagicMock()
-    facade = SimpleNamespace(
-        stream_query=MagicMock(
-            return_value=KnowledgeFSRemoteSSEResponse(
+    closed: list[str] = []
+
+    def close() -> None:
+        closed.append("closed")
+
+    facade = FakeComponent(
+        stream_query=Recorder(
+            KnowledgeFSRemoteSSEResponse(
                 status_code=200,
                 headers=(
                     ("content-type", "text/event-stream"),
@@ -1517,7 +1586,7 @@ def test_console_query_stream_proxy_forwards_only_the_admitted_capability(
             )
         )
     )
-    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: FakeRuntime(facade=facade))
     app = Flask(__name__)
 
     with app.test_request_context(
@@ -1541,8 +1610,8 @@ def test_console_query_stream_proxy_forwards_only_the_admitted_capability(
     assert response.headers["Content-Type"] == "text/event-stream"
     assert response.headers["X-Accel-Buffering"] == "no"
     assert b"".join(response.response) == b'event: answer\ndata: {"answer":"ok"}\n\n'
-    close.assert_called_once_with()
-    call = facade.stream_query.call_args.kwargs
+    assert closed == ["closed"]
+    call = facade.stream_query.last_call.kwargs
     assert call["capability_token"] == "capability-token"
     assert call["trace_id"] == "trace-1"
     assert call["payload"].knowledge_space_id == "space-1"
@@ -1552,10 +1621,14 @@ def test_console_query_stream_proxy_forwards_only_the_admitted_capability(
 def test_service_query_stream_proxy_forwards_only_the_admitted_capability(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    close = MagicMock()
-    facade = SimpleNamespace(
-        stream_query=MagicMock(
-            return_value=KnowledgeFSRemoteSSEResponse(
+    closed: list[str] = []
+
+    def close() -> None:
+        closed.append("closed")
+
+    facade = FakeComponent(
+        stream_query=Recorder(
+            KnowledgeFSRemoteSSEResponse(
                 status_code=200,
                 headers=(
                     ("content-type", "text/event-stream"),
@@ -1566,7 +1639,7 @@ def test_service_query_stream_proxy_forwards_only_the_admitted_capability(
             )
         )
     )
-    monkeypatch.setattr(service_resources, "_runtime", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(service_resources, "_runtime", lambda: FakeRuntime(facade=facade))
     app = Flask(__name__)
 
     with app.test_request_context(
@@ -1590,8 +1663,8 @@ def test_service_query_stream_proxy_forwards_only_the_admitted_capability(
     assert response.headers["Content-Type"] == "text/event-stream"
     assert response.headers["X-Accel-Buffering"] == "no"
     assert b"".join(response.response) == b'event: answer\ndata: {"answer":"ok"}\n\n'
-    close.assert_called_once_with()
-    call = facade.stream_query.call_args.kwargs
+    assert closed == ["closed"]
+    call = facade.stream_query.last_call.kwargs
     assert call["capability_token"] == "capability-token"
     assert call["trace_id"] == "trace-1"
     assert call["payload"].knowledge_space_id == "space-1"
@@ -1624,15 +1697,11 @@ def test_task_stream_capability_uses_broker(
     calls: list[dict[str, object]] = []
 
     class Broker:
-        def issue_interactive(self, **kwargs: object) -> SimpleNamespace:
+        def issue_interactive(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
             calls.append(kwargs)
-            return SimpleNamespace(
-                token="direct-capability",
-                expires_at=datetime(2030, 1, 1, tzinfo=UTC),
-                knowledge_space_id="space-1",
-            )
+            return _issued_capability(token="direct-capability", operation_id="streamResearchTask")
 
-    runtime = SimpleNamespace(broker=Broker())
+    runtime = _BrokerRuntime(broker=Broker())
     apply_config_overrides(monkeypatch, CONSOLE_API_URL="https://dify.test")
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
@@ -1656,29 +1725,21 @@ def test_task_stream_capability_uses_broker(
 
 def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[dict[str, object]] = []
-    profile = SimpleNamespace(tenant_id="tenant-1", control_space_id="control-1")
-    authorization = MagicMock()
-    authorization.authorize.return_value = profile
+    profile = _service_profile("control-1")
+    authorization = FakeComponent(authorize=Recorder(profile))
 
     class Broker:
-        def issue_service(self, **kwargs: object) -> SimpleNamespace:
+        def issue_service(self, **kwargs: object) -> KnowledgeFSIssuedProductCapability:
             calls.append(kwargs)
-            return SimpleNamespace(
-                token="service-capability",
-                trace_id="trace-1",
-                expires_at=datetime(2030, 1, 1, tzinfo=UTC),
-                knowledge_space_id="space-1",
-            )
+            return _issued_capability(token="service-capability", operation_id="createQuery")
 
-    runtime = SimpleNamespace(
-        service_api_authorization=authorization,
-        broker=Broker(),
-    )
-    monkeypatch.setattr(
-        service_resources,
-        "validate_and_get_api_token",
-        MagicMock(return_value=SimpleNamespace(id="token-1", tenant_id="tenant-1")),
-    )
+    @dataclass(frozen=True)
+    class ServiceRuntime:
+        service_api_authorization: FakeComponent
+        broker: Broker
+
+    runtime = ServiceRuntime(service_api_authorization=authorization, broker=Broker())
+    monkeypatch.setattr(service_resources, "validate_and_get_api_token", Recorder(_dataset_api_token()))
     apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.dify.test")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
     app = Flask(__name__)
@@ -1694,11 +1755,13 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
     assert response["trace_id"] == "trace-1"
     assert response["request"]["knowledgeSpaceId"] == "space-1"
     assert response["url"] == "https://api.dify.test/v1/knowledge-fs/query-stream"
-    authorization.authorize.assert_called_once_with(
-        api_token_id="token-1",
-        tenant_id="tenant-1",
-        control_space_id="control-1",
-    )
+    assert authorization.authorize.calls == [
+        invocation(
+            api_token_id="token-1",
+            tenant_id="tenant-1",
+            control_space_id="control-1",
+        )
+    ]
     assert calls == [{"profile": profile, "operation_id": "createQuery"}]
 
 

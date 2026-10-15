@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from hashlib import sha256
 from http import HTTPStatus
 from inspect import unwrap
-from types import SimpleNamespace
-from typing import Literal
-from unittest.mock import MagicMock
+from typing import Literal, cast
 
 import pytest
 from flask import Flask
@@ -43,19 +42,30 @@ from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
 from libs.exception import BaseHTTPException
+from models import Account
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSPublicFailureResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSSourceResponse,
+    KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSStreamCapabilityPayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.runtime import KnowledgeFSRuntime
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
+    FakeComponent,
+    FakeRuntime,
+    Recorder,
+    invocation,
+    raising,
+)
 
 _RAW_RESULT = object()
 
@@ -77,6 +87,52 @@ def source_response(**overrides: object) -> KnowledgeFSSourceResponse:
             **overrides,
         }
     )
+
+
+def sync_policy_response(revision: int) -> KnowledgeFSSourceSyncPolicyResponse:
+    return KnowledgeFSSourceSyncPolicyResponse.model_validate(
+        {
+            "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+            "enabled": True,
+            "expected_source_version": 1,
+            "id": "policy-1",
+            "knowledge_space_id": "space-1",
+            "mode": "interval",
+            "revision": revision,
+            "source_id": "source-1",
+            "updated_at": datetime(2026, 1, 1, tzinfo=UTC),
+        }
+    )
+
+
+def issued_capability() -> KnowledgeFSIssuedProductCapability:
+    return KnowledgeFSIssuedProductCapability(
+        token="capability-token",
+        expires_at=datetime(2026, 7, 21, tzinfo=UTC),
+        operation_id="createQuery",
+        knowledge_space_id="knowledge-space-1",
+        knowledge_space_revision=1,
+        trace_id="trace-1",
+    )
+
+
+def _account(account_id: str) -> Account:
+    account = Account(name="Test User", email="user@example.com")
+    account.id = account_id
+    return account
+
+
+@dataclass(frozen=True)
+class _SettingsUpdateResult:
+    """The only field the settings route reads before dumping the facade result."""
+
+    migration: None = None
+
+
+@dataclass(frozen=True)
+class _MembersPayload:
+    members: tuple[str, ...]
+    query_images: list[str] = field(default_factory=list)
 
 
 def _invoke[R](resource_type: type[Resource], handler: Callable[..., R], *args: object) -> R:
@@ -674,23 +730,18 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
     payload = (
         KnowledgeFSSourceUpdatePayload(name="Renamed")
         if class_name.__name__ == "KnowledgeFSSpaceSourceApi" and method_name.__name__ == "patch"
-        else SimpleNamespace(members=("member-1",), query_images=[])
+        else _MembersPayload(members=("member-1",))
     )
-    runtime = SimpleNamespace(
-        application=MagicMock(),
-        control_plane=MagicMock(),
-        app_bindings=MagicMock(),
-        facade=MagicMock(),
+    delegate = Recorder(_RAW_RESULT)
+    components = {name: FakeComponent() for name in ("application", "control_plane", "app_bindings", "facade")}
+    components[component_name] = FakeComponent(**{delegate_name: delegate})
+    runtime = FakeRuntime(
+        application=components["application"],
+        control_plane=components["control_plane"],
+        app_bindings=components["app_bindings"],
+        facade=components["facade"],
     )
-    component = {
-        "application": runtime.application,
-        "control_plane": runtime.control_plane,
-        "app_bindings": runtime.app_bindings,
-        "facade": runtime.facade,
-    }[component_name]
-    delegate = MagicMock(return_value=_RAW_RESULT)
-    component.configure_mock(**{delegate_name: delegate})
-    dump_response = MagicMock(side_effect=lambda schema, raw: (schema.__name__, raw))
+    dump_response = Recorder(effect=lambda schema, raw: (schema.__name__, raw))
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
@@ -702,8 +753,8 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
     with app.test_request_context("/", method="POST"):
         result = _invoke(class_name, method_name, *route_args)
 
-    delegate.assert_called_once()
-    call_fields = delegate.call_args.kwargs
+    assert len(delegate.calls) == 1
+    call_fields = delegate.last_call.kwargs
     assert call_fields["tenant_id"] == "tenant-1"
     assert call_fields.get("account_id", call_fields.get("actor_account_id")) == "account-1"
     for field_name, expected in expected_fields.items():
@@ -717,16 +768,15 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         assert call_fields["members"] == ("member-1",)
     if "idempotency_key" in call_fields:
         assert call_fields["idempotency_key"] == "idempotency-1"
-    if dump_response.called:
-        assert dump_response.call_args.args[1] is _RAW_RESULT
+    if dump_response.calls:
+        assert dump_response.last_call.args[1] is _RAW_RESULT
     else:
         assert result == ("", HTTPStatus.NO_CONTENT)
 
 
 def test_console_document_reference_delegates_exact_asset_identity(monkeypatch: pytest.MonkeyPatch) -> None:
-    facade = MagicMock()
-    facade.resolve_document_reference.return_value = _RAW_RESULT
-    runtime = SimpleNamespace(facade=facade)
+    facade = FakeComponent(resolve_document_reference=Recorder(_RAW_RESULT))
+    runtime = FakeRuntime(facade=facade)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
@@ -740,19 +790,20 @@ def test_console_document_reference_delegates_exact_asset_identity(monkeypatch: 
         )
 
     assert result is _RAW_RESULT
-    facade.resolve_document_reference.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="space-1",
-        document_asset_id="asset-1",
-        document_asset_version=7,
-    )
+    assert facade.resolve_document_reference.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="space-1",
+            document_asset_id="asset-1",
+            document_asset_version=7,
+        )
+    ]
 
 
 def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pytest.MonkeyPatch) -> None:
-    application = MagicMock()
-    application.list_spaces.return_value = _RAW_RESULT
-    runtime = SimpleNamespace(application=application)
+    application = FakeComponent(list_spaces=Recorder(_RAW_RESULT))
+    runtime = FakeRuntime(application=application)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
@@ -763,24 +814,25 @@ def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pyte
     ):
         result = _invoke(console_resources.KnowledgeFSSpacesApi, console_resources.KnowledgeFSSpacesApi.get)
 
-    application.list_spaces.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        page=2,
-        limit=10,
-        creator_ids=["creator-1", "creator-2"],
-        tag_ids=["tag-1", "tag-2"],
-        query="Support",
-    )
+    assert application.list_spaces.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            page=2,
+            limit=10,
+            creator_ids=["creator-1", "creator-2"],
+            tag_ids=["tag-1", "tag-2"],
+            query="Support",
+        )
+    ]
     assert result is _RAW_RESULT
 
 
 def test_console_source_update_does_not_start_sync_before_resource_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    facade = MagicMock()
-    facade.update_source.return_value = _RAW_RESULT
-    runtime = SimpleNamespace(facade=facade)
+    facade = FakeComponent(update_source=Recorder(_RAW_RESULT))
+    runtime = FakeRuntime(facade=facade)
     payload = KnowledgeFSSourceUpdatePayload.model_validate(
         {
             "expectedVersion": 3,
@@ -802,7 +854,7 @@ def test_console_source_update_does_not_start_sync_before_resource_selection(
             "source-1",
         )
 
-    forwarded = facade.update_source.call_args.kwargs["payload"]
+    forwarded = facade.update_source.last_call.kwargs["payload"]
     assert forwarded is not payload
     assert forwarded.status == "disabled"
     assert forwarded.sync_after_update is None
@@ -844,8 +896,6 @@ def test_console_source_update_commits_complete_edit_selection(
     selection: dict[str, object],
     expected_import_kind: str,
 ) -> None:
-    facade = MagicMock()
-    facade.update_source.return_value = SimpleNamespace(version=4)
     selection_kind = selection["kind"]
     assert isinstance(selection_kind, str)
     provider_kind = {"online_document": "online-document", "online_drive": "online-drive"}.get(selection_kind)
@@ -854,10 +904,28 @@ def test_console_source_update_commits_complete_edit_selection(
         type="web" if selection_kind == "website_crawl" else "connector",
         uri="https://old.example.com",
     )
-    updated = SimpleNamespace(sync_workflow=None)
-    facade.get_source.side_effect = [original, updated]
-    workflow = SimpleNamespace(id="workflow-1")
-    runtime = SimpleNamespace(facade=facade)
+    updated = source_response(sync_workflow=None)
+    facade = FakeComponent(
+        get_source=Recorder(results=[original, updated]),
+        update_source=Recorder(source_response(version=4)),
+    )
+    workflow = KnowledgeFSSourceWorkflowResponse.model_validate(
+        {
+            "checkpoint": "queued",
+            "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+            "execution_attempts": 0,
+            "id": "workflow-1",
+            "knowledge_space_id": "space-1",
+            "kind": "source-import",
+            "max_execution_attempts": 3,
+            "progress_completed": 0,
+            "progress_failed": 0,
+            "progress_skipped": 0,
+            "state": "queued",
+            "updated_at": datetime(2026, 1, 1, tzinfo=UTC),
+        }
+    )
+    runtime = FakeRuntime(facade=facade)
     payload = KnowledgeFSSourceUpdatePayload.model_validate(
         {
             "expectedVersion": 3,
@@ -866,7 +934,7 @@ def test_console_source_update_commits_complete_edit_selection(
             "syncPolicy": {"enabled": True, "mode": "interval"},
         }
     )
-    commit = MagicMock(return_value=workflow)
+    commit = Recorder(workflow)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
@@ -882,12 +950,12 @@ def test_console_source_update_commits_complete_edit_selection(
             "source-1",
         )
 
-    facade.update_source.assert_not_called()
-    source_payload = commit.call_args.kwargs["source_update"]
+    assert facade.update_source.calls == []
+    source_payload = commit.last_call.kwargs["source_update"]
     assert source_payload.status == "disabled"
-    import_payload = commit.call_args.kwargs["payload"]
+    import_payload = commit.last_call.kwargs["payload"]
     assert import_payload.kind == expected_import_kind
-    assert commit.call_args.kwargs["idempotency_key"] == "source-edit:source-1:3"
+    assert commit.last_call.kwargs["idempotency_key"] == "source-edit:source-1:3"
     assert updated.sync_workflow is workflow
     assert result is updated
 
@@ -895,7 +963,6 @@ def test_console_source_update_commits_complete_edit_selection(
 def test_console_source_update_does_not_import_an_unchanged_complete_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    facade = MagicMock()
     source = source_response(
         metadata={"crawled": {"https://example.com/a": {}}},
         sync_policy=None,
@@ -903,17 +970,20 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
         uri="https://example.com",
         version=3,
     )
-    facade.get_source.return_value = source
-    facade.get_source_sync_policy.return_value = SimpleNamespace(revision=2)
-    facade.update_source.return_value = source
-    runtime = SimpleNamespace(facade=facade)
+    facade = FakeComponent(
+        get_source=Recorder(source),
+        get_source_sync_policy=Recorder(sync_policy_response(revision=2)),
+        update_source=Recorder(source),
+        update_source_sync_policy=Recorder(),
+    )
+    runtime = FakeRuntime(facade=facade)
     payload = KnowledgeFSSourceUpdatePayload.model_validate(
         {
             "selection": {"kind": "website_crawl", "sourceUrls": ["https://example.com/a"]},
             "syncPolicy": {"enabled": True, "mode": "interval"},
         }
     )
-    commit = MagicMock()
+    commit = Recorder()
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
@@ -929,10 +999,10 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
             "source-1",
         )
 
-    facade.update_source.assert_called_once()
-    commit.assert_not_called()
-    facade.update_source_sync_policy.assert_not_called()
-    command = facade.update_source.call_args.kwargs["payload"]
+    assert len(facade.update_source.calls) == 1
+    assert commit.calls == []
+    assert facade.update_source_sync_policy.calls == []
+    command = facade.update_source.last_call.kwargs["payload"]
     assert command.expected_version == 3
     assert command.expected_policy_revision == 2
     assert command.sync_policy.mode == "interval"
@@ -1062,18 +1132,20 @@ def test_source_edit_reimports_an_unchanged_selection_when_source_is_in_error() 
 def test_console_source_update_applies_policy_without_creating_import_work(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    facade = MagicMock()
     source = source_response(version=5, sync_policy=None)
-    facade.get_source.return_value = source
-    facade.get_source_sync_policy.return_value = SimpleNamespace(revision=2)
-    policy = SimpleNamespace(revision=3)
+    policy = sync_policy_response(revision=3)
     source.sync_policy = policy
-    facade.update_source.return_value = source
-    runtime = SimpleNamespace(facade=facade)
+    facade = FakeComponent(
+        get_source=Recorder(source),
+        get_source_sync_policy=Recorder(sync_policy_response(revision=2)),
+        update_source=Recorder(source),
+        update_source_sync_policy=Recorder(),
+    )
+    runtime = FakeRuntime(facade=facade)
     payload = KnowledgeFSSourceUpdatePayload.model_validate(
         {"syncPolicy": {"customIntervalSeconds": 7200, "enabled": True, "mode": "custom"}}
     )
-    commit = MagicMock()
+    commit = Recorder()
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
@@ -1089,10 +1161,10 @@ def test_console_source_update_applies_policy_without_creating_import_work(
             "source-1",
         )
 
-    facade.update_source.assert_called_once()
-    commit.assert_not_called()
-    facade.update_source_sync_policy.assert_not_called()
-    policy_payload = facade.update_source.call_args.kwargs["payload"]
+    assert len(facade.update_source.calls) == 1
+    assert commit.calls == []
+    assert facade.update_source_sync_policy.calls == []
+    policy_payload = facade.update_source.last_call.kwargs["payload"]
     assert policy_payload.expected_policy_revision == 2
     assert policy_payload.expected_version == 5
     assert policy_payload.sync_policy.custom_interval_seconds == 7200
@@ -1101,9 +1173,8 @@ def test_console_source_update_applies_policy_without_creating_import_work(
 
 
 def test_console_metadata_delete_forwards_row_version_cas(monkeypatch: pytest.MonkeyPatch) -> None:
-    facade = MagicMock()
-    facade.delete_metadata_field.return_value = _RAW_RESULT
-    runtime = SimpleNamespace(facade=facade)
+    facade = FakeComponent(delete_metadata_field=Recorder(_RAW_RESULT))
+    runtime = FakeRuntime(facade=facade)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
@@ -1117,13 +1188,15 @@ def test_console_metadata_delete_forwards_row_version_cas(monkeypatch: pytest.Mo
             "field-1",
         )
 
-    facade.delete_metadata_field.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="space-1",
-        field_id="field-1",
-        expected_row_version=7,
-    )
+    assert facade.delete_metadata_field.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="space-1",
+            field_id="field-1",
+            expected_row_version=7,
+        )
+    ]
     assert result is _RAW_RESULT
 
 
@@ -1188,14 +1261,14 @@ def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
             "window": "7d",
         }
     )
-    runtime = SimpleNamespace(
-        facade=SimpleNamespace(
-            get_overview_query_outcomes=MagicMock(return_value=outcomes),
-            get_overview_stats=MagicMock(return_value=stats),
+    runtime = FakeRuntime(
+        facade=FakeComponent(
+            get_overview_query_outcomes=Recorder(outcomes),
+            get_overview_stats=Recorder(stats),
         ),
-        app_bindings=SimpleNamespace(count_active=MagicMock(return_value=7)),
+        app_bindings=FakeComponent(count_active=Recorder(7)),
     )
-    dump_response = MagicMock(side_effect=lambda _schema, raw: raw)
+    dump_response = Recorder(effect=lambda _schema, raw: raw)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "dump_response", dump_response)
@@ -1208,22 +1281,28 @@ def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
             "control-space-1",
         )
 
-    runtime.facade.get_overview_stats.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="control-space-1",
-    )
-    runtime.facade.get_overview_query_outcomes.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        control_space_id="control-space-1",
-        window="7d",
-    )
-    runtime.app_bindings.count_active.assert_called_once_with(
-        tenant_id="tenant-1",
-        actor_account_id="account-1",
-        control_space_id="control-space-1",
-    )
+    assert runtime.facade.get_overview_stats.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-space-1",
+        )
+    ]
+    assert runtime.facade.get_overview_query_outcomes.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-space-1",
+            window="7d",
+        )
+    ]
+    assert runtime.app_bindings.count_active.calls == [
+        invocation(
+            tenant_id="tenant-1",
+            actor_account_id="account-1",
+            control_space_id="control-space-1",
+        )
+    ]
     assert result.documents == 13
     assert result.linked_apps == 7
     assert result.queries.value == 120
@@ -1233,7 +1312,7 @@ def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
     assert result.answer_rate.change_percentage_points == pytest.approx(-5)
     assert result.freshness_seconds == 3600
     assert result.generated_at == outcomes.generated_at
-    assert dump_response.call_args.args[1] is result
+    assert dump_response.last_call.args[1] is result
 
 
 _SERVICE_DELEGATION_CASES = (
@@ -1476,8 +1555,8 @@ def test_service_resources_bind_route_identifiers_to_one_declared_operation(
     expected_fields: dict[str, object],
 ) -> None:
     payload = object()
-    execute = MagicMock(return_value=_RAW_RESULT)
-    dump_response = MagicMock(side_effect=lambda schema, raw: (schema.__name__, raw))
+    execute = Recorder(_RAW_RESULT)
+    dump_response = Recorder(effect=lambda schema, raw: (schema.__name__, raw))
     monkeypatch.setattr(service_resources, "_execute_service_operation", execute)
     monkeypatch.setattr(service_resources, "_payload", lambda _: payload)
     monkeypatch.setattr(service_resources, "_idempotency_key", lambda: "idempotency-1")
@@ -1500,8 +1579,8 @@ def test_service_resources_bind_route_identifiers_to_one_declared_operation(
     with app.test_request_context("/", method="POST", headers={"Idempotency-Key": "idempotency-1"}):
         _invoke(class_name, method_name, *route_args)
 
-    execute.assert_called_once()
-    call_fields = execute.call_args.kwargs
+    assert len(execute.calls) == 1
+    call_fields = execute.last_call.kwargs
     assert call_fields["control_space_id"] == "space-1"
     assert call_fields["operation_id"] == operation_id
     for field_name, expected in expected_fields.items():
@@ -1512,7 +1591,7 @@ def test_service_resources_bind_route_identifiers_to_one_declared_operation(
         assert call_fields["headers"] == (("Idempotency-Key", "idempotency-1"),)
     if "query" in call_fields:
         assert call_fields["query"] == (("normalized", "true"),)
-    assert dump_response.call_args.args[1] is _RAW_RESULT
+    assert dump_response.last_call.args[1] is _RAW_RESULT
 
 
 @pytest.mark.parametrize(
@@ -1563,13 +1642,13 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
     operation_id: str,
     cursor: str | None,
 ) -> None:
-    facade = SimpleNamespace(
-        execute_service=MagicMock(return_value=_RAW_RESULT),
-        update_service_settings=MagicMock(return_value=SimpleNamespace(migration=None)),
+    facade = FakeComponent(
+        execute_service=Recorder(_RAW_RESULT),
+        update_service_settings=Recorder(_SettingsUpdateResult()),
     )
-    runtime = SimpleNamespace(facade=facade)
+    runtime = FakeRuntime(facade=facade)
     profile = object()
-    validate_profile = MagicMock(return_value=profile)
+    validate_profile = Recorder(profile)
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
     monkeypatch.setattr(service_resources, "_profile", validate_profile)
     monkeypatch.setattr(service_resources, "_payload", lambda _: object())
@@ -1580,16 +1659,16 @@ def test_service_credential_routes_validate_profile_before_facade_delegation(
     with app.test_request_context("/", method="POST", query_string=query_string):
         _invoke(class_name, method_name, "space-1")
 
-    validate_profile.assert_called_once_with(runtime, operation_id=operation_id, control_space_id="space-1")
+    assert validate_profile.calls == [invocation(runtime, operation_id=operation_id, control_space_id="space-1")]
     if operation_id == "updateSettings":
-        assert facade.update_service_settings.call_args.kwargs["profile"] is profile
-        facade.execute_service.assert_not_called()
+        assert facade.update_service_settings.last_call.kwargs["profile"] is profile
+        assert facade.execute_service.calls == []
         return
-    assert facade.execute_service.call_args.kwargs["profile"] is profile
-    assert facade.execute_service.call_args.kwargs["operation_id"] == operation_id
-    if "query" in facade.execute_service.call_args.kwargs:
+    assert facade.execute_service.last_call.kwargs["profile"] is profile
+    assert facade.execute_service.last_call.kwargs["operation_id"] == operation_id
+    if "query" in facade.execute_service.last_call.kwargs:
         expected_query = (("limit", "50"),) + ((("cursor", cursor),) if cursor else ())
-        assert facade.execute_service.call_args.kwargs["query"] == expected_query
+        assert facade.execute_service.last_call.kwargs["query"] == expected_query
 
 
 @pytest.mark.parametrize(
@@ -1604,13 +1683,7 @@ def test_deprecated_buffered_routes_fail_closed(class_name: type[console_resourc
 
 
 def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: pytest.MonkeyPatch) -> None:
-    issued = SimpleNamespace(
-        token="capability-token",
-        trace_id="trace-1",
-        expires_at=datetime(2026, 7, 21, tzinfo=UTC),
-        knowledge_space_id="knowledge-space-1",
-    )
-    broker = SimpleNamespace(issue_interactive=MagicMock(return_value=issued))
+    broker = FakeComponent(issue_interactive=Recorder(issued_capability()))
     payloads = iter(
         [
             KnowledgeFSQueryCreatePayload(query="question", mode="deep"),
@@ -1622,7 +1695,7 @@ def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: p
     monkeypatch.setattr(
         console_resources,
         "_console_services",
-        lambda: SimpleNamespace(broker=broker),
+        lambda: FakeRuntime(broker=broker),
     )
     monkeypatch.setattr(console_resources, "_payload", lambda _: next(payloads))
     monkeypatch.setattr(console_resources, "dump_response", lambda _, response: response)
@@ -1652,26 +1725,20 @@ def test_console_stream_capabilities_bind_the_authorized_resource(monkeypatch: p
         "?knowledgeSpaceId=knowledge-space-1"
     )
     assert legacy_query.url == "https://dify.example/console/api/knowledge-fs/query-stream"
-    assert broker.issue_interactive.call_args_list[0].kwargs["operation_id"] == "createQuery"
-    assert broker.issue_interactive.call_args_list[1].kwargs == {
+    assert broker.issue_interactive.calls[0].kwargs["operation_id"] == "createQuery"
+    assert broker.issue_interactive.calls[1].kwargs == {
         "tenant_id": "tenant-1",
         "account_id": "account-1",
         "control_space_id": "space-2",
         "operation_id": "streamResearchTask",
         "resource_id": "task/1",
     }
-    assert broker.issue_interactive.call_args_list[2].kwargs["operation_id"] == "createQuery"
+    assert broker.issue_interactive.calls[2].kwargs["operation_id"] == "createQuery"
 
 
 def test_service_query_admission_binds_profile_space_and_payload(monkeypatch: pytest.MonkeyPatch) -> None:
-    issued = SimpleNamespace(
-        token="capability-token",
-        trace_id="trace-1",
-        expires_at=datetime(2026, 7, 21, tzinfo=UTC),
-        knowledge_space_id="knowledge-space-1",
-    )
-    broker = SimpleNamespace(issue_service=MagicMock(return_value=issued))
-    runtime = SimpleNamespace(broker=broker)
+    broker = FakeComponent(issue_service=Recorder(issued_capability()))
+    runtime = FakeRuntime(broker=broker)
     profile = object()
     apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.dify.example")
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
@@ -1687,7 +1754,7 @@ def test_service_query_admission_binds_profile_space_and_payload(monkeypatch: py
             "space-1",
         )
 
-    broker.issue_service.assert_called_once_with(profile=profile, operation_id="createQuery")
+    assert broker.issue_service.calls == [invocation(profile=profile, operation_id="createQuery")]
     assert response.request.knowledge_space_id == "knowledge-space-1"
     assert response.request.query == "question"
     assert response.url == "https://api.dify.example/v1/knowledge-fs/query-stream"
@@ -1696,21 +1763,21 @@ def test_service_query_admission_binds_profile_space_and_payload(monkeypatch: py
 def test_console_resource_helpers_validate_feature_payload_headers_and_query_pairs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = object()
+    runtime = FakeRuntime()
     session_maker = object()
-    get_runtime = MagicMock(return_value=runtime)
+    get_runtime = Recorder(runtime)
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
     monkeypatch.setattr(console_resources.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(console_resources, "get_knowledge_fs_runtime", get_runtime)
     monkeypatch.setattr(
         console_resources,
         "current_account_with_tenant",
-        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+        lambda: (_account("account-1"), "tenant-1"),
     )
     app = Flask(__name__)
 
     assert console_resources._console_services() is runtime
-    get_runtime.assert_called_once_with(session_maker)
+    assert get_runtime.calls == [invocation(session_maker)]
     assert console_resources._actor() == ("account-1", "tenant-1")
     query = KnowledgeFSQueryCreatePayload(query="question", mode="fast", active_document_ids=["doc-1"])
     assert console_resources._query_pairs(query) == (
@@ -1736,16 +1803,16 @@ def test_console_resource_helpers_validate_feature_payload_headers_and_query_pai
 def test_service_resource_helpers_validate_feature_bearer_headers_and_boolean_queries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = object()
+    runtime = FakeRuntime()
     session_maker = object()
-    get_runtime = MagicMock(return_value=runtime)
+    get_runtime = Recorder(runtime)
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True)
     monkeypatch.setattr(service_resources.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(service_resources, "get_knowledge_fs_runtime", get_runtime)
     app = Flask(__name__)
 
     assert service_resources._runtime() is runtime
-    get_runtime.assert_called_once_with(session_maker)
+    assert get_runtime.calls == [invocation(session_maker)]
 
     class Query(BaseModel):
         enabled: bool = True
@@ -1786,12 +1853,12 @@ def test_console_request_rejections_preserve_http_status_contracts() -> None:
         504: KnowledgeFSTimeoutHTTPError,
     }
     for status, http_error in expected.items():
-        reject = console_resources._knowledge_fs_errors(
-            MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=status))
+        guarded = console_resources._knowledge_fs_errors(
+            raising(KnowledgeFSProductRequestRejectedError(status_code=status))
         )
 
         with pytest.raises(http_error) as raised:
-            reject()
+            guarded()
 
         assert raised.value.code == status
         assert raised.value.data == {
@@ -1836,13 +1903,13 @@ def test_console_unavailable_and_timeout_rejections_preserve_safe_failure_metada
     failure = KnowledgeFSPublicFailureResponse.model_validate(
         {**expected_failure, "message": "Private upstream diagnostic that must not reach the client"}
     )
-    reject = console_resources._knowledge_fs_errors(
-        MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=status, failure=failure))
+    guarded = console_resources._knowledge_fs_errors(
+        raising(KnowledgeFSProductRequestRejectedError(status_code=status, failure=failure))
     )
     http_error = KnowledgeFSOperationUnavailableHTTPError if status == 503 else KnowledgeFSTimeoutHTTPError
 
     with pytest.raises(http_error) as raised:
-        reject()
+        guarded()
 
     assert raised.value.code == status
     assert raised.value.data == {
@@ -1866,12 +1933,12 @@ def test_console_request_rejection_preserves_safe_failure_metadata() -> None:
             "traceId": "trace-model",
         }
     )
-    reject = console_resources._knowledge_fs_errors(
-        MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=422, failure=failure))
+    guarded = console_resources._knowledge_fs_errors(
+        raising(KnowledgeFSProductRequestRejectedError(status_code=422, failure=failure))
     )
 
     with pytest.raises(KnowledgeFSRequestRejectedHTTPError) as raised:
-        reject()
+        guarded()
 
     assert raised.value.data == {
         "code": "knowledge_fs_request_rejected",
@@ -1940,10 +2007,10 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     )
 
     for domain_error, http_error in mappings:
-        fail = console_resources._knowledge_fs_errors(MagicMock(side_effect=domain_error))
+        guarded = console_resources._knowledge_fs_errors(raising(domain_error))
 
         with pytest.raises(http_error):
-            fail()
+            guarded()
 
     assert KnowledgeFSUpstreamUnavailableHTTPError.code == HTTPStatus.SERVICE_UNAVAILABLE
 
@@ -1973,10 +2040,10 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     )
 
     for domain_error, http_error in mappings:
-        fail = service_resources._service_api_errors(MagicMock(side_effect=domain_error))
+        guarded = service_resources._service_api_errors(raising(domain_error))
 
         with pytest.raises(http_error):
-            fail()
+            guarded()
 
     rejected_mappings = (
         (400, KnowledgeFSServiceInvalidRequestHTTPError),
@@ -1987,11 +2054,11 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
         (429, KnowledgeFSServiceRateLimitHTTPError),
     )
     for status, http_error in rejected_mappings:
-        fail = service_resources._service_api_errors(
-            MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=status))
+        guarded = service_resources._service_api_errors(
+            raising(KnowledgeFSProductRequestRejectedError(status_code=status))
         )
         with pytest.raises(http_error):
-            fail()
+            guarded()
 
 
 def test_console_small_file_reader_rejects_malformed_and_empty_multipart_bodies() -> None:
@@ -2027,12 +2094,12 @@ def test_console_app_binding_route_rejects_unknown_caller_kind_before_revoke(
 ) -> None:
     from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
 
-    revoke = MagicMock()
+    revoke = Recorder()
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
         "_console_services",
-        lambda: SimpleNamespace(app_bindings=SimpleNamespace(revoke=revoke)),
+        lambda: FakeRuntime(app_bindings=FakeComponent(revoke=revoke)),
     )
 
     with pytest.raises(KnowledgeFSAppBindingManagementError, match="caller kind"):
@@ -2044,15 +2111,16 @@ def test_console_app_binding_route_rejects_unknown_caller_kind_before_revoke(
             "app-1",
         )
 
-    revoke.assert_not_called()
+    assert revoke.calls == []
 
 
 def test_service_profile_hides_unknown_operations_before_dataset_key_authorization(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    authorization = SimpleNamespace(authorize=MagicMock())
-    runtime = MagicMock(spec=KnowledgeFSRuntime, service_api_authorization=authorization)
-    monkeypatch.setattr(service_resources, "product_operation_action", MagicMock(side_effect=KeyError("unknown")))
+    authorization = FakeComponent(authorize=Recorder())
+    # The profile check must fail before it touches any runtime component but authorization.
+    runtime = cast(KnowledgeFSRuntime, FakeRuntime(service_api_authorization=authorization))
+    monkeypatch.setattr(service_resources, "product_operation_action", raising(KeyError("unknown")))
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="unknownOperation"):
         service_resources._profile(
@@ -2061,7 +2129,7 @@ def test_service_profile_hides_unknown_operations_before_dataset_key_authorizati
             control_space_id="space-1",
         )
 
-    authorization.authorize.assert_not_called()
+    assert authorization.authorize.calls == []
 
 
 def test_service_operation_helper_forwards_the_complete_validated_request(
@@ -2069,10 +2137,10 @@ def test_service_operation_helper_forwards_the_complete_validated_request(
 ) -> None:
     profile = object()
     payload = KnowledgeFSQueryCreatePayload(query="question")
-    facade = SimpleNamespace(execute_service=MagicMock(return_value={"id": "result-1"}))
-    runtime = SimpleNamespace(facade=facade)
+    facade = FakeComponent(execute_service=Recorder({"id": "result-1"}))
+    runtime = FakeRuntime(facade=facade)
     monkeypatch.setattr(service_resources, "_runtime", lambda: runtime)
-    monkeypatch.setattr(service_resources, "_profile", MagicMock(return_value=profile))
+    monkeypatch.setattr(service_resources, "_profile", Recorder(profile))
 
     result = service_resources._execute_service_operation(
         control_space_id="space-1",
@@ -2086,13 +2154,15 @@ def test_service_operation_helper_forwards_the_complete_validated_request(
     )
 
     assert result == {"id": "result-1"}
-    facade.execute_service.assert_called_once_with(
-        profile=profile,
-        operation_id="createResearchTask",
-        payload=payload,
-        query=(("cursor", "next"),),
-        bind_space_in_body=True,
-        resource_id="task-1",
-        path_parameters=(("taskId", "task-1"),),
-        headers=(("Idempotency-Key", "request-key"),),
-    )
+    assert facade.execute_service.calls == [
+        invocation(
+            profile=profile,
+            operation_id="createResearchTask",
+            payload=payload,
+            query=(("cursor", "next"),),
+            bind_space_in_body=True,
+            resource_id="task-1",
+            path_parameters=(("taskId", "task-1"),),
+            headers=(("Idempotency-Key", "request-key"),),
+        )
+    ]

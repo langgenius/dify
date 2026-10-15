@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 import uuid
 from typing import Protocol, runtime_checkable
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -15,6 +14,13 @@ from controllers.openapi import bp as openapi_bp
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from libs.oauth_bearer import AuthContext, TokenType
+from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
+    FakeComponent,
+    FakeRuntime,
+    Recorder,
+    invocation,
+    raising,
+)
 
 
 @runtime_checkable
@@ -68,14 +74,17 @@ def test_list_controller_adapts_public_pagination_to_the_product_operation(monke
     from controllers.openapi.knowledge_fs import KnowledgeFsEntryListApi
     from services.knowledge_fs.product_dto import KnowledgeFSListResponse
 
-    facade = Mock()
-    facade.list_knowledge_fs.return_value = KnowledgeFSListResponse.model_validate(
-        {
-            "items": [],
-            "nextCursor": "opaque-next-page",
-            "path": "/knowledge",
-            "truncated": True,
-        }
+    facade = FakeComponent(
+        list_knowledge_fs=Recorder(
+            KnowledgeFSListResponse.model_validate(
+                {
+                    "items": [],
+                    "nextCursor": "opaque-next-page",
+                    "path": "/knowledge",
+                    "truncated": True,
+                }
+            )
+        )
     )
     monkeypatch.setattr(module, "_knowledge_fs_facade", lambda: facade)
     account_id = uuid.uuid4()
@@ -103,7 +112,7 @@ def test_list_controller_adapts_public_pagination_to_the_product_operation(monke
                         expires_at=None,
                     )
                 ),
-                session=Mock(spec=Session),
+                session=Session(),
                 view_args={},
             ),
         )
@@ -118,8 +127,7 @@ def test_list_controller_adapts_public_pagination_to_the_product_operation(monke
         "preview": None,
         "truncated": True,
     }
-    facade.list_knowledge_fs.assert_called_once()
-    call = facade.list_knowledge_fs.call_args.kwargs
+    call = facade.list_knowledge_fs.only_call.kwargs
     assert call["tenant_id"] == "workspace-1"
     assert call["account_id"] == str(account_id)
     assert call["control_space_id"] == "space-1"
@@ -215,7 +223,6 @@ def test_each_custom_interface_delegates_with_an_internal_product_query(
     from controllers.openapi import knowledge_fs as module
     from services.knowledge_fs import product_dto
 
-    facade = Mock()
     product_responses = {
         "tree_knowledge_fs": product_dto.KnowledgeFSTreeResponse.model_validate(
             {
@@ -247,8 +254,8 @@ def test_each_custom_interface_delegates_with_an_internal_product_query(
             }
         ),
     }
-    delegate = Mock(return_value=product_responses[facade_method])
-    facade.configure_mock(**{facade_method: delegate})
+    delegate = Recorder(product_responses[facade_method])
+    facade = FakeComponent(**{facade_method: delegate})
     monkeypatch.setattr(module, "_knowledge_fs_facade", lambda: facade)
     account_id = uuid.uuid4()
     api_class, handler = {
@@ -291,15 +298,14 @@ def test_each_custom_interface_delegates_with_an_internal_product_query(
                     expires_at=None,
                 )
             ),
-            session=Mock(spec=Session),
+            session=Session(),
             view_args={},
         ),
         **({"body": public_model} if method_name == "post" else {"query": public_model}),
     )
 
     assert isinstance(result, BaseModel)
-    delegate.assert_called_once()
-    call = delegate.call_args.kwargs
+    call = delegate.only_call.kwargs
     assert call["tenant_id"] == "workspace-1"
     assert call["account_id"] == str(account_id)
     assert call["control_space_id"] == "space-1"
@@ -322,13 +328,13 @@ def test_knowledge_fs_facade_uses_the_configured_runtime(monkeypatch: pytest.Mon
     from controllers.openapi import knowledge_fs as module
 
     session_maker = object()
-    facade = object()
-    get_runtime = Mock(return_value=Mock(facade=facade))
+    facade = FakeComponent()
+    get_runtime = Recorder(FakeRuntime(facade=facade))
     monkeypatch.setattr(module.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(module, "get_knowledge_fs_runtime", get_runtime)
 
     assert module._knowledge_fs_facade() is facade
-    get_runtime.assert_called_once_with(session_maker)
+    assert get_runtime.calls == [invocation(session_maker)]
 
 
 def test_knowledge_fs_error_adapter_uses_stable_domain_errors() -> None:
@@ -365,10 +371,10 @@ def test_knowledge_fs_error_adapter_uses_stable_domain_errors() -> None:
     )
 
     for domain_error, openapi_error in mappings:
-        fail = module._knowledge_fs_errors(Mock(side_effect=domain_error))
+        guarded = module._knowledge_fs_errors(raising(domain_error))
 
         with pytest.raises(openapi_error):
-            fail()
+            guarded()
 
 
 @pytest.mark.parametrize("operation", ["ls", "tree", "grep", "find", "cat", "stat", "diff"])
