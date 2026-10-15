@@ -7,7 +7,7 @@ or failed attempts never refund quota and cannot be reissued under another key.
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, overload
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -37,6 +37,8 @@ from services.dify_builder.native_testing.contracts import (
     operation_digest,
 )
 from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
+from services.dify_builder.native_testing.private_reads import validate_private_read
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import (
     BudgetReservation,
     NativeBinding,
@@ -281,6 +283,34 @@ class EffectAuthorizationService:
             session.flush()
         return ApprovalWait(pending_operation_id=pending.id)
 
+    @overload
+    def decide(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        intent: EffectIntent,
+        decision: Literal["approved", "denied"],
+        max_calls: int,
+        max_dispatches: int,
+        max_cost_units: int,
+        expires_at: datetime,
+        pending_guard: PendingDecisionGuard,
+    ) -> NativeTestPublicReceipt: ...
+
+    @overload
+    def decide(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        intent: EffectIntent,
+        decision: Literal["approved", "denied"],
+        max_calls: int,
+        max_dispatches: int,
+        max_cost_units: int,
+        expires_at: datetime,
+        pending_guard: None = None,
+    ) -> str: ...
+
     def decide(
         self,
         *,
@@ -292,15 +322,33 @@ class EffectAuthorizationService:
         max_cost_units: int,
         expires_at: datetime,
         pending_guard: PendingDecisionGuard | None = None,
-    ) -> str:
+    ) -> str | NativeTestPublicReceipt:
         """Internal C04 command boundary; caller authenticates explicit user confirmation.
 
         Public API callers must supply pending_guard; existing trusted internal
-        ledger callers omit it and retain their original command contract.
+        ledger callers omit it and retain their grant-ID return contract. Public
+        commands return the first receipt saved under the serialized decision lock.
         Existing grants are immutable, including limits and expiry. Repeated
         decisions are idempotent; a retry cannot mint a new quota allowance.
         """
         self.loader.load(ref=ref)
+        if pending_guard is not None:
+            # Refresh actual child permission at the final public authorization
+            # boundary, before SQL locking. Like root RBAC, this external check
+            # cannot fence revocations that happen after the RPC returns.
+            authority = validate_private_read(self.loader, ref)
+            if pending_guard.resolved.ref != ref or (
+                authority.app_id,
+                authority.workflow_id,
+                authority.graph_revision,
+                authority.generation,
+            ) != (
+                pending_guard.invocation_app_id,
+                pending_guard.invocation_workflow_id,
+                pending_guard.invocation_revision,
+                pending_guard.resolved.generation,
+            ):
+                raise BuilderExecutionPolicyError("native_pending_conflict")
         if decision not in {"approved", "denied"} or any(
             type(v) is not int or v < 0 or v > 2**63 - 1 for v in (max_calls, max_dispatches, max_cost_units)
         ):
@@ -338,7 +386,7 @@ class EffectAuthorizationService:
                 if any(getattr(grant, name) != value for name, value in fields.items()):
                     raise BuilderExecutionPolicyError("native_grant_conflict")
                 if pending_guard is not None:
-                    pending_guard.save(session=session, request_id=ref.request_id)
+                    return pending_guard.save(session=session, request_id=ref.request_id)
                 return grant.id
             grant = NativeEffectGrant(
                 tenant_id=owned.tenant_id,
@@ -353,7 +401,7 @@ class EffectAuthorizationService:
             session.add(grant)
             session.flush()
             if pending_guard is not None:
-                pending_guard.save(session=session, request_id=ref.request_id)
+                return pending_guard.save(session=session, request_id=ref.request_id)
             return grant.id
 
     def _permit_ref(self, permit: DispatchPermit) -> NativeTestContextRef:

@@ -326,7 +326,7 @@ def test_old_checkpoint_without_full_intent_fails_closed(console_case, monkeypat
         try:
             return original_load(**kwargs)
         except BuilderExecutionPolicyError as error:
-            failures.append(str(error))
+            failures.append(error.reason_code)
             raise
 
     monkeypatch.setattr(service.pending, "load", observed_load)
@@ -342,7 +342,7 @@ def test_old_checkpoint_without_full_intent_fails_closed(console_case, monkeypat
             "idempotency_key": "decision",
         },
     )
-    assert response.status_code == 503
+    assert response.status_code == (409 if qualified_disclosure else 503)
     assert failures == (["native_pending_intent_unavailable"] if qualified_disclosure else [])
     assert c.ledger.dispatched_attempt_count() == 0
 
@@ -832,7 +832,7 @@ def _decision_process(url, actor, ref, sibling, session_id, effect, item, body, 
                 receipt = service.decide(actor=actor, session_id=session_id, request_id=ref.request_id, **body)
                 result = ("ok", receipt.model_dump(mode="json"), snapshot)
             except BuilderExecutionPolicyError as error:
-                result = ("conflict", str(error), snapshot)
+                result = ("conflict", error.reason_code, snapshot)
             with pytest.raises(StopIteration):
                 next(no_outbound)
             pipe.send(result)

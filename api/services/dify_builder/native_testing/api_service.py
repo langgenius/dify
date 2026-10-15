@@ -496,7 +496,7 @@ class NativeTestApiService:
             invocation_workflow_id=context.workflow_id,
             invocation_revision=context.graph_revision,
         )
-        self.authorization.decide(
+        return self.authorization.decide(
             ref=resolved.ref,
             intent=resolved.intent,
             decision="approved" if decision == "confirm" else "denied",
@@ -506,7 +506,6 @@ class NativeTestApiService:
             expires_at=datetime.fromisoformat(terms.expires_at),
             pending_guard=guard,
         )
-        return current
 
     def resume(
         self, *, actor: Actor, session_id: str, request_id: str, expected_generation: int, idempotency_key: str

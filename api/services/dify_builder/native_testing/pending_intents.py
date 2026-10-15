@@ -280,18 +280,24 @@ class PendingDecisionGuard(FrozenDTO):
             ):
                 raise BuilderExecutionPolicyError("native_idempotency_conflict")
 
-    def save(self, *, session: Session, request_id: str) -> None:
+    def save(self, *, session: Session, request_id: str) -> NativeTestPublicReceipt:
+        """Return the canonical receipt while the decision owner holds its lock."""
         request = session.get(DifyBuilderExecutionRequest, request_id)
         if request is None:
             raise BuilderExecutionPolicyError("native_owner_mismatch")
-        if not any(record.get("native_command_key") == self.idempotency_digest for record in request.observations):
-            if len(request.observations) >= 4096:
-                raise BuilderExecutionPolicyError("native_command_limit")
-            request.observations = [
-                *request.observations,
-                {
-                    "native_command_key": self.idempotency_digest,
-                    "body_digest": self.body_digest,
-                    "receipt": self.receipt.model_dump(mode="json"),
-                },
-            ]
+        for record in request.observations:
+            if record.get("native_command_key") == self.idempotency_digest:
+                if record.get("body_digest") != self.body_digest:
+                    raise BuilderExecutionPolicyError("native_idempotency_conflict")
+                return NativeTestPublicReceipt.model_validate(record["receipt"])
+        if len(request.observations) >= 4096:
+            raise BuilderExecutionPolicyError("native_command_limit")
+        request.observations = [
+            *request.observations,
+            {
+                "native_command_key": self.idempotency_digest,
+                "body_digest": self.body_digest,
+                "receipt": self.receipt.model_dump(mode="json"),
+            },
+        ]
+        return self.receipt
