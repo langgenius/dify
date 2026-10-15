@@ -15,7 +15,8 @@ from graphon.enums import NodeType
 from graphon.file import File, FileUploadConfig
 from graphon.variable_loader import VariableLoader
 from graphon.variables.input_entities import VariableEntityType
-from models import Account, EndUser, Workflow
+from models import Account, EndUser
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
 
 if TYPE_CHECKING:
@@ -31,7 +32,7 @@ class AppInputAdapter:
     def __init__(
         self,
         *,
-        draft_variable_loader: Callable[[Workflow, str], VariableLoader] | None = None,
+        draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
     ) -> None:

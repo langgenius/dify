@@ -45,7 +45,7 @@ class AgentToolCallResponse(ResponseModel):
     error: str | None = None
     time_cost: float | int
     tool_name: str
-    tool_label: str
+    tool_label: str | dict[str, str]
     tool_input: Any
     tool_output: Any
     tool_parameters: dict[str, Any]
