@@ -132,25 +132,17 @@
       "count": 1
     }
   },
-  "web/app/components/app/annotation/header-opts/index.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 1
     }
   },
   "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 5
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/app/app-publisher/__tests__/features-wrapper.spec.tsx": {
@@ -794,11 +786,6 @@
   "web/app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
@@ -4086,9 +4073,6 @@
   "web/service/annotation.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/service/apps.ts": {

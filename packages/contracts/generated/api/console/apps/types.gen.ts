@@ -5471,7 +5471,9 @@ export type DeleteAppsByAppIdAnnotationsData = {
   path: {
     app_id: string
   }
-  query?: never
+  query?: {
+    annotation_id?: Array<string>
+  }
   url: '/apps/{app_id}/annotations'
 }
 

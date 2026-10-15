@@ -55,7 +55,7 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import {
   fetchChatMessages,
   updateLogMessageAnnotations,
@@ -284,8 +284,9 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
       try {
         if (annotation?.id) {
-          const { delAnnotation } = await import('@/service/annotation')
-          await delAnnotation(appDetail.id, annotation.id)
+          await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
+            params: { app_id: appDetail.id, annotation_id: annotation.id },
+          })
         }
 
         setAllChatItems(applyAnnotationRemoved(allChatItems, index))

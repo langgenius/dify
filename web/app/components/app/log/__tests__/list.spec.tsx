@@ -56,8 +56,17 @@ vi.mock('@/service/log', () => ({
   updateLogMessageAnnotations: (...args: unknown[]) => mockUpdateLogMessageAnnotations(...args),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  delAnnotation: (...args: unknown[]) => mockDelAnnotation(...args),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotations: {
+          byAnnotationId: { delete: (...args: unknown[]) => mockDelAnnotation(...args) },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@/app/components/base/loading-placeholder', () => ({
@@ -726,7 +735,9 @@ describe('ConversationList', () => {
     fireEvent.click(screen.getByText('chat-remove-annotation'))
 
     await waitFor(() => {
-      expect(mockDelAnnotation).toHaveBeenCalledWith('app-1', 'annotation-2')
+      expect(mockDelAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', annotation_id: 'annotation-2' },
+      })
     })
 
     const scrollableDiv = document.getElementById('scrollableDiv') as HTMLDivElement

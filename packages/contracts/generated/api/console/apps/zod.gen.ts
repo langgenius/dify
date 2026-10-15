@@ -6545,6 +6545,10 @@ export const zDeleteAppsByAppIdAnnotationsPath = z.object({
   app_id: z.uuid(),
 })
 
+export const zDeleteAppsByAppIdAnnotationsQuery = z.object({
+  annotation_id: z.array(z.string()).optional(),
+})
+
 /**
  * Annotations deleted successfully
  */

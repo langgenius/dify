@@ -76,6 +76,13 @@ class AnnotationListQuery(BaseModel):
     keyword: str = Field(default="", description="Search keyword")
 
 
+class AnnotationBatchDeleteQuery(BaseModel):
+    annotation_id: list[str] = Field(
+        default_factory=list,
+        description="Annotation IDs to delete; omitting it clears all annotations of the app",
+    )
+
+
 class CreateAnnotationPayload(BaseModel):
     message_id: str | None = Field(default=None, description="Message ID")
     question: str | None = Field(default=None, description="Question text")
@@ -344,6 +351,7 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp()))
+    @console_ns.doc(params=query_params_from_model(AnnotationBatchDeleteQuery))
     @console_ns.response(204, "Annotations deleted successfully")
     @with_session
     def delete(self, session: Session, app_id: UUID):
