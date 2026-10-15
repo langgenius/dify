@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
-from typing import cast
+from typing import Never, cast
 from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
@@ -277,7 +277,12 @@ def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_se
         INIT_PASSWORD="",
         OPS_AGENT_TRACE_ENABLED=True,
     )
-    construct_trace_service = MagicMock(side_effect=AssertionError("Composition must not construct a trace service"))
+    construction_calls: list[bool] = []
+
+    def construct_trace_service() -> Never:
+        construction_calls.append(True)
+        raise AssertionError("Composition must not construct a trace service")
+
     monkeypatch.setattr(runtime_bridge, "_service", construct_trace_service)
 
     ext_application_services.init_app(first_app)
@@ -291,7 +296,7 @@ def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_se
             assert isinstance(second_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
             assert second_hooks is not first_hooks
         assert application_tracing_hooks() is first_hooks
-    construct_trace_service.assert_not_called()
+    assert construction_calls == []
 
 
 def test_build_application_services_preserves_composed_boundaries(
