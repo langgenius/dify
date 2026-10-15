@@ -1,11 +1,11 @@
 'use client'
 
 import type { EndUserApp, RemoveAppRequest } from './model'
-import { Button } from '@langgenius/dify-ui/button'
 import { useQueryStates } from 'nuqs'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppGrid from './app-grid'
+import EmptyState from './empty-state'
 import { selectApps } from './model'
 import { myAppsQueryParsers } from './query-params'
 import RemoveAppDialog from './remove-app-dialog'
@@ -26,16 +26,13 @@ export default function MyApps({ apps, onOpenApp, onToggleStar, onRemoveApp }: M
   const searchInputRef = useRef<HTMLInputElement>(null)
   const removalSucceededRef = useRef(false)
   const visibleApps = selectApps(apps, filter, i18n.language)
-  const emptyTitle = filter.q.trim()
+  const noSearchResults = apps.length > 0 && visibleApps.length === 0 && !!filter.q.trim()
+  const emptyTitle = noSearchResults
     ? t(($) => $['endUser.noResults'], { ns: 'app' })
-    : filter.view === 'starred'
-      ? t(($) => $['endUser.emptyStarred'], { ns: 'app' })
-      : t(($) => $['endUser.emptyApps'], { ns: 'app' })
-  const emptyDescription = filter.q.trim()
+    : t(($) => $['endUser.emptyApps'], { ns: 'app' })
+  const emptyDescription = noSearchResults
     ? t(($) => $['endUser.noResultsDescription'], { ns: 'app' })
-    : filter.view === 'starred'
-      ? t(($) => $['endUser.emptyStarredDescription'], { ns: 'app' })
-      : t(($) => $['endUser.emptyAppsDescription'], { ns: 'app' })
+    : t(($) => $['endUser.emptyAppsDescription'], { ns: 'app' })
   return (
     <>
       <header className="min-h-15.5 px-5 pt-3.5 pb-4 sm:px-8">
@@ -63,24 +60,7 @@ export default function MyApps({ apps, onOpenApp, onToggleStar, onRemoveApp }: M
             }}
           />
         ) : (
-          <div className="flex min-h-64 flex-col items-center justify-center gap-2 text-center">
-            <span
-              className="mb-1 i-ri-apps-2-line size-8 text-text-quaternary"
-              aria-hidden="true"
-            />
-            <h2 className="system-md-semibold text-text-secondary">{emptyTitle}</h2>
-            <p className="system-sm-regular text-text-tertiary">{emptyDescription}</p>
-            {(filter.q || filter.view === 'starred') && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  void setFilter({ q: '', view: 'all' })
-                }}
-              >
-                {t(($) => $['endUser.clearFilters'], { ns: 'app' })}
-              </Button>
-            )}
-          </div>
+          <EmptyState title={emptyTitle} description={emptyDescription} />
         )}
       </div>
       <RemoveAppDialog

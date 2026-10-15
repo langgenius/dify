@@ -135,7 +135,7 @@ describe('MyApps', () => {
     },
   )
 
-  it('updates URL filters and sorting, searches descriptions, and clears filters while preserving the sort', async () => {
+  it('clears a search without resetting Starred or sorting, then restores All while preserving unrelated URL state', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = setup({ searchParams: '?unrelated=keep' })
     expect(appNames()).toEqual([zebra.name, beta.name, alpha.name])
@@ -157,9 +157,22 @@ describe('MyApps', () => {
     await user.clear(search)
     await user.type(search, 'not present')
     expect(screen.getByRole('heading', { name: 'app.endUser.noResults' })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'app.endUser.clearFilters' }))
+    expect(screen.getByText('app.endUser.noResultsDescription')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'app.endUser.emptyApps' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
     expect(search).toHaveValue('')
+    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
+    expect(appNames()).toEqual([beta.name, zebra.name])
+    await waitFor(() => {
+      const params = onUrlUpdate.mock.lastCall?.[0].searchParams
+      expect(params?.has('q')).toBe(false)
+      expect(params?.get('view')).toBe('starred')
+      expect(params?.get('sort')).toBe('name')
+      expect(params?.get('unrelated')).toBe('keep')
+    })
+
+    await user.click(screen.getByRole('radio', { name: 'app.endUser.all' }))
     expect(screen.getByRole('radio', { name: 'app.endUser.all' })).toBeChecked()
     expect(appNames()).toEqual([alpha.name, beta.name, zebra.name])
     await waitFor(() => {
@@ -169,6 +182,21 @@ describe('MyApps', () => {
       expect(params?.get('sort')).toBe('name')
       expect(params?.get('unrelated')).toBe('keep')
     })
+  })
+
+  it('shows an empty app library before search or Starred empty states when the dataset is empty', () => {
+    setup({ initialApps: [], searchParams: '?view=starred&sort=name-desc&q=not+present' })
+
+    expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
+    expect(screen.getByText('app.endUser.emptyAppsDescription')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'app.endUser.noResults' })).not.toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'app.endUser.searchApps' })).toHaveValue(
+      'not present',
+    )
+    expect(screen.getByRole('radio', { name: 'app.endUser.starred' })).toBeChecked()
+    expect(screen.getByRole('combobox', { name: 'app.endUser.sortBy' })).toHaveTextContent(
+      'app.endUser.nameDescending',
+    )
   })
 
   it('selects descending names without clearing the current Starred view or search', async () => {
@@ -210,7 +238,8 @@ describe('MyApps', () => {
     expect(onToggleStar).toHaveBeenNthCalledWith(1, alpha.id)
     expect(onToggleStar).toHaveBeenNthCalledWith(2, alpha.id)
     expect(onOpenApp).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'app.endUser.emptyStarred' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'app.endUser.emptyApps' })).toBeVisible()
+    expect(screen.getByText('app.endUser.emptyAppsDescription')).toBeVisible()
     expect(
       screen.queryByRole('button', { name: appLabel('openApp', alpha) }),
     ).not.toBeInTheDocument()
