@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
+import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
 
@@ -160,15 +161,10 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   })),
 }))
 
-vi.mock('@/service/knowledge/use-hit-testing', () => ({
-  useHitTesting: vi.fn(() => ({
-    mutateAsync: mockHitTestingMutateAsync,
-    isLoading: false,
-  })),
-  useExternalKnowledgeBaseHitTesting: vi.fn(() => ({
-    mutateAsync: mockExternalHitTestingMutateAsync,
-    isLoading: false,
-  })),
+// The page owns one mutation per retrieval kind, told apart by mutation key.
+const { mockHitTestingState, mockExternalHitTestingState } = vi.hoisted(() => ({
+  mockHitTestingState: vi.fn(),
+  mockExternalHitTestingState: vi.fn(),
 }))
 
 // Mock breakpoints hook
@@ -339,12 +335,8 @@ const createMockSegment = (overrides = {}) => ({
 })
 
 const createMockHitTesting = (overrides = {}): HitTesting => ({
+  ...createHitTestingRecordFixture(),
   segment: createMockSegment() as HitTesting['segment'],
-  content: createMockSegment() as HitTesting['content'],
-  score: 0.85,
-  tsne_position: { x: 0.5, y: 0.5 },
-  child_chunks: null,
-  files: [],
   ...overrides,
 })
 
@@ -400,17 +392,14 @@ describe('HitTestingPage', () => {
       refetch: mockRecordsRefetch,
       isLoading: false,
     } as unknown as ReturnType<typeof useDatasetTestingRecords>)
-
-    const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
-      await import('@/service/knowledge/use-hit-testing')
-    vi.mocked(useHitTesting).mockReturnValue({
+    vi.mocked(mockHitTestingState).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isLoading: false,
-    } as unknown as ReturnType<typeof useHitTesting>)
-    vi.mocked(useExternalKnowledgeBaseHitTesting).mockReturnValue({
+    })
+    vi.mocked(mockExternalHitTestingState).mockReturnValue({
       mutateAsync: mockExternalHitTestingMutateAsync,
       isLoading: false,
-    } as unknown as ReturnType<typeof useExternalKnowledgeBaseHitTesting>)
+    })
 
     const useBreakpoints = await import('@/hooks/use-breakpoints')
     vi.mocked(useBreakpoints.default).mockReturnValue(
@@ -458,19 +447,17 @@ describe('HitTestingPage', () => {
     'announces loading and failure in the same status region for %s retrieval',
     async (provider) => {
       mockDataset.provider = provider
-      const { useHitTesting, useExternalKnowledgeBaseHitTesting } =
-        await import('@/service/knowledge/use-hit-testing')
       const setRetrievalState = (state: { isPending: boolean; isError: boolean }) => {
         if (provider === 'external') {
-          vi.mocked(useExternalKnowledgeBaseHitTesting).mockReturnValue({
+          vi.mocked(mockExternalHitTestingState).mockReturnValue({
             mutateAsync: mockExternalHitTestingMutateAsync,
             ...state,
-          } as unknown as ReturnType<typeof useExternalKnowledgeBaseHitTesting>)
+          })
         } else {
-          vi.mocked(useHitTesting).mockReturnValue({
+          vi.mocked(mockHitTestingState).mockReturnValue({
             mutateAsync: mockHitTestingMutateAsync,
             ...state,
-          } as unknown as ReturnType<typeof useHitTesting>)
+          })
         }
       }
       const { rerender } = renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
@@ -495,9 +482,8 @@ describe('HitTestingPage', () => {
     const user = userEvent.setup()
     const { default: useBreakpoints } = await import('@/hooks/use-breakpoints')
     vi.mocked(useBreakpoints).mockReturnValue('mobile' as ReturnType<typeof useBreakpoints>)
-    const { useHitTesting } = await import('@/service/knowledge/use-hit-testing')
     const response: HitTestingResponse = {
-      query: { content: 'Test query', tsne_position: { x: 0, y: 0 } },
+      query: { content: 'Test query' },
       records: [createMockHitTesting()],
     }
     mockHitTestingMutateAsync.mockImplementationOnce(async (_params, options) => {
@@ -509,21 +495,21 @@ describe('HitTestingPage', () => {
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
     expect(await screen.findByRole('dialog', { name: '1 Retrieved Chunks' })).toBeInTheDocument()
 
-    vi.mocked(useHitTesting).mockReturnValue({
+    vi.mocked(mockHitTestingState).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isPending: true,
       isError: false,
-    } as unknown as ReturnType<typeof useHitTesting>)
+    })
     rerender(<HitTestingPage datasetId="dataset-1" />)
 
     const pendingDialog = screen.getByRole('dialog', { name: 'datasetHitTesting.title' })
     expect(within(pendingDialog).queryByText('1 Retrieved Chunks')).not.toBeInTheDocument()
 
-    vi.mocked(useHitTesting).mockReturnValue({
+    vi.mocked(mockHitTestingState).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isPending: false,
       isError: true,
-    } as unknown as ReturnType<typeof useHitTesting>)
+    })
     rerender(<HitTestingPage datasetId="dataset-1" />)
 
     const failedDialog = screen.getByRole('dialog', { name: 'datasetHitTesting.title' })
@@ -533,11 +519,11 @@ describe('HitTestingPage', () => {
 
     await user.click(within(failedDialog).getByRole('button', { name: /operation.close/ }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    vi.mocked(useHitTesting).mockReturnValue({
+    vi.mocked(mockHitTestingState).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isPending: false,
       isError: false,
-    } as unknown as ReturnType<typeof useHitTesting>)
+    })
     mockHitTestingMutateAsync.mockImplementationOnce(async (_params, options) => {
       const emptyResponse = { ...response, records: [] }
       options?.onSuccess?.(emptyResponse)
@@ -551,7 +537,7 @@ describe('HitTestingPage', () => {
   it('announces zero retrieved chunks after an empty response', async () => {
     const user = userEvent.setup()
     const response: HitTestingResponse = {
-      query: { content: 'No match', tsne_position: { x: 0, y: 0 } },
+      query: { content: 'No match' },
       records: [],
     }
     mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
@@ -621,7 +607,7 @@ describe('HitTestingPage', () => {
   it('saves retrieval settings, submits a query, refreshes history, and renders results', async () => {
     const user = userEvent.setup()
     const response: HitTestingResponse = {
-      query: { content: 'Test query', tsne_position: { x: 0, y: 0 } },
+      query: { content: 'Test query' },
       records: [createMockHitTesting()],
     }
     mockHitTestingMutateAsync.mockImplementation(async (_params, options) => {
@@ -709,6 +695,16 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
+    useMutation: (options: { mutationKey: [string, string] }) => {
+      if (options.mutationKey[0] === 'hit-testing')
+        return mockHitTestingState() ?? { mutateAsync: mockHitTestingMutateAsync, isPending: false }
+      return (
+        mockExternalHitTestingState() ?? {
+          mutateAsync: mockExternalHitTestingMutateAsync,
+          isPending: false,
+        }
+      )
+    },
     useQuery: (options: {
       queryKey: OperationKey<
         'query',

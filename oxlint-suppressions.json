@@ -4065,11 +4065,6 @@
       "count": 1
     }
   },
-  "web/service/apps.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/base.spec.ts": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -4141,19 +4136,6 @@
   "web/service/knowledge/use-document.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 4
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-hit-testing.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-import.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
     },
     "no-restricted-imports": {
       "count": 1
@@ -4298,14 +4280,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/service/use-workspace.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/webapp-auth.ts": {

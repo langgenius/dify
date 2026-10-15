@@ -36,13 +36,11 @@ export type RETRIEVE_METHOD =
   | 'semantic_search'
   | 'full_text_search'
   | 'hybrid_search'
-  | 'invertedIndex'
   | 'keyword_search'
 export const RETRIEVE_METHOD = {
   semantic: 'semantic_search' as RETRIEVE_METHOD,
   fullText: 'full_text_search' as RETRIEVE_METHOD,
   hybrid: 'hybrid_search' as RETRIEVE_METHOD,
-  invertedIndex: 'invertedIndex' as RETRIEVE_METHOD,
   keywordSearch: 'keyword_search' as RETRIEVE_METHOD,
 } as const
 

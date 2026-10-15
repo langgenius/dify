@@ -1,3 +1,10 @@
+import type {
+  ExternalHitTestingRecordResponse,
+  ExternalHitTestingResponse,
+  HitTestingChildChunk as GeneratedHitTestingChildChunk,
+  HitTestingResponse as GeneratedHitTestingResponse,
+  HitTestingRecord as HitTestingRecordResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
@@ -611,79 +618,12 @@ export type HitTestingRecord = {
   queries: Query[]
 }
 
-export type HitTestingChildChunk = {
-  id: string
-  content: string
-  position: number
-  score: number
-}
-export type HitTesting = {
-  segment: Segment
-  content: Segment
-  score: number
-  tsne_position: TsnePosition
-  child_chunks: HitTestingChildChunk[] | null
-  files: Attachment[]
-  summary?: string
-}
-
-export type ExternalKnowledgeBaseHitTesting = {
-  content: string
-  title: string
-  score: number
-  metadata: {
-    'x-amz-bedrock-kb-source-uri': string
-    'x-amz-bedrock-kb-data-source-id': string
-  }
-}
-
-type Segment = {
-  id: string
-  document: Document
-  content: string
-  sign_content: string
-  position: number
-  word_count: number
-  tokens: number
-  keywords: string[]
-  hit_count: number
-  index_node_hash: string
-  answer: string
-}
-
-type Document = {
-  id: string
-  data_source_type: string
-  name: string
-  doc_type: DocType
-}
-
 export type HitTestingRecordsResponse = {
   data: HitTestingRecord[]
   has_more: boolean
   limit: number
   total: number
   page: number
-}
-
-type TsnePosition = {
-  x: number
-  y: number
-}
-
-export type HitTestingResponse = {
-  query: {
-    content: string
-    tsne_position: TsnePosition
-  }
-  records: Array<HitTesting>
-}
-
-export type ExternalKnowledgeBaseHitTestingResponse = {
-  query: {
-    content: string
-  }
-  records: Array<ExternalKnowledgeBaseHitTesting>
 }
 
 export type RelatedApp = {
@@ -855,3 +795,9 @@ export type ExternalKnowledgeBaseHitTestingRequest = {
     score_threshold_enabled: boolean
   }
 }
+
+export type HitTestingChildChunk = GeneratedHitTestingChildChunk
+export type HitTesting = HitTestingRecordResponse
+export type HitTestingResponse = GeneratedHitTestingResponse
+export type ExternalKnowledgeBaseHitTesting = ExternalHitTestingRecordResponse
+export type ExternalKnowledgeBaseHitTestingResponse = ExternalHitTestingResponse

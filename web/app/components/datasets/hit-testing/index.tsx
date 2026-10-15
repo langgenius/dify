@@ -3,9 +3,11 @@
 import type { FC } from 'react'
 import type {
   ExternalKnowledgeBaseHitTesting,
+  ExternalKnowledgeBaseHitTestingRequest,
   ExternalKnowledgeBaseHitTestingResponse,
   HitTesting,
   HitTestingRecord,
+  HitTestingRequest,
   HitTestingResponse,
   Query,
 } from '@/models/datasets'
@@ -20,7 +22,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -34,11 +36,8 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { consoleClient } from '@/service/console'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
-import {
-  useExternalKnowledgeBaseHitTesting,
-  useHitTesting,
-} from '@/service/knowledge/use-hit-testing'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
@@ -107,12 +106,26 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     mutateAsync: hitTestingMutation,
     isPending: isHitTestingPending,
     isError: isHitTestingError,
-  } = useHitTesting(datasetId)
+  } = useMutation({
+    mutationKey: ['hit-testing', datasetId],
+    mutationFn: (body: HitTestingRequest) =>
+      consoleClient.datasets.byDatasetId.hitTesting.post({
+        params: { dataset_id: datasetId },
+        body,
+      }),
+  })
   const {
     mutateAsync: externalKnowledgeBaseHitTestingMutation,
     isPending: isExternalKnowledgeBaseHitTestingPending,
     isError: isExternalKnowledgeBaseHitTestingError,
-  } = useExternalKnowledgeBaseHitTesting(datasetId)
+  } = useMutation({
+    mutationKey: ['external-hit-testing', datasetId],
+    mutationFn: (body: ExternalKnowledgeBaseHitTestingRequest) =>
+      consoleClient.datasets.byDatasetId.externalHitTesting.post({
+        params: { dataset_id: datasetId },
+        body,
+      }),
+  })
 
   const isRetrievalLoading = isHitTestingPending || isExternalKnowledgeBaseHitTestingPending
   const result = isExternal ? externalHitResult : hitResult
