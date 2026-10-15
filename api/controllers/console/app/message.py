@@ -520,7 +520,6 @@ def _update_message_feedback(
 def _get_message_suggested_questions(
     *, context: RequestContext, app_id: str, app_mode: str, message_id: UUID
 ) -> dict[str, object]:
-
     try:
         questions = application_services().message_suggested_questions.get_suggested_questions(
             app_id=app_id,

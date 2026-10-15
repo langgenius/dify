@@ -200,10 +200,14 @@ class TestApiModeration:
         sqlite_session.add_all((target, other_tenant))
         sqlite_session.commit()
 
-        result = ApiModeration._get_api_based_extension("tenant-1", "ext-1", sqlite_session)  # pyrefly: ignore[bad-argument-type]
+        result = ApiModeration._get_api_based_extension(
+            "tenant-1", "ext-1", sqlite_session
+        )  # pyrefly: ignore[bad-argument-type]
 
         assert result is target
         assert (
-            ApiModeration._get_api_based_extension("tenant-1", "ext-2", sqlite_session)  # pyrefly: ignore[bad-argument-type]
+            ApiModeration._get_api_based_extension(
+                "tenant-1", "ext-2", sqlite_session
+            )  # pyrefly: ignore[bad-argument-type]
             is None
         )

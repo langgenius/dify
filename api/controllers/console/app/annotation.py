@@ -352,7 +352,6 @@ class AnnotationApi(Resource):
     @console_ns.response(204, "Annotations deleted successfully")
     @with_session
     def delete(self, session: Session, app_id: UUID):
-
         # Use request.args.getlist to get annotation_ids array directly
         annotation_ids = request.args.getlist("annotation_id")
 

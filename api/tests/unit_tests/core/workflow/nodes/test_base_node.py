@@ -108,7 +108,6 @@ def test_node_accepts_invoke_from_enum():
 
 
 def test_missing_generic_argument_raises_type_error():
-
     with pytest.raises(TypeError):
 
         class _InvalidNode(Node):  # type: ignore[type-abstract]

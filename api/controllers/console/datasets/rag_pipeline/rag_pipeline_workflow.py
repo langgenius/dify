@@ -1148,7 +1148,6 @@ class RagPipelineRecommendedPluginApi(Resource):
     @with_current_tenant_id
     @model_validate(RagPipelineRecommendedPluginQuery)
     def get(self, req_data: RagPipelineRecommendedPluginQuery, current_tenant_id: str, current_user: Account):
-
         rag_pipeline_service = RagPipelineService(db.session())
         recommended_plugins = rag_pipeline_service.get_recommended_plugins(
             req_data.type, current_user, current_tenant_id
