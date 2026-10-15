@@ -64,24 +64,54 @@ describe('useWorkflowNodeStarted', () => {
     })
   })
 
-  it('updates existing tracing entry when node_id already exists', () => {
+  it('updates the existing tracing entry when the same execution is replayed', () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
       initialStoreState: {
         workflowRunningData: baseRunningData({
           tracing: [
-            { node_id: 'n0', status: NodeRunningStatus.Succeeded } as never,
-            { node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+            { id: 'trace-0', node_id: 'n0', status: NodeRunningStatus.Succeeded } as never,
+            { id: 'trace-1', node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
           ],
         }),
       },
     })
 
     act(() => {
-      result.current.handleWorkflowNodeStarted(createNodeStartedResponse(), containerParams)
+      result.current.handleWorkflowNodeStarted(
+        createNodeStartedResponse({ data: { id: 'trace-1', node_id: 'n1' } as never }),
+        containerParams,
+      )
     })
 
     const tracing = store.getState().workflowRunningData!.tracing!
     expect(tracing).toHaveLength(2)
     expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
+  })
+
+  it('keeps earlier iteration rounds when the same node starts with a new execution id', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { id: 'trace-0', node_id: 'n0', status: NodeRunningStatus.Succeeded } as never,
+            { id: 'round-1', node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+          ],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(
+        createNodeStartedResponse({ data: { id: 'round-2', node_id: 'n1' } as never }),
+        containerParams,
+      )
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing.map((item) => [item.id, item.status])).toEqual([
+      ['trace-0', NodeRunningStatus.Succeeded],
+      ['round-1', NodeRunningStatus.Succeeded],
+      ['round-2', NodeRunningStatus.Running],
+    ])
   })
 })

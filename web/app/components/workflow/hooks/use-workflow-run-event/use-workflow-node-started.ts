@@ -22,9 +22,9 @@ export const useWorkflowNodeStarted = () => {
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
       const { getNodes, setNodes, edges, setEdges, transform } = store.getState()
       const nodes = getNodes()
-      const currentIndex = workflowRunningData?.tracing?.findIndex(
-        (item) => item.node_id === data.node_id,
-      )
+      // Match the execution id, not the node id: each iteration or loop round
+      // starts the same node with a new id, while a resumed run replays the same id.
+      const currentIndex = workflowRunningData?.tracing?.findIndex((item) => item.id === data.id)
       if (currentIndex && currentIndex > -1) {
         setWorkflowRunningData(
           produce(workflowRunningData!, (draft) => {
