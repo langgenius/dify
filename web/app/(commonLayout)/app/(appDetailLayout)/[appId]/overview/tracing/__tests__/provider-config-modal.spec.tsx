@@ -1,4 +1,7 @@
-import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  InvalidTracingConfigError,
+  TraceConfigPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -441,6 +444,120 @@ describe('ProviderConfigModal', () => {
       })
     })
 
+    it.each(['create', 'update'] as const)(
+      'uses server field errors for %s and clears each error only when its field changes',
+      async (operation) => {
+        const user = userEvent.setup()
+        const failure = {
+          code: 'invalid_tracing_config',
+          status: 400,
+          message: 'The tracing configuration is invalid.',
+          details: {
+            field_errors: {
+              host: ['This endpoint is not supported.'],
+              public_key: ['This public key is not valid for this project.'],
+            },
+          },
+        } satisfies InvalidTracingConfigError
+        request.mockRejectedValueOnce(
+          await httpErrorFromResponse(Response.json(failure, { status: 400 })),
+        )
+        const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const callbacks = renderProviderConfigModal({
+          type: TracingProvider.langfuse,
+          payload: operation === 'update' ? validConfigs[TracingProvider.langfuse] : undefined,
+        })
+        const publicKey = screen.getByRole('textbox', {
+          name: 'app.tracing.configProvider.publicKey',
+        })
+        const secretKey = screen.getByRole('textbox', {
+          name: 'app.tracing.configProvider.secretKey',
+        })
+        const host = screen.getByRole('textbox', { name: 'Host' })
+        if (operation === 'create') {
+          await user.type(secretKey, 'secret-key')
+          await user.type(publicKey, 'public-key')
+          await user.type(host, 'https://cloud.langfuse.com')
+        }
+
+        try {
+          await user.click(
+            screen.getByRole('button', {
+              name:
+                operation === 'update' ? 'common.operation.save' : 'common.operation.saveAndEnable',
+            }),
+          )
+
+          await waitFor(() =>
+            expect(publicKey).toHaveAccessibleDescription(
+              failure.details.field_errors.public_key[0],
+            ),
+          )
+          expect(host).toHaveAccessibleDescription(failure.details.field_errors.host[0])
+          await waitFor(() => expect(publicKey).toHaveFocus())
+          expect(publicKey).toBeInvalid()
+          expect(host).toBeInvalid()
+          expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+          expect(toast).not.toHaveBeenCalled()
+          expect(callbacks.onSaved).not.toHaveBeenCalled()
+
+          await user.type(secretKey, '-edited')
+          expect(publicKey).toBeInvalid()
+          expect(host).toBeInvalid()
+          await user.clear(publicKey)
+          await user.type(publicKey, 'corrected-public-key')
+          expect(publicKey).toBeValid()
+          expect(publicKey).not.toHaveAccessibleDescription()
+          expect(host).toBeInvalid()
+          await user.clear(host)
+          await user.type(host, 'https://corrected.langfuse.com')
+          expect(host).toBeValid()
+          expect(host).not.toHaveAccessibleDescription()
+          await user.keyboard('{Enter}')
+
+          await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+          expect(request).toHaveBeenCalledTimes(2)
+          const sent = request.mock.calls[1]![2].request
+          expect(sent.method).toBe(operation === 'update' ? 'PATCH' : 'POST')
+          expect(await sent.clone().json()).toEqual({
+            tracing_provider: TracingProvider.langfuse,
+            tracing_config: {
+              secret_key: 'secret-key-edited',
+              public_key: 'corrected-public-key',
+              host: 'https://corrected.langfuse.com',
+            },
+          })
+        } finally {
+          logError.mockRestore()
+        }
+      },
+    )
+
+    it.each([undefined, { field_errors: {} }])(
+      'keeps the form alert when field errors are unavailable: %j',
+      async (details) => {
+        const user = userEvent.setup()
+        const failure = {
+          code: 'invalid_tracing_config',
+          status: 400,
+          message: 'The tracing configuration is invalid.',
+          details,
+        } satisfies InvalidTracingConfigError
+        request.mockRejectedValueOnce(
+          await httpErrorFromResponse(Response.json(failure, { status: 400 })),
+        )
+        const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+        renderProviderConfigModal({ payload: validConfigs[TracingProvider.langfuse] })
+        try {
+          await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+          expect(await screen.findByRole('alert')).toHaveTextContent(failure.message)
+          expect(screen.getByRole('textbox', { name: 'Host' })).toBeValid()
+        } finally {
+          logError.mockRestore()
+        }
+      },
+    )
+
     it('keeps the draft on failure, prevents duplicate saves while pending, and allows retry', async () => {
       const user = userEvent.setup()
       let resolveResponse!: (response: Response) => void
@@ -466,7 +583,12 @@ describe('ProviderConfigModal', () => {
         await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
         await user.click(save)
         expect(request).toHaveBeenCalledOnce()
-        resolveResponse(Response.json({ message: 'Config rejected' }, { status: 400 }))
+        resolveResponse(
+          Response.json(
+            { code: 'tracing_config_verification_failed', message: 'Config rejected', status: 400 },
+            { status: 400 },
+          ),
+        )
 
         await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
         expect(host).toHaveValue('https://draft.langfuse.com')

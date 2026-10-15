@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+
 from libs.exception import BaseHTTPException
 
 
@@ -127,10 +129,20 @@ class TracingProviderUnavailableError(BaseHTTPException):
     code = 400
 
 
+class InvalidTracingConfigDetails(BaseModel):
+    field_errors: dict[str, list[str]]
+
+
 class InvalidTracingConfigError(BaseHTTPException):
     error_code = "invalid_tracing_config"
     description = "The tracing configuration is invalid."
     code = 400
+    details_model = InvalidTracingConfigDetails
+
+    def __init__(self, *, field_errors: dict[str, list[str]]) -> None:
+        super().__init__()
+        assert self.data is not None
+        self.data["details"] = self.details_model(field_errors=field_errors).model_dump(mode="json")
 
 
 class TracingConfigVerificationFailedError(BaseHTTPException):

@@ -3,6 +3,7 @@ import type {
   TraceAppConfigResponse,
   TraceConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { FormProps } from '@langgenius/dify-ui/form'
 import type { FC, RefObject } from 'react'
 import {
   AlertDialog,
@@ -21,6 +22,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { isDefinedError } from '@orpc/client'
 import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -72,6 +74,12 @@ const ProviderConfigModal: FC<Props> = ({
     }),
   )
   const saveConfig = isEdit ? updateConfig : createConfig
+  const error = saveConfig.error
+  const fieldErrors: FormProps['errors'] =
+    isDefinedError(error) && error.code === 'invalid_tracing_config'
+      ? error.data.details?.field_errors
+      : undefined
+  const hasFieldErrors = fieldErrors !== undefined && Object.keys(fieldErrors).length > 0
 
   const handleRemove = () => {
     removeConfig.mutate({
@@ -107,7 +115,11 @@ const ProviderConfigModal: FC<Props> = ({
         />
       </div>
 
-      <Form<TraceConfigPayload['tracing_config']> className="px-8 pb-8" onFormSubmit={handleSave}>
+      <Form<TraceConfigPayload['tracing_config']>
+        className="px-8 pb-8"
+        errors={fieldErrors}
+        onFormSubmit={handleSave}
+      >
         <div className="space-y-4">
           {type === TracingProvider.arize && (
             <>
@@ -679,9 +691,9 @@ const ProviderConfigModal: FC<Props> = ({
             </>
           )}
         </div>
-        {saveConfig.error && (
+        {error && !hasFieldErrors && (
           <p role="alert" className="mt-4 system-sm-regular text-text-destructive">
-            {saveConfig.error.message}
+            {error.message}
           </p>
         )}
         <div className="mt-8 flex items-center justify-between gap-4">
