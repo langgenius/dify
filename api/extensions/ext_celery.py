@@ -188,6 +188,14 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.OPS_AGENT_TRACE_ENABLED:
+        imports.append("tasks.application_trace_task")
+    if dify_config.OPS_AGENT_TRACE_ENABLED and dify_config.ENABLE_APPLICATION_TRACE_RECONCILE_TASK:
+        beat_schedule["reconcile_application_traces"] = {
+            "task": "tasks.application_trace_task.reconcile_application_traces",
+            "schedule": timedelta(seconds=30),
+            "options": {"expires": 25},
+        }
     if dify_config.AGENT_SANDBOX_METERING_ENABLED:
         try:
             interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)

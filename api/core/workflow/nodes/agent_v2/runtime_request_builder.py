@@ -79,6 +79,7 @@ from services.agent.prompt_mentions import (
     parse_prompt_mentions,
     workflow_previous_node_output_refs_from_selectors,
 )
+from services.tracing.runtime_bridge import prepare_workflow_agent
 
 from .dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
@@ -257,6 +258,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    tracing=prepare_workflow_agent(
+                        context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)
+                    ),
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,

@@ -117,6 +117,22 @@ def _make_layer(
 
 
 class TestWorkflowPersistenceLayer:
+    def test_start_freezes_tracing_only_after_workflow_save(self, monkeypatch: pytest.MonkeyPatch):
+        layer, workflow_repo, _, _ = _make_layer(extras={"trace_session_id": "external-session"})
+        calls = []
+
+        def freeze(entity, *, workflow_id, workflow_run_id, conversation_id):
+            assert workflow_repo.saved
+            assert workflow_repo.saved[-1].id_ == workflow_run_id
+            calls.append(
+                (entity.app_config.app_id, entity.app_config.tenant_id, workflow_id, workflow_run_id, conversation_id)
+            )
+
+        monkeypatch.setattr("services.workflow_persistence.freeze_workflow_run", freeze)
+        layer._handle_graph_run_started()
+        assert calls == [("app", "tenant", "workflow-id", "run-id", "conv-id")]
+
+
     def test_get_execution_id_requires_system_variable(self):
         layer, _, _, _ = _make_layer(build_system_variables())
 
