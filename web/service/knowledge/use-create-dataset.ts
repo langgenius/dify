@@ -1,3 +1,9 @@
+import type { IndexingEstimatePayload } from '@dify/contracts/api/console/datasets/types.gen'
+import type {
+  PostRagPipelineDatasetData,
+  PostRagPipelineDatasetResponse,
+  PostRagPipelineEmptyDatasetResponse,
+} from '@dify/contracts/api/console/rag/types.gen'
 import type { MutationOptions } from '@tanstack/react-query'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
@@ -5,21 +11,18 @@ import type {
   ChunkingMode,
   CrawlOptions,
   CrawlResultItem,
-  CreateDatasetReq,
-  CreateDatasetResponse,
   CreateDocumentReq,
   createDocumentResponse,
   CustomFile,
   DataSourceType,
   FileIndexingEstimateResponse,
-  IndexingEstimateParams,
   NotionInfo,
   ProcessRule,
   ProcessRuleResponse,
 } from '@/models/datasets'
 import { useMutation } from '@tanstack/react-query'
 import { groupBy } from 'es-toolkit/compat'
-import { post } from '../base'
+import { consoleClient } from '../console'
 import {
   createDocument,
   createFirstDocument,
@@ -29,7 +32,7 @@ import {
 
 const NAME_SPACE = 'knowledge/create-dataset'
 
-export const getNotionInfo = (notionPages: NotionPage[], credentialId: string) => {
+export const getNotionInfo = (notionPages: NotionPage[], credentialId: string): NotionInfo[] => {
   const workspacesMap = groupBy(notionPages, 'workspace_id')
   const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
     return {
@@ -46,12 +49,13 @@ export const getNotionInfo = (notionPages: NotionPage[], credentialId: string) =
         return {
           page_id,
           page_name,
-          page_icon,
+          // The backend requires an icon type; an icon without one carries nothing to render.
+          page_icon: page_icon?.type ? { ...page_icon, type: page_icon.type } : null,
           type,
         }
       }),
     }
-  }) as NotionInfo[]
+  })
 }
 
 export const getWebsiteInfo = (opts: {
@@ -90,7 +94,7 @@ const getFileIndexingEstimateParamsForFile = ({
   indexingTechnique,
   processRule,
   dataset_id,
-}: GetFileIndexingEstimateParamsOptionFile): IndexingEstimateParams => {
+}: GetFileIndexingEstimateParamsOptionFile): IndexingEstimatePayload => {
   const fileIds = files.map((file) => file.id).filter((id): id is string => Boolean(id))
 
   return {
@@ -135,7 +139,7 @@ const getFileIndexingEstimateParamsForNotion = ({
   processRule,
   dataset_id,
   credential_id,
-}: GetFileIndexingEstimateParamsOptionNotion): IndexingEstimateParams => {
+}: GetFileIndexingEstimateParamsOptionNotion): IndexingEstimatePayload => {
   return {
     info_list: {
       data_source_type: dataSourceType,
@@ -180,7 +184,7 @@ const getFileIndexingEstimateParamsForWeb = ({
   indexingTechnique,
   processRule,
   dataset_id,
-}: GetFileIndexingEstimateParamsOptionWeb): IndexingEstimateParams => {
+}: GetFileIndexingEstimateParamsOptionWeb): IndexingEstimatePayload => {
   return {
     info_list: {
       data_source_type: dataSourceType,
@@ -235,35 +239,37 @@ export const useCreateDocument = (
 }
 
 export const useFetchDefaultProcessRule = (
-  mutationOptions: MutationOptions<ProcessRuleResponse, Error, string> = {},
+  mutationOptions: MutationOptions<ProcessRuleResponse, Error, void> = {},
 ) => {
   return useMutation({
-    mutationFn: async (url: string) => {
-      return fetchDefaultProcessRule({ url })
-    },
+    mutationFn: fetchDefaultProcessRule,
     ...mutationOptions,
   })
 }
 
 export const useCreatePipelineDataset = (
-  mutationOptions: MutationOptions<CreateDatasetResponse, Error> = {},
+  mutationOptions: MutationOptions<PostRagPipelineEmptyDatasetResponse, Error> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'create-pipeline-empty-dataset'],
     mutationFn: () => {
-      return post<CreateDatasetResponse>('/rag/pipeline/empty-dataset')
+      return consoleClient.rag.pipeline.emptyDataset.post()
     },
     ...mutationOptions,
   })
 }
 
 export const useCreatePipelineDatasetFromCustomized = (
-  mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreateDatasetReq> = {},
+  mutationOptions: MutationOptions<
+    PostRagPipelineDatasetResponse,
+    Error,
+    PostRagPipelineDatasetData['body']
+  > = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'create-pipeline-dataset'],
-    mutationFn: (req: CreateDatasetReq) => {
-      return post<CreateDatasetResponse>('/rag/pipeline/dataset', { body: req })
+    mutationFn: (req: PostRagPipelineDatasetData['body']) => {
+      return consoleClient.rag.pipeline.dataset.post({ body: req })
     },
     ...mutationOptions,
   })

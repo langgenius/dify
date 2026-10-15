@@ -39,7 +39,6 @@ const useKnowledgeDatasetSelection = ({
       const datasetIds = currentInputs.dataset_ids
       if (datasetIds.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({
-          url: '/datasets',
           params: {
             page: 1,
             ids: datasetIds,

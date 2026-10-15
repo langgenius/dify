@@ -220,7 +220,7 @@ describe('RetryButton (IndexFailed)', () => {
         ),
       )
 
-      mockRetryErrorDocs.mockResolvedValue({ result: 'fail' })
+      mockRetryErrorDocs.mockRejectedValue(new Error('retry failed'))
 
       render(<RetryButton datasetId="test-dataset" />)
 

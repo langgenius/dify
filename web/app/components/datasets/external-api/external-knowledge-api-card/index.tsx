@@ -106,13 +106,9 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
     if (!canManageExternalKnowledgeApi) return
 
     try {
-      const response = await deleteExternalAPI({ apiTemplateId: api.id })
-      if (response && response.result === 'success') {
-        setShowConfirm(false)
-        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
-      } else {
-        console.error('Failed to delete external API')
-      }
+      await deleteExternalAPI({ apiTemplateId: api.id })
+      setShowConfirm(false)
+      await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
     } catch (error) {
       console.error('Error deleting external knowledge API:', error)
     }

@@ -1,4 +1,3 @@
-import type { CommonResponse } from '@/models/common'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -116,7 +115,7 @@ export const usePauseIndexing = ({
   onSuccess,
   onError,
 }: UsePauseResumeOptions) => {
-  return useMutation<CommonResponse, Error>({
+  return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'pause', datasetId, documentId],
     mutationFn: () => pauseDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,
@@ -130,7 +129,7 @@ export const useResumeIndexing = ({
   onSuccess,
   onError,
 }: UsePauseResumeOptions) => {
-  return useMutation<CommonResponse, Error>({
+  return useMutation<unknown, Error>({
     mutationKey: [NAME_SPACE, 'resume', datasetId, documentId],
     mutationFn: () => resumeDocIndexing({ datasetId: datasetId!, documentId: documentId! }),
     onSuccess,

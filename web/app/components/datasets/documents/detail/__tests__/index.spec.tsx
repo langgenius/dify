@@ -535,7 +535,8 @@ describe('DocumentDetail', () => {
 
       expect(mocks.batchImport).toHaveBeenCalledWith(
         {
-          url: '/datasets/ds-1/documents/doc-1/segments/batch_import',
+          datasetId: 'ds-1',
+          documentId: 'doc-1',
           body: { upload_file_id: 'file-1' },
         },
         expect.objectContaining({

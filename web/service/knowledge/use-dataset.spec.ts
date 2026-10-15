@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createHttpError } from '@/service/http-error'
-import { get } from '../base'
+import { consoleClient } from '../console'
 import { useDatasetDetail, useDatasetRelatedApps } from './use-dataset'
 
 vi.mock('@tanstack/react-query', () => ({
@@ -11,9 +11,8 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: vi.fn(),
 }))
 
-vi.mock('../base', () => ({
-  get: vi.fn(),
-  post: vi.fn(),
+vi.mock('../console', () => ({
+  consoleClient: { datasets: { byDatasetId: { get: vi.fn() } } },
 }))
 
 vi.mock('../use-base', () => ({
@@ -21,7 +20,7 @@ vi.mock('../use-base', () => ({
 }))
 
 const mockUseQuery = vi.mocked(useQuery)
-const mockGet = vi.mocked(get)
+const mockGetDataset = vi.mocked(consoleClient.datasets.byDatasetId.get)
 
 type QueryOptions = Parameters<typeof useQuery>[0]
 type RetryFn = (failureCount: number, error: unknown) => boolean
@@ -63,7 +62,7 @@ describe('knowledge dataset hooks', () => {
 
     it('should fetch dataset detail without silent mode', () => {
       // Arrange
-      mockGet.mockResolvedValue({ id: 'dataset-1' })
+      mockGetDataset.mockResolvedValue({ id: 'dataset-1' } as never)
 
       // Act
       useDatasetDetail('dataset-1')
@@ -71,7 +70,7 @@ describe('knowledge dataset hooks', () => {
       queryFn()
 
       // Assert
-      expect(mockGet).toHaveBeenCalledWith('/datasets/dataset-1')
+      expect(mockGetDataset).toHaveBeenCalledWith({ params: { dataset_id: 'dataset-1' } })
     })
   })
 

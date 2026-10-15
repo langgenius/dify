@@ -317,7 +317,6 @@ describe('knowledge-retrieval/use-config', () => {
     })
 
     expect(mockFetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
       params: {
         page: 1,
         ids: ['dataset-1'],

@@ -761,7 +761,6 @@ export const useChecklistBeforePublish = () => {
       updateTimeRef.current = updateTimeRef.current + 1
       const currUpdateTime = updateTimeRef.current
       const { data: datasetsDetail } = await fetchDatasets({
-        url: '/datasets',
         params: { page: 1, ids: [...allDatasetIds] },
       })
       if (currUpdateTime < updateTimeRef.current) return null

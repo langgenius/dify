@@ -49,7 +49,7 @@ const Card = ({ apiEnabled }: CardProps) => {
 
   const onToggle = useCallback(
     async (state: boolean) => {
-      let result: 'success' | 'fail'
+      let result: string
       if (state) result = (await enableDatasetServiceApi(datasetId ?? '')).result
       else result = (await disableDatasetServiceApi(datasetId ?? '')).result
       if (result === 'success') mutateDatasetRes?.()

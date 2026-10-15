@@ -496,11 +496,16 @@ class DatasetUseCheckApi(Resource):
         return dump_response(UsageCheckResponse, {"is_using": result}), 200
 
 
+class DatasetQueryListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+
+
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
-    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DatasetQueryListQuery)})
     @console_ns.response(
         200,
         "Query history retrieved successfully",

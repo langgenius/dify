@@ -41,11 +41,11 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
   const onRetryErrorDocs = async () => {
     dispatch({ type: 'retry' })
     const document_ids = errorDocs?.data.map((doc: IndexingStatusResponse) => doc.id) || []
-    const res = await retryErrorDocs({ datasetId, document_ids })
-    if (res.result === 'success') {
+    try {
+      await retryErrorDocs({ datasetId, document_ids })
       refetchErrorDocs()
       dispatch({ type: 'success' })
-    } else {
+    } catch {
       dispatch({ type: 'error' })
     }
   }

@@ -1935,6 +1935,10 @@ export const zDeleteDatasetsByDatasetIdDocumentsPath = z.object({
   dataset_id: z.uuid(),
 })
 
+export const zDeleteDatasetsByDatasetIdDocumentsQuery = z.object({
+  document_id: z.array(z.string()).optional(),
+})
+
 /**
  * Documents deleted successfully
  */
@@ -1945,11 +1949,11 @@ export const zGetDatasetsByDatasetIdDocumentsPath = z.object({
 })
 
 export const zGetDatasetsByDatasetIdDocumentsQuery = z.object({
-  fetch: z.string().optional(),
+  fetch: z.string().optional().default('false'),
   keyword: z.string().optional(),
-  limit: z.string().optional(),
-  page: z.string().optional(),
-  sort: z.string().optional(),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
+  sort: z.string().optional().default('-created_at'),
   status: z.string().optional(),
 })
 
@@ -2008,6 +2012,10 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = z.void()
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath = z.object({
   action: z.string(),
   dataset_id: z.uuid(),
+})
+
+export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchQuery = z.object({
+  document_id: z.array(z.string()).optional(),
 })
 
 /**
@@ -2468,6 +2476,11 @@ export const zGetDatasetsByDatasetIdPermissionPartUsersResponse = zPartialMember
 
 export const zGetDatasetsByDatasetIdQueriesPath = z.object({
   dataset_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdQueriesQuery = z.object({
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
 })
 
 /**

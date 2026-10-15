@@ -4,6 +4,8 @@ import type {
   HitTestingChildChunk as GeneratedHitTestingChildChunk,
   HitTestingResponse as GeneratedHitTestingResponse,
   HitTestingRecord as HitTestingRecordResponse,
+  NotionInfo as NotionInfoPayload,
+  PreProcessingRule as PreProcessingRulePayload,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
@@ -143,10 +145,6 @@ export type ExternalKnowledgeItem = {
   tags: Tag[]
 }
 
-export type ExternalAPIDeleteResponse = {
-  result: 'success' | 'error'
-}
-
 export type ExternalAPIUsage = {
   is_using: boolean
   count: number
@@ -203,7 +201,6 @@ export type FileItem = {
 }
 
 export type FetchDatasetsParams = {
-  url: string
   params: {
     page: number
     ids?: string[]
@@ -296,10 +293,7 @@ type Limits = {
   indexing_max_segmentation_tokens_length: number
 }
 
-export type PreProcessingRule = {
-  id: string
-  enabled: boolean
-}
+export type PreProcessingRule = PreProcessingRulePayload
 
 type Segmentation = {
   separator: string
@@ -456,17 +450,13 @@ type DocumentReq = {
   summary_index_setting?: SummaryIndexSetting
 }
 
-export type CreateDocumentReq = DocumentReq & {
+export type CreateDocumentReq = Omit<DocumentReq, 'indexing_technique'> & {
+  indexing_technique: IndexingType
   data_source: DataSource
   retrieval_model: RetrievalConfig
   embedding_model: string
   embedding_model_provider: string
 }
-
-export type IndexingEstimateParams = DocumentReq &
-  Partial<DataSource> & {
-    dataset_id: string
-  }
 
 type DataSource = {
   type: DataSourceType
@@ -484,11 +474,7 @@ type DataSource = {
   }
 }
 
-export type NotionInfo = {
-  workspace_id: string
-  pages: DataSourceNotionPage[]
-  credential_id: string
-}
+export type NotionInfo = NotionInfoPayload
 
 export type ProcessRule = {
   mode: ProcessMode
@@ -756,24 +742,6 @@ export const DOC_FORM_TEXT: Record<ChunkingMode, ChunkingModeText> = {
   [ChunkingMode.qa]: 'qa',
   [ChunkingMode.parentChild]: 'parentChild',
   // [ChunkingMode.graph]: 'graph', // todo: Graph RAG
-}
-
-export type CreateDatasetReq = {
-  yaml_content?: string
-}
-
-export type CreateDatasetResponse = {
-  id: string
-  name: string
-  description: string
-  permission: DatasetPermission
-  indexing_technique: IndexingType
-  created_by: string
-  created_at: number
-  updated_by: string
-  updated_at: number
-  pipeline_id: string
-  dataset_id: string
 }
 
 export type IndexingStatusBatchRequest = {

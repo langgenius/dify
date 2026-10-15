@@ -252,7 +252,7 @@ const StepTwo: FC<StepTwoProps> = ({
   // Initialize rules
   useEffect(() => {
     if (!isSetting) {
-      fetchDefaultProcessRuleMutation.mutate('/datasets/process-rule')
+      fetchDefaultProcessRuleMutation.mutate()
     } else if (documentDetail) {
       const rules = documentDetail.dataset_process_rule.rules
       const isHierarchical =

@@ -12,7 +12,7 @@ from controllers.common.controller_schemas import DocumentBatchDownloadZipPayloa
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.rbac import DatasetByDocument, DatasetId, RBACCheck, enforce_rbac_checks
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -185,6 +185,10 @@ class DocumentDatasetListParam(BaseModel):
     fetch_val: str = Field("false", alias="fetch")
 
 
+class DocumentIdListQuery(BaseModel):
+    document_id: list[str] = Field(default_factory=list, description="Document IDs")
+
+
 class DocumentWithSegmentsListResponse(ResponseModel):
     data: list[DocumentWithSegmentsResponse]
     has_more: bool
@@ -347,17 +351,7 @@ class GetProcessRuleApi(Resource):
 class DatasetDocumentListApi(Resource):
     @console_ns.doc("get_dataset_documents")
     @console_ns.doc(description="Get documents in a dataset")
-    @console_ns.doc(
-        params={
-            "dataset_id": "Dataset ID",
-            "page": "Page number (default: 1)",
-            "limit": "Number of items per page (default: 20)",
-            "keyword": "Search keyword",
-            "sort": "Sort order (default: -created_at)",
-            "fetch": "Fetch full details (default: false)",
-            "status": "Filter documents by display status",
-        }
-    )
+    @console_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DocumentDatasetListParam)})
     @console_ns.response(
         200,
         "Documents retrieved successfully",
@@ -401,6 +395,7 @@ class DatasetDocumentListApi(Resource):
             _raise_document_indexing_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
+    @console_ns.doc(params=query_params_from_model(DocumentIdListQuery))
     @console_ns.response(204, "Documents deleted successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -745,6 +740,7 @@ class DocumentMetadataApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DocumentIdListQuery))
     @error_responses(InvalidActionError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(

@@ -160,7 +160,6 @@ describe('use-knowledge-dataset-selection', () => {
     })
 
     expect(mockFetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
       params: {
         page: 1,
         ids: ['dataset-1'],

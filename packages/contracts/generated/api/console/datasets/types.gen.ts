@@ -1855,7 +1855,9 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    document_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents'
 }
 
@@ -1881,8 +1883,8 @@ export type GetDatasetsByDatasetIdDocumentsData = {
   query?: {
     fetch?: string
     keyword?: string
-    limit?: string
-    page?: string
+    limit?: number
+    page?: number
     sort?: string
     status?: string
   }
@@ -2012,7 +2014,9 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
     action: string
     dataset_id: string
   }
-  query?: never
+  query?: {
+    document_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/status/{action}/batch'
 }
 
@@ -2991,7 +2995,10 @@ export type GetDatasetsByDatasetIdQueriesData = {
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/datasets/{dataset_id}/queries'
 }
 

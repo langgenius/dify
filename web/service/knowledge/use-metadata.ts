@@ -5,7 +5,8 @@ import type {
 } from '@/app/components/datasets/metadata/types'
 import type { DocumentDetailResponse } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, patch, post } from '../base'
+import { consoleClient } from '../console'
+import { narrowKnowledgeResponse } from '../datasets'
 import { useInvalid } from '../use-base'
 import { useDocumentListKey, useInvalidDocumentList } from './use-document'
 
@@ -16,10 +17,9 @@ export const useDatasetMetaData = (datasetId: string) => {
     {
       queryKey: [NAME_SPACE, 'dataset', datasetId],
       queryFn: () => {
-        return get<{
-          doc_metadata: MetadataItemWithValueLength[]
-          built_in_field_enabled: boolean
-        }>(`/datasets/${datasetId}/metadata`)
+        return narrowKnowledgeResponse(
+          consoleClient.datasets.byDatasetId.metadata.get({ params: { dataset_id: datasetId } }),
+        )
       },
     },
   )
@@ -33,7 +33,8 @@ export const useCreateMetaData = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({
     mutationFn: async (payload: BuiltInMetadataItem) => {
-      await post(`/datasets/${datasetId}/metadata`, {
+      await consoleClient.datasets.byDatasetId.metadata.post({
+        params: { dataset_id: datasetId },
         body: payload,
       })
       await invalidDatasetMetaData()
@@ -70,7 +71,8 @@ export const useRenameMeta = (datasetId: string) => {
   const invalidateAllMetaData = useInvalidAllMetaData(datasetId)
   return useMutation({
     mutationFn: async (payload: MetadataItemWithValueLength) => {
-      await patch(`/datasets/${datasetId}/metadata/${payload.id}`, {
+      await consoleClient.datasets.byDatasetId.metadata.byMetadataId.patch({
+        params: { dataset_id: datasetId, metadata_id: payload.id },
         body: {
           name: payload.name,
         },
@@ -85,7 +87,9 @@ export const useDeleteMetaData = (datasetId: string) => {
   return useMutation({
     mutationFn: async (metaDataId: string) => {
       // datasetMetaData = datasetMetaData.filter(item => item.id !== metaDataId)
-      await del(`/datasets/${datasetId}/metadata/${metaDataId}`)
+      await consoleClient.datasets.byDatasetId.metadata.byMetadataId.delete({
+        params: { dataset_id: datasetId, metadata_id: metaDataId },
+      })
       await invalidateAllMetaData()
     },
   })
@@ -95,7 +99,7 @@ export const useBuiltInMetaDataFields = () => {
   return useQuery<{ fields: BuiltInMetadataItem[] }>({
     queryKey: [NAME_SPACE, 'built-in'],
     queryFn: () => {
-      return get('/datasets/metadata/built-in')
+      return narrowKnowledgeResponse(consoleClient.datasets.metadata.builtIn.get())
     },
   })
 }
@@ -110,9 +114,12 @@ export const useDocumentMetaData = ({
   return useQuery<DocumentDetailResponse>({
     queryKey: [NAME_SPACE, 'document', datasetId, documentId],
     queryFn: () => {
-      return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, {
-        params: { metadata: 'only' },
-      })
+      return narrowKnowledgeResponse(
+        consoleClient.datasets.byDatasetId.documents.byDocumentId.get({
+          params: { dataset_id: datasetId, document_id: documentId },
+          query: { metadata: 'only' },
+        }),
+      )
     },
   })
 }
@@ -125,7 +132,8 @@ export const useBatchUpdateDocMetadata = () => {
       metadata_list: MetadataBatchEditToServer
     }) => {
       const documentIds = payload.metadata_list.map((item) => item.document_id)
-      await post(`/datasets/${payload.dataset_id}/documents/metadata`, {
+      await consoleClient.datasets.byDatasetId.documents.metadata.post({
+        params: { dataset_id: payload.dataset_id },
         body: {
           operation_data: payload.metadata_list,
         },
@@ -158,7 +166,9 @@ export const useUpdateBuiltInStatus = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({
     mutationFn: async (enabled: boolean) => {
-      await post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'enable' : 'disable'}`)
+      await consoleClient.datasets.byDatasetId.metadata.builtIn.byAction.post({
+        params: { dataset_id: datasetId, action: enabled ? 'enable' : 'disable' },
+      })
       invalidDatasetMetaData()
     },
   })

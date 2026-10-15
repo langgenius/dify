@@ -1,4 +1,3 @@
-import type { CommonResponse } from '@/models/common'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -77,9 +76,7 @@ export const useDocumentActions = ({
         const opApi = actionMutationMap[actionName]
         if (!opApi) return
 
-        const [e] = await asyncRunSafe<CommonResponse>(
-          opApi({ datasetId, documentIds: selectedIds }),
-        )
+        const [e] = await asyncRunSafe<unknown>(opApi({ datasetId, documentIds: selectedIds }))
 
         if (!e) {
           if (actionName === DocumentActionType.delete) onClearSelection()
@@ -94,7 +91,7 @@ export const useDocumentActions = ({
   )
 
   const handleBatchReIndex = useCallback(async () => {
-    const [e] = await asyncRunSafe<CommonResponse>(
+    const [e] = await asyncRunSafe<unknown>(
       retryIndexDocument({ datasetId, documentIds: selectedIds }),
     )
     if (!e) {

@@ -1,5 +1,4 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import type { CommonResponse } from '@/models/common'
 import type {
   DataSet,
   DatasetListRequest,
@@ -14,8 +13,8 @@ import type {
 } from '@/models/datasets'
 import { ORPCError } from '@orpc/client'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
-import qs from 'qs'
-import { get, post } from '../base'
+import { consoleClient } from '../console'
+import { fetchIndexingStatusBatch, narrowKnowledgeResponse } from '../datasets'
 import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset'
@@ -51,16 +50,12 @@ export const useInfiniteDatasets = (
 
   return useInfiniteQuery<DataSetListResponse>({
     queryKey: [...datasetListQueryKey, 'infinite', normalizedParams],
-    queryFn: ({ pageParam = normalizedParams.page }) => {
-      const queryString = qs.stringify(
-        {
-          ...normalizedParams,
-          page: pageParam as number | undefined,
-        },
-        { indices: false },
-      )
-      return get<DataSetListResponse>(`/datasets?${queryString}`)
-    },
+    queryFn: ({ pageParam = normalizedParams.page }) =>
+      narrowKnowledgeResponse(
+        consoleClient.datasets.get({
+          query: { ...normalizedParams, page: pageParam as number | undefined },
+        }),
+      ),
     getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     initialPageParam: normalizedParams.page,
     staleTime: 0,
@@ -73,19 +68,12 @@ export const useDatasetList = (params: DatasetListRequest) => {
   const { initialPage, tag_ids, limit, include_all, keyword } = params
   return useInfiniteQuery({
     queryKey: [...datasetListQueryKey, initialPage, tag_ids, limit, include_all, keyword],
-    queryFn: ({ pageParam = 1 }) => {
-      const urlParams = qs.stringify(
-        {
-          tag_ids,
-          limit,
-          include_all,
-          keyword,
-          page: pageParam,
-        },
-        { indices: false },
-      )
-      return get<DataSetListResponse>(`/datasets?${urlParams}`)
-    },
+    queryFn: ({ pageParam = 1 }) =>
+      narrowKnowledgeResponse<DataSetListResponse>(
+        consoleClient.datasets.get({
+          query: { tag_ids, limit, include_all, keyword, page: pageParam },
+        }),
+      ),
     getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : null),
     initialPageParam: initialPage,
     placeholderData: keepPreviousData,
@@ -101,7 +89,10 @@ export const datasetDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
 export const useDatasetDetail = (datasetId: string) => {
   return useQuery({
     queryKey: [...datasetDetailQueryKeyPrefix, datasetId],
-    queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
+    queryFn: () =>
+      narrowKnowledgeResponse<DataSet>(
+        consoleClient.datasets.byDatasetId.get({ params: { dataset_id: datasetId } }),
+      ),
     enabled: !!datasetId,
     retry: (failureCount, error) => {
       if (error instanceof ORPCError && [403, 404].includes(error.status)) return false
@@ -114,7 +105,10 @@ export const useDatasetDetail = (datasetId: string) => {
 export const useDatasetRelatedApps = (datasetId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'related-apps', datasetId],
-    queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`),
+    queryFn: () =>
+      narrowKnowledgeResponse<RelatedAppResponse>(
+        consoleClient.datasets.byDatasetId.relatedApps.get({ params: { dataset_id: datasetId } }),
+      ),
     enabled: options?.enabled ?? !!datasetId,
   })
 }
@@ -126,8 +120,7 @@ export const useIndexingStatusBatch = (
   const { datasetId, batchId } = params
   return useMutation({
     mutationKey: [NAME_SPACE, 'indexing-status-batch', datasetId, batchId],
-    mutationFn: () =>
-      get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`),
+    mutationFn: () => fetchIndexingStatusBatch({ datasetId, batchId }),
     ...mutationOptions,
   })
 }
@@ -136,7 +129,9 @@ export const useProcessRule = (documentId?: string) => {
   return useQuery<ProcessRuleResponse>({
     queryKey: [NAME_SPACE, 'process-rule', documentId],
     queryFn: () =>
-      get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } }),
+      narrowKnowledgeResponse(
+        consoleClient.datasets.processRule.get({ query: { document_id: documentId } }),
+      ),
     enabled: !!documentId,
     refetchOnWindowFocus: false,
   })
@@ -145,7 +140,7 @@ export const useProcessRule = (documentId?: string) => {
 export const useDatasetApiBaseUrl = () => {
   return useQuery<{ api_base_url: string }>({
     queryKey: [NAME_SPACE, 'api-base-info'],
-    queryFn: () => get<{ api_base_url: string }>('/datasets/api-base-info'),
+    queryFn: () => consoleClient.datasets.apiBaseInfo.get(),
   })
 }
 
@@ -153,7 +148,9 @@ export const useEnableDatasetServiceApi = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'enable-api'],
     mutationFn: (datasetId: string) =>
-      post<CommonResponse>(`/datasets/${datasetId}/api-keys/enable`),
+      consoleClient.datasets.byDatasetId.apiKeys.byStatus.post({
+        params: { dataset_id: datasetId, status: 'enable' },
+      }),
   })
 }
 
@@ -161,7 +158,9 @@ export const useDisableDatasetServiceApi = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'disable-api'],
     mutationFn: (datasetId: string) =>
-      post<CommonResponse>(`/datasets/${datasetId}/api-keys/disable`),
+      consoleClient.datasets.byDatasetId.apiKeys.byStatus.post({
+        params: { dataset_id: datasetId, status: 'disable' },
+      }),
   })
 }
 
@@ -172,7 +171,13 @@ export const useDatasetTestingRecords = (
 ) => {
   return useQuery<HitTestingRecordsResponse>({
     queryKey: [NAME_SPACE, 'testing-records', datasetId, params],
-    queryFn: () => get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params }),
+    queryFn: () =>
+      narrowKnowledgeResponse(
+        consoleClient.datasets.byDatasetId.queries.get({
+          params: { dataset_id: datasetId! },
+          query: params,
+        }),
+      ),
     enabled: !!datasetId && !!params && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   })
@@ -181,7 +186,10 @@ export const useDatasetTestingRecords = (
 export const useDatasetErrorDocs = (datasetId?: string) => {
   return useQuery<ErrorDocsResponse>({
     queryKey: [NAME_SPACE, 'error-docs', datasetId],
-    queryFn: () => get<ErrorDocsResponse>(`/datasets/${datasetId}/error-docs`),
+    queryFn: () =>
+      narrowKnowledgeResponse(
+        consoleClient.datasets.byDatasetId.errorDocs.get({ params: { dataset_id: datasetId! } }),
+      ),
     enabled: !!datasetId,
   })
 }

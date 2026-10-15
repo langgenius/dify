@@ -543,7 +543,7 @@ describe('useSegmentationState', () => {
 
     it('should update rules', () => {
       const { result } = renderHook(() => useSegmentationState())
-      const newRules: PreProcessingRule[] = [{ id: 'test', enabled: true }]
+      const newRules: PreProcessingRule[] = [{ id: 'remove_stopwords', enabled: true }]
 
       act(() => {
         result.current.setRules(newRules)
@@ -593,17 +593,17 @@ describe('useSegmentationState', () => {
 
       act(() => {
         result.current.setRules([
-          { id: 'rule1', enabled: true },
-          { id: 'rule2', enabled: false },
+          { id: 'remove_extra_spaces', enabled: true },
+          { id: 'remove_urls_emails', enabled: false },
         ])
       })
 
       act(() => {
-        result.current.toggleRule('rule1')
+        result.current.toggleRule('remove_extra_spaces')
       })
 
-      expect(result.current.rules.find((r) => r.id === 'rule1')?.enabled).toBe(false)
-      expect(result.current.rules.find((r) => r.id === 'rule2')?.enabled).toBe(false)
+      expect(result.current.rules.find((r) => r.id === 'remove_extra_spaces')?.enabled).toBe(false)
+      expect(result.current.rules.find((r) => r.id === 'remove_urls_emails')?.enabled).toBe(false)
     })
 
     it('should not affect other rules', () => {
@@ -611,17 +611,17 @@ describe('useSegmentationState', () => {
 
       act(() => {
         result.current.setRules([
-          { id: 'rule1', enabled: true },
-          { id: 'rule2', enabled: false },
+          { id: 'remove_extra_spaces', enabled: true },
+          { id: 'remove_urls_emails', enabled: false },
         ])
       })
 
       act(() => {
-        result.current.toggleRule('rule2')
+        result.current.toggleRule('remove_urls_emails')
       })
 
-      expect(result.current.rules.find((r) => r.id === 'rule1')?.enabled).toBe(true)
-      expect(result.current.rules.find((r) => r.id === 'rule2')?.enabled).toBe(true)
+      expect(result.current.rules.find((r) => r.id === 'remove_extra_spaces')?.enabled).toBe(true)
+      expect(result.current.rules.find((r) => r.id === 'remove_urls_emails')?.enabled).toBe(true)
     })
   })
 
@@ -2414,7 +2414,7 @@ describe('StepTwo Component', () => {
   describe('Initialization', () => {
     it('should fetch default process rule when not in setting mode', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
-      expect(mockFetchDefaultProcessRuleMutate).toHaveBeenCalledWith('/datasets/process-rule')
+      expect(mockFetchDefaultProcessRuleMutate).toHaveBeenCalled()
     })
 
     it('should apply config from rules when in setting mode with document detail', () => {

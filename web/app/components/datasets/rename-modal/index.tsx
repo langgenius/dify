@@ -1,4 +1,5 @@
 'use client'
+import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
@@ -54,10 +55,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     }
     try {
       setLoading(true)
-      const body: Partial<DataSet> & {
-        external_knowledge_id?: string
-        external_knowledge_api_id?: string
-      } = {
+      const body: DatasetUpdatePayload = {
         name,
         description,
         icon_info: {

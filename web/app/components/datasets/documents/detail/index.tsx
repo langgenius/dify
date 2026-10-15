@@ -117,7 +117,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const runBatch = async (csv: FileItem) => {
     await segmentBatchImport(
       {
-        url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
+        datasetId,
+        documentId,
         body: { upload_file_id: csv.file.id! },
       },
       {
