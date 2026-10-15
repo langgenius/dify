@@ -1,23 +1,11 @@
 'use client'
+import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC, JSX } from 'react'
-import type {
-  AliyunConfig,
-  ArizeConfig,
-  DatabricksConfig,
-  LangFuseConfig,
-  LangSmithConfig,
-  MLflowConfig,
-  OpikConfig,
-  PhoenixConfig,
-  TencentConfig,
-  WeaveConfig,
-} from './type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,16 +23,16 @@ export type PopupProps = {
   onStatusChange: (enabled: boolean) => void
   chosenProvider: TracingProvider | null
   onChooseProvider: (provider: TracingProvider) => void
-  arizeConfig: ArizeConfig | null
-  phoenixConfig: PhoenixConfig | null
-  langSmithConfig: LangSmithConfig | null
-  langFuseConfig: LangFuseConfig | null
-  opikConfig: OpikConfig | null
-  weaveConfig: WeaveConfig | null
-  aliyunConfig: AliyunConfig | null
-  mlflowConfig: MLflowConfig | null
-  databricksConfig: DatabricksConfig | null
-  tencentConfig: TencentConfig | null
+  arizeConfig: TraceAppConfigResponse['tracing_config']
+  phoenixConfig: TraceAppConfigResponse['tracing_config']
+  langSmithConfig: TraceAppConfigResponse['tracing_config']
+  langFuseConfig: TraceAppConfigResponse['tracing_config']
+  opikConfig: TraceAppConfigResponse['tracing_config']
+  weaveConfig: TraceAppConfigResponse['tracing_config']
+  aliyunConfig: TraceAppConfigResponse['tracing_config']
+  mlflowConfig: TraceAppConfigResponse['tracing_config']
+  databricksConfig: TraceAppConfigResponse['tracing_config']
+  tencentConfig: TraceAppConfigResponse['tracing_config']
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -69,20 +57,13 @@ const ConfigPopup: FC<PopupProps> = ({
 }) => {
   const { t } = useTranslation(['app'])
 
-  const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(
-    TracingProvider.langfuse,
-  )
-  const [isShowConfigModal, { setTrue: showConfigModal, setFalse: hideConfigModal }] =
-    useBoolean(false)
-  const handleOnConfig = useCallback(
-    (provider: TracingProvider) => {
-      return () => {
-        setCurrentProvider(provider)
-        showConfigModal()
-      }
-    },
-    [showConfigModal],
-  )
+  const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(null)
+  const hideConfigModal = () => setCurrentProvider(null)
+  const handleOnConfig = useCallback((provider: TracingProvider) => {
+    return () => {
+      setCurrentProvider(provider)
+    }
+  }, [])
 
   const handleOnChoose = useCallback(
     (provider: TracingProvider) => {
@@ -93,33 +74,20 @@ const ConfigPopup: FC<PopupProps> = ({
     [onChooseProvider],
   )
 
-  const handleConfigRemoved = useCallback(() => {
-    onConfigRemoved(currentProvider!)
-    hideConfigModal()
-  }, [currentProvider, hideConfigModal, onConfigRemoved])
-
-  const providerAllConfigured =
-    arizeConfig &&
-    phoenixConfig &&
-    langSmithConfig &&
-    langFuseConfig &&
-    opikConfig &&
-    weaveConfig &&
-    aliyunConfig &&
-    mlflowConfig &&
-    databricksConfig &&
-    tencentConfig
-  const providerAllNotConfigured =
-    !arizeConfig &&
-    !phoenixConfig &&
-    !langSmithConfig &&
-    !langFuseConfig &&
-    !opikConfig &&
-    !weaveConfig &&
-    !aliyunConfig &&
-    !mlflowConfig &&
-    !databricksConfig &&
-    !tencentConfig
+  const providerConfigs = {
+    [TracingProvider.arize]: arizeConfig,
+    [TracingProvider.phoenix]: phoenixConfig,
+    [TracingProvider.langSmith]: langSmithConfig,
+    [TracingProvider.langfuse]: langFuseConfig,
+    [TracingProvider.opik]: opikConfig,
+    [TracingProvider.weave]: weaveConfig,
+    [TracingProvider.aliyun]: aliyunConfig,
+    [TracingProvider.mlflow]: mlflowConfig,
+    [TracingProvider.databricks]: databricksConfig,
+    [TracingProvider.tencent]: tencentConfig,
+  } satisfies Record<TracingProvider, TraceAppConfigResponse['tracing_config']>
+  const providerAllConfigured = Object.values(providerConfigs).every(Boolean)
+  const providerAllNotConfigured = Object.values(providerConfigs).every((config) => !config)
 
   const switchContent = (
     <Switch
@@ -134,7 +102,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.arize}
       readOnly={readOnly}
       config={arizeConfig}
-      hasConfigured={!!arizeConfig}
       onConfig={handleOnConfig(TracingProvider.arize)}
       isChosen={chosenProvider === TracingProvider.arize}
       onChoose={handleOnChoose(TracingProvider.arize)}
@@ -147,7 +114,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.phoenix}
       readOnly={readOnly}
       config={phoenixConfig}
-      hasConfigured={!!phoenixConfig}
       onConfig={handleOnConfig(TracingProvider.phoenix)}
       isChosen={chosenProvider === TracingProvider.phoenix}
       onChoose={handleOnChoose(TracingProvider.phoenix)}
@@ -160,7 +126,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.langSmith}
       readOnly={readOnly}
       config={langSmithConfig}
-      hasConfigured={!!langSmithConfig}
       onConfig={handleOnConfig(TracingProvider.langSmith)}
       isChosen={chosenProvider === TracingProvider.langSmith}
       onChoose={handleOnChoose(TracingProvider.langSmith)}
@@ -173,7 +138,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.langfuse}
       readOnly={readOnly}
       config={langFuseConfig}
-      hasConfigured={!!langFuseConfig}
       onConfig={handleOnConfig(TracingProvider.langfuse)}
       isChosen={chosenProvider === TracingProvider.langfuse}
       onChoose={handleOnChoose(TracingProvider.langfuse)}
@@ -186,7 +150,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.opik}
       readOnly={readOnly}
       config={opikConfig}
-      hasConfigured={!!opikConfig}
       onConfig={handleOnConfig(TracingProvider.opik)}
       isChosen={chosenProvider === TracingProvider.opik}
       onChoose={handleOnChoose(TracingProvider.opik)}
@@ -199,7 +162,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.weave}
       readOnly={readOnly}
       config={weaveConfig}
-      hasConfigured={!!weaveConfig}
       onConfig={handleOnConfig(TracingProvider.weave)}
       isChosen={chosenProvider === TracingProvider.weave}
       onChoose={handleOnChoose(TracingProvider.weave)}
@@ -212,7 +174,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.aliyun}
       readOnly={readOnly}
       config={aliyunConfig}
-      hasConfigured={!!aliyunConfig}
       onConfig={handleOnConfig(TracingProvider.aliyun)}
       isChosen={chosenProvider === TracingProvider.aliyun}
       onChoose={handleOnChoose(TracingProvider.aliyun)}
@@ -225,7 +186,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.mlflow}
       readOnly={readOnly}
       config={mlflowConfig}
-      hasConfigured={!!mlflowConfig}
       onConfig={handleOnConfig(TracingProvider.mlflow)}
       isChosen={chosenProvider === TracingProvider.mlflow}
       onChoose={handleOnChoose(TracingProvider.mlflow)}
@@ -238,7 +198,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.databricks}
       readOnly={readOnly}
       config={databricksConfig}
-      hasConfigured={!!databricksConfig}
       onConfig={handleOnConfig(TracingProvider.databricks)}
       isChosen={chosenProvider === TracingProvider.databricks}
       onChoose={handleOnChoose(TracingProvider.databricks)}
@@ -251,7 +210,6 @@ const ConfigPopup: FC<PopupProps> = ({
       type={TracingProvider.tencent}
       readOnly={readOnly}
       config={tencentConfig}
-      hasConfigured={!!tencentConfig}
       onConfig={handleOnConfig(TracingProvider.tencent)}
       isChosen={chosenProvider === TracingProvider.tencent}
       onChoose={handleOnChoose(TracingProvider.tencent)}
@@ -308,19 +266,6 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!tencentConfig) notConfiguredPanels.push(tencentPanel)
 
     return notConfiguredPanels
-  }
-
-  const configuredProviderConfig = () => {
-    if (currentProvider === TracingProvider.mlflow) return mlflowConfig
-    if (currentProvider === TracingProvider.databricks) return databricksConfig
-    if (currentProvider === TracingProvider.arize) return arizeConfig
-    if (currentProvider === TracingProvider.phoenix) return phoenixConfig
-    if (currentProvider === TracingProvider.langSmith) return langSmithConfig
-    if (currentProvider === TracingProvider.langfuse) return langFuseConfig
-    if (currentProvider === TracingProvider.opik) return opikConfig
-    if (currentProvider === TracingProvider.aliyun) return aliyunConfig
-    if (currentProvider === TracingProvider.tencent) return tencentConfig
-    return weaveConfig
   }
 
   return (
@@ -403,15 +348,18 @@ const ConfigPopup: FC<PopupProps> = ({
           </>
         )}
       </div>
-      {isShowConfigModal && (
+      {currentProvider !== null && (
         <ProviderConfigModal
           appId={appId}
-          type={currentProvider!}
-          payload={configuredProviderConfig()}
+          type={currentProvider}
+          payload={providerConfigs[currentProvider]}
           onCancel={hideConfigModal}
           onSaved={hideConfigModal}
           onChosen={onChooseProvider}
-          onRemoved={handleConfigRemoved}
+          onRemoved={() => {
+            onConfigRemoved(currentProvider)
+            hideConfigModal()
+          }}
         />
       )}
     </div>

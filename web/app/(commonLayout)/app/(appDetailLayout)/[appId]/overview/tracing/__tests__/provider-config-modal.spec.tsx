@@ -1,15 +1,4 @@
-import type {
-  AliyunConfig,
-  ArizeConfig,
-  DatabricksConfig,
-  LangFuseConfig,
-  LangSmithConfig,
-  MLflowConfig,
-  OpikConfig,
-  PhoenixConfig,
-  TencentConfig,
-  WeaveConfig,
-} from '../type'
+import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
@@ -37,18 +26,6 @@ const expectRequest = async (method: string, body?: unknown) => {
 vi.mock('@/app/notifications', () => ({
   toast: vi.fn(),
 }))
-
-type ProviderPayload =
-  | AliyunConfig
-  | ArizeConfig
-  | DatabricksConfig
-  | LangFuseConfig
-  | LangSmithConfig
-  | MLflowConfig
-  | OpikConfig
-  | PhoenixConfig
-  | TencentConfig
-  | WeaveConfig
 
 const validConfigs = {
   [TracingProvider.arize]: {
@@ -108,7 +85,7 @@ const validConfigs = {
     endpoint: 'https://your-region.cls.tencentcs.com',
     service_name: 'dify_app',
   },
-} satisfies Record<TracingProvider, ProviderPayload>
+} satisfies Record<TracingProvider, TraceConfigPayload['tracing_config']>
 
 const providerFieldLabels = [
   [
@@ -151,7 +128,7 @@ const providerFieldLabels = [
 
 const invalidConfigCases: Array<{
   provider: TracingProvider
-  payload: ProviderPayload
+  payload: TraceConfigPayload['tracing_config']
   missingField: string
 }> = [
   {
@@ -294,7 +271,7 @@ const renderProviderConfigModal = ({
   payload,
 }: {
   type?: TracingProvider
-  payload?: ProviderPayload | null
+  payload?: TraceConfigPayload['tracing_config'] | null
 } = {}) => {
   const callbacks = {
     onCancel: vi.fn(),
@@ -421,6 +398,23 @@ describe('ProviderConfigModal', () => {
         expect(callbacks.onChosen).not.toHaveBeenCalled()
       },
     )
+
+    it('displays nullable provider fields as empty without changing their submitted values', async () => {
+      const user = userEvent.setup()
+      const payload = { ...validConfigs[TracingProvider.mlflow], username: null }
+      const callbacks = renderProviderConfigModal({ type: TracingProvider.mlflow, payload })
+
+      expect(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.username' }),
+      ).toHaveValue('')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', {
+        tracing_provider: TracingProvider.mlflow,
+        tracing_config: payload,
+      })
+    })
 
     it('keeps the draft on failure, prevents duplicate saves while pending, and allows retry', async () => {
       const user = userEvent.setup()

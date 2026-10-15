@@ -2,18 +2,6 @@
 
 import type { AppTracePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type {
-  AliyunConfig,
-  ArizeConfig,
-  DatabricksConfig,
-  LangFuseConfig,
-  LangSmithConfig,
-  MLflowConfig,
-  OpikConfig,
-  PhoenixConfig,
-  TencentConfig,
-  WeaveConfig,
-} from './type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -49,10 +37,13 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
       }),
     ),
   })
-  const configs = Object.fromEntries(
+  const configs = new Map(
     providers.map((provider, index) => {
       const response = configQueries[index]?.data
-      return [provider, response?.has_not_configured ? null : (response?.tracing_config ?? null)]
+      return [
+        provider,
+        response?.has_not_configured ? null : (response?.tracing_config ?? null),
+      ] as const
     }),
   )
   const { mutate: updateTracingStatus } = useMutation(
@@ -97,17 +88,7 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
     ? providerIconClassMap[inUseTracingProvider]
     : undefined
 
-  const arizeConfig = configs[TracingProvider.arize] as ArizeConfig | null
-  const phoenixConfig = configs[TracingProvider.phoenix] as PhoenixConfig | null
-  const langSmithConfig = configs[TracingProvider.langSmith] as LangSmithConfig | null
-  const langFuseConfig = configs[TracingProvider.langfuse] as LangFuseConfig | null
-  const opikConfig = configs[TracingProvider.opik] as OpikConfig | null
-  const weaveConfig = configs[TracingProvider.weave] as WeaveConfig | null
-  const aliyunConfig = configs[TracingProvider.aliyun] as AliyunConfig | null
-  const mlflowConfig = configs[TracingProvider.mlflow] as MLflowConfig | null
-  const databricksConfig = configs[TracingProvider.databricks] as DatabricksConfig | null
-  const tencentConfig = configs[TracingProvider.tencent] as TencentConfig | null
-  const hasConfiguredTracing = Object.values(configs).some(Boolean)
+  const hasConfiguredTracing = [...configs.values()].some((config) => config !== null)
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({ enabled: false, tracing_provider: null }, true)
@@ -136,16 +117,16 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
           onStatusChange={handleTracingEnabledChange}
           chosenProvider={inUseTracingProvider}
           onChooseProvider={handleChooseProvider}
-          arizeConfig={arizeConfig}
-          phoenixConfig={phoenixConfig}
-          langSmithConfig={langSmithConfig}
-          langFuseConfig={langFuseConfig}
-          opikConfig={opikConfig}
-          weaveConfig={weaveConfig}
-          aliyunConfig={aliyunConfig}
-          mlflowConfig={mlflowConfig}
-          databricksConfig={databricksConfig}
-          tencentConfig={tencentConfig}
+          arizeConfig={configs.get(TracingProvider.arize)}
+          phoenixConfig={configs.get(TracingProvider.phoenix)}
+          langSmithConfig={configs.get(TracingProvider.langSmith)}
+          langFuseConfig={configs.get(TracingProvider.langfuse)}
+          opikConfig={configs.get(TracingProvider.opik)}
+          weaveConfig={configs.get(TracingProvider.weave)}
+          aliyunConfig={configs.get(TracingProvider.aliyun)}
+          mlflowConfig={configs.get(TracingProvider.mlflow)}
+          databricksConfig={configs.get(TracingProvider.databricks)}
+          tencentConfig={configs.get(TracingProvider.tencent)}
           onConfigRemoved={handleTracingConfigRemoved}
         >
           <div
@@ -177,16 +158,16 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
           onStatusChange={handleTracingEnabledChange}
           chosenProvider={inUseTracingProvider}
           onChooseProvider={handleChooseProvider}
-          arizeConfig={arizeConfig}
-          phoenixConfig={phoenixConfig}
-          langSmithConfig={langSmithConfig}
-          langFuseConfig={langFuseConfig}
-          opikConfig={opikConfig}
-          weaveConfig={weaveConfig}
-          aliyunConfig={aliyunConfig}
-          mlflowConfig={mlflowConfig}
-          databricksConfig={databricksConfig}
-          tencentConfig={tencentConfig}
+          arizeConfig={configs.get(TracingProvider.arize)}
+          phoenixConfig={configs.get(TracingProvider.phoenix)}
+          langSmithConfig={configs.get(TracingProvider.langSmith)}
+          langFuseConfig={configs.get(TracingProvider.langfuse)}
+          opikConfig={configs.get(TracingProvider.opik)}
+          weaveConfig={configs.get(TracingProvider.weave)}
+          aliyunConfig={configs.get(TracingProvider.aliyun)}
+          mlflowConfig={configs.get(TracingProvider.mlflow)}
+          databricksConfig={configs.get(TracingProvider.databricks)}
+          tencentConfig={configs.get(TracingProvider.tencent)}
           onConfigRemoved={handleTracingConfigRemoved}
         >
           <div
