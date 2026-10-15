@@ -40,6 +40,7 @@ from core.dify_builder.real_call_consent import (
     InstalledToolBinding,
     gmail_message_url,
 )
+from services.dify_builder.revision import node_config_digest
 
 # Explicitly unavailable until a reviewed local artifact passes its audit.
 QUALIFIED_GMAIL_ARTIFACT: str | None = None
@@ -387,7 +388,7 @@ def admit_get_message_workflow(snapshot: RestrictedAdmissionSnapshot) -> GmailRe
                 node_id=node_id,
                 implementation=f"{cls.__module__}.{cls.__qualname__}",
                 node_version="1",
-                normalized_config_digest=canonical_digest({**data, "version": "1"}),
+                normalized_config_digest=node_config_digest(data),
             )
         )
     return GmailReadAdmission(

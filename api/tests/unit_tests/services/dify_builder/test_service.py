@@ -951,7 +951,6 @@ def test_internal_action_state_guards(
     for kind, payload in (
         ("message", {"text": "context", "client_turn_id": "turn-2"}),
         ("update_model", {}),
-        ("check_recovery", {}),
     ):
         with pytest.raises(BadRequestError, match="not allowed"):
             service.submit_action(working.id, _actor(), Action(kind=kind, payload=payload, base_version=1))
@@ -960,6 +959,12 @@ def test_internal_action_state_guards(
     with pytest.raises(BadRequestError, match="not allowed"):
         service.submit_message(terminal.id, _actor(), "context", base_version=1, client_turn_id="turn-3")
     assert enqueued == []
+    # An interrupted working handler can classify drift without executing it.
+    _view, expect_advance, items = service._prepare_action(
+        working.id, _actor(), Action(kind="check_recovery", base_version=1)
+    )
+    assert expect_advance is True
+    assert items == []
 
 
 def test_stop_resume_and_recovery_actions_require_current_context(
