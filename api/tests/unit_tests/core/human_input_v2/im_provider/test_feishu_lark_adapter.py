@@ -150,13 +150,14 @@ def _tenant_response(tenant_key: str = "tenant_sanitized") -> Mapping[str, objec
 
 def _accepted_card_reference(
     monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     *,
     message_id: str = "om_sanitized_card",
 ) -> MessageLocator:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response())
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": message_id}})
-    source = _adapter(monkeypatch, IMProvider.FEISHU, source_gateway)
+    source = _adapter(monkeypatch, provider, source_gateway)
     accepted = source.dynamic_card_messaging.send_card(
         ProviderUserId("union_sanitized_user"),
         _intent(),
@@ -168,11 +169,12 @@ def _accepted_card_reference(
 
 def _assert_invalid_reference_without_mutation(
     monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     opaque: str,
 ) -> None:
     invalid = MessageLocator(opaque)
     replacement_gateway = FakeSDKGateway()
-    replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
+    replacement = _adapter(monkeypatch, provider, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(invalid, StaticCardIntent("Submitted"))
 
@@ -343,7 +345,9 @@ def test_credentials_accept_open_department_id_only_root_children(
         (_tenant_response(), {"code": 403, "msg": "sanitized permission rejection"}, CredentialTestFailureKind.UNKNOWN),
     ],
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_credential_failure_is_classified_and_safe(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     tenant_response: Mapping[str, object],
     scope_response: Mapping[str, object] | None,
@@ -353,7 +357,7 @@ def test_credential_failure_is_classified_and_safe(
     gateway.tenant_responses.append(tenant_response)
     if scope_response is not None:
         gateway.scope_responses.append(scope_response)
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.test_credentials()
 
@@ -413,14 +417,16 @@ def test_credential_failure_is_classified_and_safe(
     ],
     ids=("missing-token", "token-loop", "rejected-page", "transport-failure", "invalid-has-more", "invalid-token"),
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_credentials_reject_incomplete_or_malformed_scope_pagination(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     scope_responses: list[Mapping[str, object] | Exception],
 ) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
     gateway.scope_responses.extend(scope_responses)
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.test_credentials()
 
@@ -465,7 +471,9 @@ def test_credentials_reject_non_integer_scope_success_code(
     ],
     ids=("transport-failure", "permission-rejection", "missing-data", "invalid-shape", "invalid-department"),
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_credentials_require_authoritative_root_department_proof(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     root_response: Mapping[str, object] | Exception,
 ) -> None:
@@ -478,7 +486,7 @@ def test_credentials_require_authoritative_root_department_proof(
         )
     )
     gateway.department_responses.append(root_response)
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.test_credentials()
 
@@ -561,18 +569,23 @@ def test_directory_projects_avatar_from_captured_user(
 
 
 @pytest.mark.parametrize("avatar", [None, {}, {"avatar_240": " "}])
-def test_directory_accepts_unavailable_avatar(monkeypatch: pytest.MonkeyPatch, avatar: object) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_directory_accepts_unavailable_avatar(
+    monkeypatch: pytest.MonkeyPatch, avatar: object, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     gateway = FakeSDKGateway()
     gateway.user_responses.append(_page([{"union_id": "union_user", "avatar": avatar}]))
     gateway.department_responses.append(_page([]))
 
-    result = _adapter(monkeypatch, IMProvider.FEISHU, gateway).directory.read_directory()
+    result = _adapter(monkeypatch, provider, gateway).directory.read_directory()
 
     assert isinstance(result, Directory)
     assert result.entries[0].avatar is None
 
 
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_directory_downloads_avatars_in_bounded_batches(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     mocker: MockerFixture,
 ) -> None:
@@ -612,7 +625,7 @@ def test_directory_downloads_avatars_in_bounded_batches(
 
     mocker.patch("core.file.remote_fetcher.make_request", side_effect=download)
 
-    result = _adapter(monkeypatch, IMProvider.FEISHU, gateway).directory.read_directory()
+    result = _adapter(monkeypatch, provider, gateway).directory.read_directory()
 
     assert isinstance(result, Directory)
     assert peak == 8
@@ -632,7 +645,9 @@ def test_directory_downloads_avatars_in_bounded_batches(
         (200, "image/png", b"", False),
     ],
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_directory_handles_missing_avatar_and_rejects_failed_avatar_download(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     mocker: MockerFixture,
     status: int,
@@ -658,7 +673,7 @@ def test_directory_handles_missing_avatar_and_rejects_failed_avatar_download(
     )
     mocker.patch("core.file.remote_fetcher.make_request", return_value=response)
 
-    result = _adapter(monkeypatch, IMProvider.FEISHU, gateway).directory.read_directory()
+    result = _adapter(monkeypatch, provider, gateway).directory.read_directory()
 
     if missing:
         assert isinstance(result, Directory)
@@ -729,12 +744,15 @@ def test_directory_accepts_independently_omitted_items_on_empty_terminal_pages(
     ]
 
 
-def test_directory_discards_partial_entries_after_later_page_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_directory_discards_partial_entries_after_later_page_failure(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     gateway = FakeSDKGateway()
     gateway.user_responses.extend(
         [_page([{"union_id": "union_root", "name": "Root User"}], next_page_token="next"), RuntimeError("raw")]
     )
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.directory.read_directory()
 
@@ -758,7 +776,9 @@ def test_empty_directory_is_a_complete_successful_snapshot(
     assert result == Directory(())
 
 
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_directory_ignores_scope_entries_and_publishes_only_root_bfs_users(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     gateway = FakeSDKGateway()
@@ -772,7 +792,7 @@ def test_directory_ignores_scope_entries_and_publishes_only_root_bfs_users(
         _page([{"union_id": "union_root", "name": "Root User", "email": "root@example.invalid"}])
     )
     gateway.department_responses.append(_page([]))
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.directory.read_directory()
 
@@ -783,7 +803,9 @@ def test_directory_ignores_scope_entries_and_publishes_only_root_bfs_users(
     ]
 
 
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_directory_preserves_listing_profile_facts_and_missing_values(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     gateway = FakeSDKGateway()
@@ -807,7 +829,7 @@ def test_directory_preserves_listing_profile_facts_and_missing_values(
         )
     )
     gateway.department_responses.append(_page([]))
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.directory.read_directory()
 
@@ -967,7 +989,9 @@ def test_directory_rejects_malformed_non_empty_pages_after_partial_accumulation(
         "department-invalid-has-more",
     ],
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_directory_rejects_incomplete_or_malformed_department_pages_without_partial_snapshot(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     failure_case: str,
 ) -> None:
@@ -1006,7 +1030,7 @@ def test_directory_rejects_incomplete_or_malformed_department_pages_without_part
             gateway.department_responses.append(_page([{}]))
         else:
             gateway.department_responses.append({"code": 0, "data": {"items": [], "has_more": "false"}})
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.directory.read_directory()
 
@@ -1023,13 +1047,15 @@ def test_directory_rejects_incomplete_or_malformed_department_pages_without_part
         {"union_id": ["union_sanitized_user"]},
     ],
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_malformed_directory_identity_fails_without_partial_snapshot(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     malformed_user: Mapping[str, object],
 ) -> None:
     gateway = FakeSDKGateway()
     gateway.user_responses.append(_page([{"union_id": "union_valid", "name": "Valid User"}, malformed_user]))
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.directory.read_directory()
 
@@ -1080,11 +1106,14 @@ def test_text_send_uses_union_id_exact_plain_text_and_one_creation(
     assert json.loads(content) == {"text": "Rendered plain text"}
 
 
-def test_text_send_falls_back_to_content_equivalent_plain_text(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_text_send_falls_back_to_content_equivalent_plain_text(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
     gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_message"}})
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.messaging.send_text(
         ProviderUserId("union_sanitized_user"),
@@ -1096,11 +1125,14 @@ def test_text_send_falls_back_to_content_equivalent_plain_text(monkeypatch: pyte
     assert json.loads(creation[1][2]) == {"text": "Decision: Approve"}
 
 
-def test_ambiguous_text_send_is_safe_and_never_replayed(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_ambiguous_text_send_is_safe_and_never_replayed(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
     gateway.create_responses.append(RuntimeError("sensitive raw provider response"))
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.messaging.send_text(ProviderUserId("union_sanitized_user"), "Rendered text")
 
@@ -1109,11 +1141,14 @@ def test_ambiguous_text_send_is_safe_and_never_replayed(monkeypatch: pytest.Monk
     assert len([call for call in gateway.calls if call[0] == "create_message"]) == 1
 
 
-def test_explicit_text_rejection_is_safe_and_attempted_once(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_explicit_text_rejection_is_safe_and_attempted_once(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
     gateway.create_responses.append({"code": 230001, "msg": "sanitized rejection"})
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.messaging.send_text(ProviderUserId("union_sanitized_user"), "Rendered text")
 
@@ -1141,12 +1176,14 @@ def test_text_send_rejects_non_integer_success_code(
 
 
 @pytest.mark.parametrize("input_type", ["file", "file-list"])
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_file_controls_make_whole_card_unrepresentable_without_mutation(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     input_type: str,
 ) -> None:
     gateway = FakeSDKGateway()
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
     intent = _intent(input_type)
 
     assessment = adapter.dynamic_card_messaging.assess(intent)
@@ -1238,7 +1275,9 @@ def test_card_renderer_matches_provider_confirmed_form_contract(
         ({"code": 0, "data": {"message_id": ""}}, "response-validation"),
     ],
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_card_send_logs_only_the_safe_acceptance_failure_stage(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     provider_response: Mapping[str, object] | Exception,
@@ -1247,7 +1286,7 @@ def test_card_send_logs_only_the_safe_acceptance_failure_stage(
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
     gateway.create_responses.append(provider_response)
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, gateway)
+    adapter = _adapter(monkeypatch, provider, gateway)
 
     result = adapter.dynamic_card_messaging.send_card(
         ProviderUserId("union_sanitized_user"),
@@ -1255,7 +1294,7 @@ def test_card_send_logs_only_the_safe_acceptance_failure_stage(
         CorrelationToken("synthetic-correlation-token"),
     )
 
-    assert result == MessageSendingError("Feishu card acceptance could not be confirmed.")
+    assert result == MessageSendingError(f"{provider.name.title()} card acceptance could not be confirmed.")
     assert len([call for call in gateway.calls if call[0] == "create_message"]) == 1
     assert any(
         record.name == adapter_module.__name__
@@ -1266,11 +1305,14 @@ def test_card_send_logs_only_the_safe_acceptance_failure_stage(
     assert "sensitive SDK exception" not in caplog.text
 
 
-def test_reference_round_trips_and_updates_only_exact_original_message(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_reference_round_trips_and_updates_only_exact_original_message(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response())
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_card"}})
-    source = _adapter(monkeypatch, IMProvider.FEISHU, source_gateway)
+    source = _adapter(monkeypatch, provider, source_gateway)
     accepted = source.dynamic_card_messaging.send_card(
         ProviderUserId("union_sanitized_user"),
         _intent(),
@@ -1281,7 +1323,7 @@ def test_reference_round_trips_and_updates_only_exact_original_message(monkeypat
     serialized_payload = base64.urlsafe_b64decode(str(accepted.locator) + padding)
     assert json.loads(serialized_payload) == {
         "v": 1,
-        "p": "feishu",
+        "p": provider.value,
         "message_id": "om_sanitized_card",
     }
     persisted = MessageLocator(str(accepted.locator))
@@ -1289,7 +1331,7 @@ def test_reference_round_trips_and_updates_only_exact_original_message(monkeypat
     replacement_gateway = FakeSDKGateway()
     replacement_gateway.tenant_responses.append(_tenant_response())
     replacement_gateway.patch_responses.append({"code": 0, "data": {}})
-    replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
+    replacement = _adapter(monkeypatch, provider, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(
         persisted,
@@ -1399,11 +1441,14 @@ def test_cross_provider_reference_is_invalid_without_mutation(monkeypatch: pytes
     assert not lark_gateway.calls
 
 
-def test_malformed_reference_is_invalid_without_provider_io(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_malformed_reference_is_invalid_without_provider_io(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response())
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_card"}})
-    source = _adapter(monkeypatch, IMProvider.FEISHU, source_gateway)
+    source = _adapter(monkeypatch, provider, source_gateway)
     accepted = source.dynamic_card_messaging.send_card(
         ProviderUserId("union_sanitized_user"),
         _intent(),
@@ -1414,7 +1459,7 @@ def test_malformed_reference_is_invalid_without_provider_io(monkeypatch: pytest.
     malformed_suffix = "A" if not locator_value.endswith("A") else "B"
     malformed = MessageLocator(locator_value[:-1] + malformed_suffix)
     replacement_gateway = FakeSDKGateway()
-    replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
+    replacement = _adapter(monkeypatch, provider, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(malformed, StaticCardIntent("Submitted"))
 
@@ -1423,30 +1468,38 @@ def test_malformed_reference_is_invalid_without_provider_io(monkeypatch: pytest.
     assert replacement_gateway.calls == []
 
 
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_reference_rejects_redundant_base64_padding_without_message_mutation(
     monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
 ) -> None:
-    reference = _accepted_card_reference(monkeypatch)
+    reference = _accepted_card_reference(monkeypatch, provider)
 
-    _assert_invalid_reference_without_mutation(monkeypatch, f"{str(reference)}=")
+    _assert_invalid_reference_without_mutation(monkeypatch, provider, f"{str(reference)}=")
 
 
 @pytest.mark.parametrize(
-    ("message_id", "canonical_character", "standard_base64_alias"),
-    [("om_\u00be", "-", "+"), ("om_\u00bf", "_", "/")],
-    ids=("plus-alias", "slash-alias"),
+    ("provider", "message_id", "canonical_character", "standard_base64_alias"),
+    [
+        (IMProvider.FEISHU, "om_\u00be", "-", "+"),
+        (IMProvider.FEISHU, "om_\u00bf", "_", "/"),
+        (IMProvider.LARK, "om_xx\u00be", "-", "+"),
+        (IMProvider.LARK, "om_xx\u00bf", "_", "/"),
+    ],
+    ids=("feishu-plus-alias", "feishu-slash-alias", "lark-plus-alias", "lark-slash-alias"),
 )
 def test_reference_rejects_standard_base64_aliases_without_message_mutation(
     monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     message_id: str,
     canonical_character: str,
     standard_base64_alias: str,
 ) -> None:
-    reference = _accepted_card_reference(monkeypatch, message_id=message_id)
+    reference = _accepted_card_reference(monkeypatch, provider, message_id=message_id)
     assert canonical_character in str(reference)
     aliased_payload = str(reference).replace(canonical_character, standard_base64_alias)
 
-    _assert_invalid_reference_without_mutation(monkeypatch, aliased_payload)
+    _assert_invalid_reference_without_mutation(monkeypatch, provider, aliased_payload)
 
 
 @pytest.mark.parametrize(
@@ -1458,21 +1511,26 @@ def test_reference_rejects_standard_base64_aliases_without_message_mutation(
     ],
     ids=("leading-dot", "trailing-dot", "extra-segment"),
 )
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_reference_rejects_extra_segments_and_dots_without_message_mutation(
     monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     opaque_template: str,
 ) -> None:
-    reference = _accepted_card_reference(monkeypatch)
+    reference = _accepted_card_reference(monkeypatch, provider)
     opaque = opaque_template.format(reference=str(reference))
 
-    _assert_invalid_reference_without_mutation(monkeypatch, opaque)
+    _assert_invalid_reference_without_mutation(monkeypatch, provider, opaque)
 
 
-def test_reference_does_not_require_tenant_lookup_before_patch(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_reference_does_not_require_tenant_lookup_before_patch(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response("tenant_source"))
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_card"}})
-    source = _adapter(monkeypatch, IMProvider.FEISHU, source_gateway)
+    source = _adapter(monkeypatch, provider, source_gateway)
     accepted = source.dynamic_card_messaging.send_card(
         ProviderUserId("union_sanitized_user"),
         _intent(),
@@ -1481,7 +1539,7 @@ def test_reference_does_not_require_tenant_lookup_before_patch(monkeypatch: pyte
     assert isinstance(accepted, MessageAccepted)
     replacement_gateway = FakeSDKGateway()
     replacement_gateway.patch_responses.append({"code": 0, "data": {}})
-    replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
+    replacement = _adapter(monkeypatch, provider, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(
         accepted.locator,
@@ -1493,14 +1551,16 @@ def test_reference_does_not_require_tenant_lookup_before_patch(monkeypatch: pyte
 
 
 @pytest.mark.parametrize("provider_code", [230001, 230011, 230020])
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_provider_stale_reference_is_classified_without_replay(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
     provider_code: int,
 ) -> None:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response())
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_card"}})
-    source = _adapter(monkeypatch, IMProvider.FEISHU, source_gateway)
+    source = _adapter(monkeypatch, provider, source_gateway)
     accepted = source.dynamic_card_messaging.send_card(
         ProviderUserId("union_sanitized_user"),
         _intent(),
@@ -1510,7 +1570,7 @@ def test_provider_stale_reference_is_classified_without_replay(
     replacement_gateway = FakeSDKGateway()
     replacement_gateway.tenant_responses.append(_tenant_response())
     replacement_gateway.patch_responses.append({"code": provider_code, "msg": "sanitized stale response"})
-    replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
+    replacement = _adapter(monkeypatch, provider, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(
         accepted.locator,
@@ -1555,10 +1615,12 @@ def test_card_replacement_rejects_non_integer_success_code(
     assert len([call for call in replacement_gateway.calls if call[0] == "patch_message"]) == 1
 
 
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_root_close_blocks_new_capability_access_without_invalidating_created_handler(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU, FakeSDKGateway())
+    adapter = _adapter(monkeypatch, provider, FakeSDKGateway())
     directory = adapter.directory
 
     adapter.close()

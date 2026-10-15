@@ -1,0 +1,670 @@
+{
+  "token": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+      "body": {
+        "app_id": "cli_sanitized_lark_app",
+        "app_secret": "sanitized-lark-app-secret"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "code": 0,
+        "expire": 7200,
+        "msg": "ok",
+        "tenant_access_token": "t-sanitized-lark-access-token"
+      }
+    }
+  },
+  "tenant": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/tenant/v2/tenant/query",
+      "body": null
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "tenant": {
+            "avatar": {
+              "avatar_240": "sanitized",
+              "avatar_640": "sanitized",
+              "avatar_72": "sanitized",
+              "avatar_origin": "sanitized"
+            },
+            "display_id": "sanitized",
+            "name": "sanitized",
+            "tenant_key": "tenant_lark_sanitized",
+            "tenant_tag": 0
+          }
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "scope": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/contact/v3/scopes?page_size=50&department_id_type=department_id&user_id_type=union_id",
+      "body": null
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "has_more": false,
+          "user_ids": [
+            "union_lark_user",
+            "union_lark_user_2"
+          ]
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "users": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/contact/v3/users/find_by_department?department_id=0&department_id_type=department_id&user_id_type=union_id&page_size=50",
+      "body": null
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "has_more": false,
+          "items": [
+            {
+              "city": "",
+              "country": "",
+              "email": "lark-user@example.invalid",
+              "employee_no": "",
+              "employee_type": 1,
+              "is_tenant_manager": true,
+              "job_title": "",
+              "join_time": 0,
+              "mobile_visible": true,
+              "open_id": "open_lark_user",
+              "status": {
+                "is_activated": true,
+                "is_exited": false,
+                "is_frozen": false,
+                "is_resigned": false,
+                "is_unjoin": false
+              },
+              "union_id": "union_lark_user",
+              "user_id": "lark_user",
+              "work_station": ""
+            },
+            {
+              "city": "",
+              "country": "",
+              "email": "lark-user-2@example.invalid",
+              "employee_no": "",
+              "employee_type": 1,
+              "is_tenant_manager": false,
+              "job_title": "",
+              "join_time": 1800000000,
+              "mobile_visible": true,
+              "open_id": "open_lark_user_2",
+              "status": {
+                "is_activated": false,
+                "is_exited": false,
+                "is_frozen": false,
+                "is_resigned": false,
+                "is_unjoin": true
+              },
+              "union_id": "union_lark_user_2",
+              "user_id": "lark_user_2",
+              "work_station": ""
+            }
+          ]
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "departments": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/contact/v3/departments/0/children?department_id_type=department_id&user_id_type=union_id&fetch_child=False&page_size=50",
+      "body": null
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "has_more": false
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "scope_restricted": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/contact/v3/scopes?page_size=50&department_id_type=department_id&user_id_type=union_id",
+      "body": null
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "has_more": false,
+          "user_ids": [
+            "union_lark_user"
+          ]
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "users_denied": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/contact/v3/users/find_by_department?department_id=0&department_id_type=department_id&user_id_type=union_id&page_size=50",
+      "body": null
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 40004,
+        "msg": "sanitized",
+        "error": {
+          "log_id": "sanitized"
+        }
+      }
+    }
+  },
+  "departments_denied": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/contact/v3/departments/0/children?department_id_type=department_id&user_id_type=union_id&fetch_child=False&page_size=50",
+      "body": null
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 40004,
+        "msg": "sanitized",
+        "error": {
+          "log_id": "sanitized"
+        }
+      }
+    }
+  },
+  "user_detail": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/contact/v3/users/union_lark_user?user_id_type=union_id&department_id_type=department_id",
+      "body": null
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "user": {
+            "city": "",
+            "country": "",
+            "email": "lark-user@example.invalid",
+            "employee_no": "",
+            "employee_type": 1,
+            "is_tenant_manager": true,
+            "job_title": "",
+            "join_time": 0,
+            "mobile_visible": true,
+            "open_id": "open_lark_user",
+            "status": {
+              "is_activated": true,
+              "is_exited": false,
+              "is_frozen": false,
+              "is_resigned": false,
+              "is_unjoin": false
+            },
+            "union_id": "union_lark_user",
+            "user_id": "lark_user",
+            "work_station": ""
+          }
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "invalid_credentials": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal",
+      "body": {
+        "app_id": "cli_sanitized_lark_app",
+        "app_secret": "invalid-test-secret"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "code": 10014,
+        "msg": "sanitized"
+      }
+    }
+  },
+  "text": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=union_id",
+      "body": {
+        "receive_id": "union_lark_user",
+        "msg_type": "text",
+        "content": "{\"text\":\"Lark protocol capture: unit tests\\n测试消息\"}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "body": {
+            "content": "{\"text\":\"Lark protocol capture: unit tests\\n测试消息\"}"
+          },
+          "chat_id": "oc_lark_chat",
+          "create_time": "1800000000000",
+          "deleted": false,
+          "message_id": "om_lark_text",
+          "msg_type": "text",
+          "sender": {
+            "id": "cli_sanitized_lark_app",
+            "id_type": "app_id",
+            "sender_type": "app",
+            "tenant_key": "tenant_lark_sanitized"
+          },
+          "update_time": "1800000000000",
+          "updated": false
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "card": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=union_id",
+      "body": {
+        "receive_id": "union_lark_user",
+        "msg_type": "interactive",
+        "content": "{\"schema\":\"2.0\",\"config\":{\"update_multi\":true},\"body\":{\"direction\":\"vertical\",\"elements\":[{\"tag\":\"form\",\"name\":\"__dify.human_input\",\"elements\":[{\"tag\":\"markdown\",\"content\":\"Protocol capture for **Lark** unit tests.\"},{\"tag\":\"input\",\"name\":\"comment\",\"input_type\":\"multiline_text\",\"width\":\"fill\",\"required\":true,\"label\":{\"tag\":\"plain_text\",\"content\":\"comment\"},\"placeholder\":{\"tag\":\"plain_text\",\"content\":\"comment\"},\"default_value\":\"Initial comment\"},{\"tag\":\"select_static\",\"name\":\"decision\",\"required\":true,\"placeholder\":{\"tag\":\"plain_text\",\"content\":\"decision\"},\"options\":[{\"text\":{\"tag\":\"plain_text\",\"content\":\"Approve\"},\"value\":\"Approve\"},{\"text\":{\"tag\":\"plain_text\",\"content\":\"Reject\"},\"value\":\"Reject\"}],\"initial_option\":\"Approve\"},{\"tag\":\"column_set\",\"flex_mode\":\"none\",\"horizontal_spacing\":\"8px\",\"horizontal_align\":\"left\",\"columns\":[{\"tag\":\"column\",\"width\":\"auto\",\"elements\":[{\"tag\":\"button\",\"name\":\"approve\",\"type\":\"primary_filled\",\"text\":{\"tag\":\"plain_text\",\"content\":\"Approve\"},\"form_action_type\":\"submit\",\"behaviors\":[{\"type\":\"callback\",\"value\":{\"__dify.human_input.action\":{\"version\":1,\"action_id\":\"approve\",\"correlation_token\":\"lark-unit-test-correlation\"}}}]}]}]}]}]},\"header\":{\"title\":{\"tag\":\"plain_text\",\"content\":\"Lark unit test capture\"}}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "body": {
+            "content": "{\"title\":\"Lark unit test capture\",\"elements\":[[{\"tag\":\"img\",\"image_key\":\"sanitized\"},{\"tag\":\"text\",\"text\":\"sanitized\"},{\"tag\":\"text\",\"text\":\"\"}]]}"
+          },
+          "chat_id": "oc_lark_chat",
+          "create_time": "1800000000000",
+          "deleted": false,
+          "message_id": "om_lark_card",
+          "msg_type": "interactive",
+          "sender": {
+            "id": "cli_sanitized_lark_app",
+            "id_type": "app_id",
+            "sender_type": "app",
+            "tenant_key": "tenant_lark_sanitized"
+          },
+          "update_time": "1800000000000",
+          "updated": false
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "replace": {
+    "request": {
+      "method": "PATCH",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages/om_lark_card",
+      "body": {
+        "content": "{\"schema\":\"2.0\",\"body\":{\"elements\":[{\"tag\":\"markdown\",\"content\":\"Capture **completed**.\"}]}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {},
+        "msg": "success"
+      }
+    }
+  },
+  "invalid_recipient": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=union_id",
+      "body": {
+        "receive_id": "union_lark_invalid",
+        "msg_type": "text",
+        "content": "{\"text\":\"Lark unit test invalid recipient\"}"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 99992364,
+        "msg": "sanitized",
+        "error": {
+          "log_id": "sanitized",
+          "field_violations": [
+            {
+              "field": "sanitized",
+              "value": "union_lark_invalid",
+              "description": "sanitized"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "invalid_reference": {
+    "request": {
+      "method": "PATCH",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages/om_lark_invalid",
+      "body": {
+        "content": "{\"schema\":\"2.0\",\"body\":{\"elements\":[{\"tag\":\"markdown\",\"content\":\"Capture completed.\"}]}}"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 99992354,
+        "msg": "sanitized",
+        "error": {
+          "log_id": "sanitized",
+          "field_violations": [
+            {
+              "field": "sanitized",
+              "value": "om_lark_invalid",
+              "description": "sanitized"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "invalid_token": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/tenant/v2/tenant/query",
+      "body": null
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 99991663,
+        "msg": "sanitized",
+        "error": {
+          "log_id": "sanitized",
+          "message": "sanitized"
+        }
+      }
+    }
+  },
+  "stream_connect": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/callback/ws/endpoint",
+      "body": {
+        "AppID": "cli_sanitized_lark_app",
+        "AppSecret": "sanitized-lark-app-secret"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "msg": "",
+        "data": {
+          "URL": "wss://ws.example.invalid/ws/v2?fpid=sanitized-fpid&aid=sanitized-aid&device_id=sanitized-device_id&access_key=sanitized-access_key&service_id=1&ticket=sanitized-ticket",
+          "ClientConfig": {
+            "ReconnectCount": -1,
+            "ReconnectInterval": 120,
+            "ReconnectNonce": 25,
+            "PingInterval": 120
+          }
+        }
+      }
+    }
+  },
+  "bot_info": {
+    "request": {
+      "method": "GET",
+      "url": "https://open.larksuite.com/open-apis/bot/v3/info",
+      "body": null
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "bot": {
+          "activate_status": 2,
+          "app_name": "sanitized",
+          "avatar_url": "sanitized",
+          "ip_white_list": [],
+          "open_id": "open_lark_bot"
+        },
+        "code": 0,
+        "msg": "ok"
+      }
+    }
+  },
+  "stream_connect_invalid": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/callback/ws/endpoint",
+      "body": {
+        "AppID": "cli_sanitized_lark_app",
+        "AppSecret": "invalid-test-secret"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 1000040345,
+        "error": {
+          "id": 1000040345,
+          "localizedMessage": {
+            "locale": "",
+            "message": ""
+          },
+          "ErrX": null
+        },
+        "msg": "",
+        "data": {
+          "URL": ""
+        }
+      }
+    }
+  },
+  "stream_card": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=union_id",
+      "body": {
+        "receive_id": "union_lark_user",
+        "msg_type": "interactive",
+        "content": "{\"schema\":\"2.0\",\"config\":{\"update_multi\":true},\"body\":{\"direction\":\"vertical\",\"elements\":[{\"tag\":\"form\",\"name\":\"__dify.human_input\",\"elements\":[{\"tag\":\"markdown\",\"content\":\"Lark confirmed card form.\"},{\"tag\":\"input\",\"name\":\"comment\",\"input_type\":\"multiline_text\",\"width\":\"fill\",\"required\":true,\"label\":{\"tag\":\"plain_text\",\"content\":\"comment\"},\"placeholder\":{\"tag\":\"plain_text\",\"content\":\"comment\"}},{\"tag\":\"select_static\",\"name\":\"decision\",\"required\":true,\"placeholder\":{\"tag\":\"plain_text\",\"content\":\"decision\"},\"options\":[{\"text\":{\"tag\":\"plain_text\",\"content\":\"ship\"},\"value\":\"ship\"},{\"text\":{\"tag\":\"plain_text\",\"content\":\"hold\"},\"value\":\"hold\"}],\"initial_option\":\"hold\"},{\"tag\":\"column_set\",\"flex_mode\":\"none\",\"horizontal_spacing\":\"8px\",\"horizontal_align\":\"left\",\"columns\":[{\"tag\":\"column\",\"width\":\"auto\",\"elements\":[{\"tag\":\"button\",\"name\":\"approve\",\"type\":\"primary_filled\",\"text\":{\"tag\":\"plain_text\",\"content\":\"Approve\"},\"form_action_type\":\"submit\",\"behaviors\":[{\"type\":\"callback\",\"value\":{\"__dify.human_input.action\":{\"version\":1,\"action_id\":\"approve\",\"correlation_token\":\"lark-live-stream-correlation\"}}}]}]},{\"tag\":\"column\",\"width\":\"auto\",\"elements\":[{\"tag\":\"button\",\"name\":\"reject\",\"type\":\"danger_filled\",\"text\":{\"tag\":\"plain_text\",\"content\":\"Reject\"},\"form_action_type\":\"submit\",\"behaviors\":[{\"type\":\"callback\",\"value\":{\"__dify.human_input.action\":{\"version\":1,\"action_id\":\"reject\",\"correlation_token\":\"lark-live-stream-correlation\"}}}]}]}]}]}]},\"header\":{\"title\":{\"tag\":\"plain_text\",\"content\":\"Lark stream fixture capture\"}}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "body": {
+            "content": "{\"title\":\"Lark stream fixture capture\",\"elements\":[[{\"tag\":\"img\",\"image_key\":\"sanitized\"},{\"tag\":\"text\",\"text\":\"sanitized\"},{\"tag\":\"text\",\"text\":\"\"}]]}"
+          },
+          "chat_id": "oc_lark_chat",
+          "create_time": "1800000000000",
+          "deleted": false,
+          "message_id": "om_lark_stream_card",
+          "msg_type": "interactive",
+          "sender": {
+            "id": "cli_sanitized_lark_app",
+            "id_type": "app_id",
+            "sender_type": "app",
+            "tenant_key": "tenant_lark_sanitized"
+          },
+          "update_time": "1800000000000",
+          "updated": false
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "stream_replace": {
+    "request": {
+      "method": "PATCH",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages/om_lark_stream_card",
+      "body": {
+        "content": "{\"schema\":\"2.0\",\"body\":{\"elements\":[{\"tag\":\"markdown\",\"content\":\"Lark stream capture completed.\"}]}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {},
+        "msg": "success"
+      }
+    }
+  },
+  "webhook_card": {
+    "request": {
+      "method": "POST",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=union_id",
+      "body": {
+        "receive_id": "union_lark_user",
+        "msg_type": "interactive",
+        "content": "{\"schema\":\"2.0\",\"config\":{\"update_multi\":true},\"body\":{\"direction\":\"vertical\",\"elements\":[{\"tag\":\"form\",\"name\":\"__dify.human_input\",\"elements\":[{\"tag\":\"markdown\",\"content\":\"Lark confirmed card form.\"},{\"tag\":\"input\",\"name\":\"comment\",\"input_type\":\"multiline_text\",\"width\":\"fill\",\"required\":true,\"label\":{\"tag\":\"plain_text\",\"content\":\"comment\"},\"placeholder\":{\"tag\":\"plain_text\",\"content\":\"comment\"}},{\"tag\":\"select_static\",\"name\":\"decision\",\"required\":true,\"placeholder\":{\"tag\":\"plain_text\",\"content\":\"decision\"},\"options\":[{\"text\":{\"tag\":\"plain_text\",\"content\":\"ship\"},\"value\":\"ship\"},{\"text\":{\"tag\":\"plain_text\",\"content\":\"hold\"},\"value\":\"hold\"}],\"initial_option\":\"hold\"},{\"tag\":\"column_set\",\"flex_mode\":\"none\",\"horizontal_spacing\":\"8px\",\"horizontal_align\":\"left\",\"columns\":[{\"tag\":\"column\",\"width\":\"auto\",\"elements\":[{\"tag\":\"button\",\"name\":\"approve\",\"type\":\"primary_filled\",\"text\":{\"tag\":\"plain_text\",\"content\":\"Approve\"},\"form_action_type\":\"submit\",\"behaviors\":[{\"type\":\"callback\",\"value\":{\"__dify.human_input.action\":{\"version\":1,\"action_id\":\"approve\",\"correlation_token\":\"lark-live-webhook-correlation\"}}}]}]},{\"tag\":\"column\",\"width\":\"auto\",\"elements\":[{\"tag\":\"button\",\"name\":\"reject\",\"type\":\"danger_filled\",\"text\":{\"tag\":\"plain_text\",\"content\":\"Reject\"},\"form_action_type\":\"submit\",\"behaviors\":[{\"type\":\"callback\",\"value\":{\"__dify.human_input.action\":{\"version\":1,\"action_id\":\"reject\",\"correlation_token\":\"lark-live-webhook-correlation\"}}}]}]}]}]}]},\"header\":{\"title\":{\"tag\":\"plain_text\",\"content\":\"Lark webhook fixture capture\"}}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {
+          "body": {
+            "content": "{\"title\":\"Lark webhook fixture capture\",\"elements\":[[{\"tag\":\"img\",\"image_key\":\"sanitized\"},{\"tag\":\"text\",\"text\":\"sanitized\"},{\"tag\":\"text\",\"text\":\"\"}]]}"
+          },
+          "chat_id": "oc_lark_chat",
+          "create_time": "1800000000000",
+          "deleted": false,
+          "message_id": "om_lark_webhook_card",
+          "msg_type": "interactive",
+          "sender": {
+            "id": "cli_sanitized_lark_app",
+            "id_type": "app_id",
+            "sender_type": "app",
+            "tenant_key": "tenant_lark_sanitized"
+          },
+          "update_time": "1800000000000",
+          "updated": false
+        },
+        "msg": "success"
+      }
+    }
+  },
+  "webhook_replace": {
+    "request": {
+      "method": "PATCH",
+      "url": "https://open.larksuite.com/open-apis/im/v1/messages/om_lark_webhook_card",
+      "body": {
+        "content": "{\"schema\":\"2.0\",\"body\":{\"elements\":[{\"tag\":\"markdown\",\"content\":\"Lark webhook capture completed.\"}]}}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "code": 0,
+        "data": {},
+        "msg": "success"
+      }
+    }
+  }
+}
