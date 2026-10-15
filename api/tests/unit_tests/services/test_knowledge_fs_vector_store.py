@@ -1,9 +1,12 @@
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
+from models.dataset import TidbAuthBinding
+from models.enums import TidbAuthBindingStatus
 from services.knowledge_fs.vector_store import (
     TIDB_POINT_ID_FIELD,
     VectorRequest,
@@ -29,6 +32,64 @@ SCOPE = {
     "kind": "dense",
     "dimension": 2,
 }
+
+
+@dataclass
+class FakeQdrant:
+    """Qdrant client surface used by the bridge; unknown collections raise the remote 404 contract."""
+
+    collections: dict[str, object] = field(default_factory=dict)
+    search_result: list = field(default_factory=list)
+    retrieve_result: list = field(default_factory=list)
+    retrieve_hook: Callable[..., list] | None = None
+    retrieve_failure: Exception | None = None
+    delete_failure: Exception | None = None
+    create_payload_index_hook: Callable[..., None] | None = None
+    get_collection_calls: list[str] = field(default_factory=list)
+    create_collection_calls: list[dict[str, object]] = field(default_factory=list)
+    create_payload_index_calls: list[dict[str, object]] = field(default_factory=list)
+    upsert_calls: list[dict] = field(default_factory=list)
+    search_calls: list[dict] = field(default_factory=list)
+    retrieve_calls: list[dict] = field(default_factory=list)
+    delete_calls: list[dict] = field(default_factory=list)
+    close_count: int = 0
+
+    def get_collection(self, name):
+        self.get_collection_calls.append(name)
+        if name not in self.collections:
+            raise UnexpectedResponse(404, "missing", b"{}", {})
+        return self.collections[name]
+
+    def create_collection(self, **kwargs):
+        self.create_collection_calls.append(kwargs)
+
+    def create_payload_index(self, **kwargs):
+        self.create_payload_index_calls.append(kwargs)
+        if self.create_payload_index_hook is not None:
+            self.create_payload_index_hook(**kwargs)
+
+    def upsert(self, **kwargs):
+        self.upsert_calls.append(kwargs)
+
+    def search(self, **kwargs):
+        self.search_calls.append(kwargs)
+        return self.search_result
+
+    def retrieve(self, **kwargs):
+        self.retrieve_calls.append(kwargs)
+        if self.retrieve_failure is not None:
+            raise self.retrieve_failure
+        if self.retrieve_hook is not None:
+            return self.retrieve_hook(**kwargs)
+        return self.retrieve_result
+
+    def delete(self, **kwargs):
+        self.delete_calls.append(kwargs)
+        if self.delete_failure is not None:
+            raise self.delete_failure
+
+    def close(self):
+        self.close_count += 1
 
 
 def request(operation, **kwargs):
@@ -197,11 +258,10 @@ def test_invalid_operations_fail_before_backend_io(payload):
 
 
 def test_missing_collection_search_is_not_reported_as_empty_success():
-    client = MagicMock()
-    client.get_collection.side_effect = UnexpectedResponse(404, "missing", b"{}", {})
+    client = FakeQdrant()
     with pytest.raises(VectorStoreUnavailableError, match="missing"):
         execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))
-    client.create_collection.assert_not_called()
+    assert client.create_collection_calls == []
     assert execute_vector_request(client, request("delete", ids=[A]))["points"] == []
 
 
@@ -247,10 +307,17 @@ def test_unsupported_backend_fails_explicitly(config_overrides):
 @pytest.mark.parametrize("allow_create", [True, False])
 def test_tidb_client_uses_tenant_binding(config_overrides, allow_create):
     config_overrides(VECTOR_STORE="tidb_on_qdrant", TIDB_ON_QDRANT_URL="https://global.invalid")
-    binding = SimpleNamespace(
-        account="tenant-account", password="tenant-secret", qdrant_endpoint="https://tenant.invalid"
+    binding = TidbAuthBinding(
+        tenant_id=TENANT,
+        cluster_id="cluster-1",
+        cluster_name="tenant-cluster",
+        active=True,
+        status=TidbAuthBindingStatus.ACTIVE,
+        account="tenant-account",
+        password="tenant-secret",
+        qdrant_endpoint="https://tenant.invalid",
     )
-    client = MagicMock()
+    client = FakeQdrant()
 
     def open_client(**kwargs):
         assert kwargs["url"] == "https://tenant.invalid"
@@ -264,7 +331,7 @@ def test_tidb_client_uses_tenant_binding(config_overrides, allow_create):
         with configured_vector_client(TENANT, allow_create=allow_create) as configured:
             assert configured is client
     resolve.assert_called_once_with(TENANT, allow_create=allow_create)
-    client.close.assert_called_once()
+    assert client.close_count == 1
 
 
 def test_qdrant_configuration_closes_client_even_when_operation_fails(config_overrides):
@@ -284,7 +351,7 @@ def test_qdrant_configuration_closes_client_even_when_operation_fails(config_ove
 def test_cloud_quota_is_enforced_before_any_vector_mutation():
     from services.vector_space_admission_service import VectorSpaceAdmissionError
 
-    client = MagicMock()
+    client = FakeQdrant()
     with patch(
         "services.vector_space_admission_service.VectorSpaceAdmissionService.ensure_external_points_can_be_indexed",
         side_effect=VectorSpaceAdmissionError("limit reached"),
@@ -297,8 +364,8 @@ def test_cloud_quota_is_enforced_before_any_vector_mutation():
                     points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}],
                 ),
             )
-    client.get_collection.assert_not_called()
-    client.upsert.assert_not_called()
+    assert client.get_collection_calls == []
+    assert client.upsert_calls == []
 
 
 def test_cloud_quota_uses_existing_watermark_without_embedding_calls(config_overrides):
@@ -422,17 +489,9 @@ def test_uncertain_native_delete_is_retryable(client):
 @pytest.fixture
 def tidb_client(client, config_overrides):
     config_overrides(VECTOR_STORE="tidb_on_qdrant")
-    native = MagicMock()
     scope = VectorScope.model_validate(SCOPE)
     info = client.get_collection(scope.collection_name)
-
-    def get_collection(name):
-        if name != scope.collection_name:
-            raise UnexpectedResponse(404, "missing", b"{}", {})
-        return info
-
-    native.get_collection.side_effect = get_collection
-    return native, info
+    return FakeQdrant(collections={scope.collection_name: info}), info
 
 
 def test_tidb_new_collection_indexes_and_stores_point_ids(tidb_client):
@@ -441,13 +500,15 @@ def test_tidb_new_collection_indexes_and_stores_point_ids(tidb_client):
         client,
         request("upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]),
     )
-    client.create_payload_index.assert_called_once_with(
-        collection_name=VectorScope.model_validate(SCOPE).collection_name,
-        field_name=TIDB_POINT_ID_FIELD,
-        field_schema=models.PayloadSchemaType.KEYWORD,
-        wait=True,
-    )
-    assert client.upsert.call_args.kwargs["points"][0].payload == {
+    assert client.create_payload_index_calls == [
+        {
+            "collection_name": VectorScope.model_validate(SCOPE).collection_name,
+            "field_name": TIDB_POINT_ID_FIELD,
+            "field_schema": models.PayloadSchemaType.KEYWORD,
+            "wait": True,
+        }
+    ]
+    assert client.upsert_calls[-1]["points"][0].payload == {
         "generation_id": GENERATION,
         "content_hash": "a" * 64,
         TIDB_POINT_ID_FIELD: A,
@@ -463,17 +524,17 @@ def test_tidb_payload_index_creation_race_requires_compatible_index(tidb_client,
             info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=0)
         raise RuntimeError("index creation raced or failed")
 
-    client.create_payload_index.side_effect = create_index
+    client.create_payload_index_hook = create_index
     payload = request(
         "upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]
     )
     if compatible:
         execute_vector_request(client, payload)
-        client.upsert.assert_called_once()
+        assert len(client.upsert_calls) == 1
     else:
         with pytest.raises(RuntimeError, match="creation"):
             execute_vector_request(client, payload)
-        client.upsert.assert_not_called()
+        assert client.upsert_calls == []
 
 
 def test_tidb_nonempty_old_collection_is_not_marked_indexed(tidb_client):
@@ -483,8 +544,8 @@ def test_tidb_nonempty_old_collection_is_not_marked_indexed(tidb_client):
         client,
         request("upsert", points=[{"id": A, "generation_id": GENERATION, "content_hash": "a" * 64, "vector": [1, 0]}]),
     )
-    client.create_payload_index.assert_not_called()
-    client.upsert.assert_called_once()
+    assert client.create_payload_index_calls == []
+    assert len(client.upsert_calls) == 1
 
 
 @pytest.mark.parametrize("operation", ["search", "upsert"])
@@ -500,24 +561,24 @@ def test_tidb_wrong_id_index_type_fails_closed(tidb_client, operation):
     )
     with pytest.raises(VectorStoreUnavailableError, match="ID index"):
         execute_vector_request(client, payload)
-    client.upsert.assert_not_called()
-    client.search.assert_not_called()
+    assert client.upsert_calls == []
+    assert client.search_calls == []
 
 
 def test_tidb_indexed_search_uses_supported_filter_and_payload_selection(tidb_client):
     client, info = tidb_client
     info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=1)
-    client.search.return_value = [SimpleNamespace(id=A, score=0.6)]
+    client.search_result = [models.ScoredPoint(id=A, version=0, score=0.6)]
     result = execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0], limit=1))
     assert result["matches"] == [{"id": A, "score": 0.6}]
-    query = client.search.call_args.kwargs
+    query = client.search_calls[-1]
     assert query["with_payload"] is True
     assert query["with_vectors"] is False
     assert query["query_filter"] == models.Filter(
         must=[models.FieldCondition(key=TIDB_POINT_ID_FIELD, match=models.MatchAny(any=[A]))]
     )
-    client.retrieve.assert_not_called()
-    client.search.return_value = [SimpleNamespace(id=B, score=1.0)]
+    assert client.retrieve_calls == []
+    client.search_result = [models.ScoredPoint(id=B, version=0, score=1.0)]
     with pytest.raises(VectorStoreUnavailableError, match="unauthorized"):
         execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))
 
@@ -552,14 +613,14 @@ def test_tidb_unindexed_search_bounds_reads_and_propagates_failures(tidb_client)
         assert kwargs["with_payload"] is False
         assert kwargs["with_vectors"] is True
         assert len(kwargs["ids"]) <= 64
-        return [SimpleNamespace(id=point_id, vector=[1, 0]) for point_id in kwargs["ids"]]
+        return [models.Record(id=point_id, vector=[1, 0]) for point_id in kwargs["ids"]]
 
-    client.retrieve.side_effect = retrieve
+    client.retrieve_hook = retrieve
     result = execute_vector_request(client, request("search", ids=ids, query_vector=[1, 0], limit=3))
     assert result["matches"] == [{"id": point_id, "score": 1.0} for point_id in ids[:3]]
-    assert client.retrieve.call_count == 3
-    client.search.assert_not_called()
-    client.retrieve.side_effect = RuntimeError("read failed")
+    assert len(client.retrieve_calls) == 3
+    assert client.search_calls == []
+    client.retrieve_failure = RuntimeError("read failed")
     with pytest.raises(RuntimeError, match="read failed"):
         execute_vector_request(client, request("search", ids=ids, query_vector=[1, 0]))
 
@@ -567,14 +628,14 @@ def test_tidb_unindexed_search_bounds_reads_and_propagates_failures(tidb_client)
 @pytest.mark.parametrize("vector", [None, [1], [0, 0], [float("nan"), 0], [1e20, 0]])
 def test_tidb_unindexed_search_rejects_unscorable_vectors(tidb_client, vector):
     client, _ = tidb_client
-    client.retrieve.return_value = [SimpleNamespace(id=A, vector=vector)]
+    client.retrieve_result = [models.Record(id=A, vector=vector)]
     with pytest.raises(VectorStoreUnavailableError, match="dimensions|scored"):
         execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))
 
 
 def test_tidb_unindexed_search_rejects_unrequested_points(tidb_client):
     client, _ = tidb_client
-    client.retrieve.return_value = [SimpleNamespace(id=B, vector=[1, 0])]
+    client.retrieve_result = [models.Record(id=B, vector=[1, 0])]
     with pytest.raises(VectorStoreUnavailableError, match="unauthorized"):
         execute_vector_request(client, request("search", ids=[A], query_vector=[1, 0]))
 
@@ -582,54 +643,56 @@ def test_tidb_unindexed_search_rejects_unrequested_points(tidb_client):
 def test_tidb_indexed_delete_uses_field_filter_and_verifies_absence(tidb_client):
     client, info = tidb_client
     info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=2)
-    client.retrieve.return_value = []
+    client.retrieve_result = []
     execute_vector_request(client, request("delete", ids=[A, B]))
-    assert client.delete.call_args.kwargs["points_selector"] == models.FilterSelector(
+    assert client.delete_calls[-1]["points_selector"] == models.FilterSelector(
         filter=models.Filter(must=[models.FieldCondition(key=TIDB_POINT_ID_FIELD, match=models.MatchAny(any=[A, B]))])
     )
-    client.delete.assert_called_once()
-    client.retrieve.return_value = [SimpleNamespace(id=A)]
+    assert len(client.delete_calls) == 1
+    client.retrieve_result = [models.Record(id=A)]
     with pytest.raises(VectorStoreUnavailableError, match="not yet visible"):
         execute_vector_request(client, request("delete", ids=[A, B]))
 
 
 def test_tidb_unindexed_delete_uses_single_ids_and_propagates_errors(tidb_client):
     client, _ = tidb_client
-    client.retrieve.return_value = []
+    client.retrieve_result = []
     execute_vector_request(client, request("delete", ids=[A, B]))
-    client.create_payload_index.assert_called_once_with(
-        collection_name=VectorScope.model_validate(SCOPE).collection_name,
-        field_name="content_hash",
-        field_schema=models.PayloadSchemaType.KEYWORD,
-        wait=True,
-    )
-    selectors = [call.kwargs["points_selector"] for call in client.delete.call_args_list]
+    assert client.create_payload_index_calls == [
+        {
+            "collection_name": VectorScope.model_validate(SCOPE).collection_name,
+            "field_name": "content_hash",
+            "field_schema": models.PayloadSchemaType.KEYWORD,
+            "wait": True,
+        }
+    ]
+    selectors = [call["points_selector"] for call in client.delete_calls]
     assert sorted(selector.points for selector in selectors) == [[A], [B]]
-    assert all(call.kwargs["wait"] for call in client.delete.call_args_list)
-    client.delete.side_effect = RuntimeError("delete failed")
+    assert all(call["wait"] for call in client.delete_calls)
+    client.delete_failure = RuntimeError("delete failed")
     with pytest.raises(RuntimeError, match="delete failed"):
         execute_vector_request(client, request("delete", ids=[A, B]))
 
 
-@pytest.mark.parametrize("remaining", [[], [SimpleNamespace(id=A)]])
+@pytest.mark.parametrize("remaining", [[], [models.Record(id=A)]])
 def test_tidb_delete_not_found_still_requires_readback(tidb_client, remaining):
     client, info = tidb_client
     info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=1)
-    client.delete.side_effect = UnexpectedResponse(404, "missing", b"{}", {})
-    client.retrieve.return_value = remaining
+    client.delete_failure = UnexpectedResponse(404, "missing", b"{}", {})
+    client.retrieve_result = remaining
     if remaining:
         with pytest.raises(VectorStoreUnavailableError, match="not yet visible"):
             execute_vector_request(client, request("delete", ids=[A]))
     else:
         execute_vector_request(client, request("delete", ids=[A]))
-    client.retrieve.assert_called_once()
+    assert len(client.retrieve_calls) == 1
 
 
 @pytest.mark.parametrize("status", [404, 503])
 def test_tidb_delete_readback_only_accepts_missing_collection(tidb_client, status):
     client, info = tidb_client
     info.payload_schema[TIDB_POINT_ID_FIELD] = models.PayloadIndexInfo(data_type="keyword", points=1)
-    client.retrieve.side_effect = UnexpectedResponse(status, "unavailable", b"{}", {})
+    client.retrieve_failure = UnexpectedResponse(status, "unavailable", b"{}", {})
     if status == 404:
         execute_vector_request(client, request("delete", ids=[A]))
     else:
