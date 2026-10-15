@@ -626,15 +626,25 @@ describe('SkillDetailPage builder', () => {
     )
 
     renderSkillDetailPage()
+    // The model settings trigger and parameter rules load asynchronously; slow CI shards need more
+    // than the default one-second wait.
     await user.click(
-      await screen.findByRole('button', {
-        name: 'modelProvider.modelProvider.modelSettings',
-      }),
+      await screen.findByRole(
+        'button',
+        { name: 'modelProvider.modelProvider.modelSettings' },
+        { timeout: 5000 },
+      ),
     )
-    const dialog = await screen.findByRole('dialog', {
-      name: 'modelProvider.modelProvider.modelSettings',
-    })
-    const temperature = await within(dialog).findByRole('spinbutton', { name: 'Temperature' })
+    const dialog = await screen.findByRole(
+      'dialog',
+      { name: 'modelProvider.modelProvider.modelSettings' },
+      { timeout: 5000 },
+    )
+    const temperature = await within(dialog).findByRole(
+      'spinbutton',
+      { name: 'Temperature' },
+      { timeout: 5000 },
+    )
     await user.clear(temperature)
     await user.type(temperature, '1.2')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
