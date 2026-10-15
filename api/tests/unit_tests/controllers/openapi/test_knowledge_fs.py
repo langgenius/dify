@@ -21,6 +21,7 @@ from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
     invocation,
     raising,
 )
+from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 
 @runtime_checkable
@@ -378,7 +379,7 @@ def test_knowledge_fs_error_adapter_uses_stable_domain_errors() -> None:
 
 
 @pytest.mark.parametrize("operation", ["ls", "tree", "grep", "find", "cat", "stat", "diff"])
-def test_knowledge_fs_catalog_gate_precedes_request_validation(admitted_bearer, operation: str) -> None:
+def test_knowledge_fs_catalog_gate_precedes_request_validation(admitted_bearer: AdmittedWorld, operation: str) -> None:
     """A CLI request must carry the downloaded fingerprint before its handler can run."""
     path = (
         f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}"

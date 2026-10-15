@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Literal
+
 import pytest
 from flask import Flask
+from flask_restx import Resource
 from pydantic import ValidationError
 
 from controllers.service_api.knowledge_fs import resources
@@ -66,7 +70,7 @@ def _workflow() -> dict[str, object]:
 
 
 @pytest.fixture
-def runtime(monkeypatch: pytest.MonkeyPatch):
+def runtime(monkeypatch: pytest.MonkeyPatch) -> FakeRuntime:
     value = FakeRuntime(facade=FakeComponent(execute_service=Recorder()))
     profile = KnowledgeFSServiceApiProfile(
         tenant_id="tenant-1",
@@ -97,7 +101,7 @@ def test_utf8_budget_is_identical_for_admission_and_stream() -> None:
     assert KnowledgeFSQueryCreatePayload(query=within).query == within
     assert KnowledgeFSAdmittedQueryRequest(query=within, knowledgeSpaceId="space-1").query == within
     for model, extra in [
-        (KnowledgeFSQueryCreatePayload, {}),
+        (KnowledgeFSQueryCreatePayload, dict[str, str]()),
         (KnowledgeFSAdmittedQueryRequest, {"knowledgeSpaceId": "space-1"}),
     ]:
         with pytest.raises(ValidationError):
@@ -176,7 +180,7 @@ def test_compilation_and_bulk_failures_survive_safe_serialization() -> None:
     assert bulk["failures"][0]["failure"]["code"] == "KNOWLEDGE_FS_RATE_LIMITED"
 
 
-def test_logical_read_exposes_current_cas_and_pagination(runtime) -> None:
+def test_logical_read_exposes_current_cas_and_pagination(runtime: FakeRuntime) -> None:
     raw = {
         "id": "doc-1",
         "knowledgeSpaceId": "space-1",
@@ -197,7 +201,7 @@ def test_logical_read_exposes_current_cas_and_pagination(runtime) -> None:
 
 
 def test_deletion_links_and_partial_batch_results_stay_on_public_origin(
-    runtime, monkeypatch: pytest.MonkeyPatch
+    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.example/v1")
     accepted = {"documentId": "document-1", "job": _job(), "statusUrl": "http://internal/deletion-jobs/job-1"}
@@ -232,7 +236,7 @@ def test_deletion_links_and_partial_batch_results_stay_on_public_origin(
 
 
 @pytest.mark.parametrize("kind", ["pages", "files"])
-def test_legacy_source_import_adapts_coordinates_and_admits_durable_workflow(runtime, kind: str) -> None:
+def test_legacy_source_import_adapts_coordinates_and_admits_durable_workflow(runtime: FakeRuntime, kind: str) -> None:
     runtime.facade.execute_service.return_value = _workflow()
     if kind == "pages":
         payload = {"pages": [{"workspaceId": "ws-1", "pageId": "page-1", "type": "page"}]}
@@ -254,8 +258,8 @@ def test_legacy_source_import_adapts_coordinates_and_admits_durable_workflow(run
     assert kwargs["payload"].model_dump(mode="json", by_alias=True)["items"][0]["providerItemId"] == coordinate
 
 
-def test_malformed_upstream_is_502_and_invalid_input_is_400_without_input_echo(runtime) -> None:
-    runtime.facade.execute_service.return_value = {}
+def test_malformed_upstream_is_502_and_invalid_input_is_400_without_input_echo(runtime: FakeRuntime) -> None:
+    runtime.facade.execute_service.return_value = dict[str, object]()
     with Flask(__name__).test_request_context("/"):
         with pytest.raises(KnowledgeFSServiceUpstreamUnavailableHTTPError):
             resources.KnowledgeFSServiceLogicalDocumentApi().get("control-1", "doc-1")
@@ -267,7 +271,7 @@ def test_malformed_upstream_is_502_and_invalid_input_is_400_without_input_echo(r
     assert runtime.facade.execute_service.calls == []
 
 
-def test_resume_binds_original_task_and_processing_history_preserves_superseded(runtime) -> None:
+def test_resume_binds_original_task_and_processing_history_preserves_superseded(runtime: FakeRuntime) -> None:
     runtime.facade.execute_service.return_value = {
         "items": [
             {
@@ -291,8 +295,8 @@ def test_resume_binds_original_task_and_processing_history_preserves_superseded(
         "id": "task-1",
         "knowledgeSpaceId": "space-1",
         "query": "q",
-        "cost": {},
-        "metadata": {},
+        "cost": dict[str, object](),
+        "metadata": dict[str, object](),
         "stage": "retrieving",
         "createdAt": 1,
         "updatedAt": 2,
@@ -305,11 +309,11 @@ def test_resume_binds_original_task_and_processing_history_preserves_superseded(
 
 
 @pytest.mark.parametrize("status", [503, 504])
-def test_service_preserves_temporary_failure_status_and_safe_violations(status: int) -> None:
+def test_service_preserves_temporary_failure_status_and_safe_violations(status: Literal[503, 504]) -> None:
     from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError
 
     @resources._service_api_errors
-    def rejected():
+    def rejected() -> None:
         raise KnowledgeFSProductRequestRejectedError(
             status_code=status,
             violations=[{"field": ["query"], "type": "too_long"}],
@@ -335,7 +339,9 @@ def test_service_image_upload_uses_authenticated_profile_and_typed_response(monk
     assert upload.last_call.kwargs["file"].filename == "image.png"
 
 
-def test_image_admission_checks_ownership_before_issuing_a_capability(runtime, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_image_admission_checks_ownership_before_issuing_a_capability(
+    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError
 
     runtime.broker = FakeComponent(issue_service=Recorder())
@@ -412,13 +418,13 @@ def test_atomic_crawl_edit_rejects_inline_document_content() -> None:
     ],
 )
 def test_recovery_reads_keep_the_authorized_space_and_child_resource_binding(
-    runtime,
+    runtime: FakeRuntime,
     monkeypatch: pytest.MonkeyPatch,
-    controller,
-    arguments,
-    operation,
-    resource_id,
-    path_parameters,
+    controller: type[Resource],
+    arguments: tuple[str, ...],
+    operation: str,
+    resource_id: str | None,
+    path_parameters: tuple[tuple[str, str], ...],
 ) -> None:
     profile = object()
     authorize = Recorder(profile)
@@ -437,17 +443,19 @@ def test_recovery_reads_keep_the_authorized_space_and_child_resource_binding(
 
 
 def test_source_workflow_history_keeps_source_filter_and_bounded_pagination(
-    runtime, monkeypatch: pytest.MonkeyPatch
+    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(resources, "_dump_response", lambda _schema, raw: raw)
     with Flask(__name__).test_request_context("/?source_id=source-1&cursor=next-page&limit=25"):
         resources.KnowledgeFSServiceSourceWorkflowsApi().get("control-1")
     call = runtime.facade.execute_service.last_call.kwargs
     assert call["operation_id"] == "listSourceWorkflows"
-    assert dict(call["query"]) == {"sourceId": "source-1", "cursor": "next-page", "limit": "25"}
+    query = call["query"]
+    assert isinstance(query, tuple)
+    assert dict(query) == {"sourceId": "source-1", "cursor": "next-page", "limit": "25"}
 
 
-def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> None:
+def test_preview_selection_is_a_durable_idempotent_import_admission(runtime: FakeRuntime) -> None:
     runtime.facade.execute_service.return_value = _workflow()
     with Flask(__name__).test_request_context(
         "/",
@@ -598,16 +606,16 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
     ],
 )
 def test_durable_source_contracts_bind_the_original_profile_and_resource(
-    runtime,
+    runtime: FakeRuntime,
     monkeypatch: pytest.MonkeyPatch,
-    controller,
-    method,
-    arguments,
-    operation,
-    body,
-    resource_id,
-    path_parameters,
-    requires_key,
+    controller: type[Resource],
+    method: Callable[..., object],
+    arguments: tuple[str, ...],
+    operation: str,
+    body: dict[str, object] | None,
+    resource_id: str | None,
+    path_parameters: tuple[tuple[str, str], ...],
+    requires_key: bool,
 ) -> None:
     profile = object()
     authorize = Recorder(profile)
