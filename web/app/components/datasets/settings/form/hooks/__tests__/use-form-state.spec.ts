@@ -148,37 +148,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          id: 'user-1',
-          name: 'User 1',
-          email: 'user1@example.com',
-          role: 'owner',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-        {
-          id: 'user-2',
-          name: 'User 2',
-          email: 'user2@example.com',
-          role: 'admin',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
   isReRankModelSelected: () => true,
@@ -918,6 +887,35 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
     }) => {
+      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
+        return (() => ({
+          data: {
+            accounts: [
+              {
+                id: 'user-1',
+                name: 'User 1',
+                email: 'user1@example.com',
+                role: 'owner',
+                avatar: '',
+                avatar_url: '',
+                last_login_at: '',
+                created_at: '',
+                status: 'active',
+              },
+              {
+                id: 'user-2',
+                name: 'User 2',
+                email: 'user2@example.com',
+                role: 'admin',
+                avatar: '',
+                avatar_url: '',
+                last_login_at: '',
+                created_at: '',
+                status: 'active',
+              },
+            ],
+          },
+        }))()
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
       return { data: [] }
     },

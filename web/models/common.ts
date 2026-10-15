@@ -1,6 +1,5 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
-import type { Role } from './access-control'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { I18nText } from '@/i18n/language'
 import type { Model } from '@/types/app'
 
@@ -17,15 +16,7 @@ export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
 }
 
-export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
-  avatar: string
-  last_login_at?: string
-  last_active_at?: string
-  created_at?: string
-  status: 'pending' | 'active' | 'banned' | 'closed'
-  role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
-  roles: Role[]
-}
+export type Member = AccountWithRoleResponse
 
 export type DataSourceNotionPage = {
   page_icon: null | {

@@ -3,10 +3,20 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
-import { useMembers } from '@/service/use-common'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import TransferOwnershipModal from '../index'
+
+const { mockMembersHook } = vi.hoisted(() => ({
+  mockMembersHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => mockMembersHook(),
+  })
+})
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
@@ -22,7 +32,6 @@ vi.mock('@/context/workspace-state', async () => {
 })
 
 vi.mock('@/service/common')
-vi.mock('@/service/use-common')
 vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
@@ -55,9 +64,9 @@ describe('TransferOwnershipModal', () => {
     mockConsoleState.current = consoleState
     mockConsoleStateReader.mockReturnValue(consoleState)
 
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: { accounts: [] },
-    } as unknown as ReturnType<typeof useMembers>)
+    })
 
     // Stub globalThis.location.reload (component calls globalThis.location.reload())
     const mockReload = vi.fn()

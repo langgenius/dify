@@ -47,7 +47,7 @@ function AddAccessSubjectMenuContent({
     data: membersData,
     isPending: isLoading,
     error,
-  } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions())
+  } = useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }))
   const existingAccountIdSet = new Set(existingAccountIds)
   const members = membersData?.accounts ?? []
 

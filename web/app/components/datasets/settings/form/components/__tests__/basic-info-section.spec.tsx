@@ -137,8 +137,8 @@ describe('BasicInfoSection', () => {
       roles: [],
       avatar: '',
       avatar_url: '',
-      last_login_at: '',
-      created_at: '',
+      last_login_at: null,
+      created_at: null,
       status: 'active',
     },
     {
@@ -149,8 +149,8 @@ describe('BasicInfoSection', () => {
       roles: [],
       avatar: '',
       avatar_url: '',
-      last_login_at: '',
-      created_at: '',
+      last_login_at: null,
+      created_at: null,
       status: 'active',
     },
   ]

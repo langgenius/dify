@@ -3,12 +3,10 @@ import type {
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { AccessControlTemplateLanguage } from '@/i18n/language'
 import type {
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
-  Member,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
@@ -25,7 +23,6 @@ const NAME_SPACE = 'common'
 
 export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
-  members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
@@ -103,22 +100,6 @@ export const useMailRegister = () => {
     }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
-  })
-}
-
-type MemberResponse = {
-  accounts: Member[] | null
-}
-
-export const useMembers = (language?: AccessControlTemplateLanguage) => {
-  return useQuery<MemberResponse>({
-    queryKey: [...commonQueryKeys.members, language],
-    queryFn: () =>
-      get<MemberResponse>('/workspaces/current/members', {
-        params: {
-          language,
-        },
-      }),
   })
 }
 

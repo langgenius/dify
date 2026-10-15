@@ -241,7 +241,89 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          // Role writes refresh the role list; role assignment changes also refresh members.
           rbac: {
+            roles: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) =>
+                    error
+                      ? undefined
+                      : context.client.invalidateQueries({
+                          queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                        }),
+                },
+              },
+              byRoleId: {
+                put: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) =>
+                      error
+                        ? undefined
+                        : context.client.invalidateQueries({
+                            queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                          }),
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) =>
+                      error
+                        ? undefined
+                        : Promise.all([
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                            }),
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.workspaces.current.members.get.key(),
+                            }),
+                          ]),
+                  },
+                },
+                copy: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) =>
+                        error
+                          ? undefined
+                          : Promise.all([
+                              context.client.invalidateQueries({
+                                queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                              }),
+                              variables.body?.copy_member &&
+                                context.client.invalidateQueries({
+                                  queryKey: consoleQuery.workspaces.current.members.get.key(),
+                                }),
+                            ]),
+                    },
+                  },
+                },
+              },
+            },
+            members: {
+              byMemberId: {
+                rbacRoles: {
+                  put: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) =>
+                        error
+                          ? undefined
+                          : Promise.all([
+                              context.client.invalidateQueries({
+                                queryKey:
+                                  consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.key(
+                                    { input: { params: variables.params } },
+                                  ),
+                              }),
+                              context.client.invalidateQueries({
+                                queryKey: consoleQuery.workspaces.current.members.get.key(),
+                              }),
+                            ]),
+                    },
+                  },
+                },
+              },
+            },
             accessPolicies: {
               post: {
                 mutationOptions: {

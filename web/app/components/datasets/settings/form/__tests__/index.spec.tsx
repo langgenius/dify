@@ -147,37 +147,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          id: 'user-1',
-          name: 'User 1',
-          email: 'user1@example.com',
-          role: 'owner',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-        {
-          id: 'user-2',
-          name: 'User 2',
-          email: 'user2@example.com',
-          role: 'admin',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useCurrentProviderAndModel: () => ({ currentProvider: undefined, currentModel: undefined }),
   useDefaultModel: () => ({ data: undefined, mutate: vi.fn(), isLoading: false }),
@@ -549,6 +518,35 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
     }) => {
+      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
+        return (() => ({
+          data: {
+            accounts: [
+              {
+                id: 'user-1',
+                name: 'User 1',
+                email: 'user1@example.com',
+                role: 'owner',
+                avatar: '',
+                avatar_url: '',
+                last_login_at: '',
+                created_at: '',
+                status: 'active',
+              },
+              {
+                id: 'user-2',
+                name: 'User 2',
+                email: 'user2@example.com',
+                role: 'admin',
+                avatar: '',
+                avatar_url: '',
+                last_login_at: '',
+                created_at: '',
+                status: 'active',
+              },
+            ],
+          },
+        }))()
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
       return { data: [], refetch: vi.fn(), isPending: false }
     },

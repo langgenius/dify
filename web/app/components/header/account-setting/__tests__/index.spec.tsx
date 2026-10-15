@@ -9,6 +9,13 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({ data: { accounts: [] }, refetch: vi.fn() }),
+  })
+})
+
 let canReplaceLogo = true
 
 const mockFeatureFlags = vi.hoisted(() => ({ NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: true }))
@@ -79,7 +86,6 @@ vi.mock('@/service/use-common', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/use-common')>()
   return {
     ...actual,
-    useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
   }
 })
 

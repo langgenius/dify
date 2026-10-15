@@ -17,13 +17,16 @@ import {
 } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
-import { useMembers } from '@/service/use-common'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
+
+const { mockMembersQuery } = vi.hoisted(() => ({
+  mockMembersQuery: vi.fn(),
+}))
 
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
@@ -81,7 +84,7 @@ vi.mock('@/service/datasets', () => ({
 
 vi.mock('@/service/use-common', async () => ({
   ...(await vi.importActual('@/service/use-common')),
-  useMembers: vi.fn(),
+  mockMembersQuery: vi.fn(),
 }))
 
 vi.mock('nuqs', async (importOriginal) => {
@@ -113,7 +116,7 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
 }))
 
 const mockUpdateDatasetSetting = updateDatasetSetting as MockedFunction<typeof updateDatasetSetting>
-const mockUseMembers = useMembers as MockedFunction<typeof useMembers>
+const mockUseMembers = mockMembersQuery as MockedFunction<typeof mockMembersQuery>
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -244,7 +247,7 @@ describe('SettingsModal', () => {
           },
         ],
       },
-    } as ReturnType<typeof useMembers>)
+    } as ReturnType<typeof mockMembersQuery>)
     mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank) {
         return {
@@ -694,6 +697,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
     }) => {
+      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
+        return mockMembersQuery()
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
 
       const args = options.queryKey[1].input?.params?.model_type

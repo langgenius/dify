@@ -1,10 +1,18 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { useMembers } from '@/service/use-common'
 import MemberSelector from '../member-selector'
 
-vi.mock('@/service/use-common')
+const { mockMembersHook } = vi.hoisted(() => ({
+  mockMembersHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => mockMembersHook(),
+  })
+})
 
 const mockAccounts = [
   { id: '1', name: 'John Doe', email: 'john@example.com', avatar_url: '' },
@@ -27,9 +35,9 @@ describe('MemberSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: { accounts: mockAccounts },
-    } as unknown as ReturnType<typeof useMembers>)
+    })
   })
 
   it('should render placeholder when no value is selected', () => {
@@ -106,8 +114,8 @@ describe('MemberSelector', () => {
   })
 
   it('should handle missing data gracefully', () => {
-    vi.mocked(useMembers).mockReturnValue({ data: undefined } as unknown as ReturnType<
-      typeof useMembers
+    vi.mocked(mockMembersHook).mockReturnValue({ data: undefined } as unknown as ReturnType<
+      typeof mockMembersHook
     >)
     render(<MemberSelector onSelect={mockOnSelect} />)
     expect(getTrigger()).toBeInTheDocument()
@@ -115,14 +123,14 @@ describe('MemberSelector', () => {
 
   it('should filter by email when account name is empty', async () => {
     const user = userEvent.setup()
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: {
         accounts: [
           ...mockAccounts,
           { id: '4', name: '', email: 'noname@example.com', avatar_url: '' },
         ],
       },
-    } as unknown as ReturnType<typeof useMembers>)
+    })
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())
@@ -158,13 +166,13 @@ describe('MemberSelector', () => {
 
   it('should fall back to empty string for account with undefined email when searching', async () => {
     const user = userEvent.setup()
-    vi.mocked(useMembers).mockReturnValue({
+    vi.mocked(mockMembersHook).mockReturnValue({
       data: {
         accounts: [
           { id: '1', name: 'John', email: undefined as unknown as string, avatar_url: '' },
         ],
       },
-    } as unknown as ReturnType<typeof useMembers>)
+    })
     render(<MemberSelector onSelect={mockOnSelect} />)
 
     await user.click(getTrigger())

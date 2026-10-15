@@ -31,7 +31,6 @@ import { useDocLink } from '@/context/i18n'
 import { DatasetPermission } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
-import { useMembers } from '@/service/use-common'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
@@ -86,7 +85,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
     currentDataset.partial_member_list || [],
   )
   const [memberList, setMemberList] = useState<Member[]>([])
-  const { data: membersData } = useMembers()
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(

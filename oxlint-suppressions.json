@@ -4039,22 +4039,6 @@
       "count": 1
     }
   },
-  "web/service/access-control/use-member-roles.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/use-workspace-roles.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 6
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/annotation.spec.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -4192,7 +4176,7 @@
   },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 9
+      "count": 8
     },
     "dify/require-disable-directive-description": {
       "count": 1

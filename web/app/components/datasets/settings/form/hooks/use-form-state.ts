@@ -21,7 +21,6 @@ import { DatasetPermission } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useMembers } from '@/service/use-common'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { checkShowMultiModalTip } from '../../utils'
 
@@ -116,7 +115,9 @@ export const useFormState = () => {
       select: (response) => response.data,
     }),
   )
-  const { data: membersData } = useMembers()
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const invalidDatasetList = useInvalidDatasetList()
 
   // Derive member list from API data

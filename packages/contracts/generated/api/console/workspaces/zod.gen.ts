@@ -675,6 +675,17 @@ export const zReplaceMemberRolesRequest = z.object({
 })
 
 /**
+ * _RoleUpsertRequest
+ *
+ * Accepts the payload sent by the Create/Edit Role dialog.
+ */
+export const zRoleUpsertRequest = z.object({
+  description: z.string().optional().default(''),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional().default([]),
+})
+
+/**
  * RBACRole
  */
 export const zRbacRole = z.object({
@@ -695,6 +706,13 @@ export const zRbacRole = z.object({
 export const zMemberRolesResponse = z.object({
   account_id: z.string(),
   roles: z.array(zRbacRole).optional(),
+})
+
+/**
+ * CopyRoleParam
+ */
+export const zCopyRoleParam = z.object({
+  copy_member: z.boolean().optional().default(true),
 })
 
 /**
@@ -1329,30 +1347,6 @@ export const zSnippetImportResponse = z.object({
   snippet_id: z.string().nullable(),
   status: zImportStatus,
   warnings: z.array(zDslImportWarning),
-})
-
-/**
- * AccountWithRoleResponse
- */
-export const zAccountWithRoleResponse = z.object({
-  avatar: z.string().nullish(),
-  avatar_url: z.string().nullable(),
-  created_at: z.int().nullish(),
-  email: z.string(),
-  id: z.string(),
-  last_active_at: z.int().nullish(),
-  last_login_at: z.int().nullish(),
-  name: z.string(),
-  role: z.string(),
-  roles: z.array(z.record(z.string(), z.string())).optional(),
-  status: z.string(),
-})
-
-/**
- * AccountWithRoleListResponse
- */
-export const zAccountWithRoleListResponse = z.object({
-  accounts: z.array(zAccountWithRoleResponse),
 })
 
 /**
@@ -2385,6 +2379,38 @@ export const zPluginDependency = z.object({
  */
 export const zSnippetDependencyCheckResponse = z.object({
   leaked_dependencies: z.array(zPluginDependency),
+})
+
+/**
+ * MemberRoleSummaryResponse
+ */
+export const zMemberRoleSummaryResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * AccountWithRoleResponse
+ */
+export const zAccountWithRoleResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  last_active_at: z.int().nullish(),
+  last_login_at: z.int().nullish(),
+  name: z.string(),
+  role: z.string(),
+  roles: z.array(zMemberRoleSummaryResponse).optional(),
+  status: z.string(),
+})
+
+/**
+ * AccountWithRoleListResponse
+ */
+export const zAccountWithRoleListResponse = z.object({
+  accounts: z.array(zAccountWithRoleResponse),
 })
 
 /**
@@ -4415,7 +4441,7 @@ export const zAccountWithRoleResponseWritable = z.object({
   last_login_at: z.int().nullish(),
   name: z.string(),
   role: z.string(),
-  roles: z.array(z.record(z.string(), z.string())).optional(),
+  roles: z.array(zMemberRoleSummaryResponse).optional(),
   status: z.string(),
 })
 
@@ -4669,6 +4695,10 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
  * Endpoint updated successfully
  */
 export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
+
+export const zGetWorkspacesCurrentMembersQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+})
 
 /**
  * Success
@@ -5737,6 +5767,10 @@ export const zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath = z.object(
   member_id: z.uuid(),
 })
 
+export const zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+})
+
 /**
  * Success
  */
@@ -5780,10 +5814,24 @@ export const zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse = zPermi
 export const zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse =
   zPermissionCatalogResponse
 
+export const zGetWorkspacesCurrentRbacRolesQuery = z.object({
+  include_owner: z.int().gte(0).lte(1).optional().default(0),
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
+})
+
 /**
  * Success
  */
 export const zGetWorkspacesCurrentRbacRolesResponse = zRbacRoleList
+
+export const zPostWorkspacesCurrentRbacRolesBody = zRoleUpsertRequest
+
+export const zPostWorkspacesCurrentRbacRolesQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+})
 
 /**
  * Role created
@@ -5803,13 +5851,23 @@ export const zGetWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
   role_id: z.uuid(),
 })
 
+export const zGetWorkspacesCurrentRbacRolesByRoleIdQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+})
+
 /**
  * Success
  */
 export const zGetWorkspacesCurrentRbacRolesByRoleIdResponse = zRbacRole
 
+export const zPutWorkspacesCurrentRbacRolesByRoleIdBody = zRoleUpsertRequest
+
 export const zPutWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
   role_id: z.uuid(),
+})
+
+export const zPutWorkspacesCurrentRbacRolesByRoleIdQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
 })
 
 /**
@@ -5817,8 +5875,14 @@ export const zPutWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
  */
 export const zPutWorkspacesCurrentRbacRolesByRoleIdResponse = zRbacRole
 
+export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyBody = zCopyRoleParam
+
 export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath = z.object({
   role_id: z.uuid(),
+})
+
+export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
 })
 
 /**
@@ -5828,6 +5892,13 @@ export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse = zRbacRole
 
 export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath = z.object({
   role_id: z.uuid(),
+})
+
+export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersQuery = z.object({
+  language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
 })
 
 /**

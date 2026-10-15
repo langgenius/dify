@@ -737,6 +737,12 @@ export type RbacRoleList = {
   pagination?: Pagination | null
 }
 
+export type RoleUpsertRequest = {
+  description?: string
+  name: string
+  permission_keys?: Array<string>
+}
+
 export type RbacRole = {
   category?: string
   description?: string
@@ -747,6 +753,10 @@ export type RbacRole = {
   role_tag?: string
   tenant_id?: string | null
   type: string
+}
+
+export type CopyRoleParam = {
+  copy_member?: boolean
 }
 
 export type MembersInRoleList = {
@@ -1529,9 +1539,7 @@ export type AccountWithRoleResponse = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -2248,6 +2256,11 @@ export type PluginDependencyMarketplace = {
 export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
+}
+
+export type MemberRoleSummaryResponse = {
+  id: string
+  name: string
 }
 
 export type SimpleProviderEntityResponse = {
@@ -3050,9 +3063,7 @@ export type AccountWithRoleResponseWritable = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -3708,7 +3719,9 @@ export type PatchWorkspacesCurrentEndpointsByIdResponse =
 export type GetWorkspacesCurrentMembersData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/members'
 }
 
@@ -6116,7 +6129,9 @@ export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
   path: {
     member_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
 }
 
@@ -6265,7 +6280,13 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse =
 export type GetWorkspacesCurrentRbacRolesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    include_owner?: number
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/roles'
 }
 
@@ -6284,9 +6305,11 @@ export type GetWorkspacesCurrentRbacRolesResponse =
   GetWorkspacesCurrentRbacRolesResponses[keyof GetWorkspacesCurrentRbacRolesResponses]
 
 export type PostWorkspacesCurrentRbacRolesData = {
-  body?: never
+  body: RoleUpsertRequest
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles'
 }
 
@@ -6332,7 +6355,9 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}'
 }
 
@@ -6351,11 +6376,13 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdResponse =
   GetWorkspacesCurrentRbacRolesByRoleIdResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdResponses]
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
-  body?: never
+  body: RoleUpsertRequest
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}'
 }
 
@@ -6374,11 +6401,13 @@ export type PutWorkspacesCurrentRbacRolesByRoleIdResponse =
   PutWorkspacesCurrentRbacRolesByRoleIdResponses[keyof PutWorkspacesCurrentRbacRolesByRoleIdResponses]
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
-  body?: never
+  body: CopyRoleParam
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}/copy'
 }
 
@@ -6401,7 +6430,12 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdMembersData = {
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/roles/{role_id}/members'
 }
 

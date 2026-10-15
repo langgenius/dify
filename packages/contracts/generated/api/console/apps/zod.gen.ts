@@ -2127,30 +2127,6 @@ export const zSandboxListResponse = z.object({
 })
 
 /**
- * AccountWithRoleResponse
- */
-export const zAccountWithRoleResponse = z.object({
-  avatar: z.string().nullish(),
-  avatar_url: z.string().nullable(),
-  created_at: z.int().nullish(),
-  email: z.string(),
-  id: z.string(),
-  last_active_at: z.int().nullish(),
-  last_login_at: z.int().nullish(),
-  name: z.string(),
-  role: z.string(),
-  roles: z.array(z.record(z.string(), z.string())).optional(),
-  status: z.string(),
-})
-
-/**
- * WorkflowCommentMentionUsersPayload
- */
-export const zWorkflowCommentMentionUsersPayload = z.object({
-  users: z.array(zAccountWithRoleResponse),
-})
-
-/**
  * WorkflowCommentAccount
  */
 export const zWorkflowCommentAccount = z.object({
@@ -3310,6 +3286,38 @@ export const zWorkflowAppLogPaginationResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * MemberRoleSummaryResponse
+ */
+export const zMemberRoleSummaryResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * AccountWithRoleResponse
+ */
+export const zAccountWithRoleResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  last_active_at: z.int().nullish(),
+  last_login_at: z.int().nullish(),
+  name: z.string(),
+  role: z.string(),
+  roles: z.array(zMemberRoleSummaryResponse).optional(),
+  status: z.string(),
+})
+
+/**
+ * WorkflowCommentMentionUsersPayload
+ */
+export const zWorkflowCommentMentionUsersPayload = z.object({
+  users: z.array(zAccountWithRoleResponse),
 })
 
 /**
@@ -5891,7 +5899,7 @@ export const zAccountWithRoleResponseWritable = z.object({
   last_login_at: z.int().nullish(),
   name: z.string(),
   role: z.string(),
-  roles: z.array(z.record(z.string(), z.string())).optional(),
+  roles: z.array(zMemberRoleSummaryResponse).optional(),
   status: z.string(),
 })
 

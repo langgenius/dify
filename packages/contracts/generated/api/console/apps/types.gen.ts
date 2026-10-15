@@ -2198,9 +2198,7 @@ export type AccountWithRoleResponse = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -3075,6 +3073,11 @@ export type WorkflowRunForLogResponse = {
   total_tokens?: number | null
   triggered_from?: string | null
   version?: string | null
+}
+
+export type MemberRoleSummaryResponse = {
+  id: string
+  name: string
 }
 
 export type WorkflowFileUploadPayload = {
@@ -4404,9 +4407,7 @@ export type AccountWithRoleResponseWritable = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
