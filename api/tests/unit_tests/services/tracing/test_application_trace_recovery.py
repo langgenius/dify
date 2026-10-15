@@ -3,7 +3,6 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 from typing import Literal
 
 import pytest
@@ -12,6 +11,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.ops.ops_trace_manager import TraceTask
 from core.ops.unified_trace.entities import CanonicalTrace
+from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.application_trace import ApplicationTraceInvocation
@@ -78,9 +78,8 @@ def case(
         message.message_tokens = 2
         message.answer_tokens = 1
         stored_invocation.finalized_at = now - timedelta(seconds=10)
-    database = SimpleNamespace(engine=sqlite_engine, session=scoped_session(sqlite_session_factory))
-    monkeypatch.setattr("core.ops.ops_trace_manager.db", database)
-    monkeypatch.setattr("core.ops.unified_trace.trace_builder.db", database)
+    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
+    monkeypatch.setattr(db, "session", scoped_session(sqlite_session_factory))
     monkeypatch.setattr(TraceTask, "_workflow_run_repo", None)
     monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
     monkeypatch.setattr(recovery, "naive_utc_now", lambda: now)
