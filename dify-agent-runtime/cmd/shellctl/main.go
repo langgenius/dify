@@ -155,9 +155,11 @@ func runNativeWorker() (workerErr error) {
 	if len(os.Args) != 3 {
 		return fmt.Errorf("invalid native worker arguments")
 	}
+	stage := "config-read"
 	ready := os.NewFile(4, "readiness")
 	defer func() {
 		if workerErr != nil {
+			workerErr = testscope.WorkerSetupFailure(stage, workerErr)
 			_, _ = ready.Write([]byte(workerErr.Error()))
 		}
 		_ = ready.Close()
@@ -167,12 +169,15 @@ func runNativeWorker() (workerErr error) {
 		return err
 	}
 	var worker testscope.WorkerConfig
+	stage = "config-decode"
 	if err = json.Unmarshal(data, &worker); err != nil {
 		return err
 	}
+	stage = "prepare"
 	if err = testscope.PrepareWorker(worker); err != nil {
 		return err
 	}
+	stage = "proxy"
 	if len(worker.Spec.NetworkTargets) > 0 {
 		if err = testscope.StartWorkerProxy(filepath.Join(worker.Directory, "broker.sock")); err != nil {
 			return err
@@ -180,18 +185,21 @@ func runNativeWorker() (workerErr error) {
 	}
 	// Exercise the actual strict runner before reporting a usable scope.
 	probe := filepath.Join(worker.Directory, "spool", "probe")
+	stage = "probe-script"
 	if err = os.WriteFile(probe, []byte("exit 0\n"), 0600); err != nil {
 		return err
 	}
 	command := exec.Command("shellctl-runner", "--exec", "--native-scope", os.Args[2], probe, "/workspace")
 	command.Env = []string{"PATH=/usr/local/bin:/usr/bin:/bin", "HOME=/home/dify"}
 	command.SysProcAttr = &syscall.SysProcAttr{Cloneflags: unix.CLONE_NEWNS | unix.CLONE_NEWPID}
+	stage = "probe-exec"
 	if err = command.Run(); err != nil {
 		return fmt.Errorf("strict native runner probe failed: %w", err)
 	}
 	_ = os.Remove(probe)
 	// Namespace PID1 expiry terminates all descendants, even after control restart.
 	time.AfterFunc(time.Until(worker.Spec.Deadline), func() { os.Exit(124) })
+	stage = "service-default"
 	config, err := server.DefaultConfig()
 	if err != nil {
 		return err
@@ -207,6 +215,7 @@ func runNativeWorker() (workerErr error) {
 	config.DefaultCwd = "/workspace"
 	config.GCFinishedJobRetention = time.Hour
 	svc := server.NewService(config)
+	stage = "service-initialize"
 	if err = svc.Initialize(); err != nil {
 		return err
 	}
@@ -224,12 +233,14 @@ func runNativeWorker() (workerErr error) {
 		}
 	}()
 	file := os.NewFile(3, "control-listener")
+	stage = "control-listener"
 	listener, err := net.FileListener(file)
 	_ = file.Close()
 	if err != nil {
 		return err
 	}
 	defer func() { _ = listener.Close() }()
+	stage = "ready-write"
 	if _, err = ready.Write([]byte("ready")); err != nil {
 		return err
 	}

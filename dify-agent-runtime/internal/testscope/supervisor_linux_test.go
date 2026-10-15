@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"golang.org/x/sys/unix"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -413,5 +415,37 @@ func TestNativeSystemdStartupRequiresManagerPlacement(t *testing.T) {
 				t.Fatal("startup performed manual manager migration")
 			}
 		})
+	}
+}
+
+func TestPrepareWorkerFailureHasSafeSetupStage(t *testing.T) {
+	// Invalid config cannot reach a mount, even in a qualified namespace. This
+	// checks the real setup error boundary without requiring privileged fixtures.
+	err := PrepareWorker(WorkerConfig{Directory: "/secret-directory-canary", ControlToken: "secret-token-canary"})
+	if err == nil || !strings.HasPrefix(err.Error(), "native worker setup ") {
+		t.Fatalf("setup failure lacks a stable diagnostic stage: %v", err)
+	}
+	for _, secret := range []string{"secret-directory-canary", "secret-token-canary"} {
+		if strings.Contains(err.Error(), secret) {
+			t.Fatal("setup diagnostic disclosed configuration")
+		}
+	}
+}
+
+func TestWorkerSetupFailureKeepsErrnoAndRedactsErrorText(t *testing.T) {
+	cause := &os.PathError{Op: "secret-operation", Path: "/secret-token-path", Err: unix.EINVAL}
+	err := WorkerSetupFailure("prepare", WorkerSetupFailure("mount-image/remount-readonly", cause))
+	if got, want := err.Error(), "native worker setup prepare/mount-image/remount-readonly: errno=22 (invalid argument)"; got != want {
+		t.Fatalf("unsafe or incomplete diagnostic: %s", got)
+	}
+	if !errors.Is(err, unix.EINVAL) {
+		t.Fatal("lost syscall cause")
+	}
+	err = WorkerSetupFailure("config-decode", errors.New("secret-token-content"))
+	if got, want := err.Error(), "native worker setup config-decode: operation failed"; got != want {
+		t.Fatalf("arbitrary error leaked: %s", got)
+	}
+	if WorkerSetupFailure("ready", nil) != nil {
+		t.Fatal("success became failure")
 	}
 }

@@ -44,37 +44,75 @@ func ResolveReference(root, ref string) (string, error) {
 	return path, nil
 }
 
+// WorkerSetupFailure labels trusted setup stages without copying paths, payloads,
+// config, or arbitrary error text into the parent readiness diagnostic. Callers
+// must use fixed stage identifiers; the original cause remains unwrap-able.
+func WorkerSetupFailure(stage string, err error) error {
+	if err == nil {
+		return nil
+	}
+	var nested *workerSetupFailure
+	if errors.As(err, &nested) {
+		stage += "/" + nested.stage
+	}
+	return &workerSetupFailure{stage: stage, cause: err}
+}
+
+type workerSetupFailure struct {
+	stage string
+	cause error
+}
+
+func (e *workerSetupFailure) Error() string {
+	var errno unix.Errno
+	if errors.As(e.cause, &errno) {
+		return fmt.Sprintf("native worker setup %s: errno=%d (%s)", e.stage, errno, errno.Error())
+	}
+	return "native worker setup " + e.stage + ": operation failed"
+}
+func (e *workerSetupFailure) Unwrap() error { return e.cause }
+
 // PrepareWorker runs only in a fresh kernel-created user/mount/PID/net namespace.
 // The payload root contains image binaries and selected immutable data, never
 // supervisor state, credentials, host sockets, or the host /proc.
-func PrepareWorker(cfg WorkerConfig) error {
+func PrepareWorker(cfg WorkerConfig) (setupErr error) {
+	stage := "bootstrap-policy"
+	defer func() { setupErr = WorkerSetupFailure(stage, setupErr) }()
 	if err := VerifyBootstrapPolicy(); err != nil {
 		return err
 	}
+	stage = "pid-namespace"
 	if os.Getpid() != 1 {
 		return errors.New("scope worker must own PID namespace")
 	}
+	stage = "spec-validation"
 	if err := cfg.Spec.Validate(); err != nil {
 		return err
 	}
+	stage = "mount-private"
 	if err := unix.Mount("", "/", "", unix.MS_REC|unix.MS_PRIVATE, ""); err != nil {
 		return err
 	}
+	stage = "mount-worker-proc"
 	if err := unix.Mount("proc", "/proc", "proc", unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
 		return err
 	}
 	root := filepath.Join(cfg.Directory, "payload")
+	stage = "payload-directory"
 	if err := os.Mkdir(root, 0700); err != nil {
 		return err
 	}
+	stage = "mount-payload-tmpfs"
 	if err := unix.Mount("tmpfs", root, "tmpfs", unix.MS_NOSUID|unix.MS_NODEV, fmt.Sprintf("size=%d,nr_inodes=65536,mode=0755", cfg.Spec.Limits.DiskBytes)); err != nil {
 		return err
 	}
+	stage = "payload-layout"
 	for _, path := range []string{"usr", "bin", "sbin", "lib", "lib64", "etc", "etc/ssl", "dev", "proc", "home/dify", "workspace", "tmp", "inputs", "base", ".job"} {
 		if err := os.MkdirAll(filepath.Join(root, path), 0755); err != nil {
 			return err
 		}
 	}
+	stage = "mount-image"
 	for _, path := range []string{"/usr", "/bin", "/sbin", "/lib", "/lib64", "/etc/ssl"} {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			continue
@@ -85,39 +123,48 @@ func PrepareWorker(cfg WorkerConfig) error {
 	}
 	for _, name := range []string{"null", "zero", "random", "urandom", "tty"} {
 		dst := filepath.Join(root, "dev", name)
+		stage = "device-placeholder"
 		f, err := os.Create(dst)
 		if err != nil {
 			return err
 		}
 		_ = f.Close()
+		stage = "mount-device"
 		if err := unix.Mount(filepath.Join("/dev", name), dst, "", unix.MS_BIND, ""); err != nil {
 			return err
 		}
 	}
+	stage = "payload-passwd"
 	if err := os.WriteFile(filepath.Join(root, "etc/passwd"), []byte("dify:x:0:0::/home/dify:/bin/sh\n"), 0644); err != nil {
 		return err
 	}
+	stage = "mount-snapshot"
 	if err := readonlyBind(cfg.Snapshot, filepath.Join(root, "base")); err != nil {
 		return err
 	}
 	remaining := cfg.Spec.Limits.DiskBytes / 2
+	stage = "copy-home"
 	if err := copyTree(cfg.Snapshot, filepath.Join(root, "home/dify"), &remaining); err != nil {
 		return err
 	}
+	stage = "copy-inputs"
 	for ref, source := range cfg.Inputs {
 		if err := copyTree(source, filepath.Join(root, "inputs", ref), &remaining); err != nil {
 			return err
 		}
 	}
+	stage = "mount-inputs"
 	if err := readonlyBind(filepath.Join(root, "inputs"), filepath.Join(root, "inputs")); err != nil {
 		return err
 	}
 	// All spool files share one finite tmpfs. SQLite and immutable scope identity
 	// remain on the persistent private state volume outside the payload chroot.
 	spool := filepath.Join(cfg.Directory, "spool")
+	stage = "spool-directory"
 	if err := os.Mkdir(spool, 0700); err != nil {
 		return err
 	}
+	stage = "mount-spool-tmpfs"
 	if err := unix.Mount("tmpfs", spool, "tmpfs", unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, fmt.Sprintf("size=%d,nr_inodes=8192,mode=0700", cfg.Spec.Limits.OutputBytes+cfg.Spec.Limits.InputBytes+1<<20)); err != nil {
 		return err
 	}
@@ -125,9 +172,9 @@ func PrepareWorker(cfg WorkerConfig) error {
 }
 func readonlyBind(source, target string) error {
 	if err := unix.Mount(source, target, "", unix.MS_BIND, ""); err != nil {
-		return err
+		return WorkerSetupFailure("bind", err)
 	}
-	return unix.Mount("", target, "", unix.MS_BIND|unix.MS_REMOUNT|unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV, "")
+	return WorkerSetupFailure("remount-readonly", unix.Mount("", target, "", unix.MS_BIND|unix.MS_REMOUNT|unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV, ""))
 }
 func copyTree(source, target string, remaining *int64) error {
 	info, err := os.Lstat(source)
