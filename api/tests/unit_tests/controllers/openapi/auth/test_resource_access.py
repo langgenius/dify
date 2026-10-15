@@ -1,4 +1,5 @@
 from collections.abc import Callable, Generator
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -19,6 +20,7 @@ from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubj
 from core.db.session_factory import get_session_maker
 from extensions.application_services.app import AppServices
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantStatus
 from models.enums import CreatorUserRole
@@ -252,7 +254,9 @@ def test_other_workspace_endpoints_reject_resource_token(resource_fixture: Resou
             methods[endpoint](workspace_id=tenant_id)
 
 
-def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) -> None:
+def test_stop_task_rejects_other_token_owner(
+    resource_fixture: ResourceFixture, account_application_services: ApplicationServices
+) -> None:
     import inspect
 
     from werkzeug.exceptions import NotFound
@@ -268,7 +272,7 @@ def test_stop_task_rejects_other_token_owner(resource_fixture: ResourceFixture) 
     redis = _StopRedis(values={"generate_task_belong:task": b"end-user-other-user"})
     with patch(
         "controllers.openapi.app_run.application_services",
-        return_value=SimpleNamespace(app_tasks=AppTaskControlService(redis_client=redis)),
+        return_value=replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
     ):
         with pytest.raises(NotFound):
             inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
