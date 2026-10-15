@@ -294,6 +294,38 @@ describe('code/panel', () => {
     )
   })
 
+  it('keeps the existing binding of a parameter that survives code regeneration', async () => {
+    const user = userEvent.setup()
+    const config = createConfigResult()
+    mockUseConfig.mockReturnValue(config)
+    mockExtractFunctionParams.mockReturnValue(['foo', 'newParam'])
+
+    renderPanel()
+
+    await user.click(screen.getByRole('button', { name: 'generate-code' }))
+
+    expect(config.handleCodeAndVarsChange).toHaveBeenCalledWith(
+      'generated signature code',
+      [
+        {
+          variable: 'foo',
+          value_selector: ['start', 'foo'],
+          value_type: VarType.string,
+        },
+        {
+          variable: 'newParam',
+          value_selector: [],
+        },
+      ],
+      {
+        result: {
+          type: VarType.string,
+          children: null,
+        },
+      },
+    )
+  })
+
   it('removes input actions in readonly mode and passes readonly state to child sections', () => {
     mockUseConfig.mockReturnValue(
       createConfigResult({
