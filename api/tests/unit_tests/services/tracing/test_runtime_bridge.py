@@ -92,7 +92,11 @@ def test_disabled_gate_never_constructs_database_service_or_reads_context(monkey
     assert runtime_bridge.prepare_agent_app(cast(AgentAppRuntimeBuildContext, object())) is None
     assert runtime_bridge.prepare_workflow_agent(cast(WorkflowAgentRuntimeBuildContext, object()), None) is None
     runtime_bridge.freeze_workflow_run(
-        cast(WorkflowAppGenerateEntity, object()), workflow_id="workflow", workflow_run_id="run", conversation_id=None
+        cast(WorkflowAppGenerateEntity, object()),
+        workflow_id="workflow",
+        workflow_run_id="run",
+        conversation_id=None,
+        graph_data={},
     )
     assert runtime_bridge.capture_terminal(cast(BaseTraceInfo, object())) is False
     assert runtime_bridge.queue_enabled_at_start("app") is False
@@ -137,7 +141,11 @@ def test_workflow_start_prefers_explicit_trace_session(service: RecordingService
         app_config=SimpleNamespace(app_id="app", tenant_id="tenant"), extras={"trace_session_id": "external-session"}
     )
     runtime_bridge.freeze_workflow_run(
-        entity, workflow_id="workflow", workflow_run_id="run", conversation_id="conversation"
+        entity,
+        workflow_id="workflow",
+        workflow_run_id="run",
+        conversation_id="conversation",
+        graph_data={"nodes": [{"data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}]},
     )
     assert service.calls == [
         (
@@ -167,3 +175,14 @@ def test_worker_database_failure_retries_without_legacy_fallback(service: Record
     service.failure = OperationalError("statement", {}, Exception("sensitive database error"))
     with pytest.raises(RetryableTraceDispatchError, match="persistence temporarily unavailable"):
         runtime_bridge.capture_terminal(cast(BaseTraceInfo, object()))
+
+
+def test_ordinary_workflow_does_not_create_managed_snapshot(service: RecordingService) -> None:
+    runtime_bridge.freeze_workflow_run(
+        cast(WorkflowAppGenerateEntity, object()),
+        workflow_id="workflow",
+        workflow_run_id="run",
+        conversation_id=None,
+        graph_data={"nodes": [{"data": {"type": "llm"}}, {"data": {"type": "agent", "version": "1"}}]},
+    )
+    assert service.calls == []
