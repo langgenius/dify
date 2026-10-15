@@ -1,6 +1,5 @@
-from unittest.mock import Mock
-
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -9,8 +8,10 @@ from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import WorkflowPauseStreamResponse
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.system_variables import build_system_variables
-from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
+from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
@@ -23,7 +24,9 @@ from graphon.graph_events import (
 )
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from models.account import Account
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
+from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 
 
 @pytest.mark.parametrize(
@@ -37,6 +40,7 @@ from models.model import AppMode
 )
 def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_responses(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
     terminal_event: GraphRunSucceededEvent | GraphRunPartialSucceededEvent | GraphRunFailedEvent | GraphRunAbortedEvent,
     status: WorkflowExecutionStatus,
 ) -> None:
@@ -65,10 +69,20 @@ def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_respo
         for variable in system_variables:
             pool.add(variable.selector, variable)
         runtime = GraphRuntimeState(variable_pool=pool, start_at=clock[0])
-        repository = Mock()
-        node_repository = Mock()
-        node_executions: list[WorkflowNodeExecution] = []
-        node_repository.get_by_workflow_execution.return_value = node_executions
+        repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id="tenant-1",
+            user=account,
+            app_id="app-1",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        node_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id="tenant-1",
+            user=account,
+            app_id="app-1",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
         layer = WorkflowPersistenceLayer(
             application_generate_entity=entity,
             workflow_info=PersistenceWorkflowInfo(
@@ -81,16 +95,21 @@ def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_respo
         layer.on_graph_start()
         reason = WorkflowStartReason.INITIAL if index == 0 else WorkflowStartReason.RESUMPTION
         layer.on_event(GraphRunStartedEvent(reason=reason))
-        assert repository.save.call_args.args[0].elapsed_time == total
+        with sqlite_session_factory() as session:
+            started_execution = session.get(WorkflowRun, "run-1")
+            assert started_execution is not None
+            assert started_execution.elapsed_time == total
 
         clock[0] += duration
         total += duration
         is_paused = index < 2
         layer.on_event(GraphRunPausedEvent() if is_paused else terminal_event)
-        execution = repository.save.call_args.args[0]
-        assert execution.elapsed_time == total
-        assert execution.status == (WorkflowExecutionStatus.PAUSED if is_paused else status)
-        assert (execution.finished_at is None) == is_paused
+        with sqlite_session_factory() as session:
+            execution = session.get(WorkflowRun, "run-1")
+            assert execution is not None
+            assert execution.elapsed_time == total
+            assert execution.status == (WorkflowExecutionStatus.PAUSED if is_paused else status)
+            assert (execution.finished_at is None) == is_paused
 
         # Queue processing and pause waits must not extend a settled segment.
         clock[0] += 1000

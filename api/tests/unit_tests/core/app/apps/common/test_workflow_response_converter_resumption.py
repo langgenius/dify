@@ -1,12 +1,10 @@
-from types import SimpleNamespace
-
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
-from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
-from repositories.entities.workflow_execution import WorkflowExecutionTiming
+from models.model import AppMode
 
 
 def _build_converter() -> WorkflowResponseConverter:
@@ -18,16 +16,18 @@ def _build_converter() -> WorkflowResponseConverter:
         workflow_id="wf-1",
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-    app_entity = SimpleNamespace(
+    app_entity = WorkflowAppGenerateEntity(
         task_id="task-1",
-        app_config=SimpleNamespace(app_id="app-1", tenant_id="tenant-1"),
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-1", tenant_id="tenant-1", workflow_id="wf-1", app_mode=AppMode.WORKFLOW
+        ),
         invoke_from=InvokeFrom.EXPLORE,
         files=[],
         inputs={},
         workflow_execution_id="run-1",
         call_depth=0,
-        workflow_execution_timing=WorkflowExecutionTiming(),
+        user_id="user-1",
+        stream=True,
     )
     account = Account(name="tester", email="tester@example.com")
     account.id = "acc-1"
@@ -38,7 +38,7 @@ def _build_converter() -> WorkflowResponseConverter:
     )
 
 
-def test_workflow_start_stream_response_carries_resumption_reason():
+def test_workflow_start_stream_response_carries_resumption_reason() -> None:
     converter = _build_converter()
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
@@ -49,7 +49,7 @@ def test_workflow_start_stream_response_carries_resumption_reason():
     assert resp.data.reason is WorkflowStartReason.RESUMPTION
 
 
-def test_workflow_start_stream_response_carries_initial_reason():
+def test_workflow_start_stream_response_carries_initial_reason() -> None:
     converter = _build_converter()
     resp = converter.workflow_start_to_stream_response(
         task_id="task-1",
