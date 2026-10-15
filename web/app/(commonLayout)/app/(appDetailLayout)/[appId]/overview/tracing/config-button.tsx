@@ -10,16 +10,28 @@ type Props = Readonly<{
   readOnly: boolean
   className?: string
   hasConfigured: boolean
+  disabled?: boolean
   children?: React.ReactNode
 }> &
   PopupProps
 
-const ConfigBtn: FC<Props> = ({ className, hasConfigured, children, ...popupProps }) => {
+const ConfigBtn: FC<Props> = ({
+  className,
+  hasConfigured,
+  disabled = false,
+  children,
+  ...popupProps
+}) => {
   if (popupProps.readOnly && !hasConfigured) return null
 
   return (
     <Popover>
-      <PopoverTrigger render={<div className={cn('select-none', className)}>{children}</div>} />
+      <PopoverTrigger
+        disabled={disabled}
+        className={cn('select-none disabled:opacity-50', className)}
+      >
+        {children}
+      </PopoverTrigger>
       <PopoverContent
         placement="bottom-end"
         sideOffset={12}

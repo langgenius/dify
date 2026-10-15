@@ -69,6 +69,26 @@ describe('Tracing overview panel', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps the tracing entry visible and disabled until configuration is ready', async () => {
+    request.mockImplementation(() => new Promise<Response>(() => {}))
+    renderPanel()
+    expect(screen.getByRole('button', { name: 'app.tracing.title' })).toBeDisabled()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('offers retry when tracing cannot load instead of remaining in a loading state', async () => {
+    request.mockRejectedValue(new Error('Tracing unavailable'))
+    renderPanel()
+    const retry = await screen.findByRole('button', { name: /common.errorBoundary.tryAgain/ })
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    mockServer(false)
+    await userEvent.setup().click(retry)
+    expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common.errorBoundary.tryAgain/ }),
+    ).not.toBeInTheDocument()
+  })
+
   it('hides configuration for a read-only app with no providers', async () => {
     mockServer(false)
     const { client } = renderPanel(true)

@@ -1,5 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
+import { Suspense } from 'react'
 import { useStore } from '@/app/components/app/store'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -81,6 +83,59 @@ describe('AppDetailLayout', () => {
       return response instanceof Response ? response : Response.json(response)
     })
     useStore.getState().setAppDetail()
+  })
+
+  it('shares the app detail request with the overview observer', async () => {
+    mockPathname = '/app/app-1/overview'
+    function OverviewConsumer() {
+      const { data } = useSuspenseQuery(
+        consoleQuery.apps.byAppId.get.queryOptions({
+          input: { params: { app_id: 'app-1' } },
+        }),
+      )
+      return <div>{data.name} statistics</div>
+    }
+    render(
+      <AppDetailLayout appId="app-1">
+        <Suspense fallback={<div>Loading overview</div>}>
+          <OverviewConsumer />
+        </Suspense>
+      </AppDetailLayout>,
+    )
+    expect(await screen.findByText('Demo App statistics')).toBeInTheDocument()
+    expect(mockAppResponse).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Loading overview')).not.toBeInTheDocument()
+  })
+
+  it('hides the previous app while loading another app', async () => {
+    const { rerender } = render(
+      <AppDetailLayout appId="app-1">
+        <div>First app content</div>
+      </AppDetailLayout>,
+    )
+    await screen.findByText('First app content')
+    let resolveRequest!: (response: AppDetailWithSite) => void
+    mockAppResponse.mockImplementation(
+      () =>
+        new Promise<AppDetailWithSite>((resolve) => {
+          resolveRequest = resolve
+        }),
+    )
+    mockPathname = '/app/app-2/workflow'
+    rerender(
+      <AppDetailLayout appId="app-2">
+        <div>Second app content</div>
+      </AppDetailLayout>,
+    )
+    expect(screen.queryByText('First app content')).not.toBeInTheDocument()
+    expect(screen.queryByText('Second app content')).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(mockAppResponse).toHaveBeenCalledWith(expect.stringMatching(/\/apps\/app-2$/)),
+    )
+    await act(async () => {
+      resolveRequest(createAppDetail({ id: 'app-2' }))
+    })
+    expect(await screen.findByText('Second app content')).toBeInTheDocument()
   })
 
   describe('Document title', () => {

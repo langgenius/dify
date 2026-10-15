@@ -2,13 +2,13 @@
 
 import type { AppTracePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import ConfigButton from './config-button'
@@ -24,11 +24,12 @@ type PanelProps = {
 
 const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
   const { t } = useTranslation(['app', 'common'])
-  const { data: tracingStatus } = useQuery(
+  const statusQuery = useQuery(
     consoleQuery.apps.byAppId.trace.get.queryOptions({
       input: { params: { app_id: appId } },
     }),
   )
+  const tracingStatus = statusQuery.data
   const providers = Object.values(TracingProvider)
   const configQueries = useQueries({
     queries: providers.map((provider) =>
@@ -95,15 +96,26 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
     }
   }
 
-  if (!tracingStatus || configQueries.some((query) => query.isPending)) {
+  const failedConfigs = configQueries.filter((query) => query.isError && !query.data)
+  const statusFailed = statusQuery.isError && !tracingStatus
+  if (statusFailed || failedConfigs.length > 0) {
     return (
-      <div className="mb-3 flex items-center justify-between">
-        <div className="w-50">
-          <LoadingPlaceholder />
-        </div>
-      </div>
+      <Button
+        variant="secondary"
+        onClick={() => {
+          if (statusFailed) void statusQuery.refetch()
+          failedConfigs.forEach((query) => {
+            void query.refetch()
+          })
+        }}
+      >
+        {t(($) => $['tracing.title'], { ns: 'app' })}
+        {' · '}
+        {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+      </Button>
     )
   }
+  const isLoading = statusQuery.isPending || configQueries.some((query) => query.isPending)
 
   return (
     <div className={cn('flex items-center justify-between')}>
@@ -112,6 +124,7 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
           key={`unconfigured-${appId}`}
           appId={appId}
           readOnly={readOnly}
+          disabled={isLoading}
           hasConfigured={false}
           enabled={enabled}
           onStatusChange={handleTracingEnabledChange}
@@ -153,6 +166,7 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
           key={`configured-${appId}`}
           appId={appId}
           readOnly={readOnly}
+          disabled={isLoading}
           hasConfigured
           enabled={enabled}
           onStatusChange={handleTracingEnabledChange}

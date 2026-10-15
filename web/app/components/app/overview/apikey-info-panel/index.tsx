@@ -22,7 +22,7 @@ const APIKeyInfoPanel: FC = () => {
   })
   const isCloud = deploymentEdition === 'CLOUD'
 
-  const { data: hasActiveProvider = false } = useQuery(
+  const { data: hasActiveProvider, isSuccess } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: 'llm' } },
       select: (response) => response.data.some((provider) => provider.status === 'active'),
@@ -34,9 +34,7 @@ const APIKeyInfoPanel: FC = () => {
 
   const [isShow, setIsShow] = useState(true)
 
-  if (hasActiveProvider) return null
-
-  if (!isShow) return null
+  if (!isSuccess || hasActiveProvider || !isShow) return null
 
   return (
     <div
@@ -45,32 +43,10 @@ const APIKeyInfoPanel: FC = () => {
         'relative mb-6 rounded-2xl border p-8 shadow-md',
       )}
     >
-      <div
-        className={cn(
-          'text-[24px] font-semibold text-text-primary',
-          isCloud ? 'flex h-8 items-center space-x-1' : 'mb-6 leading-8',
-        )}
-      >
-        {isCloud && <span>😀</span>}
-        {isCloud ? (
-          <div>
-            {t(($) => $['apiKeyInfo.cloud.trial.title'], {
-              ns: 'appOverview',
-              providerName: 'OpenAI',
-            })}
-          </div>
-        ) : (
-          <div>
-            <div>{t(($) => $['apiKeyInfo.selfHost.title.row1'], { ns: 'appOverview' })}</div>
-            <div>{t(($) => $['apiKeyInfo.selfHost.title.row2'], { ns: 'appOverview' })}</div>
-          </div>
-        )}
+      <div className="mb-6 text-[24px] leading-8 font-semibold text-text-primary">
+        <div>{t(($) => $['apiKeyInfo.selfHost.title.row1'], { ns: 'appOverview' })}</div>
+        <div>{t(($) => $['apiKeyInfo.selfHost.title.row2'], { ns: 'appOverview' })}</div>
       </div>
-      {isCloud && (
-        <div className="mt-1 text-sm font-normal text-text-tertiary">
-          {t(($) => $[`apiKeyInfo.cloud.${'trial'}.description`], { ns: 'appOverview' })}
-        </div>
-      )}
       <Button variant="primary" className="mt-2" onClick={() => setSettingsDestination('provider')}>
         <div className="text-sm font-medium">
           {t(($) => $['apiKeyInfo.setAPIBtn'], { ns: 'appOverview' })}
