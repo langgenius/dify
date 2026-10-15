@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import SnippetLayout from './components/snippet-layout'
 import SnippetMain from './components/snippet-main'
@@ -78,9 +79,11 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
 
 const SnippetPageWrapper = ({ snippetId }: SnippetPageProps) => {
   return (
-    <WorkflowContextProvider key={snippetId}>
-      <SnippetPage snippetId={snippetId} />
-    </WorkflowContextProvider>
+    <EditorResourceScope identity={{ kind: 'snippet', snippetId }}>
+      <WorkflowContextProvider>
+        <SnippetPage snippetId={snippetId} />
+      </WorkflowContextProvider>
+    </EditorResourceScope>
   )
 }
 
