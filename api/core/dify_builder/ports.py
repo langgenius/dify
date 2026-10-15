@@ -48,6 +48,7 @@ from core.dify_builder.models import (
     TestInput,
 )
 from core.dify_builder.state import PcState
+from services.dify_builder.plan import WorkflowPlan
 
 __all__ = [
     "ApplyResult",
@@ -83,7 +84,7 @@ class DifyBuilderAgent(Protocol):
     # service layer normalizes and stores it.
     def propose_app_name(self, goal_text: str, requirements: dict[str, Any]) -> str: ...
 
-    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> list[str]: ...
+    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan | None: ...
 
     def discover_resources(
         self, plan_items: list[str], *, goal_text: str, requirements: dict[str, Any]
@@ -113,7 +114,8 @@ class DifyBuilderAgent(Protocol):
 
     def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, Any]: ...
 
-    def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> list[str]: ...
+    # None means no complete proposal was generated; retain the current plan.
+    def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> WorkflowPlan | None: ...
 
     # ``edit_target_node_ids``: the nodes analyze_impact said the change
     # touches; an implementation may show the model their current config so it

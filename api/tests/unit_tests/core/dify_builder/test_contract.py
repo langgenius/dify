@@ -157,7 +157,12 @@ def test_card_shapes_round_trip() -> None:
     card family (spec §4.3), plus one typed submit payload (spec §5)."""
 
     # plan
-    plan = PlanCard(title="Build plan", items=["Add start node", "Add LLM node"])
+    plan = PlanCard(
+        title="Build plan",
+        input_summary="A support question.",
+        output_summary="A generated answer.",
+        items=["Add start node", "Add LLM node"],
+    )
     assert plan.kind == CardKind.PLAN
     assert "kind" not in asdict(plan)
     plan_item = plan.to_item(seq=1, at_version=1)
@@ -165,6 +170,8 @@ def test_card_shapes_round_trip() -> None:
     assert plan_item.payload == {
         "reply_language": "",
         "title": "Build plan",
+        "input_summary": "A support question.",
+        "output_summary": "A generated answer.",
         "items": ["Add start node", "Add LLM node"],
     }
 

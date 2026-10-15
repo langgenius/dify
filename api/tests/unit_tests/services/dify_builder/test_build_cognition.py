@@ -46,6 +46,17 @@ class _BoomInstance:
         raise RuntimeError("provider down")
 
 
+def _plan_reply(items):
+    return json.dumps(
+        {
+            "title": "Build a document summary workflow",
+            "input_summary": "Source documents to summarize.",
+            "output_summary": "A summary report.",
+            "plan": items,
+        }
+    )
+
+
 def test_analyze_goal_returns_fields_and_values():
     m = _FakeInstance(
         [
@@ -242,20 +253,26 @@ def test_analyze_goal_scrubs_invented_defaults_end_to_end(monkeypatch):
     )
 
 
-def test_propose_plan_v1_returns_bullets():
-    m = _FakeInstance([json.dumps({"plan": ["Ingest", "Summarize", "Emit"]})])
-    assert build.propose_plan_v1(m, {"x": 1}) == ["Ingest", "Summarize", "Emit"]
+def test_propose_plan_v1_returns_overview_and_steps_in_one_call():
+    m = _FakeInstance([_plan_reply(["Ingest", "Summarize", "Emit"])])
+    out = build.propose_plan_v1(m, {"x": 1})
+    assert out is not None
+    assert out.title == "Build a document summary workflow"
+    assert out.input_summary == "Source documents to summarize."
+    assert out.output_summary == "A summary report."
+    assert out.items == ["Ingest", "Summarize", "Emit"]
+    assert len(m.calls) == 1
 
 
 def test_propose_plan_v1_reports_no_plan_without_a_model():
     out = build.propose_plan_v1(None, {})
-    assert out == []
+    assert out is None
 
 
 def test_propose_plan_v1_reports_no_plan_on_provider_failure():
     m = _BoomInstance()
     out = build.propose_plan_v1(m, {})
-    assert out == []
+    assert out is None
 
 
 @pytest.mark.parametrize(
@@ -279,19 +296,20 @@ def test_propose_plan_v1_reports_no_plan_on_provider_failure():
 def test_propose_plan_v1_rejects_the_entire_invalid_plan_with_one_correction(reply):
     model = _FakeInstance([reply, reply])
 
-    assert build.propose_plan_v1(model, {"count": 2}) == []
+    assert build.propose_plan_v1(model, {"count": 2}) is None
     assert len(model.calls) == 2
 
 
 def test_propose_plan_v1_corrects_schema_once_with_full_source_and_same_provider_parameters():
     goal = "Produce a 文件 " + ("original source " * 300) + "UNTRUNCATED_END"
     requirements = {"title": "报告", "render_api_url": "", "count": 2}
-    model = _FakeInstance(['{"plan": ["valid", 7]}', '{"plan": ["start node reads input", "end node returns link"]}'])
+    model = _FakeInstance(['{"plan": ["valid", 7]}', _plan_reply(["start node reads input", "end node returns link"])])
     reasoning = []
 
     out = build.propose_plan_v1(model, requirements, reasoning.append, goal_text=goal)
 
-    assert out == ["start node reads input", "end node returns link"]
+    assert out is not None
+    assert out.items == ["start node reads input", "end node returns link"]
     assert len(model.calls) == 2
     source = f"ORIGINAL GOAL:\n{goal}\n\nCONFIRMED REQUIREMENTS:\n" + json.dumps(requirements, ensure_ascii=False)
     assert model.calls[0][0][1].content == source
@@ -310,14 +328,16 @@ def test_propose_plan_v1_does_not_retry_a_provider_failure():
 
     model = FailingProvider()
 
-    assert build.propose_plan_v1(model, {}) == []
+    assert build.propose_plan_v1(model, {}) is None
     assert model.calls == 1
 
 
 def test_propose_plan_v1_preserves_valid_plan_strings_without_content_thresholds():
-    model = _FakeInstance(['{"plan": ["start node: collect input", "llm node: draft", "end node: return"]}'])
+    model = _FakeInstance([_plan_reply(["start node: collect input", "llm node: draft", "end node: return"])])
 
-    assert build.propose_plan_v1(model, {}) == ["start node: collect input", "llm node: draft", "end node: return"]
+    out = build.propose_plan_v1(model, {})
+    assert out is not None
+    assert out.items == ["start node: collect input", "llm node: draft", "end node: return"]
     assert len(model.calls) == 1
 
 
@@ -862,7 +882,7 @@ def test_plan_prompt_carries_the_node_vocabulary(monkeypatch):
     def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
         captured["user"] = user
-        return json.dumps({"plan": ["Start node collects the review list"]})
+        return _plan_reply(["Start node collects the review list"])
 
     monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     build.propose_plan_v1(_FakeInstance([]), {"goal": "summarise reviews"})
@@ -884,7 +904,7 @@ def test_plan_prompt_names_capabilities_dify_lacks(monkeypatch):
 
     def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return json.dumps({"plan": ["step"]})
+        return _plan_reply(["step"])
 
     monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     build.propose_plan_v1(_FakeInstance([]), {})
@@ -902,13 +922,16 @@ def test_plan_prompt_still_requests_json_and_language(monkeypatch):
 
     def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return json.dumps({"plan": ["step"]})
+        return _plan_reply(["step"])
 
     monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     build.propose_plan_v1(_FakeInstance([]), {})
 
-    assert '{"plan": ["step", ...]}' in captured["system"]
-    assert build.llm.json_language_instruction("plan steps") in captured["system"]
+    assert '"plan": ["step", ...]' in captured["system"]
+    assert (
+        build.llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
+        in captured["system"]
+    )
 
 
 def test_topology_directive_keeps_the_workflow_rules():
@@ -1027,7 +1050,7 @@ def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch):
 
     def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return json.dumps({"plan": ["tool node converts the outline to a PPTX"]})
+        return _plan_reply(["tool node converts the outline to a PPTX"])
 
     monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     tools = [resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")]
@@ -1052,7 +1075,7 @@ def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch):
 
     def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return json.dumps({"plan": ["step"]})
+        return _plan_reply(["step"])
 
     monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
 
@@ -1217,7 +1240,7 @@ def test_analyze_goal_does_not_explain_a_field_that_has_a_value():
 
 
 def test_planner_describes_only_first_phase_nodes_to_the_model():
-    model = _FakeInstance(['{"plan": ["code node: process", "end node: return"]}'])
+    model = _FakeInstance([_plan_reply(["code node: process", "end node: return"])])
 
     assert build.propose_plan_v1(model, {})
 
@@ -1373,7 +1396,7 @@ def test_planner_sees_relevant_installed_tools_including_delayed_setup_beyond_th
 
     def fake_invoke_text(model, *, system, user, **kw):  # noqa: ARG001
         captured["system"] = system
-        return json.dumps({"plan": ["tool node pages the on-call responders"]})
+        return _plan_reply(["tool node pages the on-call responders"])
 
     monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
     agent = LlmBuilderAgent(TENANT_ID, {})
@@ -1611,9 +1634,10 @@ class TestNativeBuildCapabilityMessages:
     @classmethod
     def _outline_messages(cls):
         plan = ["http-request node GETs the URL", "if-else node checks status", "end node returns the result"]
-        model = _FakeInstance([json.dumps({"plan": plan})])
+        model = _FakeInstance([_plan_reply(plan)])
         result = build.propose_plan_v1(model, cls._REQUIREMENTS, goal_text=cls._GOAL)
-        assert result == plan
+        assert result is not None
+        assert result.items == plan
         assert len(model.calls) == 1
         return model.calls[0][0]
 
