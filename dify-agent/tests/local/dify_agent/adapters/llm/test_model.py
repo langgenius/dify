@@ -31,6 +31,7 @@ from pydantic_ai.tools import ToolDefinition
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace import StatusCode
 
 from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
 from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
@@ -292,6 +293,34 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(attributes["gen_ai.usage.output_tokens"], 9)
                 self.assertEqual(attributes["gen_ai.usage.total_tokens"], 26)
                 self.assertNotIn("gen_ai.usage.cache_read.input_tokens", attributes)
+        finally:
+            tracer_provider.shutdown()
+
+    async def test_streaming_gateway_failure_marks_the_real_chat_span_as_error(self) -> None:
+        exporter = InMemorySpanExporter()
+        tracer_provider = TracerProvider()
+        tracer_provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_error("EndpointSetupFailedError", "sensitive-provider-detail")
+
+        try:
+            async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                adapter = InstrumentedModel(
+                    DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai"),
+                    InstrumentationSettings(tracer_provider=tracer_provider),
+                )
+                with self.assertRaises(UserError):
+                    async with adapter.request_stream(
+                        [ModelRequest(parts=[UserPromptPart("test")])], None, ModelRequestParameters()
+                    ) as stream:
+                        async for _ in stream:
+                            pass
+            spans = exporter.get_finished_spans()
+            self.assertEqual(len(spans), 1)
+            self.assertEqual(spans[0].status.status_code, StatusCode.ERROR)
+            self.assertEqual((spans[0].attributes or {}).get("error.type"), "UserError")
+            self.assertNotIn("dify.llm.total_price", spans[0].attributes or {})
         finally:
             tracer_provider.shutdown()
 
