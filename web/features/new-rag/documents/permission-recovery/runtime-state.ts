@@ -1,5 +1,5 @@
 type PermissionRecoveryReadStatus = 'readable' | 'readDenied' | 'retrying'
-export type PermissionRecoveryWriteStatus = 'writable' | 'writeDenied' | 'refreshing' | 'readOnly'
+type PermissionRecoveryWriteStatus = 'writable' | 'writeDenied' | 'refreshing' | 'readOnly'
 
 const DOCUMENT_DENIED = 1
 const TASK_DENIED = 2

@@ -30,20 +30,18 @@ export const knowledgeSettingsEditSessionAtom = atom<
   | undefined
 >(undefined)
 
-export const knowledgeSettingsServerSnapshotAtom = atom(
-  (get): KnowledgeSettingsSnapshot | undefined => {
-    const space = get(knowledgeSettingsSpaceAtom)
-    const settings = get(knowledgeSettingsSettingsAtom)
-    if (!space || !settings || !get(knowledgeSettingsHasDataAtom)) return undefined
-    const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
-    return {
-      space,
-      settings,
-      permissions: canManageAccess ? get(knowledgeSettingsPermissionsAtom) : [],
-      externalAccess: canManageAccess ? get(knowledgeSettingsExternalAccessAtom) : undefined,
-    }
-  },
-)
+const knowledgeSettingsServerSnapshotAtom = atom((get): KnowledgeSettingsSnapshot | undefined => {
+  const space = get(knowledgeSettingsSpaceAtom)
+  const settings = get(knowledgeSettingsSettingsAtom)
+  if (!space || !settings || !get(knowledgeSettingsHasDataAtom)) return undefined
+  const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
+  return {
+    space,
+    settings,
+    permissions: canManageAccess ? get(knowledgeSettingsPermissionsAtom) : [],
+    externalAccess: canManageAccess ? get(knowledgeSettingsExternalAccessAtom) : undefined,
+  }
+})
 
 const currentDraftAtom = atom((get) => {
   const session = get(knowledgeSettingsEditSessionAtom)

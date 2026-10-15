@@ -389,9 +389,6 @@ catalogs:
     '@types/sortablejs':
       specifier: 1.15.9
       version: 1.15.9
-    '@types/ua-parser-js':
-      specifier: 0.7.39
-      version: 0.7.39
     '@typescript-eslint/parser':
       specifier: 8.71.1
       version: 8.71.1
@@ -734,9 +731,6 @@ catalogs:
     typescript:
       specifier: npm:@typescript/typescript6@6.0.2
       version: 6.0.2
-    ua-parser-js:
-      specifier: 1.0.41
-      version: 1.0.41
     uglify-js:
       specifier: 3.19.3
       version: 3.19.3
@@ -1678,9 +1672,6 @@ importers:
       tldts:
         specifier: 'catalog:'
         version: 7.4.18
-      ua-parser-js:
-        specifier: 'catalog:'
-        version: 1.0.41
       unist-util-visit:
         specifier: 'catalog:'
         version: 5.1.0
@@ -1796,9 +1787,6 @@ importers:
       '@types/sortablejs':
         specifier: 'catalog:'
         version: 1.15.9
-      '@types/ua-parser-js':
-        specifier: 'catalog:'
-        version: 0.7.39
       '@typescript/native':
         specifier: 'catalog:'
         version: typescript@7.0.2
@@ -4985,9 +4973,6 @@ packages:
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
-
-  '@types/ua-parser-js@0.7.39':
-    resolution: {integrity: sha512-P/oDfpofrdtF5xw433SPALpdSchtJmY7nsJItf8h3KXqOslkbySh8zq4dSWXH2oTjRvJ5PczVEoCZPow6GicLg==}
 
   '@types/unist@2.0.11':
     resolution: {integrity: sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA==}
@@ -9093,10 +9078,6 @@ packages:
     engines: {node: '>=16.20.0'}
     hasBin: true
 
-  ua-parser-js@1.0.41:
-    resolution: {integrity: sha512-LbBDqdIC5s8iROCUjMbW1f5dJQTEFB1+KO9ogbvlb3nm9n4YHa5p4KTvFPWvh2Hs8gZMBuiB1/8+pdfe/tDPug==}
-    hasBin: true
-
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
@@ -12395,8 +12376,6 @@ snapshots:
   '@types/sortablejs@1.15.9': {}
 
   '@types/trusted-types@2.0.7': {}
-
-  '@types/ua-parser-js@0.7.39': {}
 
   '@types/unist@2.0.11': {}
 
@@ -16956,8 +16935,6 @@ snapshots:
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
 
-  ua-parser-js@1.0.41: {}
-
   ufo@1.6.4: {}
 
   uglify-js@3.19.3: {}
@@ -17624,7 +17601,6 @@ time:
   '@types/react-dom@19.3.0': '2026-09-09T18:07:51.886Z'
   '@types/react@19.3.0': '2026-09-09T18:08:49.750Z'
   '@types/sortablejs@1.15.9': '2025-10-24T04:31:45.132Z'
-  '@types/ua-parser-js@0.7.39': '2023-11-07T18:19:09.796Z'
   '@typescript-eslint/parser@8.71.1': '2026-10-05T17:08:12.507Z'
   '@typescript/typescript6@6.0.2': '2026-07-06T18:06:47.459Z'
   '@vitejs/plugin-react@6.1.2': '2026-10-05T10:08:27.143Z'
@@ -17742,7 +17718,6 @@ time:
   tailwindcss@4.3.3: '2026-07-16T12:03:35.267Z'
   tldts@7.4.18: '2026-10-07T22:40:43.594Z'
   typescript@7.0.2: '2026-07-08T15:55:18.431Z'
-  ua-parser-js@1.0.41: '2025-08-19T12:45:30.307Z'
   uglify-js@3.19.3: '2024-08-29T13:49:01.316Z'
   undici@7.30.0: '2026-09-25T07:15:17.199Z'
   unist-util-visit@5.1.0: '2026-01-22T19:02:58.977Z'

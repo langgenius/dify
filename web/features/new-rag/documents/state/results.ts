@@ -100,7 +100,7 @@ export const filteredDocumentsAtom = atom((get) => {
   })
 })
 
-export const documentSnapshotPendingAtom = atom((get) => !get(documentsQueryHasDataAtom))
+const documentSnapshotPendingAtom = atom((get) => !get(documentsQueryHasDataAtom))
 
 const sourceResultsIncompleteAtom = atom((get) => {
   return Boolean(

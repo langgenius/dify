@@ -38,7 +38,7 @@ export const documentModelReadyActionAtom = atom<{ ensureModelReady: EnsureKnowl
   ensureModelReady: async () => unavailableAction(),
 })
 
-export const documentAuxiliaryReadPermissionDeniedAtom = atom(
+const documentAuxiliaryReadPermissionDeniedAtom = atom(
   (get) => get(documentTaskRuntimeBridgeAtom).auxiliaryReadPermissionDenied,
 )
 
@@ -125,7 +125,7 @@ export const resetDocumentFailedTaskPollBlocksAtom = atom(null, (get) => {
   get(documentTaskRuntimeBridgeAtom).resetFailedPollBlocks()
 })
 
-export const retryDocumentAuxiliaryTaskReadAtom = atom(null, (get) => {
+const retryDocumentAuxiliaryTaskReadAtom = atom(null, (get) => {
   get(documentTaskRuntimeBridgeAtom).retryAuxiliaryTaskRead()
 })
 
