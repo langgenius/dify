@@ -29,7 +29,7 @@ from graphon.runtime.graph_runtime_state import GraphExecutionProtocol
 from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.workflow import Workflow
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.events import WorkflowEventPublisher
 from services.workflow.execution.adapters.graph import WorkflowGraphBuilder
 from services.workflow.execution.adapters.node_factory import get_default_root_node_id
@@ -43,6 +43,7 @@ from services.workflow.execution.adapters.workflow.command_channels import (
 from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow.variable_contracts import environment_variable_values
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class WorkflowAppRunner:
         application_generate_entity: WorkflowAppGenerateEntity,
         queue_manager: AppQueueManager,
         variable_loader: VariableLoader,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         system_user_id: str,
         root_node_id: str | None = None,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -158,7 +159,7 @@ class WorkflowAppRunner:
                 variable_pool,
                 build_bootstrap_variables(
                     system_variables=system_inputs,
-                    environment_variables=self._workflow.environment_variables,
+                    environment_variables=environment_variable_values(self._workflow),
                 ),
             )
             root_node_id = self._root_node_id or get_default_root_node_id(self._workflow.graph_dict)

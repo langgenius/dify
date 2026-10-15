@@ -65,21 +65,19 @@ class WorkflowDefinitionStore:
         draft: bool,
         session: Session,
         snapshot: WorkflowSnapshot | None = None,
-    ) -> Workflow:
-        """Finish the request's read phase before handing detached inputs to execution.
+    ) -> WorkflowSnapshot:
+        """Finish the request's read phase before handing immutable inputs to execution.
 
         The generation adapter transfers ownership of its read Session here.
-        Closing it detaches the loaded App, actor and Workflow without expiring
-        their scalar values. Execution records are written by separate repositories.
+        Execution records are written by separate repositories.
         """
         with session:
-            return (
-                workflow_from_snapshot(snapshot)
-                if snapshot is not None
-                else WorkflowDefinitionStore.get_execution_workflow(
-                    app_model, workflow_id=workflow_id, draft=draft, session=session
-                )
+            if snapshot is not None:
+                return snapshot
+            workflow = WorkflowDefinitionStore.get_execution_workflow(
+                app_model, workflow_id=workflow_id, draft=draft, session=session
             )
+            return workflow_snapshot(workflow)
 
     @staticmethod
     def get_by_id(session: Session, *, tenant_id: str, app_id: str, workflow_id: str) -> Workflow | None:
@@ -680,6 +678,7 @@ def workflow_snapshot(workflow: Workflow) -> WorkflowSnapshot:
         created_at=workflow.created_at,
         updated_by=workflow.updated_by,
         updated_at=workflow.updated_at or workflow.created_at,
+        execution_id=getattr(workflow, "execution_id", None),
     )
 
 
@@ -766,20 +765,20 @@ class WorkflowDefinitionRepository:
         *,
         workflow_id: str | None,
         snapshot: WorkflowSnapshot | None,
-    ) -> tuple[App, Account, Workflow]:
+    ) -> tuple[App, Account, WorkflowSnapshot]:
         """Load execution inputs in a short read, keeping persisted secrets encrypted."""
         if snapshot is not None and (snapshot.tenant_id, snapshot.app_id) != (context.active_workspace_id, app_id):
             raise WorkflowNotFoundError("Workflow not found")
         with self._sessions() as session:
             app = require_console_app(session, context, app_id)
             actor = console_app_actor(session, context)
-            workflow = (
-                workflow_from_snapshot(snapshot)
-                if snapshot is not None
-                else WorkflowDefinitionStore.get_execution_workflow(
-                    app, workflow_id=workflow_id, draft=True, session=session
+            workflow = snapshot
+            if workflow is None:
+                workflow = workflow_snapshot(
+                    WorkflowDefinitionStore.get_execution_workflow(
+                        app, workflow_id=workflow_id, draft=True, session=session
+                    )
                 )
-            )
             return app, actor, workflow
 
     def get_draft_workflow(self, pipeline: Pipeline) -> Workflow | None:
