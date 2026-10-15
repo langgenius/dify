@@ -51,7 +51,14 @@ vi.mock('@/service/console', () => ({
     workspaces: {
       current: {
         modelProviders: {
-          get: { key: () => [['console', 'workspaces', 'current', 'modelProviders', 'get']] },
+          get: {
+            key: () => [['console', 'workspaces', 'current', 'modelProviders', 'get']],
+            queryOptions: (options: Record<string, unknown> = {}) => ({
+              ...options,
+              queryKey: [['console', 'workspaces', 'current', 'modelProviders', 'get']],
+              queryFn: async () => ({ data: [] }),
+            }),
+          },
           summary: { get: { key: () => ['model-provider-summary'] } },
           byProvider: {
             models: {
