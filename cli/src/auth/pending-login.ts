@@ -19,6 +19,8 @@ export type PendingLoginStore = Readonly<{
   read: () => Promise<Pending | null>
   save: (pending: Pending) => Promise<void>
   clear: () => Promise<void>
+  /** Clear only while the file still holds `deviceCode`: a newer login's code survives. */
+  clearIf: (deviceCode: string) => Promise<void>
 }>
 
 /** The device code a `login --no-wait` saved for `login --resume` to finish. */
@@ -29,5 +31,10 @@ export async function pendingLoginStore(ctx: CommandContext): Promise<PendingLog
     PENDING_SCHEMA,
     (await ctx.get(io)).notice,
   )
-  return { read: file.read, save: file.write, clear: file.remove }
+  return {
+    read: file.read,
+    save: file.write,
+    clear: file.remove,
+    clearIf: (deviceCode) => file.removeIf((pending) => pending.device_code === deviceCode),
+  }
 }

@@ -170,12 +170,13 @@ async function resume(ctx: CommandContext, pendingLogin: PendingLoginStore) {
   try {
     success = await pollAuthorization(api, pending.device_code, { clock: realClock() })
   } catch (err) {
-    if (err instanceof BaseError && FINAL_POLL_ERRORS.includes(err.code)) await pendingLogin.clear()
+    if (err instanceof BaseError && FINAL_POLL_ERRORS.includes(err.code))
+      await pendingLogin.clearIf(pending.device_code)
     throw err
   }
   if (success === undefined) return { status: PENDING_STATUS }
   const result = await finish(ctx, pending, success)
-  await pendingLogin.clear()
+  await pendingLogin.clearIf(pending.device_code)
   return result
 }
 

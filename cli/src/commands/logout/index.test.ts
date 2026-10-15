@@ -73,3 +73,14 @@ it('refuses under an env login', async () => {
     message: 'nothing to log out: the login comes from DIFY_TOKEN',
   })
 })
+
+it('refuses under an env login without dropping a pending interactive login', async () => {
+  const w = await testContext({ login: false, env: true, argv: ['logout'] })
+  worlds.push(w)
+  const pendingFile = join(w.dir, PENDING_FILE_NAME)
+  writeFileSync(pendingFile, 'device_code: dc-1\n')
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+  })
+  expect(existsSync(pendingFile)).toBe(true)
+})

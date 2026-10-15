@@ -152,6 +152,17 @@ export class YamlStore {
     }
   }
 
+  /**
+   * Remove the file only when `matches` accepts what it holds now. The read and the
+   * removal share one lock, so a file another process rewrote in between survives.
+   */
+  async rmIf(matches: (doc: Record<string, unknown> | null) => boolean): Promise<void> {
+    await this.withLock(async () => {
+      await this.load()
+      if (matches(loadYaml(this.getRawContent(), this.filePath))) await this.rm()
+    })
+  }
+
   async getTyped<T>(): Promise<T | null> {
     return this.withLock(async () => {
       await this.load()

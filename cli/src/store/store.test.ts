@@ -110,6 +110,25 @@ describe('YamlStore.withLock concurrency', () => {
   })
 })
 
+describe('YamlStore.rmIf', () => {
+  it('removes the file when the predicate accepts what it holds', async () => {
+    await writeFile(path, 'device_code: dc-1\n')
+    await new YamlStore(path).rmIf((doc) => doc?.device_code === 'dc-1')
+    expect(existsSync(path)).toBe(false)
+  })
+
+  it('keeps the file when it holds something else', async () => {
+    await writeFile(path, 'device_code: dc-2\n')
+    await new YamlStore(path).rmIf((doc) => doc?.device_code === 'dc-1')
+    expect(readFileSync(path, 'utf8')).toBe('device_code: dc-2\n')
+  })
+
+  it('is a no-op when the file does not exist', async () => {
+    await new YamlStore(path).rmIf(() => true)
+    expect(existsSync(path)).toBe(false)
+  })
+})
+
 describe('YamlStore persistence', () => {
   it('round-trips a nested document through disk', async () => {
     await new YamlStore(path).setTyped({ a: { b: { c: 'deep' } }, workspace: 'ws-123' })

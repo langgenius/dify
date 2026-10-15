@@ -1,5 +1,5 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
@@ -219,3 +219,43 @@ it('resume under an env login refuses a pending login before polling', async () 
   })
   expect(existsSync(pendingPath)).toBe(true)
 })
+
+it.each(['happy', 'denied', 'expired'] as const)(
+  'resume (%s) leaves a pending login another process saved meanwhile',
+  async (scenario) => {
+    const seed = await testContext({ login: false })
+    worlds.push(seed)
+    const pendingPath = join(seed.dir, PENDING_FILE_NAME)
+    const pendingFor = (code: string) =>
+      `server: ${seed.mock.url}\ninsecure: true\nno_keyring: true\ndevice_code: ${code}\n`
+    writeFileSync(pendingPath, pendingFor('dc-1'))
+    seed.mock.setScenario(scenario)
+    seed.mock.onDeviceTokenPoll(() => writeFileSync(pendingPath, pendingFor('dc-2')))
+    const w = await testContext({ login: false, argv: ['login', '--resume'], reuseDirOf: seed })
+    worlds.push(w)
+
+    await (await w.ctx.get(commands)).run().catch(() => undefined)
+
+    expect(readFileSync(pendingPath, 'utf8')).toContain('device_code: dc-2')
+  },
+)
+
+it.each(['happy', 'denied', 'expired'] as const)(
+  'resume (%s) clears its own pending login',
+  async (scenario) => {
+    const seed = await testContext({ login: false })
+    worlds.push(seed)
+    const pendingPath = join(seed.dir, PENDING_FILE_NAME)
+    writeFileSync(
+      pendingPath,
+      `server: ${seed.mock.url}\ninsecure: true\nno_keyring: true\ndevice_code: dc-1\n`,
+    )
+    seed.mock.setScenario(scenario)
+    const w = await testContext({ login: false, argv: ['login', '--resume'], reuseDirOf: seed })
+    worlds.push(w)
+
+    await (await w.ctx.get(commands)).run().catch(() => undefined)
+
+    expect(existsSync(pendingPath)).toBe(false)
+  },
+)
