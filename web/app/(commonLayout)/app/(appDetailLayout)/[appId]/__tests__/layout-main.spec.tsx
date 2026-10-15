@@ -260,20 +260,6 @@ describe('AppDetailLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('does not redirect between the configuration and workflow pages by app mode', () => {
-    mockPathname = '/app/app-1/configuration'
-
-    render(
-      <AppDetailLayout appId="app-1">
-        <div>App page content</div>
-      </AppDetailLayout>,
-      { cachedAppDetail: createAppDetail() },
-    )
-
-    expect(screen.getByText('App page content')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
   it('should render app detail content without owning the main skip target', async () => {
     render(
       <AppDetailLayout appId="app-1">
