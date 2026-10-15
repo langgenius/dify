@@ -907,7 +907,7 @@ class TestKnowledgeFSRoleMutations:
     @pytest.fixture
     def events(self, monkeypatch: pytest.MonkeyPatch, transport: RBACTransport) -> list[str]:
         events: list[str] = []
-        send = transport.send
+        forward_to_transport = transport.send
 
         def record_remote(
             method: str,
@@ -920,7 +920,7 @@ class TestKnowledgeFSRoleMutations:
             timeout: float,
         ) -> JsonValue:
             events.append("remote")
-            return send(
+            return forward_to_transport(
                 method,
                 endpoint,
                 tenant_id=tenant_id,

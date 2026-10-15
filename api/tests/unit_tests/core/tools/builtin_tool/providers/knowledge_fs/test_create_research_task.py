@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -39,6 +39,18 @@ class AppCapabilities:
                 "updatedAt": 1.0,
             }
         )
+
+
+class RevokedAppCapabilities:
+    def create_research_task(self, **_kwargs: object) -> KnowledgeFSResearchTaskResponse:
+        raise ToolInvokeError("binding revoked")
+
+
+@dataclass(frozen=True)
+class KnowledgeFSRuntimeStub:
+    """The only KnowledgeFS runtime component this tool reaches."""
+
+    app_capabilities: AppCapabilities | RevokedAppCapabilities
 
 
 def _run_context() -> DifyRunContext:
@@ -103,7 +115,7 @@ def test_tool_is_a_real_agent_and_workflow_consumer_using_run_context_identity(
     caller_kind: KnowledgeFSAppSpaceJoinType,
 ) -> None:
     capabilities = AppCapabilities()
-    runtime = SimpleNamespace(app_capabilities=capabilities)
+    runtime = KnowledgeFSRuntimeStub(app_capabilities=capabilities)
     tool = _tool(tool_invoke_from=tool_invoke_from, run_context=_run_context())
     engine = create_engine("sqlite://")
 
@@ -212,7 +224,7 @@ def test_tool_rejects_cross_tenant_and_non_application_callers_before_runtime_io
 
 def test_tool_omits_unspecified_mode_and_maps_invalid_model_input_to_tool_error() -> None:
     capabilities = AppCapabilities()
-    runtime = SimpleNamespace(app_capabilities=capabilities)
+    runtime = KnowledgeFSRuntimeStub(app_capabilities=capabilities)
     tool = _tool(tool_invoke_from=ToolInvokeFrom.AGENT, run_context=_run_context())
     engine = create_engine("sqlite://")
 
@@ -256,11 +268,7 @@ def test_tool_omits_unspecified_mode_and_maps_invalid_model_input_to_tool_error(
 
 def test_tool_preserves_explicit_tool_errors_from_the_capability_boundary() -> None:
     tool = _tool(tool_invoke_from=ToolInvokeFrom.AGENT, run_context=_run_context())
-    runtime = SimpleNamespace(
-        app_capabilities=SimpleNamespace(
-            create_research_task=lambda **_: (_ for _ in ()).throw(ToolInvokeError("binding revoked"))
-        )
-    )
+    runtime = KnowledgeFSRuntimeStub(app_capabilities=RevokedAppCapabilities())
     engine = create_engine("sqlite://")
 
     with (

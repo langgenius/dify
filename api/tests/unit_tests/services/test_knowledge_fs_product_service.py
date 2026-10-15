@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Never, override
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import event
@@ -36,6 +35,7 @@ from services.knowledge_fs.product_remote import (
     UnavailableKnowledgeFSProductRemote,
 )
 from services.knowledge_fs.product_service import KnowledgeFSProductService
+from tests.unit_tests.knowledge_fs_core_fakes import RecordingOperationalMetrics
 
 
 class FakeRBAC:
@@ -268,7 +268,7 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
     remote = FakeRemote({"space-owner": summary, "space-hidden": summary})
     batch_capabilities = FakeBatchCapabilities()
     rbac = FakeRBAC()
-    metrics = MagicMock()
+    metrics = RecordingOperationalMetrics()
     clock = iter((10.0, 10.25))
     service = KnowledgeFSProductService(
         sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
@@ -326,8 +326,8 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
         KnowledgeFSProductPermission.READ,
         KnowledgeFSProductPermission.QUERY,
     }
-    assert metrics.record_batch_status.call_args.args[0] == (0.25, 2, "degraded", 3, 1)
-    assert "tenant-1" not in str(metrics.record_batch_status.call_args_list)
+    assert metrics.batch_statuses[-1] == (0.25, 2, "degraded", 3, 1)
+    assert "tenant-1" not in str(metrics.batch_statuses)
 
 
 @pytest.mark.parametrize(
@@ -768,7 +768,7 @@ def test_list_fails_closed_without_remote_io_when_batch_capability_cannot_be_iss
     )
     remote = FakeRemote({"space-1": summary})
     batch_capabilities = FakeBatchCapabilities(fail=True)
-    metrics = MagicMock()
+    metrics = RecordingOperationalMetrics()
     clock = iter((20.0, 20.5))
     service = KnowledgeFSProductService(
         sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
@@ -785,7 +785,7 @@ def test_list_fails_closed_without_remote_io_when_batch_capability_cannot_be_iss
     assert response.data[0].technical_status == "unavailable"
     assert len(batch_capabilities.calls) == 1
     assert remote.batch_calls == []
-    assert metrics.record_batch_status.call_args.args[0] == (0.5, 1, "failed", 1, 0)
+    assert metrics.batch_statuses[-1] == (0.5, 1, "failed", 1, 0)
 
 
 @pytest.mark.parametrize(

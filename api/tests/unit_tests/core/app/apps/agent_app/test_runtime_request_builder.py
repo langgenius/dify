@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
@@ -32,13 +32,21 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuilder,
     AgentAppRuntimeRequestBuildError,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.agent_config_entities import AgentSoulConfig
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+
+
+@dataclass(frozen=True)
+class _LayerDeps:
+    """The only part of the agent runtime Deps the user-prompt capability reads."""
+
+    layers: dict[str, dict[str, object]]
 
 
 @pytest.fixture(autouse=True)
@@ -178,7 +186,7 @@ def _ctx(
     files: tuple[File, ...] = (),
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
 ) -> AgentAppRuntimeBuildContext:
-    dify_context = SimpleNamespace(
+    dify_context = DifyRunContext(
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
@@ -187,7 +195,7 @@ def _ctx(
         trace_session_id="trace-session-1",
     )
     return AgentAppRuntimeBuildContext(
-        dify_context=dify_context,  # type: ignore[arg-type]
+        dify_context=dify_context,
         agent_id="agent-1",
         agent_config_snapshot_id="snap-1",
         agent_soul=soul,
@@ -363,10 +371,7 @@ class TestAgentAppRuntimeRequestBuilder:
             "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
             lambda **_kwargs: vision,
         )
-        model_factory = Mock()
-        model_factory.return_value.init_model_instance.return_value.get_model_schema.return_value = SimpleNamespace(
-            features=[ModelFeature.VISION] if vision else []
-        )
+        model_factory = RecordingModelFactory(schema=llm_schema(features=[ModelFeature.VISION] if vision else []))
         monkeypatch.setattr("core.app.knowledge_runtime_config.DifyModelFactory", model_factory)
 
         def image_content(file: File, **_kwargs: object) -> ImagePromptMessageContent:
@@ -421,7 +426,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert "knowledge_fs" in layers
         config = DifyUserPromptLayerConfig.model_validate(layers["agent_app_user_prompt"].config)
         # Render the serialized request through the actual runtime module, not just the API DTO.
-        deps = SimpleNamespace(
+        deps = _LayerDeps(
             layers={"agent_app_user_prompt": {"config": json.loads(config.model_dump_json()), "state": {}}}
         )
         prompts = user_prompt_layer.Capability("agent_app_user_prompt").build_user_content(deps)  # type: ignore[arg-type]

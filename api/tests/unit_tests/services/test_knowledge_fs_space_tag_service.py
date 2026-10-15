@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from dataclasses import dataclass, field
 
 import pytest
 import sqlalchemy as sa
@@ -38,8 +38,29 @@ def _tag(tag_id: str, *, tenant_id: str = "tenant-1", tag_type: TagType = TagTyp
     return tag
 
 
-def _service(factory: sessionmaker[Session]) -> tuple[KnowledgeFSSpaceTagService, MagicMock]:
-    product = MagicMock()
+@dataclass
+class _RecordingAuthorization:
+    permissions: list[KnowledgeFSProductPermission] = field(default_factory=list)
+
+    def authorize_control_space_in_session(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        permission: KnowledgeFSProductPermission,
+        require_active: bool = False,
+    ) -> object:
+        assert session.is_active
+        assert (tenant_id, account_id, control_space_id) == ("tenant-1", "account-1", "control-1")
+        assert require_active is False
+        self.permissions.append(permission)
+        return object()
+
+
+def _service(factory: sessionmaker[Session]) -> tuple[KnowledgeFSSpaceTagService, _RecordingAuthorization]:
+    product = _RecordingAuthorization()
     return KnowledgeFSSpaceTagService(factory, product=product), product
 
 
@@ -68,8 +89,7 @@ def test_replace_tags_is_idempotent_and_lists_final_set(sqlite_session_factory: 
     ] == ["tag-1"]
     with sqlite_session_factory() as session:
         assert session.scalar(sa.select(sa.func.count(KnowledgeFSSpaceTagBinding.id))) == 1
-    first_authorization = product.authorize_control_space_in_session.call_args_list[0]
-    assert first_authorization.kwargs["permission"] is KnowledgeFSProductPermission.EDIT
+    assert product.permissions[0] is KnowledgeFSProductPermission.EDIT
 
 
 @pytest.mark.parametrize(

@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 from typing import override
-from unittest.mock import MagicMock
 from zipfile import ZipFile
 
 import pytest
@@ -43,6 +42,16 @@ class FakeObjectStorage(KnowledgeFSObjectStorageService):
     def load_stream(self, *, key: str) -> Generator[bytes] | None:
         body = self.objects.get(key)
         return None if body is None else (chunk for chunk in (body[:2], body[2:]))
+
+
+class FailingObjectStorage(FakeObjectStorage):
+    def __init__(self, error: Exception) -> None:
+        super().__init__({})
+        self.error = error
+
+    @override
+    def head_object(self, *, key: str) -> KnowledgeFSObjectMetadata | None:
+        raise self.error
 
 
 def descriptor(
@@ -92,9 +101,7 @@ def test_load_stream_translates_object_storage_errors(
     storage_error: Exception,
     expected_error: type[Exception],
 ) -> None:
-    object_storage = MagicMock(spec=KnowledgeFSObjectStorageService)
-    object_storage.head_object.side_effect = storage_error
-    service = KnowledgeFSDownloadService(object_storage=object_storage)
+    service = KnowledgeFSDownloadService(object_storage=FailingObjectStorage(storage_error))
 
     with pytest.raises(expected_error):
         service.load_stream(descriptor(document_id="document-1", filename="a.txt", object_key="object-1", size_bytes=4))

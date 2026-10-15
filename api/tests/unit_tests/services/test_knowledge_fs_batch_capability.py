@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,15 +14,16 @@ from services.knowledge_fs.batch_capability import (
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs_capability import CapabilityIssueRequest
+from tests.unit_tests.knowledge_fs_core_fakes import FakeCapabilityClaims, FakeIssuedCapability
 
 
 class FakeIssuer:
     def __init__(self) -> None:
         self.requests: list[CapabilityIssueRequest] = []
 
-    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
+    def issue(self, request: CapabilityIssueRequest) -> FakeIssuedCapability:
         self.requests.append(request)
-        return SimpleNamespace(token="batch-token", claims=SimpleNamespace(exp=2_000_000_000))
+        return FakeIssuedCapability(token="batch-token", claims=FakeCapabilityClaims(exp=2_000_000_000))
 
 
 class FakeCutoverGate:

@@ -4,6 +4,7 @@ import asyncio
 import base64
 import io
 import json
+from dataclasses import dataclass
 from uuid import uuid4
 
 import httpx
@@ -14,6 +15,7 @@ from PIL import Image
 from pydantic import ValidationError
 from pydantic_ai.messages import BinaryContent, ModelRequest, ToolReturnPart, UserPromptPart
 
+from dify_agent.adapters.shell.protocols import CompleteShellCommandResult
 from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler, _validate_thumbnail, project_result
 from dify_agent.agent_stub.server.routes.agent_stub import create_agent_stub_http_router
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal, AgentStubTokenCodec
@@ -34,6 +36,7 @@ from dify_agent.protocol.knowledge_fs import (
     KnowledgeFsPreparedRequest,
 )
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_record_key
+from dify_agent.runtime.context import Deps
 from dify_agent.storage.redis_knowledge_sessions import RedisKnowledgeSessionStore
 
 SPACE = "00000000-0000-4000-8000-000000000001"
@@ -383,12 +386,31 @@ def test_search_receipt_without_parse_id_reopens_and_pins_provenance():
         project_result(command("open", space="docs", receipt_id=RECEIPT), plan, raw, previous)
 
 
-def knowledge_capability(store, client, *, agent_supports_vision=False, **services):
-    from types import SimpleNamespace
+@dataclass(frozen=True)
+class _RunCtx:
+    """The run-context fields the KnowledgeFS capability reads around one run."""
 
+    deps: Deps
+    prompt: str
+
+
+def _remote_result(output: str) -> CompleteShellCommandResult:
+    return CompleteShellCommandResult(
+        job_id="job",
+        status="exited",
+        done=True,
+        exit_code=0,
+        output=output,
+        output_complete=True,
+        incomplete_reason=None,
+        offset=len(output),
+    )
+
+
+def knowledge_capability(store, client, *, agent_supports_vision=False, **services):
     from dify_agent.layers.knowledge_fs.layer import Capability, Config
     from dify_agent.layers.shell.layer import ShellSession
-    from dify_agent.runtime.context import Deps, Services
+    from dify_agent.runtime.context import Services
 
     deps = Deps(
         layers={
@@ -411,11 +433,10 @@ def knowledge_capability(store, client, *, agent_supports_vision=False, **servic
     )
     shell = ShellSession("shell", deps)
     deps.resources.shells["shell"] = shell
-    return Capability("knowledge_fs"), shell, SimpleNamespace(deps=deps, prompt="inspect evidence")
+    return Capability("knowledge_fs"), shell, _RunCtx(deps=deps, prompt="inspect evidence")
 
 
 def test_real_layer_delivers_images_as_model_parts_and_cleans_up(monkeypatch):
-    from types import SimpleNamespace
     from unittest.mock import AsyncMock
     from pydantic_ai import Agent
     from pydantic_ai.models.test import TestModel
@@ -425,8 +446,8 @@ def test_real_layer_delivers_images_as_model_parts_and_cleans_up(monkeypatch):
         redis, store, _ = await session_fixture()
         remote = AsyncMock(
             side_effect=[
-                SimpleNamespace(exit_code=0, output_complete=True, output="1\n"),
-                SimpleNamespace(exit_code=0, output_complete=True, output=delivery().result.model_dump_json()),
+                _remote_result("1\n"),
+                _remote_result(delivery().result.model_dump_json()),
             ]
         )
         monkeypatch.setattr(ShellSession, "run_remote_script", remote)
@@ -491,7 +512,6 @@ def test_real_layer_delivers_images_as_model_parts_and_cleans_up(monkeypatch):
 def test_layer_preflight_rejects_incompatible_deployments_and_closes_lease(
     monkeypatch, protocol, gateway_output, error
 ):
-    from types import SimpleNamespace
     from unittest.mock import AsyncMock
     from dify_agent.layers.shell.layer import ShellSession
 
@@ -504,8 +524,8 @@ def test_layer_preflight_rejects_incompatible_deployments_and_closes_lease(
             ).model_dump_json()
         remote = AsyncMock(
             side_effect=[
-                SimpleNamespace(exit_code=0, output_complete=True, output=protocol),
-                SimpleNamespace(exit_code=0, output_complete=True, output=output),
+                _remote_result(protocol),
+                _remote_result(output),
             ]
         )
         monkeypatch.setattr(ShellSession, "run_remote_script", remote)

@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import deque
 from datetime import datetime, timedelta
 from typing import override
-from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -31,6 +30,7 @@ from services.knowledge_fs.lifecycle_port import (
 )
 from services.knowledge_fs.lifecycle_saga import KnowledgeFSLifecycleSagaRunner
 from services.knowledge_fs.observability import KnowledgeFSLifecycleTaskMetric
+from tests.unit_tests.knowledge_fs_core_fakes import RecordingOperationalMetrics
 from tests.unit_tests.services.knowledge_fs_fakes import UnexpectedLifecycleRemote
 
 
@@ -129,7 +129,7 @@ def test_integrated_provision_saga_registers_remote_space_and_acks(sqlite_sessio
         command = session.get(KnowledgeFSLifecycleOutbox, intent.outbox.id)
         assert command is not None
         command.created_at = now - timedelta(seconds=12)
-    metrics = MagicMock()
+    metrics = RecordingOperationalMetrics()
     runner = KnowledgeFSLifecycleSagaRunner(session_maker, remote, metrics=metrics)
 
     result = runner.dispatch_one(
@@ -153,12 +153,12 @@ def test_integrated_provision_saga_registers_remote_space_and_acks(sqlite_sessio
     assert remote.provision_requests[0].model_intent["pluginId"] == "langgenius/openai"
     assert remote.provision_requests[0].profile_intent is not None
     assert remote.provision_requests[0].profile_intent["defaultMode"] == "fast"
-    assert metrics.record_lifecycle_task.call_args_list == [
-        call(KnowledgeFSLifecycleTaskMetric(None, "provision", "running")),
-        call(KnowledgeFSLifecycleTaskMetric(12.0, "provision", "succeeded")),
+    assert metrics.lifecycle_tasks == [
+        KnowledgeFSLifecycleTaskMetric(None, "provision", "running"),
+        KnowledgeFSLifecycleTaskMetric(12.0, "provision", "succeeded"),
     ]
-    assert "tenant-1" not in str(metrics.record_lifecycle_task.call_args_list)
-    assert intent.control_space.id not in str(metrics.record_lifecycle_task.call_args_list)
+    assert "tenant-1" not in str(metrics.lifecycle_tasks)
+    assert intent.control_space.id not in str(metrics.lifecycle_tasks)
 
 
 @pytest.mark.parametrize(
@@ -232,7 +232,7 @@ def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_pro
             KnowledgeFSDeletionProgress(KnowledgeFSDeletionPhase.COMPLETED, 4, irreversible_at),
         )
     )
-    metrics = MagicMock()
+    metrics = RecordingOperationalMetrics()
     runner = KnowledgeFSLifecycleSagaRunner(session_maker, remote, metrics=metrics)
 
     first = runner.dispatch_one(
@@ -260,7 +260,7 @@ def test_deletion_saga_crosses_irreversible_point_and_remains_retryable_when_pro
     assert command is not None
     assert command.status is KnowledgeFSLifecycleOutboxStatus.SUCCEEDED
     assert len(remote.deletion_requests) == 2
-    assert [metric.status for ((metric,), _) in metrics.record_lifecycle_task.call_args_list] == [
+    assert [metric.status for metric in metrics.lifecycle_tasks] == [
         "running",
         "retry",
         "running",

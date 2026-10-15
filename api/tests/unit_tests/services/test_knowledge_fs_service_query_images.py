@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+from datetime import datetime
 from io import BytesIO
-from types import SimpleNamespace
 
 import pytest
 from werkzeug.datastructures import FileStorage
 
 from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError, KnowledgeFSQueryImageError
+from extensions.storage.storage_type import StorageType
 from models.enums import ApiTokenType, CreatorUserRole
+from models.model import UploadFile
 from services.knowledge_fs import query_images, service_query_image_upload
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
+from tests.unit_tests.config_override import apply_config_overrides
 
 TOKEN_ID = "00000000-0000-4000-8000-000000000001"
 OTHER_TOKEN_ID = "00000000-0000-4000-8000-000000000002"
@@ -52,7 +55,7 @@ def _install(monkeypatch: pytest.MonkeyPatch) -> tuple[_Session, dict[str, bytes
     monkeypatch.setattr(service_query_image_upload.storage, "save", lambda key, body: objects.__setitem__(key, body))
     monkeypatch.setattr(service_query_image_upload.storage, "delete", lambda key: objects.pop(key, None))
     monkeypatch.setattr(query_images.storage, "load", lambda key, **_kwargs: iter([objects[key]]))
-    monkeypatch.setattr(service_query_image_upload, "dify_config", SimpleNamespace(STORAGE_TYPE="local"))
+    apply_config_overrides(monkeypatch, STORAGE_TYPE="local")
     return session, objects
 
 
@@ -60,19 +63,22 @@ def _file(body: bytes = PNG, *, mime_type: str = "image/png", filename: str = "i
     return FileStorage(stream=BytesIO(body), filename=filename, content_type=mime_type)
 
 
-def _record(*, role: CreatorUserRole = CreatorUserRole.DATASET_API_KEY, owner: str = TOKEN_ID):
-    return SimpleNamespace(
-        id=FILE_ID,
+def _record(*, role: CreatorUserRole = CreatorUserRole.DATASET_API_KEY, owner: str = TOKEN_ID) -> UploadFile:
+    record = UploadFile(
         tenant_id=TENANT_ID,
+        storage_type=StorageType.LOCAL,
+        key="image-key",
+        name="image.png",
+        size=len(PNG),
+        extension="png",
+        mime_type="image/png",
         created_by_role=role,
         created_by=owner,
-        mime_type="image/png",
-        size=len(PNG),
-        key="image-key",
+        created_at=datetime(2026, 7, 21, 12, 0),
         used=False,
-        used_by=None,
-        used_at=None,
     )
+    record.id = FILE_ID
+    return record
 
 
 def test_upload_admission_and_inner_load_use_same_active_key_owner(monkeypatch: pytest.MonkeyPatch) -> None:

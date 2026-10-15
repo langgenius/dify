@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from contextlib import nullcontext
-from types import SimpleNamespace
+from datetime import datetime
 
 import pytest
 
+from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
 from models.enums import CreatorUserRole
+from models.model import UploadFile
+from models.tools import ToolFile
 from services.knowledge_fs import query_images
 
 
@@ -25,25 +28,28 @@ def _upload(
     mime_type: str = "image/png",
     size: int = 12,
     tenant_id: str = "tenant-1",
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        created_by=account_id,
-        created_by_role=CreatorUserRole.ACCOUNT,
-        id=upload_file_id,
-        key=f"uploads/{upload_file_id}",
-        mime_type=mime_type,
-        size=size,
+) -> UploadFile:
+    upload = UploadFile(
         tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"uploads/{upload_file_id}",
+        name="image.png",
+        size=size,
+        extension="png",
+        mime_type=mime_type,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+        created_at=datetime(2026, 7, 21, 12, 0),
         used=False,
-        used_at=None,
-        used_by=None,
     )
+    upload.id = upload_file_id
+    return upload
 
 
-def _install_files(monkeypatch: pytest.MonkeyPatch, files: list[SimpleNamespace]) -> _Session:
+def _install_files(monkeypatch: pytest.MonkeyPatch, files: list[UploadFile]) -> _Session:
     session = _Session()
 
-    def get_upload_files_by_ids(_tenant_id: str, _ids: list[str], *, session: _Session) -> dict[str, SimpleNamespace]:
+    def get_upload_files_by_ids(_tenant_id: str, _ids: list[str], *, session: _Session) -> dict[str, UploadFile]:
         assert session is not None
         return {item.id: item for item in files}
 
@@ -59,7 +65,8 @@ def _install_files(monkeypatch: pytest.MonkeyPatch, files: list[SimpleNamespace]
 def test_validate_query_images_checks_actor_bounds_and_marks_usage(monkeypatch: pytest.MonkeyPatch) -> None:
     upload = _upload()
     session = _install_files(monkeypatch, [upload])
-    monkeypatch.setattr(query_images, "naive_utc_now", lambda: "now")
+    used_at = datetime(2026, 7, 21, 12, 30)
+    monkeypatch.setattr(query_images, "naive_utc_now", lambda: used_at)
 
     result = query_images.validate_query_image_references(
         tenant_id="tenant-1",
@@ -77,7 +84,7 @@ def test_validate_query_images_checks_actor_bounds_and_marks_usage(monkeypatch: 
     ]
     assert upload.used is True
     assert upload.used_by == "account-1"
-    assert upload.used_at == "now"
+    assert upload.used_at == used_at
     assert session.committed is True
 
 
@@ -92,7 +99,7 @@ def test_validate_query_images_checks_actor_bounds_and_marks_usage(monkeypatch: 
 )
 def test_validate_query_images_rejects_hidden_or_invalid_files(
     monkeypatch: pytest.MonkeyPatch,
-    upload: SimpleNamespace,
+    upload: UploadFile,
     code: str,
 ) -> None:
     _install_files(monkeypatch, [upload])
@@ -221,7 +228,7 @@ def test_workflow_grant_is_file_tenant_subject_scoped_and_loads_without_actor_ow
     _install_files(monkeypatch, [upload])
 
     class _Controller:
-        def get_upload_file(self, **_kwargs: object) -> SimpleNamespace:
+        def get_upload_file(self, **_kwargs: object) -> UploadFile:
             return upload
 
     monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)
@@ -263,21 +270,23 @@ def test_workflow_grant_loads_tool_files(
     config_overrides: Callable[..., None],
 ) -> None:
     body = b"\x89PNG\r\n\x1a\nrest"
-    tool_file = SimpleNamespace(
+    tool_file = ToolFile(
+        user_id="account-1",
+        tenant_id="tenant-1",
+        conversation_id=None,
         file_key="tool-files/image.png",
-        id="00000000-0000-4000-8000-000000000002",
         mimetype="image/png",
         size=len(body),
-        tenant_id="tenant-1",
     )
+    tool_file.id = "00000000-0000-4000-8000-000000000002"
 
     class _ToolFileSession(_Session):
-        def get(self, model: object, file_id: str) -> SimpleNamespace | None:
+        def get(self, model: object, file_id: str) -> ToolFile | None:
             assert model is query_images.ToolFile
             return tool_file if file_id == tool_file.id else None
 
     class _Controller:
-        def get_tool_file(self, **_kwargs: object) -> SimpleNamespace:
+        def get_tool_file(self, **_kwargs: object) -> ToolFile:
             return tool_file
 
     monkeypatch.setattr(query_images.session_factory, "create_session", lambda: nullcontext(_ToolFileSession()))
@@ -348,7 +357,7 @@ def test_workflow_grant_rejects_cross_tenant_files_and_expiry(monkeypatch: pytes
     upload = _upload(tenant_id="other-tenant")
 
     class _Controller:
-        def get_upload_file(self, **_kwargs: object) -> SimpleNamespace:
+        def get_upload_file(self, **_kwargs: object) -> UploadFile:
             return upload
 
     monkeypatch.setattr(query_images, "DatabaseFileAccessController", _Controller)

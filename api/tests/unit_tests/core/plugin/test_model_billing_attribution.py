@@ -1,13 +1,20 @@
 """Exercise backwards invocation through the real hosted quota owner, with no external I/O."""
 
 from collections.abc import Callable
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass
+from unittest.mock import patch
 
 import pytest
 
 from configs import dify_config
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+    SystemConfiguration,
+)
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
@@ -17,12 +24,80 @@ from core.plugin.entities.request import (
     RequestInvokeRerank,
     RequestInvokeTextEmbedding,
 )
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from enums import DeploymentEdition
+from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.model_providers.base.ai_model import AIModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
+from models.account import Tenant
 from models.provider import ProviderType
 from services.billing_service import BillingService
+from tests.unit_tests.knowledge_fs_core_fakes import Marker
+
+_MODEL_TYPE_CLASSES: dict[ModelType, type[AIModel]] = {
+    ModelType.LLM: LargeLanguageModel,
+    ModelType.TEXT_EMBEDDING: TextEmbeddingModel,
+    ModelType.RERANK: RerankModel,
+}
+
+
+@dataclass(frozen=True)
+class _ProviderManager:
+    bundle: ProviderModelBundle
+
+    def get_provider_model_bundle(self, **_kwargs: object) -> ProviderModelBundle:
+        return self.bundle
+
+    def get_configurations(self, _tenant_id: str) -> dict[str, ProviderConfiguration]:
+        return {self.bundle.configuration.provider.provider: self.bundle.configuration}
+
+
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "tenant-1"
+    return tenant
+
+
+def _hosted_bundle(model_type: ModelType) -> ProviderModelBundle:
+    provider = ProviderEntity(
+        provider="langgenius/openai/openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[model_type],
+        configurate_methods=[],
+    )
+    configuration = ProviderConfiguration(
+        tenant_id="tenant-1",
+        provider=provider,
+        preferred_provider_type=ProviderType.SYSTEM,
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SystemConfiguration(
+            enabled=True,
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=200,
+                    quota_used=0,
+                    is_valid=True,
+                    restrict_models=[],
+                )
+            ],
+        ),
+        custom_configuration=CustomConfiguration(provider=None),
+        model_settings=[],
+    )
+    model_type_instance = _MODEL_TYPE_CLASSES[model_type](
+        provider_schema=provider,
+        model_runtime=create_plugin_model_runtime(tenant_id="tenant-1", user_id="synthetic-end-user"),
+    )
+    return ProviderModelBundle(configuration=configuration, model_type_instance=model_type_instance)
 
 
 @pytest.mark.parametrize(
@@ -73,29 +148,7 @@ def test_model_invocation_preserves_billing_origin(
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    configuration = SimpleNamespace(
-        tenant_id="tenant-1",
-        provider=SimpleNamespace(provider="langgenius/openai/openai"),
-        model_settings=[],
-        using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
-            current_quota_type=ProviderQuotaType.TRIAL,
-            quota_configurations=[
-                SimpleNamespace(
-                    quota_type=ProviderQuotaType.TRIAL,
-                    quota_unit=QuotaUnit.CREDITS,
-                    quota_limit=200,
-                    restrict_models=[],
-                )
-            ],
-        ),
-        get_current_credentials=lambda **_: {"api_key": "local-test-only"},
-        get_provider_model=lambda **_: None,
-    )
-    bundle = SimpleNamespace(configuration=configuration, model_type_instance=MagicMock(model_type=model_type))
-    provider_manager = MagicMock()
-    provider_manager.get_provider_model_bundle.return_value = bundle
-    provider_manager.get_configurations.return_value = {"langgenius/openai/openai": configuration}
+    provider_manager = _ProviderManager(bundle=_hosted_bundle(model_type))
     metadata = {"app_type": "new_rag", "created_by": created_by} if created_by else {}
     payload = payload_type.model_validate(
         {"provider": "langgenius/openai/openai", "model": "selected-model", **body, **metadata}
@@ -117,15 +170,17 @@ def test_model_invocation_preserves_billing_origin(
             index=0, message=AssistantPromptMessage(content="OK"), usage=LLMUsage.empty_usage(), finish_reason="stop"
         ),
     )
-    provider_result = (item for item in [chunk]) if model_type == ModelType.LLM else MagicMock()
+    provider_result = (item for item in [chunk]) if model_type == ModelType.LLM else Marker("provider-result")
     with (
         patch("core.model_manager.create_plugin_provider_manager", return_value=provider_manager),
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch.object(type(dify_config), "get_model_credits", return_value=3),
+        patch.object(ProviderConfiguration, "get_current_credentials", return_value={"api_key": "local-test-only"}),
+        patch.object(ProviderConfiguration, "get_provider_model", return_value=None),
         patch.object(ModelInstance, provider_method, return_value=provider_result),
         patch.object(BillingService, "_send_quota_request", side_effect=billing_transport),
     ):
-        response = invoke_method("synthetic-end-user", SimpleNamespace(id="tenant-1"), payload)
+        response = invoke_method("synthetic-end-user", _tenant(), payload)
         assert get_credit_usage_metadata() is None
         if model_type == ModelType.LLM:
             assert list(response)[0].delta.message.content == "OK"

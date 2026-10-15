@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from dataclasses import dataclass, field
 from uuid import uuid4
 
 import pytest
@@ -11,6 +11,14 @@ from models.account import Tenant, TenantAccountJoin, TenantAccountRole, TenantS
 from models.base import TypeBase
 from services.knowledge_fs.cutover import KnowledgeFSCutoverGateBlockedError
 from services.knowledge_fs.greenfield_initializer import KnowledgeFSWorkspaceGreenfieldInitializer
+
+
+@dataclass
+class _RecordingCutover:
+    greenfield_initializations: list[tuple[str, str]] = field(default_factory=list)
+
+    def initialize_greenfield(self, *, tenant_id: str, owner_account_id: str) -> None:
+        self.greenfield_initializations.append((tenant_id, owner_account_id))
 
 
 @pytest.fixture
@@ -39,15 +47,15 @@ def test_greenfield_initializer_uses_the_unique_workspace_owner(
                 role=TenantAccountRole.OWNER,
             )
         )
-    cutover = MagicMock()
-    initializer = KnowledgeFSWorkspaceGreenfieldInitializer(greenfield_session_maker, cutover=cutover)
+    cutover = _RecordingCutover()
+    initializer = KnowledgeFSWorkspaceGreenfieldInitializer(
+        greenfield_session_maker,
+        cutover=cutover,  # type: ignore[arg-type]
+    )
 
     initializer.ensure_initialized(tenant_id=tenant_id)
 
-    cutover.initialize_greenfield.assert_called_once_with(
-        tenant_id=tenant_id,
-        owner_account_id=owner_account_id,
-    )
+    assert cutover.greenfield_initializations == [(tenant_id, owner_account_id)]
 
 
 def test_greenfield_initializer_rejects_a_workspace_without_one_owner(
@@ -58,7 +66,10 @@ def test_greenfield_initializer_rejects_a_workspace_without_one_owner(
         session.add(tenant)
         session.flush()
         tenant_id = tenant.id
-    initializer = KnowledgeFSWorkspaceGreenfieldInitializer(greenfield_session_maker, cutover=MagicMock())
+    initializer = KnowledgeFSWorkspaceGreenfieldInitializer(
+        greenfield_session_maker,
+        cutover=_RecordingCutover(),  # type: ignore[arg-type]
+    )
 
     with pytest.raises(KnowledgeFSCutoverGateBlockedError, match="exactly one Workspace owner"):
         initializer.ensure_initialized(tenant_id=tenant_id)
@@ -72,10 +83,13 @@ def test_greenfield_initializer_rejects_an_archived_workspace(
         session.add(tenant)
         session.flush()
         tenant_id = tenant.id
-    cutover = MagicMock()
-    initializer = KnowledgeFSWorkspaceGreenfieldInitializer(greenfield_session_maker, cutover=cutover)
+    cutover = _RecordingCutover()
+    initializer = KnowledgeFSWorkspaceGreenfieldInitializer(
+        greenfield_session_maker,
+        cutover=cutover,  # type: ignore[arg-type]
+    )
 
     with pytest.raises(KnowledgeFSCutoverGateBlockedError, match="not active"):
         initializer.ensure_initialized(tenant_id=tenant_id)
 
-    cutover.initialize_greenfield.assert_not_called()
+    assert cutover.greenfield_initializations == []

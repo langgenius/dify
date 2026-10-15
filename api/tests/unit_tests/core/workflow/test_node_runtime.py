@@ -410,13 +410,24 @@ def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
     reservation.release.assert_not_called()
 
 
-def test_dify_prepared_polling_llm_releases_reservation_when_success_has_no_result() -> None:
+def test_dify_prepared_polling_llm_releases_reservation_when_success_has_no_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     succeeded_result = LLMPollingResult.model_construct(status=LLMPollingStatus.SUCCEEDED, result=None)
-    polling_runtime = SimpleNamespace(
-        start_llm_polling=Mock(return_value=succeeded_result),
-        check_llm_polling=Mock(),
+    polling_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=PluginModelClient(),
+        plugin_service=PluginService,
     )
-    reservation = MagicMock()
+    started_pollings: list[dict[str, object]] = []
+
+    def start_llm_polling(**kwargs: object) -> LLMPollingResult:
+        started_pollings.append(kwargs)
+        return succeeded_result
+
+    monkeypatch.setattr(polling_runtime, "start_llm_polling", start_llm_polling)
+    reservation = sentinel.quota_reservation
     model_instance = _QuotaManagedModelInstanceStub(
         model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
         model_runtime=polling_runtime,
@@ -437,6 +448,7 @@ def test_dify_prepared_polling_llm_releases_reservation_when_success_has_no_resu
         )
 
     release_quota_safely.assert_called_once_with(reservation)
+    assert len(started_pollings) == 1
 
 
 def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() -> None:

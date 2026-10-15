@@ -1,6 +1,6 @@
 import json
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass, field
+from unittest.mock import patch
 
 import pytest
 
@@ -129,24 +129,111 @@ def test_invoke_summary_uses_same_user_scope_for_token_helpers():
     )
 
 
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "tenant-1"
+    return tenant
+
+
+@dataclass
+class _RecordingModelInstance:
+    """Bound model instance double: returns a canned result and records invocation kwargs."""
+
+    result: str
+    calls: list[tuple[str, dict[str, object]]] = field(default_factory=list)
+
+    def invoke_text_embedding(self, **kwargs: object) -> str:
+        self.calls.append(("invoke_text_embedding", kwargs))
+        return self.result
+
+    def invoke_multimodal_embedding(self, **kwargs: object) -> str:
+        self.calls.append(("invoke_multimodal_embedding", kwargs))
+        return self.result
+
+    def invoke_rerank(self, **kwargs: object) -> str:
+        self.calls.append(("invoke_rerank", kwargs))
+        return self.result
+
+
+@dataclass(frozen=True)
+class _ModelProvider:
+    provider: str
+
+
+@dataclass(frozen=True)
+class _ActiveModel:
+    deprecated: bool
+    features: list[ModelFeature]
+    fetch_from: str
+    label: dict[str, str]
+    model: str
+    model_properties: dict[str, int]
+    model_type: ModelType
+    provider: _ModelProvider
+    status: str
+
+
+@dataclass
+class _ProviderConfigurations:
+    models: list[_ActiveModel]
+    get_models_calls: list[dict[str, object]] = field(default_factory=list)
+
+    def get_models(self, **kwargs: object) -> list[_ActiveModel]:
+        self.get_models_calls.append(kwargs)
+        return self.models
+
+
+@dataclass(frozen=True)
+class _ProviderManager:
+    configurations: _ProviderConfigurations
+
+    def get_configurations(self, _tenant_id: str) -> _ProviderConfigurations:
+        return self.configurations
+
+
+@dataclass(frozen=True)
+class _InstalledPlugin:
+    plugin_id: str
+    plugin_unique_identifier: str
+
+
+@dataclass(frozen=True)
+class _ParameterRule:
+    name: str
+    use_template: str | None
+    max: object
+    default: object = None
+
+
+@dataclass(frozen=True)
+class _ModelSchema:
+    model_properties: dict[str, int]
+    parameter_rules: list[_ParameterRule]
+
+
+@dataclass(frozen=True)
+class _SchemaModelInstance:
+    schema: _ModelSchema
+
+    def get_model_schema(self) -> _ModelSchema:
+        return self.schema
+
+
 def test_invoke_text_embedding_forwards_input_type_to_bound_model_instance():
-    tenant = SimpleNamespace(id="tenant-1")
+    tenant = _tenant()
     payload = RequestInvokeTextEmbedding(
         provider="langgenius/openai/openai",
         model="text-embedding-3-small",
         texts=["query text"],
         input_type=EmbeddingInputType.QUERY,
     )
-    model_instance = SimpleNamespace(invoke_text_embedding=lambda **_: "unused")
+    model_instance = _RecordingModelInstance(result="embedding-result")
 
-    with (
-        patch.object(
-            PluginModelBackwardsInvocation,
-            "_get_bound_model_instance",
-            return_value=model_instance,
-        ) as mock_get_model,
-        patch.object(model_instance, "invoke_text_embedding", return_value="embedding-result") as mock_invoke,
-    ):
+    with patch.object(
+        PluginModelBackwardsInvocation,
+        "_get_bound_model_instance",
+        return_value=model_instance,
+    ) as mock_get_model:
         result = PluginModelBackwardsInvocation.invoke_text_embedding("user-1", tenant, payload)
 
     assert result == "embedding-result"
@@ -158,11 +245,13 @@ def test_invoke_text_embedding_forwards_input_type_to_bound_model_instance():
         model="text-embedding-3-small",
         request_metadata={},
     )
-    mock_invoke.assert_called_once_with(texts=["query text"], input_type=EmbeddingInputType.QUERY)
+    assert model_instance.calls == [
+        ("invoke_text_embedding", {"texts": ["query text"], "input_type": EmbeddingInputType.QUERY})
+    ]
 
 
 def test_invoke_multimodal_embedding_uses_bound_model_instance():
-    tenant = SimpleNamespace(id="tenant-1")
+    tenant = _tenant()
     documents = [{"content": "AQID", "content_type": "image", "file_id": "asset.png"}]
     payload = RequestInvokeMultimodalEmbedding(
         provider="langgenius/clip/clip",
@@ -170,20 +259,13 @@ def test_invoke_multimodal_embedding_uses_bound_model_instance():
         documents=documents,
         input_type=EmbeddingInputType.DOCUMENT,
     )
-    model_instance = SimpleNamespace(invoke_multimodal_embedding=lambda **_: "unused")
+    model_instance = _RecordingModelInstance(result="embedding-result")
 
-    with (
-        patch.object(
-            PluginModelBackwardsInvocation,
-            "_get_bound_model_instance",
-            return_value=model_instance,
-        ) as mock_get_model,
-        patch.object(
-            model_instance,
-            "invoke_multimodal_embedding",
-            return_value="embedding-result",
-        ) as mock_invoke,
-    ):
+    with patch.object(
+        PluginModelBackwardsInvocation,
+        "_get_bound_model_instance",
+        return_value=model_instance,
+    ) as mock_get_model:
         result = PluginModelBackwardsInvocation.invoke_multimodal_embedding("user-1", tenant, payload)
 
     assert result == "embedding-result"
@@ -195,39 +277,38 @@ def test_invoke_multimodal_embedding_uses_bound_model_instance():
         model="clip-multimodal",
         request_metadata={},
     )
-    mock_invoke.assert_called_once_with(
-        multimodel_documents=documents,
-        input_type=EmbeddingInputType.DOCUMENT,
-    )
+    assert model_instance.calls == [
+        (
+            "invoke_multimodal_embedding",
+            {"multimodel_documents": documents, "input_type": EmbeddingInputType.DOCUMENT},
+        )
+    ]
 
 
 def test_invoke_rerank_accepts_omitted_threshold_and_top_n():
-    tenant = SimpleNamespace(id="tenant-1")
+    tenant = _tenant()
     payload = RequestInvokeRerank(
         provider="langgenius/cohere/cohere",
         model="rerank-v3.5",
         query="query",
         docs=["first", "second"],
     )
-    model_instance = SimpleNamespace(invoke_rerank=lambda **_: "unused")
+    model_instance = _RecordingModelInstance(result="rerank-result")
 
-    with (
-        patch.object(
-            PluginModelBackwardsInvocation,
-            "_get_bound_model_instance",
-            return_value=model_instance,
-        ),
-        patch.object(model_instance, "invoke_rerank", return_value="rerank-result") as mock_invoke,
+    with patch.object(
+        PluginModelBackwardsInvocation,
+        "_get_bound_model_instance",
+        return_value=model_instance,
     ):
         result = PluginModelBackwardsInvocation.invoke_rerank("user-1", tenant, payload)
 
     assert result == "rerank-result"
-    mock_invoke.assert_called_once_with(
-        query="query",
-        docs=["first", "second"],
-        score_threshold=None,
-        top_n=None,
-    )
+    assert model_instance.calls == [
+        (
+            "invoke_rerank",
+            {"query": "query", "docs": ["first", "second"], "score_threshold": None, "top_n": None},
+        )
+    ]
 
 
 @pytest.mark.parametrize(
@@ -237,8 +318,8 @@ def test_invoke_rerank_accepts_omitted_threshold_and_top_n():
 def test_list_models_returns_only_active_tenant_models_with_installed_identity(model_type, selected):
     model_name = "selected-model"
     payload = RequestListModels(model_type=model_type, model=model_name if selected else None, limit=10)
-    provider = SimpleNamespace(provider="langgenius/openai/openai")
-    active_model = SimpleNamespace(
+    provider = _ModelProvider(provider="langgenius/openai/openai")
+    active_model = _ActiveModel(
         deprecated=False,
         features=[ModelFeature.VISION],
         fetch_from="predefined-model",
@@ -249,9 +330,9 @@ def test_list_models_returns_only_active_tenant_models_with_installed_identity(m
         provider=provider,
         status="active",
     )
-    configurations = SimpleNamespace(get_models=MagicMock(return_value=[active_model]))
-    provider_manager = SimpleNamespace(get_configurations=lambda _tenant_id: configurations)
-    installed_plugin = SimpleNamespace(
+    configurations = _ProviderConfigurations(models=[active_model])
+    provider_manager = _ProviderManager(configurations=configurations)
+    installed_plugin = _InstalledPlugin(
         plugin_id="langgenius/openai",
         plugin_unique_identifier="langgenius/openai:1.0.0@sha256:installed",
     )
@@ -278,10 +359,7 @@ def test_list_models_returns_only_active_tenant_models_with_installed_identity(m
     assert result.items[0].provider == "openai"
     assert result.items[0].plugin_unique_identifier == installed_plugin.plugin_unique_identifier
     assert result.items[0].capabilities["features"] == ["vision"]
-    configurations.get_models.assert_called_once_with(
-        model_type=model_type,
-        only_active=True,
-    )
+    assert configurations.get_models_calls == [{"model_type": model_type, "only_active": True}]
     if selected:
         resolve_limits.assert_called_once_with(
             tenant_id="tenant-1", user_id="user-1", provider=provider.provider, model=model_name
@@ -298,11 +376,11 @@ def test_list_models_returns_only_active_tenant_models_with_installed_identity(m
 
 @pytest.mark.parametrize("parameter", ["max_tokens", "max_completion_tokens", "maxtoken", "custom_limit"])
 def test_model_token_limits_use_schema_maximum_not_default(parameter):
-    schema = SimpleNamespace(
+    schema = _ModelSchema(
         model_properties={"context_size": 131072},
-        parameter_rules=[SimpleNamespace(name=parameter, use_template="max_tokens", max=32768.0, default=1024)],
+        parameter_rules=[_ParameterRule(name=parameter, use_template="max_tokens", max=32768.0, default=1024)],
     )
-    instance = SimpleNamespace(get_model_schema=lambda: schema)
+    instance = _SchemaModelInstance(schema=schema)
     with patch.object(PluginModelBackwardsInvocation, "_get_bound_model_instance", return_value=instance) as bound:
         limits = PluginModelBackwardsInvocation._model_token_limits(
             tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
@@ -321,14 +399,14 @@ def test_model_token_limits_use_schema_maximum_not_default(parameter):
 
 @pytest.mark.parametrize("maximum", [None, 0, -1, True, float("inf"), float("nan"), 10**400, 12.5, "32768"])
 def test_model_token_limits_do_not_invent_unknown_output_capacity(maximum):
-    schema = SimpleNamespace(
+    schema = _ModelSchema(
         model_properties={"context_size": 8192},
-        parameter_rules=[SimpleNamespace(name="max_tokens", use_template=None, max=maximum, default=4096)],
+        parameter_rules=[_ParameterRule(name="max_tokens", use_template=None, max=maximum, default=4096)],
     )
     with patch.object(
         PluginModelBackwardsInvocation,
         "_get_bound_model_instance",
-        return_value=SimpleNamespace(get_model_schema=lambda: schema),
+        return_value=_SchemaModelInstance(schema=schema),
     ):
         limits = PluginModelBackwardsInvocation._model_token_limits(
             tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
@@ -338,17 +416,17 @@ def test_model_token_limits_do_not_invent_unknown_output_capacity(maximum):
 
 
 def test_model_token_limits_respect_the_tighter_declared_alias():
-    schema = SimpleNamespace(
+    schema = _ModelSchema(
         model_properties={},
         parameter_rules=[
-            SimpleNamespace(name="max_tokens", use_template=None, max=32768),
-            SimpleNamespace(name="max_output_tokens", use_template=None, max=8192),
+            _ParameterRule(name="max_tokens", use_template=None, max=32768),
+            _ParameterRule(name="max_output_tokens", use_template=None, max=8192),
         ],
     )
     with patch.object(
         PluginModelBackwardsInvocation,
         "_get_bound_model_instance",
-        return_value=SimpleNamespace(get_model_schema=lambda: schema),
+        return_value=_SchemaModelInstance(schema=schema),
     ):
         limits = PluginModelBackwardsInvocation._model_token_limits(
             tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
