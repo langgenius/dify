@@ -47,7 +47,13 @@ from core.workflow.nodes.human_input.callback import (
 from core.workflow.nodes.human_input.entities import FormInputConfig, HumanInputNodeData
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.system_variables import (
+    SystemVariableKey,
+    build_bootstrap_variables,
+    build_system_variables,
+    default_system_variables,
+    system_variable_selector,
+)
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
@@ -1243,6 +1249,9 @@ class WorkflowService:
         start_at = time.perf_counter()
         prepared_execution = None
         if is_agent_preview:
+            # Standalone previews have no WorkflowRun. The general debug bootstrap
+            # inserts a synthetic run ID; do not use it as this caller's owner.
+            variable_pool.remove(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID))
             node = run[0]
             prepared_execution = WorkflowNodeExecution(
                 id=node.execution_id,
