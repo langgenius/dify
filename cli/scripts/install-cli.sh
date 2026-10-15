@@ -41,7 +41,7 @@ bin_dir_for() {
 # running difyctl keeps its old file and DEST is never half written.
 install_binary() {
     _stage="$(dirname "$2")/.difyctl.install.$$"
-    if cp "$1" "$_stage" && chmod +x "$_stage" && mv -f "$_stage" "$2"; then
+    if cp "$1" "$_stage" && chmod 0755 "$_stage" && mv -f "$_stage" "$2"; then
         return 0
     fi
     rm -f "$_stage"

@@ -104,7 +104,7 @@ function keyringUnavailableError(cause: unknown): BaseError {
   return new BaseError({
     code: ErrorCode.KeyringUnavailable,
     message: 'OS keychain is unreachable',
-    hint: `unlock the keychain (or the login session) and retry, or run ${BINARY} login --no-keyring to keep the token in a file`,
+    hint: `unlock the keychain (or the login session) and retry, or run ${BINARY} login --server <url> --no-keyring to keep the token in a file`,
     cause,
   })
 }

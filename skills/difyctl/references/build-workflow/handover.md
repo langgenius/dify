@@ -26,7 +26,7 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
      difyctl set webapp <mode> --app-id <app_id> --enabled --json
      ```
 
-   - Service API (needs an admin). Warn the human first what turning it off costs (see Limits in `build-workflow.md`), and note the app id.
+   - Service API (needs an admin). Warn the human first what turning it off costs (see Limits in `build-workflow.md`), and note the app id. If the human wants it off, record that and turn it off after the smoke test in step 6: `difyctl run` fails with `service_api_disabled` while it is off.
 
      ```bash
      difyctl set service_api --app-id <app_id> --enabled --json
@@ -43,5 +43,7 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
    ```bash
    difyctl run console_app <mode> --app-id <app_id> --inputs '{"<var>": "<value>"}' --json
    ```
+
+   Then, if the human chose to turn the Service API off in step 5, turn it off now with `--enabled=false`.
 
 7. Close. Mark `plan.md` as published with the `version_id`, the date and the url. Give the human a short summary that lists every change from the spec and plan, and when the human approved it.

@@ -136,6 +136,6 @@ it('a locked keychain points at login --no-keyring', async () => {
   getPasswordError = new Error('keyring locked')
   await expect(new KeychainTokenStore(SERVICE).read('h', 'e')).rejects.toMatchObject({
     code: ErrorCode.KeyringUnavailable,
-    hint: expect.stringContaining('login --no-keyring'),
+    hint: expect.stringContaining('login --server <url> --no-keyring'),
   })
 })
