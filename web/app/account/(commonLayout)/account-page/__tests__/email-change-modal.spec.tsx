@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import EmailChangeModal from '../email-change-modal'
 
@@ -11,11 +11,24 @@ vi.mock('@/app/notifications', () => ({
   toast: { error: vi.fn() },
 }))
 
-vi.mock('@/service/common', () => ({
-  checkEmailExisted: vi.fn(),
-  resetEmail: vi.fn(),
-  sendVerifyCode: vi.fn(),
-  verifyEmail: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    account: {
+      changeEmail: {
+        checkEmailUnique: {
+          post: vi.fn(),
+        },
+        reset: {
+          post: vi.fn(),
+        },
+        post: vi.fn(),
+        validity: {
+          post: vi.fn(),
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -25,14 +38,18 @@ vi.mock('@/service/use-common', () => ({
 describe('EmailChangeModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(sendVerifyCode).mockResolvedValue({ result: 'success', data: 'email-token' })
-    vi.mocked(verifyEmail).mockResolvedValue({
+    vi.mocked(consoleClient.account.changeEmail.post).mockResolvedValue({
       result: 'success',
+      data: 'email-token',
+    })
+    vi.mocked(consoleClient.account.changeEmail.validity.post).mockResolvedValue({
       email: 'old@example.com',
       is_valid: true,
       token: 'verified-token',
     })
-    vi.mocked(checkEmailExisted).mockResolvedValue({ result: 'success' })
+    vi.mocked(consoleClient.account.changeEmail.checkEmailUnique.post).mockResolvedValue({
+      result: 'success',
+    })
   })
 
   it('submits the labeled verification fields with Enter through both email phases', async () => {
@@ -46,10 +63,12 @@ describe('EmailChangeModal', () => {
       name: 'accountSettings.account.changeEmail.codeLabel',
     })
     await user.type(originCode, '123456{Enter}')
-    expect(verifyEmail).toHaveBeenCalledWith({
-      email: 'old@example.com',
-      code: '123456',
-      token: 'email-token',
+    expect(consoleClient.account.changeEmail.validity.post).toHaveBeenCalledWith({
+      body: {
+        email: 'old@example.com',
+        code: '123456',
+        token: 'email-token',
+      },
     })
 
     const email = await screen.findByRole('textbox', {
@@ -62,10 +81,12 @@ describe('EmailChangeModal', () => {
       ).toBeEnabled(),
     )
     await user.type(email, '{Enter}')
-    expect(sendVerifyCode).toHaveBeenLastCalledWith({
-      email: 'new@example.com',
-      phase: 'new_email',
-      token: 'verified-token',
+    expect(consoleClient.account.changeEmail.post).toHaveBeenLastCalledWith({
+      body: {
+        email: 'new@example.com',
+        phase: 'new_email',
+        token: 'verified-token',
+      },
     })
 
     const newCode = await screen.findByRole('textbox', {
@@ -74,16 +95,18 @@ describe('EmailChangeModal', () => {
     expect(newCode).toHaveValue('')
     await user.type(newCode, '654321{Enter}')
     await waitFor(() =>
-      expect(resetEmail).toHaveBeenCalledWith({
-        new_email: 'new@example.com',
-        token: 'verified-token',
+      expect(consoleClient.account.changeEmail.reset.post).toHaveBeenCalledWith({
+        body: {
+          new_email: 'new@example.com',
+          token: 'verified-token',
+        },
       }),
     )
     expect(mockLogout).toHaveBeenCalledOnce()
   })
 
   it('associates an unavailable-email error and clears it when the user edits the address', async () => {
-    vi.mocked(checkEmailExisted).mockRejectedValue(
+    vi.mocked(consoleClient.account.changeEmail.checkEmailUnique.post).mockRejectedValue(
       createHttpError(new Response(null, { status: 400 }), { code: 'email_already_in_use' }),
     )
     const user = userEvent.setup()
@@ -112,7 +135,7 @@ describe('EmailChangeModal', () => {
   })
 
   it('shows the server message when sending a verification code fails', async () => {
-    vi.mocked(sendVerifyCode).mockRejectedValueOnce(
+    vi.mocked(consoleClient.account.changeEmail.post).mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 429 }), {
         code: 'rate_limit_exceeded',
         message: 'Try again in one minute',
@@ -130,12 +153,12 @@ describe('EmailChangeModal', () => {
         'Error sending verification code: Try again in one minute',
       ),
     )
-    expect(verifyEmail).not.toHaveBeenCalled()
+    expect(consoleClient.account.changeEmail.validity.post).not.toHaveBeenCalled()
     expect(mockLogout).not.toHaveBeenCalled()
   })
 
   it('preserves the verification step after an HTTP error and allows another attempt', async () => {
-    vi.mocked(verifyEmail).mockRejectedValueOnce(
+    vi.mocked(consoleClient.account.changeEmail.validity.post).mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
         code: 'invalid_code',
         message: 'Verification code has expired',
@@ -161,7 +184,7 @@ describe('EmailChangeModal', () => {
     expect(
       screen.queryByRole('textbox', { name: 'accountSettings.account.changeEmail.emailLabel' }),
     ).not.toBeInTheDocument()
-    expect(resetEmail).not.toHaveBeenCalled()
+    expect(consoleClient.account.changeEmail.reset.post).not.toHaveBeenCalled()
 
     await user.type(originCode, '654321{Enter}')
 
@@ -170,10 +193,12 @@ describe('EmailChangeModal', () => {
         name: 'accountSettings.account.changeEmail.emailLabel',
       }),
     ).toBeVisible()
-    expect(verifyEmail).toHaveBeenLastCalledWith({
-      email: 'old@example.com',
-      code: '654321',
-      token: 'email-token',
+    expect(consoleClient.account.changeEmail.validity.post).toHaveBeenLastCalledWith({
+      body: {
+        email: 'old@example.com',
+        code: '654321',
+        token: 'email-token',
+      },
     })
   })
 })

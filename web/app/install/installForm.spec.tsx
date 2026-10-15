@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import type { InitValidateStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { expectLoadingButton } from '@/test/button'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
@@ -21,20 +21,29 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  fetchSetupStatus: vi.fn(),
-  fetchInitValidateStatus: vi.fn(),
-  setup: vi.fn(),
-  login: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    setup: {
+      get: vi.fn(),
+      post: vi.fn(),
+    },
+    init: {
+      get: vi.fn(),
+    },
+    login: {
+      post: vi.fn(),
+    },
+  },
 }))
 
-const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
-const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
-const mockSetup = vi.mocked(setup)
-const mockLogin = vi.mocked(login)
+const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
+const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
+const mockSetup = vi.mocked(consoleClient.setup.post)
+const mockLogin = vi.mocked(consoleClient.login.post)
 
 const prepareLoadedState = () => {
-  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
+  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
   } as InitValidateStatusResponse)
@@ -161,7 +170,6 @@ describe('InstallForm', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith({
-        url: '/login',
         body: {
           email: 'admin@example.com',
           password: encryptPassword('Password123'),
@@ -232,7 +240,7 @@ describe('InstallForm', () => {
   })
 
   it('should redirect to sign in when setup is finished', async () => {
-    mockFetchSetupStatus.mockResolvedValue({ step: 'finished' } as SetupStatusResponse)
+    mockFetchSetupStatus.mockResolvedValue({ step: 'finished' })
 
     render(<InstallForm />)
 

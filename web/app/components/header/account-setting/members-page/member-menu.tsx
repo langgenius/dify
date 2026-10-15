@@ -22,8 +22,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { deleteMemberOrCancelInvitation } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import AssignRolesModal from './assign-roles-modal'
 
@@ -95,7 +94,9 @@ const MemberMenu = ({
   const handleRemove = useCallback(async () => {
     setRemoving(true)
     try {
-      await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
+      await consoleClient.workspaces.current.members.byMemberId.delete({
+        params: { member_id: member.id },
+      })
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.members.get.key(),
       })

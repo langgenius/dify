@@ -1,3 +1,4 @@
+import type { GetWorkspacesCurrentDefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 
 export type FormValue = Record<string, any>
@@ -264,14 +265,7 @@ export type ModelProvider = {
   allow_custom_token?: boolean
 }
 
-export type DefaultModelResponse = {
-  model: string
-  model_type: ModelTypeEnum
-  provider: {
-    provider: string
-    icon_small: TypeWithI18N
-  }
-}
+export type DefaultModelResponse = NonNullable<GetWorkspacesCurrentDefaultModelResponse['data']>
 
 export type DefaultModel = {
   provider: string
@@ -292,7 +286,7 @@ export type ModelParameterRule = {
   max?: number
   name: string
   precision?: number
-  required: false
+  required?: boolean
   type: string
   use_template?: string
   options?: string[]

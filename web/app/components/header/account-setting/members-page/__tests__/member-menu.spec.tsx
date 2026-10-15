@@ -3,8 +3,7 @@ import type { Member } from '@/models/common'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { deleteMemberOrCancelInvitation } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberMenu from '../member-menu'
 
@@ -21,8 +20,19 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   })
 })
 
-vi.mock('@/service/common', () => ({
-  deleteMemberOrCancelInvitation: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    workspaces: {
+      current: {
+        members: {
+          byMemberId: {
+            delete: vi.fn(),
+          },
+        },
+      },
+    },
+  },
 }))
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -81,7 +91,10 @@ describe('MemberMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUpdateRolesOfMember.mockResolvedValue(undefined)
-    vi.mocked(deleteMemberOrCancelInvitation).mockResolvedValue({ result: 'success' })
+    vi.mocked(consoleClient.workspaces.current.members.byMemberId.delete).mockResolvedValue({
+      result: 'success',
+      tenant_id: 'tenant-1',
+    })
     vi.mocked(mockUpdateRolesOfMemberHook).mockReturnValue({
       mutateAsync: mockUpdateRolesOfMember,
     })
@@ -181,13 +194,13 @@ describe('MemberMenu', () => {
       name: /workspaceMembers\.members\.removeFromTeamConfirmTitle:\{"memberName":"Member User"\}/i,
     })
     expect(dialog).toHaveTextContent('workspaceMembers.members.removeFromTeamConfirmDescription')
-    expect(deleteMemberOrCancelInvitation).not.toHaveBeenCalled()
+    expect(consoleClient.workspaces.current.members.byMemberId.delete).not.toHaveBeenCalled()
 
     await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
 
     await waitFor(() => {
-      expect(deleteMemberOrCancelInvitation).toHaveBeenCalledWith({
-        url: '/workspaces/current/members/member-1',
+      expect(consoleClient.workspaces.current.members.byMemberId.delete).toHaveBeenCalledWith({
+        params: { member_id: 'member-1' },
       })
     })
     expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)

@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { activateMember } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { useInvitationCheck } from '@/service/use-common'
 import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
@@ -62,8 +62,13 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  activateMember: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    activate: {
+      post: vi.fn(),
+    },
+  },
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -84,7 +89,7 @@ const mockRefetch = vi.fn()
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockActivateMember = activateMember as unknown as MockedFunction<typeof activateMember>
+const mockActivateMember = vi.mocked(consoleClient.activate.post)
 const mockUseQuery = vi.mocked(useQuery)
 const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<
   typeof useInvitationCheck
@@ -182,7 +187,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',
@@ -204,7 +208,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',
@@ -238,7 +241,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
           },
@@ -268,7 +270,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
           },
@@ -299,7 +300,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',

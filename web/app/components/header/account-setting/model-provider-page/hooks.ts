@@ -23,7 +23,6 @@ import {
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
 import { getModelLanguage } from '@/i18n/metadata'
-import { fetchDefaultModal } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { useExpandModelProviderList } from './atoms'
@@ -95,14 +94,16 @@ export const useDefaultModel = (
   type: ModelTypeEnum,
   { enabled = true }: ModelQueryOptions = {},
 ) => {
-  const { data, refetch, isPending } = useQuery({
-    queryKey: commonQueryKeys.defaultModel(type),
-    queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
-    enabled,
-  })
+  const { data, refetch, isPending } = useQuery(
+    consoleQuery.workspaces.current.defaultModel.get.queryOptions({
+      input: { query: { model_type: type } },
+      enabled,
+    }),
+  )
 
   return {
-    data: data?.data,
+    // An unset default model comes back as null.
+    data: data?.data ?? undefined,
     mutate: refetch,
     isLoading: enabled && isPending,
   }
@@ -208,7 +209,11 @@ export const useInvalidateDefaultModel = () => {
 
   return useCallback(
     (type: ModelTypeEnum) => {
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: type } },
+        }),
+      })
     },
     [queryClient],
   )

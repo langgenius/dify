@@ -28,8 +28,7 @@ import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { activateMember } from '@/service/common'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { useInvitationCheck } from '@/service/use-common'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
@@ -156,10 +155,7 @@ export default function InviteSettingsPage() {
         : {
             token,
           }
-      const res = await activateMember({
-        url: '/activate',
-        body,
-      })
+      const res = await consoleClient.activate.post({ body })
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!, false)

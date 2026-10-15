@@ -4,12 +4,14 @@ import type {
   ModelStatus,
   ModelType,
   ModelWithProviderEntityResponse,
+  ParameterRule,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { StaticImageData } from 'next/image'
 import type {
   CredentialFormSchemaSelect,
   CredentialFormSchemaTextInput,
   ModelItem,
+  ModelParameterRule,
   TypeWithI18N,
 } from './declarations'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
@@ -197,3 +199,24 @@ const normalizeModelProviderModel = (model: ModelWithProviderEntityResponse): Mo
 export const normalizeModelProviderModelsResponse = (response: {
   data: ModelWithProviderEntityResponse[]
 }): ModelItem[] => response.data.map(normalizeModelProviderModel)
+
+const isParameterDefault = (value: unknown): value is ModelParameterRule['default'] =>
+  typeof value === 'number' ||
+  typeof value === 'string' ||
+  typeof value === 'boolean' ||
+  (Array.isArray(value) && value.every((item) => typeof item === 'string'))
+
+export const normalizeModelParameterRule = (rule: ParameterRule): ModelParameterRule => ({
+  name: rule.name,
+  type: rule.type,
+  label: normalizeModelLabel(rule.label),
+  help: rule.help ? normalizeModelLabel(rule.help) : undefined,
+  // `default` is untyped JSON in the console API response.
+  default: isParameterDefault(rule.default) ? rule.default : undefined,
+  min: rule.min ?? undefined,
+  max: rule.max ?? undefined,
+  precision: rule.precision ?? undefined,
+  required: rule.required,
+  use_template: rule.use_template ?? undefined,
+  options: rule.options,
+})
