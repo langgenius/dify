@@ -51,6 +51,9 @@ export type DifyBuilderStreamEventResponse =
   | ({
       event: 'error'
     } & DifyBuilderErrorEventResponse)
+  | ({
+      event: 'native_execution'
+    } & DifyBuilderNativeExecutionEventResponse)
 
 export type DifyBuilderErrorResponse = {
   code: BuilderErrorCode
@@ -131,6 +134,38 @@ export type DifyBuilderSubmitMessagePayload = {
   base_version: number
   client_turn_id: string
   text: string
+}
+
+export type NativeTestStartPayload = {
+  expected_version: number
+  idempotency_key: string
+  mode: 'mock' | 'native'
+  schema_version: 'builder-native-test-v1'
+  test_input_id: string
+}
+
+export type DifyBuilderNativeTestResponse = {
+  data: NativeTestPublicReceipt
+}
+
+export type NativeTestCancelPayload = {
+  idempotency_key: string
+  schema_version: 'builder-native-test-v1'
+}
+
+export type NativeTestDecisionPayload = {
+  decision: 'confirm' | 'deny'
+  expected_version: number
+  idempotency_key: string
+  pending_operation_id: string
+  schema_version: 'builder-native-test-v1'
+  scope_digest: string
+}
+
+export type NativeTestResumePayload = {
+  expected_generation: number
+  idempotency_key: string
+  schema_version: 'builder-native-test-v1'
 }
 
 export type DifyBuilderPrepareRealCallPayload = {
@@ -331,6 +366,11 @@ export type DifyBuilderErrorEventResponse = {
   event: 'error'
 }
 
+export type DifyBuilderNativeExecutionEventResponse = {
+  data: DifyBuilderNativeExecutionEventData
+  event: 'native_execution'
+}
+
 export type BuilderErrorCode =
   | 'bad_request'
   | 'conflict'
@@ -481,6 +521,21 @@ export type DifyBuilderTestResultConversationItemResponse = {
   kind: 'test_result'
   payload: TestResultCard
   seq: number
+}
+
+export type NativeTestPublicReceipt = {
+  cancellation?: CancellationReceipt | null
+  evidence_refs: Array<string>
+  generation: number
+  native_run_id: string | null
+  native_status: string | null
+  outcome: 'cancelled' | 'failed' | 'succeeded' | 'unknown' | null
+  pending: Array<PendingActionDisclosure>
+  request_id: string
+  schema_version?: 'builder-native-test-v1'
+  status: 'prepared' | 'running' | 'terminal' | 'waiting'
+  version: number
+  wait_reason: 'approval' | 'configuration' | 'interaction' | null
 }
 
 export type DifyBuilderRealCallDisclosureResponse = {
@@ -733,6 +788,12 @@ export type DifyBuilderErrorEventData = {
   session_id?: string | null
 }
 
+export type DifyBuilderNativeExecutionEventData = {
+  cursor: string
+  receipt: NativeTestPublicReceipt
+  session_id: string
+}
+
 export type ActionKind = 'automatic' | 'destructive' | 'primary' | 'secondary'
 
 export type BuilderCopy = {
@@ -887,6 +948,30 @@ export type TestResultCard = {
   terminal_outputs?: {
     [key: string]: unknown
   } | null
+}
+
+export type CancellationReceipt = {
+  generation: number
+  operation_states: {
+    [key: string]: 'completed' | 'failed' | 'not_dispatched' | 'unknown'
+  }
+  request_id: string
+  status: 'cancelled' | 'cancelling' | 'unknown'
+}
+
+export type PendingActionDisclosure = {
+  account_label: string | null
+  action: string
+  approval_limits: NativeApprovalTerms | null
+  native_form_ref: string | null
+  parameters_summary: JsonValue
+  pending_operation_id: string
+  required_configuration: Array<string>
+  risk_notice: string | null
+  scope_digest: string | null
+  target: JsonValue
+  version: number
+  wait_reason: 'approval' | 'configuration' | 'interaction'
 }
 
 export type WorkflowStreamEventLiteralWorkflowStartedData = {
@@ -1375,6 +1460,15 @@ export type ResourceOption = {
   meta: string
   readiness: string
 }
+
+export type NativeApprovalTerms = {
+  expires_at: string
+  max_calls: number
+  max_cost_units: number
+  max_dispatches: number
+}
+
+export type JsonValue = unknown
 
 export type CoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = {
   created_at: number
@@ -1975,6 +2069,125 @@ export type PostDifyBuilderSessionsBySessionIdMessagesResponses = {
 export type PostDifyBuilderSessionsBySessionIdMessagesResponse =
   PostDifyBuilderSessionsBySessionIdMessagesResponses[keyof PostDifyBuilderSessionsBySessionIdMessagesResponses]
 
+export type PostDifyBuilderSessionsBySessionIdNativeTestsData = {
+  body: NativeTestStartPayload
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/native-tests'
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsError =
+  PostDifyBuilderSessionsBySessionIdNativeTestsErrors[keyof PostDifyBuilderSessionsBySessionIdNativeTestsErrors]
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsResponses = {
+  200: DifyBuilderNativeTestResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsResponse =
+  PostDifyBuilderSessionsBySessionIdNativeTestsResponses[keyof PostDifyBuilderSessionsBySessionIdNativeTestsResponses]
+
+export type GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdData = {
+  body?: never
+  path: {
+    request_id: string
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/native-tests/{request_id}'
+}
+
+export type GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdError =
+  GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdErrors[keyof GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdErrors]
+
+export type GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponses = {
+  200: DifyBuilderNativeTestResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse =
+  GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponses[keyof GetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponses]
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelData = {
+  body: NativeTestCancelPayload
+  path: {
+    request_id: string
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/cancel'
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelError =
+  PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelErrors[keyof PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelErrors]
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponses = {
+  200: DifyBuilderNativeTestResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponse =
+  PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponses[keyof PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponses]
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsData = {
+  body: NativeTestDecisionPayload
+  path: {
+    request_id: string
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/decisions'
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsError =
+  PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsErrors[keyof PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsErrors]
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponses = {
+  200: DifyBuilderNativeTestResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponse =
+  PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponses[keyof PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponses]
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeData = {
+  body: NativeTestResumePayload
+  path: {
+    request_id: string
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/resume'
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeError =
+  PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeErrors[keyof PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeErrors]
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponses = {
+  200: DifyBuilderNativeTestResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponse =
+  PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponses[keyof PostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponses]
+
 export type PostDifyBuilderSessionsBySessionIdRealCallConsentsData = {
   body: DifyBuilderPrepareRealCallPayload
   path: {
@@ -2090,7 +2303,9 @@ export type GetDifyBuilderSessionsBySessionIdStreamData = {
   path: {
     session_id: string
   }
-  query?: never
+  query?: {
+    native_tests?: 'builder-native-test-v1'
+  }
   url: '/dify-builder/sessions/{session_id}/stream'
 }
 

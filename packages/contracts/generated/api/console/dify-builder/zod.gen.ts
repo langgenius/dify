@@ -28,6 +28,46 @@ export const zDifyBuilderSubmitMessagePayload = z.object({
 })
 
 /**
+ * NativeTestStartPayload
+ */
+export const zNativeTestStartPayload = z.object({
+  expected_version: z.int().gte(0).lte(9223372036854776000),
+  idempotency_key: z.string().min(1).max(128),
+  mode: z.enum(['mock', 'native']),
+  schema_version: z.literal('builder-native-test-v1'),
+  test_input_id: z.string().min(1).max(128),
+})
+
+/**
+ * NativeTestCancelPayload
+ */
+export const zNativeTestCancelPayload = z.object({
+  idempotency_key: z.string().min(1).max(128),
+  schema_version: z.literal('builder-native-test-v1'),
+})
+
+/**
+ * NativeTestDecisionPayload
+ */
+export const zNativeTestDecisionPayload = z.object({
+  decision: z.enum(['confirm', 'deny']),
+  expected_version: z.int().gte(0).lte(9223372036854776000),
+  idempotency_key: z.string().min(1).max(128),
+  pending_operation_id: z.string().min(1).max(128),
+  schema_version: z.literal('builder-native-test-v1'),
+  scope_digest: z.string().regex(/^[0-9a-f]{64}$/),
+})
+
+/**
+ * NativeTestResumePayload
+ */
+export const zNativeTestResumePayload = z.object({
+  expected_generation: z.int().gte(0).lte(9223372036854776000),
+  idempotency_key: z.string().min(1).max(128),
+  schema_version: z.literal('builder-native-test-v1'),
+})
+
+/**
  * DifyBuilderPrepareRealCallPayload
  */
 export const zDifyBuilderPrepareRealCallPayload = z.object({
@@ -532,6 +572,19 @@ export const zDifyBuilderRunContextConversationItemResponse = z.object({
   kind: z.literal('run_context'),
   payload: zRunContextCard,
   seq: z.int(),
+})
+
+/**
+ * CancellationReceipt
+ */
+export const zCancellationReceipt = z.object({
+  generation: z.int().gte(0).lte(9223372036854776000),
+  operation_states: z.record(
+    z.string(),
+    z.enum(['completed', 'failed', 'not_dispatched', 'unknown']),
+  ),
+  request_id: z.string().min(1).max(128),
+  status: z.enum(['cancelled', 'cancelling', 'unknown']),
 })
 
 /**
@@ -1313,6 +1366,83 @@ export const zDifyBuilderResourceSelectConversationItemResponse = z.object({
   kind: z.literal('resource_select'),
   payload: zResourceSelectCard,
   seq: z.int(),
+})
+
+/**
+ * NativeApprovalTerms
+ */
+export const zNativeApprovalTerms = z.object({
+  expires_at: z.string().max(32),
+  max_calls: z.int().gte(1).lte(9223372036854776000),
+  max_cost_units: z.int().gte(0).lte(9223372036854776000),
+  max_dispatches: z.int().gte(1).lte(9223372036854776000),
+})
+
+export const zJsonValue = z.unknown()
+
+/**
+ * PendingActionDisclosure
+ */
+export const zPendingActionDisclosure = z.object({
+  account_label: z.string().nullable(),
+  action: z.string(),
+  approval_limits: zNativeApprovalTerms.nullable(),
+  native_form_ref: z.string().min(1).max(128).nullable(),
+  parameters_summary: zJsonValue,
+  pending_operation_id: z.string().min(1).max(128),
+  required_configuration: z.array(z.string().min(1).max(128)),
+  risk_notice: z.string().nullable(),
+  scope_digest: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .nullable(),
+  target: zJsonValue,
+  version: z.int().gte(0).lte(9223372036854776000),
+  wait_reason: z.enum(['approval', 'configuration', 'interaction']),
+})
+
+/**
+ * NativeTestPublicReceipt
+ */
+export const zNativeTestPublicReceipt = z.object({
+  cancellation: zCancellationReceipt.nullish(),
+  evidence_refs: z.array(z.string().min(1).max(128)),
+  generation: z.int().gte(0).lte(9223372036854776000),
+  native_run_id: z.string().min(1).max(128).nullable(),
+  native_status: z.string().nullable(),
+  outcome: z.enum(['cancelled', 'failed', 'succeeded', 'unknown']).nullable(),
+  pending: z.array(zPendingActionDisclosure),
+  request_id: z.string().min(1).max(128),
+  schema_version: z.literal('builder-native-test-v1').optional().default('builder-native-test-v1'),
+  status: z.enum(['prepared', 'running', 'terminal', 'waiting']),
+  version: z.int().gte(0).lte(9223372036854776000),
+  wait_reason: z.enum(['approval', 'configuration', 'interaction']).nullable(),
+})
+
+/**
+ * DifyBuilderNativeTestResponse
+ *
+ * Strict public native receipt; domain DTO also owns generated schemas.
+ */
+export const zDifyBuilderNativeTestResponse = z.object({
+  data: zNativeTestPublicReceipt,
+})
+
+/**
+ * DifyBuilderNativeExecutionEventData
+ */
+export const zDifyBuilderNativeExecutionEventData = z.object({
+  cursor: z.string().regex(/^[a-f0-9]{64}$/),
+  receipt: zNativeTestPublicReceipt,
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderNativeExecutionEventResponse
+ */
+export const zDifyBuilderNativeExecutionEventResponse = z.object({
+  data: zDifyBuilderNativeExecutionEventData,
+  event: z.literal('native_execution'),
 })
 
 /**
@@ -2252,6 +2382,7 @@ export const zDifyBuilderStreamEventResponse = z.discriminatedUnion('event', [
   zDifyBuilderProgressSnapshotEventResponse.extend({ event: z.literal('progress_snapshot') }),
   zDifyBuilderCommandFinishedEventResponse.extend({ event: z.literal('command_finished') }),
   zDifyBuilderErrorEventResponse.extend({ event: z.literal('error') }),
+  zDifyBuilderNativeExecutionEventResponse.extend({ event: z.literal('native_execution') }),
 ])
 
 /**
@@ -2313,6 +2444,70 @@ export const zPostDifyBuilderSessionsBySessionIdMessagesPath = z.object({
  */
 export const zPostDifyBuilderSessionsBySessionIdMessagesResponse = zDifyBuilderStreamEventResponse
 
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsBody = zNativeTestStartPayload
+
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsPath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Native test admission receipt
+ */
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsResponse = zDifyBuilderNativeTestResponse
+
+export const zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdPath = z.object({
+  request_id: z.string(),
+  session_id: z.string(),
+})
+
+/**
+ * Current native test receipt
+ */
+export const zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse =
+  zDifyBuilderNativeTestResponse
+
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelBody =
+  zNativeTestCancelPayload
+
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelPath = z.object({
+  request_id: z.string(),
+  session_id: z.string(),
+})
+
+/**
+ * Native test cancellation receipt
+ */
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponse =
+  zDifyBuilderNativeTestResponse
+
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsBody =
+  zNativeTestDecisionPayload
+
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsPath = z.object({
+  request_id: z.string(),
+  session_id: z.string(),
+})
+
+/**
+ * Saved native test decision
+ */
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponse =
+  zDifyBuilderNativeTestResponse
+
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeBody =
+  zNativeTestResumePayload
+
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumePath = z.object({
+  request_id: z.string(),
+  session_id: z.string(),
+})
+
+/**
+ * Native test continuation receipt
+ */
+export const zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponse =
+  zDifyBuilderNativeTestResponse
+
 export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsBody =
   zDifyBuilderPrepareRealCallPayload
 
@@ -2367,6 +2562,10 @@ export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecu
 
 export const zGetDifyBuilderSessionsBySessionIdStreamPath = z.object({
   session_id: z.string(),
+})
+
+export const zGetDifyBuilderSessionsBySessionIdStreamQuery = z.object({
+  native_tests: z.enum(['builder-native-test-v1']).optional(),
 })
 
 /**
