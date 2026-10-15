@@ -20,6 +20,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_workflow
@@ -241,7 +242,7 @@ def test_resume_delegates_to_generate(
 
     result = generator.resume(
         app_model=app,
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         user=end_user,
         application_generate_entity=application_generate_entity,
         graph_runtime_state=runtime_state,
@@ -346,7 +347,9 @@ def test_generate_appends_pause_layer_and_forwards_state(
     assert result == "converted"
     graph_engine_layers = worker_kwargs["kwargs"]["graph_engine_layers"]
     assert graph_engine_layers[0] == "base-layer"
-    assert isinstance(graph_engine_layers[1], PauseStatePersistenceLayer)
+    pause_layer = graph_engine_layers[1]
+    assert isinstance(pause_layer, PauseStatePersistenceLayer)
+    assert pause_layer._human_form_reader is workflow_runtime.human_form_reader
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
     assert worker_kwargs["joined"] is True
     assert worker_kwargs["join_timeout"] == 300
@@ -438,7 +441,7 @@ def test_resume_path_runs_worker_with_runtime_state(
 
     result = generator.resume(
         app_model=app,
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         user=end_user,
         application_generate_entity=application_generate_entity,
         graph_runtime_state=runtime_state,

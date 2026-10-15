@@ -63,8 +63,9 @@ from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
-from models.workflow import Workflow, WorkflowAppLogCreatedFrom
+from models.workflow import WorkflowAppLogCreatedFrom
 from services.tools.provider_queries import ToolProviderIcons
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 from services.workflow.execution.ports import ExecutionContexts, WorkflowExecutionLogs
 
@@ -79,7 +80,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def __init__(
         self,
         application_generate_entity: WorkflowAppGenerateEntity,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
         stream: bool,
