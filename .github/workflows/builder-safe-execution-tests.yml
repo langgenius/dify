@@ -25,6 +25,13 @@ on:
       - 'api/core/repositories/**'
       - 'api/models/dify_builder*.py'
       - 'api/services/agent/access_service.py'
+      - 'api/tests/unit_tests/controllers/inner_api/test_agent_*.py'
+      - 'api/tests/unit_tests/controllers/inner_api/test_knowledge_retrieval.py'
+      - 'api/controllers/inner_api/agent/**'
+      - 'api/controllers/inner_api/knowledge/retrieval.py'
+      - 'api/services/entities/agent_llm_inner.py'
+      - 'api/services/entities/agent_tool_inner.py'
+      - 'api/services/entities/knowledge_retrieval_inner.py'
       - 'dify-agent/**'
       - 'api/migrations/versions/*builder*'
       - 'api/migrations/versions/*native*'
@@ -316,6 +323,11 @@ jobs:
 
           JUNIT = "builder-confirmed-tool-units.xml"
           FILES = [
+              "api/tests/unit_tests/services/dify_builder/test_agent_tool_declarations.py",
+              "api/tests/unit_tests/controllers/inner_api/test_agent_llm.py",
+              "api/tests/unit_tests/controllers/inner_api/test_agent_tools.py",
+              "api/tests/unit_tests/controllers/inner_api/test_agent_files.py",
+              "api/tests/unit_tests/controllers/inner_api/test_knowledge_retrieval.py",
               "api/tests/unit_tests/services/dify_builder/test_reconcile.py",
               "api/tests/unit_tests/core/app/apps/test_builder_execution_admission.py",
               "api/tests/unit_tests/services/dify_builder/test_real_call_consent_service.py",
@@ -404,6 +416,55 @@ jobs:
               print(f"COLLECTED {module}: {count} unit cases", flush=True)
               if count == 0:
                   problems.append(f"missing unit module {module}")
+          a3_expected = {'tests.unit_tests.services.dify_builder.test_agent_tool_declarations': {'test_schema_preparation_never_constructs_runtime_or_refreshes_expired_oauth': 2,
+                                                                                   'test_default_plugin_metadata_path_does_not_call_dynamic_or_credential_runtime': 1,
+                                                                                   'test_same_permit_validation_does_not_claim_or_spend': 8,
+                                                                                   'test_marked_request_builder_stops_missing_ref_before_metadata': 1,
+                                                                                   'test_private_bridge_maps_exact_decisions_without_losing_payload': 4,
+                                                                                   'test_materialization_rejects_phase_mismatch_and_missing_fence_before_io': 1,
+                                                                                   'test_private_native_routes_require_existing_service_auth': 4,
+                                                                                   'test_private_before_call_http_preserves_wait_reason': 3,
+                                                                                   'test_native_credential_phases_wait_refresh_then_business_without_double_spend': 1,
+                                                                                   'test_native_materializer_phase_rejected_before_credential_selection': 1,
+                                                                                   'test_actual_native_materializer_uses_existing_oauth_owner_then_cas_before_business': 1,
+                                                                                   'test_missing_credential_configuration_wait_precedes_business_intent': 1,
+                                                                                   'test_endpoint_lineage_requires_exact_envelope_before_claim': 4,
+                                                                                   'test_actual_llm_endpoint_rejects_known_native_omission_before_prepare': 1,
+                                                                                   'test_private_claim_route_consumes_once_and_rejects_repeated_request': 1,
+                                                                                   'test_native_refresh_cas_rechecks_detached_snapshot_before_write': 4,
+                                                                                   'test_endpoint_typed_json_guard_precedes_physical_claim': 10},
+           'tests.unit_tests.controllers.inner_api.test_agent_llm': {'test_post_streams_plugin_compatible_envelope': 1,
+                                                                     'test_post_preserves_prompt_messages_without_transport_validation': 1,
+                                                                     'test_post_rejects_invalid_body_before_model_resolution': 1,
+                                                                     'test_post_preserves_preflight_quota_failure': 1,
+                                                                     'test_post_preserves_stream_quota_failure': 1},
+           'tests.unit_tests.controllers.inner_api.test_agent_tools': {'test_post_returns_service_response': 1,
+                                                                       'test_post_returns_400_for_invalid_body': 1,
+                                                                       'test_post_preserves_service_error_status_code_and_description': 1},
+           'tests.unit_tests.controllers.inner_api.test_agent_files': {'test_upload_request_returns_origin_free_uri': 1,
+                                                                       'test_upload_request_payload_requires_non_negative_max_size': 1,
+                                                                       'test_download_request_returns_origin_free_uri_for_sandbox': 1,
+                                                                       'test_download_request_binds_frontend_url': 1},
+           'tests.unit_tests.controllers.inner_api.test_knowledge_retrieval': {'test_post_returns_404_when_api_key_missing': 1,
+                                                                               'test_post_returns_404_when_api_key_invalid': 1,
+                                                                               'test_post_returns_400_for_invalid_body': 1,
+                                                                               'test_post_returns_404_for_service_not_found_error': 1,
+                                                                               'test_post_returns_403_for_service_forbidden_error': 1,
+                                                                               'test_post_returns_422_for_retrieval_config_value_error': 1,
+                                                                               'test_post_returns_429_for_rate_limit_error': 1,
+                                                                               'test_post_returns_400_for_manual_metadata_without_conditions': 1,
+                                                                               'test_post_returns_400_for_automatic_metadata_without_model_config': 1,
+                                                                               'test_post_returns_502_for_external_knowledge_failure': 1,
+                                                                               'test_post_returns_service_response': 1}}
+          for module, expected in a3_expected.items():
+              actual = {}
+              for classname, name in identities:
+                  normalized = classname.removeprefix("api.")
+                  if normalized == module or normalized.startswith(module + "."):
+                      function = name.split("[", 1)[0]
+                      actual[function] = actual.get(function, 0) + 1
+              if actual != expected:
+                  problems.append(f"A3 function inventory mismatch {module}: {actual}")
           json_admission_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution_admission"
           expected_json_admission = {
               f"test_owned_json_parse_prepare_persists_restricted_request[{variant}]"
@@ -864,8 +925,28 @@ jobs:
           import pytest
 
           EXPECTED = {'tests.local.dify_agent.protocol.test_native_testing': {'test_reference_exact_wire_and_no_authority_fields': 1, 'test_wait_reason_survives_wire_roundtrip': 3, 'test_continue_cannot_supply_decisions_or_execution_arguments': 1, 'test_mode_and_reference_must_agree': 4, 'test_all_features_are_required': 1, 'test_http_rejects_before_scheduler_or_any_execution_boundary': 1, 'test_client_refreshes_capabilities_and_never_falls_back': 1, 'test_client_maps_unavailable_capability_endpoint_to_stable_error': 3, 'test_executable_wire_rejects_non_finite_or_non_json_arguments': 5, 'test_exact_decision_wire_contract': 4, 'test_invalid_checkpoint_does_not_enter_public_status_or_events': 1, 'test_ordinary_client_wire_remains_compatible_with_frozen_old_server': 2}, 'tests.local.dify_agent.runtime.test_native_continuation': {'test_stage_checkpoint_preserves_reason_without_faking_tool_history': 3, 'test_real_native_deferral_checkpoint_and_resume_without_reissuing_call': 2, 'test_denied_or_changed_native_arguments_never_become_model_feedback': 1, 'test_direct_runner_rejects_marked_test_before_module_loading': 1, 'test_scheduler_rejects_native_before_persistence': 1, 'test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_resumable': 2, 'test_scheduler_restores_only_matching_pinned_snapshot_before_scheduling': 1, 'test_scheduler_resume_keeps_run_and_claim_after_lost_acknowledgement': 2, 'test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback': 1, 'test_continuation_cannot_relabel_pending_approval_as_external_result': 1, 'test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdown': 1}, 'tests.local.dify_agent.storage.test_native_continuation_store': {'test_persistence_failure_cannot_publish_waiting': 1, 'test_mismatched_waiting_event_rejected_before_redis': 1, 'test_real_redis_atomic_claim_restart_stale_generation_and_cancellation': 1, 'test_real_redis_result_store_owner_bound_and_restart': 1}}
+          EXPECTED['tests.local.dify_agent.runtime.test_native_effects'] = {'test_waiting_preserves_typed_payload_and_never_invokes': 3,
+           'test_recorded_result_and_denial_never_invoke': 1,
+           'test_success_stores_protected_result_before_receipt': 1,
+           'test_ambiguous_io_closes_as_unknown_without_retry': 1,
+           'test_opaque_call_discloses_uncertainty': 1,
+           'test_real_sdk_pre_tool_boundary_checkpoints_wait_before_handler': 3,
+           'test_actual_tool_layer_defers_with_final_arguments_before_transport': 8,
+           'test_sdk_permit_is_spent_once_and_result_can_replay_without_handler': 1,
+           'test_eager_knowledge_waits_before_http_and_cache_write': 1,
+           'test_config_pull_waits_before_shell_io': 1,
+           'test_shell_native_tool_waits_before_session_access': 4,
+           'test_bootstrap_waits_before_runtime_resource_access': 1,
+           'test_actual_model_client_waits_before_http': 1,
+           'test_marked_runner_requires_real_effect_owner_before_loading': 1,
+           'test_actual_direct_plugin_claim_precedes_one_daemon_request': 2,
+           'test_private_policy_http_preserves_discriminants_and_typed_arguments': 1,
+           'test_missing_shell_lineage_stops_before_effect_reservation': 1,
+           'test_session_typed_json_guard_precedes_authorization_and_dispatch': 10,
+           'test_direct_plugin_typed_json_guard_precedes_materialize_claim_and_dispatch': 5,
+           'test_direct_plugin_target_guard_precedes_materialize_claim_and_dispatch': 1}
           REPORT = "builder-native-agent.xml"
-          code = pytest.main(['tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
+          code = pytest.main(['tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
           problems = []
           identities = set()
           actual = {module: Counter() for module in EXPECTED}
