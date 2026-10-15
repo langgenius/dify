@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13, <4.0"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -578,7 +578,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "e2b", marker = "extra == 'server'", specifier = ">=2.38.0,<3.0.0" },
+    { name = "e2b", marker = "extra == 'server'", specifier = ">=2.55.1,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
     { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.2" },
     { name = "grpcio", marker = "extra == 'server'", specifier = ">=1.60.0,<2.0.0" },
@@ -590,8 +590,8 @@ requires-dist = [
     { name = "openshell", marker = "extra == 'server'", specifier = ">=0.0.106,<0.1.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
     { name = "pydantic-ai-harness", specifier = ">=0.20.0,<0.21.0" },
-    { name = "pydantic-ai-slim", specifier = ">=2.30.0,<3.0.0" },
-    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=2.30.0,<3.0.0" },
+    { name = "pydantic-ai-slim", specifier = "==2.31.0" },
+    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = "==2.31.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
@@ -625,15 +625,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dockerfile-parse"
-version = "2.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/92/df/929ee0b5d2c8bd8d713c45e71b94ab57c7e11e322130724d54f469b2cd48/dockerfile-parse-2.0.1.tar.gz", hash = "sha256:3184ccdc513221983e503ac00e1aa504a2aa8f84e5de673c46b0b6eee99ec7bc", size = 24556, upload-time = "2023-07-18T13:36:07.897Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/6c/79cd5bc1b880d8c1a9a5550aa8dacd57353fa3bb2457227e1fb47383eb49/dockerfile_parse-2.0.1-py2.py3-none-any.whl", hash = "sha256:bdffd126d2eb26acf1066acb54cb2e336682e1d72b974a40894fac76a4df17f6", size = 14845, upload-time = "2023-07-18T13:36:06.052Z" },
-]
-
-[[package]]
 name = "docstring-parser"
 version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
@@ -644,12 +635,12 @@ wheels = [
 
 [[package]]
 name = "e2b"
-version = "2.46.4"
+version = "2.55.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "connectrpc" },
-    { name = "dockerfile-parse" },
+    { name = "e2b-dockerfile-utils" },
     { name = "h2" },
     { name = "httpx" },
     { name = "packaging" },
@@ -660,9 +651,18 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wcmatch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/04/3e7d3ca8abaeffcfc41d36b9d6fe3aa055cecf3b56234e051991de848b2d/e2b-2.46.4.tar.gz", hash = "sha256:777d35beb00194b401a6c4ac2498aa836628839649f17aae86e85920382c8f6c", size = 228801, upload-time = "2026-09-02T20:48:36.725Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/ad/144bf647f526e65829c78d9b9f681d0d4af13cacaa80c326e1f05ba4cc42/e2b-2.55.1.tar.gz", hash = "sha256:5255f9a01dc484c343f750d13d3a9c857ef3511222a240572ddce2563dd301d9", size = 241589, upload-time = "2026-10-09T14:54:52.76Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/b5/585a30223d9ee95bc94f32f8d5358b147bf93832e37b809545a3ab7892a0/e2b-2.46.4-py3-none-any.whl", hash = "sha256:5d77e9fee8571a0d24a179f14244984127d18bd93a99a5e90226c876087035b5", size = 403067, upload-time = "2026-09-02T20:48:35.082Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/0c/7fca57469c04bdf30373dc1b49336fa29da3863ab095ba82e81f246517cb/e2b-2.55.1-py3-none-any.whl", hash = "sha256:30aec382a7cac5401e0aa0efb156422459f586101809c3e9f34a6fcf797097db", size = 402847, upload-time = "2026-10-09T14:54:54.319Z" },
+]
+
+[[package]]
+name = "e2b-dockerfile-utils"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/17/82/204eaae693bf5c55c85879e055fbfe86941bccbe41e3d6d502319bb0a17d/e2b_dockerfile_utils-0.1.0.tar.gz", hash = "sha256:f840a3e30b2e4140ef4ebb67013a399b568ce4bf62de9f9c1d069d3e47ac9992", size = 16843, upload-time = "2026-10-09T10:00:42.208Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/a3/2851fb65169f6724ac6befeb8f593e465ad4479d2a630d3b281ec36f73aa/e2b_dockerfile_utils-0.1.0-py3-none-any.whl", hash = "sha256:fedc7d036d8a23cb962c01b90882ebec154520ec1bed064e1fe92796a7971553", size = 19901, upload-time = "2026-10-09T10:00:41.384Z" },
 ]
 
 [[package]]

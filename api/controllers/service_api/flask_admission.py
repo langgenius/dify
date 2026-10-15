@@ -16,6 +16,7 @@ from controllers.service_api.wraps import (
     validate_and_get_api_token,
 )
 from extensions.ext_application_services import application_services
+from libs.external_api import document_errors
 from machinery.context import ServiceApiEndUserContext
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.auth.resource_access_token_contracts import is_resource_access_token
@@ -80,6 +81,14 @@ def service_api_end_user_admission[T, **P, R](
             return view(self, context, *args, **kwargs)
 
         document_app_token_contract(admitted, fetch_user_arg)
+        document_errors(
+            admitted,
+            http_errors.AppNotFoundError,
+            http_errors.AppAbnormalStatusError,
+            http_errors.AppApiDisabledError,
+            http_errors.WorkspaceNotFoundError,
+            http_errors.WorkspaceArchivedError,
+        )
         return admitted
 
     return decorator

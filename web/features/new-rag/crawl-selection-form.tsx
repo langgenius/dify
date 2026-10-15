@@ -15,6 +15,7 @@ import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
 
@@ -44,16 +45,8 @@ const TERMINAL_IMPORT_STATES = new Set([
 
 type PageSkipReason = 'failed' | 'off-domain'
 
-function requestStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  if ('status' in error && typeof error.status === 'number') return error.status
-  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data)
-    return typeof error.data.status === 'number' ? error.data.status : undefined
-}
-
 function isDefinitiveRequestFailure(error: unknown) {
-  const status = requestStatus(error)
+  const status = getHttpErrorStatus(error)
   return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
 }
 
@@ -427,7 +420,7 @@ function ReadyCrawlSelectionForm({
           </Button>
         </div>
         <div className="mt-3 overflow-hidden rounded-xl border border-divider-regular">
-          <label className="flex cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary">
+          <label className="flex cursor-pointer items-center gap-2.5 border-b border-divider-subtle bg-background-section px-3 py-2.5 system-xs-medium text-text-secondary has-data-disabled:cursor-not-allowed">
             <Checkbox
               checked={allSelected}
               indeterminate={someSelected && !allSelected}
@@ -447,7 +440,7 @@ function ReadyCrawlSelectionForm({
               const reasonId = `${pageDescriptionPrefixId}-reason-${index}`
               return (
                 <li key={page.pageId}>
-                  <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5">
+                  <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 has-data-disabled:cursor-not-allowed">
                     <Checkbox
                       checked={selectedPageIds.has(page.pageId)}
                       disabled={!selectable || selectionLimitReached || selectionLocked}
@@ -611,7 +604,7 @@ export function CrawlSelectionForm({
   )
   const policy =
     policyQuery.data ??
-    (requestStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
+    (getHttpErrorStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
 
   if (policyQuery.isPending) {
     return (

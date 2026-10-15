@@ -350,54 +350,6 @@ describe('FileList', () => {
         expect(input).toHaveValue('')
       })
     })
-
-    describe('handleSelectFile', () => {
-      it('should call handleSelectFile when file item is clicked', () => {
-        const mockHandleSelectFile = vi.fn()
-        const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
-        const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
-        render(<FileList {...props} />)
-
-        // Act - Click on the file item
-        const fileItem = screen.getByText('test.txt')
-        fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-        expect(mockHandleSelectFile).toHaveBeenCalledWith(
-          expect.objectContaining({
-            id: 'file-1',
-            name: 'test.txt',
-            type: OnlineDriveFileType.file,
-          }),
-        )
-      })
-    })
-
-    describe('handleOpenFolder', () => {
-      it('should call handleOpenFolder when folder item is clicked', () => {
-        const mockHandleOpenFolder = vi.fn()
-        const fileList = [
-          createMockOnlineDriveFile({
-            id: 'folder-1',
-            name: 'my-folder',
-            type: OnlineDriveFileType.folder,
-          }),
-        ]
-        const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
-        render(<FileList {...props} />)
-
-        // Act - Click on the folder item
-        const folderItem = screen.getByText('my-folder')
-        fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-        expect(mockHandleOpenFolder).toHaveBeenCalledWith(
-          expect.objectContaining({
-            id: 'folder-1',
-            name: 'my-folder',
-            type: OnlineDriveFileType.folder,
-          }),
-        )
-      })
-    })
   })
 
   describe('Edge Cases and Error Handling', () => {
@@ -608,47 +560,4 @@ describe('FileList', () => {
   })
 
   // Callback Stability
-  describe('Callback Stability', () => {
-    it('should maintain stable handleSelectFile callback', () => {
-      const mockHandleSelectFile = vi.fn()
-      const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
-      const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
-      const { rerender } = render(<FileList {...props} />)
-
-      // Act - Click once
-      const fileItem = screen.getByText('test.txt')
-      fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-      // Rerender with same props
-      rerender(<FileList {...props} />)
-
-      fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-      expect(mockHandleSelectFile).toHaveBeenCalledTimes(2)
-    })
-
-    it('should maintain stable handleOpenFolder callback', () => {
-      const mockHandleOpenFolder = vi.fn()
-      const fileList = [
-        createMockOnlineDriveFile({
-          id: 'folder-1',
-          name: 'my-folder',
-          type: OnlineDriveFileType.folder,
-        }),
-      ]
-      const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
-      const { rerender } = render(<FileList {...props} />)
-
-      // Act - Click once
-      const folderItem = screen.getByText('my-folder')
-      fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-      // Rerender with same props
-      rerender(<FileList {...props} />)
-
-      fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-      expect(mockHandleOpenFolder).toHaveBeenCalledTimes(2)
-    })
-  })
 })

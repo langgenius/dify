@@ -440,10 +440,7 @@ describe('useSegmentListData', () => {
       })
 
       expect(mockEnableSegment).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
+      expect(mockNotify).not.toHaveBeenCalled()
     })
 
     it('should call disableSegment when enable is false', async () => {
@@ -490,6 +487,10 @@ describe('useSegmentListData', () => {
         expect.objectContaining({ segmentIds: ['seg-1', 'seg-2'] }),
         expect.any(Object),
       )
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.actionMsg.modifiedSuccessfully',
+      })
     })
 
     it('should notify error on failure', async () => {

@@ -1,4 +1,4 @@
-"""Client-safe DTOs for Dify plugin-backed Agenton business layers.
+"""Client-safe DTOs for Dify plugin-backed business layers.
 
 This module intentionally contains only public config schemas and scalar type
 aliases plus stable plugin business-layer type identifiers. Runtime objects
@@ -15,19 +15,15 @@ re-fetch and re-merge tool declarations at execution time.
 """
 
 from enum import StrEnum
-from typing import ClassVar, Final, Literal, TypeAlias
+from typing import ClassVar, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 from pydantic_ai.settings import ModelSettings
-
-from agenton.layers import LayerConfig
 
 
 DifyPluginCredentialValue: TypeAlias = str | int | float | bool | None
 DifyPluginToolCredentialType: TypeAlias = Literal["api-key", "oauth2", "unauthorized"]
 DifyPluginToolValue: TypeAlias = JsonValue
-DIFY_PLUGIN_LLM_LAYER_TYPE_ID: Final[str] = "dify.plugin.llm"
-DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID: Final[str] = "dify.plugin.tools"
 
 
 def _default_parameters_json_schema() -> dict[str, JsonValue]:
@@ -106,8 +102,10 @@ class DifyPluginToolParameter(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", from_attributes=True)
 
 
-class DifyPluginLLMLayerConfig(LayerConfig):
+class DifyPluginLLMLayerConfig(BaseModel):
     """Public config for selecting a plugin-backed business provider/model."""
+
+    execution_context: str = "execution_context"
 
     plugin_id: str
     model_provider: str
@@ -127,7 +125,7 @@ class DifyPluginLLMLayerConfig(LayerConfig):
         return value
 
 
-class DifyPluginToolConfig(LayerConfig):
+class DifyPluginToolConfig(BaseModel):
     """Public config for exposing one plugin tool to the agent model.
 
     ``credential_type`` is an explicit caller-supplied daemon transport choice,
@@ -160,12 +158,15 @@ class DifyPluginToolConfig(LayerConfig):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 
-class DifyPluginToolsLayerConfig(LayerConfig):
+class DifyPluginToolsLayerConfig(BaseModel):
     """Public config for the Dify plugin tools layer.
 
     Callers configure the tools layer with this wrapper object and supply one
     or more prepared ``DifyPluginToolConfig`` entries in ``tools``.
     """
+
+    execution_context: str = "execution_context"
+    shell: str | None = None
 
     tools: list[DifyPluginToolConfig] = Field(default_factory=list)
 
@@ -173,8 +174,6 @@ class DifyPluginToolsLayerConfig(LayerConfig):
 
 
 __all__ = [
-    "DIFY_PLUGIN_LLM_LAYER_TYPE_ID",
-    "DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID",
     "DifyPluginCredentialValue",
     "DifyPluginLLMLayerConfig",
     "DifyPluginToolCredentialType",

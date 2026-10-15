@@ -170,10 +170,6 @@ export function useAppInfoActions({
           },
         })
         closeModal()
-        toast(
-          t(($) => $.editDone, { ns: 'app' }),
-          { type: 'success' },
-        )
         queryClient.setQueryData(
           consoleQuery.apps.byAppId.get.queryKey({
             input: { params: { app_id: appId } },

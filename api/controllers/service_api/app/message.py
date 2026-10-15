@@ -32,6 +32,7 @@ from fields.base import ResponseModel
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import ServiceApiEndUserContext
 from models.enums import FeedbackRating
@@ -90,6 +91,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(
         summary="List Conversation Messages",
@@ -244,6 +246,16 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(
         summary="Get Next Suggested Questions",

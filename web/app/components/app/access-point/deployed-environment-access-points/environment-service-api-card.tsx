@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
+import { EnvironmentApiKeyButton } from './environment-api-key-button'
 
 type EnvironmentServiceApiCardProps = {
   appId: string
@@ -69,13 +70,15 @@ export function EnvironmentServiceApiCard({
 
   return (
     <ServiceApiCardView
-      apiKeyButtonProps={{
-        appId,
-        environmentId,
-        apiKeyCount: api?.api_key_count,
-        canManage: canManageAccessPoint,
-        disabled: !apiQuery.isSuccess,
-      }}
+      apiKeyAction={
+        <EnvironmentApiKeyButton
+          appId={appId}
+          environmentId={environmentId}
+          apiKeyCount={api?.api_key_count}
+          canManage={canManageAccessPoint}
+          disabled={!apiQuery.isSuccess}
+        />
+      }
       apiUrl={api?.base_url ?? ''}
       appMode={appMode}
       available={apiQuery.isSuccess}

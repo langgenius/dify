@@ -3,6 +3,36 @@ import { describe, expect, it } from 'vite-plus/test'
 import { createBinaryStream, createSseStream, parseSseStream } from './sse'
 
 describe('sse parsing', () => {
+  it.each([
+    ['data:  indented', ' indented'],
+    ['data:\tindented', '\tindented'],
+    ['data: \tindented', '\tindented'],
+    ['data:\u00A0indented', '\u00A0indented'],
+    ['data:plain', 'plain'],
+    ['data: plain', 'plain'],
+  ])('preserves payload whitespace in %s', async (line, expected) => {
+    const events = []
+    for await (const event of parseSseStream(Readable.from([`${line}\n\n`]))) {
+      events.push(event)
+    }
+    expect(events).toEqual([{ event: undefined, data: expected, raw: expected }])
+  })
+
+  it('keeps meaningful whitespace in event names', async () => {
+    const events = []
+    for await (const event of parseSseStream(Readable.from(['event:  custom \ndata: text\n\n']))) {
+      events.push(event)
+    }
+    expect(events[0]?.event).toBe(' custom ')
+  })
+
+  it('toText preserves multi-line indentation', async () => {
+    const stream = Readable.from(['data:   first\ndata: \tsecond\n\n'])
+    expect(await createSseStream(stream, { status: 200, headers: {} }).toText()).toBe(
+      '  first\n\tsecond',
+    )
+  })
+
   it('parses event and data lines', async () => {
     const stream = Readable.from(['event: message\n', 'data: {"answer":"hi"}\n', '\n'])
     const events: Array<{ event?: string; data: unknown; raw: string }> = []

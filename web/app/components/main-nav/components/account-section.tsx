@@ -1,10 +1,11 @@
 'use client'
 
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type AccountSectionProps = {
   compact?: boolean
@@ -28,14 +29,10 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
             'data-popup-open:bg-state-base-hover',
           )}
         >
-          <span aria-hidden="true" className="flex size-7 shrink-0">
-            <Avatar
-              avatar={userProfile.avatar_url}
-              name={userProfile.name}
-              size="md"
-              className="size-7"
-            />
-          </span>
+          <Avatar size="md" className="size-7" aria-hidden="true">
+            <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+            <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+          </Avatar>
           {!compact && (
             <span className="min-w-0 flex-1 truncate system-md-medium" title={userProfile.name}>
               {userProfile.name}
