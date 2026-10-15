@@ -603,7 +603,7 @@ class RetrievalService:
 
             if index_node_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.index_node_id.in_(index_node_ids),
                 )
@@ -614,7 +614,7 @@ class RetrievalService:
 
             if segment_ids:
                 document_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(segment_ids),
                 )
@@ -627,7 +627,7 @@ class RetrievalService:
             if summary_segment_ids:
                 summary_segment_ids_list = list(summary_segment_ids)
                 summary_segment_stmt = select(DocumentSegment).where(
-                    DocumentSegment.enabled == True,
+                    DocumentSegment.enabled.is_(True),
                     DocumentSegment.status == "completed",
                     DocumentSegment.id.in_(summary_segment_ids_list),
                 )
