@@ -121,12 +121,23 @@ class ContinuationCase:
 
 
 @pytest.fixture
-def continuation_case(ledger_case):
+def continuation_case(ledger_case, native_owner):
+    from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
     from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 
+    # native_owner commits with expire_on_commit=True and leaves materialized
+    # setup objects in the scoped identity map. Close those committed setup
+    # reads before updating the key through a separate service Session. Keep
+    # its strict teardown's original app/workflow IDs materialized and detached.
+    _, _, app, workflow, _, _ = native_owner
+    assert app.id
+    assert workflow.id
+    db.session.expunge(app)
+    db.session.expunge(workflow)
+    db.session.close()
     # The existing tenant key owner provisions real synthetic RSA/hybrid storage.
     public_key = generate_key_pair(ledger_case.actor.tenant_id)
     with ledger_case.factory.begin() as session:

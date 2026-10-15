@@ -62,7 +62,7 @@ on:
       test_scope:
         description: Select a focused lane; all always runs on build branch pushes
         type: choice
-        options: [all, native-agent, native-catalog]
+        options: [all, native-agent, native-catalog, native-continuation]
         default: all
 permissions:
   contents: read
@@ -548,7 +548,7 @@ jobs:
             builder-confirmed-tool-units.xml
             builder-confirmed-tool-units.log
   native-continuation:
-    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all'))
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-continuation'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
