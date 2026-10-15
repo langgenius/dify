@@ -288,7 +288,9 @@ def test_expired_delivery_lease_accepts_confirmed_late_ack_for_same_attempt(coll
         stored.export_started_at = naive_utc_now() - timedelta(seconds=60)
         stored.export_heartbeat_at = stored.export_started_at
     assert claim(collection) is None
-    assert collection.repository.get(collection.run.id).state == "uncertain"
+    current = collection.repository.get(collection.run.id)
+    assert current is not None
+    assert current.state == "uncertain"
     collection.repository.complete(collection.run.id, leased[1], state="accepted", result=TraceExportResult("late"))
     stored = collection.repository.get(collection.run.id)
     assert stored is not None

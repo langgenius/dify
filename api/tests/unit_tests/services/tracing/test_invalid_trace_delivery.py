@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 from dify_agent.protocol.tracing import AgentTraceSpan
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.application_trace import ApplicationTraceRun
 from repositories.application_trace_repository import TraceCollectionError
@@ -13,7 +14,9 @@ from tests.unit_tests.services.tracing.test_application_trace_collection import 
 
 
 @pytest.mark.parametrize("invalid", ["cycle", "invalid_envelope"])
-def test_invalid_tree_is_permanent_before_decryption_or_provider_io(sqlite_session_factory, monkeypatch, invalid):
+def test_invalid_tree_is_permanent_before_decryption_or_provider_io(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, invalid: str
+) -> None:
     case = seed(sqlite_session_factory, str(uuid4()))
     batch = batch_for(case.run, case.invocation())
     if invalid == "cycle":
@@ -34,15 +37,17 @@ def test_invalid_tree_is_permanent_before_decryption_or_provider_io(sqlite_sessi
     if invalid == "invalid_envelope":
         with case.sessions.begin() as session:
             row = session.get(ApplicationTraceRun, case.run.id)
+            assert row is not None
             row.outer_trace = {"corrupt": True}
 
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> None:
         pytest.fail("invalid traces must fail before credentials or provider I/O")
 
     monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", forbidden)
     monkeypatch.setattr(service_module, "export_trace", forbidden)
     ApplicationTracingService(case.repository).deliver(case.run.id)
     current = case.repository.get(case.run.id)
+    assert current is not None
     assert current.state == "failed"
     assert current.error_code == "tracing_payload_invalid"
     assert current.attempts == 1
