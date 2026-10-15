@@ -12,7 +12,7 @@ from uuid import uuid4
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import select, text
+from sqlalchemy import inspect, select, text
 
 from core.dify_builder.models import Actor
 from models.account import Tenant
@@ -964,3 +964,188 @@ def test_unknown_root_quarantines_active_child_tree(continuation_case):
         )
     with pytest.raises(BuilderExecutionPolicyError):
         c.store.load_context(ref=child)
+
+
+def _child_case(c, parent_ref=None, app_id=None, workflow_id=None):
+    from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
+    from services.dify_builder.native_testing.repository import native_workflow_revision
+
+    parent_ref = parent_ref or c.ref
+    with c.factory() as session:
+        workflow = session.get(Workflow, workflow_id or c.context.workflow_id)
+        revision, graph = native_workflow_revision(workflow), json.loads(workflow.graph)
+        workflow_id, app_id = workflow.id, app_id or workflow.app_id
+
+    class ChildOwner:
+        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+            return parent.model_copy(update={
+                "ref": ref, "parent_invocation_id": parent.ref.invocation_id,
+                "call_depth": parent.call_depth + 1, "inputs": inputs,
+                "input_revision": canonical_digest(inputs), "app_id": child_app_id,
+                "workflow_id": workflow_id, "graph": graph, "graph_revision": child_workflow_revision,
+                "native_run_id": "child-" + ref.invocation_id,
+            })
+
+    service = NativeChildInvocationService(c.store, resolver=ChildOwner())
+    key = OperationKey(invocation_id=parent_ref.invocation_id, occurrence_path=(str(uuid4()),), cursor=0)
+    result = c.store.store_result(ref=parent_ref, key=key, result={"child": True})
+    ref = service.get_or_create(parent_ref=parent_ref, key=key, child_app_id=app_id,
+        child_workflow_revision=revision, input_digest=canonical_digest({"child": True}), input_result_ref=result)
+    return service, ref
+
+
+def _unknown_outcome(c, ref):
+    return NativeWorkflowOutcome(status="unknown", ref=ref,
+        native_run_id=c.store.load_context(ref=ref).native_run_id, checkpoint_ref=None,
+        pending_operation_ids=(), reason_code="native_lost", wait_reason=None,
+        native_status=None, output_result_ref=None)
+
+
+def test_returned_unknown_root_quarantines_descendants(continuation_case):
+    from models.dify_builder_native_tests import NativeTestInvocation
+
+    c = continuation_case
+    _, child = _child_case(c)
+    _, grandchild = _child_case(c, child)
+    outcome = _unknown_outcome(c, c.ref)
+    c.pause()
+    c.ledger.confirm()
+    receipt = c.resume()
+
+    class RuntimeOwner:
+        def resume(self, **kwargs):
+            return outcome
+
+        def recovery_evidence(self, **kwargs):
+            return None
+
+    c.lifecycle.runtime = RuntimeOwner()
+    assert c.lifecycle.execute_dispatch(ref=c.ref, generation=receipt.generation,
+        dispatch_id=receipt.dispatch_id) == outcome
+    with c.factory() as session:
+        assert not any(session.scalars(select(NativeTestInvocation.active).where(
+            NativeTestInvocation.request_id == c.ref.request_id)))
+    for ref in (child, grandchild):
+        assert c.ledger.guard.before_call(ref=ref, intent=c.ledger.intent).kind == "stop"
+    with pytest.raises(BuilderExecutionPolicyError, match="native_recovery_unproven"):
+        c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=receipt.dispatch_id)
+    assert c.ledger.dispatched_attempt_count() == 0
+
+
+def test_unknown_child_does_not_wake_parent_or_leave_grandchild_active(continuation_case):
+    from models.dify_builder_native_tests import NativeDispatch, NativeTestInvocation
+
+    c = continuation_case
+    service, child = _child_case(c)
+    _, grandchild = _child_case(c, child)
+    outcome = _unknown_outcome(c, child)
+    c.pause()
+    service.complete(child_ref=child, outcome=outcome)
+    with c.factory() as session:
+        assert session.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == c.ref.request_id)) is None
+        assert not any(session.scalars(select(NativeTestInvocation.active).where(
+            NativeTestInvocation.request_id == c.ref.request_id,
+            NativeTestInvocation.invocation_id.in_((child.invocation_id, grandchild.invocation_id)))))
+    c.ledger.confirm()
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.resume()
+    assert c.ledger.dispatched_attempt_count() == 0
+
+
+def _private_material(c, ref):
+    context = c.store.load_context(ref=ref)
+    result = c.store.store_result(ref=ref,
+        key=OperationKey(invocation_id=ref.invocation_id, occurrence_path=("private",), cursor=0), result={"secret": 42})
+    checkpoint = c.store.commit_checkpoint(ref=ref, generation=0, payload=NativeCheckpointPayload(
+        schema_version="1", native_run_id=context.native_run_id, generation=0,
+        generate_entity_json="{}", graph_runtime_state_json="{}", response_stream_filter_json="{}",
+        node_journals=(), child_refs=(), input_result_refs=()))
+    return {
+        "result": lambda: c.store.load_result(ref=ref, result_ref=result),
+        "checkpoint": lambda: c.store.read_checkpoint(ref=ref, checkpoint=checkpoint),
+        "recovery": lambda: c.store.load_recovery_context(ref=ref),
+        "context": lambda: c.store.load_context(ref=ref),
+    }
+
+
+@pytest.mark.parametrize("child", [False, True])
+@pytest.mark.parametrize("read", ["result", "checkpoint", "recovery", "context"])
+@pytest.mark.parametrize("revocation", ["removed", "downgraded"])
+def test_current_membership_required_before_private_decrypt(continuation_case, monkeypatch, child, read, revocation):
+    from configs import dify_config
+    from models.account import TenantAccountJoin
+
+    c = continuation_case
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    ref = _child_case(c)[1] if child else c.ref
+    readers = _private_material(c, ref)
+    with c.factory.begin() as session:
+        membership = session.scalar(select(TenantAccountJoin).where(
+            TenantAccountJoin.tenant_id == c.ledger.actor.tenant_id,
+            TenantAccountJoin.account_id == c.ledger.actor.account_id))
+        if revocation == "removed":
+            session.delete(membership)
+        else:
+            membership.role = "normal"
+    monkeypatch.setattr(c.store, "_read_object", lambda *_: pytest.fail("private decrypt after revocation"))
+    with pytest.raises(BuilderExecutionPolicyError):
+        readers[read]()
+
+
+@pytest.mark.parametrize("read", ["result", "checkpoint", "recovery", "context"])
+def test_actual_child_app_permission_checked_before_decrypt(continuation_case, monkeypatch, read):
+    from configs import dify_config
+    from models.model import App
+    from services.enterprise.rbac_service import RBACService
+
+    c = continuation_case
+    # Copy actual database-owned app/workflow metadata into a distinct app.
+    with c.factory.begin() as session:
+        original = session.get(App, c.context.app_id)
+        app = App(**{attr.key: getattr(original, attr.key) for attr in inspect(App).column_attrs
+            if attr.key != "id"})
+        app.id, app.maintainer = str(uuid4()), str(uuid4())
+        original_workflow = session.get(Workflow, c.context.workflow_id)
+        workflow = Workflow(**{attr.key: getattr(original_workflow, attr.key)
+            for attr in inspect(Workflow).column_attrs if attr.key != "id"})
+        workflow.id, workflow.app_id = str(uuid4()), app.id
+        session.add_all((app, workflow))
+        app_id, workflow_id = app.id, workflow.id
+    try:
+        _, child = _child_case(c, app_id=app_id, workflow_id=workflow_id)
+        readers = _private_material(c, child)
+        root_readers = _private_material(c, c.ref)
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        calls = []
+        def check(tenant_id, actor_id, *, scene, resource_type, resource_id):
+            calls.append(resource_id)
+            return resource_id == c.context.app_id
+        monkeypatch.setattr(RBACService.CheckAccess, "check", check)
+        assert root_readers["result"]() == {"secret": 42}
+        monkeypatch.setattr(c.store, "_read_object", lambda *_: pytest.fail("child private decrypt before permission"))
+        with pytest.raises(BuilderExecutionPolicyError, match="execution_permission_denied"):
+            readers[read]()
+        assert app_id in calls
+    finally:
+        with c.factory.begin() as session:
+            session.delete(session.get(Workflow, workflow_id))
+            session.delete(session.get(App, app_id))
+
+
+def test_spent_result_write_survives_membership_revocation_but_read_does_not(continuation_case):
+    from models.account import TenantAccountJoin
+
+    c = continuation_case
+    c.ledger.confirm()
+    permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
+    assert permit.kind == "dispatch"
+    with c.factory.begin() as session:
+        membership = session.scalar(select(TenantAccountJoin).where(
+            TenantAccountJoin.tenant_id == c.ledger.actor.tenant_id,
+            TenantAccountJoin.account_id == c.ledger.actor.account_id))
+        session.delete(membership)
+    result = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"spent": True})
+    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result)
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.store.load_result(ref=c.ref, result_ref=result)
+    assert c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent).kind == "stop"
