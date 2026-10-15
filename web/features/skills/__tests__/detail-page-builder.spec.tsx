@@ -655,7 +655,8 @@ describe('SkillDetailPage builder', () => {
         },
       }),
     )
-  })
+    // Opens the settings dialog, loads parameter rules and types through several fields.
+  }, 15000)
 
   it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })
