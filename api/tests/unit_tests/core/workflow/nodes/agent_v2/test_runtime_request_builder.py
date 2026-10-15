@@ -2,6 +2,7 @@ import json
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import cast
+from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
@@ -10,6 +11,7 @@ from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsL
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.snapshot import SessionSnapshot
+from flask import Flask
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -19,6 +21,7 @@ from clients.agent_backend import (
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.ops.base_trace_instance import ApplicationTracingHooks, bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
@@ -48,6 +51,11 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 @pytest.fixture(autouse=True)
@@ -248,18 +256,18 @@ def test_builder_passes_inline_or_preview_context_to_application_tracing(
         session_id="session",
         capture_content=False,
     )
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     context = replace(_context(), workflow_run_id=None if preview else "run-1", attempt=2)
-    calls = []
+    hooks = MagicMock(spec=ApplicationTracingHooks)
+    hooks.prepare_workflow_agent.return_value = tracing
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
 
-    def prepare(value, conversation_id):
-        calls.append((value, conversation_id))
-        return tracing
-
-    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.prepare_workflow_agent", prepare)
-    result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=CapturingPluginLayerBuilder()).build(context)
+    with app.app_context():
+        result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=CapturingPluginLayerBuilder()).build(context)
     layer = next(item for item in result.request.composition.layers if item.name == DIFY_EXECUTION_CONTEXT_LAYER_ID)
     assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
-    assert calls == [(context, None)]
+    hooks.prepare_workflow_agent.assert_called_once_with(context, None)
 
 
 def _request_layers(result) -> dict[str, dict[str, object]]:

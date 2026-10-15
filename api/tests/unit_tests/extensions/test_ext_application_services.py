@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.credit_usage import CreditUsageAppType
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
@@ -151,6 +152,7 @@ from services.retention.workflow_run.archive_download_task_cache import Workflow
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.tracing import runtime_bridge
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -267,6 +269,35 @@ def test_init_app_registers_services_for_the_current_app(
         creators = services.apps.console._creators
         assert isinstance(creators, CreatorsPlatformGateway)
         assert creators._oauth is services.oauth_server
+
+
+def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_services(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    first_app, second_app = Flask("first"), Flask("second")
+    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        INIT_PASSWORD="",
+        OPS_AGENT_TRACE_ENABLED=True,
+    )
+    construct_trace_service = MagicMock(side_effect=AssertionError("Composition must not construct a trace service"))
+    monkeypatch.setattr(runtime_bridge, "_service", construct_trace_service)
+
+    ext_application_services.init_app(first_app)
+    ext_application_services.init_app(second_app)
+
+    with first_app.app_context():
+        first_hooks = application_tracing_hooks()
+        assert isinstance(first_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
+        with second_app.app_context():
+            second_hooks = application_tracing_hooks()
+            assert isinstance(second_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
+            assert second_hooks is not first_hooks
+        assert application_tracing_hooks() is first_hooks
+    construct_trace_service.assert_not_called()
 
 
 def test_build_application_services_preserves_composed_boundaries(
