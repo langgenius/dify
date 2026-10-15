@@ -6,12 +6,16 @@ import json
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
+from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 from enums.agent import WorkflowAgentBindingType
+from errors.workflow import NodeNotFoundError, WorkflowDataError
 from graphon.entities.graph_config import NodeConfigDict
+from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.variables import VariableBase
+from graphon.variables.variables import RAGPipelineVariable
 from services.agent.publication_contracts import AgentPublicationState
 
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
@@ -64,7 +68,7 @@ class WorkflowBindingScope:
 
     @property
     def graph_dict(self) -> dict[str, Any]:
-        return json.loads(self.graph)
+        return json.loads(self.graph) if self.graph else {}
 
 
 @dataclass(frozen=True)
@@ -86,6 +90,118 @@ class WorkflowSnapshot(WorkflowBindingScope):
     updated_by: str | None
     updated_at: datetime
     execution_id: str | None = None
+
+    @property
+    def features_dict(self) -> dict[str, Any]:
+        """Decode features and normalize the legacy image-upload shape without mutating stored data."""
+        if not self.features:
+            return {}
+        payload = json.loads(self.features)
+        if not isinstance(payload, dict):
+            return cast(dict[str, Any], payload)
+        file_upload = payload.get("file_upload")
+        if not isinstance(file_upload, dict):
+            return payload
+        image = file_upload.get("image")
+        if not isinstance(image, dict) or "enabled" not in image:
+            return payload
+        if image.get("enabled", False):
+            file_upload["enabled"] = True
+            file_upload["number_limits"] = int(image.get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
+            file_upload["allowed_file_upload_methods"] = image.get("transfer_methods", ["remote_url", "local_file"])
+            file_upload["allowed_file_types"] = file_upload.get("allowed_file_types", ["image"])
+            file_upload["allowed_file_extensions"] = file_upload.get("allowed_file_extensions", [])
+            del file_upload["image"]
+        return payload
+
+    @property
+    def rag_pipeline_variable_values(self) -> list[dict[str, Any]]:
+        variables = cast(dict[str, dict[str, Any]], json.loads(self.rag_pipeline_variables or "{}"))
+        return [RAGPipelineVariable.model_validate(value).model_dump(mode="json") for value in variables.values()]
+
+    @property
+    def kind_or_standard(self) -> str:
+        kind = "standard" if self.kind is None else self.kind
+        if kind not in {"standard", "snippet"}:
+            raise ValueError(f"invalid workflow kind value {kind}")
+        return kind
+
+    def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
+        if not self.graph:
+            return []
+        nodes = self.graph_dict.get("nodes")
+        if not isinstance(nodes, list):
+            return []
+        start_node = next(
+            (
+                node
+                for node in nodes
+                if isinstance(node, dict) and isinstance(node.get("data"), dict) and node["data"].get("type") == "start"
+            ),
+            None,
+        )
+        if start_node is None:
+            return []
+        variables = start_node.get("data", {}).get("variables", [])
+        if not isinstance(variables, list):
+            return []
+        if to_old_structure:
+            return [{variable["type"]: variable} for variable in variables]
+        return variables
+
+    def walk_nodes(
+        self, specific_node_type: NodeType | None = None
+    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+        nodes = self.graph_dict.get("nodes")
+        if not isinstance(nodes, list):
+            raise WorkflowDataError("nodes not found in workflow graph")
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            node_id = node.get("id")
+            data = node.get("data")
+            if not isinstance(node_id, str) or not isinstance(data, Mapping):
+                continue
+            if specific_node_type is None or data.get("type") == specific_node_type:
+                yield node_id, data
+
+    def get_node_config_by_id(self, node_id: str) -> Mapping[str, Any]:
+        graph = self.graph_dict
+        if not graph:
+            raise WorkflowDataError(f"workflow graph not found, workflow_id={self.id}")
+        nodes = graph.get("nodes")
+        if not isinstance(nodes, list) or not nodes:
+            raise WorkflowDataError("nodes not found in workflow graph")
+        try:
+            node_config = next(node for node in nodes if isinstance(node, dict) and node.get("id") == node_id)
+        except StopIteration:
+            raise NodeNotFoundError(node_id)
+        return node_config
+
+    @staticmethod
+    def get_node_type_from_node_config(node_config: Mapping[str, Any]) -> NodeType:
+        data = node_config.get("data")
+        if isinstance(data, Mapping):
+            node_type = data.get("type")
+        else:
+            node_type = getattr(data, "type", None)
+        if not isinstance(node_type, str):
+            raise WorkflowDataError("node type not found in workflow graph")
+        return node_type
+
+    @staticmethod
+    def get_enclosing_node_type_and_id(node_config: Mapping[str, Any]) -> tuple[NodeType, str] | None:
+        if node_config.get("isInLoop", False):
+            loop_id = node_config.get("loop_id")
+            if not isinstance(loop_id, str):
+                raise WorkflowDataError("invalid graph")
+            return BuiltinNodeTypes.LOOP, loop_id
+        if node_config.get("isInIteration", False):
+            iteration_id = node_config.get("iteration_id")
+            if not isinstance(iteration_id, str):
+                raise WorkflowDataError("invalid graph")
+            return BuiltinNodeTypes.ITERATION, iteration_id
+        return None
 
 
 @dataclass(frozen=True)
