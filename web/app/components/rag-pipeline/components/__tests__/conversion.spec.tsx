@@ -28,12 +28,15 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector(mockDatasetDetailState),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useConvertDatasetToPipeline: () => ({
-    mutateAsync: mockConvert,
-    isPending: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.transform.datasets.byDatasetId.post': () => ({
+      mutateAsync: mockConvert,
+      isPending: false,
+    }),
+  })
+})
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   datasetDetailQueryKeyPrefix: ['dataset-detail'],
@@ -161,7 +164,7 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockConvert).toHaveBeenCalledWith(
-      'ds-123',
+      { params: { dataset_id: 'ds-123' } },
       expect.objectContaining({
         onSuccess: expect.any(Function),
         onError: expect.any(Function),

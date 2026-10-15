@@ -38,12 +38,15 @@ vi.mock('@/app/components/workflow/store', () => ({
 let mockParamsConfig: PipelineProcessingParamsResponse | undefined
 let mockIsFetchingParams = false
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelineProcessingParams: () => ({
-    data: mockParamsConfig,
-    isFetching: mockIsFetchingParams,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': () => ({
+      data: mockParamsConfig,
+      isFetching: mockIsFetchingParams,
+    }),
+  })
+})
 
 const mockUseInitialData = vi.fn()
 const mockUseConfigurations = vi.fn()

@@ -91,7 +91,7 @@ const createMockDocument = (
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
   data_source_info: {},
-  enable: true,
+  enabled: true,
   error: '',
   indexing_status: 'waiting' as DocumentIndexingStatus,
   position: 0,

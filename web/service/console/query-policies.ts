@@ -85,10 +85,34 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       rag: {
+        pipeline: {
+          templates: {
+            byTemplateId: { get: { queryOptions: { staleTime: 0 } } },
+          },
+        },
         pipelines: {
           datasourcePlugins: {
             get: {
               queryOptions: { staleTime: 0, retry: false },
+            },
+          },
+          // DSL import failures are reported by the import flow.
+          imports: {
+            post: { mutationOptions: { context: { silent: true } } },
+            byImportId: {
+              confirm: { post: { mutationOptions: { context: { silent: true } } } },
+            },
+          },
+          byPipelineId: {
+            workflows: {
+              draft: {
+                processing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+                preProcessing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+              },
+              published: {
+                processing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+                preProcessing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+              },
             },
           },
         },
@@ -893,6 +917,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       datasets: {
+        byDatasetId: {
+          documents: {
+            byDocumentId: {
+              pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },
+            },
+          },
+        },
         apiKeys: {
           post: {
             mutationOptions: {

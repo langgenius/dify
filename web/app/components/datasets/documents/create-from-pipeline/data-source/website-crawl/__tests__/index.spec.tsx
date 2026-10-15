@@ -39,9 +39,31 @@ const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
   mockUseGetDataSourceAuth: vi.fn(),
 }))
 
+const { mockUseDraftPipelinePreProcessingParams, mockUsePublishedPipelinePreProcessingParams } =
+  vi.hoisted(() => ({
+    mockUseDraftPipelinePreProcessingParams: vi.fn(),
+    mockUsePublishedPipelinePreProcessingParams: vi.fn(),
+  }))
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUseDraftPipelinePreProcessingParams(
+        { pipeline_id: o.input.params.pipeline_id, node_id: o.input.query.node_id },
+        o.enabled,
+      ),
+    'rag.pipelines.byPipelineId.workflows.published.preProcessing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUsePublishedPipelinePreProcessingParams(
+        { pipeline_id: o.input.params.pipeline_id, node_id: o.input.query.node_id },
+        o.enabled,
+      ),
     // The credential query is keyed by `${pluginId}/${provider}`; report it as the two ids.
     'auth.plugin.datasource.byProviderId.get': (options: { queryKey: unknown[] }) => {
       const { input } = options.queryKey[1] as { input: { params: { provider_id: string } } }
@@ -56,16 +78,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 // Mock usePipeline hooks - API service hooks require mocking
-const { mockUseDraftPipelinePreProcessingParams, mockUsePublishedPipelinePreProcessingParams } =
-  vi.hoisted(() => ({
-    mockUseDraftPipelinePreProcessingParams: vi.fn(),
-    mockUsePublishedPipelinePreProcessingParams: vi.fn(),
-  }))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelinePreProcessingParams: mockUseDraftPipelinePreProcessingParams,
-  usePublishedPipelinePreProcessingParams: mockUsePublishedPipelinePreProcessingParams,
-}))
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
 

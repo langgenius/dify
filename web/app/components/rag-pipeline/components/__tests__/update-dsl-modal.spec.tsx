@@ -75,10 +75,13 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({ mutateAsync: mockImportDSL }),
-  useImportPipelineDSLConfirm: () => ({ mutateAsync: mockImportDSLConfirm }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.imports.post': () => ({ mutateAsync: mockImportDSL }),
+    'rag.pipelines.imports.byImportId.confirm.post': () => ({ mutateAsync: mockImportDSLConfirm }),
+  })
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({
@@ -695,7 +698,7 @@ describe('UpdateDSLModal', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-id')
+        expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-id' } })
       })
 
       vi.useRealTimers()

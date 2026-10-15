@@ -1,4 +1,5 @@
 import type { MouseEventHandler } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
@@ -8,7 +9,7 @@ import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -27,8 +28,12 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const { eventEmitter } = useEventEmitterContextContext()
   const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
+  const { mutateAsync: importDSL } = useMutation(
+    consoleQuery.rag.pipelines.imports.post.mutationOptions(),
+  )
+  const { mutateAsync: importDSLConfirm } = useMutation(
+    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions(),
+  )
   // File state
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
@@ -79,7 +84,10 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     [eventEmitter],
   )
   const completeImport = useCallback(
-    async (pipelineId: string | undefined, status: DSLImportStatus = DSLImportStatus.COMPLETED) => {
+    async (
+      pipelineId: string | null | undefined,
+      status: DSLImportStatus = DSLImportStatus.COMPLETED,
+    ) => {
       if (!pipelineId) {
         notifyError()
         return
@@ -123,9 +131,11 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       if (!pipelineId || !fileContent) return
       setLoading(true)
       const response = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: fileContent,
-        pipeline_id: pipelineId,
+        body: {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: fileContent,
+          pipeline_id: pipelineId,
+        },
       })
       const { id, status, pipeline_id, imported_dsl_version, current_dsl_version } = response
       if (isCompletedStatus(status)) await completeImport(pipeline_id, status)
@@ -148,7 +158,9 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const onUpdateDSLConfirm: MouseEventHandler = useCallback(async () => {
     if (!importId) return
     try {
-      const { status, pipeline_id, error } = await importDSLConfirm(importId)
+      const { status, pipeline_id, error } = await importDSLConfirm({
+        params: { import_id: importId },
+      })
       if (status === DSLImportStatus.COMPLETED) {
         await completeImport(pipeline_id)
         return

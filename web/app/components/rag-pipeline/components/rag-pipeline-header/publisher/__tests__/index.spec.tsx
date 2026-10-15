@@ -142,25 +142,25 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 const mockPublishWorkflow = vi.fn()
 const mockPublishAsCustomizedPipeline = vi.fn()
-const mockInvalidPublishedPipelineInfo = vi.fn()
 const mockInvalidDatasetList = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidPublishedPipelineInfo,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.customized.publish.post': () => ({
+      mutateAsync: mockPublishAsCustomizedPipeline,
+    }),
+  })
+})
 
-vi.mock('@/service/use-pipeline', () => ({
-  publishedPipelineInfoQueryKeyPrefix: ['pipeline', 'published'],
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline: () => ({
-    mutateAsync: mockPublishAsCustomizedPipeline,
-  }),
-}))
+const expectInvalidated = (...path: string[]) =>
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: expect.arrayContaining([['console', ...path]]),
+  })
 
 vi.mock('@/service/use-workflow', () => ({
   usePublishWorkflow: () => ({
@@ -232,6 +232,7 @@ function publishWithKeyboard() {
 
 describe('publisher', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockPublishedAt.mockReturnValue(null)
@@ -549,10 +550,12 @@ describe('publisher', () => {
 
         await waitFor(() => {
           expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-            pipelineId: 'test-pipeline-id',
-            name: 'Test Pipeline',
-            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
-            description: 'Test description',
+            params: { pipeline_id: 'test-pipeline-id' },
+            body: {
+              name: 'Test Pipeline',
+              icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
+              description: 'Test description',
+            },
           })
         })
       })
@@ -578,10 +581,12 @@ describe('publisher', () => {
 
         await waitFor(() => {
           expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-            pipelineId: '',
-            name: 'Test Pipeline',
-            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
-            description: 'Test description',
+            params: { pipeline_id: '' },
+            body: {
+              name: 'Test Pipeline',
+              icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
+              description: 'Test description',
+            },
           })
         })
       })
@@ -646,7 +651,7 @@ describe('publisher', () => {
 
         await waitFor(() => {
           expect(mockMutateDatasetRes).toHaveBeenCalled()
-          expect(mockInvalidPublishedPipelineInfo).toHaveBeenCalled()
+          expectInvalidated('rag', 'pipelines', 'byPipelineId', 'workflows', 'publish', 'get')
           expect(mockInvalidDatasetList).toHaveBeenCalled()
         })
       })
@@ -698,7 +703,7 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
+          expectInvalidated('rag', 'pipeline', 'templates', 'get')
         })
       })
     })

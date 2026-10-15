@@ -1,16 +1,22 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
-import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
+import type { OnlineDriveFile } from '@/models/pipeline'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import {
+  isPipelineProcessingRun,
+  selectPipelineExecutionLog,
+  selectPreviewRunEstimate,
+} from '@/app/components/rag-pipeline/utils/query-select'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
-import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
 import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
 import LeftHeader from './left-header'
 import ProcessDocuments from './process-documents'
@@ -35,10 +41,12 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
     data: lastRunData,
     isFetching: isFetchingLastRunData,
     isError,
-  } = usePipelineExecutionLog({
-    dataset_id: datasetId,
-    document_id: documentId,
-  })
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.pipelineExecutionLog.get.queryOptions({
+      input: { params: { dataset_id: datasetId, document_id: documentId } },
+      select: selectPipelineExecutionLog,
+    }),
+  )
 
   const files = useMemo(() => {
     const files: CustomFile[] = []
@@ -93,7 +101,13 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
     return onlineDriveFiles
   }, [lastRunData])
 
-  const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
+  const {
+    mutateAsync: runPublishedPipeline,
+    isIdle,
+    isPending,
+  } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.published.run.post.mutationOptions(),
+  )
 
   const handlePreviewChunks = useCallback(
     async (data: Record<string, any>) => {
@@ -103,16 +117,19 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
       datasourceInfoList.push(documentInfo)
       await runPublishedPipeline(
         {
-          pipeline_id: pipelineId!,
-          inputs: data,
-          start_node_id: lastRunData.datasource_node_id,
-          datasource_type: lastRunData.datasource_type,
-          datasource_info_list: datasourceInfoList,
-          is_preview: true,
+          params: { pipeline_id: pipelineId! },
+          body: {
+            inputs: data,
+            start_node_id: lastRunData.datasource_node_id,
+            datasource_type: lastRunData.datasource_type,
+            datasource_info_list: datasourceInfoList,
+            is_preview: true,
+            response_mode: 'blocking',
+          },
         },
         {
           onSuccess: (res) => {
-            setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
+            if (!isPipelineProcessingRun(res)) setEstimateData(selectPreviewRunEstimate(res))
           },
         },
       )
@@ -130,13 +147,16 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
       datasourceInfoList.push(documentInfo)
       await runPublishedPipeline(
         {
-          pipeline_id: pipelineId!,
-          inputs: data,
-          start_node_id: lastRunData.datasource_node_id,
-          datasource_type: lastRunData.datasource_type,
-          datasource_info_list: datasourceInfoList,
-          original_document_id: documentId,
-          is_preview: false,
+          params: { pipeline_id: pipelineId! },
+          body: {
+            inputs: data,
+            start_node_id: lastRunData.datasource_node_id,
+            datasource_type: lastRunData.datasource_type,
+            datasource_info_list: datasourceInfoList,
+            original_document_id: documentId,
+            is_preview: false,
+            response_mode: 'blocking',
+          },
         },
         {
           onSuccess: () => {

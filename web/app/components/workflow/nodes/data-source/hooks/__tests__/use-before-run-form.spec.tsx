@@ -1,5 +1,6 @@
+import type { WorkflowRunNodeExecutionResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
-import type { NodeRunResult, VarInInspect } from '@/types/workflow'
+import type { VarInInspect } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
 import {
@@ -8,7 +9,6 @@ import {
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
-import { useDatasourceSingleRun } from '@/service/use-pipeline'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
@@ -41,7 +41,7 @@ type DataSourceStoreState = {
 
 type DatasourceSingleRunOptions = {
   onError?: () => void
-  onSettled?: (data?: NodeRunResult) => void
+  onSettled?: (data?: WorkflowRunNodeExecutionResponse) => void
 }
 
 const mockHandleNodeDataUpdate = vi.hoisted(() => vi.fn())
@@ -78,9 +78,15 @@ vi.mock('../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDatasourceSingleRun: vi.fn(),
-}))
+const mockUseDatasourceSingleRunHook = vi.hoisted(() => vi.fn())
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post': () =>
+      mockUseDatasourceSingleRunHook(),
+  })
+})
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidLastRun: vi.fn(),
@@ -98,7 +104,6 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
 const mockUseStoreApi = vi.mocked(useStoreApi)
 const mockUseNodeDataUpdateHook = vi.mocked(useNodeDataUpdate)
 const mockUseNodesSyncDraftHook = vi.mocked(useNodesSyncDraft)
-const mockUseDatasourceSingleRunHook = vi.mocked(useDatasourceSingleRun)
 const mockUseInvalidLastRunHook = vi.mocked(useInvalidLastRun)
 const mockFetchNodeInspectVarsFn = vi.mocked(fetchNodeInspectVars)
 const mockUseDataSourceStoreHook = vi.mocked(useDataSourceStore)
@@ -180,7 +185,7 @@ describe('data-source/hooks/use-before-run-form', () => {
     mockUseDatasourceSingleRunHook.mockReturnValue({
       mutateAsync: (...args: unknown[]) => mockMutateAsync(...args),
       isPending: false,
-    } as ReturnType<typeof useDatasourceSingleRun>)
+    })
     mockUseInvalidLastRunHook.mockReturnValue(mockInvalidLastRun)
     mockFetchNodeInspectVarsFn.mockImplementation((...args: unknown[]) =>
       mockFetchNodeInspectVars(...args),
@@ -252,7 +257,7 @@ describe('data-source/hooks/use-before-run-form', () => {
     ]
 
     mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
+      options.onSettled?.({ id: 'node-run-1', status: NodeRunningStatus.Succeeded })
       return Promise.resolve(payload)
     })
 
@@ -272,15 +277,17 @@ describe('data-source/hooks/use-before-run-form', () => {
       }),
     })
     expect(mockMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pipeline_id: 'flow-id',
-        start_node_id: 'data-source-node',
-        datasource_type: DatasourceType.localFile,
-        datasource_info: expect.objectContaining({
-          related_id: 'file-1',
-          transfer_method: TransferMethod.local_file,
+      {
+        params: { pipeline_id: 'flow-id' },
+        body: expect.objectContaining({
+          start_node_id: 'data-source-node',
+          datasource_type: DatasourceType.localFile,
+          datasource_info: expect.objectContaining({
+            related_id: 'file-1',
+            transfer_method: TransferMethod.local_file,
+          }),
         }),
-      }),
+      },
       expect.any(Object),
     )
     expect(mockFetchNodeInspectVars).toHaveBeenCalledWith(

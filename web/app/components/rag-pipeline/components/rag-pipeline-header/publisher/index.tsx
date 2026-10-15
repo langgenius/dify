@@ -3,6 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,10 +13,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
-import {
-  useInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline,
-} from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 import { Popup } from './popup'
 
@@ -27,8 +25,10 @@ const Publisher = () => {
   const canPipelineRelease = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const docLink = useDocLink()
   const pipelineId = useStore((s) => s.pipelineId)
-  const { mutateAsync: publishAsCustomizedPipeline } = usePublishAsCustomizedPipeline()
-  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
+  const queryClient = useQueryClient()
+  const { mutateAsync: publishAsCustomizedPipeline } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions(),
+  )
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =
     useState(false)
   const [isPublishingAsCustomizedPipeline, setIsPublishingAsCustomizedPipeline] = useState(false)
@@ -55,10 +55,8 @@ const Publisher = () => {
       try {
         setIsPublishingAsCustomizedPipeline(true)
         await publishAsCustomizedPipeline({
-          pipelineId: pipelineId || '',
-          name,
-          icon_info: icon,
-          description,
+          params: { pipeline_id: pipelineId || '' },
+          body: { name, icon_info: icon, description },
         })
         toast.success(
           t(($) => $['publishTemplate.success.message'], { ns: 'datasetPipeline' }),
@@ -79,7 +77,11 @@ const Publisher = () => {
             ),
           },
         )
-        invalidCustomizedTemplateList()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
+            input: { query: { type: 'customized' } },
+          }),
+        })
       } catch {
         toast.error(t(($) => $['publishTemplate.error.message'], { ns: 'datasetPipeline' }))
       } finally {
@@ -90,7 +92,7 @@ const Publisher = () => {
     [
       docLink,
       hidePublishAsKnowledgePipelineModal,
-      invalidCustomizedTemplateList,
+      queryClient,
       pipelineId,
       publishAsCustomizedPipeline,
       t,

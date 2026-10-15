@@ -127,7 +127,18 @@ export type PipelineNotFoundError = ErrorResponse & {
   status: 404
 }
 
-export type RagPipelineOpaqueResponse = unknown
+export type RagPipelineRecommendedPluginsResponse = {
+  installed_recommended_plugins: Array<ToolProviderApiEntityResponse>
+  uninstalled_recommended_plugins: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type RagPipelineTransformResponse = {
+  dataset_id: string
+  pipeline_id: string
+  status: string
+}
 
 export type WorkflowRunPaginationResponse = {
   data: Array<WorkflowRunForListResponse>
@@ -243,6 +254,8 @@ export type DatasourceNodeRunPayload = {
   }
 }
 
+export type RagPipelineOpaqueResponse = unknown
+
 export type DatasourceVariablesPayload = {
   datasource_info: {
     [key: string]: unknown
@@ -299,7 +312,7 @@ export type WorkflowDraftVariableListResponse = {
 }
 
 export type RagPipelineStepParametersResponse = {
-  variables: unknown
+  variables: Array<PipelineVariableResponse>
 }
 
 export type RagPipelineDraftWorkflowRunPayload = {
@@ -368,6 +381,8 @@ export type PublishedWorkflowRunPayload = {
   response_mode?: 'blocking' | 'streaming'
   start_node_id: string
 }
+
+export type RagPipelinePublishedRunResponse = PipelineGenerateResponse | WorkflowAppBlockingResponse
 
 export type WorkflowUpdatePayload = {
   marked_comment?: string | null
@@ -451,6 +466,48 @@ export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
   value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
+}
+
+export type ToolProviderApiEntityResponse = {
+  allow_delete?: boolean
+  authentication?: McpAuthentication | null
+  author: string
+  configuration?: McpConfiguration | null
+  description: I18nObject
+  icon:
+    | string
+    | {
+        [key: string]: string
+      }
+  icon_dark?:
+    | string
+    | {
+        [key: string]: string
+      }
+  id: string
+  identity_mode?: string
+  is_dynamic_registration?: boolean
+  is_team_authorization?: boolean
+  label: I18nObject
+  labels?: Array<string>
+  masked_headers?: {
+    [key: string]: string
+  } | null
+  name: string
+  original_headers?: {
+    [key: string]: string
+  } | null
+  plugin_id?: string | null
+  plugin_unique_identifier?: string | null
+  server_identifier?: string | null
+  server_url?: string | null
+  team_credentials?: {
+    [key: string]: unknown
+  }
+  tools?: Array<ToolApiEntity>
+  type: ToolProviderType
+  updated_at?: number
+  workflow_app_id?: string | null
 }
 
 export type WorkflowRunForListResponse = {
@@ -556,6 +613,18 @@ export type RecursiveJsonValue =
   | Array<RecursiveJsonValue>
   | null
 
+export type PipelineGenerateResponse = {
+  batch: string
+  dataset: PipelineDataset
+  documents: Array<PipelineDocument>
+}
+
+export type WorkflowAppBlockingResponse = {
+  data: WorkflowAppBlockingResponseData
+  task_id: string
+  workflow_run_id: string
+}
+
 export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
@@ -592,6 +661,79 @@ export type PluginDependencyMarketplace = {
 export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
+}
+
+export type McpAuthentication = {
+  client_id: string
+  client_secret?: string | null
+}
+
+export type McpConfiguration = {
+  sse_read_timeout?: number
+  timeout?: number
+}
+
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type ToolApiEntity = {
+  author: string
+  description: I18nObject
+  label: I18nObject
+  labels?: Array<string>
+  name: string
+  output_schema?: {
+    [key: string]: unknown
+  }
+  parameters?: Array<ToolParameter> | null
+}
+
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
+export type PipelineDataset = {
+  chunk_structure: string
+  description?: string
+  id: string
+  name: string
+}
+
+export type PipelineDocument = {
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
+  data_source_type: string
+  enabled: boolean
+  error?: string | null
+  id: string
+  indexing_status: string
+  name: string
+  position: number
+}
+
+export type WorkflowAppBlockingResponseData = {
+  created_at: number
+  elapsed_time: number
+  error?: string | null
+  finished_at: number | null
+  id: string
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  status: WorkflowExecutionStatus
+  total_steps: number
+  total_tokens: number
+  workflow_id: string
 }
 
 export type DatasetKeywordSettingResponse = {
@@ -647,12 +789,46 @@ export type DatasourceProviderType =
   | 'online_drive'
   | 'website_crawl'
 
-export type I18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
+export type ToolParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  form: ToolParameterForm
+  human_description?: I18nObject | null
+  input_schema?: {
+    [key: string]: unknown
+  } | null
+  label: I18nObject
+  llm_description?: string | null
+  max?: number | number | null
+  min?: number | number | null
+  multiple?: boolean
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: ToolParameterType
 }
+
+export type WorkflowExecutionStatus =
+  | 'failed'
+  | 'partial-succeeded'
+  | 'paused'
+  | 'running'
+  | 'scheduled'
+  | 'stopped'
+  | 'succeeded'
 
 export type Option = {
   label: I18nObject
@@ -738,6 +914,8 @@ export type PluginParameterAutoGenerate = {
   type: PluginParameterAutoGenerateType
 }
 
+export type ToolParameterForm = 'form' | 'llm' | 'schema'
+
 export type PluginParameterOption = {
   icon?: string | null
   label: I18nObject
@@ -747,6 +925,25 @@ export type PluginParameterOption = {
 export type PluginParameterTemplate = {
   enabled?: boolean
 }
+
+export type ToolParameterType =
+  | 'any'
+  | 'app-selector'
+  | 'array'
+  | 'boolean'
+  | 'checkbox'
+  | 'date'
+  | 'date-range'
+  | 'dynamic-select'
+  | 'file'
+  | 'files'
+  | 'model-selector'
+  | 'number'
+  | 'object'
+  | 'secret-input'
+  | 'select'
+  | 'string'
+  | 'system-files'
 
 export type DatasourceParameterType =
   | 'boolean'
@@ -1032,7 +1229,7 @@ export type GetRagPipelinesRecommendedPluginsError =
   GetRagPipelinesRecommendedPluginsErrors[keyof GetRagPipelinesRecommendedPluginsErrors]
 
 export type GetRagPipelinesRecommendedPluginsResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelineRecommendedPluginsResponse
 }
 
 export type GetRagPipelinesRecommendedPluginsResponse =
@@ -1056,7 +1253,7 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdError =
   PostRagPipelinesTransformDatasetsByDatasetIdErrors[keyof PostRagPipelinesTransformDatasetsByDatasetIdErrors]
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelineTransformResponse
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponse =
@@ -1992,7 +2189,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunError =
   PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelinePublishedRunResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse =

@@ -1,5 +1,6 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
 import type { NodeRunResult } from '@/types/workflow'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
@@ -7,8 +8,9 @@ import {
   useDataSourceStore,
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { selectDatasourceSingleRun } from '@/app/components/rag-pipeline/utils/query-select'
 import { DatasourceType } from '@/models/pipeline'
-import { useDatasourceSingleRun } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
@@ -102,7 +104,9 @@ const useBeforeRunForm = ({
     if (data?.status === NodeRunningStatus.Succeeded) onSuccess()
   }
 
-  const { mutateAsync: handleDatasourceSingleRun, isPending } = useDatasourceSingleRun()
+  const { mutateAsync: handleDatasourceSingleRun, isPending } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post.mutationOptions(),
+  )
 
   const handleRun = () => {
     let datasourceInfo: Record<string, any> = {}
@@ -152,11 +156,13 @@ const useBeforeRunForm = ({
     let hasError = false
     handleDatasourceSingleRun(
       {
-        pipeline_id: flowId,
-        start_node_id: nodeId,
-        start_node_title: datasourceNodeData.title,
-        datasource_type: datasourceType,
-        datasource_info: datasourceInfo,
+        params: { pipeline_id: flowId },
+        body: {
+          start_node_id: nodeId,
+          start_node_title: datasourceNodeData.title,
+          datasource_type: datasourceType,
+          datasource_info: datasourceInfo,
+        },
       },
       {
         onError: () => {
@@ -173,7 +179,7 @@ const useBeforeRunForm = ({
           })
         },
         onSettled: (data) => {
-          updateRunResult(data!)
+          updateRunResult(selectDatasourceSingleRun(data!))
           if (!hasError && !isPausedRef.current) {
             handleNodeDataUpdate({
               id: nodeId,

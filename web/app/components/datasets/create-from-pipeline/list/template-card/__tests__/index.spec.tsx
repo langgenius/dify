@@ -1,8 +1,10 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import TemplateCard from '../index'
 
 const mockPush = vi.fn()
@@ -104,7 +106,6 @@ const mockInvalidDatasetList = vi.fn()
 const mockGetPipelineTemplateInfo = vi.fn()
 const mockDeletePipeline = vi.fn()
 const mockExportPipelineDSL = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 
 // Configurable isPending for export
@@ -120,28 +121,30 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateById: () => ({
-    data: {
-      name: 'Test Pipeline',
-      description: 'Test pipeline description',
-      icon_info: { icon_type: 'emoji', icon: '📊', icon_background: '#FFF4ED', icon_url: '' },
-      chunk_structure: 'text',
-      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
-    },
-    refetch: mockGetPipelineTemplateInfo,
-  }),
-  useDeleteTemplate: () => ({
-    mutateAsync: mockDeletePipeline,
-  }),
-  useExportTemplateDSL: () => ({
-    mutateAsync: mockExportPipelineDSL,
-    get isPending() {
-      return mockIsExporting
-    },
-  }),
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.templates.byTemplateId.get': () => ({
+      data: {
+        name: 'Test Pipeline',
+        description: 'Test pipeline description',
+        icon_info: { icon_type: 'emoji', icon: '📊', icon_background: '#FFF4ED', icon_url: '' },
+        chunk_structure: 'text',
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      },
+      refetch: mockGetPipelineTemplateInfo,
+    }),
+    'rag.pipeline.customized.templates.byTemplateId.delete': () => ({
+      mutateAsync: mockDeletePipeline,
+    }),
+    'rag.pipeline.customized.templates.byTemplateId.post': () => ({
+      mutateAsync: mockExportPipelineDSL,
+      get isPending() {
+        return mockIsExporting
+      },
+    }),
+  })
+})
 
 // Mock plugin dependencies hook
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
@@ -180,6 +183,7 @@ describe('TemplateCard', () => {
     screen.getByRole('button', { name: 'common.operation.cancel' })
 
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     mockToastSuccess.mockReset()
     mockToastError.mockReset()
@@ -453,7 +457,10 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(mockExportPipelineDSL).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
+        expect(mockExportPipelineDSL).toHaveBeenCalledWith(
+          { params: { template_id: 'pipeline-1' } },
+          expect.any(Object),
+        )
       })
     })
 
@@ -553,7 +560,10 @@ describe('TemplateCard', () => {
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
-        expect(mockDeletePipeline).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
+        expect(mockDeletePipeline).toHaveBeenCalledWith(
+          { params: { template_id: 'pipeline-1' } },
+          expect.any(Object),
+        )
       })
     })
 
@@ -574,7 +584,9 @@ describe('TemplateCard', () => {
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
-        expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
+        expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+          queryKey: expect.arrayContaining([['console', 'rag', 'pipeline', 'templates', 'get']]),
+        })
       })
     })
 

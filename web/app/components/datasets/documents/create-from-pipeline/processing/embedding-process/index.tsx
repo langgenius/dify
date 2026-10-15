@@ -1,4 +1,5 @@
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DataSourceNotionPage } from '@/models/common'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -32,6 +33,9 @@ import { consoleQuery } from '@/service/console'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import RuleDetail from './rule-detail'
+
+const isNotionPageIcon = (value: unknown): value is DataSourceNotionPage['page_icon'] =>
+  typeof value === 'object' && value !== null && 'type' in value
 
 type EmbeddingProcessProps = {
   datasetId: string
@@ -145,7 +149,8 @@ const EmbeddingProcess = ({
   const getIcon = (id: string) => {
     const doc = documents.find((document) => document.id === id)
 
-    return doc?.data_source_info.notion_page_icon
+    const icon = doc?.data_source_info?.notion_page_icon
+    return typeof icon === 'string' || isNotionPageIcon(icon) ? icon : undefined
   }
   const isSourceEmbedding = (detail: IndexingStatusResponse) =>
     ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(

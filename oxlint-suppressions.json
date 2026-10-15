@@ -3978,7 +3978,7 @@
   },
   "web/models/pipeline.ts": {
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 2
     }
   },
   "web/models/share.ts": {
@@ -4130,11 +4130,6 @@
   "web/service/use-flow.ts": {
     "eslint-react/no-unnecessary-use-prefix": {
       "count": 1
-    }
-  },
-  "web/service/use-pipeline.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 8
     }
   },
   "web/service/use-plugins-auth.ts": {

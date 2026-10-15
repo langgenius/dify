@@ -1,7 +1,9 @@
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { selectPipelineStepParameters } from '@/app/components/rag-pipeline/utils/query-select'
 import { useStore } from '@/app/components/workflow/store'
-import { useDraftPipelineProcessingParams } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import Form from './form'
 
 type ProcessDocumentsProps = {
@@ -11,12 +13,12 @@ type ProcessDocumentsProps = {
 const ProcessDocuments = ({ dataSourceNodeId }: ProcessDocumentsProps) => {
   const { t } = useTranslation(['datasetPipeline'])
   const pipelineId = useStore((state) => state.pipelineId)
-  const { data: paramsConfig } = useDraftPipelineProcessingParams(
-    {
-      pipeline_id: pipelineId!,
-      node_id: dataSourceNodeId,
-    },
-    !!pipelineId && !!dataSourceNodeId,
+  const { data: paramsConfig } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get.queryOptions({
+      input: { params: { pipeline_id: pipelineId! }, query: { node_id: dataSourceNodeId } },
+      enabled: !!pipelineId && !!dataSourceNodeId,
+      select: selectPipelineStepParameters,
+    }),
   )
 
   return (

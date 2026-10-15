@@ -26,6 +26,7 @@ from controllers.console.app.workflow import (
     RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
     DefaultBlockConfigResponse,
     DefaultBlockConfigsResponse,
+    PipelineVariableResponse,
     WorkflowPaginationResponse,
     WorkflowResponse,
     WorkflowResponseSource,
@@ -33,6 +34,7 @@ from controllers.console.app.workflow import (
 from controllers.console.app.wraps import with_session
 from controllers.console.datasets.error import PipelineNotFoundError
 from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
+from controllers.console.workspace.tool_providers import ToolProviderApiEntityResponse
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -47,6 +49,8 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import WorkflowAppBlockingResponse
+from core.entities.knowledge_entities import PipelineGenerateResponse
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -164,7 +168,23 @@ class RagPipelineDatasourceListResponse(RootModel[list[RagPipelineDatasourceProv
 
 
 class RagPipelineStepParametersResponse(ResponseModel):
-    variables: Any
+    variables: list[PipelineVariableResponse]
+
+
+class RagPipelinePublishedRunResponse(RootModel[PipelineGenerateResponse | WorkflowAppBlockingResponse]):
+    """Blocking run result: a preview run returns the workflow result, a processing run the queued batch."""
+
+
+class RagPipelineTransformResponse(ResponseModel):
+    pipeline_id: str
+    dataset_id: str
+    status: str
+
+
+class RagPipelineRecommendedPluginsResponse(ResponseModel):
+    installed_recommended_plugins: list[ToolProviderApiEntityResponse]
+    # Marketplace plugin manifests, proxied as the marketplace returns them.
+    uninstalled_recommended_plugins: list[dict[str, Any]]
 
 
 register_schema_models(
@@ -190,7 +210,10 @@ register_response_schema_models(
     RagPipelineDatasourceListResponse,
     RagPipelineDatasourceProviderResponse,
     RagPipelineOpaqueResponse,
+    RagPipelinePublishedRunResponse,
+    RagPipelineRecommendedPluginsResponse,
     RagPipelineStepParametersResponse,
+    RagPipelineTransformResponse,
     RagPipelineWorkflowPublishResponse,
     RagPipelineWorkflowSyncResponse,
     SimpleResultResponse,
@@ -413,7 +436,7 @@ class DraftRagPipelineRunApi(Resource):
 class PublishedRagPipelineRunApi(Resource):
     @error_responses(InvokeRateLimitHttpError, PipelineNotFoundError)
     @console_ns.expect(console_ns.models[PublishedWorkflowRunPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelinePublishedRunResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -864,9 +887,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         node_id = req_data.node_id
         rag_pipeline_service = RagPipelineService(db.session())
         variables = rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
-        return {
-            "variables": variables,
-        }
+        return dump_response(RagPipelineStepParametersResponse, {"variables": variables}, exclude_unset=True)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters")
@@ -887,9 +908,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         node_id = req_data.node_id
         rag_pipeline_service = RagPipelineService(db.session())
         variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
-        return {
-            "variables": variables,
-        }
+        return dump_response(RagPipelineStepParametersResponse, {"variables": variables}, exclude_unset=True)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters")
@@ -910,9 +929,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         node_id = req_data.node_id
         rag_pipeline_service = RagPipelineService(db.session())
         variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=True)
-        return {
-            "variables": variables,
-        }
+        return dump_response(RagPipelineStepParametersResponse, {"variables": variables}, exclude_unset=True)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters")
@@ -934,9 +951,7 @@ class DraftRagPipelineSecondStepApi(Resource):
 
         rag_pipeline_service = RagPipelineService(db.session())
         variables = rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=True)
-        return {
-            "variables": variables,
-        }
+        return dump_response(RagPipelineStepParametersResponse, {"variables": variables}, exclude_unset=True)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs")
@@ -1078,7 +1093,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
 class RagPipelineTransformApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineTransformResponse.__name__])
     @console_ns.response(404, "Dataset or pipeline not found")
     @setup_required
     @login_required
@@ -1101,7 +1116,10 @@ class RagPipelineTransformApi(Resource):
                 raise Forbidden(str(exc)) from exc
 
         try:
-            return RagPipelineTransformService().transform_dataset(dataset, current_user.id, session)
+            return dump_response(
+                RagPipelineTransformResponse,
+                RagPipelineTransformService().transform_dataset(dataset, current_user.id, session),
+            )
         except RagPipelineResourceNotFoundError as exc:
             raise NotFound(str(exc)) from exc
 
@@ -1142,7 +1160,7 @@ class RagPipelineDatasourceVariableApi(Resource):
 @console_ns.route("/rag/pipelines/recommended-plugins")
 class RagPipelineRecommendedPluginApi(Resource):
     @console_ns.doc(params=query_params_from_model(RagPipelineRecommendedPluginQuery))
-    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineRecommendedPluginsResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1155,4 +1173,4 @@ class RagPipelineRecommendedPluginApi(Resource):
         recommended_plugins = rag_pipeline_service.get_recommended_plugins(
             req_data.type, current_user, current_tenant_id
         )
-        return recommended_plugins
+        return dump_response(RagPipelineRecommendedPluginsResponse, recommended_plugins, exclude_unset=True)

@@ -26,12 +26,19 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
   useCreatePipelineDatasetFromCustomized: () => ({ mutateAsync: vi.fn() }),
 }))
 vi.mock('@/service/knowledge/use-dataset', () => ({ useInvalidDatasetList: () => vi.fn() }))
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateById: () => useQuery(templateQueryOptions),
-  useDeleteTemplate: () => ({ mutateAsync: vi.fn() }),
-  useExportTemplateDSL: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useInvalidCustomizedTemplateList: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.templates.byTemplateId.get': function useTemplateDetailQuery() {
+      return useQuery(templateQueryOptions)
+    },
+    'rag.pipeline.customized.templates.byTemplateId.delete': () => ({ mutateAsync: vi.fn() }),
+    'rag.pipeline.customized.templates.byTemplateId.post': () => ({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    }),
+  })
+})
 
 vi.mock('@/app/components/workflow/workflow-preview', () => ({
   default: () => <div>Workflow preview</div>,

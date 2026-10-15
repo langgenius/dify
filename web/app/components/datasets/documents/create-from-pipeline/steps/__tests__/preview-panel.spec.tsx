@@ -16,6 +16,11 @@ import { StepOnePreview, StepTwoPreview } from '../preview-panel'
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post':
+      () => ({
+        mutateAsync: vi.fn().mockResolvedValue({ content: 'Mock document content' }),
+        isPending: false,
+      }),
     'files.byFileId.preview.get': vi.fn(() => ({
       data: { content: 'Mock file content for testing' },
       isFetching: false,
@@ -38,13 +43,6 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock API hooks (底层依赖)
-
-vi.mock('@/service/use-pipeline', () => ({
-  usePreviewOnlineDocument: vi.fn(() => ({
-    mutateAsync: vi.fn().mockResolvedValue({ content: 'Mock document content' }),
-    isPending: false,
-  })),
-}))
 
 // Mock data source store
 vi.mock('../../data-source/store', () => ({

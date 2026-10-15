@@ -121,9 +121,12 @@ vi.mock('@/service/use-base', () => ({
   useInvalid: () => mockInvalidDatasetDetail,
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({ mutateAsync: mockExportPipeline }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.exports.get': () => ({ mutateAsync: mockExportPipeline }),
+  })
+})
 
 vi.mock('@/service/datasets', () => ({
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),

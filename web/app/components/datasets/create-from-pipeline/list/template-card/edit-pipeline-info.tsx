@@ -6,6 +6,7 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +17,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
-import { useInvalidCustomizedTemplateList, useUpdateTemplateInfo } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 
 type EditPipelineInfoProps = {
   onClose: () => void
@@ -51,16 +52,17 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
     setDescription(value)
   }, [])
 
-  const { mutateAsync: updatePipeline } = useUpdateTemplateInfo()
-  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
+  const queryClient = useQueryClient()
+  const { mutateAsync: updatePipeline } = useMutation(
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.patch.mutationOptions(),
+  )
 
   const handleSave = useCallback(async () => {
     if (!name) {
       toast.error(t(($) => $.editPipelineInfoNameRequired, { ns: 'datasetPipeline' }))
       return
     }
-    const request = {
-      template_id: pipeline.id,
+    const body = {
       name,
       icon_info: {
         icon_type: appIcon.type,
@@ -70,22 +72,20 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
       },
       description,
     }
-    await updatePipeline(request, {
-      onSuccess: () => {
-        invalidCustomizedTemplateList()
-        onClose()
+    await updatePipeline(
+      { params: { template_id: pipeline.id }, body },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
+              input: { query: { type: 'customized' } },
+            }),
+          })
+          onClose()
+        },
       },
-    })
-  }, [
-    name,
-    appIcon,
-    description,
-    pipeline.id,
-    updatePipeline,
-    invalidCustomizedTemplateList,
-    onClose,
-    t,
-  ])
+    )
+  }, [name, appIcon, description, pipeline.id, updatePipeline, queryClient, onClose, t])
 
   return (
     <form

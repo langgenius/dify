@@ -71,6 +71,7 @@ SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
     "core.plugin.entities.bundle.PluginBundleDependency.Github": "PluginBundleDependencyGithub",
     "core.plugin.entities.bundle.PluginBundleDependency.Marketplace": "PluginBundleDependencyMarketplace",
     "core.plugin.entities.bundle.PluginBundleDependency.Package": "PluginBundleDependencyPackage",
+    "core.app.entities.task_entities.WorkflowAppBlockingResponse.Data": "WorkflowAppBlockingResponseData",
 }
 
 _REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],])")

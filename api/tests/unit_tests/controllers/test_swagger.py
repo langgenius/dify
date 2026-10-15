@@ -890,7 +890,7 @@ def test_console_datasource_catalog_exports_domain_response_schema(exported_cons
     ]
     recommended = payload["paths"]["/rag/pipelines/recommended-plugins"]["get"]
     assert recommended["responses"]["200"]["content"]["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/RagPipelineOpaqueResponse"
+        "$ref": "#/components/schemas/RagPipelineRecommendedPluginsResponse"
     }
 
 

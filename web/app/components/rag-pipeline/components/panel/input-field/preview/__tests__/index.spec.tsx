@@ -60,18 +60,29 @@ vi.mock('zustand/react/shallow', () => ({
 let mockPreProcessingParamsData: { variables: RAGPipelineVariables } | undefined
 let mockProcessingParamsData: { variables: RAGPipelineVariables } | undefined
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelinePreProcessingParams: (_params: unknown, enabled: boolean) => ({
-    data: enabled ? mockPreProcessingParamsData : undefined,
-    isLoading: false,
-    error: null,
-  }),
-  useDraftPipelineProcessingParams: (_params: unknown, enabled: boolean) => ({
-    data: enabled ? mockProcessingParamsData : undefined,
-    isLoading: false,
-    error: null,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': ({
+      enabled,
+    }: {
+      enabled?: boolean
+    }) => ({
+      data: enabled ? mockPreProcessingParamsData : undefined,
+      isLoading: false,
+      error: null,
+    }),
+    'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': ({
+      enabled,
+    }: {
+      enabled?: boolean
+    }) => ({
+      data: enabled ? mockProcessingParamsData : undefined,
+      isLoading: false,
+      error: null,
+    }),
+  })
+})
 
 let mockDatasourceOptions: DataSourceOption[] = []
 
