@@ -58,12 +58,7 @@ export const StreamingAssistantTurn = ({
           {t(($) => $.running, { ns: 'difyBuilder' })}
         </span>
       )}
-      {activityCount > 0 ? (
-        <ExecutionProgress
-          replyLanguage={liveExecution?.replyLanguage}
-          execution={liveExecution?.execution}
-        />
-      ) : null}
+      {activityCount > 0 ? <ExecutionProgress execution={liveExecution?.execution} /> : null}
       <Thinking text={reasoningText} isStreaming onVisibleContentChange={onContentChange} />
       {replyText ? <AssistantReply text={replyText} /> : null}
     </article>
