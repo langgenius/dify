@@ -242,6 +242,11 @@ def _invocations[StatusT](
 
 
 class EnterpriseAppService:
+    """App queries across tenants, consumed by enterprise dashboard.
+    
+    App is deployed in environments, and dify api is treated as a built-in event, where stats are collected from
+    workflow runs and messages.
+    """
     def __init__(
         self, *, apps: EnterpriseAppStore, workflow_runs: APIWorkflowRunRepository, now: Callable[[], datetime]
     ) -> None:
