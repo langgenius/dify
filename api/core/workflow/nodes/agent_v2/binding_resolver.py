@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.dify_builder.models import Actor
+    from services.dify_builder.native_testing.agent_binding import AgentBindingAuthorization
 
 from sqlalchemy import select
 
@@ -49,6 +54,9 @@ class WorkflowAgentBindingResolver:
         binding_id: str | None = None,
         snapshot_id: str | None = None,
         conversation_id: str | None = None,
+        builder_actor: Actor | None = None,
+        builder_authorization: AgentBindingAuthorization | None = None,
+        selected_snapshot_id: str | None = None,
     ) -> WorkflowAgentBindingBundle:
         """Resolve the generation pinned by an execution or a Chatflow conversation participant."""
 
@@ -58,6 +66,11 @@ class WorkflowAgentBindingResolver:
                 "Workflow Agent binding and config snapshot must be pinned together.",
             )
 
+        if selected_snapshot_id is not None and builder_actor is None:
+            raise WorkflowAgentBindingError(
+                "agent_binding_owner_mismatch", "Builder actor required for snapshot selection."
+            )
+        pinned_execution = snapshot_id is not None
         with session_factory.create_session() as session:
             binding_stmt = select(WorkflowAgentNodeBinding).where(
                 WorkflowAgentNodeBinding.tenant_id == tenant_id,
@@ -75,6 +88,15 @@ class WorkflowAgentBindingResolver:
                 )
             if binding.agent_id is None:
                 raise WorkflowAgentBindingError("agent_not_available", "Workflow Agent binding has no agent.")
+
+            if builder_actor is not None:
+                from services.dify_builder.native_testing.agent_binding import AgentBindingService
+
+                if builder_actor.tenant_id != tenant_id:
+                    raise WorkflowAgentBindingError("agent_binding_owner_mismatch", "Builder actor owner mismatch.")
+                AgentBindingService(session, authorization=builder_authorization).recheck_access(
+                    actor=builder_actor, app_id=app_id, agent_id=binding.agent_id
+                )
 
             agent_stmt = select(Agent).where(
                 Agent.tenant_id == tenant_id,
@@ -128,6 +150,13 @@ class WorkflowAgentBindingResolver:
                 raise WorkflowAgentBindingError(
                     "agent_config_snapshot_not_found",
                     "Workflow Agent binding has no current config snapshot.",
+                )
+
+            if selected_snapshot_id is not None and not pinned_execution and not conversation_id:
+                from services.dify_builder.native_testing.agent_binding import require_selected_snapshot
+
+                require_selected_snapshot(
+                    selected_snapshot_id=selected_snapshot_id, effective_snapshot_id=effective_snapshot_id
                 )
 
             snapshot = session.scalar(

@@ -556,6 +556,7 @@ def discover_resources(
     tools = _rank_tools(inv.tools, _request_text(goal_text, requirements, plan_items))[:_MAX_DISCOVERY_TOOLS]
     catalog = {r.id: ("plugin", r) for r in tools}
     catalog.update({r.id: ("model", r) for r in inv.models})
+    catalog.update({r.id: ("agent", r) for r in inv.agents})
     if not catalog or model is None:
         return []
     system = (
@@ -569,6 +570,9 @@ def discover_resources(
         "ready resource that fits equally well. Use ONLY listed ids. Reply with ONLY JSON: "
         '{"resource_ids": ["<id>", ...]}.'
     )
+    if inv.agent_source_error:
+        system += " Published Agent catalog is unavailable; do not infer that the workspace has no Agents."
+    system += " Agent resources are published Workspace Agents; their node-job outputs must be declared by the caller."
     listing = "\n".join(_discovery_line(rid, kind, ref) for rid, (kind, ref) in catalog.items())
     user = f"{_cognition_source(goal_text, requirements)}\n\nPLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
     try:
@@ -716,7 +720,7 @@ def _bound_name(kind: str, ref: ResourceRef) -> str:
     boundary treats '[' / ']' as non-word characters. A model's label already is
     its full id and keeps the label alone.
     """
-    return f"{ref.label} [{ref.id}]" if kind == "plugin" else ref.label
+    return f"{ref.label} [{ref.id}]" if kind in {"plugin", "agent"} else ref.label
 
 
 # A binder-produced suffix, or several stacked from repeated binds, trailing
@@ -759,7 +763,9 @@ def bind_resources(
     kinds: dict[str, str] = {}
     kinds.update({r.id: "plugin" for r in installed_tools})
     kinds.update({r.id: "model" for r in inv.models})
-    by_id = {r.id: r for r in (*installed_tools, *inv.models)}
+    kinds.update({r.id: "agent" for r in inv.agents})
+    _selected_agent_resources(inv, resource_ids)
+    by_id = {r.id: r for r in (*installed_tools, *inv.models, *inv.agents)}
     chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
     stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
     if not chosen:
@@ -776,6 +782,30 @@ def bind_resources(
         if suffix not in bound[index]:
             bound[index] = bound[index] + suffix
     return bound
+
+
+def _selected_agent_resources(inv: resources.TenantResources, resource_ids: Sequence[str]) -> list[ResourceRef]:
+    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection, AgentSnapshotChanged
+
+    selected = [rid for rid in resource_ids if rid.startswith("agent:")]
+    if selected and inv.agent_source_error:
+        raise ValueError("Published Agent catalog unavailable; retry selection")
+    by_id = {ref.id: ref for ref in inv.agents}
+    for rid in selected:
+        selection = AgentBindingSelection.from_resource_id(rid)
+        if rid not in by_id:
+            replacement = next(
+                (
+                    AgentBindingSelection.from_resource_id(ref.id)
+                    for ref in inv.agents
+                    if AgentBindingSelection.from_resource_id(ref.id).agent_id == selection.agent_id
+                ),
+                None,
+            )
+            if replacement is not None:
+                raise AgentSnapshotChanged(effective_snapshot_id=replacement.snapshot_id)
+            raise ValueError("Selected published Agent is no longer available")
+    return [by_id[rid] for rid in selected]
 
 
 def learn_from_build(
@@ -1082,7 +1112,25 @@ def build_nodes(
         mc = _generator_model_config(tenant_id, model_config)
         tool_refs = _installed_tool_refs(tenant_id, account_id)
         ready_tool_keys = frozenset(tool_refs)
+        agent_refs = (
+            _selected_agent_resources(resources.list_tenant_resources(tenant_id, account_id=account_id), resource_ids)
+            if any(rid.startswith("agent:") for rid in resource_ids)
+            else []
+        )
         base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
+        if agent_refs:
+            from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+            selected_agents = [
+                AgentBindingSelection.from_resource_id(ref.id).model_dump(mode="json") for ref in agent_refs
+            ]
+            base_instruction += (
+                "\nSELECTED PUBLISHED WORKSPACE AGENTS (use only these exact bindings):\n"
+                + json.dumps(selected_agents)
+                + "\nUse native type=agent, version=2, agent_node_kind=dify_agent, "
+                "agent_binding={binding_type:roster_agent,agent_id,current_snapshot_id:snapshot_id}, agent_task, "
+                "and agent_declared_outputs. Outputs are caller node-job declarations, never a published Agent schema."
+            )
         if trusted_text:
             base_instruction += (
                 "\n\nORIGINAL USER REQUEST AND CONFIRMED REQUIREMENTS (authoritative):\n"
@@ -1119,6 +1167,21 @@ def build_nodes(
                     graph=graph,
                     tools=tool_refs,
                 )
+                from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+                selected_bindings = {
+                    (
+                        AgentBindingSelection.from_resource_id(ref.id).agent_id,
+                        AgentBindingSelection.from_resource_id(ref.id).snapshot_id,
+                    )
+                    for ref in agent_refs
+                }
+                for node in graph.get("nodes") or []:
+                    data = node.get("data") or {}
+                    if data.get("type") == "agent" and data.get("version") == "2":
+                        binding = data.get("agent_binding") or {}
+                        if (binding.get("agent_id"), binding.get("current_snapshot_id")) not in selected_bindings:
+                            raise ValueError("Generated Agent node must use a confirmed published Agent selection")
                 candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text)
                 rejections = [*_uninstalled_tool_refusals(graph, ready_tool_keys), *candidate.rejections]
                 if not rejections and candidate.applicable:

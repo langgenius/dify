@@ -293,7 +293,7 @@ class FormField:
 class ResourceOption:
     """One recommended resource in a ``resource_select`` card.
 
-    ``kind`` in knowledge|plugin|model|credential; ``readiness`` in
+    ``kind`` in knowledge|plugin|model|credential|agent; ``readiness`` in
     ready|missing_config|missing_plugin|placeholder|waiting_setup.
     Credentials are referenced by name only -- never a secret.
     """

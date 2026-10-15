@@ -12,12 +12,13 @@ computed from credential-row metadata only
 OAuth refresh, validation or invocation. It is not live credential
 validation, does not pin a ``credential_id``, and grants no runtime
 authorization: native runtime credential selection and authorization still
-decide whether the tool actually runs. Each source degrades to an empty list
-on failure so a missing provider never breaks the advance.
+decide whether the tool actually runs. Tool/model/dataset source failures
+degrade to empty lists. Agent source unavailability remains a separate internal
+fact so planning does not claim the workspace has no matching Agents.
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import select
@@ -58,6 +59,8 @@ class TenantResources:
     models: list[ResourceRef]
     datasets: list[ResourceRef]
     tools: list[ResourceRef]
+    agents: list[ResourceRef] = field(default_factory=list)
+    agent_source_error: str | None = None
 
 
 def _list_models(tenant_id: str) -> list[Any]:
@@ -200,4 +203,36 @@ def list_tenant_resources(tenant_id: str, *, account_id: str | None = None) -> T
     models = _safe(build_models, "models")
     datasets = _safe(build_datasets, "datasets")
     tools = _safe(build_tools, "tools")
-    return TenantResources(models=models, datasets=datasets, tools=tools)
+    agents: list[ResourceRef] = []
+    agent_source_error = None
+    if account_id is not None:
+        try:
+            from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
+
+            with Session(db.engine) as session:
+                candidates = AgentCatalogService(session).list_candidates(
+                    tenant_id=tenant_id, actor_id=account_id, app_id=None, query=None
+                )
+            agents = [
+                ResourceRef(
+                    id=item.resource_id,
+                    label=item.name,
+                    meta=(
+                        f"Published version {item.display_version}; outputs must be declared by the node job. "
+                        f"{SETUP_REQUIRED_NOTE if item.readiness == 'missing_config' else ''} "
+                        f"{item.description}"
+                    ),
+                    readiness=item.readiness,
+                    description=item.description,
+                    capability=item.capability,
+                )
+                for item in candidates
+            ]
+        except Exception:
+            # Preserve source unavailability separately from a successful empty
+            # query, without exposing internal failure/configuration details.
+            agent_source_error = "Published Agent catalog unavailable"
+            logger.warning("Dify Builder: published Agent catalog unavailable")
+    return TenantResources(
+        models=models, datasets=datasets, tools=tools, agents=agents, agent_source_error=agent_source_error
+    )

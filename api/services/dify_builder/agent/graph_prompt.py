@@ -143,6 +143,16 @@ def published_variables_of(node: Mapping[str, Any]) -> frozenset[str] | None:
     known = PUBLISHED_VARIABLES_BY_NODE_TYPE.get(str(data.get("type") or ""))
     if known is not None:
         return known
+    if data.get("type") == "agent" and data.get("version") == "2" and data.get("agent_node_kind") == "dify_agent":
+        from models.agent_config_entities import WorkflowNodeJobConfig, effective_declared_outputs
+
+        job = WorkflowNodeJobConfig.model_validate(
+            {
+                "declared_outputs": data.get("agent_declared_outputs") or [],
+                "output_routes": data.get("agent_output_routes") or {},
+            }
+        )
+        return frozenset(item.name for item in effective_declared_outputs(job.declared_outputs, job.output_routes))
     outputs = data.get("outputs")
     if isinstance(outputs, Mapping) and outputs:
         return frozenset(str(key) for key in outputs)
