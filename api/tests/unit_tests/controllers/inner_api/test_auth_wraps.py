@@ -311,18 +311,18 @@ class TestPluginInnerApiOnly:
 class TestKnowledgeFSInnerApiOnly:
     """KnowledgeFS uses the same trusted transport key without exposing plugin semantics."""
 
-    def test_should_allow_valid_shared_inner_key(self, app: Flask, config_overrides):
+    def test_should_allow_valid_shared_inner_key(self, app: Flask, config_overrides: Callable[..., None]) -> None:
         @knowledge_fs_inner_api_only
-        def protected_view():
+        def protected_view() -> str:
             return "success"
 
         config_overrides(PLUGIN_DAEMON_KEY="plugin_key", INNER_API_KEY_FOR_PLUGIN="valid_plugin_key")
         with app.test_request_context(headers={"X-Inner-Api-Key": "valid_plugin_key"}):
             assert protected_view() == "success"
 
-    def test_should_hide_endpoint_for_invalid_key(self, app: Flask, config_overrides):
+    def test_should_hide_endpoint_for_invalid_key(self, app: Flask, config_overrides: Callable[..., None]) -> None:
         @knowledge_fs_inner_api_only
-        def protected_view():
+        def protected_view() -> str:
             return "success"
 
         config_overrides(PLUGIN_DAEMON_KEY="plugin_key", INNER_API_KEY_FOR_PLUGIN="valid_plugin_key")
