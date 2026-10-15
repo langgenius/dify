@@ -35,11 +35,18 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
-from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
+from models import Account, App, Conversation, EndUser, Message, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from services.app.generation.input_adapter import AppInputAdapter
-from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from services.app.generation.ports import (
+    ConversationSnapshot,
+    MessageSnapshot,
+)
+from services.app.generation.ports import (
+    WorkflowSnapshot as GenerationWorkflowSnapshot,
+)
 from services.errors.conversation import ConversationNotExistsError
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfigManager
 from services.workflow.execution.adapters.chatflow.app_runner import AdvancedChatAppRunner
 from services.workflow.execution.adapters.chatflow.generate_response_converter import (
@@ -61,7 +68,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         self,
         *,
         runtime: ChatflowRuntime,
-        draft_variable_loader: Callable[[Workflow, str], VariableLoader] | None = None,
+        draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
     ) -> None:
         super().__init__(
@@ -74,7 +81,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
     def generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -87,7 +94,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
     def generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -100,7 +107,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
     def generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -112,7 +119,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
     def generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -258,7 +265,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         self,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         conversation: Conversation,
         message: Message,
@@ -303,7 +310,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
     def single_iteration_generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -386,7 +393,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
     def single_loop_generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -467,7 +474,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
     def _generate(
         self,
         *,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         invoke_from: InvokeFrom,
         application_generate_entity: AdvancedChatAppGenerateEntity,
@@ -515,7 +522,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
 
             # The repositories return detached records; capture the scalar fields
             # needed by the response pipeline.
-            workflow_snapshot = WorkflowSnapshot.from_workflow(workflow)
+            workflow_snapshot = GenerationWorkflowSnapshot.from_workflow(workflow)
             conversation_snapshot = ConversationSnapshot.from_conversation(conversation)
             message_snapshot = MessageSnapshot.from_message(message)
 
@@ -536,6 +543,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
+                        human_form_reader=self._runtime.human_form_reader,
                         state_owner_user_id=pause_state_config.state_owner_user_id,
                         response_stream_filter=resolved_response_stream_filter,
                     )
@@ -627,7 +635,9 @@ class AdvancedChatAppGenerator(AppInputAdapter):
                     workflow_id=config.workflow_id,
                 )
                 if graph_runtime_state is not None:
-                    self._runtime.contexts.restore_graph(workflow, application_generate_entity.workflow_run_id)
+                    workflow = self._runtime.contexts.restore_graph(
+                        workflow, application_generate_entity.workflow_run_id
+                    )
                 runner = AdvancedChatAppRunner(
                     runtime=self._runtime,
                     draft_variable_saver=self._draft_variable_saver,
@@ -670,7 +680,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         self,
         *,
         application_generate_entity: AdvancedChatAppGenerateEntity,
-        workflow: WorkflowSnapshot,
+        workflow: GenerationWorkflowSnapshot,
         queue_manager: AppQueueManager,
         conversation: ConversationSnapshot,
         message: MessageSnapshot,

@@ -31,6 +31,7 @@ from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import (
     TriggerData,
@@ -139,9 +140,10 @@ def _execute_workflow_common(
             if not app_model:
                 raise WorkflowNotFoundError(f"App not found: {trigger_log.app_id}")
 
-            workflow = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
-            if not workflow:
+            workflow_model = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
+            if not workflow_model:
                 raise WorkflowNotFoundError(f"Workflow not found: {trigger_log.workflow_id}")
+            workflow = workflow_snapshot(workflow_model)
 
             user = _get_user(session, trigger_log)
 
@@ -231,11 +233,12 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
-        workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
-        if workflow is None:
+        workflow_model = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
+        if workflow_model is None:
             raise WorkflowNotFoundError(
                 f"Workflow not found: workflow_run_id={workflow_run.id}, workflow_id={workflow_run.workflow_id}"
             )
+        workflow = workflow_snapshot(workflow_model)
         user = _get_user(session, workflow_run)
         app_model = session.scalar(select(App).where(App.id == workflow_run.app_id))
         if app_model is None:

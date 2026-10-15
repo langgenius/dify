@@ -33,6 +33,7 @@ from graphon.variables import build_segment
 from graphon.variables.segments import Segment
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+from services.human_input.ports import HumanInputFormReader
 
 
 @pytest.fixture
@@ -196,6 +197,11 @@ class MockCommandChannel:
         self._commands.append(command)
 
 
+class _NullHumanInputFormReader:
+    def get_by_form_id(self, form_id: str) -> None:
+        _ = form_id
+
+
 class TestPauseStatePersistenceLayer:
     """Unit tests for PauseStatePersistenceLayer."""
 
@@ -220,16 +226,19 @@ class TestPauseStatePersistenceLayer:
 
     def test_init_with_dependency_injection(self, sqlite_session_factory: sessionmaker[Session]):
         state_owner_user_id = "user-123"
+        human_form_reader: HumanInputFormReader = _NullHumanInputFormReader()
 
         layer = PauseStatePersistenceLayer(
             session_factory=sqlite_session_factory,
             state_owner_user_id=state_owner_user_id,
             generate_entity=self._create_generate_entity(),
+            human_form_reader=human_form_reader,
             response_stream_filter=ResponseStreamFilter(),
         )
 
         assert layer._session_maker is sqlite_session_factory
         assert layer._state_owner_user_id == state_owner_user_id
+        assert layer._human_form_reader is human_form_reader
         with pytest.raises(GraphEngineLayerNotInitializedError):
             _ = layer.graph_runtime_state
         assert layer.command_channel is None
@@ -239,6 +248,7 @@ class TestPauseStatePersistenceLayer:
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner",
             generate_entity=self._create_generate_entity(),
+            human_form_reader=_NullHumanInputFormReader(),
             response_stream_filter=ResponseStreamFilter(),
         )
 
@@ -258,6 +268,7 @@ class TestPauseStatePersistenceLayer:
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=generate_entity,
+            human_form_reader=_NullHumanInputFormReader(),
             response_stream_filter=_create_initialized_response_stream_filter(),
         )
 
@@ -295,16 +306,17 @@ class TestPauseStatePersistenceLayer:
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
     ):
         generate_entity = self._create_generate_entity(workflow_execution_id="run-123")
+        human_form_reader: HumanInputFormReader = _NullHumanInputFormReader()
         layer = PauseStatePersistenceLayer(
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=generate_entity,
+            human_form_reader=human_form_reader,
             response_stream_filter=_create_initialized_response_stream_filter(),
         )
 
         mock_repo = Mock()
         mock_factory = Mock(return_value=mock_repo)
-        mock_form_repository = Mock(name="form_repository")
         enriched_reason = HumanInputRequired(
             form_id="form-123",
             form_content="Rendered content",
@@ -315,12 +327,6 @@ class TestPauseStatePersistenceLayer:
         )
         enrich_mock = Mock(return_value=[enriched_reason])
         monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", mock_factory)
-        monkeypatch.setattr(
-            pause_layer_module,
-            "HumanInputFormSubmissionRepository",
-            Mock(return_value=mock_form_repository),
-            raising=False,
-        )
         monkeypatch.setattr(
             pause_layer_module,
             "enrich_graph_pause_reasons",
@@ -345,7 +351,7 @@ class TestPauseStatePersistenceLayer:
 
         enrich_mock.assert_called_once_with(
             reasons=[raw_reason],
-            form_repository=mock_form_repository,
+            form_repository=human_form_reader,
             variable_pool=graph_runtime_state.variable_pool,
         )
         assert mock_repo.create_workflow_pause.call_args.kwargs["pause_reasons"] == [enriched_reason]
@@ -357,6 +363,7 @@ class TestPauseStatePersistenceLayer:
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=self._create_generate_entity(),
+            human_form_reader=_NullHumanInputFormReader(),
             response_stream_filter=ResponseStreamFilter(),
         )
 
@@ -387,6 +394,7 @@ class TestPauseStatePersistenceLayer:
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=self._create_generate_entity(),
+            human_form_reader=_NullHumanInputFormReader(),
             response_stream_filter=ResponseStreamFilter(),
         )
 
@@ -402,6 +410,7 @@ class TestPauseStatePersistenceLayer:
             session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=self._create_generate_entity(),
+            human_form_reader=_NullHumanInputFormReader(),
             response_stream_filter=_create_initialized_response_stream_filter(),
         )
 
@@ -513,6 +522,7 @@ def test_on_event_persists_response_stream_filter_dump(
         session_factory=sqlite_session_factory,
         state_owner_user_id="owner-123",
         generate_entity=generate_entity,
+        human_form_reader=_NullHumanInputFormReader(),
         response_stream_filter=response_stream_filter,
     )
 

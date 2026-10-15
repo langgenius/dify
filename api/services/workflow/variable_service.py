@@ -22,6 +22,7 @@ from models.workflow import (
     WorkflowNodeExecutionModel,
     is_system_variable_editable,
 )
+from services.workflow.contracts import WorkflowBindingScope, WorkflowSnapshot
 from services.workflow.draft_variable_service import (
     DraftFileRestorer,
     DraftFileUploader,
@@ -33,7 +34,7 @@ from services.workflow.draft_variable_service import (
     VariableResetError,
     conversation_defaults,
 )
-from services.workflow.variable_contracts import WorkflowDraftVariableList
+from services.workflow.variable_contracts import WorkflowDraftVariableList, conversation_variable_values
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ class WorkflowVariableService:
         self,
         account_id: str,
         app: App,
-        workflow: Workflow,
+        workflow: WorkflowBindingScope,
     ) -> str:
         """
         get_or_create_conversation creates and returns the ID of a conversation for debugging.
@@ -297,8 +298,8 @@ class WorkflowVariableService:
             file_inputs=self._file_inputs,
         )
 
-    def workflow_loader(self, workflow: Workflow, user_id: str) -> VariableLoader:
-        return self._loader(workflow.app_id, workflow.tenant_id, user_id, workflow.conversation_variables)
+    def workflow_loader(self, workflow: WorkflowSnapshot, user_id: str) -> VariableLoader:
+        return self._loader(workflow.app_id, workflow.tenant_id, user_id, conversation_variable_values(workflow))
 
     def saver_factory(self, tenant_id: str, account: Account) -> DraftVariableSaverFactory:
         return partial(

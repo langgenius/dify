@@ -33,7 +33,7 @@ from models.workflow import (
     WorkflowRun,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.workflow.definition_repository import WorkflowDefinitionStore, workflow_record
+from repositories.workflow.definition_repository import WorkflowDefinitionStore, workflow_record, workflow_snapshot
 from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -643,7 +643,7 @@ class RagPipelineService:
             raise ValueError("Workflow not found")
         generator.generate(
             pipeline=pipeline,
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             user=user,
             args={
                 "inputs": document_pipeline_execution_log.input_data,

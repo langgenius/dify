@@ -19,7 +19,6 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.annotation_reply import AnnotationReplies
 from models.model import Account, App, AppMode, EndUser
-from models.workflow import Workflow
 from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.app.generation.adapters.agent_app import AgentAppGenerator
 from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
@@ -163,7 +162,7 @@ class AppGenerateService:
         *,
         app_model: App,
         user: Account | EndUser,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         variables: WorkflowExecutionVariables,
@@ -205,7 +204,7 @@ class AppGenerateService:
         *,
         app_model: App,
         user: Account | EndUser,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         variables: WorkflowExecutionVariables,
@@ -480,7 +479,7 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
 
     @staticmethod
-    def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
+    def _ensure_workflow_service_mode_available(*, workflow: WorkflowSnapshot, invoke_from: InvokeFrom) -> None:
         if invoke_from not in _MANUAL_WORKFLOW_INVOKE_SOURCES:
             return
 
@@ -518,7 +517,7 @@ class AppGenerateService:
         node_id: str,
         args: Any,
         *,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         variables: WorkflowExecutionVariables,
         runtime: AppGenerationRuntime,
         streaming: bool = True,
@@ -569,7 +568,7 @@ class AppGenerateService:
         node_id: str,
         args: Mapping[str, Any],
         *,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         variables: WorkflowExecutionVariables,
         runtime: AppGenerationRuntime,
         streaming: bool = True,
@@ -655,7 +654,7 @@ class AppGenerateService:
         *,
         session: Session,
         snapshot: WorkflowSnapshot | None = None,
-    ) -> Workflow:
+    ) -> WorkflowSnapshot:
         """
         Get workflow
         :param app_model: app model
