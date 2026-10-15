@@ -18,7 +18,7 @@ from libs.broadcast_channel.redis.pubsub_channel import Topic
 from models import EndUser
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import AppMode
-from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskService
 from tests.unit_tests.services.test_app_task_service import _StopRedis
@@ -26,12 +26,14 @@ from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 @pytest.mark.parametrize("app_mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 @pytest.mark.parametrize("backend", ["sql", "celery", "logstore"])
+@pytest.mark.parametrize("node_status", [WorkflowNodeExecutionStatus.PAUSED, WorkflowNodeExecutionStatus.RETRY])
 def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resources(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     app_mode: AppMode,
     backend: str,
+    node_status: WorkflowNodeExecutionStatus,
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(
@@ -119,7 +121,8 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
                 node_id="review",
                 node_type="human-input",
                 title="Review",
-                status=WorkflowNodeExecutionStatus.PAUSED,
+                status=node_status,
+                process_data={"__dify_retry_history": [{"retry_index": 1, "error": "retry failed"}]},
                 created_at=run.created_at,
             )
         )
@@ -135,6 +138,11 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
             persisted = session.get(WorkflowRun, workflow_run_id)
             assert persisted is not None
             assert persisted.status == WorkflowExecutionStatus.STOPPED
+            node = session.get(WorkflowNodeExecutionModel, "node-app-1")
+            assert node is not None
+            assert node.status == WorkflowNodeExecutionStatus.FAILED
+            assert node.finished_at == datetime(2026, 10, 10, 0, 1)
+            assert node.process_data_dict["__dify_retry_history"][0]["error"] == "retry failed"
         calls.append("retire")
         return ["workspace-1"]
 
@@ -185,6 +193,10 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
         assert (history["tenant_id"], history["app_id"], history["id"]) == ("tenant-1", "app-1", "run-1")
         node_history = logstore_records[AliyunLogStore.workflow_node_execution_logstore]
         assert all(float(record["elapsed_time"]) == 60 for record in node_history)
+        assert all(
+            json.loads(record["process_data"])["__dify_retry_history"][0]["error"] == "retry failed"
+            for record in node_history
+        )
         assert {(record["app_id"], record["triggered_from"], record["status"]) for record in node_history} == {
             ("app-1", "workflow-run", "failed"),
         }

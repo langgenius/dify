@@ -418,13 +418,17 @@ class WorkflowPersistenceLayer(Layer):
     def persist_unfinished_nodes_synchronously(self) -> None:
         """Make paused participants durable before exposing a resumable pause."""
         for execution in self._node_execution_cache.values():
-            if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+            if execution.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
                 self._workflow_node_execution_repository.save_synchronously(execution)
 
     def _fail_running_node_executions(self, *, error_message: str) -> None:
         now = naive_utc_now()
         for execution in self._node_execution_cache.values():
-            if execution.status == WorkflowNodeExecutionStatus.RUNNING:
+            if execution.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.RETRY):
                 execution.status = WorkflowNodeExecutionStatus.FAILED
                 execution.error = error_message
                 execution.finished_at = now

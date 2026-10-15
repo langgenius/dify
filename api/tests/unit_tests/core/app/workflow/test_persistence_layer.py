@@ -136,7 +136,16 @@ class TestWorkflowPersistenceLayer:
         assert "sys.conversation_id" not in inputs
         assert inputs[f"sys.{SystemVariableKey.WORKFLOW_EXECUTION_ID.value}"] == "run-id"
 
-    def test_fail_running_node_executions_marks_failed(self):
+    @pytest.mark.parametrize(
+        "status",
+        [
+            WorkflowNodeExecutionStatus.RUNNING,
+            WorkflowNodeExecutionStatus.RETRY,
+            WorkflowNodeExecutionStatus.PAUSED,
+            WorkflowNodeExecutionStatus.SUCCEEDED,
+        ],
+    )
+    def test_fail_running_node_executions_marks_only_live_attempts_failed(self, status):
         layer, _, node_repo, _ = _make_layer()
 
         execution = WorkflowNodeExecution(
@@ -147,14 +156,22 @@ class TestWorkflowPersistenceLayer:
             node_id="node",
             node_type=BuiltinNodeTypes.START,
             title="Start",
+            status=status,
             created_at=_naive_utc_now(),
         )
         layer._node_execution_cache[execution.id] = execution
 
         layer._fail_running_node_executions(error_message="boom")
 
-        assert execution.status == WorkflowNodeExecutionStatus.FAILED
-        assert node_repo.saved
+        if status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.RETRY):
+            assert execution.status == WorkflowNodeExecutionStatus.FAILED
+            assert execution.error == "boom"
+            assert execution.finished_at is not None
+            assert node_repo.saved == [execution]
+        else:
+            assert execution.status == status
+            assert execution.finished_at is None
+            assert node_repo.saved == []
 
     def test_resumption_restores_container_execution_before_terminal_event(self):
         layer, _, node_repo, _ = _make_layer()
@@ -425,6 +442,8 @@ class TestWorkflowPersistenceLayer:
         [
             (NodeRunFailedEvent, WorkflowNodeExecutionStatus.FAILED),
             (NodeRunExceptionEvent, WorkflowNodeExecutionStatus.EXCEPTION),
+            (GraphRunFailedEvent, WorkflowNodeExecutionStatus.FAILED),
+            (GraphRunAbortedEvent, WorkflowNodeExecutionStatus.FAILED),
         ],
     )
     def test_retry_history_is_preserved_after_terminal_error(self, event_type, expected_status):
@@ -453,20 +472,58 @@ class TestWorkflowPersistenceLayer:
             )
         )
 
-        terminal_event = event_type(
-            id="exec",
-            node_id="node",
-            node_type=BuiltinNodeTypes.LLM,
-            start_at=started_at,
-            error="terminal failure",
-            node_run_result=NodeRunResult(process_data={"terminal": True}),
-        )
+        if event_type is GraphRunFailedEvent:
+            terminal_event = event_type(error="terminal failure")
+        elif event_type is GraphRunAbortedEvent:
+            terminal_event = event_type(reason="terminal failure")
+        else:
+            terminal_event = event_type(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.LLM,
+                start_at=started_at,
+                error="terminal failure",
+                node_run_result=NodeRunResult(process_data={"terminal": True}),
+            )
+        node_repo.saved.clear()
         layer.on_event(terminal_event)
 
-        saved_execution = node_repo.saved_exec_data[-1]
+        saved_execution = node_repo.saved[-1]
         assert saved_execution.status == expected_status
-        assert saved_execution.process_data["terminal"] is True
+        assert saved_execution.error == "terminal failure"
+        assert saved_execution.finished_at is not None
+        if event_type in (NodeRunFailedEvent, NodeRunExceptionEvent):
+            assert saved_execution.process_data["terminal"] is True
         assert saved_execution.process_data["__dify_retry_history"][0]["retry_index"] == 1
+
+    def test_pause_flush_persists_retry_history_synchronously(self):
+        layer, _, node_repo, _ = _make_layer(node_run_indices={"exec": 1})
+        layer.on_event(GraphRunStartedEvent())
+        started_at = _naive_utc_now()
+        layer.on_event(
+            NodeRunStartedEvent(
+                id="exec", node_id="node", node_type=BuiltinNodeTypes.LLM, node_title="LLM", start_at=started_at
+            )
+        )
+        layer.on_event(
+            NodeRunRetryEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.LLM,
+                node_title="LLM",
+                start_at=started_at,
+                error="retry failed",
+                retry_index=1,
+            )
+        )
+        assert node_repo.synchronously_saved == []
+
+        layer.persist_unfinished_nodes_synchronously()
+
+        saved_execution = node_repo.synchronously_saved[-1]
+        assert saved_execution.status == WorkflowNodeExecutionStatus.RETRY
+        assert saved_execution.finished_at is None
+        assert saved_execution.process_data["__dify_retry_history"][0]["error"] == "retry failed"
 
     def test_handle_node_pause_requested_skips_outputs(self):
         layer, _, _, _ = _make_layer(node_run_indices={"exec": 1})

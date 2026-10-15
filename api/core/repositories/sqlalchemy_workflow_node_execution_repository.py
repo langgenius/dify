@@ -391,7 +391,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_model: The database model to persist
         """
         with self._session_factory() as session:
-            if db_model.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+            if db_model.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
                 apply_workflow_stop_to_node(
                     db_model,
                     get_stopped_workflow_run(
@@ -487,7 +491,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
-            if db_model.status in (WorkflowNodeExecutionStatus.RUNNING, WorkflowNodeExecutionStatus.PAUSED):
+            if db_model.status in (
+                WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionStatus.PAUSED,
+                WorkflowNodeExecutionStatus.RETRY,
+            ):
                 apply_workflow_stop_to_node(
                     db_model,
                     get_stopped_workflow_run(
