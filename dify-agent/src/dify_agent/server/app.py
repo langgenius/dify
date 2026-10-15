@@ -28,6 +28,7 @@ from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Services
+from dify_agent.runtime.native_continuation import NativeContinuationOwner
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.observability import configure_agent_observability, configure_server_observability
@@ -43,7 +44,9 @@ from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
-def create_app(settings: ServerSettings | None = None) -> FastAPI:
+def create_app(
+    settings: ServerSettings | None = None, *, native_owner: NativeContinuationOwner | None = None
+) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
@@ -104,6 +107,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             run_event_stream_max_length=resolved_settings.run_event_stream_max_length,
         )
         scheduler = RunScheduler(
+            native_owner=native_owner,
             store=store,
             services=Services(
                 plugin_daemon_http_client=plugin_daemon_http_client,
@@ -149,7 +153,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     control_plane_router = APIRouter(
         dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
     )
-    control_plane_router.include_router(create_runs_router(get_store, get_scheduler))
+    control_plane_router.include_router(
+        create_runs_router(get_store, get_scheduler, lambda: get_scheduler().native_capabilities)
+    )
     control_plane_router.include_router(create_execution_bindings_router(lambda: execution_binding_service))
     control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
     control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))

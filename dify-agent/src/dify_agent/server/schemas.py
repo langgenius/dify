@@ -13,6 +13,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dify_agent.protocol import schemas as _protocol_schemas
+from dify_agent.protocol.native_testing import ContinuationClaim
 
 
 def new_run_id() -> str:
@@ -33,6 +34,10 @@ class RunRecord(BaseModel):
     updated_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     error: str | None = None
     error_type: _protocol_schemas.RunFailureType | None = None
+    native_checkpoint_json: str | None = None
+    native_generation: int = 0
+    native_claim: ContinuationClaim | None = None
+    native_dispatch_started: bool = False
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

@@ -19,6 +19,22 @@ from collections.abc import Callable
 from typing import Protocol
 
 
+from dify_agent.protocol.native_testing import (
+    NATIVE_TEST_CAPABILITIES,
+    NativeTestCapabilities,
+    NativeTestProtocolUnsupported,
+    ContinueRunRequest,
+    ContinuationClaim,
+    require_native_test_capabilities,
+)
+from dify_agent.runtime.native_continuation import (
+    AgentCheckpoint,
+    NativeContinuationOwner,
+    NativeContinuationConflict,
+    PreparedContinuation,
+    validate_deferred_results,
+    NativePolicyStopped,
+)
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.context import Services
 from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
@@ -45,6 +61,14 @@ class RunCancellationConflictError(RuntimeError):
 
 class RunStore(RunEventSink, Protocol):
     """Persistence boundary needed by the scheduler."""
+
+    async def stop_native_run(self, *, run_id: str, expected_generation: int, reason_code: str) -> None: ...
+    async def get_checkpoint(self, run_id: str) -> AgentCheckpoint: ...
+    async def get_run(self, run_id: str) -> RunRecord: ...
+    async def claim_continuation(
+        self, *, run_id: str, expected_generation: int, idempotency_key: str
+    ) -> ContinuationClaim: ...
+    async def start_continuation(self, claim: ContinuationClaim) -> bool: ...
 
     async def create_run(self) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
@@ -132,7 +156,9 @@ class RunScheduler:
         stream_text_delta_max_chars: int = DEFAULT_TEXT_DELTA_MAX_CHARS,
         runner_factory: RunRunnerFactory | None = None,
         agent_observability: AgentObservability | None = None,
+        native_owner: NativeContinuationOwner | None = None,
     ) -> None:
+        self.native_owner = native_owner
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.run_timeout_seconds = run_timeout_seconds
@@ -146,6 +172,77 @@ class RunScheduler:
         self.agent_observability = agent_observability
         self._lifecycle_lock = asyncio.Lock()
 
+    @property
+    def native_capabilities(self) -> NativeTestCapabilities:
+        return self.native_owner.capabilities if self.native_owner is not None else NATIVE_TEST_CAPABILITIES
+
+    async def continue_run(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
+        require_native_test_capabilities(self.native_capabilities)
+        if self.native_owner is None:
+            raise NativeTestProtocolUnsupported()
+        async with self._lifecycle_lock:
+            if self.stopping:
+                raise SchedulerStoppingError("run scheduler is shutting down")
+            checkpoint = await self.store.get_checkpoint(run_id)
+            if checkpoint.ref != request.ref or checkpoint.generation != request.expected_generation:
+                raise NativeContinuationConflict("checkpoint owner or generation mismatch")
+            claim = await self.store.claim_continuation(
+                run_id=run_id, expected_generation=request.expected_generation, idempotency_key=request.idempotency_key
+            )
+            if run_id in self.active_tasks:
+                record = await self.store.get_run(run_id)
+                if record.native_dispatch_started:
+                    return claim
+                # Waiting is visible before the old supervisor finishes draining
+                # its cancellation observer. Do not lose the newly accepted intent.
+                await asyncio.shield(self.active_tasks[run_id])
+            # Restore immutable config and resolve the API-owned decisions before scheduling.
+            try:
+                prepared = await self.native_owner.restore(checkpoint=checkpoint)
+                if checkpoint.stage == "tool" and prepared.deferred_tool_results is not None:
+                    validate_deferred_results(checkpoint, prepared.deferred_tool_results)
+            except NativePolicyStopped as stop:
+                await self.store.stop_native_run(
+                    run_id=run_id, expected_generation=request.expected_generation, reason_code=stop.reason_code
+                )
+                raise
+            if (
+                prepared.request.execution_mode != "builder_test"
+                or prepared.request.native_test_ref != checkpoint.ref
+                or prepared.continuation.ref != checkpoint.ref
+                or prepared.continuation.run_id != run_id
+                or prepared.continuation.config_digest != checkpoint.config_digest
+                or prepared.continuation.config_ref != checkpoint.config_ref
+                or prepared.request.session_snapshot != checkpoint.session_snapshot
+            ):
+                raise NativeContinuationConflict("protected continuation identity mismatch")
+            if checkpoint.stage == "tool":
+                if prepared.deferred_tool_results is None:
+                    raise NativeContinuationConflict("missing native deferred results")
+            elif prepared.deferred_tool_results is not None:
+                raise NativeContinuationConflict("stage wait cannot supply tool results")
+            prepared.continuation.generation = claim.generation
+            prepared.continuation.history = checkpoint.history
+            prepared.continuation.session_snapshot = checkpoint.session_snapshot
+            prepared.continuation.operation_cursor = checkpoint.operation_cursor
+            prepared.continuation.result_refs = checkpoint.result_refs
+            prepared.continuation.job_refs = checkpoint.job_refs
+            record = await self.store.get_run(run_id)
+            task = asyncio.create_task(
+                self._run_continuation(record, claim, prepared), name=f"dify-agent-continue-{claim.claim_id}"
+            )
+            self.active_tasks[run_id] = task
+            task.add_done_callback(lambda _task: self._discard_active_run(run_id))
+            return claim
+
+    async def _run_continuation(
+        self, record: RunRecord, claim: ContinuationClaim, prepared: PreparedContinuation
+    ) -> None:
+        # The CAS is inside the scheduled task: lost HTTP/enqueue acknowledgement
+        # can recover this same claim. Once consumed, dispatch is never replayed.
+        if await self.store.start_continuation(claim):
+            await self._run_record(record, prepared.request, native_prepared=prepared)
+
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
         """Persist and schedule one run in the current process.
 
@@ -154,11 +251,37 @@ class RunScheduler:
         Request-shaped runtime failures are intentionally deferred to the runner so
         callers can observe them through the normal event/status stream.
         """
+        if request.execution_mode == "builder_test":
+            require_native_test_capabilities(self.native_capabilities)
+            if self.native_owner is None:
+                raise NativeTestProtocolUnsupported()
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
             record = await self.store.create_run()
-            task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
+            prepared = None
+            if request.execution_mode == "builder_test" and self.native_owner is not None:
+                try:
+                    continuation = await self.native_owner.prepare(run_id=record.run_id, request=request)
+                    if continuation.ref != request.native_test_ref or continuation.run_id != record.run_id:
+                        raise NativeContinuationConflict("prepared native identity mismatch")
+                    prepared = PreparedContinuation(request=request, continuation=continuation)
+                except NativePolicyStopped as stop:
+                    await emit_run_failed(
+                        self.store, run_id=record.run_id, error=stop.reason_code, reason=stop.reason_code
+                    )
+                    raise
+                except Exception:
+                    await emit_run_failed(
+                        self.store,
+                        run_id=record.run_id,
+                        error="native preparation unavailable",
+                        reason="native_preparation_unavailable",
+                    )
+                    raise
+            task = asyncio.create_task(
+                self._run_record(record, request, native_prepared=prepared), name=f"dify-agent-run-{record.run_id}"
+            )
             self.active_tasks[record.run_id] = task
             task.add_done_callback(lambda _task, run_id=record.run_id: self._discard_active_run(run_id))
             return record
@@ -168,6 +291,11 @@ class RunScheduler:
         status = await self.store.request_cancellation(run_id, request)
         if status in {"succeeded", "failed"}:
             raise RunCancellationConflictError(f"run already finished with status {status!r}")
+        if status == "waiting":
+            # Native wrap_run resources have already exited before waiting became visible.
+            intent = await self.store.get_cancellation_intent(run_id)
+            if intent is not None:
+                await self.store.finalize_cancellation(run_id, intent)
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
     async def shutdown(self) -> None:
@@ -185,10 +313,14 @@ class RunScheduler:
             _ = task.cancel()
         _ = await asyncio.gather(*pending, return_exceptions=True)
 
-    async def _run_record(self, record: RunRecord, request: CreateRunRequest) -> None:
+    async def _run_record(
+        self, record: RunRecord, request: CreateRunRequest, *, native_prepared: PreparedContinuation | None = None
+    ) -> None:
         """Supervise one local runner and its durable cancellation observer."""
         cancel_requested = asyncio.Event()
-        runner = self._create_runner(record, request, is_cancelled=cancel_requested.is_set)
+        runner = self._create_runner(
+            record, request, is_cancelled=cancel_requested.is_set, native_prepared=native_prepared
+        )
         runner_task = asyncio.create_task(runner.run(), name=f"dify-agent-runner-{record.run_id}")
         observer_task = asyncio.create_task(
             self.store.wait_for_cancellation(record.run_id),
@@ -291,11 +423,12 @@ class RunScheduler:
         request: CreateRunRequest,
         *,
         is_cancelled: Callable[[], bool],
+        native_prepared: PreparedContinuation | None = None,
     ) -> RunnableRun:
         """Create a runner while keeping injected test runners source-compatible."""
         if self.runner_factory is not None:
             return self.runner_factory(record, request)
-        return self._default_runner_factory(record, request, is_cancelled=is_cancelled)
+        return self._default_runner_factory(record, request, is_cancelled=is_cancelled, native_prepared=native_prepared)
 
     def _default_runner_factory(
         self,
@@ -303,9 +436,13 @@ class RunScheduler:
         request: CreateRunRequest,
         *,
         is_cancelled: Callable[[], bool],
+        native_prepared: PreparedContinuation | None = None,
     ) -> RunnableRun:
         """Create the production runner for a stored run record."""
         return AgentRunRunner(
+            native_continuation=native_prepared.continuation if native_prepared is not None else None,
+            deferred_tool_results=native_prepared.deferred_tool_results if native_prepared is not None else None,
+            native_capabilities=self.native_capabilities,
             sink=self.store,
             request=request,
             run_id=record.run_id,

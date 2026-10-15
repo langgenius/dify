@@ -10,7 +10,10 @@ implements the same contract with Redis streams in
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Protocol, TypeAlias
+from typing import TYPE_CHECKING, Protocol, TypeAlias
+
+if TYPE_CHECKING:
+    from dify_agent.runtime.native_continuation import AgentCheckpoint
 
 from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
@@ -25,6 +28,7 @@ from dify_agent.protocol.schemas import (
     RunFailedEventData,
     RunFailureType,
     RunStartedEvent,
+    RunWaitingEvent,
     RunStatus,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -48,6 +52,10 @@ class RunFinalizationResult:
 class RunEventSink(Protocol):
     """Boundary used by runtime code to publish observable run progress."""
 
+    async def persist_waiting(self, *, run_id: str, checkpoint: "AgentCheckpoint", event: RunWaitingEvent) -> str:
+        """Commit checkpoint, event and waiting status atomically before visibility."""
+        ...
+
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Persist a non-terminal event and return its cursor id."""
         ...
@@ -66,10 +74,22 @@ class InMemoryRunEventSink:
     error_types: dict[str, RunFailureType | None]
 
     def __init__(self) -> None:
+        self.checkpoints: dict[str, AgentCheckpoint] = {}
         self.events = defaultdict(list)
         self.statuses = {}
         self.errors = {}
         self.error_types = {}
+
+    async def persist_waiting(self, *, run_id: str, checkpoint: "AgentCheckpoint", event: RunWaitingEvent) -> str:
+        from dify_agent.runtime.native_continuation import NativeContinuationConflict
+
+        if self.statuses.get(run_id, "running") != "running" or checkpoint.run_id != run_id or event.run_id != run_id:
+            raise NativeContinuationConflict("waiting transition conflict")
+        event_id = str(len(self.events[run_id]) + 1)
+        self.checkpoints[run_id] = checkpoint
+        self.statuses[run_id] = "waiting"
+        self.events[run_id].append(event.model_copy(update={"id": event_id}))
+        return event_id
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Store a non-terminal event and assign a monotonic per-run cursor."""

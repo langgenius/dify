@@ -7,6 +7,8 @@ from typing import ClassVar
 
 import httpx
 from dify_agent.runtime.context import Services
+from dify_agent.protocol.native_testing import NATIVE_TEST_CAPABILITIES, NativeTestCapabilities
+from dify_agent.runtime.native_continuation import NativeContinuationOwner
 import pytest
 from fastapi.testclient import TestClient
 
@@ -99,7 +101,10 @@ class FakeRunScheduler:
         stream_text_delta_flush_interval_seconds: float,
         stream_text_delta_max_chars: int,
         agent_observability: object | None = None,
+        native_owner: NativeContinuationOwner | None = None,
     ) -> None:
+        self.native_owner = native_owner
+        self.native_capabilities = native_owner.capabilities if native_owner is not None else NATIVE_TEST_CAPABILITIES
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.run_timeout_seconds = run_timeout_seconds
@@ -445,3 +450,19 @@ def test_optional_metering_never_starts_a_collector_or_blocks_runtime_startup(
         )
         assert response.status_code == 503
     assert FakeRunScheduler.created[-1].shutdown_called
+
+
+def test_create_app_native_owner_injection_and_truthful_capabilities(monkeypatch):
+    _patch_app_lifecycle(monkeypatch)
+
+    class Owner:
+        capabilities = NativeTestCapabilities(protocol_version=1, features=frozenset({"pending-call-v1"}))
+
+    owner = Owner()
+    app = create_app(ServerSettings(api_token="secret"), native_owner=owner)
+    with TestClient(app) as client:
+        response = client.get("/runs/capabilities", headers={"Authorization": "Bearer secret"})
+        assert response.status_code == 200
+        assert response.json() == {"protocol_version": 1, "features": ["pending-call-v1"]}
+        assert client.get("/runs/capabilities").status_code == 401
+        assert FakeRunScheduler.created[-1].native_owner is owner

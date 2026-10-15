@@ -16,6 +16,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from dify_agent.protocol.native_testing import (
+    NATIVE_TEST_CAPABILITIES,
+    ContinueRunRequest,
+    ContinuationClaim,
+    NativeTestCapabilities,
+    NativeTestProtocolUnsupported,
+    require_native_test_capabilities,
+)
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CancelRunResponse,
@@ -24,6 +32,7 @@ from dify_agent.protocol.schemas import (
     RunEventsResponse,
     RunStatusResponse,
 )
+from dify_agent.runtime.native_continuation import NativeContinuationConflict, NativePolicyStopped
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
 from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
@@ -32,6 +41,7 @@ from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 def create_runs_router(
     get_store: Callable[[], RedisRunStore],
     get_scheduler: Callable[[], RunScheduler],
+    get_capabilities: Callable[[], NativeTestCapabilities] = lambda: NATIVE_TEST_CAPABILITIES,
 ) -> APIRouter:
     router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -41,13 +51,53 @@ def create_runs_router(
     async def scheduler_dep() -> RunScheduler:
         return get_scheduler()
 
+    def require_capabilities() -> None:
+        try:
+            require_native_test_capabilities(get_capabilities())
+        except NativeTestProtocolUnsupported as exc:
+            raise HTTPException(status_code=409, detail={"code": exc.code}) from exc
+
+    @router.get("/capabilities", response_model=NativeTestCapabilities)
+    async def capabilities() -> NativeTestCapabilities:
+        return get_capabilities()
+
+    @router.post("/{run_id}/continue", response_model=ContinuationClaim, status_code=202)
+    async def continue_run(
+        run_id: str,
+        request: ContinueRunRequest,
+        scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
+    ) -> ContinuationClaim:
+        require_capabilities()
+        try:
+            return await scheduler.continue_run(run_id, request)
+        except NativeTestProtocolUnsupported as exc:
+            raise HTTPException(status_code=409, detail={"code": exc.code}) from exc
+        except RunNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="run not found") from exc
+        except NativePolicyStopped as exc:
+            raise HTTPException(
+                status_code=409, detail={"code": "native_policy_stopped", "reason_code": exc.reason_code}
+            ) from exc
+        except NativeContinuationConflict as exc:
+            raise HTTPException(status_code=409, detail={"code": "native_continuation_conflict"}) from exc
+        except SchedulerStoppingError as exc:
+            raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
+
     @router.post("", response_model=CreateRunResponse, status_code=202)
     async def create_run(
         request: CreateRunRequest,
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CreateRunResponse:
+        if request.execution_mode == "builder_test":
+            require_capabilities()
         try:
             record = await scheduler.create_run(request)
+        except NativePolicyStopped as exc:
+            raise HTTPException(
+                status_code=409, detail={"code": "native_policy_stopped", "reason_code": exc.reason_code}
+            ) from exc
+        except NativeTestProtocolUnsupported as exc:
+            raise HTTPException(status_code=409, detail={"code": exc.code}) from exc
         except SchedulerStoppingError as exc:
             raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
         return CreateRunResponse(run_id=record.run_id, status=record.status)

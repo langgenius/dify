@@ -25,6 +25,13 @@ import httpx
 from pydantic import BaseModel, ValidationError
 from pydantic_ai.messages import FunctionToolResultEvent
 
+from dify_agent.protocol.native_testing import (
+    NativeTestCapabilities,
+    NativeTestProtocolUnsupported,
+    require_native_test_capabilities,
+    ContinueRunRequest,
+    ContinuationClaim,
+)
 from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
@@ -347,6 +354,39 @@ class Client:
         if self._owns_sync_http_client and self._sync_http_client is not None:
             self.close_sync()
 
+    async def native_test_capabilities(self) -> NativeTestCapabilities:
+        """Negotiate fresh on every native create/continue; never use a stale cache."""
+        try:
+            response = await self._get_async_http_client().get(
+                self._url("/runs/capabilities"), headers=self._merged_headers(), timeout=self._timeout
+            )
+            capabilities = _parse_model_response(response, NativeTestCapabilities)
+            require_native_test_capabilities(capabilities)
+            return capabilities
+        except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
+            raise NativeTestProtocolUnsupported() from exc
+
+    def native_test_capabilities_sync(self) -> NativeTestCapabilities:
+        try:
+            response = self._get_sync_http_client().get(
+                self._url("/runs/capabilities"), headers=self._merged_headers(), timeout=self._timeout
+            )
+            capabilities = _parse_model_response(response, NativeTestCapabilities)
+            require_native_test_capabilities(capabilities)
+            return capabilities
+        except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
+            raise NativeTestProtocolUnsupported() from exc
+
+    async def continue_run(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
+        await self.native_test_capabilities()
+        response = await self._post_async_json("continue_run", f"/runs/{quote(run_id, safe='')}/continue", request)
+        return _parse_model_response(response, ContinuationClaim)
+
+    def continue_run_sync(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
+        self.native_test_capabilities_sync()
+        response = self._post_sync_json("continue_run_sync", f"/runs/{quote(run_id, safe='')}/continue", request)
+        return _parse_model_response(response, ContinuationClaim)
+
     async def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
         """Create one run and return its accepted status response.
 
@@ -355,10 +395,12 @@ class Client:
         timeouts to ``DifyAgentTimeoutError``.
         """
         request_model = _validate_create_run_request(request)
+        if request_model.execution_mode == "builder_test":
+            await self.native_test_capabilities()
         try:
             response = await self._get_async_http_client().post(
                 self._url("/runs"),
-                content=request_model.model_dump_json(),
+                content=_create_run_json(request_model),
                 headers=self._merged_headers({"Content-Type": "application/json"}),
                 timeout=self._timeout,
             )
@@ -371,10 +413,12 @@ class Client:
     def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
         """Synchronous variant of ``create_run`` with the same no-retry contract."""
         request_model = _validate_create_run_request(request)
+        if request_model.execution_mode == "builder_test":
+            self.native_test_capabilities_sync()
         try:
             response = self._get_sync_http_client().post(
                 self._url("/runs"),
-                content=request_model.model_dump_json(),
+                content=_create_run_json(request_model),
                 headers=self._merged_headers({"Content-Type": "application/json"}),
                 timeout=self._timeout,
             )
@@ -955,6 +999,13 @@ class Client:
             raise DifyAgentClientError(f"{operation} request failed: {exc}") from exc
 
 
+def _create_run_json(request: CreateRunRequest) -> str:
+    """Preserve the strict pre-native ordinary wire, including its old defaults."""
+    if request.execution_mode == "ordinary":
+        return request.model_dump_json(exclude={"execution_mode", "native_test_ref", "native_test_protocol_version"})
+    return request.model_dump_json()
+
+
 def _validate_create_run_request(request: CreateRunRequest) -> CreateRunRequest:
     """Reject raw payloads so create-run uses the public request DTO boundary."""
     if isinstance(request, CreateRunRequest):
@@ -989,6 +1040,8 @@ def _raise_for_status(response: httpx.Response) -> None:
     if response.status_code < 400:
         return
     detail = _extract_error_detail(response)
+    if isinstance(detail, dict) and detail.get("code") == NativeTestProtocolUnsupported.code:
+        raise NativeTestProtocolUnsupported()
     if response.status_code == 404:
         raise DifyAgentNotFoundError(status_code=response.status_code, detail=detail)
     if response.status_code == 422:

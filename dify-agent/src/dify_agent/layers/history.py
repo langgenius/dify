@@ -33,9 +33,16 @@ class Capability(AbstractCapability[Deps]):
         Pydantic AI closes unmatched tool calls on the next user turn when a response
         is marked interrupted, rather than complete.
         """
-        persistent = [replace(m, instructions=None) if isinstance(m, ModelRequest) else m for m in messages]
-        if interrupted and persistent:
-            last = persistent[-1]
-            if isinstance(last, ModelResponse) and last.state == "complete" and last.tool_calls:
-                persistent[-1] = replace(last, state="interrupted")
-        deps.layers[self.name]["state"] = State(messages=persistent).model_dump(mode="json")
+        deps.layers[self.name]["state"] = State(
+            messages=persistent_messages(messages, interrupted=interrupted)
+        ).model_dump(mode="json")
+
+
+def persistent_messages(messages: Sequence[ModelMessage], *, interrupted: bool = False) -> list[ModelMessage]:
+    """Strip transient instructions; native waiting keeps unmatched calls complete."""
+    persistent = [replace(m, instructions=None) if isinstance(m, ModelRequest) else m for m in messages]
+    if interrupted and persistent:
+        last = persistent[-1]
+        if isinstance(last, ModelResponse) and last.state == "complete" and last.tool_calls:
+            persistent[-1] = replace(last, state="interrupted")
+    return persistent
