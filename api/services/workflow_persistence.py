@@ -206,6 +206,7 @@ class WorkflowPersistenceLayer(Layer):
             workflow_id=self._workflow_info.workflow_id,
             workflow_run_id=execution_id,
             conversation_id=self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value),
+            graph_data=self._workflow_info.graph_data,
         )
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
