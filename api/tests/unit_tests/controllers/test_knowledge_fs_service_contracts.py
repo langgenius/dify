@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import MagicMock
-
 import pytest
 from flask import Flask
 from pydantic import ValidationError
@@ -24,7 +21,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSServiceSourceCreatePayload,
     KnowledgeFSServiceSourceUpdatePayload,
 )
+from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.controllers.knowledge_fs_controller_fakes import FakeComponent, FakeRuntime, Recorder, invocation
 
 _NOW = "2026-09-17T00:00:00Z"
 _FAILURE = {
@@ -68,10 +67,21 @@ def _workflow() -> dict[str, object]:
 
 @pytest.fixture
 def runtime(monkeypatch: pytest.MonkeyPatch):
-    facade = SimpleNamespace(execute_service=MagicMock())
-    value = SimpleNamespace(facade=facade)
+    value = FakeRuntime(facade=FakeComponent(execute_service=Recorder()))
+    profile = KnowledgeFSServiceApiProfile(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        api_token_id="token-1",
+        principal_id="principal-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=1,
+        membership_epoch=1,
+        space_acl_epoch=1,
+        external_access_epoch=1,
+        content_policy_revision=1,
+    )
     monkeypatch.setattr(resources, "_runtime", lambda: value)
-    monkeypatch.setattr(resources, "_profile", lambda *_args, **_kwargs: SimpleNamespace(tenant_id="tenant-1"))
+    monkeypatch.setattr(resources, "_profile", lambda *_args, **_kwargs: profile)
     return value
 
 
@@ -183,7 +193,7 @@ def test_logical_read_exposes_current_cas_and_pagination(runtime) -> None:
         result = resources.KnowledgeFSServiceLogicalDocumentsApi().get("control-1")
     assert result["data"][0]["row_version"] == 7
     assert result["data"][0]["id"] == "doc-1"
-    assert runtime.facade.execute_service.call_args.kwargs["query"] == (("limit", "17"), ("cursor", "prev"))
+    assert runtime.facade.execute_service.last_call.kwargs["query"] == (("limit", "17"), ("cursor", "prev"))
 
 
 def test_deletion_links_and_partial_batch_results_stay_on_public_origin(
@@ -238,7 +248,7 @@ def test_legacy_source_import_adapts_coordinates_and_admits_durable_workflow(run
         result, status = resource.post("control-1", "source-1")
     assert status == 202
     assert result["id"] == "run-1"
-    kwargs = runtime.facade.execute_service.call_args.kwargs
+    kwargs = runtime.facade.execute_service.last_call.kwargs
     assert kwargs["operation_id"] == "importSourceWorkflow"
     assert kwargs["headers"] == (("Idempotency-Key", "import-once"),)
     assert kwargs["payload"].model_dump(mode="json", by_alias=True)["items"][0]["providerItemId"] == coordinate
@@ -249,12 +259,12 @@ def test_malformed_upstream_is_502_and_invalid_input_is_400_without_input_echo(r
     with Flask(__name__).test_request_context("/"):
         with pytest.raises(KnowledgeFSServiceUpstreamUnavailableHTTPError):
             resources.KnowledgeFSServiceLogicalDocumentApi().get("control-1", "doc-1")
-    runtime.facade.execute_service.reset_mock()
+    runtime.facade.execute_service.calls.clear()
     with Flask(__name__).test_request_context("/?limit=private-invalid-value"):
         with pytest.raises(KnowledgeFSServiceInvalidRequestHTTPError) as caught:
             resources.KnowledgeFSServiceLogicalDocumentsApi().get("control-1")
     assert "private-invalid-value" not in str(caught.value.data)
-    runtime.facade.execute_service.assert_not_called()
+    assert runtime.facade.execute_service.calls == []
 
 
 def test_resume_binds_original_task_and_processing_history_preserves_superseded(runtime) -> None:
@@ -276,7 +286,7 @@ def test_resume_binds_original_task_and_processing_history_preserves_superseded(
     with Flask(__name__).test_request_context("/"):
         response = resources.KnowledgeFSServiceDocumentProcessingTasksApi().get("control-1", "doc-1")
     assert response["data"][0]["state"] == "superseded"
-    assert runtime.facade.execute_service.call_args.kwargs["resource_id"] == "doc-1"
+    assert runtime.facade.execute_service.last_call.kwargs["resource_id"] == "doc-1"
     runtime.facade.execute_service.return_value = {
         "id": "task-1",
         "knowledgeSpaceId": "space-1",
@@ -290,8 +300,8 @@ def test_resume_binds_original_task_and_processing_history_preserves_superseded(
     with Flask(__name__).test_request_context("/", method="POST"):
         response = resources.KnowledgeFSServiceResearchTaskResumeApi().post("control-1", "task-1")
     assert response["id"] == "task-1"
-    assert runtime.facade.execute_service.call_args.kwargs["operation_id"] == "resumeResearchTask"
-    assert runtime.facade.execute_service.call_args.kwargs["resource_id"] == "task-1"
+    assert runtime.facade.execute_service.last_call.kwargs["operation_id"] == "resumeResearchTask"
+    assert runtime.facade.execute_service.last_call.kwargs["resource_id"] == "task-1"
 
 
 @pytest.mark.parametrize("status", [503, 504])
@@ -315,21 +325,21 @@ def test_service_preserves_temporary_failure_status_and_safe_violations(status: 
 def test_service_image_upload_uses_authenticated_profile_and_typed_response(monkeypatch: pytest.MonkeyPatch) -> None:
     import io
 
-    upload = MagicMock(return_value={"upload_file_id": "image-1", "byte_size": 8, "mime_type": "image/png"})
+    upload = Recorder({"upload_file_id": "image-1", "byte_size": 8, "mime_type": "image/png"})
     monkeypatch.setattr(resources, "upload_service_query_image", upload)
     with Flask(__name__).test_request_context("/", method="POST", data={"file": (io.BytesIO(b"fakepng"), "image.png")}):
         response, status = resources.KnowledgeFSServiceQueryImagesApi().post("control-1")
     assert status == 201
     assert response == {"upload_file_id": "image-1", "byte_size": 8, "mime_type": "image/png"}
-    assert upload.call_args.kwargs["profile"].tenant_id == "tenant-1"
-    assert upload.call_args.kwargs["file"].filename == "image.png"
+    assert upload.last_call.kwargs["profile"].tenant_id == "tenant-1"
+    assert upload.last_call.kwargs["file"].filename == "image.png"
 
 
 def test_image_admission_checks_ownership_before_issuing_a_capability(runtime, monkeypatch: pytest.MonkeyPatch) -> None:
     from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError
 
-    runtime.broker = MagicMock()
-    validator = MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=422))
+    runtime.broker = FakeComponent(issue_service=Recorder())
+    validator = Recorder(raises=KnowledgeFSProductRequestRejectedError(status_code=422))
     monkeypatch.setattr(resources, "validate_service_query_image_references", validator)
     with Flask(__name__).test_request_context(
         "/",
@@ -339,8 +349,8 @@ def test_image_admission_checks_ownership_before_issuing_a_capability(runtime, m
         with pytest.raises(Exception) as error:
             resources.KnowledgeFSServiceQueryAdmissionApi().post("control-1")
     assert error.value.code == 422
-    runtime.broker.issue_service.assert_not_called()
-    validator.assert_called_once()
+    assert runtime.broker.issue_service.calls == []
+    assert len(validator.calls) == 1
 
 
 def test_atomic_crawl_edit_rejects_inline_document_content() -> None:
@@ -411,15 +421,15 @@ def test_recovery_reads_keep_the_authorized_space_and_child_resource_binding(
     path_parameters,
 ) -> None:
     profile = object()
-    authorize = MagicMock(return_value=profile)
+    authorize = Recorder(profile)
     monkeypatch.setattr(resources, "_profile", authorize)
     monkeypatch.setattr(resources, "_dump_response", lambda _schema, raw: raw)
     upstream = {"id": resource_id}
     runtime.facade.execute_service.return_value = upstream
     with Flask(__name__).test_request_context("/", method="GET"):
         assert controller().get(*arguments) is upstream
-    authorize.assert_called_once_with(runtime, operation_id=operation, control_space_id="control-1")
-    call = runtime.facade.execute_service.call_args.kwargs
+    assert authorize.calls == [invocation(runtime, operation_id=operation, control_space_id="control-1")]
+    call = runtime.facade.execute_service.last_call.kwargs
     assert call["profile"] is profile
     assert call["operation_id"] == operation
     assert call["resource_id"] == resource_id
@@ -432,7 +442,7 @@ def test_source_workflow_history_keeps_source_filter_and_bounded_pagination(
     monkeypatch.setattr(resources, "_dump_response", lambda _schema, raw: raw)
     with Flask(__name__).test_request_context("/?source_id=source-1&cursor=next-page&limit=25"):
         resources.KnowledgeFSServiceSourceWorkflowsApi().get("control-1")
-    call = runtime.facade.execute_service.call_args.kwargs
+    call = runtime.facade.execute_service.last_call.kwargs
     assert call["operation_id"] == "listSourceWorkflows"
     assert dict(call["query"]) == {"sourceId": "source-1", "cursor": "next-page", "limit": "25"}
 
@@ -448,7 +458,7 @@ def test_preview_selection_is_a_durable_idempotent_import_admission(runtime) -> 
         result, status = resources.KnowledgeFSServiceCrawlPreviewSelectionApi().post("control-1", "run-1")
     assert status == 202
     assert result["id"] == "run-1"
-    call = runtime.facade.execute_service.call_args.kwargs
+    call = runtime.facade.execute_service.last_call.kwargs
     assert call["operation_id"] == "selectCrawlPreviewPages"
     assert call["resource_id"] == "run-1"
     assert call["headers"] == (("Idempotency-Key", "selection-request-1"),)
@@ -600,7 +610,7 @@ def test_durable_source_contracts_bind_the_original_profile_and_resource(
     requires_key,
 ) -> None:
     profile = object()
-    authorize = MagicMock(return_value=profile)
+    authorize = Recorder(profile)
     monkeypatch.setattr(resources, "_profile", authorize)
     monkeypatch.setattr(resources, "_dump_response", lambda _schema, raw: raw)
     with Flask(__name__).test_request_context(
@@ -610,8 +620,8 @@ def test_durable_source_contracts_bind_the_original_profile_and_resource(
         headers={"Idempotency-Key": "source-command-1"},
     ):
         method(controller(), *arguments)
-    authorize.assert_called_once_with(runtime, operation_id=operation, control_space_id="control-1")
-    call = runtime.facade.execute_service.call_args.kwargs
+    assert authorize.calls == [invocation(runtime, operation_id=operation, control_space_id="control-1")]
+    call = runtime.facade.execute_service.last_call.kwargs
     assert call["profile"] is profile
     assert call["resource_id"] == resource_id
     assert call["path_parameters"] == path_parameters
