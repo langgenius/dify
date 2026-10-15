@@ -13,6 +13,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
     'workspaces.current.members.get': () => ({ data: { accounts: [] }, refetch: vi.fn() }),
+    'auth.plugin.datasource.list.get': () => ({ data: { result: [] } }),
   })
 })
 
@@ -76,10 +77,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
       onChange={(event) => onSearchTextChange?.(event.target.value)}
     />
   ),
-}))
-
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
 }))
 
 vi.mock('@/service/use-common', async (importOriginal) => {

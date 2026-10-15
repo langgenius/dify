@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -11,11 +11,11 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { consoleQuery } from '@/service/console'
-import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
+import { selectDataSourceAuthList } from './utils'
 
 type DataSourcePageProps = {
   layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
@@ -63,13 +63,14 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,
   })
-  const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
+  const { data, isLoading: isDataSourceListLoading } = useQuery(
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions({ select: selectDataSourceAuthList }),
+  )
   const { data: installedPluginList } = useInstalledPluginList({
     category: PluginCategoryEnum.datasource,
   })
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
   const dataSources = useMemo(() => data?.result ?? [], [data?.result])
   const dataSourcePluginDetails = useMemo(() => {
     return pluginListWithLatestVersion.filter(
@@ -96,11 +97,13 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   }, [dataSources, renderI18nObject, searchText])
   const handlePluginUpdate = useCallback(() => {
     invalidateInstalledPluginList()
-    invalidateDataSourceListAuth()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.auth.plugin.datasource.list.get.queryKey(),
+    })
     queryClient.invalidateQueries({
       queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
     })
-  }, [queryClient, invalidateDataSourceListAuth, invalidateInstalledPluginList])
+  }, [queryClient, invalidateInstalledPluginList])
 
   const toolbar = (
     <div

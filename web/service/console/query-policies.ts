@@ -75,6 +75,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      auth: {
+        plugin: {
+          datasource: {
+            list: { get: { queryOptions: { retry: false } } },
+            defaultList: { get: { queryOptions: { retry: false } } },
+            byProviderId: { get: { queryOptions: { retry: false } } },
+          },
+        },
+      },
       rag: {
         pipelines: {
           datasourcePlugins: {

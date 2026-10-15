@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/console'
-import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
@@ -62,8 +61,6 @@ const useRefreshPluginList = () => {
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
 
-  const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
-
   const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
 
   const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
@@ -95,7 +92,9 @@ const useRefreshPluginList = () => {
         queryClient.invalidateQueries({
           queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
         })
-        invalidateDataSourceListAuth()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.auth.plugin.datasource.list.get.queryKey(),
+        })
       }
 
       // model select

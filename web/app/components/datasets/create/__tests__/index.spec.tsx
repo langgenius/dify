@@ -114,13 +114,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 let mockDataSourceList: { result: DataSourceAuth[] } | undefined
 let mockIsLoadingDataSourceList = false
 let mockFetchingError = false
-vi.mock('@/service/use-datasource', () => ({
-  useGetDefaultDataSourceListAuth: () => ({
-    data: mockDataSourceList,
-    isLoading: mockIsLoadingDataSourceList,
-    isError: mockFetchingError,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'auth.plugin.datasource.defaultList.get': () => ({
+      data: mockDataSourceList,
+      isLoading: mockIsLoadingDataSourceList,
+      isError: mockFetchingError,
+    }),
+  })
+})
 
 // Track props passed to child components
 let stepOneProps = {} as StepOneProps

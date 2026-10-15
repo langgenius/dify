@@ -8,6 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -17,7 +18,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import Configure from './configure'
 import { useDataSourceAuthUpdate } from './hooks'
 import Item from './item'
@@ -64,9 +65,14 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
     pendingOperationCredentialId,
   } = usePluginAuthAction(pluginPayload, handleAuthUpdate)
   const changeCredentialIdRef = useRef<string | undefined>(undefined)
-  const { mutateAsync: getPluginOAuthUrl } = useGetDataSourceOAuthUrl(pluginPayload.provider)
+  const { mutateAsync: getPluginOAuthUrl } = useMutation(
+    consoleQuery.oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get.mutationOptions(),
+  )
   const handleOAuth = useCallback(async () => {
-    const { authorization_url } = await getPluginOAuthUrl(changeCredentialIdRef.current)
+    const { authorization_url } = await getPluginOAuthUrl({
+      params: { provider_id: pluginPayload.provider },
+      query: { credential_id: changeCredentialIdRef.current },
+    })
 
     if (authorization_url) {
       openOAuthPopup(authorization_url, handleAuthUpdate)

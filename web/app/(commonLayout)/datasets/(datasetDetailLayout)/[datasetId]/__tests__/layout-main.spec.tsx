@@ -35,13 +35,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({ data: undefined }),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDefaultDataSourceListAuth: () => ({
-    data: { result: [] },
-    isLoading: false,
-    isError: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'auth.plugin.datasource.defaultList.get': () => ({
+      data: { result: [] },
+      isLoading: false,
+      isError: false,
+    }),
+  })
+})
 
 vi.mock('@/app/components/datasets/create/step-one', () => ({
   default: () => <div>Create knowledge content</div>,

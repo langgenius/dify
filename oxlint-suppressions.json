@@ -4132,11 +4132,6 @@
       "count": 1
     }
   },
-  "web/service/use-datasource.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 3
-    }
-  },
   "web/service/use-flow.ts": {
     "eslint-react/no-unnecessary-use-prefix": {
       "count": 1
