@@ -11493,6 +11493,12 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -13116,6 +13122,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | member_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -13186,6 +13193,16 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/roles
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| include_owner | query |  | No | integer |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -13194,6 +13211,18 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/rbac/roles
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_RoleUpsertRequest](#_roleupsertrequest)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -13220,6 +13249,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | role_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -13234,7 +13264,14 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | role_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_RoleUpsertRequest](#_roleupsertrequest)<br> |
 
 #### Responses
 
@@ -13248,7 +13285,14 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | role_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CopyRoleParam](#copyroleparam)<br> |
 
 #### Responses
 
@@ -13262,6 +13306,10 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
 | role_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -15119,7 +15167,7 @@ Account not link tenant.
 | last_login_at | integer |  | No |
 | name | string |  | Yes |
 | role | string |  | Yes |
-| roles | [ object ] |  | No |
+| roles | [ [MemberRoleSummaryResponse](#memberrolesummaryresponse) ] |  | No |
 | status | string |  | Yes |
 
 #### ActivateCheckQuery
@@ -19640,6 +19688,12 @@ The conversation was not found for this account and app.
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Name for the copied app | No |
 
+#### CopyRoleParam
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| copy_member | boolean, <br>**Default:** true |  | No |
+
 #### CrawlFailedError
 
 {message}
@@ -22748,6 +22802,13 @@ The member is not in the workspace.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | MemberNotInTenantError |  | The member is not in the workspace. |  |
+
+#### MemberRoleSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### MemberRoleUpdatePayload
 
@@ -29324,6 +29385,16 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 | reverse | boolean |  | No |
+
+#### _RoleUpsertRequest
+
+Accepts the payload sent by the Create/Edit Role dialog.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ], <br>**Default:**  |  | No |
 
 ## FastOpenAPI Preview (OpenAPI 3.1)
 
