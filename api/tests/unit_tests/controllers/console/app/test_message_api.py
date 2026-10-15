@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
@@ -100,10 +99,8 @@ def test_app_message_routes_pass_injected_session(
     app_model = _app()
     message_id = "550e8400-e29b-41d4-a716-446655440000"
     list_messages = MagicMock(return_value={"data": []})
-    update_feedback = MagicMock(return_value={"result": "success"})
     get_message_detail = MagicMock(return_value={"id": message_id})
     monkeypatch.setattr(message_module, "_list_chat_messages", list_messages)
-    monkeypatch.setattr(message_module, "_update_message_feedback", update_feedback)
     monkeypatch.setattr(message_module, "_get_message_detail", get_message_detail)
 
     assert unwrap(message_module.ChatMessageListApi.get)(
@@ -113,57 +110,12 @@ def test_app_message_routes_pass_injected_session(
         current_user,
         app_model,
     ) == {"data": []}
-    assert unwrap(message_module.MessageFeedbackApi.post)(
-        message_module.MessageFeedbackApi(),
-        message_module.MessageFeedbackPayload(message_id=message_id, rating="like"),
-        session,
-        current_user,
-        app_model,
-    ) == {"result": "success"}
     assert unwrap(message_module.MessageApi.get)(message_module.MessageApi(), session, app_model, message_id) == {
         "id": message_id
     }
 
     assert list_messages.call_args.kwargs["session"] is session
-    assert update_feedback.call_args.kwargs["session"] is session
     assert get_message_detail.call_args.kwargs["session"] is session
-
-
-def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_session: Session) -> None:
-    message_id = "550e8400-e29b-41d4-a716-446655440000"
-    message = _persist_message(sqlite_session, message_id=message_id)
-    feedback = MessageFeedback(
-        app_id=message.app_id,
-        conversation_id=message.conversation_id,
-        message_id=message.id,
-        rating=FeedbackRating.DISLIKE,
-        from_source=FeedbackFromSource.ADMIN,
-        from_account_id="account-1",
-    )
-    sqlite_session.add(feedback)
-    sqlite_session.commit()
-    session = sqlite_session
-    commits: list[str] = []
-    event.listen(session, "after_commit", lambda _session: commits.append("commit"))
-
-    with app.test_request_context(json={"message_id": message_id, "rating": "like", "content": "helpful"}):
-        result = message_module._update_message_feedback(
-            args=message_module.MessageFeedbackPayload(
-                message_id=message_id,
-                rating="like",
-                content="helpful",
-            ),
-            session=session,
-            current_user=_account(),
-            app_model=_app(),
-        )
-
-    assert result == {"result": "success"}
-    updated_feedback = sqlite_session.get(MessageFeedback, feedback.id)
-    assert updated_feedback is not None
-    assert updated_feedback.rating == FeedbackRating.LIKE
-    assert updated_feedback.content == "helpful"
-    assert commits == ["commit"]
 
 
 def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:

@@ -21,6 +21,7 @@ import {
   zInspectorUnavailableError,
   zInvalidComposerConfigError,
   zMaxKeysExceededError,
+  zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
   zNoActiveBindingError,
   zNoAudioUploadedError,
@@ -1028,7 +1029,11 @@ export const post14 = oc
     z.object({ body: zPostAgentByAgentIdFeedbacksBody, params: zPostAgentByAgentIdFeedbacksPath }),
   )
   .output(zPostAgentByAgentIdFeedbacksResponse)
-  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
   post: post14,

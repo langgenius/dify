@@ -547,8 +547,9 @@ Submit feedback (like/dislike) for a specific message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1563,6 +1564,14 @@ The upload token is malformed.
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
 | rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+
+#### MessageFeedbackRatingRequiredError
+
+A rating is required when there is no existing feedback to remove.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageFeedbackRatingRequiredError |  | A rating is required when there is no existing feedback to remove. |  |
 
 #### MessageFile
 

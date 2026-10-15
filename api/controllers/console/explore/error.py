@@ -79,12 +79,6 @@ class MessageCursorNotFoundHTTPError(InstalledAppHTTPError):
     code = HTTPStatus.NOT_FOUND
 
 
-class MessageFeedbackRatingRequiredHTTPError(InstalledAppHTTPError):
-    error_code = "message_feedback_rating_required"
-    description = "A rating is required when there is no existing feedback to remove."
-    code = HTTPStatus.BAD_REQUEST
-
-
 class NotCompletionAppError(BaseHTTPException):
     error_code = "not_completion_app"
     description = "Not Completion App"

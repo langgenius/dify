@@ -107,8 +107,9 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
+| 400 | `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
@@ -133,9 +134,9 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad request - invalid feedback payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3901,6 +3902,14 @@ The metadata content is incorrect. Please check and verify.
 | content | string | Optional text feedback providing additional detail. | No |
 | rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | Yes |
+
+#### MessageFeedbackRatingRequiredError
+
+A rating is required when there is no existing feedback to remove.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageFeedbackRatingRequiredError |  | A rating is required when there is no existing feedback to remove. |  |
 
 #### MessageFile
 

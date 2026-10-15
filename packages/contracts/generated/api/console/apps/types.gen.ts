@@ -638,6 +638,11 @@ export type MessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
 export type AppIconPayload = {
   icon?: string | null
   icon_background?: string | null
@@ -6193,6 +6198,8 @@ export type PostAppsByAppIdFeedbacksData = {
 }
 
 export type PostAppsByAppIdFeedbacksErrors = {
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
+  403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }

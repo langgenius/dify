@@ -1720,6 +1720,18 @@ export const zMessageFeedbackPayloadWithUser = z.object({
 })
 
 /**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * MessageFile
  */
 export const zMessageFile = z.object({

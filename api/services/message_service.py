@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select
@@ -7,12 +6,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
-from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
     EndUser,
     Message,
-    MessageFeedback,
 )
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
@@ -24,8 +21,6 @@ from services.errors.message import (
     LastMessageNotExistsError,
     MessageNotExistsError,
 )
-
-logger = logging.getLogger(__name__)
 
 
 def _create_execution_extra_content_repository() -> ExecutionExtraContentRepository:
@@ -160,107 +155,6 @@ class MessageService:
             history_messages = history_messages[:-1]
 
         return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
-
-    @classmethod
-    def create_feedback(
-        cls,
-        *,
-        app_model: App,
-        message_id: str,
-        user: Account | EndUser | None,
-        rating: FeedbackRating | None,
-        content: str | None,
-        session: Session,
-    ):
-        if not user:
-            raise ValueError("user cannot be None")
-
-        message = cls.get_message(app_model=app_model, user=user, message_id=message_id, session=session)
-
-        feedback = (
-            message.user_feedback_with_session(session=session)
-            if isinstance(user, EndUser)
-            else message.admin_feedback_with_session(session=session)
-        )
-
-        if not rating and feedback:
-            session.delete(feedback)
-        elif rating and feedback:
-            feedback.rating = rating
-            feedback.content = content
-        elif not rating and not feedback:
-            raise ValueError("rating cannot be None when feedback not exists")
-        else:
-            assert rating is not None
-            feedback = MessageFeedback(
-                app_id=app_model.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                rating=rating,
-                content=content,
-                from_source=(FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN),
-                from_end_user_id=(user.id if isinstance(user, EndUser) else None),
-                from_account_id=(user.id if isinstance(user, Account) else None),
-            )
-            session.add(feedback)
-
-        session.commit()
-        if rating:
-            cls._emit_feedback_telemetry(
-                app_model=app_model, message=message, user=user, rating=rating, content=content
-            )
-
-        return feedback
-
-    @classmethod
-    def _emit_feedback_telemetry(
-        cls,
-        *,
-        app_model: App,
-        message: Message,
-        user: Account | EndUser,
-        rating: FeedbackRating | None,
-        content: str | None,
-    ) -> None:
-        try:
-            from core.telemetry import FeedbackCreatedEvent, TelemetryContext, emit
-
-            if message.id is None:
-                return
-
-            emit(
-                FeedbackCreatedEvent(
-                    context=TelemetryContext(tenant_id=app_model.tenant_id),
-                    payload={
-                        "message_id": message.id,
-                        "app_id": app_model.id,
-                        "conversation_id": message.conversation_id,
-                        "from_end_user_id": user.id if isinstance(user, EndUser) else None,
-                        "from_account_id": user.id if isinstance(user, Account) else None,
-                        "rating": rating.value if rating else None,
-                        "from_source": (
-                            FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN
-                        ).value,
-                        "content": content,
-                    },
-                )
-            )
-        except Exception:
-            logger.warning("Failed to emit feedback_created telemetry", exc_info=True)
-
-    @classmethod
-    def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int, *, session: Session):
-        """Get all feedbacks of an app"""
-        offset = (page - 1) * limit
-        feedbacks = session.scalars(
-            select(MessageFeedback)
-            .where(MessageFeedback.app_id == app_model.id)
-            .order_by(MessageFeedback.created_at.desc(), MessageFeedback.id.desc())
-            .limit(limit)
-            .offset(offset)
-        ).all()
-
-        return [record.to_dict() for record in feedbacks]
 
     @classmethod
     def get_message(cls, app_model: App, user: Account | EndUser | None, message_id: str, *, session: Session):
