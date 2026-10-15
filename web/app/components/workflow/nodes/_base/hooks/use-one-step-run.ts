@@ -990,7 +990,7 @@ const useOneStepRun = <T>({
               trackEvent('workflow_run_failed', {
                 workflow_id: flowId,
                 node_id: id,
-                reason: res.error,
+                reason: message,
                 node_type: data?.type,
               })
             },

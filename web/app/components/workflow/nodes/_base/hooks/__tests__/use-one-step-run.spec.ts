@@ -1,11 +1,20 @@
 import { ORPCError } from '@orpc/client'
-import { act, renderHook } from '@testing-library/react'
-import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { trackEvent } from '@/app/components/base/amplitude'
+import {
+  BlockEnum,
+  InputVarType,
+  NodeRunningStatus,
+  VarType,
+} from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Mock the request boundary while preserving the single-run error owner.
-import { post } from '@/service/base'
+import { post, ssePost } from '@/service/base'
+import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 import useOneStepRun from '../use-one-step-run'
+
+const mockUpdateNode = vi.hoisted(() => vi.fn())
 
 const mockWorkflowState = {
   conversationVariables: [],
@@ -36,7 +45,7 @@ vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
   return {
     ...actual,
     useNodeDataUpdate: () => ({
-      handleNodeDataUpdate: vi.fn(),
+      handleNodeDataUpdate: mockUpdateNode,
     }),
   }
 })
@@ -263,4 +272,44 @@ describe('useOneStepRun single-run input vars', () => {
     expect(reportError).toHaveBeenCalledWith(error)
     expect(reportError.mock.calls[0]?.[0]).toBe(error)
   })
+  it('reports an inspector refresh failure and stops its running state', async () => {
+    vi.mocked(singleNodeRun).mockResolvedValue({ status: NodeRunningStatus.Succeeded } as Awaited<
+      ReturnType<typeof singleNodeRun>
+    >)
+    vi.mocked(fetchNodeInspectVars).mockRejectedValueOnce(new Error('Inspector refresh failed'))
+    const { result } = renderUseOneStepRun()
+    await act(async () => {
+      await result.current.handleRun({})
+    })
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Inspector refresh failed'),
+    )
+    expect(result.current.runResult).toBeNull()
+  })
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'reports a %s stream error and marks the node failed',
+    async (type) => {
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls.at(-1)?.[2]
+      expect(callbacks?.onError).toBeDefined()
+      await act(async () => {
+        callbacks!.onError!('Stream disconnected')
+      })
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Stream disconnected')
+      expect(mockUpdateNode).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ _singleRunningStatus: NodeRunningStatus.Failed }),
+        }),
+      )
+      if (type === BlockEnum.Loop)
+        expect(trackEvent).toHaveBeenCalledWith(
+          'workflow_run_failed',
+          expect.objectContaining({ reason: 'Stream disconnected' }),
+        )
+    },
+  )
 })
