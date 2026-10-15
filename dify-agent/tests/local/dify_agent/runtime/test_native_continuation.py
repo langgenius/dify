@@ -5,23 +5,22 @@ from types import ModuleType
 
 import httpx
 import pytest
-from pydantic_ai import Agent, DeferredToolRequests, DeferredToolResults, ToolApproved
-from pydantic_ai.capabilities import AbstractCapability
-from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
-from pydantic_ai.models.function import FunctionModel
-
 from dify_agent.protocol.native_testing import AgentEffectIntent, AgentNativeTestRef, AgentOperationKey
-from dify_agent.protocol.schemas import CreateRunRequest, RUN_EVENT_ADAPTER
+from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, CreateRunRequest
 from dify_agent.runtime.context import Deps, Services
 from dify_agent.runtime.native_continuation import (
     AgentCheckpoint,
     AgentPendingCall,
-    NativeContinuation,
     NativeApprovalSuspended,
+    NativeContinuation,
     NativePolicyStopped,
     defer_native_call,
     validate_deferred_results,
 )
+from pydantic_ai import Agent, DeferredToolRequests, DeferredToolResults, ToolApproved
+from pydantic_ai.capabilities import AbstractCapability
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+from pydantic_ai.models.function import FunctionModel
 
 REF = AgentNativeTestRef(
     policy_version="builder-native-test-v1",
@@ -137,9 +136,9 @@ def test_denied_or_changed_native_arguments_never_become_model_feedback():
 
 
 def test_direct_runner_rejects_marked_test_before_module_loading():
-    from dify_agent.runtime.runner import AgentRunRunner
-    from dify_agent.runtime.event_sink import InMemoryRunEventSink
     from dify_agent.protocol.native_testing import NativeTestProtocolUnsupported
+    from dify_agent.runtime.event_sink import InMemoryRunEventSink
+    from dify_agent.runtime.runner import AgentRunRunner
 
     async def exercise():
         async with httpx.AsyncClient() as client:
@@ -161,8 +160,8 @@ def test_direct_runner_rejects_marked_test_before_module_loading():
 
 
 def test_scheduler_rejects_native_before_persistence():
-    from dify_agent.runtime.run_scheduler import RunScheduler
     from dify_agent.protocol.native_testing import NativeTestProtocolUnsupported
+    from dify_agent.runtime.run_scheduler import RunScheduler
 
     class NoCallsStore:
         async def create_run(self):
@@ -185,14 +184,50 @@ def test_scheduler_rejects_native_before_persistence():
 
 @pytest.mark.parametrize("stage", ["tool", "model"])
 def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_resumable(monkeypatch, stage):
+    from dify_agent.layers.dify_plugin import llm_layer
+    from dify_agent.protocol.native_testing import NativeTestCapabilities
+    from dify_agent.runtime.event_sink import InMemoryRunEventSink
+    from dify_agent.runtime.modules import REGISTRY
+    from dify_agent.runtime.native_effects import (
+        NativeEffectDispatcher,
+        NativeEffectsCapability,
+        NativeEffectSession,
+        NativeToolBoundary,
+    )
+    from dify_agent.runtime.runner import AgentRunRunner
     from pydantic import BaseModel
     from pydantic_ai.models.function import DeltaToolCall
     from pydantic_ai.toolsets import FunctionToolset
-    from dify_agent.layers.dify_plugin import llm_layer
-    from dify_agent.runtime.event_sink import InMemoryRunEventSink
-    from dify_agent.runtime.modules import REGISTRY
-    from dify_agent.runtime.runner import AgentRunRunner
-    from dify_agent.protocol.native_testing import NativeTestCapabilities
+
+    async def arguments(args):
+        return args
+
+    def effect_gate(state, *, suspend_model=False):
+        class Policy:
+            async def before_call(self, **kwargs):
+                from dify_agent.protocol.native_testing import AgentApprovalWait
+
+                return AgentApprovalWait(pending_operation_id="pending-1")
+
+        async def prepare(**kwargs):
+            return pending().intent.model_copy(
+                update={"key": kwargs["key"], "target": kwargs["target"], "parameters": kwargs["parameters"]}
+            )
+
+        class Gate(NativeEffectsCapability):
+            async def before_model_request(self, ctx, request_context):
+                if suspend_model:
+                    raise NativeApprovalSuspended(pending("configuration", "model"))
+                return request_context
+
+        return Gate(
+            NativeEffectSession(
+                continuation=state,
+                dispatcher=NativeEffectDispatcher(policy=Policy()),
+                result_store=None,
+                prepare_intent=prepare,
+            )
+        )
 
     class Config(BaseModel):
         pass
@@ -200,16 +235,11 @@ def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_r
     class Tools(FunctionToolset):
         def __init__(self, name):
             super().__init__()
-            self.add_function(lambda values: "unexpected effect", name="write")
-
-    class Gate(AbstractCapability):
-        async def before_model_request(self, ctx, request_context):
-            if stage == "model":
-                raise NativeApprovalSuspended(pending("configuration", "model"))
-            return request_context
-
-        async def before_tool_execute(self, ctx, *, call, tool_def, args):
-            defer_native_call(pending())
+            self.add_function(
+                lambda values: "unexpected effect",
+                name="write",
+                metadata={"native_effect": NativeToolBoundary("tool", {"provider": "test"}, arguments)},
+            )
 
     async def stream(messages, info):
         yield {
@@ -257,7 +287,7 @@ def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_r
                         return await super().persist_waiting(**kwargs)
 
                 state = continuation()
-                state.capabilities = [Gate()]
+                state.capabilities = [effect_gate(state, suspend_model=stage == "model")]
                 sink = Sink()
                 runner = AgentRunRunner(
                     sink=sink,
@@ -302,6 +332,7 @@ def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_r
                         resumed_state.generation = 1
                         resumed_state.history = cp.history
                         resumed_state.session_snapshot = cp.session_snapshot
+                        resumed_state.capabilities = [effect_gate(resumed_state)]
                         resumed_sink = InMemoryRunEventSink()
                         resumed = AgentRunRunner(
                             sink=resumed_sink,
@@ -320,7 +351,7 @@ def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_r
 
 
 def test_scheduler_restores_only_matching_pinned_snapshot_before_scheduling():
-    from dify_agent.protocol.native_testing import ContinueRunRequest, ContinuationClaim, NativeTestCapabilities
+    from dify_agent.protocol.native_testing import ContinuationClaim, ContinueRunRequest, NativeTestCapabilities
     from dify_agent.runtime.native_continuation import NativeContinuationConflict, PreparedContinuation
     from dify_agent.runtime.run_scheduler import RunScheduler
     from dify_agent.server.schemas import RunRecord
@@ -374,7 +405,7 @@ def test_scheduler_restores_only_matching_pinned_snapshot_before_scheduling():
 @pytest.mark.parametrize("finishing_wait", [False, True])
 def test_scheduler_resume_keeps_run_and_claim_after_lost_acknowledgement(finishing_wait):
     """Scheduler wiring only: real Redis atomicity is covered in CI store tests."""
-    from dify_agent.protocol.native_testing import ContinueRunRequest, ContinuationClaim, NativeTestCapabilities
+    from dify_agent.protocol.native_testing import ContinuationClaim, ContinueRunRequest, NativeTestCapabilities
     from dify_agent.runtime.native_continuation import PreparedContinuation
     from dify_agent.runtime.run_scheduler import RunScheduler
     from dify_agent.server.schemas import RunRecord
@@ -467,7 +498,7 @@ def test_scheduler_resume_keeps_run_and_claim_after_lost_acknowledgement(finishi
 
 
 def test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback():
-    from dify_agent.protocol.native_testing import ContinueRunRequest, ContinuationClaim, NativeTestCapabilities
+    from dify_agent.protocol.native_testing import ContinuationClaim, ContinueRunRequest, NativeTestCapabilities
     from dify_agent.runtime.run_scheduler import RunScheduler
 
     cp = continuation().capture_wait(NativeApprovalSuspended(pending()))
@@ -537,7 +568,7 @@ def test_continuation_cannot_relabel_pending_approval_as_external_result():
 
 def test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdown():
     """Local scheduling race only; Redis CAS atomicity remains a separate CI test."""
-    from dify_agent.protocol.native_testing import ContinueRunRequest, ContinuationClaim, NativeTestCapabilities
+    from dify_agent.protocol.native_testing import ContinuationClaim, ContinueRunRequest, NativeTestCapabilities
     from dify_agent.runtime.event_sink import RunFinalizationResult
     from dify_agent.runtime.native_continuation import PreparedContinuation
     from dify_agent.runtime.run_scheduler import RunScheduler

@@ -12,13 +12,13 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, TypedDict
 
 import httpx
-from pydantic import JsonValue
-
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLease
+from pydantic import JsonValue
 
 if TYPE_CHECKING:
     from dify_agent.layers.shell.layer import ShellSession
+    from dify_agent.runtime.native_effects import NativeEffectSession
 
 
 class LayerData(TypedDict):
@@ -54,3 +54,4 @@ class Deps:
     services: Services
     run_id: str
     resources: RunResources = field(default_factory=RunResources)
+    native_effects: NativeEffectSession | None = None

@@ -12,15 +12,13 @@ import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from itertools import count
-from typing import NoReturn, Protocol, cast
+from typing import TYPE_CHECKING, NoReturn, Protocol, cast, override
 from uuid import NAMESPACE_URL, uuid5
 
 import httpx
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from pydantic import BaseModel
-from typing_extensions import override
-
+from pydantic import BaseModel, JsonValue, TypeAdapter
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.providers import Provider
 
@@ -30,6 +28,10 @@ from dify_agent.plugin_daemon_transport import (
     to_plugin_daemon_jsonable,
     unwrap_plugin_daemon_error,
 )
+from dify_agent.runtime.native_continuation import NativePolicyStopped
+
+if TYPE_CHECKING:
+    from dify_agent.runtime.native_effects import NativeEffectSession
 
 
 class DifyLLMClient(Protocol):
@@ -66,12 +68,81 @@ class DifyApiLLMClient:
     execution_context: DifyExecutionContextLayerConfig
     agent_run_id: str
     http_client: httpx.AsyncClient = field(repr=False)
+    native_effects: NativeEffectSession | None = field(default=None, repr=False)
     _call_counter: count[int] = field(default_factory=lambda: count(1), init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.inner_api_url = self.inner_api_url.rstrip("/")
 
     async def iter_llm_result_chunks(
+        self,
+        *,
+        provider: str,
+        model: str,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, object],
+        tools: list[PromptMessageTool] | None,
+        stop: list[str] | None,
+        stream: bool,
+    ) -> AsyncIterator[LLMResultChunk]:
+        arguments = {
+            "provider": provider,
+            "model": model,
+            "prompt_messages": prompt_messages,
+            "model_parameters": model_parameters,
+            "tools": tools,
+            "stop": stop,
+            "stream": stream,
+        }
+        if self.native_effects is None:
+            async for chunk in self._iter_llm_result_chunks(**arguments):
+                yield chunk
+            return
+        # The existing API gateway always invokes a stream, including requests
+        # from a non-streaming consumer. Freeze that actual effective argument.
+        arguments["stream"] = True
+
+        async def invoke(_permit) -> JsonValue:
+            chunks: list[JsonValue] = []
+            size = 0
+            async for chunk in self._iter_llm_result_chunks(**arguments):
+                value = chunk.model_dump(mode="json")
+                size += len(json.dumps(value, ensure_ascii=False).encode())
+                if size > 1024 * 1024:
+                    raise NativePolicyStopped("native_model_result_too_large")
+                chunks.append(TypeAdapter(JsonValue).validate_python(value))
+            return chunks
+
+        state = self.native_effects.continuation
+        result = await self.native_effects.stage(
+            boundary="model",
+            call_id=f"model-{state.operation_cursor}",
+            target={
+                "plugin_id": self.plugin_id,
+                "provider": provider if provider.count("/") == 2 else f"{self.plugin_id}/{provider}",
+                "model": model,
+            },
+            parameters=TypeAdapter(JsonValue).validate_python(
+                to_plugin_daemon_jsonable(
+                    {
+                        "prompt_messages": prompt_messages,
+                        "model_parameters": model_parameters,
+                        "tools": tools,
+                        "stop": stop,
+                        "stream": True,
+                    }
+                )
+            ),
+            stage="model",
+            invoke=invoke,
+        )
+        if not isinstance(result, list):
+            raise UnexpectedModelBehavior("Invalid protected model result")
+        state.operation_cursor += 1
+        for chunk in result:
+            yield LLMResultChunk.model_validate(chunk)
+
+    async def _iter_llm_result_chunks(
         self,
         *,
         provider: str,
@@ -120,6 +191,14 @@ class DifyApiLLMClient:
                 },
             }
         )
+        if self.native_effects is not None:
+            from dify_agent.runtime.native_effects import current_native_dispatch
+
+            envelope = current_native_dispatch()
+            if envelope is None:
+                raise NativePolicyStopped("native_tool_permit_missing")
+            payload = TypeAdapter(dict[str, JsonValue]).validate_python(payload)
+            payload["native_dispatch"] = envelope.wire()
         url = f"{self.inner_api_url}/inner/api/agent/llm/invoke"
         headers = {
             "X-Inner-Api-Key": self.inner_api_key,
@@ -129,6 +208,8 @@ class DifyApiLLMClient:
         try:
             async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.is_error:
+                    if self.native_effects is not None:
+                        raise NativePolicyStopped("native_model_transport_unavailable")
                     body = (await response.aread()).decode("utf-8", errors="replace")
                     _raise_agent_gateway_http_error(
                         model_name=model,
@@ -178,6 +259,7 @@ class DifyApiLLMProvider(Provider[DifyLLMClient]):
     execution_context: DifyExecutionContextLayerConfig
     agent_run_id: str
     http_client: httpx.AsyncClient = field(repr=False)
+    native_effects: NativeEffectSession | None = field(default=None, repr=False)
     _client: DifyLLMClient = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -189,6 +271,7 @@ class DifyApiLLMProvider(Provider[DifyLLMClient]):
             execution_context=self.execution_context,
             agent_run_id=self.agent_run_id,
             http_client=self.http_client,
+            native_effects=self.native_effects,
         )
 
     @override

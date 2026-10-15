@@ -15,6 +15,8 @@ from controllers.inner_api.wraps import agent_inner_api_only
 from core.errors.error import QuotaExceededError
 from libs.exception import BaseHTTPException
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
 
 
@@ -51,6 +53,23 @@ class AgentLLMInvokeApi(Resource):
                 status_code=400,
             ) from exc
 
+        try:
+            claim_agent_endpoint(
+                boundary="model",
+                caller=payload.caller.model_dump(mode="json"),
+                envelope=payload.native_dispatch,
+                target={
+                    "plugin_id": "/".join(payload.target.provider.split("/")[:2]),
+                    "provider": payload.target.provider,
+                    "model": payload.target.model,
+                },
+                parameters={**payload.target.model_dump(mode="json", exclude={"provider", "model"}), "stream": True},
+                kind="model",
+            )
+        except BuilderExecutionPolicyError:
+            raise AgentLLMInvokeHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         service = AgentLLMInnerService()
         try:
             prepared = service.prepare(payload)

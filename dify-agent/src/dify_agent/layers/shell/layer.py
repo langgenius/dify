@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import json
 import logging
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import ClassVar, NotRequired, Protocol, TypedDict, override, runtime_checkable
+from typing import ClassVar, NotRequired, Protocol, Self, TypedDict, override, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
 from pydantic_ai import RunContext
@@ -15,7 +15,6 @@ from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.capabilities.abstract import WrapRunHandler
 from pydantic_ai.run import AgentRunResult
 from pydantic_ai.toolsets import FunctionToolset
-from typing_extensions import Self
 
 from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
@@ -27,12 +26,13 @@ from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
 from dify_agent.agent_stub.shell_env import build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.runtime.layer import Capability as RuntimeCapability
-from dify_agent.runtime.context import Deps
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
 from dify_agent.runtime.command_runner import execute_complete_with_commands
+from dify_agent.runtime.context import Deps
+from dify_agent.runtime.native_continuation import NativeApprovalSuspended, NativePolicyStopped
+from dify_agent.runtime.native_effects import NativeToolBoundary
 from dify_agent.runtime_backend import RuntimeLease
-
 
 logger = logging.getLogger(__name__)
 
@@ -222,28 +222,34 @@ class Capability(AbstractCapability[Deps]):
     def get_toolset(self) -> FunctionToolset[Deps]:
         toolset = FunctionToolset[Deps](id=self.name, sequential=True)
 
-        @toolset.tool(name="shell_run")
+        async def native_arguments(arguments):
+            return arguments
+
+        def metadata(boundary):
+            return {"native_effect": NativeToolBoundary(boundary, {"shell": self.name}, native_arguments)}
+
+        @toolset.tool(name="shell_run", metadata=metadata("shell_run"))
         async def shell_run(
             ctx: RunContext[Deps], script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
         ) -> ShellRunToolResult:
             """Start a shell job and return its output and status."""
             return await ctx.deps.resources.shells[self.name]._tool_run(script, timeout)
 
-        @toolset.tool(name="shell_wait")
+        @toolset.tool(name="shell_wait", metadata=metadata("shell_wait"))
         async def shell_wait(
             ctx: RunContext[Deps], job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
         ) -> ShellRunToolResult:
             """Wait for output or completion from an existing shell job."""
             return await ctx.deps.resources.shells[self.name]._tool_wait(job_id, timeout)
 
-        @toolset.tool(name="shell_input")
+        @toolset.tool(name="shell_input", metadata=metadata("shell_input"))
         async def shell_input(
             ctx: RunContext[Deps], job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS
         ) -> ShellRunToolResult:
             """Send stdin to a shell job and wait for its next output."""
             return await ctx.deps.resources.shells[self.name]._tool_input(job_id, text, timeout)
 
-        @toolset.tool(name="shell_interrupt")
+        @toolset.tool(name="shell_interrupt", metadata=metadata("shell_interrupt"))
         async def shell_interrupt(
             ctx: RunContext[Deps], job_id: str, grace_seconds: float = DEFAULT_TERMINATE_GRACE_SECONDS
         ) -> ShellInterruptToolResult:
@@ -261,10 +267,26 @@ class Capability(AbstractCapability[Deps]):
             if not state.initialized:
                 script = _workspace_bootstrap_script(session.config)
                 if script:
-                    result = await session._run_internal_script_complete(script, cwd=session._require_workspace_cwd())
-                    if result.exit_code != 0 or not result.output_complete:
-                        raise RuntimeError(
-                            f"Failed to bootstrap shell workspace: {result.status} exit_code={result.exit_code}"
+
+                    async def bootstrap(_permit):
+                        result = await session._run_internal_script_complete(
+                            script, cwd=session._require_workspace_cwd()
+                        )
+                        if result.exit_code != 0 or not result.output_complete:
+                            raise RuntimeError(
+                                f"Failed to bootstrap shell workspace: {result.status} exit_code={result.exit_code}"
+                            )
+
+                    if ctx.deps.native_effects is None:
+                        await bootstrap(None)
+                    else:
+                        await ctx.deps.native_effects.stage(
+                            boundary="bootstrap",
+                            call_id=self.name,
+                            target={"shell": self.name, "runtime": session.config.runtime},
+                            parameters={"script": script},
+                            stage="bootstrap",
+                            invoke=bootstrap,
                         )
                 state.initialized = True
                 session.save_state(state)
@@ -350,6 +372,8 @@ class ShellSession:
                 ),
                 self._redact_output(observation.text, sensitive_values=(agent_stub_token,)),
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc)
         except Exception as exc:
@@ -384,6 +408,8 @@ class ShellSession:
                 ),
                 redacted_output,
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
@@ -418,6 +444,8 @@ class ShellSession:
                 ),
                 redacted_output,
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
@@ -442,6 +470,8 @@ class ShellSession:
                 # best-effort metadata enrichment and must not turn the interrupt
                 # into a failed tool result.
                 output_path = (await self._require_resource().commands.tail(job_id)).output_path
+            except (NativeApprovalSuspended, NativePolicyStopped):
+                raise
             except (RuntimeError, ValueError) as exc:
                 logger.warning(
                     "Failed to fetch output path for interrupted shell job %s: %s",
@@ -463,6 +493,8 @@ class ShellSession:
                 ),
                 "Job was interrupted.",
             )
+        except (NativeApprovalSuspended, NativePolicyStopped):
+            raise
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
@@ -548,6 +580,8 @@ class ShellSession:
         self.save_state(state)
 
     async def _delete_tracked_jobs_best_effort(self, job_ids: Sequence[str]) -> None:
+        if not job_ids:
+            return
         commands = self._require_resource().commands
         for job_id in _deduplicate_preserving_order(job_ids):
             try:
@@ -762,12 +796,12 @@ def _tagged_shell_observation(metadata: dict[str, object], output: str) -> str:
 
 
 __all__ = [
-    "Config",
-    "State",
-    "Capability",
-    "ShellSession",
-    "CompleteRemoteCommandResult",
     "DEFAULT_TERMINATE_GRACE_SECONDS",
     "DEFAULT_TIMEOUT_SECONDS",
+    "Capability",
+    "CompleteRemoteCommandResult",
+    "Config",
+    "ShellSession",
+    "State",
     "render_prompt_observation_from_result",
 ]

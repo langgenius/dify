@@ -97,6 +97,7 @@ class WorkflowAgentDifyToolLayersBuilder(Protocol):
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        native_test_required: bool = False,
     ) -> WorkflowAgentToolLayers: ...
 
 
@@ -174,6 +175,7 @@ class WorkflowAgentDifyToolsBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        native_test_required: bool = False,
     ) -> WorkflowAgentToolLayers:
         """Resolve user-selected Dify tools into direct/core Agent backend DTOs.
 
@@ -182,6 +184,17 @@ class WorkflowAgentDifyToolsBuilder:
         be threaded through to `ToolManager` so credential quotas, rate limits,
         and audit tags match the actual call site.
         """
+        if native_test_required:
+            from services.dify_builder.native_testing.agent_tool_declarations import AgentToolDeclarationService
+
+            if user_id is None:
+                raise WorkflowAgentDifyToolsBuildError(
+                    "agent_tool_owner_missing", "Native tool declarations require an actor."
+                )
+            prepared = AgentToolDeclarationService().prepare(
+                tenant_id=tenant_id, actor_id=user_id, app_id=app_id, tools=tools
+            )
+            return WorkflowAgentToolLayers(plugin_tools=prepared.plugin_tools, core_tools=prepared.core_tools)
         enabled_tools = [tool for tool in tools.dify_tools if tool.enabled]
         if not enabled_tools:
             return WorkflowAgentToolLayers()

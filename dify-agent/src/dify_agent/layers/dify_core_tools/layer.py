@@ -13,13 +13,11 @@ from copy import deepcopy
 from dataclasses import replace
 from typing import cast, override
 
-from pydantic import JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.tools import ToolDefinition
-
-from pydantic import BaseModel, ConfigDict
 from pydantic_ai.toolsets import FunctionToolset
-from dify_agent.runtime.context import Deps
+
 from dify_agent.layers.dify_core_tools.client import (
     DifyCoreToolsClient,
     DifyCoreToolsClientConfigurationError,
@@ -29,8 +27,11 @@ from dify_agent.layers.dify_core_tools.configs import (
     DifyCoreToolConfig,
     DifyCoreToolsLayerConfig,
 )
+from dify_agent.layers.dify_plugin.tools_layer import _prepare_tool_arguments, _require_native_file_dependencies
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-
+from dify_agent.runtime.context import Deps
+from dify_agent.runtime.native_continuation import NativePolicyStopped
+from dify_agent.runtime.native_effects import NativeToolBoundary
 
 CORE_TOOL_STRICT = False
 TEMPORARY_UNAVAILABLE_OBSERVATION = "Tool is temporarily unavailable. Please continue without it if possible."
@@ -85,7 +86,18 @@ class Toolset(FunctionToolset[Deps]):
         tool_description = tool_config.description or tool_name
         tool_schema = deepcopy(tool_config.parameters_json_schema)
 
+        async def native_arguments(arguments: dict[str, object]) -> dict[str, JsonValue]:
+            # File references stay canonical; the API owner materializes them only
+            # after validating this same invocation's permit.
+            prepared = await _prepare_tool_arguments(
+                tool_config.parameters, tool_config, arguments, file_context=None, materialize_files=False
+            )
+            _require_native_file_dependencies(tool_config.parameters, prepared)
+            return TypeAdapter(dict[str, JsonValue]).validate_python(prepared)
+
         async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
+            if _ctx.deps.native_effects is not None:
+                raise NativePolicyStopped("native_dispatch_fence_unavailable")
             try:
                 response = await client.invoke(
                     execution_context=execution_context,
@@ -107,6 +119,17 @@ class Toolset(FunctionToolset[Deps]):
             name=tool_name,
             description=tool_description,
             prepare=prepare_tool_definition,
+            metadata={
+                "native_effect": NativeToolBoundary(
+                    boundary="core_tool",
+                    target={
+                        "provider_type": tool_config.provider_type,
+                        "provider_id": tool_config.provider_id,
+                        "tool_name": tool_config.tool_name,
+                    },
+                    prepare_arguments=native_arguments,
+                )
+            },
         )
 
 

@@ -33,6 +33,7 @@ class Capability(AbstractCapability[Deps]):
             execution_context=ExecutionContextConfig.model_validate(deps.layers[config.execution_context]["config"]),
             agent_run_id=deps.run_id,
             http_client=deps.services.dify_api_http_client,
+            native_effects=deps.native_effects,
         )
         return DifyLLMAdapterModel(
             model=config.model,

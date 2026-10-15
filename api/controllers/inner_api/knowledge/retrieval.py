@@ -17,6 +17,8 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
 from libs.exception import BaseHTTPException
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveResponse
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError, InnerKnowledgeRetrievalServiceError
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
@@ -84,7 +86,20 @@ class InnerKnowledgeRetrieveApi(Resource):
             ) from exc
 
         try:
+            claim_agent_endpoint(
+                boundary="knowledge",
+                caller=payload.caller.model_dump(mode="json"),
+                envelope=payload.native_dispatch,
+                target={"dataset_ids": payload.dataset_ids},
+                parameters=payload.model_dump(mode="json", exclude={"caller", "native_dispatch"}),
+                kind="knowledge",
+                physical_owner_ready=False,
+            )
             response = InnerKnowledgeRetrievalService().retrieve(payload, session=session)
+        except BuilderExecutionPolicyError:
+            raise InnerKnowledgeRetrievalHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         except InnerKnowledgeRetrievalServiceError as exc:
             raise InnerKnowledgeRetrievalHttpError(
                 error_code=exc.error_code,

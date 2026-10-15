@@ -14,6 +14,7 @@ from typing import ClassVar
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
+from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
 from dify_agent.layers.knowledge.configs import (
     DifyKnowledgeMetadataFilteringConfig,
     DifyKnowledgeRetrievalConfig,
@@ -53,6 +54,7 @@ class _DifyKnowledgeCaller(BaseModel):
 
 class _DifyKnowledgeRetrieveRequest(BaseModel):
     caller: _DifyKnowledgeCaller
+    native_dispatch: AgentPhysicalDispatchPayload | None = None
     dataset_ids: list[str]
     query: str
     retrieval: dict[str, JsonValue]
@@ -122,7 +124,13 @@ class DifyKnowledgeBaseClient:
                 are marked retryable because the model may continue gracefully in
                 those temporary-unavailable cases.
         """
+        from dify_agent.runtime.native_effects import current_native_dispatch
+
+        envelope = current_native_dispatch()
         request_payload = _DifyKnowledgeRetrieveRequest(
+            native_dispatch=AgentPhysicalDispatchPayload.model_validate(envelope.wire())
+            if envelope is not None
+            else None,
             caller=_DifyKnowledgeCaller(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -143,7 +151,9 @@ class DifyKnowledgeBaseClient:
                     "X-Inner-Api-Key": self.api_key,
                     "Content-Type": "application/json",
                 },
-                json=request_payload.model_dump(mode="json", by_alias=True),
+                json=request_payload.model_dump(
+                    mode="json", by_alias=True, exclude={"native_dispatch"} if envelope is None else None
+                ),
             )
         except (httpx.InvalidURL, httpx.UnsupportedProtocol) as exc:
             raise DifyKnowledgeBaseClientError(

@@ -10,6 +10,8 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import agent_inner_api_only
 from libs.exception import BaseHTTPException
 from services.agent_tool_inner_service import AgentToolInnerService
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.agent_bridge import claim_agent_endpoint
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 
@@ -59,7 +61,24 @@ class AgentToolInvokeApi(Resource):
             ) from exc
 
         try:
+            claim_agent_endpoint(
+                boundary="core_tool",
+                caller=payload.caller.model_dump(mode="json"),
+                envelope=payload.native_dispatch,
+                target={
+                    "provider_type": payload.tool.provider_type,
+                    "provider_id": payload.tool.provider_id,
+                    "tool_name": payload.tool.tool_name,
+                },
+                parameters={**payload.tool.runtime_parameters, **payload.tool.tool_parameters},
+                kind="tool",
+                physical_owner_ready=False,
+            )
             response = AgentToolInnerService().invoke(session=session, request=payload)
+        except BuilderExecutionPolicyError:
+            raise AgentToolInvokeHttpError(
+                error_code="native_agent_control_refused", description="Native Agent dispatch refused.", status_code=409
+            ) from None
         except AgentToolInnerServiceError as exc:
             raise AgentToolInvokeHttpError(
                 error_code=exc.error_code,

@@ -11,19 +11,20 @@ import shlex
 from dataclasses import dataclass
 from typing import override
 
-
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.capabilities.abstract import WrapRunHandler
 from pydantic_ai.run import AgentRunResult
-from dify_agent.runtime.context import Deps
+
 from dify_agent.layers._agent_cli_help import render_agent_stub_cli_help
 from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
     DifyConfigLayerConfig,
     DifyConfigRuntimeState,
 )
-from dify_agent.layers.shell.layer import Capability as ShellCapability, ShellSession
+from dify_agent.layers.shell.layer import Capability as ShellCapability
+from dify_agent.layers.shell.layer import ShellSession
+from dify_agent.runtime.context import Deps
 
 _CONFIG_CONTEXT_HEADING = "Current Agent config manifest for this run:"
 _CONFIG_CONTEXT_COMMAND = "dify-agent config manifest"
@@ -204,6 +205,25 @@ class _ConfigContext:
             self.runtime_state.pulled_file_outputs = _parse_file_pull_outputs(output, names)
 
     async def _run_mentioned_pull(self, *, script: str, target_kind: str) -> str:
+        if self.shell.deps.native_effects is not None:
+
+            async def invoke(_permit):
+                return await self._run_mentioned_pull_unchecked(script=script, target_kind=target_kind)
+
+            result = await self.shell.deps.native_effects.stage(
+                boundary="config_pull",
+                call_id=target_kind,
+                target={"kind": target_kind, "shell": self.shell.name},
+                parameters={"script": script},
+                stage="configuration",
+                invoke=invoke,
+            )
+            if not isinstance(result, str):
+                raise DifyConfigLayerError("Invalid recorded configuration pull result")
+            return result
+        return await self._run_mentioned_pull_unchecked(script=script, target_kind=target_kind)
+
+    async def _run_mentioned_pull_unchecked(self, *, script: str, target_kind: str) -> str:
         result = await self.shell.run_remote_script(
             script,
             inject_agent_stub_env=True,
@@ -290,4 +310,4 @@ def _format_command_output(command: str, output: str) -> str:
     return f"Command:\n$ {command}\nOutput:\n{output}"
 
 
-__all__ = ["Config", "State", "Capability", "DifyConfigLayerError"]
+__all__ = ["Capability", "Config", "DifyConfigLayerError", "State"]
