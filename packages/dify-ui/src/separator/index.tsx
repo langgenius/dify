@@ -3,7 +3,7 @@
 import { Separator as BaseSeparator } from '@base-ui/react/separator'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const separatorVariants = cva('shrink-0', {
   variants: {

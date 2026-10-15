@@ -41,7 +41,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
-vi.mock('../shared/api-secret-key-button', () => ({
+vi.mock('../built-in-access-points/api-secret-key-button', () => ({
   ApiSecretKeyButton: (props: { canManage: boolean; disabled?: boolean }) => {
     mocks.apiSecretKeyButtonProps(props)
     return (

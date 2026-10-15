@@ -528,7 +528,6 @@
   "singleRun.testRun": "テスト実行",
   "snippet.confirm": "確認する",
   "snippet.createDialogTitle": "スニペットの作成",
-  "snippet.createSuccess": "スニペットが作成されました",
   "snippet.descriptionLabel": "説明 (オプション)",
   "snippet.descriptionPlaceholder": "スニペットを簡単に説明します",
   "snippet.nameLabel": "スニペット名",

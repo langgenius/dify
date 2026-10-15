@@ -3,7 +3,6 @@
   "action.delete": "刪除插件",
   "action.deleteContentLeft": "是否要刪除",
   "action.deleteContentRight": "插件？",
-  "action.deleteSuccess": "插件移除成功",
   "action.pluginInfo": "插件資訊",
   "allCategories": "全部分類",
   "auth.addApi": "新增 API 金鑰",

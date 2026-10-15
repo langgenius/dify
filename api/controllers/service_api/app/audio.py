@@ -31,6 +31,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import ServiceApiEndUserContext
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -52,6 +53,18 @@ register_response_schema_models(service_api_ns, AudioBinaryResponse, AudioTransc
 
 @service_api_ns.route("/audio-to-text")
 class AudioApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @service_api_ns.doc(
         summary="Convert Audio to Text",
         description=(
@@ -149,6 +162,13 @@ register_schema_model(service_api_ns, TextToAudioPayload)
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Convert Text to Audio",
         description="Convert text to speech.",
@@ -207,14 +227,6 @@ class TextApi(Resource):
         except AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

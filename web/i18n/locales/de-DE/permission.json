@@ -1,7 +1,6 @@
 {
   "accessRule.accessPermission": "Zugriffsberechtigung",
   "accessRule.actions": "Aktionen",
-  "accessRule.addMemberAria": "{{name}} hinzufügen",
   "accessRule.addMembersTitle": "Mitglieder hinzufügen",
   "accessRule.agentDescription": "Verwalte, wer auf diesen Agenten zugreifen kann und welche Berechtigungen diese Personen haben.",
   "accessRule.agentTitle": "Agent-Berechtigungssatz",
@@ -21,7 +20,6 @@
   "accessRule.defaultPermission": "Nach Rollenberechtigungen",
   "accessRule.deleteDescription": "Diese Zugriffsregel wird dauerhaft gelöscht und aus der Ressourcen-Autorisierungsliste entfernt.",
   "accessRule.deleteTitle": "\"{{name}}\" löschen?",
-  "accessRule.deleted": "Zugriffsregel erfolgreich gelöscht",
   "accessRule.exceptionPermissionFor": "Ausnahmeberechtigung für {{name}}",
   "accessRule.expandSection": "{{title}} ausklappen",
   "accessRule.maintainer": "Betreuer",
@@ -83,11 +81,8 @@
   "role.copyMembersDescription_other": "\"{{name}}\" ist {{count}} Mitgliedern zugewiesen. Möchten Sie, dass die neue Rollenkopie dieselben Mitglieder enthält?",
   "role.copyMembersLoading": "Mitgliederzuweisungen werden geladen...",
   "role.copyMembersTitle": "Mitgliederzuweisungen kopieren?",
-  "role.created": "Rolle erfolgreich erstellt",
   "role.deleteDescription": "Diese Rolle wird dauerhaft gelöscht und von allen Mitgliedern oder Zugriffsregeln entfernt, die sie verwenden.",
   "role.deleteTitle": "\"{{name}}\" löschen?",
-  "role.deleted": "Rolle erfolgreich gelöscht",
-  "role.duplicated": "Rolle erfolgreich dupliziert",
   "role.groups.builtin": "Systemrollen",
   "role.groups.custom": "Benutzerdefinierte Rollen",
   "role.loading": "Rollen werden geladen...",
@@ -104,7 +99,6 @@
   "role.noDescription": "Keine Beschreibung",
   "role.noMatchingRoles": "Keine passenden Rollen",
   "role.searchPlaceholder": "Rollen suchen...",
-  "role.updated": "Rolle erfolgreich aktualisiert",
   "role.workspaceRoles.description": "Erstellen Sie Rollen und definieren Sie, was jede Rolle in diesem Arbeitsbereich tun kann.",
   "role.workspaceRoles.title": "Arbeitsbereichsrollen"
 }

@@ -12,6 +12,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { createHttpError } from '@/service/http-error'
 import { seedFeatures } from '@/test/console/query-data'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
@@ -907,9 +908,9 @@ describe('AgentSkills', () => {
 
   it('explains when an agent has reached the library skill limit', async () => {
     const user = userEvent.setup()
-    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce({
-      code: 'too_many_agent_skills',
-    })
+    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { code: 'too_many_agent_skills' }),
+    )
     mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
       const { input, getNextPageParam, initialPageParam } = options as {
         input: (pageParam: number) => { query?: { limit?: number } }

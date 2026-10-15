@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { createHttpError } from '@/service/http-error'
 import { TransferMethod } from '@/types/app'
 import FormContent from '../form'
 import { useFormSubmit } from '../use-form-submit'
@@ -211,21 +212,27 @@ describe('Human input share form', () => {
   it('should render status cards for terminal fetch states', () => {
     const cases = [
       {
-        error: { code: 'human_input_form_expired' },
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'human_input_form_expired',
+        }),
         title: 'share.humanInput.sorry',
         subtitle: 'share.humanInput.expired',
         documentTitle: 'share.humanInput.expired',
         submissionID: true,
       },
       {
-        error: { code: 'human_input_form_submitted' },
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'human_input_form_submitted',
+        }),
         title: 'share.humanInput.sorry',
         subtitle: 'share.humanInput.completed',
         documentTitle: 'share.humanInput.completed',
         submissionID: true,
       },
       {
-        error: { code: 'web_form_rate_limit_exceeded' },
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'web_form_rate_limit_exceeded',
+        }),
         title: 'share.humanInput.rateLimitExceeded',
         subtitle: undefined,
         documentTitle: 'share.humanInput.rateLimitExceeded',

@@ -3,6 +3,46 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AgentNotFoundError
+ *
+ * Agent not found.
+ */
+export const zAgentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentNameConflictError
+ *
+ * Agent name already exists.
+ */
+export const zAgentNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_name_conflict_error'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AgentApiAccessResponse
  */
 export const zAgentApiAccessResponse = z.object({
@@ -31,6 +71,18 @@ export const zAgentApiStatusPayload = z.object({
 })
 
 /**
+ * AgentNotPublishedError
+ *
+ * Publish the Agent before enabling Web App or API access.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
@@ -50,11 +102,143 @@ export const zApiKeyList = z.object({
 })
 
 /**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AudioTranscriptResponse
  */
 export const zAudioTranscriptResponse = z.object({
   text: z.string(),
 })
+
+/**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
 
 /**
  * SimpleResultResponse
@@ -64,11 +248,59 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * AgentSimpleResultResponse
  */
 export const zAgentSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * AgentBuildSandboxNotFoundError
+ *
+ * The retained Build Sandbox is no longer available.
+ */
+export const zAgentBuildSandboxNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_build_sandbox_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentSoulLockedError
+ *
+ * Agent Soul is locked for this workflow node.
+ */
+export const zAgentSoulLockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_soul_locked_error'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * AgentBuildDraftApplyResponse
@@ -77,6 +309,54 @@ export const zAgentBuildDraftApplyResponse = z.object({
   draft: z.record(z.string(), z.unknown()),
   result: z.string(),
 })
+
+/**
+ * InvalidComposerConfigError
+ *
+ * Invalid agent composer config.
+ */
+export const zInvalidComposerConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_composer_config_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PlaintextSecretNotAllowedError
+ *
+ * Plaintext secret values are not allowed in Agent config.
+ */
+export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('plaintext_secret_not_allowed_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentHomeSnapshotTooLargeError
+ *
+ * The Agent Home Snapshot exceeds the configured size limit.
+ */
+export const zAgentHomeSnapshotTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_home_snapshot_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * AgentHomeSnapshotCreateFailedError
+ *
+ * Failed to capture the Agent Home Snapshot.
+ */
+export const zAgentHomeSnapshotCreateFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_home_snapshot_create_failed'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * AgentBuildDraftCheckoutPayload
@@ -91,6 +371,18 @@ export const zAgentBuildDraftCheckoutPayload = z.object({
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
 })
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * Function Suggested questions after answer disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * AgentConfigFileUploadPayload
@@ -155,6 +447,18 @@ export const zMessageFeedbackPayload = z.object({
 })
 
 /**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AgentPublishPayload
  */
 export const zAgentPublishPayload = z.object({
@@ -162,11 +466,59 @@ export const zAgentPublishPayload = z.object({
 })
 
 /**
+ * AgentModelNotConfiguredError
+ *
+ * Agent App requires the Agent Soul model to be configured.
+ */
+export const zAgentModelNotConfiguredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_model_not_configured'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * SandboxInfoResponse
  */
 export const zSandboxInfoResponse = z.object({
   workspace_cwd: z.string(),
 })
+
+/**
+ * NoActiveBindingError
+ *
+ * No active sandbox binding.
+ */
+export const zNoActiveBindingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_active_binding'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentBackendUnreachableError
+ *
+ * Agent backend is unreachable.
+ */
+export const zAgentBackendUnreachableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_backend_unreachable'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * InspectorUnavailableError
+ *
+ * Sandbox inspector is unavailable.
+ */
+export const zInspectorUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('inspector_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * AgentSandboxDownloadPayload
@@ -183,6 +535,18 @@ export const zAgentSandboxDownloadPayload = z.object({
 export const zSandboxDownloadResponse = z.object({
   url: z.string(),
 })
+
+/**
+ * BindingFileDownloadUnavailableError
+ *
+ * Sandbox file download is unavailable.
+ */
+export const zBindingFileDownloadUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('binding_file_download_unavailable'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * SandboxReadResponse
@@ -204,6 +568,18 @@ export const zTextToSpeechPayload = z.object({
   text: z.string(),
   voice: z.string().nullish(),
 })
+
+/**
+ * ProviderNotSupportTextToSpeechError
+ *
+ * Provider does not support text to speech.
+ */
+export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_text_to_speech'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * AgentConfigSnapshotRestoreResponse

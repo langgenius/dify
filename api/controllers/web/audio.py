@@ -28,6 +28,7 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -64,6 +65,18 @@ logger = logging.getLogger(__name__)
 
 @web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @web_ns.doc("Audio to Text")
     @web_ns.doc(description="Convert audio file to text using speech-to-text service.")
     @web_ns.doc(
@@ -71,7 +84,6 @@ class AudioApi(WebApiResource):
             HTTPStatus.OK: "Success",
             HTTPStatus.BAD_REQUEST: "Bad Request",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: "App or end user not found",
             HTTPStatus.REQUEST_ENTITY_TOO_LARGE: "Audio file too large",
             HTTPStatus.UNSUPPORTED_MEDIA_TYPE: "Unsupported audio type",
@@ -123,6 +135,13 @@ class AudioApi(WebApiResource):
 
 @web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @web_ns.expect(web_ns.models[TextToAudioPayload.__name__])
     @web_ns.doc("Text to Audio")
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")
@@ -131,7 +150,6 @@ class TextApi(WebApiResource):
             HTTPStatus.OK: "Success; null when no message audio is available",
             HTTPStatus.BAD_REQUEST: "Bad Request",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: "App or end user not found",
             HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid request payload",
             HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
@@ -157,14 +175,6 @@ class TextApi(WebApiResource):
         except AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

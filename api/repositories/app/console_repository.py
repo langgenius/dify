@@ -24,7 +24,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import PaginatedResult, paginate_query
-from machinery.context import RequestContext
+from machinery.context import AppRequestContext, RequestContext
 from models.account import Account, Tenant
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -41,16 +41,18 @@ from models.model import App, AppMode, AppModelConfig, AppStar, IconType
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.app.response import app_record, app_summary
+from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
 from services.agent.errors import (
     AgentAccessNotReadyError,
     AgentNameConflictError,
 )
 from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
-from services.app.query_service import AppQueryStore
+from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.app_creation_records import create_installed_app_record, create_site_record
 from services.entities.app_entities import (
     RECENT_APP_MODES,
+    AppAgentBinding,
     AppChange,
     AppCreationSettings,
     AppDeletion,
@@ -70,8 +72,9 @@ from services.entities.app_entities import (
     StarredAppListParams,
     UpdateAppParams,
 )
+from services.errors.app import AppDiscoveryNotFoundError
 from services.errors.base import NoPermissionError
-from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
+from services.openapi.visibility import apply_openapi_gate
 
 logger = logging.getLogger(__name__)
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
@@ -113,15 +116,44 @@ def console_app_actor(session: Session, context: RequestContext) -> Account:
     return account
 
 
-class ConsoleAppRepository(ConsoleApps, AppQueryStore):
+class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
+        with self._session_factory() as session:
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == workspace_id))
+            if app is None:
+                return None
+            binding = app.agent_app_binding_with_session(session=session, include_archived=True)
+            return AppAgentBinding(binding.id, binding.scope == AgentScope.WORKFLOW_ONLY) if binding else None
+
+    def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None:
+        statement = select(App.maintainer).where(App.id == resource_id, App.tenant_id == workspace_id)
+        if normal_only:
+            statement = statement.where(App.status == AppStatus.NORMAL)
+        with self._session_factory() as session:
+            return session.scalar(statement)
+
+    @override
+    def describe(self, context: AppRequestContext, *, include_config: bool) -> AppDescription:
+        with self._session_factory() as session:
+            app = self.get_visible_app_by_id(context.app_id, session, tenant_id=context.tenant_id)
+            if app is None:
+                raise AppDiscoveryNotFoundError("app not found")
+            config = load_app_parameter_config(app, session=session) if include_config else None
+            return AppDescription(app_summary(app), bool(app.enable_api), config)
+
+    def list_workspace_app_ids(self, tenant_id: str) -> list[str]:
+        """List every App row in the workspace, ignoring console visibility and status."""
+        with self._session_factory() as session:
+            return list(session.scalars(select(App.id).where(App.tenant_id == tenant_id)).all())
 
     @override
     def find_visible_app(self, app_id: str, tenant_id: str) -> AppSummary | None:
         with self._session_factory() as session:
-            app = self.get_visible_app_by_id(app_id, session)
-            return app_summary(app) if app is not None and app.tenant_id == tenant_id else None
+            app = self.get_visible_app_by_id(app_id, session, tenant_id=tenant_id)
+            return app_summary(app) if app is not None else None
 
     @override
     def find_visible_apps(self, app_ids: Sequence[str]) -> list[AppSummary]:
@@ -418,11 +450,14 @@ class ConsoleAppRepository(ConsoleApps, AppQueryStore):
     def get_visible_app_by_id(
         app_id: str,
         session: Session,
+        *,
+        tenant_id: str,
     ) -> App | None:
-        app = session.get(App, app_id)
-        if not app or app.status != "normal" or not is_openapi_visible(app):
-            return None
-        return app
+        """Find a visible normal app within the admitted tenant."""
+        statement = apply_openapi_gate(
+            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL)
+        )
+        return session.scalar(statement)
 
     @staticmethod
     def find_visible_apps_by_ids(

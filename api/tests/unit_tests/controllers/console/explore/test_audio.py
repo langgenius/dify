@@ -420,10 +420,6 @@ def test_audio_endpoints_apply_admission_before_reading_or_generating_audio(
     [
         (AppDefinitionUnavailableError("app removed"), 400, "app_unavailable", None),
         (AppModelConfigBrokenError(), 400, "app_unavailable", None),
-        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded", None),
-        (AudioTooLargeServiceError("30 MB limit exceeded"), 413, "audio_too_large", "30 MB limit exceeded"),
-        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type", None),
-        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text", None),
         (ProviderTokenNotInitError("Missing credentials"), 400, "provider_not_initialize", "Missing credentials"),
         (QuotaExceededError(), 400, "provider_quota_exceeded", None),
         (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support", None),
@@ -452,9 +448,23 @@ def test_audio_and_provider_failures_keep_precise_http_contract(
     assert len(runtime.asr_calls) + len(runtime.tts_calls) == 1
 
 
-def test_asr_disabled_feature_preserves_400(runtime: _Runtime) -> None:
-    runtime.error = SpeechToTextDisabledServiceError()
-    _error(runtime.request("audio-to-text"), status=400, code="speech_to_text_disabled")
+@pytest.mark.parametrize(
+    ("failure", "status", "code", "description"),
+    [
+        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded", None),
+        (AudioTooLargeServiceError("30 MB limit exceeded"), 413, "audio_too_large", "30 MB limit exceeded"),
+        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type", None),
+        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text", None),
+        (SpeechToTextDisabledServiceError(), 400, "speech_to_text_disabled", None),
+    ],
+)
+def test_transcription_failures_keep_precise_http_contract(
+    runtime: _Runtime, failure: Exception, status: int, code: str, description: str | None
+) -> None:
+    # Only transcription validates the upload and needs a speech-to-text model; synthesis documents none of these.
+    runtime.error = failure
+    _error(runtime.request("audio-to-text"), status=status, code=code, message=description)
+    assert len(runtime.asr_calls) == 1
 
 
 def test_unsupported_tts_provider_has_specific_error(runtime: _Runtime) -> None:

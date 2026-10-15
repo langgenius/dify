@@ -1,11 +1,9 @@
 """Audio preparation against SQLite and invocation through the provider boundary."""
 
 import json
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Iterator
 from decimal import Decimal
 from io import BytesIO
-from typing import IO, override
 from uuid import uuid4
 
 import pytest
@@ -13,7 +11,6 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
-from core.model_manager import ModelInstance, ModelManager
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
@@ -27,6 +24,7 @@ from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService, PreparedTextToAudio
 from services.audio_types import AudioUpload
 from services.errors.audio import SpeechToTextDisabledServiceError
+from tests.unit_tests.audio_runtime_fixtures import AudioRuntimeObservations
 from tests.unit_tests.model_factories import make_message
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
@@ -36,77 +34,6 @@ CONVERSATION_ID = "44444444-4444-4444-4444-444444444444"
 END_USER_ID = "55555555-5555-5555-5555-555555555555"
 ACCOUNT_ID = "66666666-6666-6666-6666-666666666666"
 OTHER_ID = "77777777-7777-7777-7777-777777777777"
-
-
-@dataclass
-class RecordingAudioModel(ModelInstance):
-    """Concrete audio model with configurable results and recorded invocations."""
-
-    speech_to_text_result: str = "Transcribed text"
-    tts_result: tuple[bytes, ...] = (b"audio data",)
-    voices: list[TTSModelVoice] = field(default_factory=list)
-    voices_error: Exception | None = None
-    speech_to_text_calls: list[bytes] = field(default_factory=list)
-    tts_calls: list[dict[str, str]] = field(default_factory=list)
-    voice_calls: list[str | None] = field(default_factory=list)
-
-    @override
-    def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
-        self.speech_to_text_calls.append(file.read())
-        return self.speech_to_text_result
-
-    @override
-    def invoke_tts(
-        self, content_text: str, voice: str = "", *, request_metadata: Mapping[str, object] | None = None
-    ) -> Iterable[bytes]:
-        self.tts_calls.append({"content_text": content_text, "voice": voice})
-        return self.tts_result
-
-    @override
-    def get_tts_voices(self, language: str | None = None) -> list[TTSModelVoice]:
-        self.voice_calls.append(language)
-        if self.voices_error is not None:
-            raise self.voices_error
-        return self.voices
-
-
-@dataclass
-class RecordingModelManager(ModelManager):
-    """Concrete manager that returns the configured audio model."""
-
-    model: RecordingAudioModel
-    model_requests: list[tuple[str, ModelType]] = field(default_factory=list)
-
-    @override
-    def get_default_model_instance(self, tenant_id: str, model_type: ModelType) -> RecordingAudioModel:
-        self.model_requests.append((tenant_id, model_type))
-        return self.model
-
-
-@dataclass
-class AudioProviderHarness:
-    """Provider assembly exposed to tests without dynamic stand-ins."""
-
-    model: RecordingAudioModel
-    manager: RecordingModelManager
-    manager_requests: list[dict[str, object]] = field(default_factory=list)
-
-
-@pytest.fixture
-def audio_provider(monkeypatch: pytest.MonkeyPatch) -> AudioProviderHarness:
-    model = RecordingAudioModel()
-    harness = AudioProviderHarness(model=model, manager=RecordingModelManager(model=model))
-
-    def for_tenant(
-        tenant_id: str, user_id: str | None = None, *, request_metadata: Mapping[str, object] | None = None
-    ) -> RecordingModelManager:
-        harness.manager_requests.append(
-            {"tenant_id": tenant_id, "user_id": user_id, "request_metadata": request_metadata}
-        )
-        return harness.manager
-
-    monkeypatch.setattr(ModelManager, "for_tenant", staticmethod(for_tenant))
-    return harness
 
 
 def _message(*, answer: str = "Message answer") -> Message:
@@ -325,7 +252,7 @@ class TestAudioServiceASRInvocation:
         [(AppMode.CHAT, CreditUsageAppType.CHATBOT), (AppMode.AGENT, CreditUsageAppType.AGENT_V2)],
     )
     def test_invoke_asr_preserves_audio_and_provider_attribution(
-        self, audio_provider: AudioProviderHarness, mode: AppMode, app_type: CreditUsageAppType
+        self, audio_runtime: AudioRuntimeObservations, mode: AppMode, app_type: CreditUsageAppType
     ) -> None:
         app = App(id=APP_ID, tenant_id=TENANT_ID, mode=mode)
         upload = AudioUpload(stream=BytesIO(b"recorded audio"), mime_type="audio/mp3")
@@ -333,15 +260,19 @@ class TestAudioServiceASRInvocation:
         result = AudioService.invoke_speech_to_text(app, upload, end_user="user-123")
 
         assert result == {"text": "Transcribed text"}
-        assert audio_provider.model.speech_to_text_calls == [b"recorded audio"]
-        assert audio_provider.manager.model_requests == [(TENANT_ID, ModelType.SPEECH2TEXT)]
-        assert audio_provider.manager_requests == [
+        assert audio_runtime.speech_to_text_calls == [b"recorded audio"]
+        assert audio_runtime.resolutions == [(TENANT_ID, ModelType.SPEECH2TEXT)]
+        assert audio_runtime.manager_requests == [
             {
                 "tenant_id": TENANT_ID,
                 "user_id": "user-123",
                 "request_metadata": {"app_type": app_type, "created_by": CreditUsageCreatedBy.AUDIO},
             }
         ]
+        assert audio_runtime.runtime_calls[0]["request_metadata"] == {
+            "app_type": app_type,
+            "created_by": CreditUsageCreatedBy.AUDIO,
+        }
 
 
 class TestAudioServiceTTSPreparation:
@@ -444,14 +375,15 @@ class TestAudioServiceTTSPreparation:
 
 
 class TestAudioServiceTTSInvocation:
-    def test_invoke_tts_preserves_provider_bytes_and_attribution(self, audio_provider: AudioProviderHarness) -> None:
+    def test_invoke_tts_preserves_provider_bytes_and_attribution(self, audio_runtime: AudioRuntimeObservations) -> None:
         app = App(id=APP_ID, tenant_id=TENANT_ID, mode=AppMode.CHAT)
         result = AudioService.invoke_tts(app, text="  Hello world  ", voice="en-US-Neural", end_user="user-123")
 
-        assert result.data == (b"audio data",)
-        assert audio_provider.model.tts_calls == [{"content_text": "Hello world", "voice": "en-US-Neural"}]
-        assert audio_provider.manager.model_requests == [(TENANT_ID, ModelType.TTS)]
-        assert audio_provider.manager_requests == [
+        assert isinstance(result.data, Iterator)
+        assert tuple(result.data) == (b"audio data",)
+        assert audio_runtime.tts_calls == [{"content_text": "Hello world", "voice": "en-US-Neural"}]
+        assert audio_runtime.resolutions == [(TENANT_ID, ModelType.TTS)]
+        assert audio_runtime.manager_requests == [
             {
                 "tenant_id": TENANT_ID,
                 "user_id": "user-123",
@@ -461,47 +393,52 @@ class TestAudioServiceTTSInvocation:
                 },
             }
         ]
+        assert audio_runtime.runtime_calls[0]["request_metadata"] == {
+            "app_type": CreditUsageAppType.CHATBOT,
+            "created_by": CreditUsageCreatedBy.AUDIO,
+        }
 
     def test_invoke_tts_selects_first_voice_when_none_was_configured(
-        self, audio_provider: AudioProviderHarness
+        self, audio_runtime: AudioRuntimeObservations
     ) -> None:
         app = App(id=APP_ID, tenant_id=TENANT_ID, mode=AppMode.CHAT)
-        audio_provider.model.voices = [{"name": "Automatic voice", "value": "auto-voice"}]
+        audio_runtime.voices = [{"name": "Automatic voice", "value": "auto-voice"}]
 
         result = AudioService.invoke_tts(app, text="Test", voice=None)
 
-        assert result.data == (b"audio data",)
-        assert audio_provider.model.voice_calls == [None]
-        assert audio_provider.model.tts_calls == [{"content_text": "Test", "voice": "auto-voice"}]
+        assert isinstance(result.data, Iterator)
+        assert tuple(result.data) == (b"audio data",)
+        assert audio_runtime.voice_calls == [(None,)]
+        assert audio_runtime.tts_calls == [{"content_text": "Test", "voice": "auto-voice"}]
 
-    def test_invoke_tts_rejects_missing_voices(self, audio_provider: AudioProviderHarness) -> None:
+    def test_invoke_tts_rejects_missing_voices(self, audio_runtime: AudioRuntimeObservations) -> None:
         app = App(id=APP_ID, tenant_id=TENANT_ID, mode=AppMode.CHAT)
-        audio_provider.model.voices = []
+        audio_runtime.voices = []
         with pytest.raises(ValueError, match="Sorry, no voice available"):
             AudioService.invoke_tts(app, text="Test", voice=None)
-        assert audio_provider.model.tts_calls == []
+        assert audio_runtime.tts_calls == []
 
 
 class TestAudioProviderVoices:
-    def test_get_voices_passes_language_and_provider_attribution(self, audio_provider: AudioProviderHarness) -> None:
+    def test_get_voices_passes_language_and_provider_attribution(self, audio_runtime: AudioRuntimeObservations) -> None:
         expected_voices: list[TTSModelVoice] = [
             {"name": "Voice 1", "value": "voice-1"},
             {"name": "Voice 2", "value": "voice-2"},
         ]
-        audio_provider.model.voices = expected_voices
+        audio_runtime.voices = expected_voices
 
         result = audio_provider_gateway.get_voices(tenant_id=TENANT_ID, language="en-US")
 
         assert result == expected_voices
-        assert audio_provider.model.voice_calls == ["en-US"]
-        assert audio_provider.manager.model_requests == [(TENANT_ID, ModelType.TTS)]
-        assert audio_provider.manager_requests == [
-            {"tenant_id": TENANT_ID, "user_id": None, "request_metadata": {"created_by": CreditUsageCreatedBy.AUDIO}}
+        assert audio_runtime.voice_calls == [("en-US",)]
+        assert audio_runtime.resolutions == [(TENANT_ID, ModelType.TTS)]
+        assert audio_runtime.manager_requests == [
+            {"tenant_id": TENANT_ID, "request_metadata": {"created_by": CreditUsageCreatedBy.AUDIO}}
         ]
 
-    def test_get_voices_preserves_provider_exception(self, audio_provider: AudioProviderHarness) -> None:
+    def test_get_voices_preserves_provider_exception(self, audio_runtime: AudioRuntimeObservations) -> None:
         error = RuntimeError("Model error")
-        audio_provider.model.voices_error = error
+        audio_runtime.voices_error = error
         with pytest.raises(RuntimeError, match="Model error") as caught:
             audio_provider_gateway.get_voices(tenant_id=TENANT_ID, language="en-US")
         assert caught.value is error

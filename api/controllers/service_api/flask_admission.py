@@ -17,7 +17,8 @@ from controllers.service_api.wraps import (
     validate_and_get_api_token,
 )
 from extensions.ext_application_services import application_services
-from machinery.context import ServiceApiEndUserContext, ServiceApiRequestContext
+from libs.external_api import document_errors
+from machinery.context import AppRequestContext, ServiceApiEndUserContext
 from services.app_definition_query_service import AppDefinitionUnavailableError, ServiceApiAppRecord
 from services.auth.resource_access_token_contracts import is_resource_access_token
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
@@ -58,13 +59,21 @@ def service_api_end_user_admission[T, **P, R](
             return view(self, context, *args, **kwargs)
 
         document_app_token_contract(admitted, fetch_user_arg)
+        document_errors(
+            admitted,
+            http_errors.AppNotFoundError,
+            http_errors.AppAbnormalStatusError,
+            http_errors.AppApiDisabledError,
+            http_errors.WorkspaceNotFoundError,
+            http_errors.WorkspaceArchivedError,
+        )
         return admitted
 
     return decorator
 
 
 def service_api_app_admission[T, **P, R](
-    view: Callable[Concatenate[T, ServiceApiRequestContext, P], R],
+    view: Callable[Concatenate[T, AppRequestContext, P], R],
 ) -> Callable[Concatenate[T, P], R]:
     """Admit app-token queries without an end user or request-scoped ORM session.
 
@@ -77,9 +86,17 @@ def service_api_app_admission[T, **P, R](
         app = _admit_service_api_app()
         if not application_services().app_definitions.has_service_api_owner(app.tenant_id):
             raise UnauthorizedError("Tenant owner account not found or tenant is not active.")
-        return view(self, ServiceApiRequestContext(tenant_id=app.tenant_id, app_id=app.app_id), *args, **kwargs)
+        return view(self, AppRequestContext(tenant_id=app.tenant_id, app_id=app.app_id), *args, **kwargs)
 
     document_app_token_contract(admitted, None)
+    document_errors(
+        admitted,
+        http_errors.AppNotFoundError,
+        http_errors.AppAbnormalStatusError,
+        http_errors.AppApiDisabledError,
+        http_errors.WorkspaceNotFoundError,
+        http_errors.WorkspaceArchivedError,
+    )
     return admitted
 
 
