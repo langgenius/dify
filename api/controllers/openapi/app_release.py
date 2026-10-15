@@ -21,7 +21,7 @@ from controllers.openapi.auth.context import Context
 from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from models import AppMode, WorkflowRunTriggeredFrom
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRun
 from services.workflow.graph_check import check_graph, credential_check
 from services.workflow.graph_diff import WorkflowSnapshot, diff_workflows, same_graph
 from services.workflow_service import WorkflowService
@@ -32,6 +32,17 @@ def _snapshot(workflow: Workflow) -> WorkflowSnapshot:
         graph=workflow.graph_dict,
         features=workflow.features_dict,
         environment_variable_names=frozenset(v.name for v in workflow.environment_variables),
+    )
+
+
+def passed_on_draft(run: WorkflowRun | None, draft: Workflow) -> bool:
+    """The run passed on this draft. A run keeps only its graph, so a draft saved after the run started
+    (environment variables, conversation variables, features) counts as untested."""
+    return (
+        run is not None
+        and run.status == WorkflowExecutionStatus.SUCCEEDED
+        and same_graph(run.graph_dict, draft.graph_dict)
+        and draft.updated_at <= run.created_at
     )
 
 
@@ -65,12 +76,7 @@ class ReleaseCheckApi(Resource):
             )
             .data
         )
-        last = runs[0] if runs else None
-        tested = (
-            last is not None
-            and last.status == WorkflowExecutionStatus.SUCCEEDED
-            and same_graph(last.graph_dict, draft.graph_dict)
-        )
+        tested = passed_on_draft(runs[0] if runs else None, draft)
         published = service.get_published_workflow(ctx.app, session=ctx.session)
         diff = diff_workflows(_snapshot(published) if published else None, _snapshot(draft))
         checks = [

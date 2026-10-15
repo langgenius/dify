@@ -101,6 +101,9 @@ def fetch_yaml_url(yaml_url: str) -> str:
 
 
 def _parse(yaml_content: str) -> dict[str, Any]:
+    # Measured before parsing: re-dumping drops comments, so a padded DSL could shrink under the import's limit.
+    if dsl_content_size(yaml_content) > DSL_MAX_SIZE:
+        raise DslNotCheckableError("File size exceeds the limit of 10MB")
     try:
         data = yaml.safe_load(yaml_content)
     except yaml.YAMLError as error:

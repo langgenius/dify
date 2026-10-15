@@ -8,10 +8,17 @@ from constants import HIDDEN_VALUE
 from graphon.variables import VariableBase
 from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
+from services.dsl_content import DSL_MAX_SIZE
 from services.entities.dsl_entities import ImportMode
 from services.errors.app import DraftChangedError
 from services.workflow import dsl_import
-from services.workflow.dsl_import import DslImportService, DslImportStore, DslImportTarget, DslRefusedError
+from services.workflow.dsl_import import (
+    DslImportService,
+    DslImportStore,
+    DslImportTarget,
+    DslNotCheckableError,
+    DslRefusedError,
+)
 from services.workflow.graph_check import IssueCode, IssueSeverity, ResourceCheck
 
 _CONTEXT = RequestContext("request-1", None, "account-1", "workspace-1")
@@ -148,3 +155,20 @@ def test_check_without_an_app_reads_no_target() -> None:
     DslImportService(store=store).check(_CONTEXT, _dsl("workflow", _START, _END), None)
 
     assert store.events == ["open:workspace-1:[]", "close"]
+
+
+def _padded(yaml_content: str) -> str:
+    """A valid DSL over the size limit only because of a trailing comment."""
+    return yaml_content + "#" + "x" * DSL_MAX_SIZE + "\n"
+
+
+def test_check_refuses_a_dsl_over_the_size_limit() -> None:
+    with pytest.raises(DslNotCheckableError, match="10MB"):
+        DslImportService(store=_Store()).check(_CONTEXT, _padded(_dsl("workflow", _START, _END)), None)
+
+
+def test_prepare_hands_an_oversized_dsl_to_the_import_unchanged() -> None:
+    """Re-dumping drops comments, so a padded DSL must reach the import's own size check as sent."""
+    source = _padded(_dsl("workflow", _START, _END))
+
+    assert _prepare(_Store(), source=source, app_id=None) == source
