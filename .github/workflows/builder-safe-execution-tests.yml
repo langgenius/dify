@@ -62,7 +62,7 @@ on:
       test_scope:
         description: Select a focused lane; all always runs on build branch pushes
         type: choice
-        options: [all, native-agent, native-catalog, native-continuation]
+        options: [all, native-agent, native-catalog, native-continuation, native-console]
         default: all
 permissions:
   contents: read
@@ -619,6 +619,75 @@ jobs:
           path: |
             builder-native-continuation.xml
             builder-native-continuation.log
+  native-console:
+    if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-console'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      STORAGE_TYPE: opendal
+      OPENDAL_SCHEME: fs
+      OPENDAL_FS_ROOT: /tmp/dify-builder-continuation-storage
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - name: Signed native Console API on real PostgreSQL
+        shell: bash
+        run: |
+          set -o pipefail
+          cat > "$RUNNER_TEMP/builder_native_console_runner.py" <<'PY'
+          if __name__ == "__main__":
+              import xml.etree.ElementTree as ElementTree
+              from collections import Counter
+              from pathlib import Path
+
+              import pytest
+
+              EXPECTED = {'tests.test_containers_integration_tests.core.workflow.test_builder_native_console_api': {'test_native_console_unauthenticated_is_rejected': 1, 'test_native_console_invalid_csrf_is_rejected': 1, 'test_decision_cannot_replace_effect_parameters': 1}}
+              REPORT = "builder-native-console.xml"
+              code = pytest.main(['api/tests/test_containers_integration_tests/core/workflow/test_builder_native_console_api.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-console.xml', '-p', 'no:benchmark', '--no-cov', '--timeout=360', '--timeout-method=thread'])
+              problems = []
+              identities = set()
+              actual = {module: Counter() for module in EXPECTED}
+              if not Path(REPORT).is_file():
+                  problems.append("JUnit report missing")
+              else:
+                  for case in ElementTree.parse(REPORT).getroot().iter("testcase"):
+                      classname, name = case.get("classname") or "", case.get("name") or ""
+                      identity = (classname, name)
+                      if identity in identities:
+                          problems.append(f"duplicate case {classname}::{name}")
+                      identities.add(identity)
+                      module = classname.removeprefix("api.")
+                      if module not in EXPECTED:
+                          problems.append(f"unexpected module {classname}::{name}")
+                      else:
+                          actual[module][name.split("[", 1)[0]] += 1
+                      if any(case.find(tag) is not None for tag in ("failure", "error", "skipped")):
+                          problems.append(f"nonpassing case {classname}::{name}")
+              for module, functions in EXPECTED.items():
+                  print(f"COLLECTED {module}: {sum(actual[module].values())} cases", flush=True)
+                  if dict(actual[module]) != functions:
+                      problems.append(f"case inventory mismatch {module}: {dict(actual[module])!r}")
+              print(f"COLLECTED total: {len(identities)} unique cases", flush=True)
+              for problem in problems:
+                  print(f"COMPLETENESS {problem}", flush=True)
+              raise SystemExit(int(code) or (1 if problems else 0))
+          PY
+          uv run --project api --no-sync python -u "$RUNNER_TEMP/builder_native_console_runner.py" 2>&1 | tee builder-native-console.log
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-native-console
+          path: |
+            builder-native-console.xml
+            builder-native-console.log
   native-agent-binding:
     if: github.event_name != 'workflow_dispatch' || (!inputs.contract_codegen && (inputs.test_scope == 'all' || inputs.test_scope == 'native-catalog'))
     runs-on: ubuntu-24.04
