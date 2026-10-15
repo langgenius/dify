@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -14,8 +14,9 @@ export const AgentScope = {
 export const useInlineAgentScope = () => {
   const { appId } = useParams<{ appId?: string }>()
   const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId ?? '' } } }),
-    enabled: !!appId,
+    ...consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
     select: (appDetail) => appDetail.mode,
   })
 

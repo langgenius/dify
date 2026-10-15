@@ -1,5 +1,5 @@
 import type { CommandContext } from './types'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,9 +30,9 @@ export function useCommandContext(
   // `appId` segment for different resources (for example installed apps).
   const { data: appDetail } = useQuery({
     ...consoleQuery.apps.byAppId.get.queryOptions({
-      input: { params: { app_id: routeAppId ?? '' } },
+      input: routeAppId ? { params: { app_id: routeAppId } } : skipToken,
     }),
-    enabled: isWorkflowPage && !!routeAppId,
+    enabled: isWorkflowPage,
   })
   const appId = appDetail?.id
   const appMode = appDetail?.mode

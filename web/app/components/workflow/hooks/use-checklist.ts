@@ -18,7 +18,7 @@ import type { ModelItem } from '@/app/components/header/account-setting/model-pr
 import type { Emoji } from '@/app/components/tools/types'
 import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import type { DataSet } from '@/models/datasets'
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -185,8 +185,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const getToolIcon = useGetToolIcon()
   const { appId } = useParams<{ appId?: string }>()
   const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId ?? '' } } }),
-    enabled: !!appId,
+    ...consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
     select: (appDetail) => appDetail.mode,
   })
   const shouldCheckStartNode =
@@ -658,8 +659,9 @@ export const useChecklistBeforePublish = () => {
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const { appId } = useParams<{ appId?: string }>()
   const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId ?? '' } } }),
-    enabled: !!appId,
+    ...consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
     select: (appDetail) => appDetail.mode,
   })
   const shouldCheckStartNode =

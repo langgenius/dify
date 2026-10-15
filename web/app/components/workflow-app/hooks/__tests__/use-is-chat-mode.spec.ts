@@ -47,10 +47,9 @@ describe('useIsChatMode', () => {
     const { result, queryClient } = renderHookWithConsoleQuery(() => useIsChatMode())
 
     expect(result.current).toBe(false)
-    const query = queryClient.getQueryCache().find({
-      queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: '' } } }),
-    })
-    expect(query?.state.fetchStatus).toBe('idle')
-    expect(query?.state.dataUpdateCount ?? 0).toBe(0)
+    const appDetailQueries = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: consoleQuery.apps.byAppId.get.key() })
+    expect(appDetailQueries.every((query) => query.state.dataUpdateCount === 0)).toBe(true)
   })
 })

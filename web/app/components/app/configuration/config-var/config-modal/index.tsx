@@ -5,7 +5,7 @@ import type { ConfigModalValidationError } from './utils'
 import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -65,8 +65,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null)
   const { appId } = useParams<{ appId?: string }>()
   const { data: appDetail } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId ?? '' } } }),
-    enabled: !!appId,
+    ...consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
   })
   const isBasicApp =
     appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW

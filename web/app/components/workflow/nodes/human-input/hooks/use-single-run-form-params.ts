@@ -3,7 +3,7 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
@@ -72,8 +72,9 @@ const useSingleRunFormParams = ({
 
   const { appId } = useParams<{ appId?: string }>()
   const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId ?? '' } } }),
-    enabled: !!appId,
+    ...consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
     select: (appDetail) => appDetail.mode,
   })
   const isWorkflowMode = appMode === AppModeEnum.WORKFLOW
