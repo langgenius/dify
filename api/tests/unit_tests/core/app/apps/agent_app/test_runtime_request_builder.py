@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
@@ -32,11 +31,12 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuildError,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.ops.base_trace_instance import ApplicationTracingHooks, bind_application_tracing_hooks
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -135,8 +135,14 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
     )
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     context = _ctx(_soul_with_model())
-    hooks = MagicMock(spec=ApplicationTracingHooks)
-    hooks.prepare_agent_app.return_value = tracing
+    calls: list[AgentAppRuntimeBuildContext] = []
+
+    def prepare(value: AgentAppRuntimeBuildContext) -> ApplicationTracingContext:
+        calls.append(value)
+        return tracing
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_agent_app", staticmethod(prepare))
+    hooks = RuntimeApplicationTracingHooks()
     app = Flask(__name__)
     bind_application_tracing_hooks(app, hooks)
 
@@ -148,7 +154,7 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
         item for item in result.redacted_request["composition"]["layers"] if item["name"] == "execution_context"
     )
     assert redacted["config"]["tracing"] == "[REDACTED]"
-    hooks.prepare_agent_app.assert_called_once_with(context)
+    assert calls == [context]
 
 
 class _NoToolsBuilder:
