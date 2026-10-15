@@ -1378,3 +1378,163 @@ def test_invocation_read_owner_must_be_paired(continuation_case):
         session.add(state)
         with pytest.raises(IntegrityError):
             session.commit()
+
+
+def _quarantined_root_with_child_dispatch(c, *, claimed):
+    from models.dify_builder_native_tests import NativeDispatch
+
+    service, child = _child_case(c)
+    _, grandchild = _child_case(c, child)
+    effect = _bind_child_effect(c, child)
+    pending = c.ledger.guard.before_call(ref=child, intent=effect)
+    child_context = c.store.load_context(ref=child)
+    checkpoint = c.store.commit_checkpoint(
+        ref=child,
+        generation=0,
+        payload=NativeCheckpointPayload(
+            schema_version="1",
+            native_run_id=child_context.native_run_id,
+            generation=0,
+            generate_entity_json="{}",
+            graph_runtime_state_json='{"cursor":7}',
+            response_stream_filter_json="{}",
+            node_journals=(),
+            child_refs=(grandchild,),
+            input_result_refs=(),
+        ),
+    )
+    c.lifecycle.pause(
+        ref=child, checkpoint=checkpoint, pending_operation_ids=(pending.pending_operation_id,), expected_generation=0
+    )
+    c.pause()
+    c.ledger.confirm()
+    root_dispatch = c.resume()
+    assert c.lifecycle.claim_dispatch(
+        ref=c.ref, generation=root_dispatch.generation, dispatch_id=root_dispatch.dispatch_id
+    )
+    completed = NativeWorkflowOutcome(
+        status="completed",
+        ref=grandchild,
+        native_run_id=c.store.load_context(ref=grandchild).native_run_id,
+        checkpoint_ref=None,
+        pending_operation_ids=(),
+        reason_code=None,
+        wait_reason=None,
+        native_status="succeeded",
+        output_result_ref=None,
+    )
+    service.complete(child_ref=grandchild, outcome=completed)
+    with c.factory() as session:
+        child_dispatch = session.scalar(
+            select(NativeDispatch).where(
+                NativeDispatch.request_id == c.ref.request_id, NativeDispatch.invocation_id == child.invocation_id
+            )
+        )
+        assert child_dispatch.state == "queued"
+        child_id, generation = child_dispatch.id, child_dispatch.generation
+    if claimed:
+        assert c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    with c.factory.begin() as session:
+        session.get(NativeDispatch, root_dispatch.dispatch_id).claim_expires_at = datetime.now(UTC) - timedelta(
+            seconds=1
+        )
+    c.lifecycle.reconcile()
+    return child, child_id, generation, root_dispatch, checkpoint, effect, service, completed
+
+
+@pytest.mark.parametrize("claimed", [False, True])
+def test_child_dispatch_recovery_requires_controlling_ancestor_fence(continuation_case, claimed):
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
+
+    c = continuation_case
+    child, child_id, generation, root_dispatch, checkpoint, effect, service, completed = (
+        _quarantined_root_with_child_dispatch(c, claimed=claimed)
+    )
+
+    class RuntimeOwner:
+        calls = []
+        quarantine_during_child_proof = False
+
+        def recovery_evidence(self, *, context, dispatch_id):
+            self.calls.append((context.ref.invocation_id, dispatch_id))
+            if context.ref == child and self.quarantine_during_child_proof:
+                assert c.lifecycle.claim_dispatch(
+                    ref=c.ref, generation=root_dispatch.generation, dispatch_id=root_dispatch.dispatch_id
+                )
+                with c.factory.begin() as session:
+                    session.get(NativeDispatch, root_dispatch.dispatch_id).claim_expires_at = datetime.now(
+                        UTC
+                    ) - timedelta(seconds=1)
+                c.lifecycle.reconcile()
+            return "stopped"
+
+    runtime = RuntimeOwner()
+    c.lifecycle.runtime = runtime
+    with pytest.raises(BuilderExecutionPolicyError, match="native_ancestor_quarantined"):
+        c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
+    assert runtime.calls == []  # reject before collecting an insufficient child-only proof
+    assert not c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    assert c.ledger.guard.before_call(ref=child, intent=effect).kind == "stop"
+    with c.factory() as session:
+        assert session.get(NativeDispatch, child_id).state == "unknown"
+        assert not any(
+            session.scalars(
+                select(NativeTestInvocation.active).where(NativeTestInvocation.request_id == c.ref.request_id)
+            )
+        )
+    # The controlling root proof is required first. A new root quarantine during
+    # the child proof RPC must still be checked under the final request lock.
+    c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=root_dispatch.dispatch_id)
+    runtime.quarantine_during_child_proof = True
+    with pytest.raises(BuilderExecutionPolicyError, match="native_ancestor_quarantined"):
+        c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
+    runtime.quarantine_during_child_proof = False
+    c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=root_dispatch.dispatch_id)
+    c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
+    assert c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    assert not c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    assert c.store.read_checkpoint(ref=child, checkpoint=checkpoint).graph_runtime_state_json == '{"cursor":7}'
+    assert service.get_outcome(child_ref=completed.ref) == completed
+    with c.factory() as session:
+        state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == child.request_id,
+                NativeInvocationState.invocation_id == child.invocation_id,
+            )
+        )
+        assert state.checkpoint_id == checkpoint.checkpoint_id
+    permit = c.ledger.guard.before_call(ref=child, intent=effect)
+    assert permit.kind == "dispatch"
+    result = c.store.store_result(ref=child, key=effect.key, result={"settled": True})
+    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result)
+    assert c.ledger.dispatched_attempt_count() == 1
+
+
+def test_child_claim_rechecks_unknown_ancestor_even_with_stale_active_delivery(continuation_case):
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
+
+    c = continuation_case
+    child, child_id, generation, *_ = _quarantined_root_with_child_dispatch(c, claimed=False)
+    # Fault injection models an old/reordered recovery projection. A valid queued
+    # delivery and active child never override an authoritative unknown ancestor.
+    with c.factory.begin() as session:
+        session.get(NativeDispatch, child_id).state = "queued"
+        state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == child.request_id,
+                NativeInvocationState.invocation_id == child.invocation_id,
+            )
+        )
+        state.state = "queued"
+        invocation = session.scalar(
+            select(NativeTestInvocation).where(
+                NativeTestInvocation.request_id == child.request_id,
+                NativeTestInvocation.invocation_id == child.invocation_id,
+            )
+        )
+        invocation.active = True
+    with pytest.raises(BuilderExecutionPolicyError, match="native_ancestor_quarantined"):
+        c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
+    with c.factory() as session:
+        assert session.get(NativeDispatch, child_id).state == "queued"
+    assert c.ledger.dispatched_attempt_count() == 0
