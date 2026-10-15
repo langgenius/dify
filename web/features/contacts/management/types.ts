@@ -1,6 +1,7 @@
 import type { ChannelSummary } from '@dify/contracts/api/console/workspace/types.gen'
 import type {
   ExternalContactCreateRequest,
+  GetContactResponse,
   HumanInputContact,
   HumanInputContactType,
   ImBinding,
@@ -43,6 +44,7 @@ export type ContactView = HumanInputContact & {
   avatar_url: string
   email: string | null
   im_bindings: ContactIMBinding[]
+  im_binding_details?: GetContactResponse['im_binding_details']
 }
 
 export type AvailablePlatformContact = {
