@@ -48,6 +48,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
@@ -79,7 +80,6 @@ from services.agent.prompt_mentions import (
     parse_prompt_mentions,
     workflow_previous_node_output_refs_from_selectors,
 )
-from services.tracing.runtime_bridge import prepare_workflow_agent
 
 from .dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
@@ -228,6 +228,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul.model.plugin_id,
         )
 
+        tracing_hooks = application_tracing_hooks()
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
@@ -258,8 +259,12 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
-                    tracing=prepare_workflow_agent(
-                        context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)
+                    tracing=(
+                        tracing_hooks.prepare_workflow_agent(
+                            context, get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID)
+                        )
+                        if tracing_hooks is not None
+                        else None
                     ),
                 ),
                 backend_binding_ref=context.backend_binding_ref,
