@@ -15,15 +15,25 @@ Run direct Python commands through `uv run --project api`. Docker-backed integra
 
 ## Architecture And Boundaries
 
+The backend follows a strict domain-driven slice pattern. Read the [backend architecture][architecture] before adding an endpoint or use case, or moving behavior out of a legacy service. It owns the slice anatomy, the reference slices to copy, and the boundary contract template.
+
+- Put every use case in a slice: an application service in `services/<domain>/` (or only a query port for a read with no policy beyond owner scoping), the ports it declares, adapters that implement them, one registration in the composition root, and a thin controller. Copy a reference slice, not a legacy static service.
+- Application services own invariants and domain policy. They declare consumer-owned `Protocol` ports, immutable records, and framework-neutral errors. They take the admitted `RequestContext` from `machinery.context` and receive ports and plain values through a keyword-only constructor. They must not import `flask`, `werkzeug`, `sqlalchemy`, `models`, `repositories`, `controllers`, `extensions`, `configs`, or `tasks`.
+- Controllers declare admission, validate payloads with Pydantic v2, map them to application inputs, call `application_services().<slice>`, translate slice errors into HTTP errors, and serialize the returned records. They must not import `models`, `repositories`, `sqlalchemy`, or `extensions.ext_database`, query tables, or decide business policy.
+- Repositories in `repositories/<domain>/` implement store and query ports. Each method owns its session, filters by the full owner chain, and returns records. Sessions, ORM rows, and lazy relationships never cross a port. `*_adapters.py` and `*_gateway.py` modules implement the remaining ports over Redis, Celery, Enterprise, `core`, or legacy services.
+- `extensions/ext_application_services.py` and `extensions/application_services/<domain>.py` are the only composition root. Construct adapters, read `configs.dify_config`, and inject plain values there.
+- Add the service and controller boundary contracts to `api/.importlinter` in the same change as each new or migrated slice. Never add an `ignore_imports` entry; delete the entry for each import a migration removes.
+- Keep ORM models as table mappings, with no session loading, queries, or application operations.
+- When a change touches a legacy static service or a controller that queries models, migrate the touched use cases into a slice. Delete the replaced code and its tests, and preserve the public wire contract.
 - Treat `api/core/` as a migration-only area: do not add files or move implementations into it. Move responsibilities out; limit changes to existing callers to the adaptations needed for that migration.
-- Keep transport parsing and serialization in controllers, orchestration in services, and domain policy in its domain owner. New or extracted implementations must stay outside `core/`. Keep `libs/` business-agnostic and reuse existing owners before adding abstractions.
+- Keep `libs/` business-agnostic. Reuse existing repositories and ports before adding abstractions.
 - Before changing controller schemas, generated API contracts, or `SystemFeatureModel`, read `controllers/API_SCHEMA_GUIDE.md`. Treat `/system-features` as a minimal unauthenticated bootstrap allowlist, not a general configuration registry.
-- Scope tenant-owned reads and writes by the complete owner chain, and propagate `tenant_id` across every affected layer. Reconstruct trusted internal references from validated database state after payload or async boundaries.
-- Keep write transactions explicit and bounded. Do not perform external I/O inside an open transaction unless a documented consistency contract requires it.
-- Read configuration through `configs.dify_config`, access storage through `extensions.ext_storage.storage`, and route outbound HTTP through the existing SSRF-safe owner in `core.helper.ssrf_proxy`.
-- Use Pydantic v2 for request and response models. Reuse domain-specific exceptions and translate them at the controller boundary.
+- Scope tenant-owned reads and writes by the complete owner chain, and pass owner ids explicitly through every port. Reconstruct trusted internal references from validated database state after payload or async boundaries.
+- Keep write transactions explicit and bounded. Do not perform external I/O inside an open transaction unless a documented consistency contract requires it; dispatch side effects after the write commits.
+- Access storage through `extensions.ext_storage.storage` and route outbound HTTP through the existing SSRF-safe owner in `core.helper.ssrf_proxy`, both from adapters.
 - Use existing Celery task and queue owners for asynchronous work; do not route unrelated jobs through workflow-specific services.
 - Celery tasks that may be retried or redelivered must keep side effects idempotent and log affected resource identifiers.
+- Test each slice at its seams: application services with in-memory Protocol implementations, repositories against `sqlite_session_factory`, wiring in `tests/unit_tests/extensions/test_ext_application_services.py`, and controllers for admission, error translation, and the wire contract. CI rejects new `Mock`, `MagicMock`, and `SimpleNamespace` constructors.
 
 New SQLAlchemy models must inherit from `models.base.TypeBase`. The ast-grep
 guard rejects new `Base` subclasses. Existing `Base` subclasses may be edited
@@ -34,3 +44,5 @@ changes, and CI checks the PR against its target revision.
 
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
+
+[architecture]: ../.agents/skills/backend-code-review/references/architecture-rule.md
