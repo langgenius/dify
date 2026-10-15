@@ -2,7 +2,7 @@ import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from types import SimpleNamespace
+from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -10,17 +10,53 @@ import pytest
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from redis.exceptions import LockError
 from sqlalchemy import select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from core.rag.embedding.embedding_base import Embeddings
 from models.account import Tenant
-from models.dataset import TidbAuthBinding
+from models.dataset import Dataset, TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 from services import tidb_binding_service as service
+from tests.unit_tests.knowledge_fs_core_fakes import RecordingCallable
+
+
+@dataclass(frozen=True)
+class _Db:
+    engine: Engine
+
+
+@dataclass(frozen=True)
+class _Redis:
+    lock: RecordingCallable
+
+
+@dataclass(frozen=True)
+class _Environment:
+    engine: Engine
+    tenants: list[Tenant]
+    redis: _Redis
+    create: MagicMock
+    get: MagicMock
+
+
+class _UnusedEmbeddings(Embeddings):
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError
+
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
+        raise NotImplementedError
+
+    def embed_query(self, text: str) -> list[float]:
+        raise NotImplementedError
+
+    def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
+        raise NotImplementedError
 
 
 @pytest.fixture
 def environment(sqlite_engine, monkeypatch, config_overrides):
-    monkeypatch.setattr(service, "db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(service, "db", _Db(engine=sqlite_engine))
     lock = threading.Lock()
 
     @contextmanager
@@ -28,7 +64,7 @@ def environment(sqlite_engine, monkeypatch, config_overrides):
         with lock:
             yield
 
-    redis = SimpleNamespace(lock=MagicMock(side_effect=acquire))
+    redis = _Redis(lock=RecordingCallable(side_effect=acquire))
     monkeypatch.setattr(service, "redis_client", redis)
     config_overrides(
         TIDB_PROJECT_ID="project",
@@ -54,7 +90,7 @@ def environment(sqlite_engine, monkeypatch, config_overrides):
             },
         ) as get,
     ):
-        yield SimpleNamespace(engine=sqlite_engine, tenants=tenants, redis=redis, create=create, get=get)
+        yield _Environment(engine=sqlite_engine, tenants=tenants, redis=redis, create=create, get=get)
 
 
 def add_binding(env, *, tenant=None, active=False, status=TidbAuthBindingStatus.ACTIVE, **changes):
@@ -353,7 +389,7 @@ def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environm
     from dify_vdb_tidb_on_qdrant import tidb_on_qdrant_vector as legacy
 
     binding = add_binding(environment, tenant=environment.tenants[0].id, active=True)
-    dataset = SimpleNamespace(id=str(uuid.uuid4()), tenant_id=binding.tenant_id, index_struct_dict=None)
+    dataset = Dataset(id=str(uuid.uuid4()), tenant_id=binding.tenant_id, index_struct=None)
     with (
         patch.object(
             legacy, "resolve_tidb_auth_binding", side_effect=[service.TidbBindingPendingError(), binding]
@@ -361,7 +397,7 @@ def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environm
         patch.object(legacy.time, "sleep") as sleep,
         patch.object(legacy, "TidbOnQdrantVector") as vector,
     ):
-        legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], MagicMock(), session=None)
+        legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], _UnusedEmbeddings(), session=None)
     assert resolve.call_count == 2
     resolve.assert_called_with(binding.tenant_id, allow_create=True)
     sleep.assert_called_once_with(5)
@@ -372,12 +408,12 @@ def test_legacy_dataset_factory_uses_shared_binding_and_resumes_pending(environm
 def test_legacy_dataset_factory_bounds_readiness_wait(environment):
     from dify_vdb_tidb_on_qdrant import tidb_on_qdrant_vector as legacy
 
-    dataset = SimpleNamespace(id=str(uuid.uuid4()), tenant_id=environment.tenants[0].id)
+    dataset = Dataset(id=str(uuid.uuid4()), tenant_id=environment.tenants[0].id)
     with (
         patch.object(legacy, "resolve_tidb_auth_binding", side_effect=service.TidbBindingPendingError()),
         patch.object(legacy.time, "monotonic", side_effect=[0, 901]),
         patch.object(legacy.time, "sleep") as sleep,
     ):
         with pytest.raises(service.TidbBindingPendingError):
-            legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], MagicMock(), session=None)
+            legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], _UnusedEmbeddings(), session=None)
     sleep.assert_not_called()

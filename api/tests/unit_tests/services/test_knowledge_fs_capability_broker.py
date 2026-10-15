@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from types import SimpleNamespace
-from typing import Literal, cast, override
+from dataclasses import dataclass
+from typing import Literal, override
 
 import pytest
 import sqlalchemy as sa
@@ -76,28 +76,38 @@ class FakeProduct:
         )
 
 
+@dataclass(frozen=True)
+class _IssuedClaims:
+    iat: int
+    exp: int
+
+
+@dataclass(frozen=True)
+class _IssuedCapability:
+    token: str
+    claims: _IssuedClaims
+
+
+def _signed_capability() -> _IssuedCapability:
+    return _IssuedCapability(token="signed-capability", claims=_IssuedClaims(iat=1_999_999_940, exp=2_000_000_000))
+
+
 class FakeIssuer:
     def __init__(self) -> None:
         self.requests: list[CapabilityIssueRequest] = []
 
-    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
+    def issue(self, request: CapabilityIssueRequest) -> _IssuedCapability:
         self.requests.append(request)
-        return SimpleNamespace(
-            token="signed-capability",
-            claims=SimpleNamespace(iat=1_999_999_940, exp=2_000_000_000),
-        )
+        return _signed_capability()
 
 
 class AuditFailingOnceIssuer(FakeIssuer):
     @override
-    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
+    def issue(self, request: CapabilityIssueRequest) -> _IssuedCapability:
         self.requests.append(request)
         if len(self.requests) == 1:
             raise RuntimeError("issuance audit persistence failed")
-        return SimpleNamespace(
-            token="signed-capability",
-            claims=SimpleNamespace(iat=1_999_999_940, exp=2_000_000_000),
-        )
+        return _signed_capability()
 
 
 class NarrowingIssuer(FakeIssuer):
@@ -113,7 +123,7 @@ class NarrowingIssuer(FakeIssuer):
         self.saw_committed_reservation = False
 
     @override
-    def issue(self, request: CapabilityIssueRequest) -> SimpleNamespace:
+    def issue(self, request: CapabilityIssueRequest) -> _IssuedCapability:
         with self._maker() as session:
             reservation = session.scalar(
                 sa.select(KnowledgeFSCapabilityIssuanceReservation).where(
@@ -900,13 +910,37 @@ def test_uncutover_workspace_rejects_service_and_app_capabilities_before_issuanc
     if principal_kind == "service":
         with pytest.raises(KnowledgeFSOperationUnavailableError, match="not cut over"):
             broker.issue_service(
-                profile=cast(KnowledgeFSServiceApiProfile, SimpleNamespace(tenant_id="tenant-1")),
+                profile=KnowledgeFSServiceApiProfile(
+                    tenant_id="tenant-1",
+                    control_space_id="control-space-1",
+                    api_token_id="api-token-1",
+                    principal_id="api-token-1",
+                    knowledge_space_id="space-1",
+                    knowledge_space_revision=0,
+                    membership_epoch=1,
+                    space_acl_epoch=2,
+                    external_access_epoch=3,
+                    content_policy_revision=4,
+                ),
                 operation_id="createQuery",
             )
     else:
         with pytest.raises(KnowledgeFSOperationUnavailableError, match="not cut over"):
             broker.issue_app(
-                profile=cast(KnowledgeFSAppPrincipalProfile, SimpleNamespace(tenant_id="tenant-1")),
+                profile=KnowledgeFSAppPrincipalProfile(
+                    tenant_id="tenant-1",
+                    control_space_id="control-space-1",
+                    app_id="app-1",
+                    join_id="join-1",
+                    caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+                    action="queries.create",
+                    knowledge_space_id="space-1",
+                    knowledge_space_revision=0,
+                    membership_epoch=1,
+                    space_acl_epoch=2,
+                    external_access_epoch=3,
+                    content_policy_revision=4,
+                ),
                 operation_id="createQuery",
             )
 

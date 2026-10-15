@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,6 +12,7 @@ from models.knowledge_fs_cutover import (
 )
 from services.knowledge_fs.cutover_runtime_gate import SQLKnowledgeFSWorkspaceRuntimeGate
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
+from tests.unit_tests.knowledge_fs_core_fakes import RecordingCallable
 
 _WATERMARK: KnowledgeFSCutoverRevisionWatermark = {
     "membership_epoch": 1,
@@ -33,10 +33,14 @@ def test_runtime_gate_fails_closed_without_a_cutover_ledger(sqlite_session: Sess
         gate.require_capability_v2(tenant_id="tenant-1")
 
 
+class _Initializer:
+    def __init__(self, ensure_initialized: RecordingCallable) -> None:
+        self.ensure_initialized = ensure_initialized
+
+
 @pytest.mark.parametrize("sqlite_session", [(KnowledgeFSWorkspaceCutoverLedger,)], indirect=True)
 def test_runtime_gate_initializes_a_missing_greenfield_workspace_once(sqlite_session: Session) -> None:
     session_maker = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
-    initializer = MagicMock()
 
     def initialize(*, tenant_id: str) -> None:
         with session_maker.begin() as session:
@@ -55,13 +59,14 @@ def test_runtime_gate_initializes_a_missing_greenfield_workspace_once(sqlite_ses
                 )
             )
 
-    initializer.ensure_initialized.side_effect = initialize
+    ensure_initialized = RecordingCallable(side_effect=initialize)
+    initializer = _Initializer(ensure_initialized)
     gate = SQLKnowledgeFSWorkspaceRuntimeGate(session_maker, initializer=initializer)
 
     gate.require_product_routes(tenant_id="tenant-1")
     gate.require_capability_v2(tenant_id="tenant-1")
 
-    initializer.ensure_initialized.assert_called_once_with(tenant_id="tenant-1")
+    ensure_initialized.assert_called_once_with(tenant_id="tenant-1")
 
 
 @pytest.mark.parametrize("sqlite_session", [(KnowledgeFSWorkspaceCutoverLedger,)], indirect=True)

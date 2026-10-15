@@ -1,28 +1,27 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import MagicMock
-
 import pytest
+from sqlalchemy.orm import sessionmaker
 
 from services.knowledge_fs import runtime
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.knowledge_fs_core_fakes import Marker, RecordingCallable
 
 
 def test_runtime_fails_closed_when_the_remote_endpoint_is_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, KNOWLEDGE_FS_BASE_URL=None)
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="not configured"):
-        runtime.create_knowledge_fs_runtime(MagicMock())
+        runtime.create_knowledge_fs_runtime(sessionmaker())
 
 
 def test_process_runtime_is_built_once_for_the_application_session_factory(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    session_maker = MagicMock(name="session_maker")
-    built_runtime = SimpleNamespace(component="runtime")
-    factory = MagicMock(return_value=built_runtime)
+    session_maker = sessionmaker()
+    built_runtime = Marker("runtime")
+    factory = RecordingCallable(return_value=built_runtime)
     monkeypatch.setattr(runtime, "create_knowledge_fs_runtime", factory)
 
     first = runtime.get_knowledge_fs_runtime(session_maker)
@@ -66,14 +65,13 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
         "create_configured_knowledge_fs_capability_issuer",
         "get_knowledge_fs_lifecycle_remote",
     )
-    factories: dict[str, MagicMock] = {}
+    factories: dict[str, RecordingCallable] = {}
     for name in factory_names:
-        factory = MagicMock(name=name)
-        factory.return_value = SimpleNamespace(component=name)
+        factory = RecordingCallable(return_value=Marker(name), name=name)
         factories[name] = factory
         monkeypatch.setattr(runtime, name, factory)
 
-    session_maker = MagicMock(name="session_maker")
+    session_maker = sessionmaker()
     result = runtime.create_knowledge_fs_runtime(session_maker)
 
     assert result.application is factories["KnowledgeFSProductApplicationService"].return_value
@@ -95,7 +93,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
         audit=factories["SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor"].return_value
     )
     assert (
-        factories["KnowledgeFSProductService"].call_args.kwargs["cutover_gate"]
+        factories["KnowledgeFSProductService"].last_call.kwargs["cutover_gate"]
         is factories["SQLKnowledgeFSWorkspaceRuntimeGate"].return_value
     )
     factories["KnowledgeFSWorkspaceCutoverService"].assert_called_once_with(
@@ -111,7 +109,7 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
         initializer=factories["KnowledgeFSWorkspaceGreenfieldInitializer"].return_value,
     )
     assert (
-        factories["KnowledgeFSProductApplicationService"].call_args.kwargs["rbac"]
+        factories["KnowledgeFSProductApplicationService"].last_call.kwargs["rbac"]
         is factories["DifyKnowledgeFSProductRBACPort"].return_value
     )
-    assert factories["KnowledgeFSAppExecutionCapabilityService"].call_args.kwargs["admission"] is result.app_admission
+    assert factories["KnowledgeFSAppExecutionCapabilityService"].last_call.kwargs["admission"] is result.app_admission

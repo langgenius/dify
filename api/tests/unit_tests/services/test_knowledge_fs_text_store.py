@@ -1,7 +1,7 @@
 import hashlib
 from contextlib import nullcontext
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -24,9 +24,18 @@ from services.knowledge_fs.text_store_native import (
 from services.knowledge_fs.vector_store import VectorStoreUnavailableError
 from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
 from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
+from tests.unit_tests.knowledge_fs_core_fakes import Marker
 
 A, B, C, GENERATION = (f"00000000-0000-4000-8000-{n:012d}" for n in (1, 2, 3, 4))
 SCOPE = {"tenant_id": A, "knowledge_space_id": B, "index_version": "fts-v1"}
+
+
+@dataclass(frozen=True)
+class _StaticTextClient:
+    result: dict
+
+    def execute(self, _payload: TextPayload) -> dict:
+        return self.result
 
 
 def point(identifier=A, text="refund policy 退 款"):
@@ -139,7 +148,7 @@ def test_checksum_and_extra_configuration_rejected():
 )
 def test_invalid_backend_readback_rejected(result):
     with pytest.raises(VectorStoreUnavailableError):
-        execute_text_request(SimpleNamespace(execute=lambda _: result), request("get", ids=[A]))
+        execute_text_request(_StaticTextClient(result), request("get", ids=[A]))
 
 
 @pytest.mark.parametrize(
@@ -148,12 +157,12 @@ def test_invalid_backend_readback_rejected(result):
 def test_unauthorized_duplicate_and_nonfinite_matches_rejected(matches):
     with pytest.raises(VectorStoreUnavailableError):
         execute_text_request(
-            SimpleNamespace(execute=lambda _: {"points": [], "matches": matches}),
+            _StaticTextClient({"points": [], "matches": matches}),
             request("search", ids=[A], query="refund"),
         )
     with pytest.raises(VectorStoreUnavailableError):
         execute_text_request(
-            SimpleNamespace(execute=lambda _: {"points": [], "matches": matches * 2}),
+            _StaticTextClient({"points": [], "matches": matches * 2}),
             request("search", ids=[A], query="refund", limit=1),
         )
 
@@ -167,7 +176,7 @@ def test_unauthorized_duplicate_and_nonfinite_matches_rejected(matches):
 )
 def test_selection_reuses_vector_configuration(config_overrides, backend, wrapper, expected):
     config_overrides(VECTOR_STORE=backend)
-    native = wrapper(MagicMock())
+    native = wrapper(Marker("native-client"))
     with patch(
         "services.knowledge_fs.vector_store.configured_vector_client", return_value=nullcontext(native)
     ) as factory:

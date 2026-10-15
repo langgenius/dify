@@ -1,9 +1,8 @@
 import json
-from types import SimpleNamespace
-from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import sessionmaker
 
 from models.account import Account
 from services.knowledge_fs.initial_source_preview_job import (
@@ -31,9 +30,15 @@ def _payload() -> KnowledgeFSInitialWebsiteSourcePreviewPayload:
     )
 
 
+def _account() -> Account:
+    account = Account(name="Account One", email="account-1@example.com")
+    account.id = "account-1"
+    return account
+
+
 def test_start_validates_binding_and_enqueues_preview_without_running_it_inline() -> None:
-    service = KnowledgeFSInitialSourcePreviewJobService(MagicMock())
-    account = cast(Account, SimpleNamespace(id="account-1"))
+    service = KnowledgeFSInitialSourcePreviewJobService(sessionmaker())
+    account = _account()
 
     with (
         patch(
@@ -76,8 +81,8 @@ def test_start_validates_binding_and_enqueues_preview_without_running_it_inline(
 
 
 def test_start_rejects_a_second_active_preview_for_the_same_account() -> None:
-    service = KnowledgeFSInitialSourcePreviewJobService(MagicMock())
-    account = cast(Account, SimpleNamespace(id="account-1"))
+    service = KnowledgeFSInitialSourcePreviewJobService(sessionmaker())
+    account = _account()
 
     with (
         patch(
@@ -93,8 +98,8 @@ def test_start_rejects_a_second_active_preview_for_the_same_account() -> None:
 
 
 def test_start_releases_the_active_preview_slot_when_enqueue_fails() -> None:
-    service = KnowledgeFSInitialSourcePreviewJobService(MagicMock())
-    account = cast(Account, SimpleNamespace(id="account-1"))
+    service = KnowledgeFSInitialSourcePreviewJobService(sessionmaker())
+    account = _account()
 
     with (
         patch(
