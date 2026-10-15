@@ -1023,10 +1023,7 @@ class DraftVariableSaver:
                     self._node_type,
                 )
                 continue
-            if isinstance(value, Segment):
-                value_seg = value
-            else:
-                value_seg = _build_segment_for_serialized_values(value)
+            value_seg = value if isinstance(value, Segment) else _build_segment_for_serialized_values(value)
             draft_vars.append(
                 self._create_draft_variable(
                     name=name,
