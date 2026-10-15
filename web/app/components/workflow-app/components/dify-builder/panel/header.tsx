@@ -23,7 +23,7 @@ export const DifyBuilderPanelHeader = ({
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
 
   return (
-    <header className="relative z-10 flex h-11 shrink-0 items-center gap-2 bg-linear-to-b from-background-section to-transparent pr-3 pl-4.5">
+    <header className="relative z-10 flex h-11 shrink-0 items-center gap-2 bg-linear-to-b from-background-neutral-subtle to-transparent pr-3 pl-4.5">
       <h2
         ref={titleRef}
         tabIndex={-1}
