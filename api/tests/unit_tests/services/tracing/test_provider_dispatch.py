@@ -277,6 +277,156 @@ def test_partial_otlp_acceptance_requires_reconciliation(trace, monkeypatch):
         export_trace("langfuse", {"host": "https://langfuse.test", "public_key": "pk", "secret_key": "sk"}, trace)
 
 
+def _langfuse_queue_job_ack():
+    # Synthetic values only. Real acknowledgements contain auth context and must
+    # never be logged or persisted as acceptance-test evidence.
+    return {
+        "name": "otel-ingestion-job",
+        "data": {
+            "id": "11111111-2222-4333-8444-555555555555",
+            "timestamp": "2026-10-15T01:00:00.000Z",
+            "name": "otel-ingestion-job",
+            "payload": {
+                "data": {"fileKey": "otel/test/payload.json", "publicKey": "never-log-public-key"},
+                "authCheck": {
+                    "validKey": True,
+                    "scope": {"projectId": "never-log-project", "accessLevel": "project", "orgId": "test-org"},
+                },
+                "sdkName": "test-sdk",
+                "ingestionVersion": "4",
+            },
+        },
+    }
+
+
+def test_langfuse_v4_queue_ack_confirms_ingestion_acceptance_only(trace, monkeypatch, caplog, capsys):
+    from core.helper import ssrf_proxy
+
+    monkeypatch.setattr(
+        ssrf_proxy,
+        "make_request",
+        lambda method, url, **_kwargs: httpx.Response(
+            200, json=_langfuse_queue_job_ack(), request=httpx.Request(method, url)
+        ),
+    )
+    result = export_trace("langfuse", {"host": "https://langfuse.test", "public_key": "pk", "secret_key": "sk"}, trace)
+    assert result.status == "accepted"
+    assert result.trace_id == trace.trace_id
+    assert result.trace_url is None
+    captured = capsys.readouterr()
+    evidence = caplog.text + captured.out + captured.err + repr(result)
+    assert "never-log-public-key" not in evidence
+    assert "never-log-project" not in evidence
+    assert "authCheck" not in evidence
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "wrong_name",
+        "wrong_nested_name",
+        "invalid_id",
+        "invalid_timestamp",
+        "invalid_auth",
+        "missing_scope",
+        "missing_file",
+        "partial_success",
+        "error",
+        "failed_job",
+        "unknown",
+        "null",
+        "array",
+    ],
+)
+def test_langfuse_ambiguous_json_ack_remains_uncertain(trace, monkeypatch, caplog, capsys, scenario):
+    from core.helper import ssrf_proxy
+
+    body = _langfuse_queue_job_ack()
+    if scenario == "wrong_name":
+        body["name"] = "different-job"
+    elif scenario == "wrong_nested_name":
+        body["data"]["name"] = "different-job"
+    elif scenario == "invalid_id":
+        body["data"]["id"] = "not-a-uuid"
+    elif scenario == "invalid_timestamp":
+        body["data"]["timestamp"] = "2026-10-15T01:00:00"
+    elif scenario == "invalid_auth":
+        body["data"]["payload"]["authCheck"]["validKey"] = False
+    elif scenario == "missing_scope":
+        body["data"]["payload"]["authCheck"]["scope"] = {}
+    elif scenario == "missing_file":
+        body["data"]["payload"]["data"]["fileKey"] = ""
+    elif scenario == "partial_success":
+        body["partialSuccess"] = {"rejectedSpans": "1"}
+    elif scenario == "error":
+        body["error"] = "never-log-public-key"
+    elif scenario == "failed_job":
+        body["failedReason"] = "never-log-public-key"
+    elif scenario == "unknown":
+        body = {"accepted": True, "publicKey": "never-log-public-key"}
+    elif scenario == "null":
+        body = None
+    elif scenario == "array":
+        body = []
+    monkeypatch.setattr(
+        ssrf_proxy,
+        "make_request",
+        lambda method, url, **_kwargs: httpx.Response(
+            200,
+            content=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json"},
+            request=httpx.Request(method, url),
+        ),
+    )
+    with pytest.raises(TraceExportUncertainError) as caught:
+        export_trace("langfuse", {"host": "https://langfuse.test", "public_key": "pk", "secret_key": "sk"}, trace)
+    captured = capsys.readouterr()
+    evidence = caplog.text + captured.out + captured.err + str(caught.value)
+    assert "never-log-public-key" not in evidence
+    assert "never-log-project" not in evidence
+    assert "authCheck" not in evidence
+
+
+@pytest.mark.parametrize(
+    ("provider", "version", "status"), [("phoenix", "4", 200), ("langfuse", "3", 200), ("langfuse", "4", 202)]
+)
+def test_langfuse_queue_ack_is_not_a_generic_otlp_success(monkeypatch, provider, version, status):
+    from core.helper import ssrf_proxy
+    from services.tracing.otlp_export import export_http
+
+    monkeypatch.setattr(
+        ssrf_proxy,
+        "make_request",
+        lambda method, url, **_kwargs: httpx.Response(
+            status, json=_langfuse_queue_job_ack(), request=httpx.Request(method, url)
+        ),
+    )
+    with pytest.raises(TraceExportUncertainError):
+        export_http(
+            provider,
+            "https://collector.test/v1/traces",
+            {"x-langfuse-ingestion-version": version},
+            ExportTraceServiceRequest(),
+        )
+
+
+@pytest.mark.parametrize("body", [{}, {"partialSuccess": {}}, {"partialSuccess": {"rejectedSpans": "1"}}])
+def test_langfuse_standard_otlp_json_ack_remains_supported(trace, monkeypatch, body):
+    from core.helper import ssrf_proxy
+
+    monkeypatch.setattr(
+        ssrf_proxy,
+        "make_request",
+        lambda method, url, **_kwargs: httpx.Response(200, json=body, request=httpx.Request(method, url)),
+    )
+    config = {"host": "https://langfuse.test", "public_key": "pk", "secret_key": "sk"}
+    if body.get("partialSuccess", {}).get("rejectedSpans"):
+        with pytest.raises(TraceExportUncertainError):
+            export_trace("langfuse", config, trace)
+    else:
+        assert export_trace("langfuse", config, trace).status == "accepted"
+
+
 def test_lost_http_ack_is_uncertain_not_rejected(trace, monkeypatch):
     from core.helper import ssrf_proxy
 

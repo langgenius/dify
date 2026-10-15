@@ -6,8 +6,10 @@ original IDs and timestamps, and destination credentials belong to one export.
 
 import re
 from collections.abc import Callable, Mapping
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from core.ops.exceptions import RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanStatus, CanonicalTrace
@@ -78,6 +80,45 @@ def _check_response(response: Any, provider: str) -> None:
         raise TraceExportUncertainError(f"{provider} partially accepted the trace; reconciliation is required")
 
 
+def _langfuse_enqueue_ack(body: object) -> bool:
+    """Recognize Langfuse's queue acknowledgement without exposing its auth data.
+
+    The v4 HTTP route returns the job after blob upload and awaited queue.add,
+    rather than an OTLP ExportTraceServiceResponse. This confirms enqueue only.
+    Upstream: langfuse/langfuse@bc1ade0aacca75104bad934e92d70a454ec16e67,
+    web/src/server/otel/processOtelIngestion.ts:277 and
+    packages/shared/src/server/otel/OtelIngestionProcessor.ts:350.
+    """
+    if not isinstance(body, Mapping) or body.get("name") != "otel-ingestion-job":
+        return False
+    if any(key in body for key in ("partialSuccess", "partial_success", "error", "errors")) or body.get("failedReason"):
+        return False
+    data = body.get("data")
+    if not isinstance(data, Mapping) or data.get("name") != "otel-ingestion-job":
+        return False
+    identifier, timestamp = data.get("id"), data.get("timestamp")
+    if not isinstance(identifier, str) or not isinstance(timestamp, str):
+        return False
+    try:
+        if UUID(identifier).int == 0 or datetime.fromisoformat(timestamp).tzinfo is None:
+            return False
+    except ValueError:
+        return False
+    payload = data.get("payload")
+    if not isinstance(payload, Mapping):
+        return False
+    stored_data, auth = payload.get("data"), payload.get("authCheck")
+    if not isinstance(stored_data, Mapping) or not isinstance(auth, Mapping) or auth.get("validKey") is not True:
+        return False
+    scope = auth.get("scope")
+    if not isinstance(scope, Mapping) or scope.get("accessLevel") != "project":
+        return False
+    return all(
+        isinstance(value, str) and bool(value.strip())
+        for value in (stored_data.get("fileKey"), stored_data.get("publicKey"), scope.get("projectId"))
+    )
+
+
 def export_http(provider: str, url: str, headers: Mapping[str, str], payload: Any) -> None:
     from google.protobuf.json_format import ParseDict, ParseError
     from google.protobuf.message import DecodeError
@@ -94,7 +135,19 @@ def export_http(provider: str, url: str, headers: Mapping[str, str], payload: An
     if response.content:
         try:
             if "json" in response.headers.get("content-type", "").lower():
-                ParseDict(response.json(), result)
+                body = response.json()
+                if not isinstance(body, dict):
+                    raise ValueError("Invalid ingestion acknowledgment object")
+                if (
+                    provider == "langfuse"
+                    and response.status_code == 200
+                    and any(
+                        key.lower() == "x-langfuse-ingestion-version" and value == "4" for key, value in headers.items()
+                    )
+                    and _langfuse_enqueue_ack(body)
+                ):
+                    return
+                ParseDict(body, result)
             else:
                 result.ParseFromString(response.content)
         except (DecodeError, ParseError, ValueError):
