@@ -1,22 +1,20 @@
 import logging
+from collections.abc import Callable
+from functools import wraps
+from http import HTTPStatus
 from uuid import UUID
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel
-from sqlalchemy.orm import Session
-from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import HTTPException, InternalServerError
 
-import services
+from controllers.common.audio_response import audio_binary_response
+from controllers.common.errors import InternalServerError, NotFoundError
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import (
-    resolve_agent_runtime_app_model,
-    resolve_existing_agent_runtime_app_model,
-)
 from controllers.console.app.error import (
+    AppNotFoundError,
     AppUnavailableError,
     AudioTooLargeError,
     CompletionRequestError,
@@ -29,33 +27,28 @@ from controllers.console.app.error import (
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model, with_session
-from controllers.console.wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, model_validate
 from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
+from enums.account import TenantAccountRole
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
-from libs.login import current_user, login_required
-from models import Account, App, AppMode
+from machinery.context import RequestContext
+from models import AppMode
 from models.agent import AgentConfigDraftType
-from models.agent_config_entities import AgentSoulConfig
-from services.agent.composer_service import AgentComposerService
-from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
-from services.app_ref_service import AppRefService
-from services.audio_service import AudioService
+from services.agent.errors import AgentVersionNotFoundError
+from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.app.console_service import ConsoleAppNotFoundError
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.audio_types import AudioAppRef, AudioDraftType, AudioUpload
+from services.entities.message_entities import MessageAccount
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -132,64 +125,98 @@ _CONSOLE_AUDIO_TRANSCRIPT_APP_MODES = [
 ]
 
 
-def _transcribe_audio_to_text(
-    *,
-    app_model: App,
-    file: FileStorage | None,
-    session: Session,
-    agent_soul: AgentSoulConfig | None = None,
-) -> dict[str, str]:
+def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except AppDefinitionUnavailableError as error:
+            raise AppUnavailableError() from error
+        except AppModelConfigBrokenError as error:
+            logger.exception("App model config broken.")
+            raise AppUnavailableError() from error
+        except AgentAppNotFoundError as error:
+            raise NotFoundError(str(error) or "Agent not found.") from error
+        except NoAudioUploadedServiceError as error:
+            raise NoAudioUploadedError() from error
+        except AudioTooLargeServiceError as error:
+            raise AudioTooLargeError(str(error)) from error
+        except UnsupportedAudioTypeServiceError as error:
+            raise UnsupportedAudioTypeError() from error
+        except ProviderNotSupportSpeechToTextServiceError as error:
+            raise ProviderNotSupportSpeechToTextError() from error
+        except SpeechToTextDisabledServiceError as error:
+            raise SpeechToTextDisabledError() from error
+        except ProviderNotSupportTextToSpeechServiceError as error:
+            raise ProviderNotSupportTextToSpeechError() from error
+        except ProviderTokenNotInitError as error:
+            raise ProviderNotInitializeError(error.description) from error
+        except QuotaExceededError as error:
+            raise ProviderQuotaExceededError() from error
+        except ModelCurrentlyNotSupportError as error:
+            raise ProviderModelCurrentlyNotSupportError() from error
+        except InvokeError as error:
+            raise CompletionRequestError(error.description) from error
+        except (BaseHTTPException, ValueError):
+            raise
+        except Exception as error:
+            logger.exception("Console audio operation failed")
+            raise InternalServerError() from error
+
+    return decorated
+
+
+def _get_audio_app(context: RequestContext, app_id: UUID) -> AudioAppRef:
     try:
-        if agent_soul is None:
-            response = AudioService.transcript_asr(
-                app_model=app_model,
-                file=file,
-                session=session,
-                end_user=None,
-            )
-        else:
-            response = AudioService.transcript_agent_asr(
-                app_model=app_model,
-                agent_soul=agent_soul,
-                file=file,
-                session=session,
-                end_user=None,
-            )
-        return dump_response(AudioTranscriptResponse, response)
-    except services.errors.app_model_config.AppModelConfigBrokenError:
-        logger.exception("App model config broken.")
-        raise AppUnavailableError()
-    except NoAudioUploadedServiceError:
-        raise NoAudioUploadedError()
-    except AudioTooLargeServiceError as e:
-        raise AudioTooLargeError(str(e))
-    except UnsupportedAudioTypeServiceError:
-        raise UnsupportedAudioTypeError()
-    except ProviderNotSupportSpeechToTextServiceError:
-        raise ProviderNotSupportSpeechToTextError()
-    except SpeechToTextDisabledServiceError:
-        raise SpeechToTextDisabledError()
-    except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
-    except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except HTTPException:
-        raise
-    except ValueError:
-        raise
-    except Exception as e:
-        logger.exception("Failed to transcribe audio to text")
-        raise InternalServerError() from e
+        app = application_services().apps.console.get_reference(context, str(app_id))
+    except ConsoleAppNotFoundError as error:
+        raise AppNotFoundError() from error
+    return AudioAppRef(app_id=app.id, tenant_id=context.active_workspace_id, app_mode=app.mode)
+
+
+def _get_agent_audio_app(context: RequestContext, agent_id: UUID, *, create: bool) -> AudioAppRef:
+    access = application_services().agent_apps.access
+    try:
+        app_id = (
+            access.resolve_runtime_app_id(context, str(agent_id))
+            if create
+            else access.resolve_existing_runtime_app_id(context, str(agent_id))
+        )
+    except AgentAppNotFoundError as error:
+        raise NotFoundError(str(error) or "Agent not found.") from error
+    return AudioAppRef(app_id=app_id, tenant_id=context.active_workspace_id, app_mode=AppMode.AGENT)
+
+
+@_audio_errors
+def _transcribe_audio_to_text(*, app: AudioAppRef, audio: AudioUpload | None) -> dict[str, object]:
+    response = application_services().app_audio.transcript_asr(app=app, audio=audio)
+    return dump_response(AudioTranscriptResponse, response)
+
+
+@_audio_errors
+def _transcribe_agent_audio_to_text(
+    *,
+    app: AudioAppRef,
+    agent_id: UUID,
+    context: RequestContext,
+    draft_type: AudioDraftType,
+    audio: AudioUpload | None,
+) -> dict[str, object]:
+    response = application_services().app_audio.transcript_agent_asr(
+        app=app,
+        agent_id=str(agent_id),
+        actor=MessageAccount(context.account_id),
+        draft_type=draft_type,
+        audio=audio,
+    )
+    return dump_response(AudioTranscriptResponse, response)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
 class ChatMessageAudioApi(Resource):
     @error_responses(
         AgentVersionNotFoundError,
+        AppNotFoundError,
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
@@ -208,29 +235,27 @@ class ChatMessageAudioApi(Resource):
         params={"app_id": "App ID", "file": _AUDIO_TRANSCRIPT_FILE_PARAM},
     )
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Audio transcription successful",
         console_ns.models[AudioTranscriptResponse.__name__],
     )
-    @console_ns.response(400, "Bad request - No audio uploaded or unsupported type")
-    @console_ns.response(413, "Audio file too large")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=_CONSOLE_AUDIO_TRANSCRIPT_APP_MODES)
-    def post(self, app_model: App):
-        return _transcribe_audio_to_text(
-            app_model=app_model,
-            file=request.files.get("file"),
-            session=db.session(),
-        )
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Bad request - No audio uploaded or unsupported type")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found or its mode does not support audio transcription")
+    @console_ns.response(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Audio file too large")
+    @console_account_admission()
+    def post(self, context: RequestContext, app_id: UUID) -> dict[str, object]:
+        app = _get_audio_app(context, app_id)
+        if AppMode.value_of(app.app_mode) not in _CONSOLE_AUDIO_TRANSCRIPT_APP_MODES:
+            mode_values = {mode.value for mode in _CONSOLE_AUDIO_TRANSCRIPT_APP_MODES}
+            raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
+        file = request.files.get("file")
+        audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
+        return _transcribe_audio_to_text(app=app, audio=audio)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/audio-to-text")
 class AgentChatMessageAudioApi(Resource):
     @error_responses(
-        AgentNotFoundError,
-        AgentVersionNotFoundError,
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
@@ -249,99 +274,57 @@ class AgentChatMessageAudioApi(Resource):
         params={"agent_id": "Agent ID", **_AGENT_AUDIO_TRANSCRIPT_PARAMS},
     )
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Audio transcription successful",
         console_ns.models[AudioTranscriptResponse.__name__],
     )
-    @console_ns.response(400, "Bad request - Speech to text disabled or unsupported audio")
-    @console_ns.response(404, "Agent or build draft not found")
-    @console_ns.response(413, "Audio file too large")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(
-        self,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
+    @console_ns.response(
+        HTTPStatus.BAD_REQUEST, "Bad request - Speech to text disabled, unsupported audio, or invalid debug source"
+    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent or build draft not found")
+    @console_ns.response(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Audio file too large")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+    )
+    def post(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         payload = AgentAudioTranscriptFormPayload.model_validate(request.form.to_dict(flat=True))
-        app_model = resolve_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
+        app = _get_agent_audio_app(context, agent_id, create=True)
         # Agent routes expose Agent ids, while APP RBAC is keyed by the resolved runtime App id.
         enforce_rbac_checks(
-            tenant_id=current_tenant_id,
-            account_id=current_user.id,
+            tenant_id=context.active_workspace_id,
+            account_id=context.account_id,
             checks=[RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())],
-            path_args={"app_id": app_model.id},
+            path_args={"app_id": app.app_id},
         )
-        agent_soul = AgentComposerService.load_agent_soul_for_debug(
-            tenant_id=current_tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-            draft_type=payload.draft_type,
-            session=session,
-        )
-        return _transcribe_audio_to_text(
-            app_model=app_model,
-            agent_soul=agent_soul,
-            file=request.files.get("file"),
-            session=session,
+        file = request.files.get("file")
+        audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
+        return _transcribe_agent_audio_to_text(
+            app=app,
+            agent_id=agent_id,
+            context=context,
+            draft_type="debug_build" if payload.draft_type == AgentConfigDraftType.DEBUG_BUILD else "draft",
+            audio=audio,
         )
 
 
-def _text_to_speech(*, payload: TextToSpeechPayload, app_model: App, session: Session, account_id: str | None):
-    try:
-        message_ref = None
-        if payload.message_id:
-            app_ref = AppRefService.create_app_ref(app_model)
-            message_ref = AppRefService.create_message_ref(
-                app_ref,
-                payload.message_id,
-                account_id=account_id,
-            )
-
-        return AudioService.transcript_tts(
-            app_model=app_model,
-            session=session,
-            text=payload.text,
-            voice=payload.voice,
-            message_ref=message_ref,
-            is_draft=True,
-        )
-    except services.errors.app_model_config.AppModelConfigBrokenError:
-        logger.exception("App model config broken.")
-        raise AppUnavailableError()
-    except ProviderNotSupportTextToSpeechServiceError:
-        raise ProviderNotSupportTextToSpeechError()
-    except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
-    except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except HTTPException:
-        raise
-    except ValueError:
-        raise
-    except Exception as e:
-        logger.exception("Failed to convert text to speech")
-        raise InternalServerError() from e
+@_audio_errors
+def _text_to_speech(*, payload: TextToSpeechPayload, app: AudioAppRef, context: RequestContext) -> Response | None:
+    output = application_services().app_audio.transcript_tts(
+        app=app,
+        actor=MessageAccount(context.account_id),
+        text=payload.text,
+        voice=payload.voice,
+        message_id=payload.message_id,
+        is_draft=True,
+    )
+    return audio_binary_response(output)
 
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio")
 class ChatMessageTextApi(Resource):
     @error_responses(
+        AppNotFoundError,
         AppUnavailableError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,
@@ -354,27 +337,21 @@ class ChatMessageTextApi(Resource):
     @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
     # TTS returns provider audio bytes, so the success response is intentionally schema-less.
-    @console_ns.response(200, "Text to speech conversion successful")
-    @console_ns.response(400, "Bad request - Invalid parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model
+    @console_ns.response(HTTPStatus.OK, "Text to speech conversion successful")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Bad request - Invalid parameters")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid request payload")
+    @console_account_admission()
     @model_validate(TextToSpeechPayload)
-    def post(self, req_data: TextToSpeechPayload, app_model: App):
-        # response-contract:ignore provider audio bytes
-        return _text_to_speech(
-            payload=req_data,
-            app_model=app_model,
-            session=db.session(),
-            account_id=current_user.id if req_data.message_id else None,
-        )
+    def post(self, req_data: TextToSpeechPayload, context: RequestContext, app_id: UUID) -> Response | None:
+        app = _get_audio_app(context, app_id)
+        # response-contract:ignore audio_binary_response
+        return _text_to_speech(payload=req_data, app=app, context=context)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/text-to-audio")
 class AgentChatMessageTextApi(Resource):
     @error_responses(
-        AgentNotFoundError,
         AppUnavailableError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,
@@ -390,67 +367,32 @@ class AgentChatMessageTextApi(Resource):
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: list(SUPPORTED_TTS_AUDIO_MIME_TYPES)},
     )
     @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
-    @console_ns.response(200, "Generated audio bytes in the provider audio format")
-    @console_ns.response(400, "Invalid text or voice")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(404, "Agent not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_ns.response(HTTPStatus.OK, "Generated audio bytes in the provider audio format")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid text or voice")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent not found")
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid request payload")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+    )
     @model_validate(TextToSpeechPayload)
-    def post(
-        self,
-        req_data: TextToSpeechPayload,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        enforce_rbac_checks(
-            tenant_id=current_tenant_id,
-            account_id=current_user.id,
-            checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
-            path_args={"agent_id": str(agent_id)},
-        )
-        app_model = resolve_existing_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
-        # response-contract:ignore provider audio bytes
-        return _text_to_speech(payload=req_data, app_model=app_model, session=session, account_id=current_user.id)
+    def post(self, req_data: TextToSpeechPayload, context: RequestContext, agent_id: UUID) -> Response | None:
+        app = _get_agent_audio_app(context, agent_id, create=False)
+        # response-contract:ignore audio_binary_response
+        return _text_to_speech(payload=req_data, app=app, context=context)
 
 
-def _get_text_to_speech_voices(*, tenant_id: str, language: str):
-    try:
-        response = AudioService.transcript_tts_voices(
-            tenant_id=tenant_id,
-            language=language,
-        )
-
-        return dump_response(TextToSpeechVoiceListResponse, response)
-    except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
-    except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except ValueError as e:
-        raise e
-    except Exception as e:
-        logger.exception("Failed to handle get request to TextModesApi")
-        raise InternalServerError()
+@_audio_errors
+def _get_text_to_speech_voices(*, tenant_id: str, language: str) -> list[dict[str, object]]:
+    response = application_services().app_audio.get_voices(tenant_id=tenant_id, language=language)
+    return TextToSpeechVoiceListResponse.model_validate(response).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
     @error_responses(
+        AppNotFoundError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
@@ -460,25 +402,24 @@ class TextModesApi(Resource):
     @console_ns.doc(description="Get available TTS voices for a specific language")
     @console_ns.doc(params={"app_id": "App ID", **query_params_from_model(TextToSpeechVoiceQuery)})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "TTS voices retrieved successfully",
         console_ns.models[TextToSpeechVoiceListResponse.__name__],
     )
-    @console_ns.response(400, "Invalid language parameter")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @get_app_model
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid language parameter")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid query parameters")
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp())])
     @model_validate(TextToSpeechVoiceQuery)
-    def get(self, req_data: TextToSpeechVoiceQuery, app_model: App):
-        return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=req_data.language)
+    def get(self, req_data: TextToSpeechVoiceQuery, context: RequestContext, app_id: UUID) -> list[dict[str, object]]:
+        app = _get_audio_app(context, app_id)
+        return _get_text_to_speech_voices(tenant_id=app.tenant_id, language=req_data.language)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/text-to-audio/voices")
 class AgentTextToSpeechVoicesApi(Resource):
     @error_responses(
-        AgentNotFoundError,
         CompletionRequestError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
@@ -488,36 +429,16 @@ class AgentTextToSpeechVoicesApi(Resource):
     @console_ns.doc(description="Get available TTS voices for an Agent and language")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(TextToSpeechVoiceQuery)})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "TTS voices retrieved successfully",
         console_ns.models[TextToSpeechVoiceListResponse.__name__],
     )
-    @console_ns.response(400, "Invalid language parameter")
-    @console_ns.response(404, "Agent not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid language parameter")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Agent not found")
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid query parameters")
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
     @model_validate(TextToSpeechVoiceQuery)
-    def get(
-        self,
-        req_data: TextToSpeechVoiceQuery,
-        session: Session,
-        current_tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        enforce_rbac_checks(
-            tenant_id=current_tenant_id,
-            account_id=current_user.id,
-            checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())],
-            path_args={"agent_id": str(agent_id)},
-        )
-        app_model = resolve_existing_agent_runtime_app_model(
-            session=session,
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-        )
-        return _get_text_to_speech_voices(tenant_id=app_model.tenant_id, language=req_data.language)
+    def get(self, req_data: TextToSpeechVoiceQuery, context: RequestContext, agent_id: UUID) -> list[dict[str, object]]:
+        app = _get_agent_audio_app(context, agent_id, create=False)
+        return _get_text_to_speech_voices(tenant_id=app.tenant_id, language=req_data.language)

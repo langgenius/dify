@@ -217,18 +217,6 @@ export const zSpeechToTextDisabledError = zErrorResponse.and(
 )
 
 /**
- * AgentVersionNotFoundError
- *
- * Agent config version not found.
- */
-export const zAgentVersionNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('agent_version_not_found_error'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * AudioTooLargeError
  *
  * Audio size exceeded. {message}
@@ -286,6 +274,18 @@ export const zAgentSimpleResultResponse = z.object({
 export const zAgentBuildSandboxNotFoundError = zErrorResponse.and(
   z.object({
     code: z.literal('agent_build_sandbox_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
     status: z.literal(404),
   }),
 )

@@ -2875,7 +2875,14 @@ export type PostAudioToTextErrors = {
     | SpeechToTextDisabledError
     | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
   413: AudioTooLargeError | ErrorResponse
   415: UnsupportedAudioTypeError | ErrorResponse
   500: ErrorResponse
@@ -4929,7 +4936,16 @@ export type PostTextToAudioErrors = {
     | ProviderQuotaExceededError
     | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  415: ErrorResponse
+  422: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

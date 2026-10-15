@@ -114,6 +114,7 @@ from services.data_source.credential_gateway import ActorAwareDatasourceCredenti
 from services.data_source.notion_import_adapters import PluginNotionSourceGateway
 from services.data_source.notion_import_application_service import NotionImportApplicationService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.entities.message_entities import MessageAccount
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError, EnterpriseServiceError
 from services.file_service import FileService
 from services.human_input_file_upload_service import HumanInputFileUploadService
@@ -1233,7 +1234,7 @@ def test_app_audio_uses_the_configured_database_and_app_owner(
     ) == {"text": "transcript"}
     assert services.app_audio.transcript_tts(
         app=AudioAppRef(admitted.app_id, admitted.tenant_id, admitted.app_mode),
-        account_id=account_id,
+        actor=MessageAccount(account_id),
         text=" read ",
         voice="voice",
         message_id=None,

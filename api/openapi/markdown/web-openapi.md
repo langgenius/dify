@@ -24,6 +24,7 @@ Convert audio file to text using speech-to-text service.
 | 200 | Success | **application/json**: [AudioToTextResponse](#audiototextresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App or end user not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported audio type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -846,9 +847,11 @@ Convert text to audio using text-to-speech service.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success |  |
+| 200 | Success; null when no message audio is available |  |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App or end user not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid request payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 

@@ -188,11 +188,6 @@ export type SpeechToTextDisabledError = ErrorResponse & {
   status: 400
 }
 
-export type AgentVersionNotFoundError = ErrorResponse & {
-  code: 'agent_version_not_found_error'
-  status: 404
-}
-
 export type AudioTooLargeError = ErrorResponse & {
   code: 'audio_too_large'
   status: 413
@@ -225,6 +220,11 @@ export type AgentBuildDraftResponse = {
   agent_soul: AgentSoulConfig
   draft: AgentConfigDraftSummaryResponse
   variant: string
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
 }
 
 export type ComposerSavePayload = {
@@ -2728,7 +2728,8 @@ export type PostAgentByAgentIdAudioToTextErrors = {
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
     | ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
   413: AudioTooLargeError | ErrorResponse
   415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
@@ -3932,7 +3933,8 @@ export type PostAgentByAgentIdTextToAudioErrors = {
     | ProviderQuotaExceededError
     | ErrorResponse
   403: ErrorResponse
-  404: AgentNotFoundError | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -3964,7 +3966,9 @@ export type GetAgentByAgentIdTextToAudioVoicesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  404: AgentNotFoundError | ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 

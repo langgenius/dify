@@ -2,7 +2,16 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import IO
+from typing import IO, Literal, TypedDict
+
+type AudioDraftType = Literal["draft", "debug_build"]
+
+
+class AudioVoice(TypedDict):
+    """A provider voice available for selection in an audio request."""
+
+    name: str
+    value: str
 
 
 @dataclass(frozen=True, slots=True)

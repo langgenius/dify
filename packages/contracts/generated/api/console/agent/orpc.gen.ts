@@ -312,8 +312,6 @@ export const post3 = oc
   )
   .output(zPostAgentByAgentIdAudioToTextResponse)
   .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -1333,7 +1331,6 @@ export const get28 = oc
   )
   .output(zGetAgentByAgentIdTextToAudioVoicesResponse)
   .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -1364,7 +1361,6 @@ export const post17 = oc
   )
   .output(zPostAgentByAgentIdTextToAudioResponse)
   .errors({
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },

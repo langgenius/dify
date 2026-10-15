@@ -871,7 +871,7 @@ class TrialChatTextApi(Resource):
     ) -> Response | None:
         output = application_services().app_audio.transcript_tts(
             app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
-            account_id=request_context.account_id,
+            actor=MessageAccount(request_context.account_id),
             text=req_data.text,
             voice=req_data.voice,
             message_id=req_data.message_id,

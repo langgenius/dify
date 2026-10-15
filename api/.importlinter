@@ -1191,3 +1191,29 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-audio-controller-boundary]
+name = Console audio controllers use admitted values and application services
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    controllers.console.app.audio
+forbidden_modules =
+    controllers.console.app.wraps
+    controllers.console.agent.app_helpers
+    extensions.ext_database
+    repositories
+    services.audio_service
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:audio-policy-http-boundary]
+name = Shared audio policy does not construct HTTP responses
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    services.audio_service
+forbidden_modules =
+    controllers
+    flask
+    werkzeug

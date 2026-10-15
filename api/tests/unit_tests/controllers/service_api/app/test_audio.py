@@ -1,339 +1,303 @@
-"""
-Unit tests for Service API Audio controller.
+"""Audio contracts through real admission, SQLite, and the provider HTTP protocol."""
 
-Tests coverage for:
-- TextToAudioPayload Pydantic model validation
-- Error mapping patterns between service and API errors
-- AudioService method interfaces
-"""
-
-import io
-import uuid
-from inspect import unwrap
-from unittest.mock import Mock, patch
+from http import HTTPStatus
+from io import BytesIO
+from typing import cast
+from uuid import uuid4
 
 import pytest
-from flask import Flask, request
-from sqlalchemy.orm import Session
-from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import InternalServerError
+from sqlalchemy import select, update
 
-from controllers.service_api.app.audio import AudioApi, TextApi, TextToAudioPayload
-from controllers.service_api.app.error import (
-    AppUnavailableError,
-    AudioTooLargeError,
-    CompletionRequestError,
-    NoAudioUploadedError,
-    ProviderModelCurrentlyNotSupportError,
-    ProviderNotInitializeError,
-    ProviderNotSupportSpeechToTextError,
-    ProviderQuotaExceededError,
-    SpeechToTextDisabledError,
-    UnsupportedAudioTypeError,
-)
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeError
-from models.enums import EndUserType
-from models.model import App, EndUser
-from services.app_ref_service import AppRef, MessageRef
-from services.audio_service import AudioService
-from services.errors.app_model_config import AppModelConfigBrokenError
-from services.errors.audio import (
-    AudioTooLargeServiceError,
-    NoAudioUploadedServiceError,
-    ProviderNotSupportSpeechToTextServiceError,
-    SpeechToTextDisabledServiceError,
-    UnsupportedAudioTypeServiceError,
-)
-from tests.unit_tests.model_factories import make_app, make_end_user
+from models import App, AppModelConfig, EndUser, Message
+from models.enums import DEFAULT_END_USER_SESSION_ID, EndUserType, MessageStatus
+from models.provider import Provider
+from services.audio_service import FILE_SIZE_LIMIT
+from tests.unit_tests.services.audio_runtime_fixtures import WAV_AUDIO, AudioHarness, AudioSurface
+
+pytest_plugins = ("tests.unit_tests.services.audio_runtime_fixtures",)
 
 
-def _file_data():
-    return FileStorage(stream=io.BytesIO(b"audio"), filename="audio.wav", content_type="audio/wav")
+@pytest.fixture
+def audio_surface() -> AudioSurface:
+    return "service_api"
 
 
-def _app(*, app_id: str = "a1", tenant_id: str = "tenant-1") -> App:
-    return make_app(app_id=app_id, tenant_id=tenant_id, name="Audio app", icon_type=None, max_active_requests=0)
+def test_asr_uses_real_provider_and_releases_admission_and_configuration(audio_harness: AudioHarness) -> None:
+    response = audio_harness.asr(mime_type="audio/x-m4a")
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"text": " transcript "}
+    assert response.content_type == "application/json"
+    calls = audio_harness.plugin.invocations("speech2text")
+    assert len(calls) == 1
+    assert calls[0]["user_id"] == audio_harness.end_user.id
+    data = cast(dict[str, object], calls[0]["data"])
+    assert data["file"] == b"recording".hex()
+    assert data["model_type"] == "speech2text"
+    audio_harness.assert_preparation_closed()
 
 
-def _end_user(*, end_user_id: str = "u1", external_user_id: str | None = None) -> EndUser:
-    return make_end_user(
-        end_user_id=end_user_id,
-        app_id="a1",
-        end_user_type=EndUserType.SERVICE_API,
-        external_user_id=external_user_id,
-        name="Audio user",
-        session_id=f"session-{end_user_id}",
+def test_tts_returns_provider_bytes_and_mime_with_configured_voice(audio_harness: AudioHarness) -> None:
+    response = audio_harness.tts({"text": "  Say hello  "})
+    try:
+        assert response.status_code == HTTPStatus.OK
+        assert response.data == WAV_AUDIO
+        assert response.content_type == "audio/wav"
+        assert "Content-Disposition" not in response.headers
+        assert "Content-Length" not in response.headers
+        calls = audio_harness.plugin.invocations("tts")
+        assert len(calls) == 1
+        assert calls[0]["user_id"] == audio_harness.end_user.external_user_id
+        data = cast(dict[str, object], calls[0]["data"])
+        assert data["content_text"] == "Say hello"
+        assert data["voice"] == "configured-voice"
+        assert data["tenant_id"] == audio_harness.target.tenant_id
+        audio_harness.assert_preparation_closed()
+    finally:
+        response.close()
+
+
+def test_owned_message_precedes_text_and_explicit_voice_precedes_configuration(audio_harness: AudioHarness) -> None:
+    response = audio_harness.tts(
+        {"message_id": audio_harness.message.id, "text": "Ignored text", "voice": "chosen-voice"}
     )
+    try:
+        assert response.status_code == HTTPStatus.OK
+        assert response.data == WAV_AUDIO
+        calls = audio_harness.plugin.invocations("tts")
+        assert len(calls) == 1
+        data = cast(dict[str, object], calls[0]["data"])
+        assert data["content_text"] == "Owned message answer"
+        assert data["voice"] == "chosen-voice"
+    finally:
+        response.close()
 
 
-# ---------------------------------------------------------------------------
-# Pydantic Model Tests
-# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("field", ["app_id", "from_end_user_id"])
+def test_foreign_message_returns_null_without_invoking_provider(audio_harness: AudioHarness, field: str) -> None:
+    with audio_harness.factory.begin() as session:
+        session.execute(update(Message).where(Message.id == audio_harness.message.id).values({field: str(uuid4())}))
+    response = audio_harness.tts({"message_id": audio_harness.message.id, "text": "Must not be used"})
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() is None
+    assert response.content_type == "application/json"
+    assert not audio_harness.plugin.requests
+    audio_harness.assert_preparation_closed()
 
 
-class TestTextToAudioPayload:
-    """Test suite for TextToAudioPayload Pydantic model."""
+@pytest.mark.parametrize("status", [MessageStatus.NORMAL, MessageStatus.PAUSED])
+def test_empty_owned_message_returns_null_without_text_fallback(
+    audio_harness: AudioHarness, status: MessageStatus
+) -> None:
+    with audio_harness.factory.begin() as session:
+        session.execute(update(Message).where(Message.id == audio_harness.message.id).values(answer="", status=status))
+    response = audio_harness.tts({"message_id": audio_harness.message.id, "text": "Must not be used"})
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() is None
+    assert not audio_harness.plugin.requests
 
-    def test_payload_with_all_fields(self):
-        """Test payload with all fields populated."""
-        payload = TextToAudioPayload(
-            message_id="msg_123",
-            voice="nova",
-            text="Hello, this is a test.",
-            streaming=False,
+
+@pytest.mark.parametrize(
+    ("content", "mime_type", "status", "code"),
+    [
+        (None, "audio/mp3", HTTPStatus.BAD_REQUEST, "no_audio_uploaded"),
+        (b"not audio", "text/plain", HTTPStatus.UNSUPPORTED_MEDIA_TYPE, "unsupported_audio_type"),
+    ],
+)
+def test_upload_validation_preserves_http_errors(
+    audio_harness: AudioHarness, content: bytes | None, mime_type: str, status: HTTPStatus, code: str
+) -> None:
+    response = audio_harness.asr(content, mime_type=mime_type)
+    assert response.status_code == status
+    assert response.get_json()["code"] == code
+    assert not audio_harness.plugin.requests
+    audio_harness.assert_preparation_closed()
+
+
+def test_oversized_audio_is_rejected_before_provider_io(audio_harness: AudioHarness) -> None:
+    response = audio_harness.asr(b"a" * (FILE_SIZE_LIMIT + 1))
+    assert response.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+    assert response.get_json()["code"] == "audio_too_large"
+    assert response.get_json()["message"] == "Audio size larger than 30 mb"
+    assert not audio_harness.plugin.requests
+
+
+@pytest.mark.parametrize("missing_config", [False, True], ids=["disabled", "missing-config"])
+def test_asr_requires_enabled_configuration(audio_harness: AudioHarness, missing_config: bool) -> None:
+    with audio_harness.factory.begin() as session:
+        if missing_config:
+            session.execute(
+                update(App).where(App.id == audio_harness.target.id).values({App.app_model_config_id: None})
+            )
+        else:
+            session.execute(
+                update(AppModelConfig)
+                .where(AppModelConfig.id == audio_harness.config.id)
+                .values(speech_to_text='{"enabled":false}')
+            )
+    response = audio_harness.asr()
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "speech_to_text_disabled"
+    assert not audio_harness.plugin.requests
+
+
+@pytest.mark.parametrize(
+    ("payload", "configuration", "message"),
+    [
+        ({}, '{"enabled":true}', "Text is required"),
+        ({"text": "hello"}, '{"enabled":false}', "TTS is not enabled"),
+    ],
+)
+def test_tts_request_and_feature_errors_remain_specific(
+    audio_harness: AudioHarness, payload: dict[str, object], configuration: str, message: str
+) -> None:
+    with audio_harness.factory.begin() as session:
+        session.execute(
+            update(AppModelConfig)
+            .where(AppModelConfig.id == audio_harness.config.id)
+            .values(text_to_speech=configuration)
         )
-        assert payload.message_id == "msg_123"
-        assert payload.voice == "nova"
-        assert payload.text == "Hello, this is a test."
-        assert payload.streaming is False
+    response = audio_harness.tts(payload)
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "invalid_param"
+    assert response.get_json()["message"] == message
+    assert not audio_harness.plugin.requests
 
-    def test_payload_with_defaults(self):
-        """Test payload with default values."""
-        payload = TextToAudioPayload()
-        assert payload.message_id is None
-        assert payload.voice is None
-        assert payload.text is None
-        assert payload.streaming is None
 
-    def test_payload_with_only_text(self):
-        """Test payload with only text field."""
-        payload = TextToAudioPayload(text="Simple text to speech")
-        assert payload.text == "Simple text to speech"
-        assert payload.voice is None
-        assert payload.message_id is None
+@pytest.mark.parametrize("endpoint", ["asr", "tts"])
+def test_real_provider_failure_maps_to_completion_request_error(audio_harness: AudioHarness, endpoint: str) -> None:
+    audio_harness.plugin.error = "InvokeServerUnavailableError"
+    response = audio_harness.asr() if endpoint == "asr" else audio_harness.tts({"text": "hello"})
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "completion_request_error"
+    assert "Audio provider unavailable" in response.get_json()["message"]
+    operation = "speech2text" if endpoint == "asr" else "tts"
+    assert len(audio_harness.plugin.invocations(operation)) == 1
+    audio_harness.assert_preparation_closed()
 
-    def test_payload_with_streaming_true(self):
-        """Test payload with streaming enabled."""
-        payload = TextToAudioPayload(
-            text="Streaming test",
-            streaming=True,
+
+@pytest.mark.parametrize("endpoint", ["asr", "tts"])
+def test_missing_user_provisions_default_identity_for_form_and_json(audio_harness: AudioHarness, endpoint: str) -> None:
+    client = audio_harness.app.test_client()
+    response = (
+        client.post(
+            "/audio-to-text",
+            data={"file": (BytesIO(b"recording"), "recording.mp3", "audio/mp3")},
+            headers=audio_harness.headers,
         )
-        assert payload.streaming is True
-
-
-class TestAudioServiceInterface:
-    """Test suite for AudioService interface methods."""
-
-    def test_transcript_asr_method_exists(self):
-        """Test that AudioService.transcript_asr exists."""
-        assert hasattr(AudioService, "transcript_asr")
-        assert callable(AudioService.transcript_asr)
-
-    def test_transcript_tts_method_exists(self):
-        """Test that AudioService.transcript_tts exists."""
-        assert hasattr(AudioService, "transcript_tts")
-        assert callable(AudioService.transcript_tts)
-
-
-class TestServiceErrorTypes:
-    """Test service error types used by audio controller."""
-
-    def test_no_audio_uploaded_service_error(self):
-        """Test NoAudioUploadedServiceError exists."""
-        error = NoAudioUploadedServiceError()
-        assert error is not None
-
-    def test_audio_too_large_service_error(self):
-        """Test AudioTooLargeServiceError with message."""
-        error = AudioTooLargeServiceError("File too large")
-        assert "File too large" in str(error)
-
-    def test_unsupported_audio_type_service_error(self):
-        """Test UnsupportedAudioTypeServiceError exists."""
-        error = UnsupportedAudioTypeServiceError()
-        assert error is not None
-
-    def test_provider_not_support_speech_to_text_service_error(self):
-        """Test ProviderNotSupportSpeechToTextServiceError exists."""
-        error = ProviderNotSupportSpeechToTextServiceError()
-        assert error is not None
-
-
-# ---------------------------------------------------------------------------
-# Mocked Behavior Tests
-# ---------------------------------------------------------------------------
-
-
-class TestAudioServiceMockedBehavior:
-    """Test AudioService behavior with mocked methods."""
-
-    @pytest.fixture
-    def mock_app(self):
-        """Create an app model."""
-        from models.model import App
-
-        app = App(
-            id=str(uuid.uuid4()),
-        )
-        return app
-
-    @pytest.fixture
-    def mock_file(self):
-        """Create mock file upload."""
-        mock = Mock()
-        mock.filename = "test_audio.mp3"
-        mock.content_type = "audio/mpeg"
-        return mock
-
-    @patch.object(AudioService, "transcript_asr")
-    def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file, sqlite_session: Session):
-        """Test ASR transcription returns response dict."""
-        mock_response = {"text": "Transcribed text"}
-        mock_asr.return_value = mock_response
-
-        result = AudioService.transcript_asr(
-            app_model=mock_app,
-            file=mock_file,
-            session=sqlite_session,
-            end_user="user_123",
-        )
-
-        assert result["text"] == "Transcribed text"
-
-    @patch.object(AudioService, "transcript_tts")
-    def test_transcript_tts_returns_response(self, mock_tts, mock_app, sqlite_session: Session):
-        """Test TTS transcription returns response."""
-        mock_response = {"audio": "base64_audio_data"}
-        mock_tts.return_value = mock_response
-
-        result = AudioService.transcript_tts(
-            app_model=mock_app,
-            session=sqlite_session,
-            text="Hello world",
-            voice="nova",
-            end_user="user_123",
-        )
-
-        assert result["audio"] == "base64_audio_data"
-        assert mock_tts.call_args.kwargs["session"] is sqlite_session
-
-
-class TestAudioApi:
-    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-        calls: dict[str, object] = {}
-
-        def fake_transcript_asr(**kwargs: object) -> dict[str, str]:
-            calls.update(kwargs)
-            return {"text": "ok"}
-
-        monkeypatch.setattr(AudioService, "transcript_asr", fake_transcript_asr)
-        api = AudioApi()
-        handler = unwrap(api.post)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
-            response = handler(api, sqlite_session, app_model=app_model, end_user=end_user)
-
-        assert response == {"text": "ok"}
-        assert calls["session"] is sqlite_session
-
-    @pytest.mark.parametrize(
-        ("exc", "expected"),
-        [
-            (AppModelConfigBrokenError(), AppUnavailableError),
-            (NoAudioUploadedServiceError(), NoAudioUploadedError),
-            (AudioTooLargeServiceError("too big"), AudioTooLargeError),
-            (UnsupportedAudioTypeServiceError(), UnsupportedAudioTypeError),
-            (ProviderNotSupportSpeechToTextServiceError(), ProviderNotSupportSpeechToTextError),
-            (SpeechToTextDisabledServiceError(), SpeechToTextDisabledError),
-            (ProviderTokenNotInitError("token"), ProviderNotInitializeError),
-            (QuotaExceededError(), ProviderQuotaExceededError),
-            (ModelCurrentlyNotSupportError(), ProviderModelCurrentlyNotSupportError),
-            (InvokeError("invoke"), CompletionRequestError),
-        ],
+        if endpoint == "asr"
+        else client.post("/text-to-audio", json={"text": "hello"}, headers=audio_harness.headers)
     )
-    def test_error_mapping(
-        self,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
-        exc: Exception,
-        expected: type[Exception],
-    ) -> None:
-        monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
-        api = AudioApi()
-        handler = unwrap(api.post)
-        app_model = _app()
-        end_user = _end_user()
+    try:
+        assert response.status_code == HTTPStatus.OK
+        if endpoint == "tts":
+            assert response.data == WAV_AUDIO
+        else:
+            assert response.get_json() == {"text": " transcript "}
+        with audio_harness.factory() as session:
+            end_user = session.scalar(
+                select(EndUser).where(
+                    EndUser.tenant_id == audio_harness.target.tenant_id,
+                    EndUser.app_id == audio_harness.target.id,
+                    EndUser.type == EndUserType.SERVICE_API,
+                    EndUser.session_id == DEFAULT_END_USER_SESSION_ID,
+                )
+            )
+            assert end_user is not None
+            assert end_user.id != audio_harness.end_user.id
+            assert end_user._is_anonymous
+            assert end_user.external_user_id == DEFAULT_END_USER_SESSION_ID
+            calls = audio_harness.plugin.invocations("speech2text" if endpoint == "asr" else "tts")
+            assert len(calls) == 1
+            assert calls[0]["user_id"] == (end_user.id if endpoint == "asr" else end_user.external_user_id)
+        audio_harness.assert_preparation_closed()
+    finally:
+        response.close()
 
-        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
-            with pytest.raises(expected):
-                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
 
-    def test_unhandled_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-        monkeypatch.setattr(
-            AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom"))
+@pytest.mark.parametrize("endpoint", ["asr", "tts"])
+def test_null_external_user_id_keeps_existing_provider_identity(audio_harness: AudioHarness, endpoint: str) -> None:
+    with audio_harness.factory.begin() as session:
+        session.execute(update(EndUser).where(EndUser.id == audio_harness.end_user.id).values(external_user_id=None))
+    response = audio_harness.asr() if endpoint == "asr" else audio_harness.tts({"text": "hello"})
+    try:
+        assert response.status_code == HTTPStatus.OK
+        if endpoint == "tts":
+            assert response.data == WAV_AUDIO
+        operation = "speech2text" if endpoint == "asr" else "tts"
+        calls = audio_harness.plugin.invocations(operation)
+        assert len(calls) == 1
+        expected = audio_harness.end_user.id if endpoint == "asr" else None
+        if expected is None:
+            assert "user_id" not in calls[0]
+        else:
+            assert calls[0]["user_id"] == expected
+    finally:
+        response.close()
+
+
+def test_missing_tts_configuration_is_reported_without_provider_call(audio_harness: AudioHarness) -> None:
+    with audio_harness.factory.begin() as session:
+        session.execute(update(App).where(App.id == audio_harness.target.id).values({App.app_model_config_id: None}))
+    response = audio_harness.tts({"text": "hello"})
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "invalid_param"
+    assert response.get_json()["message"] == "AppModelConfig not found"
+    assert not audio_harness.plugin.requests
+
+
+def test_explicit_voice_keeps_legacy_disabled_feature_override_and_empty_text(audio_harness: AudioHarness) -> None:
+    with audio_harness.factory.begin() as session:
+        session.execute(
+            update(AppModelConfig)
+            .where(AppModelConfig.id == audio_harness.config.id)
+            .values(text_to_speech='{"enabled":false}')
         )
-        api = AudioApi()
-        handler = unwrap(api.post)
-        app_model = _app()
-        end_user = _end_user()
+    response = audio_harness.tts({"text": "   ", "voice": "explicit-voice", "streaming": False})
+    try:
+        assert response.status_code == HTTPStatus.OK
+        assert response.data == WAV_AUDIO
+        calls = audio_harness.plugin.invocations("tts")
+        assert len(calls) == 1
+        data = cast(dict[str, object], calls[0]["data"])
+        assert data["content_text"] == ""
+        assert data["voice"] == "explicit-voice"
+    finally:
+        response.close()
 
-        with app.test_request_context("/audio-to-text", method="POST", data={"file": _file_data()}):
-            with pytest.raises(InternalServerError):
-                handler(api, sqlite_session, app_model=app_model, end_user=end_user)
+
+def test_unknown_message_id_returns_null_without_text_fallback(audio_harness: AudioHarness) -> None:
+    response = audio_harness.tts({"message_id": str(uuid4()), "text": "Ignored text"})
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() is None
+    assert not audio_harness.plugin.requests
 
 
-class TestTextApi:
-    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-        monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
-
-        api = TextApi()
-        handler = unwrap(api.post)
-        app_model = _app()
-        end_user = _end_user(end_user_id="end-user-1", external_user_id="ext")
-
-        with app.test_request_context(
-            "/text-to-audio",
-            method="POST",
-            json={"text": "hello", "voice": "v"},
-        ):
-            payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            response = handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)
-
-        assert response == {"audio": "ok"}
-
-    def test_success_with_message_ref(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-    ) -> None:
-        calls = {}
-
-        def fake_transcript_tts(**kwargs):
-            calls.update(kwargs)
-            return {"audio": "ok"}
-
-        monkeypatch.setattr(AudioService, "transcript_tts", fake_transcript_tts)
-
-        api = TextApi()
-        handler = unwrap(api.post)
-        app_model = _app()
-        end_user = _end_user(end_user_id="end-user-1", external_user_id="ext")
-
-        with app.test_request_context(
-            "/text-to-audio",
-            method="POST",
-            json={"text": "hello", "message_id": "message-1"},
-        ):
-            payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            response = handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)
-
-        assert response == {"audio": "ok"}
-        assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
-        assert calls["session"] is sqlite_session
-
-    def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-        monkeypatch.setattr(
-            AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError())
+@pytest.mark.parametrize("endpoint", ["asr", "tts"])
+def test_missing_provider_credentials_keep_precise_error(audio_harness: AudioHarness, endpoint: str) -> None:
+    with audio_harness.factory.begin() as session:
+        session.execute(
+            update(Provider).where(Provider.tenant_id == audio_harness.target.tenant_id).values(is_valid=False)
         )
+    response = audio_harness.asr() if endpoint == "asr" else audio_harness.tts({"text": "hello"})
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "provider_not_initialize"
+    assert "credentials" in response.get_json()["message"]
+    assert not audio_harness.plugin.invocations("speech2text")
+    assert not audio_harness.plugin.invocations("tts")
 
-        api = TextApi()
-        handler = unwrap(api.post)
-        app_model = _app()
-        end_user = _end_user(end_user_id="end-user-1", external_user_id="ext")
 
-        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
-            payload = TextToAudioPayload.model_validate(request.get_json() or {})
-            with pytest.raises(ProviderQuotaExceededError):
-                handler(api, payload, sqlite_session, app_model=app_model, end_user=end_user)
+def test_provider_mime_mismatch_preserves_error_response(audio_harness: AudioHarness) -> None:
+    audio_harness.plugin.audio = b"OggS" + b"a" * 32
+    audio_harness.plugin.mime_type = "audio/wav"
+    response = audio_harness.tts({"text": "hello"})
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "completion_request_error"
+    assert "MIME does not match" in response.get_json()["message"]
+
+
+def test_service_api_keeps_null_for_malformed_message_id(audio_harness: AudioHarness) -> None:
+    response = audio_harness.tts({"message_id": "not-a-uuid", "text": "Ignored text"})
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() is None
+    assert not audio_harness.plugin.requests
+    audio_harness.assert_preparation_closed()

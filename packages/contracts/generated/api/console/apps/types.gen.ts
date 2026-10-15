@@ -6787,6 +6787,7 @@ export type PostAppsByAppIdTextToAudioErrors = {
     | ProviderQuotaExceededError
     | ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -6820,7 +6821,9 @@ export type GetAppsByAppIdTextToAudioVoicesErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
+  403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 

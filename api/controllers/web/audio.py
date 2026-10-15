@@ -1,13 +1,13 @@
 import logging
+from http import HTTPStatus
 
-from flask import request
+from flask import Response, request
 from pydantic import field_validator
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError
 
-import services
+from controllers.common.audio_response import audio_binary_response
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
-from controllers.common.session import with_session
+from controllers.common.errors import InternalServerError
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -24,13 +24,17 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, EndUser
-from services.app_ref_service import AppRefService
-from services.audio_service import AudioService
+from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.audio_types import AudioAppRef, AudioUpload
+from services.entities.message_entities import MessageEndUser
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -38,8 +42,6 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-from ..common.schema import register_response_schema_models, register_schema_models
 
 
 class AudioToTextResponse(ResponseModel):
@@ -79,30 +81,31 @@ class AudioApi(WebApiResource):
     @web_ns.doc(description="Convert audio file to text using speech-to-text service.")
     @web_ns.doc(
         responses={
-            200: "Success",
-            400: "Bad Request",
-            401: "Unauthorized",
-            413: "Audio file too large",
-            415: "Unsupported audio type",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: "App or end user not found",
+            HTTPStatus.REQUEST_ENTITY_TOO_LARGE: "Audio file too large",
+            HTTPStatus.UNSUPPORTED_MEDIA_TYPE: "Unsupported audio type",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
-    @with_session(write=False)
-    def post(self, session: Session, app_model: App, end_user: EndUser):
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[AudioToTextResponse.__name__])
+    def post(self, app_model: App, end_user: EndUser) -> dict[str, object]:
         """Convert audio to text"""
         file = request.files.get("file")
 
         try:
-            response = AudioService.transcript_asr(
-                app_model=app_model,
-                file=file,
-                session=session,
+            response = application_services().app_audio.transcript_asr(
+                app=AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode),
+                audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
                 end_user=end_user.external_user_id,
             )
 
             return dump_response(AudioToTextResponse, response)
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except AppDefinitionUnavailableError as e:
+            raise AppUnavailableError() from e
+        except AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
@@ -123,11 +126,11 @@ class AudioApi(WebApiResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
+        except (BaseHTTPException, ValueError):
+            raise
         except Exception as e:
             logger.exception("Failed to handle post request to AudioApi")
-            raise InternalServerError()
+            raise InternalServerError() from e
 
 
 @web_ns.route("/text-to-audio")
@@ -144,39 +147,32 @@ class TextApi(WebApiResource):
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")
     @web_ns.doc(
         responses={
-            200: "Success",
-            400: "Bad Request",
-            401: "Unauthorized",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Success; null when no message audio is available",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.NOT_FOUND: "App or end user not found",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid request payload",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    # response-contract:ignore provider audio bytes; TODO: model binary audio response if shape is standardized.
-    @web_ns.response(200, "Success")
-    @with_session(write=False)
+    @web_ns.response(HTTPStatus.OK, "Success; null when no message audio is available")
     @model_validate(TextToAudioPayload)
-    def post(self, payload: TextToAudioPayload, session: Session, app_model: App, end_user: EndUser):
+    def post(self, payload: TextToAudioPayload, app_model: App, end_user: EndUser) -> Response | None:
         """Convert text to audio"""
         try:
-            message_id = payload.message_id
-            text = payload.text
-            voice = payload.voice
-            message_ref = None
-            if message_id:
-                app_ref = AppRefService.create_app_ref(app_model)
-                message_ref = AppRefService.create_message_ref(
-                    app_ref,
-                    message_id,
-                    end_user_id=end_user.id,
-                )
-            return AudioService.transcript_tts(
-                app_model=app_model,
-                session=session,
-                text=text,
-                voice=voice,
+            output = application_services().app_audio.transcript_tts(
+                app=AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode),
+                actor=MessageEndUser(end_user_id=end_user.id),
+                text=payload.text,
+                voice=payload.voice,
                 end_user=end_user.external_user_id,
-                message_ref=message_ref,
+                message_id=payload.message_id,
             )
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+            # response-contract:ignore audio_binary_response
+            return audio_binary_response(output)
+        except AppDefinitionUnavailableError as e:
+            raise AppUnavailableError() from e
+        except AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
@@ -187,8 +183,8 @@ class TextApi(WebApiResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
+        except (BaseHTTPException, ValueError):
+            raise
         except Exception as e:
             logger.exception("Failed to handle post request to TextApi")
-            raise InternalServerError()
+            raise InternalServerError() from e

@@ -543,7 +543,7 @@ def test_admission_injects_immutable_scope_and_provisions_request_user(
 ) -> None:
     class AdmittedView:
         @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=fetch_from, required=True))
-        def get(self, context: ServiceApiEndUserContext) -> dict[str, str]:
+        def get(self, context: ServiceApiEndUserContext) -> dict[str, str | None]:
             assert isinstance(context, ServiceApiEndUserContext)
             harness.assert_closed()
             assert current_user.id == context.end_user_id
@@ -575,6 +575,7 @@ def test_admission_injects_immutable_scope_and_provisions_request_user(
             "tenant_id": harness.tenant.id,
             "app_mode": harness.target.mode,
             "end_user_id": end_user.id,
+            "external_user_id": "bob",
         }
 
 

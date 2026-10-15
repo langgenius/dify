@@ -41,6 +41,7 @@ from machinery.context import RequestContext
 from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioUpload
+from services.entities.message_entities import MessageAccount
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -169,7 +170,7 @@ class ChatTextApi(Resource):
                 tenant_id=installed_app.app_owner_tenant_id,
                 app_mode=installed_app.app_mode,
             ),
-            account_id=request_context.account_id,
+            actor=MessageAccount(request_context.account_id),
             text=payload.text,
             voice=payload.voice,
             message_id=payload.message_id,

@@ -599,8 +599,9 @@ Transcribe audio using the current Agent debug configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | Bad request - Speech to text disabled or unsupported audio | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Agent or build draft not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad request - Speech to text disabled, unsupported audio, or invalid debug source | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent or build draft not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1452,7 +1453,8 @@ Preview an Agent TTS voice or read an Agent chat message
 | 200 | Generated audio bytes in the provider audio format | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
 | 400 | Invalid text or voice | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportTextToSpeechError](#providernotsupporttexttospeecherror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid request payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/text-to-audio/voices
@@ -1471,7 +1473,9 @@ Get available TTS voices for an Agent and language
 | ---- | ----------- | ------ |
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/versions
@@ -2695,7 +2699,7 @@ Transcript audio to text for chat messages
 | ---- | ----------- | ------ |
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 | 400 | Bad request - No audio uploaded or unsupported type | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App not found or its mode does not support audio transcription | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -3507,7 +3511,8 @@ Convert text to speech for chat messages
 | ---- | ----------- | ------ |
 | 200 | Text to speech conversion successful |  |
 | 400 | Bad request - Invalid parameters | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportTextToSpeechError](#providernotsupporttexttospeecherror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid request payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/text-to-audio/voices
@@ -3526,7 +3531,9 @@ Get available TTS voices for a specific language
 | ---- | ----------- | ------ |
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/trace

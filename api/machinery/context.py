@@ -29,10 +29,11 @@ class RequestContext(NamedTuple):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ServiceApiEndUserContext(AppRequestContext):
-    """Validated application mode and end-user identity for a Service API request."""
+    """Admitted app scope and user identities; external_user_id may be absent on legacy rows."""
 
     app_mode: str
     end_user_id: str
+    external_user_id: str | None
 
 
 class AccountRequestContext(NamedTuple):

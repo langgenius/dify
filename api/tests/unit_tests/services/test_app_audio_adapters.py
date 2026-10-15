@@ -21,6 +21,7 @@ from services import audio_provider_gateway
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
+from services.entities.message_entities import MessageAccount
 from services.errors.audio import NoAudioUploadedServiceError, SpeechToTextDisabledServiceError
 
 _ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
@@ -47,7 +48,7 @@ class _Harness:
         self, *, text: str | None = " Text input ", voice: str | None = None, message_id: str | None = None
     ) -> AudioOutput | None:
         return self.runtime.transcript_tts(
-            app=self.app, account_id=_ACCOUNT_ID, text=text, voice=voice, message_id=message_id
+            app=self.app, actor=MessageAccount(_ACCOUNT_ID), text=text, voice=voice, message_id=message_id
         )
 
     def asr(self) -> dict[str, str]:

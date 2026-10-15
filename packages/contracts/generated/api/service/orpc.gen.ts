@@ -490,6 +490,9 @@ export const post3 = oc
   .input(z.object({ body: zPostAudioToTextBody }))
   .output(zPostAudioToTextResponse)
   .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -503,6 +506,8 @@ export const post3 = oc
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
     unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
   })
 
 export const audioToText = {
@@ -2561,11 +2566,16 @@ export const post36 = oc
   .input(z.object({ body: zPostTextToAudioBody }))
   .output(zPostTextToAudioResponse)
   .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
   })
 
 export const textToAudio = {

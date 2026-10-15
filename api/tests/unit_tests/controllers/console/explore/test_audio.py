@@ -24,6 +24,7 @@ from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
+from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -72,7 +73,10 @@ class _Runtime:
     asr_calls: list[tuple[AudioAppRef, bytes | None, str | None]] = field(default_factory=list)
     tts_calls: list[tuple[AudioAppRef, str, str | None, str | None, str | None]] = field(default_factory=list)
 
-    def transcript_asr(self, *, app: AudioAppRef, audio: AudioUpload | None) -> dict[str, str]:
+    def transcript_asr(
+        self, *, app: AudioAppRef, audio: AudioUpload | None, end_user: str | None = None
+    ) -> dict[str, str]:
+        assert end_user is None
         self._assert_reference(app)
         self.asr_calls.append(
             (app, audio.stream.read() if audio is not None else None, audio.mime_type if audio else None)
@@ -85,13 +89,16 @@ class _Runtime:
         self,
         *,
         app: AudioAppRef,
-        account_id: str,
+        actor: MessageActor,
         text: str | None,
         voice: str | None,
         message_id: str | None,
+        end_user: str | None = None,
     ) -> AudioOutput | None:
+        assert isinstance(actor, MessageAccount)
+        assert end_user is None
         self._assert_reference(app)
-        self.tts_calls.append((app, account_id, text, voice, message_id))
+        self.tts_calls.append((app, actor.account_id, text, voice, message_id))
         if self.error is not None:
             raise self.error
         return self.output
