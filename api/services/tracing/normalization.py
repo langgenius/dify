@@ -262,6 +262,10 @@ def remap_outer_trace(
         "user_id",
         "conversation_id",
         "external_trace_id",
+        "linked_parent_workflow_run_id",
+        "linked_parent_node_execution_id",
+        "linked_parent_application_trace_id",
+        "linked_parent_trace_id",
     }
     spans = []
     for original in trace.spans:
@@ -274,6 +278,13 @@ def remap_outer_trace(
         )
         if trace.trace_id != trace_id:
             metadata.setdefault("external_trace_id", trace.trace_id)
+        if trace.external_parent is not None:
+            # This pipeline exports a complete local tree. Cross-workflow
+            # correlation is explicit until a durable cross-run merge exists.
+            metadata["linked_parent_workflow_run_id"] = trace.external_parent.parent_workflow_run_id
+            if trace.external_parent.parent_node_execution_id:
+                metadata["linked_parent_node_execution_id"] = trace.external_parent.parent_node_execution_id
+            metadata.pop("parent_trace_context", None)
         if original.kind != CanonicalSpanKind.LLM:
             for key in ("prompt_tokens", "completion_tokens", "total_tokens", "total_price"):
                 if key in metadata:
