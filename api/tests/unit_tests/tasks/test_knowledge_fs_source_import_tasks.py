@@ -1,10 +1,10 @@
-from types import SimpleNamespace
-from typing import Literal
-from unittest.mock import MagicMock, patch
+from typing import Literal, Never
+from unittest.mock import patch
 
 import pytest
 from celery.exceptions import Retry
 
+from services.knowledge_fs.product_dto import KnowledgeFSSourceResponse, KnowledgeFSSourceWorkflowResponse
 from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSProductResourceNotFoundError,
@@ -14,11 +14,17 @@ from tasks.knowledge_fs_source_import_tasks import (
     KnowledgeFSSourceImportNotReadyError,
     finalize_source_import_once,
 )
+from tests.unit_tests.tasks.knowledge_fs_task_fakes import (
+    FacadeRuntime,
+    RecordingKnowledgeFSFacade,
+    RecordingRetry,
+    source_response,
+    source_workflow_response,
+)
 
 
-def _source(*, status: str = "syncing") -> SimpleNamespace:
-    return SimpleNamespace(
-        id="source-1",
+def _source(*, status: str = "syncing") -> KnowledgeFSSourceResponse:
+    return source_response(
         metadata={
             "parameters": {"limit": 99},
             "preview": False,
@@ -34,9 +40,23 @@ def _source(*, status: str = "syncing") -> SimpleNamespace:
     )
 
 
-def _run(facade: MagicMock) -> str:
-    with patch("tasks.knowledge_fs_source_import_tasks.get_knowledge_fs_runtime") as runtime:
-        runtime.return_value.facade = facade
+def _completed_workflow() -> KnowledgeFSSourceWorkflowResponse:
+    return source_workflow_response(workflow_id="import-1", state="completed")
+
+
+def _facade(workflow: KnowledgeFSSourceWorkflowResponse) -> RecordingKnowledgeFSFacade:
+    facade = RecordingKnowledgeFSFacade()
+    facade.script("get_source_workflow", workflow)
+    facade.script("get_source_sync_policy", KnowledgeFSProductResourceNotFoundError("missing"))
+    facade.script("update_source_sync_policy", None)
+    return facade
+
+
+def _run(facade: RecordingKnowledgeFSFacade) -> str:
+    with patch(
+        "tasks.knowledge_fs_source_import_tasks.get_knowledge_fs_runtime",
+        return_value=FacadeRuntime(facade),
+    ):
         return finalize_source_import_once(
             tenant_id="tenant-1",
             account_id="account-1",
@@ -46,45 +66,48 @@ def _run(facade: MagicMock) -> str:
         )
 
 
+def _raise(error: Exception) -> Never:
+    raise error
+
+
 def test_finalize_source_import_waits_for_terminal_workflow() -> None:
-    facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(state="importing")
+    facade = _facade(source_workflow_response(workflow_id="import-1", state="importing"))
 
     with pytest.raises(KnowledgeFSSourceImportNotReadyError):
         _run(facade)
 
-    facade.get_source.assert_not_called()
+    assert facade.call_count("get_source") == 0
 
 
 def test_finalize_source_import_activates_source_then_applies_policy_for_new_version() -> None:
-    facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
-    facade.get_source.return_value = _source()
-    facade.update_source.return_value = SimpleNamespace(
-        id="source-1",
-        metadata={
-            "lastImport": {
-                "kind": "crawl-preview-selection",
-                "previewWorkflowId": "preview-1",
-                "state": "completed",
-                "syncPolicy": {"enabled": False, "mode": "manual"},
-                "workflowId": "import-1",
+    facade = _facade(_completed_workflow())
+    facade.script("get_source", _source())
+    facade.script(
+        "update_source",
+        source_response(
+            metadata={
+                "lastImport": {
+                    "kind": "crawl-preview-selection",
+                    "previewWorkflowId": "preview-1",
+                    "state": "completed",
+                    "syncPolicy": {"enabled": False, "mode": "manual"},
+                    "workflowId": "import-1",
+                },
+                "preview": False,
             },
-            "preview": False,
-        },
-        status="active",
-        version=5,
+            status="active",
+            version=5,
+        ),
     )
-    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
 
     assert _run(facade) == "import-1"
 
-    policy = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    policy = facade.payload("update_source_sync_policy")
     assert policy.enabled is False
     assert policy.mode == "manual"
     assert policy.expected_revision == 0
     assert policy.expected_source_version == 5
-    update = facade.update_source.call_args.kwargs["payload"]
+    update = facade.payload("update_source")
     assert update.status == "active"
     assert "parameters" not in update.metadata
     assert update.metadata["pendingImport"] is None
@@ -92,94 +115,98 @@ def test_finalize_source_import_activates_source_then_applies_policy_for_new_ver
 
 
 def test_finalize_source_import_retries_policy_after_source_activation() -> None:
-    facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
-    facade.get_source.return_value = SimpleNamespace(
-        id="source-1",
-        metadata={
-            "lastImport": {
-                "kind": "crawl-preview-selection",
-                "previewWorkflowId": "preview-1",
-                "state": "completed",
-                "syncPolicy": {"enabled": True, "mode": "interval"},
-                "workflowId": "import-1",
+    facade = _facade(_completed_workflow())
+    facade.script(
+        "get_source",
+        source_response(
+            metadata={
+                "lastImport": {
+                    "kind": "crawl-preview-selection",
+                    "previewWorkflowId": "preview-1",
+                    "state": "completed",
+                    "syncPolicy": {"enabled": True, "mode": "interval"},
+                    "workflowId": "import-1",
+                },
+                "preview": False,
             },
-            "preview": False,
-        },
-        status="active",
-        version=5,
+            status="active",
+            version=5,
+        ),
     )
-    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
 
     assert _run(facade) == "import-1"
 
-    facade.update_source.assert_not_called()
-    policy = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert facade.call_count("update_source") == 0
+    policy = facade.payload("update_source_sync_policy")
     assert policy.expected_source_version == 5
 
 
 def test_finalize_source_import_recovers_a_stale_failed_marker_after_workflow_completion() -> None:
-    facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
-    facade.get_source.return_value = SimpleNamespace(
-        id="source-1",
-        metadata={
-            "lastImport": {
-                "errorCode": "SOURCE_OPERATION_FAILED",
-                "errorMessage": "provider failed",
-                "kind": "crawl-preview-selection",
-                "previewWorkflowId": "preview-1",
-                "state": "failed",
-                "syncPolicy": {"enabled": False, "mode": "manual"},
-                "workflowId": "import-1",
+    facade = _facade(_completed_workflow())
+    facade.script(
+        "get_source",
+        source_response(
+            metadata={
+                "lastImport": {
+                    "errorCode": "SOURCE_OPERATION_FAILED",
+                    "errorMessage": "provider failed",
+                    "kind": "crawl-preview-selection",
+                    "previewWorkflowId": "preview-1",
+                    "state": "failed",
+                    "syncPolicy": {"enabled": False, "mode": "manual"},
+                    "workflowId": "import-1",
+                },
+                "pendingImport": None,
+                "preview": False,
             },
-            "pendingImport": None,
-            "preview": False,
-        },
-        status="error",
-        version=5,
+            status="error",
+            version=5,
+        ),
     )
-    facade.update_source.return_value = SimpleNamespace(
-        id="source-1",
-        metadata={
-            "lastImport": {
-                "kind": "crawl-preview-selection",
-                "previewWorkflowId": "preview-1",
-                "state": "completed",
-                "syncPolicy": {"enabled": False, "mode": "manual"},
-                "workflowId": "import-1",
+    facade.script(
+        "update_source",
+        source_response(
+            metadata={
+                "lastImport": {
+                    "kind": "crawl-preview-selection",
+                    "previewWorkflowId": "preview-1",
+                    "state": "completed",
+                    "syncPolicy": {"enabled": False, "mode": "manual"},
+                    "workflowId": "import-1",
+                },
+                "pendingImport": None,
+                "preview": False,
             },
-            "pendingImport": None,
-            "preview": False,
-        },
-        status="active",
-        version=6,
+            status="active",
+            version=6,
+        ),
     )
-    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
 
     assert _run(facade) == "import-1"
 
-    update = facade.update_source.call_args.kwargs["payload"]
+    update = facade.payload("update_source")
     assert update.status == "active"
     assert update.metadata["lastImport"]["state"] == "completed"
     assert update.metadata["pendingImport"] is None
-    policy = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    policy = facade.payload("update_source_sync_policy")
     assert policy.expected_source_version == 6
 
 
 def test_finalize_source_import_persists_failure_on_visible_source() -> None:
-    facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(
-        failure=SimpleNamespace(message="provider failed"),
-        id="import-1",
-        last_error_code="PROVIDER_FAILED",
-        state="failed",
+    facade = _facade(
+        source_workflow_response(
+            workflow_id="import-1",
+            state="failed",
+            failure_message="provider failed",
+            last_error_code="PROVIDER_FAILED",
+        )
     )
-    facade.get_source.return_value = _source()
+    facade.script("get_source", _source())
+    facade.script("update_source", _source(status="error"))
 
     assert _run(facade) == "import-1"
 
-    update = facade.update_source.call_args.kwargs["payload"]
+    update = facade.payload("update_source")
     assert update.status == "error"
     assert "parameters" not in update.metadata
     assert update.metadata["lastImport"] == {
@@ -192,28 +219,28 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
         "workflowId": "import-1",
     }
     assert update.metadata["pendingImport"] is None
-    facade.update_source_sync_policy.assert_not_called()
+    assert facade.call_count("update_source_sync_policy") == 0
 
 
 def test_finalize_website_source_import_waits_for_policy_write_fence() -> None:
-    facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
-    facade.get_source.return_value = SimpleNamespace(
-        id="source-1",
-        metadata={
-            "lastImport": {
-                "kind": "website-crawl-import",
-                "state": "completed",
-                "syncPolicy": {"enabled": True, "mode": "interval"},
-                "workflowId": "import-1",
+    facade = _facade(_completed_workflow())
+    facade.script(
+        "get_source",
+        source_response(
+            metadata={
+                "lastImport": {
+                    "kind": "website-crawl-import",
+                    "state": "completed",
+                    "syncPolicy": {"enabled": True, "mode": "interval"},
+                    "workflowId": "import-1",
+                },
+                "preview": False,
             },
-            "preview": False,
-        },
-        status="active",
-        version=5,
+            status="active",
+            version=5,
+        ),
     )
-    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
-    facade.update_source_sync_policy.side_effect = KnowledgeFSProductRequestRejectedError(status_code=400)
+    facade.script("update_source_sync_policy", KnowledgeFSProductRequestRejectedError(status_code=400))
 
     with pytest.raises(KnowledgeFSSourceImportNotReadyError):
         _run(facade)
@@ -223,25 +250,25 @@ def test_finalize_website_source_import_waits_for_policy_write_fence() -> None:
 def test_finalize_non_website_source_import_does_not_reclassify_a_bad_request(
     import_kind: str,
 ) -> None:
-    facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
-    facade.get_source.return_value = SimpleNamespace(
-        id="source-1",
-        metadata={
-            "lastImport": {
-                "kind": import_kind,
-                "state": "completed",
-                "syncPolicy": {"enabled": True, "mode": "interval"},
-                "workflowId": "import-1",
+    facade = _facade(_completed_workflow())
+    facade.script(
+        "get_source",
+        source_response(
+            metadata={
+                "lastImport": {
+                    "kind": import_kind,
+                    "state": "completed",
+                    "syncPolicy": {"enabled": True, "mode": "interval"},
+                    "workflowId": "import-1",
+                },
+                "preview": False,
             },
-            "preview": False,
-        },
-        status="active",
-        version=5,
+            status="active",
+            version=5,
+        ),
     )
-    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
     rejection = KnowledgeFSProductRequestRejectedError(status_code=400)
-    facade.update_source_sync_policy.side_effect = rejection
+    facade.script("update_source_sync_policy", rejection)
 
     with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
         _run(facade)
@@ -251,8 +278,8 @@ def test_finalize_non_website_source_import_does_not_reclassify_a_bad_request(
 
 def test_finalize_source_import_retries_a_source_revision_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
     error = KnowledgeFSProductRequestRejectedError(status_code=409)
-    monkeypatch.setattr(task_module, "finalize_source_import_once", MagicMock(side_effect=error))
-    retry = MagicMock(side_effect=Retry())
+    monkeypatch.setattr(task_module, "finalize_source_import_once", lambda **_: _raise(error))
+    retry = RecordingRetry()
     monkeypatch.setattr(task_module.finalize_source_import, "retry", retry)
 
     with pytest.raises(Retry):
@@ -264,7 +291,7 @@ def test_finalize_source_import_retries_a_source_revision_conflict(monkeypatch: 
             workflow_id="import-1",
         )
 
-    retry.assert_called_once_with(exc=error)
+    assert retry.calls == [{"exc": error}]
 
 
 @pytest.mark.parametrize("status_code", [400, 422])
@@ -272,8 +299,8 @@ def test_finalize_source_import_does_not_retry_a_permanent_rejection(
     monkeypatch: pytest.MonkeyPatch, status_code: Literal[400, 422]
 ) -> None:
     error = KnowledgeFSProductRequestRejectedError(status_code=status_code)
-    monkeypatch.setattr(task_module, "finalize_source_import_once", MagicMock(side_effect=error))
-    retry = MagicMock(side_effect=Retry())
+    monkeypatch.setattr(task_module, "finalize_source_import_once", lambda **_: _raise(error))
+    retry = RecordingRetry()
     monkeypatch.setattr(task_module.finalize_source_import, "retry", retry)
 
     with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
@@ -286,4 +313,4 @@ def test_finalize_source_import_does_not_retry_a_permanent_rejection(
         )
 
     assert raised.value is error
-    retry.assert_not_called()
+    assert retry.calls == []

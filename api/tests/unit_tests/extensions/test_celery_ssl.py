@@ -2,10 +2,10 @@
 
 import ssl
 from importlib import import_module
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from enums import DeploymentEdition
+from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
 
 
 class TestCelerySSLConfiguration:
@@ -188,7 +188,7 @@ class TestCelerySSLConfiguration:
             patch("extensions.ext_celery.dify_config", mock_config),
             patch(
                 "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
-                return_value=SimpleNamespace(ready=False),
+                return_value=KnowledgeFSLifecycleWorkerReadiness(ready=False, blockers=()),
             ),
         ):
             from dify_app import DifyApp
@@ -249,7 +249,7 @@ class TestCelerySSLConfiguration:
             patch("extensions.ext_celery.dify_config", mock_config),
             patch(
                 "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
-                return_value=SimpleNamespace(ready=False),
+                return_value=KnowledgeFSLifecycleWorkerReadiness(ready=False, blockers=()),
             ),
         ):
             from dify_app import DifyApp

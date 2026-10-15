@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -18,6 +17,7 @@ from services.knowledge_fs.control_space_lifecycle import (
     KnowledgeFSSpaceRegistrationConflictError,
     KnowledgeFSWorkspaceDeletionBlockedError,
 )
+from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def test_lifecycle_service_uses_compare_and_set_resource_versions(
     )
     sqlite_session.add(control_space)
     sqlite_session.commit()
-    metrics = MagicMock()
+    metrics = RecordingKnowledgeFSMetrics()
     service = KnowledgeFSControlSpaceLifecycleService(repository, metrics=metrics)
 
     transitioned = service.transition(
@@ -69,7 +69,7 @@ def test_lifecycle_service_uses_compare_and_set_resource_versions(
     assert transitioned.state is KnowledgeFSControlSpaceState.ACTIVE
     assert transitioned.resource_version == 1
     assert transitioned.knowledge_space_id == "knowledge-space-1"
-    state_metric = metrics.record_control_space_state.call_args.args[0]
+    state_metric = metrics.control_space_states[-1]
     assert state_metric.from_state == "provisioning"
     assert state_metric.to_state == "active"
     assert control_space.id not in str(state_metric)

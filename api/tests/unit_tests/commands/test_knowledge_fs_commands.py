@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import click
 import pytest
@@ -11,13 +11,141 @@ from click.testing import CliRunner
 
 from commands import knowledge_fs as commands
 from commands.knowledge_fs import _cutover_service, _read_jsonl, knowledge_fs_control_space
+from models.knowledge_fs import (
+    KnowledgeFSControlSpace,
+    KnowledgeFSControlSpaceState,
+    KnowledgeFSLifecycleOperation,
+    KnowledgeFSLifecycleOutbox,
+)
 from services.knowledge_fs.cleanup import CleanupCompletionReport, CleanupStartReport
+from services.knowledge_fs.control_space_commands import KnowledgeFSDeletionIntentResult
+from services.knowledge_fs.control_space_management import KnowledgeFSControlSpaceDryRunReport
 from services.knowledge_fs.cutover import (
     CutoverBackfillReport,
     QuarantineResolutionReport,
     ShadowCompletionReport,
     WorkspaceInventoryInput,
 )
+
+
+@dataclass(frozen=True)
+class _TenantPayload:
+    tenant_id: str
+
+
+class _Report:
+    """Operator report shape: the commands only serialize ``_asdict()``."""
+
+    def __init__(self, **values: object) -> None:
+        self._values = values
+
+    def _asdict(self) -> dict[str, object]:
+        return self._values
+
+
+def _control_space(
+    control_space_id: str, state: KnowledgeFSControlSpaceState = KnowledgeFSControlSpaceState.ACTIVE
+) -> KnowledgeFSControlSpace:
+    control_space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        provisioning_key="provision-1",
+        state=state,
+    )
+    control_space.id = control_space_id
+    return control_space
+
+
+def _deletion_outbox(control_space: KnowledgeFSControlSpace, operation_id: str) -> KnowledgeFSLifecycleOutbox:
+    return KnowledgeFSLifecycleOutbox(
+        tenant_id=control_space.tenant_id,
+        control_space_id=control_space.id,
+        operation_id=operation_id,
+        idempotency_key="delete:one",
+        operation=KnowledgeFSLifecycleOperation.DELETE,
+        command_payload={},
+        expected_control_space_version=0,
+    )
+
+
+@dataclass
+class _WorkspaceDeletionLifecycleService:
+    purged_control_spaces: int
+    preflight_tenants: list[str] = field(default_factory=list)
+    finalized_tenants: list[str] = field(default_factory=list)
+
+    def assert_workspace_deletion_allowed(self, *, tenant_id: str) -> None:
+        self.preflight_tenants.append(tenant_id)
+
+    def finalize_workspace_deletion(self, *, tenant_id: str) -> int:
+        self.finalized_tenants.append(tenant_id)
+        return self.purged_control_spaces
+
+
+@dataclass
+class _ObservationCutoverService:
+    status_report: dict[str, object]
+    observation_calls: list[tuple[str, dict[str, object]]] = field(default_factory=list)
+    status_tenants: list[str] = field(default_factory=list)
+
+    def status(self, *, tenant_id: str) -> dict[str, object]:
+        self.status_tenants.append(tenant_id)
+        return self.status_report
+
+    def begin_observation(self, **kwargs: object) -> None:
+        self.observation_calls.append(("begin", kwargs))
+
+    def complete_observation(self, **kwargs: object) -> None:
+        self.observation_calls.append(("complete", kwargs))
+
+
+@dataclass
+class _ManagementService:
+    registered: KnowledgeFSControlSpace
+    repaired: KnowledgeFSControlSpace
+    registrations: list[object] = field(default_factory=list)
+    repair_calls: list[dict[str, object]] = field(default_factory=list)
+    dry_run_tenants: list[str | None] = field(default_factory=list)
+
+    def dry_run(self, *, tenant_id: str | None) -> _Report:
+        self.dry_run_tenants.append(tenant_id)
+        return _Report(total=1, by_state={"active": 1})
+
+    def register(self, registration: object) -> tuple[KnowledgeFSControlSpace, bool]:
+        self.registrations.append(registration)
+        return self.registered, True
+
+    def repair_registration(self, **kwargs: object) -> KnowledgeFSControlSpace:
+        self.repair_calls.append(kwargs)
+        return self.repaired
+
+
+@dataclass
+class _CleanupService:
+    request_calls: list[tuple[object, bool]] = field(default_factory=list)
+    approve_calls: list[tuple[object, bool]] = field(default_factory=list)
+    status_calls: list[dict[str, str]] = field(default_factory=list)
+
+    def request_cleanup(self, payload: object, *, apply: bool) -> _Report:
+        self.request_calls.append((payload, apply))
+        return _Report(applied=False)
+
+    def approve_cleanup(self, payload: object, *, apply: bool) -> _Report:
+        self.approve_calls.append((payload, apply))
+        return _Report(applied=True)
+
+    def status(self, *, tenant_id: str, request_id: str) -> dict[str, object]:
+        self.status_calls.append({"tenant_id": tenant_id, "request_id": request_id})
+        return {"state": "approved"}
+
+
+@dataclass
+class _OrphanReconciler:
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def reconcile(self, *, limit: int, apply_repairs: bool) -> _Report:
+        self.calls.append({"limit": limit, "apply_repairs": apply_repairs})
+        return _Report(scanned=3, repaired=0)
 
 
 def test_control_space_command_exposes_all_p1a_management_operations() -> None:
@@ -37,18 +165,20 @@ def test_workspace_delete_request_is_dry_run_unless_apply_is_explicit() -> None:
         patch("commands.knowledge_fs._management_service") as management_factory,
         patch("commands.knowledge_fs._lifecycle_service") as lifecycle_factory,
     ):
-        management_factory.return_value.dry_run.return_value = SimpleNamespace(
+        management_factory.return_value.dry_run.return_value = KnowledgeFSControlSpaceDryRunReport(
             total=2,
             by_state={"active": 2},
+            irreversible_deletions=0,
         )
         dry_run = CliRunner().invoke(
             knowledge_fs_control_space,
             ["workspace-delete-request", "--tenant-id", "tenant-1"],
         )
+        control_space = _control_space("control-1")
         lifecycle_factory.return_value.request_workspace_cleanup.return_value = (
-            SimpleNamespace(
-                control_space=SimpleNamespace(id="control-1"),
-                outbox=SimpleNamespace(operation_id="operation-1"),
+            KnowledgeFSDeletionIntentResult(
+                control_space=control_space,
+                outbox=_deletion_outbox(control_space, "operation-1"),
             ),
         )
         applied = CliRunner().invoke(
@@ -64,9 +194,8 @@ def test_workspace_delete_request_is_dry_run_unless_apply_is_explicit() -> None:
 
 
 def test_workspace_delete_finalize_requires_terminal_preflight_and_explicit_purge_ack() -> None:
-    with patch("commands.knowledge_fs._lifecycle_service") as lifecycle_factory:
-        lifecycle_factory.return_value.assert_workspace_deletion_allowed = MagicMock()
-        lifecycle_factory.return_value.finalize_workspace_deletion.return_value = 2
+    lifecycle = _WorkspaceDeletionLifecycleService(purged_control_spaces=2)
+    with patch("commands.knowledge_fs._lifecycle_service", return_value=lifecycle):
         preflight = CliRunner().invoke(
             knowledge_fs_control_space,
             ["workspace-delete-finalize", "--tenant-id", "tenant-1"],
@@ -87,10 +216,10 @@ def test_workspace_delete_finalize_requires_terminal_preflight_and_explicit_purg
         )
 
     assert preflight.exit_code == 0
-    lifecycle_factory.return_value.assert_workspace_deletion_allowed.assert_called_once_with(tenant_id="tenant-1")
+    assert lifecycle.preflight_tenants == ["tenant-1"]
     assert denied.exit_code == 2
     assert "--acknowledge-control-plane-purge" in denied.output
-    lifecycle_factory.return_value.finalize_workspace_deletion.assert_called_once_with(tenant_id="tenant-1")
+    assert lifecycle.finalized_tenants == ["tenant-1"]
     assert applied.exit_code == 0
     assert '"purged_control_spaces": 2' in applied.output
 
@@ -454,35 +583,31 @@ def test_cleanup_complete_cli_requires_explicit_executed_ack_for_apply(tmp_path:
     assert "--acknowledge-executed" in denied_apply.output
 
 
-def _report(**values: object) -> SimpleNamespace:
-    return SimpleNamespace(_asdict=lambda: values)
-
-
 def test_operator_commands_delegate_cutover_mutations_with_validated_timestamps(
     tmp_path: Path,
 ) -> None:
     input_path = tmp_path / "operator-input.jsonl"
     input_path.write_text("{}\n", encoding="utf-8")
-    payload = SimpleNamespace(tenant_id="tenant-1")
-    service = MagicMock()
-    service.status.return_value = {
-        "legacy_dependency_ready": True,
-        "open_issues": 0,
-        "unresolved_cutover_quarantine": 0,
-    }
-    for method_name, method in (
-        ("inventory", service.inventory),
-        ("record_shadow_report", service.record_shadow_report),
-        ("legacy_dependency_dashboard", service.legacy_dependency_dashboard),
-    ):
-        method.return_value = _report(operation=method_name)
+    payload = _TenantPayload(tenant_id="tenant-1")
     runner = CliRunner()
 
     with (
-        patch("commands.knowledge_fs._cutover_service", return_value=service),
+        patch("commands.knowledge_fs._cutover_service") as service_factory,
         patch("commands.knowledge_fs._read_jsonl", return_value=(payload,)),
         patch("commands.knowledge_fs._read_one_jsonl", return_value=payload),
     ):
+        service = service_factory.return_value
+        service.status.return_value = {
+            "legacy_dependency_ready": True,
+            "open_issues": 0,
+            "unresolved_cutover_quarantine": 0,
+        }
+        for method_name, method in (
+            ("inventory", service.inventory),
+            ("record_shadow_report", service.record_shadow_report),
+            ("legacy_dependency_dashboard", service.legacy_dependency_dashboard),
+        ):
+            method.return_value = _Report(operation=method_name)
         invocations = [
             ["inventory", "--input", str(input_path)],
             [
@@ -612,8 +737,7 @@ def test_operator_commands_delegate_cutover_mutations_with_validated_timestamps(
 
 
 def test_observation_command_enforces_mutually_exclusive_start_and_completion_modes() -> None:
-    service = MagicMock()
-    service.status.return_value = {"phase": "observing"}
+    service = _ObservationCutoverService(status_report={"phase": "observing"})
     runner = CliRunner()
     base = ["observe", "--tenant-id", "tenant-1", "--expected-cas-version", "7"]
 
@@ -655,12 +779,10 @@ def test_observation_command_enforces_mutually_exclusive_start_and_completion_mo
     assert "cannot be combined" in conflicting.output
     assert incomplete.exit_code == 2
     assert "observation start requires" in incomplete.output
-    service.begin_observation.assert_called_once()
-    service.complete_observation.assert_called_once()
+    assert [name for name, _ in service.observation_calls] == ["begin", "complete"]
 
 
 def test_legacy_check_returns_a_process_failure_when_any_cutover_gate_is_open() -> None:
-    service = MagicMock()
     runner = CliRunner()
     passing = {
         "legacy_dependency_ready": True,
@@ -673,12 +795,12 @@ def test_legacy_check_returns_a_process_failure_when_any_cutover_gate_is_open() 
         {**passing, "unresolved_cutover_quarantine": 1},
     )
 
+    service = _ObservationCutoverService(status_report=passing)
     with patch("commands.knowledge_fs._cutover_service", return_value=service):
-        service.status.return_value = passing
         passed = runner.invoke(knowledge_fs_control_space, ["legacy-check", "--tenant-id", "tenant-1"])
         failed = []
         for report in failing_reports:
-            service.status.return_value = report
+            service.status_report = report
             failed.append(runner.invoke(knowledge_fs_control_space, ["legacy-check", "--tenant-id", "tenant-1"]))
 
     assert passed.exit_code == 0
@@ -692,20 +814,10 @@ def test_management_cleanup_and_reconciliation_commands_preserve_apply_safety(
 ) -> None:
     input_path = tmp_path / "operator-input.jsonl"
     input_path.write_text("{}\n", encoding="utf-8")
-    payload = SimpleNamespace(tenant_id="tenant-1")
-    management = MagicMock()
-    management.dry_run.return_value = _report(total=1, by_state={"active": 1})
-    management.register.return_value = (SimpleNamespace(id="control-1"), True)
-    management.repair_registration.return_value = SimpleNamespace(
-        id="control-1",
-        state=SimpleNamespace(value="active"),
-    )
-    cleanup = MagicMock()
-    cleanup.request_cleanup.return_value = _report(applied=False)
-    cleanup.approve_cleanup.return_value = _report(applied=True)
-    cleanup.status.return_value = {"state": "approved"}
-    reconciler = MagicMock()
-    reconciler.reconcile.return_value = _report(scanned=3, repaired=0)
+    payload = _TenantPayload(tenant_id="tenant-1")
+    management = _ManagementService(registered=_control_space("control-1"), repaired=_control_space("control-1"))
+    cleanup = _CleanupService()
+    reconciler = _OrphanReconciler()
     runner = CliRunner()
 
     with (
@@ -752,20 +864,24 @@ def test_management_cleanup_and_reconciliation_commands_preserve_apply_safety(
         results = [runner.invoke(knowledge_fs_control_space, arguments) for arguments in invocations]
 
     assert all(result.exit_code == 0 for result in results), [(result.output, result.exception) for result in results]
-    registration = management.register.call_args.args[0]
+    assert management.dry_run_tenants == ["tenant-1"]
+    assert len(management.registrations) == 1
+    registration = management.registrations[0]
     assert registration.tenant_id == "tenant-1"
     assert registration.knowledge_space_revision == 2
-    management.repair_registration.assert_called_once_with(
-        tenant_id="tenant-1",
-        control_space_id="control-1",
-        expected_resource_version=3,
-        knowledge_space_id="knowledge-space-1",
-        knowledge_space_revision=4,
-    )
-    reconciler.reconcile.assert_called_once_with(limit=25, apply_repairs=False)
-    cleanup.request_cleanup.assert_called_once_with(payload, apply=False)
-    cleanup.approve_cleanup.assert_called_once_with(payload, apply=True)
-    cleanup.status.assert_called_once_with(tenant_id="tenant-1", request_id="request-1")
+    assert management.repair_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "control_space_id": "control-1",
+            "expected_resource_version": 3,
+            "knowledge_space_id": "knowledge-space-1",
+            "knowledge_space_revision": 4,
+        }
+    ]
+    assert reconciler.calls == [{"limit": 25, "apply_repairs": False}]
+    assert cleanup.request_calls == [(payload, False)]
+    assert cleanup.approve_calls == [(payload, True)]
+    assert cleanup.status_calls == [{"tenant_id": "tenant-1", "request_id": "request-1"}]
 
 
 def test_jsonl_and_timestamp_helpers_reject_ambiguous_operator_input(tmp_path: Path) -> None:

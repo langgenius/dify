@@ -1,12 +1,57 @@
-from types import SimpleNamespace
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Never
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
-from models.account import AccountStatus
+from sqlalchemy import inspect
+
+from core.db.session_factory import session_factory
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewCanceledError
-from services.knowledge_fs.product_dto import KnowledgeFSInitialSourcePreviewResponse
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSInitialSourcePreviewJobResponse,
+    KnowledgeFSInitialSourcePreviewResponse,
+)
 from tasks.knowledge_fs_initial_source_preview_tasks import run_knowledge_fs_initial_source_preview
 from tests.unit_tests.tasks.task_options import task_options
+
+_JOB_KEY = {"tenant_id": "tenant-1", "account_id": "account-1", "job_id": "job-1"}
+
+
+@dataclass
+class _PreviewJobService:
+    """Records preview job transitions; ``transition_results`` are consumed in order."""
+
+    transition_results: list[bool]
+    job_status: str = "running"
+    transitions: list[dict[str, object]] = field(default_factory=list)
+    stored: list[dict[str, object]] = field(default_factory=list)
+    released: list[dict[str, str]] = field(default_factory=list)
+    lookups: list[dict[str, str]] = field(default_factory=list)
+
+    def transition_status(self, **kwargs: object) -> bool:
+        self.transitions.append(kwargs)
+        return self.transition_results.pop(0)
+
+    def store_content(self, **kwargs: object) -> None:
+        self.stored.append(kwargs)
+
+    def release_active_job(self, *, tenant_id: str, account_id: str, job_id: str) -> None:
+        self.released.append({"tenant_id": tenant_id, "account_id": account_id, "job_id": job_id})
+
+    def get(self, *, tenant_id: str, account_id: str, job_id: str) -> KnowledgeFSInitialSourcePreviewJobResponse:
+        self.lookups.append({"tenant_id": tenant_id, "account_id": account_id, "job_id": job_id})
+        return KnowledgeFSInitialSourcePreviewJobResponse.model_construct(status=self.job_status)
+
+
+@dataclass
+class _PreviewService:
+    run: Callable[..., KnowledgeFSInitialSourcePreviewResponse]
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def preview(self, **kwargs: object) -> KnowledgeFSInitialSourcePreviewResponse:
+        self.calls.append(kwargs)
+        return self.run(**kwargs)
 
 
 def _payload() -> dict[str, object]:
@@ -20,28 +65,28 @@ def _payload() -> dict[str, object]:
     }
 
 
-def test_preview_task_uses_the_dataset_queue() -> None:
-    assert task_options(run_knowledge_fs_initial_source_preview)["queue"] == "dataset"
+def _seed_account(*, member: bool) -> None:
+    tenant = Tenant(name="Preview tenant")
+    tenant.id = "tenant-1"
+    account = Account(name="Preview user", email="preview-user@example.com", status=AccountStatus.ACTIVE)
+    account.id = "account-1"
+    with session_factory.create_session() as session:
+        session.add_all([tenant, account])
+        if member:
+            session.add(
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    current=True,
+                    role=TenantAccountRole.OWNER,
+                )
+            )
+        session.commit()
 
 
-def test_preview_task_persists_running_and_completed_states() -> None:
-    account = SimpleNamespace(
-        current_tenant_id="tenant-1",
-        id="account-1",
-        set_tenant_id_with_session=MagicMock(),
-        status=AccountStatus.ACTIVE,
-    )
-    session = MagicMock()
-    session.get.return_value = account
-    session.scalar.return_value = "membership-1"
-    session_context = MagicMock()
-    session_context.__enter__.return_value = session
-    job_service = MagicMock()
-    job_service.transition_status.side_effect = [True, True]
-    preview_service = MagicMock()
-    result = KnowledgeFSInitialSourcePreviewResponse(kind="website_crawl")
-    preview_service.preview.return_value = result
-
+def _run_preview(job_service: _PreviewJobService, preview_service: _PreviewService | None) -> list[dict[str, object]]:
+    """Run the task and return the cleanup schedules it requested."""
+    scheduled_cleanups: list[dict[str, object]] = []
     with (
         patch(
             "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewJobService",
@@ -50,15 +95,11 @@ def test_preview_task_persists_running_and_completed_states() -> None:
         patch(
             "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewService",
             return_value=preview_service,
-        ),
+        ) as preview_service_type,
         patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.session_factory.create_session",
-            return_value=session_context,
+            "tasks.knowledge_fs_initial_source_preview_tasks.cleanup_knowledge_fs_initial_source_preview.apply_async",
+            side_effect=lambda **kwargs: scheduled_cleanups.append(kwargs),
         ),
-        patch("tasks.knowledge_fs_initial_source_preview_tasks.session_factory.get_session_maker"),
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.cleanup_knowledge_fs_initial_source_preview.apply_async"
-        ) as schedule_cleanup,
     ):
         run_knowledge_fs_initial_source_preview.run(
             tenant_id="tenant-1",
@@ -66,92 +107,53 @@ def test_preview_task_persists_running_and_completed_states() -> None:
             job_id="job-1",
             payload=_payload(),
         )
+    if preview_service is None:
+        preview_service_type.assert_not_called()
+    return scheduled_cleanups
 
-    assert job_service.transition_status.call_args_list == [
-        call(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            job_id="job-1",
-            status="running",
-            allowed_from=("pending",),
-        ),
-        call(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            job_id="job-1",
-            status="completed",
-            allowed_from=("running",),
-            result=result,
-        ),
+
+def test_preview_task_uses_the_dataset_queue() -> None:
+    assert task_options(run_knowledge_fs_initial_source_preview)["queue"] == "dataset"
+
+
+def test_preview_task_persists_running_and_completed_states() -> None:
+    _seed_account(member=True)
+    job_service = _PreviewJobService(transition_results=[True, True])
+    result = KnowledgeFSInitialSourcePreviewResponse(kind="website_crawl")
+    preview_service = _PreviewService(run=lambda **_: result)
+
+    scheduled_cleanups = _run_preview(job_service, preview_service)
+
+    assert job_service.transitions == [
+        {**_JOB_KEY, "status": "running", "allowed_from": ("pending",)},
+        {**_JOB_KEY, "status": "completed", "allowed_from": ("running",), "result": result},
     ]
-    job_service.store_content.assert_called_once_with(
-        tenant_id="tenant-1", account_id="account-1", job_id="job-1", result=result
-    )
-    schedule_cleanup.assert_called_once_with(
-        kwargs={"account_id": "account-1", "job_id": "job-1", "tenant_id": "tenant-1"}, countdown=3600
-    )
-    job_service.release_active_job.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        job_id="job-1",
-    )
-    account.set_tenant_id_with_session.assert_called_once_with("tenant-1", session=session)
-    session.expunge.assert_called_once_with(account)
-    preview_service.preview.assert_called_once()
+    assert job_service.stored == [{**_JOB_KEY, "result": result}]
+    assert scheduled_cleanups == [
+        {"kwargs": {"account_id": "account-1", "job_id": "job-1", "tenant_id": "tenant-1"}, "countdown": 3600}
+    ]
+    assert job_service.released == [_JOB_KEY]
+    assert len(preview_service.calls) == 1
+    account = preview_service.calls[0]["account"]
+    assert isinstance(account, Account)
+    assert account.id == "account-1"
+    # The tenant was selected through the task's session before the account was detached from it.
+    assert account.current_tenant_id == "tenant-1"
+    assert inspect(account).detached
 
 
 def test_preview_task_does_not_start_a_canceled_job() -> None:
-    job_service = MagicMock()
-    job_service.transition_status.return_value = False
+    job_service = _PreviewJobService(transition_results=[False])
 
-    with (
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewJobService",
-            return_value=job_service,
-        ),
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewService"
-        ) as preview_service,
-        patch("tasks.knowledge_fs_initial_source_preview_tasks.session_factory.get_session_maker"),
-    ):
-        run_knowledge_fs_initial_source_preview.run(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            job_id="job-1",
-            payload=_payload(),
-        )
+    _run_preview(job_service, preview_service=None)
 
-    job_service.transition_status.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        job_id="job-1",
-        status="running",
-        allowed_from=("pending",),
-    )
-    preview_service.assert_not_called()
-    job_service.release_active_job.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        job_id="job-1",
-    )
+    assert job_service.transitions == [{**_JOB_KEY, "status": "running", "allowed_from": ("pending",)}]
+    assert job_service.released == [_JOB_KEY]
 
 
 def test_preview_task_keeps_a_cooperatively_canceled_job_terminal() -> None:
-    account = SimpleNamespace(
-        current_tenant_id="tenant-1",
-        id="account-1",
-        set_tenant_id_with_session=MagicMock(),
-        status=AccountStatus.ACTIVE,
-    )
-    session = MagicMock()
-    session.get.return_value = account
-    session.scalar.return_value = "membership-1"
-    session_context = MagicMock()
-    session_context.__enter__.return_value = session
-    job_service = MagicMock()
-    job_service.transition_status.return_value = True
-    job_service.get.return_value = SimpleNamespace(status="canceled")
-    preview_service = MagicMock()
+    _seed_account(member=True)
+    job_service = _PreviewJobService(transition_results=[True], job_status="canceled")
 
     def preview(**kwargs: object) -> Never:
         is_canceled = kwargs["is_canceled"]
@@ -159,79 +161,23 @@ def test_preview_task_keeps_a_cooperatively_canceled_job_terminal() -> None:
         assert is_canceled() is True
         raise KnowledgeFSInitialSourcePreviewCanceledError("canceled")
 
-    preview_service.preview.side_effect = preview
-    with (
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewJobService",
-            return_value=job_service,
-        ),
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewService",
-            return_value=preview_service,
-        ),
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.session_factory.create_session",
-            return_value=session_context,
-        ),
-        patch("tasks.knowledge_fs_initial_source_preview_tasks.session_factory.get_session_maker"),
-    ):
-        run_knowledge_fs_initial_source_preview.run(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            job_id="job-1",
-            payload=_payload(),
-        )
+    preview_service = _PreviewService(run=preview)
 
-    job_service.transition_status.assert_called_once_with(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        job_id="job-1",
-        status="running",
-        allowed_from=("pending",),
-    )
+    _run_preview(job_service, preview_service)
+
+    assert job_service.transitions == [{**_JOB_KEY, "status": "running", "allowed_from": ("pending",)}]
+    assert len(preview_service.calls) == 1
+    assert job_service.lookups == [_JOB_KEY]
 
 
 def test_preview_task_rejects_an_account_removed_from_the_tenant() -> None:
-    account = SimpleNamespace(
-        current_tenant_id=None,
-        id="account-1",
-        set_tenant_id_with_session=MagicMock(),
-        status=AccountStatus.ACTIVE,
-    )
-    session = MagicMock()
-    session.get.return_value = account
-    session.scalar.return_value = None
-    session_context = MagicMock()
-    session_context.__enter__.return_value = session
-    job_service = MagicMock()
-    job_service.transition_status.side_effect = [True, True]
+    _seed_account(member=False)
+    job_service = _PreviewJobService(transition_results=[True, True])
 
-    with (
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewJobService",
-            return_value=job_service,
-        ),
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.KnowledgeFSInitialSourcePreviewService"
-        ) as preview_service,
-        patch(
-            "tasks.knowledge_fs_initial_source_preview_tasks.session_factory.create_session",
-            return_value=session_context,
-        ),
-        patch("tasks.knowledge_fs_initial_source_preview_tasks.session_factory.get_session_maker"),
-    ):
-        run_knowledge_fs_initial_source_preview.run(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            job_id="job-1",
-            payload=_payload(),
-        )
+    _run_preview(job_service, preview_service=None)
 
-    preview_service.assert_not_called()
-    assert job_service.transition_status.call_args_list[-1] == call(
-        tenant_id="tenant-1",
-        account_id="account-1",
-        job_id="job-1",
-        status="failed",
-        allowed_from=("pending", "running"),
-    )
+    assert job_service.transitions[-1] == {
+        **_JOB_KEY,
+        "status": "failed",
+        "allowed_from": ("pending", "running"),
+    }

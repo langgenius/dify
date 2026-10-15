@@ -1,12 +1,13 @@
 from datetime import timedelta
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from dify_app import DifyApp
 from extensions.ext_celery import get_celery_broker_transport_options, init_app
 from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
+from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize("background_enabled", [False, True])
@@ -16,53 +17,51 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
 ) -> None:
     # A stale deployment variable must not suppress vector cleanup for the selected provider.
     monkeypatch.setenv("KNOWLEDGE_VECTOR_STORAGE", "postgres")
-    config = MagicMock()
-    config.BROKER_USE_SSL = False
-    config.REDIS_KEY_PREFIX = "test"
-    config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL = 1
-    config.CELERY_BROKER_URL = "redis://localhost:6379/0"
-    config.CELERY_BACKEND = "redis"
-    config.CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
-    config.CELERY_USE_SENTINEL = False
-    config.CELERY_BROKER_VISIBILITY_TIMEOUT = 10800
-    config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED = background_enabled
-    config.VECTOR_STORE = vector_store
-    config.KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS = 5
-    config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS = 7200
-    config.LOG_FORMAT = "%(message)s"
-    config.LOG_TZ = "UTC"
-    config.LOG_FILE = None
-    config.CELERY_TASK_ANNOTATIONS = dict[str, object]()
-    config.CELERY_BEAT_SCHEDULER_TIME = 1
-    config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS = 2
-    config.ENABLE_CONVERSATION_CLEANUP_TASK = True
-    config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
-    config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
-    config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
-    config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
-    config.ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK = False
-    config.ENABLE_CLEAN_MESSAGES = False
-    config.ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK = False
-    config.ENABLE_DATASETS_QUEUE_MONITOR = False
-    config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK = False
-    config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK = False
-    config.MARKETPLACE_ENABLED = False
-    config.WORKFLOW_LOG_CLEANUP_ENABLED = False
-    config.ENABLE_WORKFLOW_RUN_CLEANUP_TASK = False
-    config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK = False
-    config.WORKFLOW_SCHEDULE_POLLER_INTERVAL = 1
-    config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK = False
-    config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
-    config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
-    config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
-    config.ENTERPRISE_ENABLED = False
-    config.ENTERPRISE_TELEMETRY_ENABLED = False
+    apply_config_overrides(
+        monkeypatch,
+        REDIS_KEY_PREFIX="test",
+        HUMAN_INPUT_TIMEOUT_TASK_INTERVAL=1,
+        CELERY_BROKER_URL="redis://localhost:6379/0",
+        CELERY_BACKEND="redis",
+        CELERY_USE_SENTINEL=False,
+        CELERY_BROKER_VISIBILITY_TIMEOUT=10800,
+        KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED=background_enabled,
+        VECTOR_STORE=vector_store,
+        KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS=5,
+        KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS=7200,
+        LOG_FORMAT="%(message)s",
+        LOG_TZ="UTC",
+        LOG_FILE=None,
+        CELERY_TASK_ANNOTATIONS=dict[str, object](),
+        CELERY_BEAT_SCHEDULER_TIME=1,
+        KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS=2,
+        ENABLE_CONVERSATION_CLEANUP_TASK=True,
+        CONVERSATION_CLEANUP_TASK_INTERVAL=5,
+        ENABLE_CLEAN_EMBEDDING_CACHE_TASK=False,
+        ENABLE_CLEAN_UNUSED_DATASETS_TASK=False,
+        ENABLE_CREATE_TIDB_SERVERLESS_TASK=False,
+        ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK=False,
+        ENABLE_CLEAN_MESSAGES=False,
+        ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK=False,
+        ENABLE_DATASETS_QUEUE_MONITOR=False,
+        ENABLE_HUMAN_INPUT_TIMEOUT_TASK=False,
+        ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK=False,
+        MARKETPLACE_ENABLED=False,
+        WORKFLOW_LOG_CLEANUP_ENABLED=False,
+        ENABLE_WORKFLOW_RUN_CLEANUP_TASK=False,
+        ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK=False,
+        WORKFLOW_SCHEDULE_POLLER_INTERVAL=1,
+        ENABLE_TRIGGER_PROVIDER_REFRESH_TASK=False,
+        TRIGGER_PROVIDER_REFRESH_INTERVAL=15,
+        ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK=False,
+        API_TOKEN_LAST_USED_UPDATE_INTERVAL=30,
+        ENTERPRISE_TELEMETRY_ENABLED=False,
+    )
 
     with (
-        patch("extensions.ext_celery.dify_config", config),
         patch(
             "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
-            return_value=SimpleNamespace(ready=True),
+            return_value=KnowledgeFSLifecycleWorkerReadiness(ready=True, blockers=()),
         ),
     ):
         celery_app = init_app(DifyApp(__name__))
@@ -99,10 +98,9 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
         assert not any(name.startswith("knowledge_fs_background_") for name in schedules)
 
     with (
-        patch("extensions.ext_celery.dify_config", config),
         patch(
             "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
-            return_value=SimpleNamespace(ready=False),
+            return_value=KnowledgeFSLifecycleWorkerReadiness(ready=False, blockers=("test",)),
         ),
     ):
         preview_only_app = init_app(DifyApp(f"{__name__}.preview_only"))
