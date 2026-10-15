@@ -32,6 +32,8 @@ const statusClassNames: Record<DifyBuilderCardStatusState, { icon: string; color
 export const DifyBuilderCard = ({
   category,
   children,
+  className,
+  bodyClassName,
   headline,
   invalidated = false,
   meta,
@@ -40,6 +42,8 @@ export const DifyBuilderCard = ({
 }: {
   category: string
   children?: ReactNode
+  className?: string
+  bodyClassName?: string
   headline?: string | null
   invalidated?: boolean
   meta?: string | null
@@ -57,6 +61,7 @@ export const DifyBuilderCard = ({
       className={cn(
         'border-px w-full overflow-hidden rounded-xl border border-components-panel-border',
         invalidated && 'border-components-panel-border-subtle',
+        className,
       )}
     >
       <header className="flex min-h-8 w-full items-center gap-1.5 bg-background-default-lighter px-4 py-2">
@@ -102,7 +107,7 @@ export const DifyBuilderCard = ({
           )}
         </div>
       )}
-      {hasBody && <div className="min-w-0 px-4 py-3">{children}</div>}
+      {hasBody && <div className={cn('min-w-0 px-4 py-3', bodyClassName)}>{children}</div>}
     </article>
   )
 }

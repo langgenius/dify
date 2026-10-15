@@ -15,7 +15,6 @@ from dataclasses import replace
 from core.dify_builder.contract import (
     DecisionItem,
     FormCard,
-    PlanCard,
     TestResultCard,
 )
 from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, ProposalWouldRunWrongError
@@ -71,6 +70,8 @@ from core.dify_builder.state import PcState
 from core.dify_builder.testdata import stamp_testdata_http_fixtures
 from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, is_execution_policy_blocker, result_card
 from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.plan import make_plan_card, store_plan
+from services.dify_builder.plan_failure import edit_planning_failed
 from services.dify_builder.presentation import BuilderText, copy_text, text_parts
 
 logger = logging.getLogger(__name__)
@@ -174,7 +175,8 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     """(waiting) On ``submit_edit_rules`` merge the form payload, propose the
     change plan, self-mint the backend pre-edit checkpoint, and transition to
     edit.plan_approval. A stored engine refusal is cleared when the submitted
-    rules change, because it no longer describes the next proposed edit."""
+    rules change, because it no longer describes the next proposed edit.
+    Failed planning keeps this gate, its submitted rules, and the prior plan."""
     kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
@@ -192,7 +194,6 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         ],
     )
     progress.activate("edit-review-rules")
-    fc.checkpoint_seq = fc.next_seq
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
         keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
@@ -216,13 +217,17 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
 
     progress.activate("edit-draft-plan")
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
-    fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
+    plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
+    if plan is None:
+        return edit_planning_failed(env, s, fc, progress, "edit-draft-plan")
+    store_plan(fc, plan)
 
     progress.activate("edit-create-checkpoint")
+    fc.checkpoint_seq = fc.next_seq
     mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_SUBMITTED_EDIT_RULES)))
-    plan_items = append_card(fc, PlanCard(title=copy_text(BuilderCopyId.LABELS_CHANGE_PLAN), items=list(fc.plan_items)))
+    plan_items = append_card(fc, make_plan_card(fc))
     execution = progress.finish()
     turn_items = append_assistant(
         env,
@@ -1143,7 +1148,8 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
     re-proposes the change plan, self-mints a fresh pre-edit checkpoint, and
-    returns to edit.plan_approval (spec §7.2).
+    returns to edit.plan_approval (spec §7.2) only with a complete new plan.
+    Failed planning leaves the prior plan, checkpoint and verification intact.
 
     ``last_edit_rejection`` is deliberately carried through untouched. A revert
     taken at the plan gate wrote nothing, so the restored draft is the refused
@@ -1166,9 +1172,12 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
         ],
     )
     progress.activate("edit-rebuild-plan")
-    fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
-    fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
+    plan = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
+    if plan is None:
+        return edit_planning_failed(env, s, fc, progress, "edit-rebuild-plan")
+    store_plan(fc, plan)
+    fc.checkpoint_seq = fc.next_seq
     fc.test_input_ref = ""
     fc.verify_run_id = ""
     fc.repair_attempts = 0
@@ -1176,7 +1185,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     fc.unknown_outcome_count = 0
     progress.activate("edit-create-checkpoint")
     mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
-    plan_items = append_card(fc, PlanCard(title=copy_text(BuilderCopyId.LABELS_CHANGE_PLAN), items=list(fc.plan_items)))
+    plan_items = append_card(fc, make_plan_card(fc))
     execution = progress.finish()
     turn_items = append_assistant(
         env,

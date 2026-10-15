@@ -6,8 +6,11 @@ through preflight.vet_intents -- structure AND node data, the same two checks
 apply_repair makes -- before they can reach the approval gate.
 Degrades to an honest result on model-None / provider-error / parse-fail."""
 
+import json
 from collections.abc import Callable, Sequence
 from typing import Any
+
+import json_repair
 
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import MutationIntent
@@ -16,6 +19,8 @@ from core.workflow.graph_normalizers import declared_branch_handles
 from graphon.enums import BUILT_IN_NODE_TYPES
 from services.dify_builder import credentials, preflight
 from services.dify_builder.agent import form_schema, graph_prompt, llm
+from services.dify_builder.agent.plan_context import workflow_io_context
+from services.dify_builder.plan import PLAN_PRESENTATION_INSTRUCTION, WorkflowPlan, parse_plan_response
 
 _ALLOWED_NODE_TYPES: set[str] = set(BUILT_IN_NODE_TYPES)
 
@@ -192,24 +197,40 @@ def propose_edit_plan(
     edit_rules: dict[str, Any],
     graph: dict,
     on_reasoning: Callable[[str], None] | None = None,
-) -> list[str]:
+) -> WorkflowPlan | None:
+    """Return a complete proposal or None, sharing one correction budget.
+
+    A missing overview is a failed proposal, even when its steps are valid.
+    Parsing and schema correction together may spend at most two model calls.
+    """
     if model is None:
-        return ["Apply the requested edit"]
+        return None
     system = (
-        'You are a Dify workflow edit planner. Reply with ONLY JSON: {"plan": ["step", ...]}.'
-        + llm.json_language_instruction("plan steps")
+        "You are a Dify workflow edit planner. Propose the requested changes to the current graph. "
+        + PLAN_PRESENTATION_INSTRUCTION
+        + llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
     )
-    try:
-        data = llm.invoke_json(
-            model,
-            system=system,
-            user=f"EDIT RULES:\n{edit_rules}\n\nGRAPH:\n{_graph_context(graph)}",
-            on_reasoning=on_reasoning,
-        )
-    except Exception:
-        return ["Apply the requested edit"]
-    plan = data.get("plan")
-    return [str(p) for p in plan] if isinstance(plan, list) and plan else ["Apply the requested edit"]
+    source = (
+        f"EDIT RULES:\n{json.dumps(edit_rules, ensure_ascii=False)}\n\nGRAPH:\n{_graph_context(graph)}"
+        f"\n\nWORKFLOW INPUTS AND OUTPUTS:\n{workflow_io_context(graph)}"
+    )
+    user = source
+    for attempt in range(2):
+        try:
+            text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
+        except Exception:
+            return None
+        try:
+            data = json_repair.loads(text)
+        except Exception:
+            data = None
+        try:
+            return parse_plan_response(data)
+        except ValueError as exc:
+            issue = str(exc)
+        if attempt == 0:
+            user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
+    return None
 
 
 # Heads the verbatim engine refusal block appended to the user prompt. Kept a
