@@ -1,6 +1,6 @@
 import json
 from collections.abc import Iterator
-from unittest.mock import Mock, patch
+from unittest.mock import create_autospec, patch
 
 import httpx
 import pytest
@@ -11,9 +11,9 @@ from constants import HIDDEN_VALUE
 from controllers.console.datasets.external import ExternalKnowledgeApiListResponse
 from machinery.context import RequestContext
 from models.dataset import Dataset, DatasetQuery, ExternalKnowledgeApis, ExternalKnowledgeBindings
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
-from services.app.query_service import RelatedApps
 from services.errors.knowledge_retrieval import (
     ExternalHitTestingError,
     ExternalTemplateNotFoundError,
@@ -24,7 +24,7 @@ from services.knowledge.entities.external import ExternalDatasetCreatePayload
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.external.adapters import ExternalKnowledgeGateway, sync_external_dataset_creator_access
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
-from services.tag_application_service import TagTargetQuery
+from services.tag_application_service import TagApplicationService
 from tests.unit_tests.rbac_fakes import RBACDomain
 
 CONTEXT = RequestContext("request", None, "actor", "tenant")
@@ -33,7 +33,9 @@ REF = DatasetRef("tenant", "dataset")
 
 @pytest.fixture
 def operations(
-    sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
+    sqlite_session_factory: sessionmaker[Session],
+    rbac_domain: RBACDomain,
+    application_tags: TagApplicationService,
 ) -> ExternalKnowledgeApplicationService:
     with sqlite_session_factory.begin() as session:
         for workspace, template_id, dataset_id in [
@@ -64,7 +66,7 @@ def operations(
                     ),
                 ]
             )
-    access = Mock(spec=DatasetAccess)
+    access = create_autospec(DatasetAccess, instance=True, spec_set=True)
     access.require_accessible.side_effect = lambda context, dataset_id: AccessibleDataset(
         dataset_id, context.active_workspace_id
     )
@@ -76,8 +78,8 @@ def operations(
         queries=SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory),
         dataset_details=SQLAlchemyDatasetOperations(
             session_factory=sqlite_session_factory,
-            tags=Mock(spec=TagTargetQuery),
-            app_queries=Mock(spec=RelatedApps),
+            tags=application_tags,
+            app_queries=ConsoleAppRepository(session_factory=sqlite_session_factory),
             external_templates=external_repository,
             members=rbac_domain.rbac.members,
         ),

@@ -98,7 +98,7 @@ def test_inner_weight_contract_rejects_unknown_fields(level: str) -> None:
         "keyword_setting": {"keyword_weight": 0.3},
     }
     if level == "weights":
-        weights["unsupported"] = {}
+        weights["unsupported"] = dict[str, object]()
     else:
         weights[level]["unsupported"] = "value"
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):

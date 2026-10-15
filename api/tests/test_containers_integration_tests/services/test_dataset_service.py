@@ -5,6 +5,7 @@ container-backed integration tests. The tests exercise real ORM persistence and
 only patch non-DB collaborators when needed.
 """
 
+import json
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
@@ -14,17 +15,41 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings, Pipeline
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.dataset import (
+    Dataset,
+    DatasetPermissionEnum,
+    Document,
+    ExternalKnowledgeApis,
+    ExternalKnowledgeBindings,
+    Pipeline,
+)
 from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.knowledge_retrieval import ExternalTemplateNotFoundError
 from services.knowledge.dataset_service import DatasetService, ExternalKnowledgeTemplateLookup
 from services.knowledge.entities.knowledge_entities import RerankingModel, RetrievalModel
 
 
 class DatasetServiceIntegrationDataFactory:
     """Factory for creating real database entities used by integration tests."""
+
+    @staticmethod
+    def create_external_knowledge_api(
+        db_session_with_containers: Session, tenant_id: str, created_by: str
+    ) -> ExternalKnowledgeApis:
+        template = ExternalKnowledgeApis(
+            tenant_id=tenant_id,
+            created_by=created_by,
+            updated_by=created_by,
+            name="External Knowledge API",
+            description="",
+            settings=json.dumps({"endpoint": "https://example.com", "api_key": "secret"}),
+        )
+        db_session_with_containers.add(template)
+        db_session_with_containers.flush()
+        return template
 
     @staticmethod
     def create_account_with_tenant(
@@ -35,9 +60,9 @@ class DatasetServiceIntegrationDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
-        tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+        tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
         db_session_with_containers.add_all([account, tenant])
         db_session_with_containers.flush()
 
@@ -239,31 +264,31 @@ class TestDatasetServiceCreateDataset:
         """Create an external dataset and persist external knowledge binding."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
-        external_knowledge_api_id = str(uuid4())
+        template = DatasetServiceIntegrationDataFactory.create_external_knowledge_api(
+            db_session_with_containers, tenant.id, account.id
+        )
         external_knowledge_id = "knowledge-123"
 
         # Act
-        with patch("services.knowledge.dataset_service.get_external_knowledge_api") as mock_get_api:
-            mock_get_api.return_value = Mock(id=external_knowledge_api_id)
-            result = DatasetService.create_empty_dataset(
-                tenant_id=tenant.id,
-                name="External Dataset",
-                description=None,
-                indexing_technique=None,
-                account=account,
-                provider="external",
-                external_knowledge_api_id=external_knowledge_api_id,
-                external_knowledge_id=external_knowledge_id,
-                session=db_session_with_containers,
-                external_templates=external_templates,
-            )
+        result = DatasetService.create_empty_dataset(
+            tenant_id=tenant.id,
+            name="External Dataset",
+            description=None,
+            indexing_technique=None,
+            account=account,
+            provider="external",
+            external_knowledge_api_id=template.id,
+            external_knowledge_id=external_knowledge_id,
+            session=db_session_with_containers,
+            external_templates=external_templates,
+        )
 
         # Assert
         binding = db_session_with_containers.query(ExternalKnowledgeBindings).filter_by(dataset_id=result.id).first()
         assert result.provider == "external"
         assert binding is not None
         assert binding.external_knowledge_id == external_knowledge_id
-        assert binding.external_knowledge_api_id == external_knowledge_api_id
+        assert binding.external_knowledge_api_id == template.id
 
     def test_create_dataset_with_retrieval_model_and_reranking(
         self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
@@ -417,21 +442,19 @@ class TestDatasetServiceCreateDataset:
         external_knowledge_api_id = str(uuid4())
 
         # Act / Assert
-        with patch("services.knowledge.dataset_service.get_external_knowledge_api") as mock_get_api:
-            mock_get_api.return_value = None
-            with pytest.raises(ValueError, match=r"External API template not found\.?"):
-                DatasetService.create_empty_dataset(
-                    tenant_id=tenant.id,
-                    name="External Missing API Dataset",
-                    description=None,
-                    indexing_technique=None,
-                    account=account,
-                    provider="external",
-                    external_knowledge_api_id=external_knowledge_api_id,
-                    external_knowledge_id="knowledge-123",
-                    session=db_session_with_containers,
-                    external_templates=external_templates,
-                )
+        with pytest.raises(ExternalTemplateNotFoundError, match="api template not found"):
+            DatasetService.create_empty_dataset(
+                tenant_id=tenant.id,
+                name="External Missing API Dataset",
+                description=None,
+                indexing_technique=None,
+                account=account,
+                provider="external",
+                external_knowledge_api_id=external_knowledge_api_id,
+                external_knowledge_id="knowledge-123",
+                session=db_session_with_containers,
+                external_templates=external_templates,
+            )
 
     def test_create_external_dataset_missing_knowledge_id_error(
         self, db_session_with_containers: Session, *, external_templates: ExternalKnowledgeTemplateLookup
@@ -439,24 +462,24 @@ class TestDatasetServiceCreateDataset:
         """Raise error when external knowledge id is missing for external dataset creation."""
         # Arrange
         account, tenant = DatasetServiceIntegrationDataFactory.create_account_with_tenant(db_session_with_containers)
-        external_knowledge_api_id = str(uuid4())
+        template = DatasetServiceIntegrationDataFactory.create_external_knowledge_api(
+            db_session_with_containers, tenant.id, account.id
+        )
 
         # Act / Assert
-        with patch("services.knowledge.dataset_service.get_external_knowledge_api") as mock_get_api:
-            mock_get_api.return_value = Mock(id=external_knowledge_api_id)
-            with pytest.raises(ValueError, match="external_knowledge_id is required"):
-                DatasetService.create_empty_dataset(
-                    tenant_id=tenant.id,
-                    name="External Missing Knowledge Dataset",
-                    description=None,
-                    indexing_technique=None,
-                    account=account,
-                    provider="external",
-                    external_knowledge_api_id=external_knowledge_api_id,
-                    external_knowledge_id=None,
-                    session=db_session_with_containers,
-                    external_templates=external_templates,
-                )
+        with pytest.raises(ValueError, match="external_knowledge_id is required"):
+            DatasetService.create_empty_dataset(
+                tenant_id=tenant.id,
+                name="External Missing Knowledge Dataset",
+                description=None,
+                indexing_technique=None,
+                account=account,
+                provider="external",
+                external_knowledge_api_id=template.id,
+                external_knowledge_id=None,
+                session=db_session_with_containers,
+                external_templates=external_templates,
+            )
 
 
 class TestDatasetServiceCreateRagPipelineDataset:

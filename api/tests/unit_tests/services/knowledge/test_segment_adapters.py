@@ -1872,7 +1872,7 @@ def test_segment_presentation_signs_after_repository_connections_are_released(
         signed.append(upload_file_id)
         return original_sign(upload_file_id, preview_kind=preview_kind)
 
-    def executed(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def executed(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         statements.append(statement)
 
     monkeypatch.setattr(segment_read_adapter, "_sign_upload_file_uri", sign)
@@ -1923,7 +1923,7 @@ def test_segment_list_batches_content_file_authorization(sqlite_session_factory:
     engine = sqlite_session_factory.kw["bind"]
     statements: list[str] = []
 
-    def executed(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def executed(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         if statement.lstrip().upper().startswith("SELECT"):
             statements.append(statement)
 

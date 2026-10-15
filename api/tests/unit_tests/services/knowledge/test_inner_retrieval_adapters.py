@@ -1,6 +1,6 @@
 """Inner retrieval adapters: scoped persistence, runtime mapping, and owned sessions."""
 
-from unittest.mock import create_autospec, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 from sqlalchemy import select
@@ -65,8 +65,8 @@ def _persist_state(sqlite_session: Session, *models: App | Dataset) -> None:
     sqlite_session.expunge_all()
 
 
-def _build_request(**overrides):
-    payload = {
+def _build_request(**overrides: object) -> InnerKnowledgeRetrieveRequest:
+    payload: dict[str, object] = {
         "caller": {
             "tenant_id": TENANT_ID,
             "user_id": USER_ID,
@@ -176,7 +176,7 @@ class TestInnerKnowledgeRetrievalAdapters:
         sqlite_session.add(pending)
         transaction = sqlite_session.get_transaction()
         rag = create_autospec(DatasetRetrieval, instance=True, spec_set=True)
-        rag.knowledge_retrieval.return_value = []
+        rag.knowledge_retrieval.return_value = list[Source]()
         rag.llm_usage = LLMUsage.empty_usage()
         monkeypatch.setattr("services.knowledge.retrieval.adapters.DatasetRetrieval", lambda: rag)
 
@@ -195,9 +195,9 @@ class TestInnerKnowledgeRetrievalAdapters:
     @patch("services.knowledge.retrieval.adapters.DatasetRetrieval")
     def test_retrieve_maps_multiple_request_and_skips_enable_api_check(
         self,
-        mock_rag_cls,
+        mock_rag_cls: Mock,
         sqlite_session: Session,
-    ):
+    ) -> None:
         request = _build_request()
         weights = {
             "vector_setting": {
@@ -268,7 +268,7 @@ class TestInnerKnowledgeRetrievalAdapters:
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
     @patch("services.knowledge.retrieval.adapters.DatasetRetrieval")
-    def test_retrieve_maps_single_request(self, mock_rag_cls, sqlite_session: Session):
+    def test_retrieve_maps_single_request(self, mock_rag_cls: Mock, sqlite_session: Session) -> None:
         request = _build_request(
             dataset_ids=[DATASET_1_ID],
             retrieval={
@@ -289,12 +289,12 @@ class TestInnerKnowledgeRetrievalAdapters:
                     "completion_params": {"temperature": 0},
                 },
             },
-            attachment_ids=[],
+            attachment_ids=list[str](),
         )
         _persist_state(sqlite_session, _app(), _dataset(dataset_id=DATASET_1_ID))
 
         rag = create_autospec(DatasetRetrieval, instance=True, spec_set=True)
-        rag.knowledge_retrieval.return_value = []
+        rag.knowledge_retrieval.return_value = list[Source]()
         rag.llm_usage = {
             "prompt_tokens": 1,
             "completion_tokens": 2,
@@ -325,13 +325,13 @@ class TestInnerKnowledgeRetrievalAdapters:
         assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
-    def test_retrieve_raises_when_app_missing(self, sqlite_session: Session):
+    def test_retrieve_raises_when_app_missing(self, sqlite_session: Session) -> None:
         with pytest.raises(InnerKnowledgeRetrieveAppNotFoundError):
             self.service_instance.retrieve(_context(), _build_request())
         assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
-    def test_retrieve_raises_when_app_belongs_to_other_tenant(self, sqlite_session: Session):
+    def test_retrieve_raises_when_app_belongs_to_other_tenant(self, sqlite_session: Session) -> None:
         _persist_state(sqlite_session, _app(tenant_id=OTHER_TENANT_ID))
 
         with pytest.raises(InnerKnowledgeRetrieveAppTenantMismatchError):
@@ -339,7 +339,7 @@ class TestInnerKnowledgeRetrievalAdapters:
         assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
-    def test_retrieve_raises_when_dataset_missing(self, sqlite_session: Session):
+    def test_retrieve_raises_when_dataset_missing(self, sqlite_session: Session) -> None:
         _persist_state(sqlite_session, _app(), _dataset(dataset_id=DATASET_1_ID))
 
         with pytest.raises(InnerKnowledgeRetrieveDatasetNotFoundError):
@@ -347,7 +347,7 @@ class TestInnerKnowledgeRetrievalAdapters:
         assert not sqlite_session.in_transaction()
 
     @pytest.mark.parametrize("sqlite_session", [(App, Dataset)], indirect=True)
-    def test_retrieve_raises_when_dataset_belongs_to_other_tenant(self, sqlite_session: Session):
+    def test_retrieve_raises_when_dataset_belongs_to_other_tenant(self, sqlite_session: Session) -> None:
         _persist_state(
             sqlite_session,
             _app(),

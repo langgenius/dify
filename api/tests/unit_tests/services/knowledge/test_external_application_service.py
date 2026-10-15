@@ -43,12 +43,12 @@ def queries() -> Mock:
 
 
 @pytest.fixture
-def dataset_details():
+def dataset_details() -> Mock:
     return create_autospec(ExternalDatasetDetails, instance=True, spec_set=True)
 
 
 @pytest.fixture
-def sync_access():
+def sync_access() -> Mock:
     from services.knowledge.external.adapters import sync_external_dataset_creator_access
 
     return create_autospec(sync_external_dataset_creator_access, spec_set=True)
@@ -117,14 +117,18 @@ def test_retrieval_failure_is_neutral_and_receives_owned_ref(
     )
 
 
-def test_template_probe_precedes_persistence(service, repository, retrieval):
+def test_template_probe_precedes_persistence(
+    service: ExternalKnowledgeApplicationService, repository: Mock, retrieval: Mock
+) -> None:
     retrieval.check_settings.side_effect = ValueError("unreachable")
     with pytest.raises(ValueError, match="unreachable"):
         service.create_template(CONTEXT, name="API", settings={"endpoint": "https://example", "api_key": "secret"})
     repository.create_template.assert_not_called()
 
 
-def test_failed_network_does_not_record_query(service, repository, retrieval, queries):
+def test_failed_network_does_not_record_query(
+    service: ExternalKnowledgeApplicationService, repository: Mock, retrieval: Mock, queries: Mock
+) -> None:
     repository.prepare_retrieval.return_value = ExternalKnowledgeRetrievalRequest(
         "https://example", "key", "knowledge", "query", {}, None
     )
@@ -134,7 +138,9 @@ def test_failed_network_does_not_record_query(service, repository, retrieval, qu
     queries.record_hit_testing_query.assert_not_called()
 
 
-def test_non_external_dataset_skips_network_and_history(service, repository, retrieval, queries):
+def test_non_external_dataset_skips_network_and_history(
+    service: ExternalKnowledgeApplicationService, repository: Mock, retrieval: Mock, queries: Mock
+) -> None:
     repository.prepare_retrieval.return_value = None
     assert service.hit_testing(
         CONTEXT, dataset_id="dataset", query="query", retrieval_model=None, metadata_filters=None
@@ -144,8 +150,8 @@ def test_non_external_dataset_skips_network_and_history(service, repository, ret
 
 
 def test_external_dataset_creation_commits_before_access_sync_and_detail(
-    service, repository, dataset_details, sync_access
-):
+    service: ExternalKnowledgeApplicationService, repository: Mock, dataset_details: Mock, sync_access: Mock
+) -> None:
     from services.knowledge.entities.external import ExternalDatasetCreatePayload
 
     payload = ExternalDatasetCreatePayload(
@@ -153,7 +159,7 @@ def test_external_dataset_creation_commits_before_access_sync_and_detail(
     )
     ref = DatasetRef("tenant", "dataset")
     repository.create_dataset.return_value = ref
-    events = []
+    events: list[str] = []
     repository.create_dataset.side_effect = lambda *_args: events.append("persist") or ref
     sync_access.side_effect = lambda *_args: events.append("access")
     dataset_details.get_dataset.side_effect = lambda *_args: events.append("detail") or {"id": "dataset"}
