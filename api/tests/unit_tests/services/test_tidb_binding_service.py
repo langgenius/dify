@@ -1,6 +1,6 @@
 import threading
 import uuid
-from collections.abc import Callable, Generator, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -75,7 +75,7 @@ def environment(
     lock = threading.Lock()
 
     @contextmanager
-    def acquire(*_args: object, **_kwargs: object) -> Iterator[None]:
+    def acquire(*_args: object, **_kwargs: object) -> Generator[None]:
         with lock:
             yield
 
