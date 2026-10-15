@@ -127,14 +127,10 @@ def test_register_schema_model_promotes_nested_pydantic_definitions():
     assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
 
 
-def _make_same_named_model(fields: dict[str, type]) -> type[BaseModel]:
+def _make_same_named_model() -> type[BaseModel]:
     """Build a model whose qualified name differs from UserModel but whose bare name matches."""
 
-    return create_model(
-        "UserModel",
-        __module__="other_module",
-        **{name: (annotation, ...) for name, annotation in fields.items()},
-    )
+    return create_model("UserModel", __module__="other_module", email=(str, ...))
 
 
 def test_register_schema_model_allows_reregistering_the_same_model():
@@ -155,7 +151,7 @@ def test_register_schema_model_rejects_different_model_with_same_name():
     register_schema_model(namespace, UserModel)
 
     with pytest.raises(SchemaNameCollisionError, match="'UserModel'.*produced by both"):
-        register_schema_model(namespace, _make_same_named_model({"email": str}))
+        register_schema_model(namespace, _make_same_named_model())
 
 
 def test_register_schema_model_rejects_nested_definition_with_same_name():
@@ -208,7 +204,7 @@ def test_register_schema_model_keeps_namespaces_independent():
     from controllers.common.schema import register_schema_model
 
     register_schema_model(Namespace("first"), UserModel)
-    register_schema_model(Namespace("second"), _make_same_named_model({"email": str}))
+    register_schema_model(Namespace("second"), _make_same_named_model())
 
 
 def test_register_schema_model_applies_schema_name_overrides(monkeypatch: pytest.MonkeyPatch):
