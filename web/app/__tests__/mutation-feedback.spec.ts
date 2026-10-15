@@ -4,7 +4,7 @@ import { consoleQuery } from '@/service/console'
 import { makeQueryClient } from '../get-query-client'
 
 const { notifyError, request } = vi.hoisted(() => ({ notifyError: vi.fn(), request: vi.fn() }))
-vi.mock('@/app/notifications/error', () => ({ notifyError }))
+vi.mock('@/app/notifications/notify-error', () => ({ notifyError }))
 vi.mock('@/service/base', () => ({ request }))
 
 const failure = new Error('Save failed')

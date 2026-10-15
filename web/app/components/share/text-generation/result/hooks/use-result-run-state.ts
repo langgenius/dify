@@ -4,7 +4,7 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
 
 type Notify = (payload: { type: 'error'; message: string }) => void

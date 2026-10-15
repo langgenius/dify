@@ -1,4 +1,5 @@
 import type { DataSet } from '@/models/datasets'
+import { useMutation } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -122,7 +123,8 @@ vi.mock('@/service/use-base', () => ({
 }))
 
 vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({ mutateAsync: mockExportPipeline }),
+  useExportPipelineDSL: () =>
+    useMutation({ mutationFn: (input: unknown) => mockExportPipeline(input) }),
 }))
 
 vi.mock('@/service/datasets', () => ({
@@ -243,7 +245,7 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('app.exportFailed')
+      expect(mockToast).toHaveBeenCalledWith('export failed')
     })
   })
 

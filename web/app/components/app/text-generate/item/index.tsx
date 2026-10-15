@@ -15,7 +15,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { toast } from '@/app/notifications'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import {

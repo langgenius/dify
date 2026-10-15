@@ -30,6 +30,7 @@ import {
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
+import { getErrorMessage } from '@/utils/error-message'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
@@ -61,6 +62,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const isAdd = !payload
   const isEdit = !!payload
 
+  const [schemaError, setSchemaError] = useState<unknown>()
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [labels, setLabels] = useState<string[]>(payload?.labels || [])
@@ -109,6 +111,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       draft.schema = schema
     })
     setCustomCollection(newCollection)
+    setSchemaError(undefined)
   }
 
   useEffect(() => {
@@ -126,7 +129,9 @@ const EditCustomCollectionModal: FC<Props> = ({
         })
         setCustomCollection(newCollection)
         setParamsSchemas(parameters_schema)
-      } catch {
+        setSchemaError(undefined)
+      } catch (error) {
+        setSchemaError(error)
         const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = ''
@@ -337,6 +342,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                         />
                       </div>
 
+                      {schemaError != null && (
+                        <div role="alert" className="text-text-destructive">
+                          {getErrorMessage(schemaError) ??
+                            t(($) => $['api.actionFailed'], { ns: 'common' })}
+                        </div>
+                      )}
                       {/* Available Tools  */}
                       <div>
                         <div className="py-2 system-sm-medium text-text-primary">

@@ -254,7 +254,7 @@ describe('useVariableModalState', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('should save a new variable and close when state is valid', () => {
+  it('should save a new variable and close when state is valid', async () => {
     const onSave = vi.fn()
     const onClose = vi.fn()
     const { result } = renderHook(() =>
@@ -273,8 +273,8 @@ describe('useVariableModalState', () => {
       result.current.handleStringOrNumberChange(['hello'])
     })
 
-    act(() => {
-      result.current.handleSave()
+    await act(async () => {
+      await result.current.handleSave()
     })
 
     expect(onSave).toHaveBeenCalledWith({
@@ -285,5 +285,29 @@ describe('useVariableModalState', () => {
       value_type: ChatVarType.String,
     })
     expect(onClose).toHaveBeenCalled()
+  })
+  it('keeps the draft open after save rejection and closes only after a successful retry', async () => {
+    const onSave = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Save failed'))
+      .mockResolvedValue(undefined)
+    const onClose = vi.fn()
+    const { result } = renderHook(() => useVariableModalState(createOptions({ onSave, onClose })))
+    act(() => {
+      result.current.handleVarNameChange({
+        target: { value: 'greeting' },
+      } as ChangeEvent<HTMLInputElement>)
+      result.current.handleStringOrNumberChange(['hello'])
+    })
+    await act(async () => {
+      await result.current.handleSave()
+    })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(result.current.name).toBe('greeting')
+    expect(result.current.value).toBe('hello')
+    await act(async () => {
+      await result.current.handleSave()
+    })
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

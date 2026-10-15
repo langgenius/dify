@@ -2,9 +2,14 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { TagSelectorProps } from '../components/tag-selector'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { render as renderBase } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { DatasetCardTags } from '../components/dataset-card-tags'
 import { TagSelector } from '../components/tag-selector'
+
+const render = (ui: Parameters<typeof renderBase>[0]) =>
+  renderBase(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -42,26 +47,36 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQuery: () => ({ data: mockUseQueryData.current }),
-  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
-      Promise.resolve(mutationOptions.mutationFn(input))
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-    },
-  }),
 }))
 
 vi.mock('@/service/console', () => ({
+  consoleClient: {
+    tagBindings: {
+      post: ({ body }: { body: { tag_ids: string[]; target_id: string; type: string } }) =>
+        bindTag(body.tag_ids, body.target_id, body.type),
+      remove: {
+        post: ({ body }: { body: { tag_ids: string[]; target_id: string; type: string } }) =>
+          Promise.all(body.tag_ids.map((id) => unBindTag(id, body.target_id, body.type))),
+      },
+    },
+  },
   consoleQuery: {
+    apps: {
+      get: { key: () => ['apps'] },
+      starred: { get: { key: () => ['starred'] } },
+      recent: { get: { key: () => ['recent'] } },
+    },
     tags: {
       get: {
         queryOptions: () => ({}),
+        key: () => ['tags'],
       },
       post: {
-        mutationOptions: () => ({
+        mutationOptions: (options = {}) => ({
+          ...options,
           mutationFn: ({
             body,
           }: {
@@ -71,39 +86,6 @@ vi.mock('@/service/console', () => ({
       },
     },
   },
-}))
-
-vi.mock('../hooks/use-tag-mutations', () => ({
-  useApplyTagBindingsMutation: () => ({
-    mutate: (
-      {
-        currentTagIds,
-        nextTagIds,
-        targetId,
-        type,
-      }: {
-        currentTagIds: string[]
-        nextTagIds: string[]
-        targetId: string
-        type: 'app' | 'knowledge'
-      },
-      options?: { onSuccess?: () => void; onError?: () => void; onSettled?: () => void },
-    ) => {
-      const addTagIds = nextTagIds.filter((tagId) => !currentTagIds.includes(tagId))
-      const removeTagIds = currentTagIds.filter((tagId) => !nextTagIds.includes(tagId))
-      const operations: Promise<unknown>[] = []
-
-      if (addTagIds.length) operations.push(Promise.resolve(bindTag(addTagIds, targetId, type)))
-      operations.push(
-        ...removeTagIds.map((tagId) => Promise.resolve(unBindTag(tagId, targetId, type))),
-      )
-
-      Promise.all(operations)
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-        .finally(() => options?.onSettled?.())
-    },
-  }),
 }))
 
 const i18n = {
@@ -342,9 +324,7 @@ describe('TagSelector', () => {
     await user.click(trigger)
 
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith(i18n.modifiedUnsuccessfully, {
-        id: 'tag-bindings-app-target-1',
-      })
+      expect(mockToast.error).toHaveBeenCalledWith('Unbind failed')
     })
   })
 

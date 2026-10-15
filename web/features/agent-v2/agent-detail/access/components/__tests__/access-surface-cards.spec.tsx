@@ -3,8 +3,9 @@ import type {
   AgentAppDetailWithSite,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type React from 'react'
-import { QueryClient, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -17,6 +18,7 @@ import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -313,16 +315,7 @@ function renderWithQueryClient(
 }
 
 function createConsoleQueryClient(webAppAuthEnabled = true) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  })
+  const queryClient = createTestQueryClient()
   seedSystemFeatures(queryClient, {
     webapp_auth: {
       enabled: webAppAuthEnabled,

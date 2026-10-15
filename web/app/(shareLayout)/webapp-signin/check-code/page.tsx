@@ -12,7 +12,7 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'

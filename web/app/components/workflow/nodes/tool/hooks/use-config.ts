@@ -12,7 +12,7 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import { useInvalidToolsByType } from '@/service/use-tools'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'

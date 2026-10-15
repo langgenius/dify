@@ -10,7 +10,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'

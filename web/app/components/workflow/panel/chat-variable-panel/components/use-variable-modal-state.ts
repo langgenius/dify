@@ -25,7 +25,7 @@ type UseVariableModalStateOptions = {
   conversationVariables: ConversationVariable[]
   notify: (props: ToastPayload) => void
   onClose: () => void
-  onSave: (chatVar: ConversationVariable) => void
+  onSave: (chatVar: ConversationVariable) => void | Promise<void>
   t: ChatVariableTranslator
 }
 
@@ -184,7 +184,7 @@ export const useVariableModalState = ({
     })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateVariableName({ name: state.name, notify, t })) return
 
     if (!chatVar && conversationVariables.some((item) => item.name === state.name)) {
@@ -220,19 +220,23 @@ export const useVariableModalState = ({
       return
     }
 
-    onSave({
-      description: state.description,
-      id: chatVar ? chatVar.id : uuid4(),
-      name: state.name,
-      value: formatChatVariableValue({
-        editInJSON: state.editInJSON,
-        objectValue: state.objectValue,
-        type: state.type,
-        value: state.value,
-      }),
-      value_type: state.type,
-    })
-    onClose()
+    try {
+      await onSave({
+        description: state.description,
+        id: chatVar ? chatVar.id : uuid4(),
+        name: state.name,
+        value: formatChatVariableValue({
+          editInJSON: state.editInJSON,
+          objectValue: state.objectValue,
+          type: state.type,
+          value: state.value,
+        }),
+        value_type: state.type,
+      })
+      onClose()
+    } catch {
+      // The operation presents the error; keep the edited value for retry.
+    }
   }
 
   return {

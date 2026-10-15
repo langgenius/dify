@@ -10,7 +10,7 @@ import { useAutoGenModel } from '@/app/components/app/configuration/config/auto-
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'

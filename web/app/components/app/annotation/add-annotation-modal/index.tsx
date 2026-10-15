@@ -75,8 +75,12 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
     setIsSaving(true)
     try {
       await onAdd(payload)
-    } catch {}
-    setIsSaving(false)
+    } catch {
+      // The operation reports the error; keep the draft available for retry.
+      return
+    } finally {
+      setIsSaving(false)
+    }
 
     if (isCreateNext) {
       setQuestion('')

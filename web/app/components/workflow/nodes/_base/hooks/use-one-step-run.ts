@@ -49,7 +49,7 @@ import {
 } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
 import {

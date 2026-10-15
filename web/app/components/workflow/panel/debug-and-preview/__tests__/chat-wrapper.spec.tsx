@@ -353,11 +353,13 @@ describe('ChatWrapper', () => {
     )
 
     const stopResponding = mockUseChat.mock.calls[0]?.[3] as (taskId: string) => void
-    await stopResponding('task-1')
-    expect(mockRequest).toHaveBeenCalledWith(
-      ['apps', 'byAppId', 'chatMessages', 'byTaskId', 'stop', 'post'],
-      { params: { app_id: 'app-1', task_id: 'task-1' } },
-      expect.any(Object),
+    act(() => stopResponding('task-1'))
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        ['apps', 'byAppId', 'chatMessages', 'byTaskId', 'stop', 'post'],
+        { params: { app_id: 'app-1', task_id: 'task-1' } },
+        expect.any(Object),
+      ),
     )
 
     await user.click(screen.getByRole('button', { name: 'submit-human-input' }))

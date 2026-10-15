@@ -13,7 +13,7 @@ type Props = Readonly<{
   showTip: boolean
   chatVar?: ConversationVariable
   onClose: () => void
-  onSave: (env: ConversationVariable) => void
+  onSave: (env: ConversationVariable) => void | Promise<void>
 }>
 
 const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave }: Props) => {

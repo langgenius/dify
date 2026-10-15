@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { fetchNotionPagePreview } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 import s from './index.module.css'
 
 type IProps = {
@@ -20,6 +21,7 @@ const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IPr
   const { t } = useTranslation(['common', 'datasetCreation'])
   const [previewContent, setPreviewContent] = useState('')
   const [loading, setLoading] = useState(true)
+  const [previewError, setPreviewError] = useState<unknown>()
 
   const getPreviewContent = async () => {
     if (!currentPage) return
@@ -30,8 +32,12 @@ const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IPr
         credentialID: notionCredentialId,
       })
       setPreviewContent(res.content)
+      setPreviewError(undefined)
+    } catch (error) {
+      setPreviewError(error)
+    } finally {
       setLoading(false)
-    } catch {}
+    }
   }
 
   useEffect(() => {
@@ -67,7 +73,14 @@ const NotionPagePreview = ({ currentPage, notionCredentialId, hidePreview }: IPr
       </div>
       <div className={cn(s.previewContent, 'body-md-regular')}>
         {loading && <LoadingPlaceholder />}
-        {!loading && <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>}
+        {!loading &&
+          (previewError ? (
+            <div role="alert" className="text-text-destructive">
+              {getErrorMessage(previewError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </div>
+          ) : (
+            <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
+          ))}
       </div>
     </div>
   )

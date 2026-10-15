@@ -3,8 +3,13 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
-import { render } from '@/test/console/render'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { render as renderBase } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { TagManagementModal } from '../components/tag-management-modal'
+
+const render = (ui: Parameters<typeof renderBase>[0]) =>
+  renderBase(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -33,16 +38,9 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] as string[],
 }))
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQuery: () => ({ data: mockUseQueryData.current }),
-  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
-      Promise.resolve(mutationOptions.mutationFn(input))
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-    },
-  }),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -59,7 +57,8 @@ vi.mock('@/service/console', () => ({
         queryOptions: () => ({}),
       },
       post: {
-        mutationOptions: () => ({
+        mutationOptions: (options = {}) => ({
+          ...options,
           mutationFn: ({
             body,
           }: {
@@ -69,12 +68,14 @@ vi.mock('@/service/console', () => ({
       },
       byTagId: {
         patch: {
-          mutationOptions: () => ({
+          mutationOptions: (options = {}) => ({
+            ...options,
             mutationFn: () => Promise.resolve(undefined),
           }),
         },
         delete: {
-          mutationOptions: () => ({
+          mutationOptions: (options = {}) => ({
+            ...options,
             mutationFn: () => Promise.resolve(undefined),
           }),
         },

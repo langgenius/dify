@@ -16,7 +16,12 @@ const mocks = vi.hoisted(() => ({
   updateAppSiteConfig: vi.fn(),
 }))
 
-vi.mock('@/app/notifications', () => ({ toast: mocks.toast }))
+vi.mock('@/app/notifications', () => ({
+  toast: Object.assign(mocks.toast, {
+    error: (message: string) => mocks.toast(message, { type: 'error' }),
+    success: (message: string) => mocks.toast(message, { type: 'success' }),
+  }),
+}))
 
 vi.mock('@/service/base', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/base')>()

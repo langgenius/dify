@@ -567,6 +567,38 @@ describe('ssePost and sseGet', () => {
     },
   )
 
+  it.each(['post', 'get'] as const)(
+    'does not report a refresh failure after cancelling a %s stream',
+    async (method) => {
+      let failRefresh!: (error: Error) => void
+      refreshAccessTokenOrReLoginMock.mockImplementationOnce(
+        () =>
+          new Promise<void>((_, reject) => {
+            failRefresh = reject
+          }),
+      )
+      const fetchMock = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      let controller!: AbortController
+      const onError = vi.fn()
+      const options = {
+        onError,
+        getAbortController: (value: AbortController) => {
+          controller = value
+        },
+      }
+      if (method === 'post') await ssePost('/chat-messages', { body: {} }, options)
+      else await sseGet('/workflow/run/events', {}, options)
+      await waitFor(() => expect(failRefresh).toBeDefined())
+      controller.abort()
+      failRefresh(new Error('refresh failed'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(onError).not.toHaveBeenCalled()
+    },
+  )
+
   it('should report token refresh failures through onError', async () => {
     const onError = vi.fn()
     refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('refresh failed'))

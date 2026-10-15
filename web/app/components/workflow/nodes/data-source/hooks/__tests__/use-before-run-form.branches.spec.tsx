@@ -1,5 +1,5 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
-import type { NodeRunResult, VarInInspect } from '@/types/workflow'
+import type { VarInInspect } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
 import {
@@ -36,11 +36,6 @@ type DataSourceStoreState = {
   selectedFileIds: string[]
   onlineDriveFileList: Array<{ id: string; type: string }>
   bucket?: string
-}
-
-type DatasourceSingleRunOptions = {
-  onError?: () => void
-  onSettled?: (data?: NodeRunResult) => void
 }
 
 const mockHandleNodeDataUpdate = vi.hoisted(() => vi.fn())
@@ -237,10 +232,7 @@ describe('data-source/hooks/use-before-run-form branches', () => {
       },
     ]
 
-    mockMutateAsync.mockImplementation((_payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
-      return Promise.resolve(undefined)
-    })
+    mockMutateAsync.mockResolvedValue({ status: NodeRunningStatus.Succeeded })
 
     const props = createProps({
       isRunAfterSingleRun: true,
@@ -270,10 +262,7 @@ describe('data-source/hooks/use-before-run-form branches', () => {
       },
     ]
 
-    mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
-      return Promise.resolve(payload)
-    })
+    mockMutateAsync.mockResolvedValue({ status: NodeRunningStatus.Succeeded })
 
     const { result } = renderHook(() =>
       useBeforeRunForm(
@@ -301,7 +290,6 @@ describe('data-source/hooks/use-before-run-form branches', () => {
           credential_id: 'credential-1',
         },
       }),
-      expect.any(Object),
     )
   })
 
@@ -313,10 +301,7 @@ describe('data-source/hooks/use-before-run-form branches', () => {
       },
     ]
 
-    mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onError?.()
-      return Promise.resolve(payload)
-    })
+    mockMutateAsync.mockRejectedValue(new Error('Run failed'))
 
     const { result } = renderHook(() =>
       useBeforeRunForm(
@@ -341,7 +326,6 @@ describe('data-source/hooks/use-before-run-form branches', () => {
           credential_id: 'credential-1',
         },
       }),
-      expect.any(Object),
     )
     expect(mockInvalidLastRun).toHaveBeenCalled()
     expect(mockHandleNodeDataUpdate).not.toHaveBeenCalledWith(

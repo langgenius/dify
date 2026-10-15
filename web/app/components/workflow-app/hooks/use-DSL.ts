@@ -63,7 +63,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       try {
         return await exportWorkflow({ include, workflowId })
-      } catch (error) {
+      } catch {
         return false
       }
     },

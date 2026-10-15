@@ -355,6 +355,8 @@ describe('NotionPagePreview', () => {
       await renderNotionPagePreview({}, false)
 
       await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('Network error')
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
         expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
       })
     })

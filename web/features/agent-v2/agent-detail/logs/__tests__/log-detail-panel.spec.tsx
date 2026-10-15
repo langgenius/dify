@@ -5,10 +5,10 @@ import type {
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { OnFeedback } from '@/app/components/base/chat/types'
 import { Drawer } from '@langgenius/dify-ui/drawer'
-import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createTestQueryClient } from '@/test/query-client'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
 const mocks = vi.hoisted(() => ({
@@ -143,9 +143,7 @@ const webappMessages: AgentLogMessageListResponse = {
 
 function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMessageListResponse) {
   mocks.messagesQueryFn.mockResolvedValue(messages)
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
+  const queryClient = createTestQueryClient()
   const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
   render(

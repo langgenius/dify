@@ -28,7 +28,7 @@ import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'

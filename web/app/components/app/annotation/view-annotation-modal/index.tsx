@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { notifyError } from '@/app/notifications/notify-error'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchHitHistoryList } from '@/service/annotation'
@@ -78,7 +79,9 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
       })
       setHitHistoryList(data as HitHistoryItem[])
       setTotal(total)
-    } catch {}
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   useEffect(() => {
@@ -92,19 +95,15 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
 
   const [activeTab, setActiveTab] = useState<TabType>(TabType.annotation)
   const handleSave = async (type: EditItemType, editedContent: string) => {
-    try {
-      if (type === EditItemType.Query) {
-        await onSave(editedContent, newAnswer)
-        setNewQuery(editedContent)
-      } else {
-        await onSave(newQuestion, editedContent)
-        setNewAnswer(editedContent)
-      }
-    } catch (error) {
-      // If save fails, don't update local state
-      console.error('Failed to save annotation:', error)
+    if (type === EditItemType.Query) {
+      await onSave(editedContent, newAnswer)
+      setNewQuery(editedContent)
+    } else {
+      await onSave(newQuestion, editedContent)
+      setNewAnswer(editedContent)
     }
   }
+
   const removeActionsRef = React.useRef<AlertDialogActions>(null)
 
   const annotationTab = (
@@ -292,9 +291,13 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                           <AlertDialogConfirmButton
                             tone="destructive"
                             onClick={async () => {
-                              await onRemove()
-                              removeActionsRef.current?.close()
-                              onHide()
+                              try {
+                                await onRemove()
+                                removeActionsRef.current?.close()
+                                onHide()
+                              } catch {
+                                // The operation reports the error; retain the confirmation for retry.
+                              }
                             }}
                           >
                             {t(($) => $['operation.confirm'], { ns: 'common' })}

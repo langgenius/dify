@@ -374,7 +374,9 @@ describe('EditCustomCollectionModal', () => {
         expect(parseParamsSchemaMock).toHaveBeenCalledWith('invalid schema')
       })
 
-      // The table should still be visible but empty (no tools)
+      expect(await screen.findByRole('alert')).toHaveTextContent('Parse error')
+      expect(schemaInput).toHaveValue('invalid schema')
+
       // The table should still be visible but empty (no tools)
       expect(screen.getByText('tools.createTool.availableTools.title'))!.toBeInTheDocument()
     })

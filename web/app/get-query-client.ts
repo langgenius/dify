@@ -1,5 +1,5 @@
 import { defaultShouldDehydrateQuery, environmentManager, QueryClient } from '@tanstack/react-query'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 
 const STALE_TIME = 1000 * 60 * 5
 

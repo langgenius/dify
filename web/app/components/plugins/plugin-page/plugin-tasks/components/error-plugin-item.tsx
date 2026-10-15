@@ -8,7 +8,7 @@ import { PluginInstallPermissionProvider } from '@/app/components/plugins/instal
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { PluginSource } from '@/app/components/plugins/types'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import PluginItem from './plugin-item'
 

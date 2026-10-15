@@ -22,7 +22,7 @@ import {
   initializeInputs,
   splitByOutputVar,
 } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 
 type Props = Readonly<{
   nodeName: string

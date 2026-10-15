@@ -26,7 +26,7 @@ import {
 type ModalPropsType = {
   chatVar?: ConversationVariable
   onClose: () => void
-  onSave: (chatVar: ConversationVariable) => void
+  onSave: (chatVar: ConversationVariable) => void | Promise<void>
 }
 
 const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {

@@ -20,7 +20,7 @@ import ConfigParamModal from '@/app/components/base/features/new-feature-panel/a
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { toast } from '@/app/notifications'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
@@ -129,7 +129,10 @@ const Annotation: FC<Props> = (props) => {
   }, [currPage, limit, debouncedQueryParams])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
-    await addAnnotation(appDetail.id, payload)
+    await addAnnotation(appDetail.id, payload).catch((error) => {
+      notifyError(error)
+      throw error
+    })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
@@ -143,6 +146,7 @@ const Annotation: FC<Props> = (props) => {
       setControlUpdateList(Date.now())
     } catch (error) {
       notifyError(error)
+      throw error
     }
   }
 
@@ -166,7 +170,10 @@ const Annotation: FC<Props> = (props) => {
 
   const handleSave = async (question: string, answer: string) => {
     if (!currItem) return
-    await editAnnotation(appDetail.id, currItem.id, { question, answer })
+    await editAnnotation(appDetail.id, currItem.id, { question, answer }).catch((error) => {
+      notifyError(error)
+      throw error
+    })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())

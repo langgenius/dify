@@ -6,7 +6,7 @@ import type { UserAction } from '@/app/components/workflow/nodes/human-input/typ
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import ContentItem from './content-item'
 import {
   getButtonStyle,

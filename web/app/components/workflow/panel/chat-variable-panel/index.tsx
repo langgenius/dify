@@ -15,6 +15,7 @@ import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/co
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { notifyError } from '@/app/notifications/notify-error'
 import { updateConversationVariables } from '@/service/workflow'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -89,7 +90,7 @@ const ChatVariablePanel = () => {
 
         invalidateConversationVarValues()
       } catch (error) {
-        console.error('Failed to update conversation variables:', error)
+        notifyError(error)
         // Revert local state on error
         updateChatVarList(varList)
       }
@@ -135,9 +136,10 @@ const ChatVariablePanel = () => {
 
           invalidateConversationVarValues()
         } catch (error) {
-          console.error('Failed to update conversation variables:', error)
+          notifyError(error)
           // Revert local state on error
           updateChatVarList(varList)
+          throw error
         }
         return
       }
@@ -180,9 +182,10 @@ const ChatVariablePanel = () => {
 
         invalidateConversationVarValues()
       } catch (error) {
-        console.error('Failed to update conversation variables:', error)
+        notifyError(error)
         // Revert local state on error
         updateChatVarList(varList)
+        throw error
       }
     },
     [

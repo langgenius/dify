@@ -58,7 +58,7 @@ Client-side validation belongs at the field through the [form contract], never i
 
 ## Transport Boundary
 
-`service/fetch.ts`, `service/base.ts`, and Console transport adapters must not depend on notification modules, either directly or through re-exports, helpers, or dynamic imports. Check the transitive local import graph when changing their dependencies. Business error helpers such as `app/notifications/error.ts` belong at consumers; moving automatic toasts into a generic request wrapper violates the same boundary.
+`service/fetch.ts`, `service/base.ts`, and Console transport adapters must not depend on notification modules, either directly or through re-exports, helpers, or dynamic imports. Check the transitive local import graph when changing their dependencies. Business error helpers such as `app/notifications/notify-error.ts` belong at consumers; moving automatic toasts into a generic request wrapper violates the same boundary.
 
 Do not add notification flags, compatibility aliases, URL-based toast suppression, or notification deduplication to the transport. OAuth silent authorization and unrelated logging or validation controls retain their own semantics.
 

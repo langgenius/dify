@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import {

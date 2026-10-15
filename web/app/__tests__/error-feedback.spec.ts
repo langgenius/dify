@@ -1,6 +1,6 @@
 import { CancelledError } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { notifyError } from '../notifications/error'
+import { notifyError } from '../notifications/notify-error'
 
 const { errorToast } = vi.hoisted(() => ({ errorToast: vi.fn() }))
 vi.mock('@/app/notifications', () => ({ toast: { error: errorToast } }))

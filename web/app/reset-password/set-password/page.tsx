@@ -16,7 +16,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import { useCountDown } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'

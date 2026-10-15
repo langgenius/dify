@@ -1,8 +1,13 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as renderBase, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import { TagItemEditor } from '../components/tag-item-editor'
+
+const render = (ui: Parameters<typeof renderBase>[0]) =>
+  renderBase(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
 const tagMocks = vi.hoisted(() => {
   const record = vi.fn()
@@ -33,23 +38,13 @@ const tagMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
-      Promise.resolve(mutationOptions.mutationFn(input))
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-    },
-  }),
-}))
-
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       byTagId: {
         patch: {
-          mutationOptions: () => ({
+          mutationOptions: (options = {}) => ({
+            ...options,
             mutationFn: ({
               params,
               body,
@@ -60,7 +55,8 @@ vi.mock('@/service/console', () => ({
           }),
         },
         delete: {
-          mutationOptions: () => ({
+          mutationOptions: (options = {}) => ({
+            ...options,
             mutationFn: ({ params }: { params: { tag_id: string } }) =>
               tagMocks.deleteTag(params.tag_id),
           }),

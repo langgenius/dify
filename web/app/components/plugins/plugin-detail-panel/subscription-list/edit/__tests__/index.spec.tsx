@@ -1,17 +1,23 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useMutation } from '@tanstack/react-query'
+import { act, fireEvent, render as renderBase, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import { ApiKeyEditModal } from '../apikey-edit-modal'
 import { EditModal } from '../index'
 import { ManualEditModal } from '../manual-edit-modal'
 import { OAuthEditModal } from '../oauth-edit-modal'
 
 // ==================== Mock Setup ====================
+
+const render = (ui: Parameters<typeof renderBase>[0]) =>
+  renderBase(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
 const mockToastNotify = vi.fn()
 vi.mock('@/app/notifications', () => ({
@@ -28,11 +34,6 @@ vi.mock('@/app/notifications', () => ({
       promise: vi.fn(),
     },
   ),
-}))
-
-const mockParsePluginErrorMessage = vi.fn()
-vi.mock('@/utils/error-parser', () => ({
-  parsePluginErrorMessage: (error: unknown) => mockParsePluginErrorMessage(error),
 }))
 
 // Schema types
@@ -103,11 +104,11 @@ let mockIsVerifying = false
 
 vi.mock('@/service/use-triggers', () => ({
   useUpdateTriggerSubscription: () => ({
-    mutate: mockUpdateSubscription,
+    ...useMutation({ mutationFn: (input: unknown) => mockUpdateSubscription(input) }),
     isPending: mockIsUpdating,
   }),
   useVerifyTriggerSubscription: () => ({
-    mutate: mockVerifyCredentials,
+    ...useMutation({ mutationFn: (input: unknown) => mockVerifyCredentials(input) }),
     isPending: mockIsVerifying,
   }),
 }))
@@ -331,7 +332,7 @@ describe('Edit Modal Components', () => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
     })
 
-    it('should render nothing for unknown credential type', () => {
+    it('should render nothing for unknown credential type', async () => {
       const { container } = render(
         <EditModal
           onClose={vi.fn()}
@@ -343,7 +344,7 @@ describe('Edit Modal Components', () => {
       expect(container).toBeEmptyDOMElement()
     })
 
-    it('should pass pluginDetail to child modal', () => {
+    it('should pass pluginDetail to child modal', async () => {
       const pluginDetail = createPluginDetail({ id: 'custom-plugin' })
       render(
         <EditModal
@@ -373,7 +374,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Rendering', () => {
-      it('should render modal with correct title', () => {
+      it('should render modal with correct title', async () => {
         render(<ManualEditModal {...createProps()} />)
         expect(
           screen.getByRole('heading', {
@@ -382,23 +383,23 @@ describe('Edit Modal Components', () => {
         ).toBeInTheDocument()
       })
 
-      it('should render ReadmeEntrance when pluginDetail is provided', () => {
+      it('should render ReadmeEntrance when pluginDetail is provided', async () => {
         render(<ManualEditModal {...createProps({ pluginDetail: createPluginDetail() })} />)
         expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
       })
 
-      it('should not render ReadmeEntrance when pluginDetail is not provided', () => {
+      it('should not render ReadmeEntrance when pluginDetail is not provided', async () => {
         render(<ManualEditModal {...createProps()} />)
         expect(screen.queryByTestId('readme-entrance')).not.toBeInTheDocument()
       })
 
-      it('should render subscription_name and callback_url fields', () => {
+      it('should render subscription_name and callback_url fields', async () => {
         render(<ManualEditModal {...createProps()} />)
         expect(screen.getByTestId('form-field-subscription_name')).toBeInTheDocument()
         expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
       })
 
-      it('should render properties schema fields from store', () => {
+      it('should render properties schema fields from store', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_schema = [
           createSchemaField('custom_field'),
           createSchemaField('another_field', 'number'),
@@ -410,7 +411,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Form Schema Default Values', () => {
-      it('should use subscription name as default', () => {
+      it('should use subscription name as default', async () => {
         render(
           <ManualEditModal
             {...createProps({ subscription: createSubscription({ name: 'My Sub' }) })}
@@ -422,7 +423,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should use endpoint as callback_url default', () => {
+      it('should use endpoint as callback_url default', async () => {
         render(
           <ManualEditModal
             {...createProps({ subscription: createSubscription({ endpoint: 'https://test.com' }) })}
@@ -434,7 +435,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should use empty string when endpoint is empty', () => {
+      it('should use empty string when endpoint is empty', async () => {
         render(
           <ManualEditModal
             {...createProps({ subscription: createSubscription({ endpoint: '' }) })}
@@ -446,7 +447,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should use subscription properties as defaults for custom fields', () => {
+      it('should use subscription properties as defaults for custom fields', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_schema = [
           createSchemaField('custom'),
         ]
@@ -463,7 +464,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should use schema default when subscription property is missing', () => {
+      it('should use schema default when subscription property is missing', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_schema = [
           createSchemaField('custom', 'string', { default: 'schema_default' }),
         ]
@@ -476,14 +477,14 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Confirm Button Text', () => {
-      it('should show "save" when not updating', () => {
+      it('should show "save" when not updating', async () => {
         render(<ManualEditModal {...createProps()} />)
         expect(getConfirmButton()).toHaveTextContent('common.operation.save')
       })
     })
 
     describe('User Interactions', () => {
-      it('should call onClose when cancel button is clicked', () => {
+      it('should call onClose when cancel button is clicked', async () => {
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
         fireEvent.click(getCancelButton())
@@ -498,53 +499,58 @@ describe('Edit Modal Components', () => {
         expect(onClose).toHaveBeenCalledTimes(1)
       })
 
-      it('should call updateSubscription when confirm is clicked with valid form', () => {
+      it('should call updateSubscription when confirm is clicked with valid form', async () => {
         formValuesMap.set('main', {
           values: { subscription_name: 'New Name' },
           isCheckValidated: true,
         })
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ subscriptionId: 'test-subscription-id', name: 'New Name' }),
-          expect.any(Object),
         )
       })
 
-      it('should not call updateSubscription when form validation fails', () => {
+      it('should not call updateSubscription when form validation fails', async () => {
         formValuesMap.set('main', { values: {}, isCheckValidated: false })
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
     })
 
     describe('Properties Change Detection', () => {
-      it('should not send properties when unchanged', () => {
+      it('should not send properties when unchanged', async () => {
         const subscription = createSubscription({ properties: { custom: 'value' } })
         formValuesMap.set('main', {
           values: { subscription_name: 'Name', callback_url: '', custom: 'value' },
           isCheckValidated: true,
         })
         render(<ManualEditModal {...createProps({ subscription })} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ properties: undefined }),
-          expect.any(Object),
         )
       })
 
-      it('should send properties when changed', () => {
+      it('should send properties when changed', async () => {
         const subscription = createSubscription({ properties: { custom: 'old' } })
         formValuesMap.set('main', {
           values: { subscription_name: 'Name', callback_url: '', custom: 'new' },
           isCheckValidated: true,
         })
         render(<ManualEditModal {...createProps({ subscription })} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ properties: { custom: 'new' } }),
-          expect.any(Object),
         )
       })
     })
@@ -552,10 +558,12 @@ describe('Edit Modal Components', () => {
     describe('Update Callbacks', () => {
       it('should call onClose on success', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
+        mockUpdateSubscription.mockResolvedValue(undefined)
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(onClose).toHaveBeenCalled()
         })
@@ -564,9 +572,11 @@ describe('Edit Modal Components', () => {
 
       it('should show error toast with Error message on failure', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Custom error')))
+        mockUpdateSubscription.mockRejectedValue(new Error('Custom error'))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -579,9 +589,11 @@ describe('Edit Modal Components', () => {
 
       it('should use error.message when available', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Object error')))
+        mockUpdateSubscription.mockRejectedValue(new Error('Object error'))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -594,14 +606,16 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback message when error has no message', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({}))
+        mockUpdateSubscription.mockRejectedValue({})
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+              message: 'api.actionFailed',
             }),
           )
         })
@@ -609,14 +623,16 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback message when error is null', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(null))
+        mockUpdateSubscription.mockRejectedValue(null)
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+              message: 'api.actionFailed',
             }),
           )
         })
@@ -624,14 +640,16 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback when error.message is not a string', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: 123 }))
+        mockUpdateSubscription.mockRejectedValue({ message: 123 })
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+              message: 'api.actionFailed',
             }),
           )
         })
@@ -639,14 +657,16 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback when error.message is empty string', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: '' }))
+        mockUpdateSubscription.mockRejectedValue({ message: '' })
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+              message: 'api.actionFailed',
             }),
           )
         })
@@ -654,7 +674,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('normalizeFormType in ManualEditModal', () => {
-      it('should normalize number type', () => {
+      it('should normalize number type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_schema = [
           createSchemaField('num_field', 'number'),
         ]
@@ -665,7 +685,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize select type', () => {
+      it('should normalize select type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_schema = [
           createSchemaField('sel_field', 'select'),
         ]
@@ -676,7 +696,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should return textInput for unknown type', () => {
+      it('should return textInput for unknown type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_schema = [
           createSchemaField('unknown_field', 'unknown-custom-type'),
         ]
@@ -689,7 +709,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Button Text State', () => {
-      it('should show saving text when isUpdating is true', () => {
+      it('should show saving text when isUpdating is true', async () => {
         mockIsUpdating = true
         render(<ManualEditModal {...createProps()} />)
         expect(getConfirmButton()).toHaveTextContent('common.operation.saving')
@@ -711,7 +731,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Rendering', () => {
-      it('should render modal with correct title', () => {
+      it('should render modal with correct title', async () => {
         render(<OAuthEditModal {...createProps()} />)
         expect(
           screen.getByRole('heading', {
@@ -720,12 +740,12 @@ describe('Edit Modal Components', () => {
         ).toBeInTheDocument()
       })
 
-      it('should render ReadmeEntrance when pluginDetail is provided', () => {
+      it('should render ReadmeEntrance when pluginDetail is provided', async () => {
         render(<OAuthEditModal {...createProps({ pluginDetail: createPluginDetail() })} />)
         expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
       })
 
-      it('should render parameters schema fields from store', () => {
+      it('should render parameters schema fields from store', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('oauth_param'),
         ]
@@ -735,7 +755,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Form Schema Default Values', () => {
-      it('should use subscription parameters as defaults', () => {
+      it('should use subscription parameters as defaults', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('channel'),
         ]
@@ -757,7 +777,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Dynamic Select Support', () => {
-      it('should add dynamicSelectParams for dynamic-select type fields', () => {
+      it('should add dynamicSelectParams for dynamic-select type fields', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('dynamic_field', FormTypeEnum.dynamicSelect),
         ]
@@ -768,7 +788,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should not add dynamicSelectParams for non-dynamic-select fields', () => {
+      it('should not add dynamicSelectParams for non-dynamic-select fields', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('text_field', 'string'),
         ]
@@ -781,7 +801,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Boolean Field Styling', () => {
-      it('should add fieldClassName and labelClassName for boolean type', () => {
+      it('should add fieldClassName and labelClassName for boolean type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('bool_field', FormTypeEnum.boolean),
         ]
@@ -798,7 +818,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Parameters Change Detection', () => {
-      it('should not send parameters when unchanged', () => {
+      it('should not send parameters when unchanged', async () => {
         formValuesMap.set('main', {
           values: { subscription_name: 'Name', callback_url: '', channel: 'general' },
           isCheckValidated: true,
@@ -813,14 +833,15 @@ describe('Edit Modal Components', () => {
             })}
           />,
         )
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: undefined }),
-          expect.any(Object),
         )
       })
 
-      it('should send parameters when changed', () => {
+      it('should send parameters when changed', async () => {
         formValuesMap.set('main', {
           values: { subscription_name: 'Name', callback_url: '', channel: 'new' },
           isCheckValidated: true,
@@ -835,10 +856,11 @@ describe('Edit Modal Components', () => {
             })}
           />,
         )
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: { channel: 'new' } }),
-          expect.any(Object),
         )
       })
     })
@@ -846,10 +868,12 @@ describe('Edit Modal Components', () => {
     describe('Update Callbacks', () => {
       it('should call onClose on success', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
+        mockUpdateSubscription.mockResolvedValue(undefined)
         const onClose = vi.fn()
         render(<OAuthEditModal {...createProps({ onClose })} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(onClose).toHaveBeenCalled()
         })
@@ -857,9 +881,11 @@ describe('Edit Modal Components', () => {
 
       it('should show error toast on failure', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Failed')))
+        mockUpdateSubscription.mockRejectedValue(new Error('Failed'))
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
         })
@@ -867,14 +893,16 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback when error.message is not a string', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: 123 }))
+        mockUpdateSubscription.mockRejectedValue({ message: 123 })
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+              message: 'api.actionFailed',
             }),
           )
         })
@@ -882,14 +910,16 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback when error.message is empty string', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: '' }))
+        mockUpdateSubscription.mockRejectedValue({ message: '' })
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+              message: 'api.actionFailed',
             }),
           )
         })
@@ -897,16 +927,18 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Form Validation', () => {
-      it('should not call updateSubscription when form validation fails', () => {
+      it('should not call updateSubscription when form validation fails', async () => {
         formValuesMap.set('main', { values: {}, isCheckValidated: false })
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
     })
 
     describe('normalizeFormType in OAuthEditModal', () => {
-      it('should normalize number type', () => {
+      it('should normalize number type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('num_field', 'number'),
         ]
@@ -917,7 +949,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize integer type', () => {
+      it('should normalize integer type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('int_field', 'integer'),
         ]
@@ -928,7 +960,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize select type', () => {
+      it('should normalize select type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('sel_field', 'select'),
         ]
@@ -939,7 +971,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize password type', () => {
+      it('should normalize password type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('pwd_field', 'password'),
         ]
@@ -950,7 +982,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should return textInput for unknown type', () => {
+      it('should return textInput for unknown type', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.parameters = [
           createSchemaField('unknown_field', 'custom-unknown-type'),
         ]
@@ -963,7 +995,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('Button Text State', () => {
-      it('should show saving text when isUpdating is true', () => {
+      it('should show saving text when isUpdating is true', async () => {
         mockIsUpdating = true
         render(<OAuthEditModal {...createProps()} />)
         expect(getConfirmButton()).toHaveTextContent('common.operation.saving')
@@ -992,7 +1024,7 @@ describe('Edit Modal Components', () => {
     }
 
     describe('Rendering - Step 1 (Credentials)', () => {
-      it('should render modal with correct title', () => {
+      it('should render modal with correct title', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
         expect(
           screen.getByRole('heading', {
@@ -1001,36 +1033,36 @@ describe('Edit Modal Components', () => {
         ).toBeInTheDocument()
       })
 
-      it('should render EncryptedBottom in credentials step', () => {
+      it('should render EncryptedBottom in credentials step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
         expect(screen.getByTestId('modal-bottom-slot')).toBeInTheDocument()
         expect(screen.getByTestId('encrypted-bottom')).toBeInTheDocument()
       })
 
-      it('should render credentials form fields', () => {
+      it('should render credentials form fields', async () => {
         setupCredentialsSchema()
         render(<ApiKeyEditModal {...createProps()} />)
         expect(screen.getByTestId('form-field-api_key')).toBeInTheDocument()
       })
 
-      it('should show verify button text in credentials step', () => {
+      it('should show verify button text in credentials step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
         expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.verify')
       })
 
-      it('should not show extra button (back) in credentials step', () => {
+      it('should not show extra button (back) in credentials step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
         expect(queryBackButton()).not.toBeInTheDocument()
       })
 
-      it('should render ReadmeEntrance when pluginDetail is provided', () => {
+      it('should render ReadmeEntrance when pluginDetail is provided', async () => {
         render(<ApiKeyEditModal {...createProps({ pluginDetail: createPluginDetail() })} />)
         expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
       })
     })
 
     describe('Credentials Form Defaults', () => {
-      it('should use subscription credentials as defaults', () => {
+      it('should use subscription credentials as defaults', async () => {
         setupCredentialsSchema()
         render(
           <ApiKeyEditModal
@@ -1054,35 +1086,40 @@ describe('Edit Modal Components', () => {
         setupCredentialsSchema()
       })
 
-      it('should call verifyCredentials when confirm clicked in credentials step', () => {
+      it('should call verifyCredentials when confirm clicked in credentials step', async () => {
         formValuesMap.set('credentials', {
           values: { api_key: 'test-key' },
           isCheckValidated: true,
         })
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockVerifyCredentials).toHaveBeenCalledWith(
           expect.objectContaining({
             provider: 'test-provider',
             subscriptionId: 'test-subscription-id',
             credentials: { api_key: 'test-key' },
           }),
-          expect.any(Object),
         )
       })
 
-      it('should not call verifyCredentials when form validation fails', () => {
+      it('should not call verifyCredentials when form validation fails', async () => {
         formValuesMap.set('credentials', { values: {}, isCheckValidated: false })
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockVerifyCredentials).not.toHaveBeenCalled()
       })
 
       it('should show success toast and move to step 2 on successful verification', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -1097,31 +1134,35 @@ describe('Edit Modal Components', () => {
 
       it('should show error toast on verification failure', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'bad-key' }, isCheckValidated: true })
-        mockParsePluginErrorMessage.mockReturnValue('Invalid API key')
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
+
+        mockVerifyCredentials.mockRejectedValue(new Error('Invalid'))
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'Invalid API key',
+              message: 'Invalid',
             }),
           )
         })
       })
 
-      it('should use fallback error message when parsePluginErrorMessage returns null', async () => {
+      it('should use the default error message when verification has no message', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'bad-key' }, isCheckValidated: true })
-        mockParsePluginErrorMessage.mockReturnValue(null)
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
+
+        mockVerifyCredentials.mockRejectedValue({})
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'pluginTrigger.modal.apiKey.verify.error',
+              message: 'api.actionFailed',
             }),
           )
         })
@@ -1136,20 +1177,23 @@ describe('Edit Modal Components', () => {
           values: { subscription_name: 'Name' },
           isCheckValidated: true,
         })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Verify credentials
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
         // Update subscription
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ credentials: undefined }),
-          expect.any(Object),
         )
       })
     })
@@ -1158,12 +1202,14 @@ describe('Edit Modal Components', () => {
       beforeEach(() => {
         setupCredentialsSchema()
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
       })
 
       it('should show save button text in configuration step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
@@ -1171,7 +1217,9 @@ describe('Edit Modal Components', () => {
 
       it('should show extra button (back) in configuration step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getBackButton()).toBeInTheDocument()
           expect(getBackButton()).toHaveTextContent('pluginTrigger.modal.common.back')
@@ -1180,7 +1228,9 @@ describe('Edit Modal Components', () => {
 
       it('should not show EncryptedBottom in configuration step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(screen.queryByTestId('modal-bottom-slot')).not.toBeInTheDocument()
         })
@@ -1188,7 +1238,9 @@ describe('Edit Modal Components', () => {
 
       it('should render basic form fields in step 2', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(screen.getByTestId('form-field-subscription_name')).toBeInTheDocument()
           expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
@@ -1200,7 +1252,9 @@ describe('Edit Modal Components', () => {
           createSchemaField('param1'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(screen.getByTestId('form-field-param1')).toBeInTheDocument()
         })
@@ -1214,11 +1268,13 @@ describe('Edit Modal Components', () => {
 
       it('should go back to credentials step when back button is clicked', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Go to step 2
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getBackButton()).toBeInTheDocument()
         })
@@ -1235,11 +1291,13 @@ describe('Edit Modal Components', () => {
 
       it('should go back to credentials step when clicking step indicator', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Go to step 2
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
@@ -1259,7 +1317,7 @@ describe('Edit Modal Components', () => {
       beforeEach(() => {
         setupCredentialsSchema()
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
       })
 
       it('should call updateSubscription with verified credentials', async () => {
@@ -1270,20 +1328,23 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Step 1: Verify
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
         // Step 2: Update
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({
             subscriptionId: 'test-subscription-id',
             name: 'Name',
             credentials: { api_key: 'new-key' },
           }),
-          expect.any(Object),
         )
       })
 
@@ -1291,12 +1352,16 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('basic', { values: {}, isCheckValidated: false })
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
 
@@ -1305,16 +1370,20 @@ describe('Edit Modal Components', () => {
           values: { subscription_name: 'Name' },
           isCheckValidated: true,
         })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
+        mockUpdateSubscription.mockResolvedValue(undefined)
         const onClose = vi.fn()
         render(<ApiKeyEditModal {...createProps({ onClose })} />)
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockRefetch).toHaveBeenCalled()
         expect(onClose).toHaveBeenCalled()
       })
@@ -1324,21 +1393,25 @@ describe('Edit Modal Components', () => {
           values: { subscription_name: 'Name' },
           isCheckValidated: true,
         })
-        mockParsePluginErrorMessage.mockReturnValue('Update failed')
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Failed')))
+
+        mockUpdateSubscription.mockRejectedValue(new Error('Failed'))
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(
             expect.objectContaining({
               type: 'error',
-              message: 'Update failed',
+              message: 'Failed',
             }),
           )
         })
@@ -1352,7 +1425,7 @@ describe('Edit Modal Components', () => {
           createSchemaField('param1'),
         ]
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
       })
 
       it('should not send parameters when unchanged', async () => {
@@ -1372,15 +1445,18 @@ describe('Edit Modal Components', () => {
           />,
         )
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: undefined }),
-          expect.any(Object),
         )
       })
 
@@ -1401,21 +1477,24 @@ describe('Edit Modal Components', () => {
           />,
         )
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: { param1: 'new_value' } }),
-          expect.any(Object),
         )
       })
     })
 
     describe('normalizeFormType in ApiKeyEditModal', () => {
-      it('should normalize number type for credentials schema', () => {
+      it('should normalize number type for credentials schema', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('port', 'number'),
         ]
@@ -1426,7 +1505,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize select type for credentials schema', () => {
+      it('should normalize select type for credentials schema', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('region', 'select'),
         ]
@@ -1437,7 +1516,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize text type for credentials schema', () => {
+      it('should normalize text type for credentials schema', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('name', 'text'),
         ]
@@ -1453,7 +1532,7 @@ describe('Edit Modal Components', () => {
       beforeEach(() => {
         setupCredentialsSchema()
         formValuesMap.set('credentials', { values: { api_key: 'key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
       })
 
       it('should include dynamicSelectParams for dynamic-select type parameters', async () => {
@@ -1462,7 +1541,9 @@ describe('Edit Modal Components', () => {
         ]
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
@@ -1478,7 +1559,7 @@ describe('Edit Modal Components', () => {
       beforeEach(() => {
         setupCredentialsSchema()
         formValuesMap.set('credentials', { values: { api_key: 'key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
       })
 
       it('should add special class for boolean type parameters', async () => {
@@ -1487,7 +1568,9 @@ describe('Edit Modal Components', () => {
         ]
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
@@ -1500,7 +1583,7 @@ describe('Edit Modal Components', () => {
     })
 
     describe('normalizeFormType in ApiKeyEditModal - Credentials Schema', () => {
-      it('should normalize password type for credentials', () => {
+      it('should normalize password type for credentials', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('secret_key', 'password'),
         ]
@@ -1511,7 +1594,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize secret type for credentials', () => {
+      it('should normalize secret type for credentials', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('api_secret', 'secret'),
         ]
@@ -1522,7 +1605,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize string type for credentials', () => {
+      it('should normalize string type for credentials', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('username', 'string'),
         ]
@@ -1533,7 +1616,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should normalize integer type for credentials', () => {
+      it('should normalize integer type for credentials', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('timeout', 'integer'),
         ]
@@ -1544,7 +1627,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should pass through valid FormTypeEnum for credentials', () => {
+      it('should pass through valid FormTypeEnum for credentials', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('file_field', FormTypeEnum.files),
         ]
@@ -1555,7 +1638,7 @@ describe('Edit Modal Components', () => {
         )
       })
 
-      it('should default to textInput for unknown credential types', () => {
+      it('should default to textInput for unknown credential types', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = [
           createCredentialSchema('custom', 'unknown-type'),
         ]
@@ -1574,7 +1657,7 @@ describe('Edit Modal Components', () => {
           createSchemaField('param1'),
         ]
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
       })
 
       it('should not update when parameters form validation fails', async () => {
@@ -1585,18 +1668,22 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('parameters', { values: {}, isCheckValidated: false })
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
     })
 
     describe('ApiKeyEditModal without credentials schema', () => {
-      it('should not render credentials form when credentials_schema is empty', () => {
+      it('should not render credentials form when credentials_schema is empty', async () => {
         mockPluginStoreDetail.declaration.trigger.subscription_constructor.credentials_schema = []
         render(<ApiKeyEditModal {...createProps()} />)
         // Should still show the modal but no credentials form fields
@@ -1608,7 +1695,7 @@ describe('Edit Modal Components', () => {
       beforeEach(() => {
         setupCredentialsSchema()
         formValuesMap.set('credentials', { values: { api_key: 'key' }, isCheckValidated: true })
-        mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
+        mockVerifyCredentials.mockResolvedValue(undefined)
       })
 
       it('should normalize password type for parameters', async () => {
@@ -1616,7 +1703,9 @@ describe('Edit Modal Components', () => {
           createSchemaField('secret_param', 'password'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(screen.getByTestId('form-field-secret_param')).toHaveAttribute(
             'data-field-type',
@@ -1630,7 +1719,9 @@ describe('Edit Modal Components', () => {
           createSchemaField('api_secret', 'secret'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(screen.getByTestId('form-field-api_secret')).toHaveAttribute(
             'data-field-type',
@@ -1644,7 +1735,9 @@ describe('Edit Modal Components', () => {
           createSchemaField('count', 'integer'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(getConfirmButton())
+        await act(async () => {
+          fireEvent.click(getConfirmButton())
+        })
         await waitFor(() => {
           expect(screen.getByTestId('form-field-count')).toHaveAttribute(
             'data-field-type',
@@ -1679,7 +1772,7 @@ describe('Edit Modal Components', () => {
       })
     })
 
-    it('should return textInput for unknown types', () => {
+    it('should return textInput for unknown types', async () => {
       mockPluginStoreDetail.declaration.trigger.subscription_schema = [
         createSchemaField('field', 'unknown'),
       ]
@@ -1690,7 +1783,7 @@ describe('Edit Modal Components', () => {
       )
     })
 
-    it('should pass through valid FormTypeEnum values', () => {
+    it('should pass through valid FormTypeEnum values', async () => {
       mockPluginStoreDetail.declaration.trigger.subscription_schema = [
         createSchemaField('field', FormTypeEnum.files),
       ]
@@ -1705,7 +1798,7 @@ describe('Edit Modal Components', () => {
   // ==================== Edge Cases ====================
 
   describe('Edge Cases', () => {
-    it('should handle empty subscription name', () => {
+    it('should handle empty subscription name', async () => {
       render(<ManualEditModal onClose={vi.fn()} subscription={createSubscription({ name: '' })} />)
       expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute(
         'data-field-default',
@@ -1713,7 +1806,7 @@ describe('Edit Modal Components', () => {
       )
     })
 
-    it('should handle special characters in subscription data', () => {
+    it('should handle special characters in subscription data', async () => {
       render(
         <ManualEditModal
           onClose={vi.fn()}
@@ -1726,7 +1819,7 @@ describe('Edit Modal Components', () => {
       )
     })
 
-    it('should handle Unicode characters', () => {
+    it('should handle Unicode characters', async () => {
       render(
         <ManualEditModal
           onClose={vi.fn()}
@@ -1739,7 +1832,7 @@ describe('Edit Modal Components', () => {
       )
     })
 
-    it('should handle multiple schema fields', () => {
+    it('should handle multiple schema fields', async () => {
       mockPluginStoreDetail.declaration.trigger.subscription_schema = [
         createSchemaField('field1', 'string'),
         createSchemaField('field2', 'number'),

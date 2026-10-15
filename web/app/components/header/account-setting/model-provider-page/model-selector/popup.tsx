@@ -21,7 +21,7 @@ import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'

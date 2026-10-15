@@ -185,6 +185,22 @@ describe('ViewAnnotationModal', () => {
     })
   })
 
+  it('keeps the drawer and confirmation open when removal fails, then closes after retry', async () => {
+    const user = userEvent.setup()
+    const onRemove = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Delete failed'))
+      .mockResolvedValue(undefined)
+    const { props } = renderComponent({ onRemove })
+    await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(onRemove).toHaveBeenCalledTimes(1))
+    expect(props.onHide).not.toHaveBeenCalled()
+    expect(screen.getByText('appDebug.feature.annotation.removeConfirm')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(props.onHide).toHaveBeenCalledTimes(1))
+  })
+
   it('should close the remove confirmation when cancelled', async () => {
     renderComponent()
 

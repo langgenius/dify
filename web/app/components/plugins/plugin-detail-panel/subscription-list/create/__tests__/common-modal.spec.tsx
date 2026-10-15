@@ -1,9 +1,12 @@
 import type * as React from 'react'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useMutation } from '@tanstack/react-query'
+import { act, fireEvent, render as renderBase, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import { CommonCreateModal } from '../common-modal'
 
 type PluginDetail = {
@@ -77,6 +80,9 @@ function createMockLogData(logs: TriggerLogEntity[] = []): { logs: TriggerLogEnt
   return { logs }
 }
 
+const render = (ui: Parameters<typeof renderBase>[0]) =>
+  renderBase(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
+
 const mockPluginDetail = createMockPluginDetail()
 const mockUsePluginStore = vi.fn(() => mockPluginDetail)
 vi.mock('../../../store', () => ({
@@ -103,8 +109,8 @@ const setMockPendingStates = (verifying: boolean, building: boolean) => {
 }
 
 vi.mock('@/service/use-triggers', () => ({
-  useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockVerifyCredentials,
+  useVerifyAndUpdateTriggerSubscriptionBuilder: (options = {}) => ({
+    ...useMutation({ ...options, mutationFn: (input: unknown) => mockVerifyCredentials(input) }),
     get isPending() {
       return mockIsVerifyingCredentials
     },
@@ -114,13 +120,13 @@ vi.mock('@/service/use-triggers', () => ({
     isPending: false,
   }),
   useBuildTriggerSubscription: () => ({
-    mutate: mockBuildSubscription,
+    ...useMutation({ mutationFn: (input: unknown) => mockBuildSubscription(input) }),
     get isPending() {
       return mockIsBuilding
     },
   }),
   useUpdateTriggerSubscriptionBuilder: () => ({
-    mutate: mockUpdateBuilder,
+    ...useMutation({ mutationFn: (input: unknown) => mockUpdateBuilder(input) }),
     isPending: false,
   }),
   useTriggerSubscriptionBuilderLogs: () => ({
@@ -619,9 +625,7 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
       const existingBuilder = createMockSubscriptionBuilder()
-      mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockVerifyCredentials.mockResolvedValue(undefined)
 
       render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
 
@@ -632,10 +636,6 @@ describe('CommonCreateModal', () => {
           expect.objectContaining({
             provider: 'test-provider',
             subscriptionBuilderId: existingBuilder.id,
-          }),
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
           }),
         )
       })
@@ -659,9 +659,7 @@ describe('CommonCreateModal', () => {
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
       const existingBuilder = createMockSubscriptionBuilder()
-      mockVerifyCredentials.mockImplementation((params, { onError }) => {
-        onError(new Error('Verification failed'))
-      })
+      mockVerifyCredentials.mockRejectedValue(new Error('Verification failed'))
 
       render(<CommonCreateModal {...defaultProps} builder={existingBuilder} />)
 
@@ -691,9 +689,7 @@ describe('CommonCreateModal', () => {
 
     it('should call buildSubscription on successful create', async () => {
       const builder = createMockSubscriptionBuilder()
-      mockBuildSubscription.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockBuildSubscription.mockResolvedValue(undefined)
 
       render(
         <CommonCreateModal
@@ -711,9 +707,7 @@ describe('CommonCreateModal', () => {
 
     it('should show error toast when buildSubscription fails', async () => {
       const builder = createMockSubscriptionBuilder()
-      mockBuildSubscription.mockImplementation((params, { onError }) => {
-        onError(new Error('Build failed'))
-      })
+      mockBuildSubscription.mockRejectedValue(new Error('Build failed'))
 
       render(
         <CommonCreateModal
@@ -732,9 +726,7 @@ describe('CommonCreateModal', () => {
     it('should call refetch and onClose on successful create', async () => {
       const mockOnClose = vi.fn()
       const builder = createMockSubscriptionBuilder()
-      mockBuildSubscription.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockBuildSubscription.mockResolvedValue(undefined)
 
       render(
         <CommonCreateModal
@@ -822,9 +814,7 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithManualSchema)
-      mockUpdateBuilder.mockImplementation((params, { onError }) => {
-        onError(new Error('Update failed'))
-      })
+      mockUpdateBuilder.mockRejectedValue(new Error('Update failed'))
 
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
 
@@ -1234,9 +1224,7 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
-      mockVerifyCredentials.mockImplementation((params, { onError }) => {
-        onError(new Error('Raw error'))
-      })
+      mockVerifyCredentials.mockRejectedValue(new Error('Raw error'))
       const builder = createMockSubscriptionBuilder()
 
       render(<CommonCreateModal {...defaultProps} builder={builder} />)
@@ -1249,10 +1237,6 @@ describe('CommonCreateModal', () => {
             provider: 'test-provider',
             subscriptionBuilderId: builder.id,
           }),
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
         )
       })
 
@@ -1261,13 +1245,11 @@ describe('CommonCreateModal', () => {
       })
     })
 
-    it('should use parsed error message when available for build error', async () => {
+    it('should report the server message for build errors', async () => {
       mockParsePluginErrorMessage.mockReturnValue('Custom build error')
 
       const builder = createMockSubscriptionBuilder()
-      mockBuildSubscription.mockImplementation((params, { onError }) => {
-        onError(new Error('Raw build error'))
-      })
+      mockBuildSubscription.mockRejectedValue(new Error('Raw build error'))
 
       render(
         <CommonCreateModal
@@ -1280,24 +1262,18 @@ describe('CommonCreateModal', () => {
       fireEvent.click(screen.getByTestId('modal-confirm'))
 
       await waitFor(() => {
-        expect(mockParsePluginErrorMessage).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Custom build error',
+          message: 'Raw build error',
         })
       })
     })
 
-    it('should use fallback error message when parsePluginErrorMessage returns null', async () => {
+    it('should use the default message when build errors have no message', async () => {
       mockParsePluginErrorMessage.mockReturnValue(null)
 
       const builder = createMockSubscriptionBuilder()
-      mockBuildSubscription.mockImplementation((params, { onError }) => {
-        onError(new Error('Raw error'))
-      })
+      mockBuildSubscription.mockRejectedValue({})
 
       render(
         <CommonCreateModal
@@ -1312,12 +1288,12 @@ describe('CommonCreateModal', () => {
       await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'pluginTrigger.subscription.createFailed',
+          message: 'api.actionFailed',
         })
       })
     })
 
-    it('should use parsed error message for update builder error', async () => {
+    it('should report the server message for update builder errors', async () => {
       mockParsePluginErrorMessage.mockReturnValue('Custom update error')
 
       const detailWithManualSchema = createMockPluginDetail({
@@ -1332,9 +1308,7 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithManualSchema)
-      mockUpdateBuilder.mockImplementation((params, { onError }) => {
-        onError(new Error('Update failed'))
-      })
+      mockUpdateBuilder.mockRejectedValue(new Error('Update failed'))
 
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
 
@@ -1361,7 +1335,7 @@ describe('CommonCreateModal', () => {
       await waitFor(() => {
         expect(mockToastNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Custom update error',
+          message: 'Update failed',
         })
       })
     })
@@ -1456,9 +1430,7 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithCredentials)
-      mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockVerifyCredentials.mockResolvedValue(undefined)
       const builder = createMockSubscriptionBuilder()
 
       render(<CommonCreateModal {...defaultProps} builder={builder} />)
@@ -1478,9 +1450,7 @@ describe('CommonCreateModal', () => {
     it('should call refetch and onClose on successful build', async () => {
       const mockOnClose = vi.fn()
       const builder = createMockSubscriptionBuilder()
-      mockBuildSubscription.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockBuildSubscription.mockResolvedValue(undefined)
 
       render(
         <CommonCreateModal
@@ -1746,12 +1716,8 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithParams)
 
       // First verify credentials
-      mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
-      mockBuildSubscription.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockVerifyCredentials.mockResolvedValue(undefined)
+      mockBuildSubscription.mockResolvedValue(undefined)
 
       const builder = createMockSubscriptionBuilder()
       render(<CommonCreateModal {...defaultProps} builder={builder} />)
@@ -1785,9 +1751,7 @@ describe('CommonCreateModal', () => {
         },
       })
       mockUsePluginStore.mockReturnValue(detailWithOAuth)
-      mockBuildSubscription.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockBuildSubscription.mockResolvedValue(undefined)
 
       const builder = createMockSubscriptionBuilder()
       render(
@@ -1847,9 +1811,7 @@ describe('CommonCreateModal', () => {
   describe('refetch Optional Chaining', () => {
     it('should call refetch when available on successful build', async () => {
       const builder = createMockSubscriptionBuilder()
-      mockBuildSubscription.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockBuildSubscription.mockResolvedValue(undefined)
 
       render(
         <CommonCreateModal
@@ -2205,9 +2167,7 @@ describe('CommonCreateModal', () => {
       mockUsePluginStore.mockReturnValue(detailWithParams)
 
       // First verify credentials
-      mockVerifyCredentials.mockImplementation((params, { onSuccess }) => {
-        onSuccess()
-      })
+      mockVerifyCredentials.mockResolvedValue(undefined)
 
       const builder = createMockSubscriptionBuilder()
       render(<CommonCreateModal {...defaultProps} builder={builder} />)

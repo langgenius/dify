@@ -376,56 +376,50 @@ describe('AccountPage', () => {
     ).toBeInTheDocument()
   })
 
-  it.each(['name', 'password'])(
-    'leaves a server-reported %s failure to the request layer',
-    async (field) => {
-      // The request layer reports the server message and rejects with an ORPCError.
-      const error = vi.spyOn(toast, 'error')
-      const user = userEvent.setup()
-      mocks.request.mockRejectedValueOnce(
-        await httpErrorFromResponse(
-          new Response(
-            JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }),
-            {
-              status: 400,
-            },
-          ),
-        ),
+  it.each(['name', 'password'])('reports a server-reported %s failure', async (field) => {
+    // The transport propagates the error; the mutation reports the server message.
+    const error = vi.spyOn(toast, 'error')
+    const user = userEvent.setup()
+    mocks.request.mockRejectedValueOnce(
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }), {
+          status: 400,
+        }),
+      ),
+    )
+    renderPage({ isPasswordSet: true })
+
+    if (field === 'name') {
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      await user.type(
+        screen.getByRole('textbox', { name: 'accountSettings.account.name' }),
+        ' Cooper{Enter}',
       )
-      renderPage({ isPasswordSet: true })
+    } else {
+      await user.click(
+        screen.getByRole('button', { name: 'accountSettings.account.resetPassword' }),
+      )
+      await user.type(
+        screen.getByLabelText('accountSettings.account.currentPassword'),
+        'Current123',
+      )
+      await user.type(
+        screen.getByLabelText('accountSettings.account.newPassword'),
+        'NewPassword123',
+      )
+      await user.type(
+        screen.getByLabelText('accountSettings.account.confirmPassword'),
+        'NewPassword123{Enter}',
+      )
+    }
 
-      if (field === 'name') {
-        await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-        await user.type(
-          screen.getByRole('textbox', { name: 'accountSettings.account.name' }),
-          ' Cooper{Enter}',
-        )
-      } else {
-        await user.click(
-          screen.getByRole('button', { name: 'accountSettings.account.resetPassword' }),
-        )
-        await user.type(
-          screen.getByLabelText('accountSettings.account.currentPassword'),
-          'Current123',
-        )
-        await user.type(
-          screen.getByLabelText('accountSettings.account.newPassword'),
-          'NewPassword123',
-        )
-        await user.type(
-          screen.getByLabelText('accountSettings.account.confirmPassword'),
-          'NewPassword123{Enter}',
-        )
-      }
-
-      await waitFor(() => expect(mocks.request).toHaveBeenCalledOnce())
-      const submit = within(screen.getByRole('dialog')).getByRole('button', {
-        name: field === 'name' ? 'common.operation.save' : 'common.operation.reset',
-      })
-      await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
-      expect(error).not.toHaveBeenCalled()
-    },
-  )
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledOnce())
+    const submit = within(screen.getByRole('dialog')).getByRole('button', {
+      name: field === 'name' ? 'common.operation.save' : 'common.operation.reset',
+    })
+    await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(error).toHaveBeenCalledExactlyOnceWith('Rejected')
+  })
 
   it('does not offer password editing when password login is disabled', () => {
     renderPage({ passwordLoginEnabled: false })

@@ -19,7 +19,7 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { toast } from '@/app/notifications'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { sseGet } from '@/service/base'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'

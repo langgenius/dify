@@ -5,7 +5,7 @@ import type { VisionSettings } from '@/types/app'
 import { produce } from 'immer'
 import { useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 

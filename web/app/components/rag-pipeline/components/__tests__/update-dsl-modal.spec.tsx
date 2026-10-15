@@ -1,6 +1,9 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useMutation } from '@tanstack/react-query'
+import { act, fireEvent, render as renderBase, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DSLImportStatus } from '@/models/app'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import UpdateDSLModal from '../update-dsl-modal'
 
 class MockFileReader {
@@ -13,6 +16,9 @@ class MockFileReader {
 }
 
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
+
+const render = (ui: Parameters<typeof renderBase>[0]) =>
+  renderBase(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
@@ -76,8 +82,9 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({ mutateAsync: mockImportDSL }),
-  useImportPipelineDSLConfirm: () => ({ mutateAsync: mockImportDSLConfirm }),
+  useImportPipelineDSL: () => useMutation({ mutationFn: (input: unknown) => mockImportDSL(input) }),
+  useImportPipelineDSLConfirm: () =>
+    useMutation({ mutationFn: (input: unknown) => mockImportDSLConfirm(input) }),
 }))
 
 vi.mock('@/service/workflow', () => ({

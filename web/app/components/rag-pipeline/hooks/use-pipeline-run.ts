@@ -9,7 +9,7 @@ import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflo
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { ssePost } from '@/service/base'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'

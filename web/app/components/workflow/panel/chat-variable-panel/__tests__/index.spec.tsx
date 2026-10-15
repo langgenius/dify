@@ -1,6 +1,7 @@
 import type { ConversationVariable, Node } from '@/app/components/workflow/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import ChatVariablePanel from '../index'
 import { ChatVarType } from '../type'
 
@@ -105,6 +106,8 @@ vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/variable
   ),
 }))
 
+let latestSave: (chatVar: ConversationVariable) => Promise<void>
+
 vi.mock(
   '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger',
   () => ({
@@ -118,45 +121,48 @@ vi.mock(
       open: boolean
       showTip: boolean
       chatVar?: ConversationVariable
-      onSave: (chatVar: ConversationVariable) => void
+      onSave: (chatVar: ConversationVariable) => Promise<void>
       onClose: () => void
-    }) => (
-      <div data-testid="variable-modal-trigger">
-        <span>{open ? 'open' : 'closed'}</span>
-        <span>{showTip ? 'tip-on' : 'tip-off'}</span>
-        <span>{chatVar?.name || 'new-variable'}</span>
-        <button
-          type="button"
-          onClick={() =>
-            onSave({
-              id: 'var-added',
-              name: 'fresh_var',
-              value_type: ChatVarType.String,
-              value: '',
-              description: 'Added variable',
-            })
-          }
-        >
-          save-add
-        </button>
-        {chatVar && (
+    }) => {
+      latestSave = onSave
+      return (
+        <div data-testid="variable-modal-trigger">
+          <span>{open ? 'open' : 'closed'}</span>
+          <span>{showTip ? 'tip-on' : 'tip-off'}</span>
+          <span>{chatVar?.name || 'new-variable'}</span>
           <button
             type="button"
             onClick={() =>
               onSave({
-                ...chatVar,
-                name: `${chatVar.name}_next`,
+                id: 'var-added',
+                name: 'fresh_var',
+                value_type: ChatVarType.String,
+                value: '',
+                description: 'Added variable',
               })
             }
           >
-            save-edit
+            save-add
           </button>
-        )}
-        <button type="button" onClick={onClose}>
-          close-trigger
-        </button>
-      </div>
-    ),
+          {chatVar && (
+            <button
+              type="button"
+              onClick={() =>
+                onSave({
+                  ...chatVar,
+                  name: `${chatVar.name}_next`,
+                })
+              }
+            >
+              save-edit
+            </button>
+          )}
+          <button type="button" onClick={onClose}>
+            close-trigger
+          </button>
+        </div>
+      )
+    },
   }),
 )
 
@@ -290,4 +296,28 @@ describe('ChatVariablePanel', () => {
     expect(mockSetNodes).toHaveBeenCalledWith([prunedNode, createNode('node-2')])
     expect(mockSetConversationVariables).toHaveBeenCalledWith([])
   })
+  it.each(['add', 'edit', 'delete'] as const)(
+    'reports %s failure once and rolls back conversation variables',
+    async (operation) => {
+      const error = new Error('Variable update failed')
+      const notify = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+      mockUpdateConversationVariables.mockRejectedValueOnce(error)
+      const user = userEvent.setup()
+      render(<ChatVariablePanel />)
+      if (operation === 'edit')
+        await user.click(screen.getByRole('button', { name: 'edit-conversation_var' }))
+      if (operation === 'delete')
+        await user.click(screen.getByRole('button', { name: 'delete-conversation_var' }))
+      else
+        await act(async () => {
+          await expect(latestSave(createConversationVariable({ name: 'draft' }))).rejects.toBe(
+            error,
+          )
+        })
+      await waitFor(() => expect(notify).toHaveBeenCalledExactlyOnceWith('Variable update failed'))
+      expect(mockSetConversationVariables).toHaveBeenLastCalledWith(mockConversationVariables)
+      expect(mockInvalidateConversationVarValues).not.toHaveBeenCalled()
+      notify.mockRestore()
+    },
+  )
 })

@@ -30,7 +30,7 @@ import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { notifyError } from '@/app/notifications/error'
+import { notifyError } from '@/app/notifications/notify-error'
 import { getPluginLanguage } from '@/i18n/metadata'
 import {
   fetchBuiltInToolList,

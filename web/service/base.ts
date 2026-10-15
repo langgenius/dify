@@ -716,6 +716,7 @@ export const ssePost = async (
                 ssePost(url, fetchOptions, otherOptions)
               })
               .catch((err) => {
+                if (abortController.signal.aborted) return
                 const errorMessage = String(err)
                 console.error(err)
                 onError?.(errorMessage)
@@ -858,6 +859,7 @@ export const sseGet = async (
                 sseGet(url, fetchOptions, otherOptions)
               })
               .catch((err) => {
+                if (abortController.signal.aborted) return
                 const errorMessage = String(err)
                 console.error(err)
                 onError?.(errorMessage)

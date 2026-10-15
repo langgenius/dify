@@ -53,20 +53,29 @@ vi.mock('../empty-element', () => ({
   default: () => <div data-testid="empty-element" />,
 }))
 
+let latestHeaderProps: { onAdd: (payload: { question: string; answer: string }) => Promise<void> }
+let latestViewProps: {
+  onSave: (question: string, answer: string) => Promise<void>
+  onRemove: () => Promise<void>
+}
+
 vi.mock('../header-opts', () => ({
-  default: (props: any) => (
-    <div data-testid="header-opts">
-      <button
-        data-testid="trigger-add"
-        onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}
-      >
-        add
-      </button>
-      <button data-testid="trigger-added" onClick={() => props.onAdded()}>
-        added
-      </button>
-    </div>
-  ),
+  default: (props: any) => {
+    latestHeaderProps = props
+    return (
+      <div data-testid="header-opts">
+        <button
+          data-testid="trigger-add"
+          onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}
+        >
+          add
+        </button>
+        <button data-testid="trigger-added" onClick={() => props.onAdded()}>
+          added
+        </button>
+      </div>
+    )
+  },
 }))
 
 let latestListProps: any
@@ -93,6 +102,7 @@ vi.mock('../list', () => ({
 
 vi.mock('../view-annotation-modal', () => ({
   default: (props: any) => {
+    latestViewProps = props
     if (!props.isShow) return null
     return (
       <div data-testid="view-modal">
@@ -265,6 +275,39 @@ describe('Annotation', () => {
     })
     expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
   })
+
+  it.each(['add', 'edit', 'remove'] as const)(
+    'reports %s failures once and preserves rejection for the editor',
+    async (operation) => {
+      const error = new Error('Request failed')
+      fetchAnnotationListMock.mockResolvedValue({ data: [createAnnotation()], total: 1 })
+      const request = {
+        add: addAnnotationMock,
+        edit: editAnnotationMock,
+        remove: delAnnotationMock,
+      }[operation]
+      request.mockRejectedValueOnce(error)
+      renderComponent()
+      await screen.findByTestId('list')
+      fireEvent.click(screen.getByTestId('list-view'))
+      const fetchCount = fetchAnnotationListMock.mock.calls.length
+      await act(async () => {
+        const result =
+          operation === 'add'
+            ? latestHeaderProps.onAdd({ question: 'draft', answer: 'draft answer' })
+            : operation === 'edit'
+              ? latestViewProps.onSave('draft', 'draft answer')
+              : latestViewProps.onRemove()
+        await expect(result).rejects.toBe(error)
+      })
+      expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Request failed',
+      })
+      expect(fetchAnnotationListMock).toHaveBeenCalledTimes(fetchCount)
+      expect(screen.getByTestId('view-modal')).toBeInTheDocument()
+    },
+  )
 
   it('should refetch the list after a row is removed', async () => {
     fetchAnnotationListMock.mockResolvedValue({ data: [createAnnotation()], total: 1 })

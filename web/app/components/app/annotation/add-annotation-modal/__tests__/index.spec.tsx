@@ -165,3 +165,30 @@ describe('AddAnnotationModal', () => {
     expect(baseProps.onHide).toHaveBeenCalled()
   })
 })
+
+it.each([false, true])(
+  'retains annotation input after a failed save (create next: %s)',
+  async (createNext) => {
+    const onHide = vi.fn()
+    const onAdd = vi.fn().mockRejectedValue(new Error('Save failed'))
+    render(<AddAnnotationModal isShow onHide={onHide} onAdd={onAdd} />)
+    fireEvent.change(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder'), {
+      target: { value: 'Draft question' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder'), {
+      target: { value: 'Draft answer' },
+    })
+    if (createNext) fireEvent.click(screen.getByText('appAnnotation.addModal.createNext'))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    })
+    expect(onHide).not.toHaveBeenCalled()
+    expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue(
+      'Draft question',
+    )
+    expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue(
+      'Draft answer',
+    )
+    expect(screen.getByRole('button', { name: 'common.operation.add' })).toBeEnabled()
+  },
+)

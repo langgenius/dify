@@ -1130,7 +1130,7 @@ describe('AppCard', () => {
         expect(mockDeleteAppMutation).toHaveBeenCalled()
         expect(toastMocks.record).toHaveBeenCalledWith({
           type: 'error',
-          message: 'app.appDeleteFailed',
+          message: 'api.actionFailed',
         })
       })
     })
@@ -1205,7 +1205,7 @@ describe('AppCard', () => {
         expect(mockCopyApp).toHaveBeenCalled()
         expect(toastMocks.record).toHaveBeenCalledWith({
           type: 'error',
-          message: 'app.newApp.appCreateFailed',
+          message: 'Copy failed',
         })
       })
     })
@@ -1456,7 +1456,10 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(mockUpdateAppMutation).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({ type: 'error', message: 'app.editFailed' })
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'api.actionFailed',
+        })
       })
     })
   })
