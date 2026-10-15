@@ -37,10 +37,11 @@ from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import Variable
-from models import Account, Workflow
+from models import Account
 from models.annotation_reply import AnnotationReply
 from models.enums import ConversationFromSource
 from models.model import App, Conversation, Message
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfig
 from services.workflow.execution.adapters.chatflow.conversation_variables import ConversationVariablePersistenceLayer
 from services.workflow.execution.adapters.events import WorkflowEventPublisher
@@ -55,6 +56,7 @@ from services.workflow.execution.adapters.workflow.command_channels import (
 from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.chatflow_ports import ChatflowRuntime
+from services.workflow.variable_contracts import conversation_variable_values, environment_variable_values
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +76,7 @@ class AdvancedChatAppRunner:
         message: Message,
         dialogue_count: int,
         variable_loader: VariableLoader,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         system_user_id: str,
         app: App,
         workflow_execution_repository: WorkflowExecutionRepository,
@@ -204,7 +206,7 @@ class AdvancedChatAppRunner:
                 variable_pool,
                 build_bootstrap_variables(
                     system_variables=system_inputs,
-                    environment_variables=self._workflow.environment_variables,
+                    environment_variables=environment_variable_values(self._workflow),
                     conversation_variables=conversation_variables,
                 ),
             )
@@ -384,6 +386,6 @@ class AdvancedChatAppRunner:
             self._runtime.conversation_variables.initialize(
                 app_id=self.conversation.app_id,
                 conversation_id=self.conversation.id,
-                defaults=self._workflow.conversation_variables,
+                defaults=conversation_variable_values(self._workflow),
             )
         )
