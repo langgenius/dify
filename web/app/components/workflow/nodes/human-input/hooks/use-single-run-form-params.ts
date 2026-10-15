@@ -71,12 +71,12 @@ const useSingleRunFormParams = ({
   }
 
   const { appId } = useParams<{ appId?: string }>()
-  const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (appDetail) => appDetail.mode,
     }),
-    select: (appDetail) => appDetail.mode,
-  })
+  )
   const isWorkflowMode = appMode === AppModeEnum.WORKFLOW
   const fetchURL = useMemo(() => {
     if (!appId) return ''

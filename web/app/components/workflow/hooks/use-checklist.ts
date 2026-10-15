@@ -184,12 +184,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
   const { appId } = useParams<{ appId?: string }>()
-  const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (appDetail) => appDetail.mode,
     }),
-    select: (appDetail) => appDetail.mode,
-  })
+  )
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
   const { data: modelProviders = EMPTY_MODEL_PROVIDERS } = useQuery(
@@ -658,12 +658,12 @@ export const useChecklistBeforePublish = () => {
   const { data: workflowTools } = useAllWorkflowTools()
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const { appId } = useParams<{ appId?: string }>()
-  const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (appDetail) => appDetail.mode,
     }),
-    select: (appDetail) => appDetail.mode,
-  })
+  )
   const shouldCheckStartNode =
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 

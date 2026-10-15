@@ -5,12 +5,12 @@ import { AppModeEnum } from '@/types/app'
 
 export const useIsChatMode = () => {
   const { appId } = useParams<{ appId?: string }>()
-  const { data: appMode } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({
+  const { data: appMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (appDetail) => appDetail.mode,
     }),
-    select: (appDetail) => appDetail.mode,
-  })
+  )
 
   return appMode === AppModeEnum.ADVANCED_CHAT
 }

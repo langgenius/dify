@@ -50,6 +50,9 @@ describe('useIsChatMode', () => {
     const appDetailQueries = queryClient
       .getQueryCache()
       .findAll({ queryKey: consoleQuery.apps.byAppId.get.key() })
-    expect(appDetailQueries.every((query) => query.state.dataUpdateCount === 0)).toBe(true)
+    for (const query of appDetailQueries) {
+      expect(query.state.fetchStatus).toBe('idle')
+      expect(query.state.dataUpdateCount).toBe(0)
+    }
   })
 })

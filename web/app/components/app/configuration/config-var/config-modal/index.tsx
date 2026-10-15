@@ -64,11 +64,11 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { type, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
   const { appId } = useParams<{ appId?: string }>()
-  const { data: appDetail } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
     }),
-  })
+  )
   const isBasicApp =
     appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
   const jsonSchemaStr = useMemo(

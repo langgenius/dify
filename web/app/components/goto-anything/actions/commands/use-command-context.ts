@@ -28,12 +28,12 @@ export function useCommandContext(
   const { appId: routeAppId } = useParams<{ appId?: string }>()
   // Only the app workflow page has an app id param that names an app; other routes reuse the
   // `appId` segment for different resources (for example installed apps).
-  const { data: appDetail } = useQuery({
-    ...consoleQuery.apps.byAppId.get.queryOptions({
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
       input: routeAppId ? { params: { app_id: routeAppId } } : skipToken,
+      enabled: isWorkflowPage,
     }),
-    enabled: isWorkflowPage,
-  })
+  )
   const appId = appDetail?.id
   const appMode = appDetail?.mode
 

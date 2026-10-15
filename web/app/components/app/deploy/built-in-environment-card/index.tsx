@@ -30,7 +30,7 @@ export const BuiltInEnvironmentCard = memo(
       consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
     )
     const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId))
-    const { data: mcpServerDetail } = useMCPServerDetail(appId, true)
+    const { data: mcpServerDetail } = useMCPServerDetail(appId)
     const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
       ? (publishedWorkflow.graph.nodes as Node[])
       : []
