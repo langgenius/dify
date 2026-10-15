@@ -170,7 +170,7 @@ class MCPTool(Tool):
         if result.meta:
             usage_dict = cls._extract_usage_dict(result.meta)
             if usage_dict is not None:
-                return LLMUsage.from_metadata(cast(LLMUsageMetadata, cast(object, dict(usage_dict))))
+                return LLMUsage.from_metadata(cast(LLMUsageMetadata, dict(usage_dict)))
 
         return LLMUsage.empty_usage()
 
