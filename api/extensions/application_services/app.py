@@ -11,6 +11,7 @@ from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.export_repository import AppExportRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
@@ -81,6 +82,7 @@ def build_app_services(
                 app_web_url=dify_config.APP_WEB_URL,
                 service_api_url=dify_config.SERVICE_API_URL,
             ),
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=database_client),
             now=naive_utc_now,
         ),
     )

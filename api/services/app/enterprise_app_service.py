@@ -6,13 +6,16 @@ against, plus everything the built-in environment owns: its published version,
 access points, and invocations.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
+from graphon.enums import WorkflowExecutionStatus
 from libs.pagination import PaginatedResult
+from models.enums import MessageStatus, WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 
 EnterpriseAppSortBy = Literal["created_at", "name"]
 EnterpriseAppSortOrder = Literal["asc", "desc"]
@@ -130,7 +133,9 @@ class EnterpriseAppTrigger:
 
 
 @dataclass(frozen=True, slots=True)
-class EnterpriseAppBuiltIn:
+class EnterpriseAppBuiltInState:
+    """Built-in environment state the app store reads; invocations come from run and message logs."""
+
     # None when the app has never been published (workflow and Agent Apps) or
     # has no version concept (legacy chat, completion, and agent-chat Apps).
     # Agent Apps also report None while their draft differs from the active
@@ -141,6 +146,16 @@ class EnterpriseAppBuiltIn:
     site: EnterpriseAppSite
     api: EnterpriseAppApi
     # None when no MCP server was ever created for the app.
+    mcp_server: EnterpriseAppMCPServer | None
+    triggers: Sequence[EnterpriseAppTrigger]
+
+
+@dataclass(frozen=True, slots=True)
+class EnterpriseAppBuiltIn:
+    published_version: EnterpriseAppPublishedVersion | None
+    published_version_count: int
+    site: EnterpriseAppSite
+    api: EnterpriseAppApi
     mcp_server: EnterpriseAppMCPServer | None
     triggers: Sequence[EnterpriseAppTrigger]
     # Debugger runs are excluded from all invocation fields. Unlike the counts,
@@ -156,23 +171,140 @@ class EnterpriseAppDetail:
     built_in: EnterpriseAppBuiltIn
 
 
-class EnterpriseAppStore(Protocol):
-    def list_apps(
-        self, params: EnterpriseAppListParams, *, invoked_since: datetime
-    ) -> PaginatedResult[EnterpriseAppListItem]: ...
+@dataclass(frozen=True, slots=True)
+class EnterpriseAppListEntry:
+    app: EnterpriseAppSummary
+    # True exactly when the app's built-in state has a published_version.
+    published: bool
 
-    def get_app(self, app_id: str, *, invoked_since: datetime) -> EnterpriseAppDetail | None:
+
+@dataclass(frozen=True, slots=True)
+class EnterpriseAppRecord:
+    app: EnterpriseAppSummary
+    built_in: EnterpriseAppBuiltInState
+
+
+@dataclass(frozen=True, slots=True)
+class EnterpriseAppMessageStats:
+    # Messages created at or after the requested time, by status.
+    status_counts: Mapping[MessageStatus, int]
+    # Creation time of the newest message, with no time limit.
+    last_created_at: datetime
+
+
+class EnterpriseAppStore(Protocol):
+    def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppListEntry]: ...
+
+    def get_app(self, app_id: str) -> EnterpriseAppRecord | None:
         """Return None when the app does not exist or is hidden from Studio."""
         ...
 
+    def get_message_stats_by_app_ids(
+        self, app_ids: Sequence[str], *, created_since: datetime
+    ) -> dict[str, EnterpriseAppMessageStats]:
+        """Summarize non-debugger messages per app; apps without messages are absent."""
+        ...
+
+
+# Workflow and advanced-chat Apps are invoked through workflow runs; every other
+# mode through messages.
+WORKFLOW_APP_MODES = frozenset({AppMode.WORKFLOW, AppMode.ADVANCED_CHAT})
+# Published workflow runs; debugging and RAG pipeline runs are excluded.
+INVOKED_RUN_SOURCES = (
+    WorkflowRunTriggeredFrom.APP_RUN,
+    WorkflowRunTriggeredFrom.WEBHOOK,
+    WorkflowRunTriggeredFrom.SCHEDULE,
+    WorkflowRunTriggeredFrom.PLUGIN,
+)
+# Every finished run that is neither succeeded nor stopped by the user.
+FAILED_RUN_STATUSES = frozenset({WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.PARTIAL_SUCCEEDED})
+FAILED_MESSAGE_STATUSES = frozenset({MessageStatus.ERROR})
+
+
+@dataclass(frozen=True, slots=True)
+class _Invocations:
+    count: int
+    failed_count: int
+    last_invoked_at: datetime | None
+
+
+_NO_INVOCATIONS = _Invocations(count=0, failed_count=0, last_invoked_at=None)
+
+
+def _invocations[StatusT](
+    status_counts: Mapping[StatusT, int], failed: Collection[StatusT], last_created_at: datetime
+) -> _Invocations:
+    return _Invocations(
+        count=sum(status_counts.values()),
+        failed_count=sum(count for status, count in status_counts.items() if status in failed),
+        last_invoked_at=last_created_at,
+    )
+
 
 class EnterpriseAppService:
-    def __init__(self, *, apps: EnterpriseAppStore, now: Callable[[], datetime]) -> None:
+    def __init__(
+        self, *, apps: EnterpriseAppStore, workflow_runs: APIWorkflowRunRepository, now: Callable[[], datetime]
+    ) -> None:
         self._apps = apps
+        self._workflow_runs = workflow_runs
         self._now = now
 
     def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppListItem]:
-        return self._apps.list_apps(params, invoked_since=self._now() - INVOCATION_WINDOW)
+        page = self._apps.list_apps(params)
+        invocations = self._invocations([entry.app for entry in page.items])
+        items = [
+            EnterpriseAppListItem(
+                app=entry.app,
+                built_in=EnterpriseAppBuiltInSummary(
+                    published=entry.published,
+                    invocation_count=invocations.get(entry.app.id, _NO_INVOCATIONS).count,
+                ),
+            )
+            for entry in page.items
+        ]
+        return PaginatedResult(items=items, total=page.total, page=page.page, per_page=page.per_page)
 
     def get_app(self, app_id: str) -> EnterpriseAppDetail | None:
-        return self._apps.get_app(app_id, invoked_since=self._now() - INVOCATION_WINDOW)
+        record = self._apps.get_app(app_id)
+        if record is None:
+            return None
+        app, state = record.app, record.built_in
+        invocations = self._invocations([app]).get(app.id, _NO_INVOCATIONS)
+        return EnterpriseAppDetail(
+            app=app,
+            built_in=EnterpriseAppBuiltIn(
+                published_version=state.published_version,
+                published_version_count=state.published_version_count,
+                site=state.site,
+                api=state.api,
+                mcp_server=state.mcp_server,
+                triggers=state.triggers,
+                last_invoked_at=invocations.last_invoked_at,
+                invocation_count=invocations.count,
+                failed_invocation_count=invocations.failed_count,
+            ),
+        )
+
+    def _invocations(self, apps: Sequence[EnterpriseAppSummary]) -> dict[str, _Invocations]:
+        """Read built-in invocations: workflow runs for workflow Apps, messages otherwise."""
+        since = self._now() - INVOCATION_WINDOW
+        workflow_apps = {app.id: app.workspace_id for app in apps if app.mode in WORKFLOW_APP_MODES}
+        message_app_ids = [app.id for app in apps if app.mode not in WORKFLOW_APP_MODES]
+        result: dict[str, _Invocations] = {}
+        if workflow_apps:
+            run_stats = self._workflow_runs.get_stats_by_app_ids(workflow_apps, INVOKED_RUN_SOURCES, since)
+            result.update(
+                {
+                    app_id: _invocations(stats.status_counts, FAILED_RUN_STATUSES, stats.last_created_at)
+                    for app_id, stats in run_stats.items()
+                }
+            )
+        if message_app_ids:
+            message_stats = self._apps.get_message_stats_by_app_ids(message_app_ids, created_since=since)
+            result.update(
+                {
+                    app_id: _invocations(stats.status_counts, FAILED_MESSAGE_STATUSES, stats.last_created_at)
+                    for app_id, stats in message_stats.items()
+                }
+            )
+        return result

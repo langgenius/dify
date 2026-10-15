@@ -4,6 +4,7 @@ Auth/setup decorators are tested in test_auth_wraps.py; handler tests use inspec
 """
 
 import inspect
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -49,7 +50,9 @@ from models.enums import (
 from models.model import ApiToken, AppMCPServer, AppMode, Message, Site
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow, WorkflowRun, WorkflowType
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app.enterprise_app_service import EnterpriseAppService
 
 WS_A = "11111111-1111-1111-1111-111111111111"
@@ -71,17 +74,27 @@ class _Services:
     apps: _Apps
 
 
-@pytest.fixture
-def enterprise_apps(app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> None:
+def _install_service(
+    app: Flask,
+    session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    app_web_url: str = "https://apps.example.com/",
+    service_api_url: str = "https://api.example.com",
+) -> None:
     service = EnterpriseAppService(
         apps=EnterpriseAppRepository(
-            session_factory=sqlite_session_factory,
-            app_web_url="https://apps.example.com/",
-            service_api_url="https://api.example.com",
+            session_factory=session_factory, app_web_url=app_web_url, service_api_url=service_api_url
         ),
+        workflow_runs=DifyAPISQLAlchemyWorkflowRunRepository(session_factory),
         now=lambda: NOW,
     )
     monkeypatch.setitem(app.extensions, "application_services", _Services(apps=_Apps(service)))
+
+
+@pytest.fixture
+def enterprise_apps(app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_service(app, sqlite_session_factory, monkeypatch)
 
 
 def _app(tenant_id: str, name: str, *, mode: AppMode = AppMode.WORKFLOW, created_at: datetime, **kwargs: object) -> App:
@@ -574,13 +587,67 @@ class TestEnterpriseAppDetail:
         monkeypatch: pytest.MonkeyPatch,
         seeded: dict[str, str],
     ) -> None:
-        service = EnterpriseAppService(
-            apps=EnterpriseAppRepository(session_factory=sqlite_session_factory, app_web_url="", service_api_url=""),
-            now=lambda: NOW,
-        )
-        monkeypatch.setitem(app.extensions, "application_services", _Services(apps=_Apps(service)))
+        _install_service(app, sqlite_session_factory, monkeypatch, app_web_url="", service_api_url="")
 
         built_in = _built_in(app, seeded["alpha"])
 
         assert built_in.site.app_base_url is None
         assert built_in.api.base_url is None
+
+
+class _StubWorkflowRuns:
+    """Stands in for a workflow run store outside the database, such as LogStore."""
+
+    def __init__(self, app_id: str) -> None:
+        self.app_id = app_id
+        self.calls: list[tuple[dict[str, str], list[WorkflowRunTriggeredFrom]]] = []
+
+    def get_stats_by_app_ids(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, AppWorkflowRunStats]:
+        assert created_since == NOW - timedelta(hours=24)
+        self.calls.append((dict(tenant_id_by_app_id), list(triggered_from)))
+        return {
+            self.app_id: AppWorkflowRunStats(
+                status_counts={
+                    WorkflowExecutionStatus.SUCCEEDED: 3,
+                    WorkflowExecutionStatus.RUNNING: 1,
+                    WorkflowExecutionStatus.STOPPED: 1,
+                    WorkflowExecutionStatus.FAILED: 2,
+                    WorkflowExecutionStatus.PARTIAL_SUCCEEDED: 1,
+                },
+                last_created_at=NOW - timedelta(minutes=5),
+            )
+        }
+
+
+def test_workflow_invocations_come_from_the_workflow_run_repository(
+    app: Flask, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, seeded: dict[str, str]
+) -> None:
+    runs = _StubWorkflowRuns(seeded["alpha"])
+    service = EnterpriseAppService(
+        apps=EnterpriseAppRepository(session_factory=sqlite_session_factory, app_web_url="", service_api_url=""),
+        workflow_runs=cast(APIWorkflowRunRepository, runs),
+        now=lambda: NOW,
+    )
+    monkeypatch.setitem(app.extensions, "application_services", _Services(apps=_Apps(service)))
+
+    items = {item.name: item for item in _list(app).data}
+    built_in = _built_in(app, seeded["alpha"])
+
+    assert items["Alpha 100%"].built_in.invocation_count_24h == 8
+    assert (built_in.invocation_count_24h, built_in.failed_invocation_count_24h) == (8, 3)
+    assert built_in.last_invoked_at == int((NOW - timedelta(minutes=5)).timestamp())
+    sources = [
+        WorkflowRunTriggeredFrom.APP_RUN,
+        WorkflowRunTriggeredFrom.WEBHOOK,
+        WorkflowRunTriggeredFrom.SCHEDULE,
+        WorkflowRunTriggeredFrom.PLUGIN,
+    ]
+    assert runs.calls == [
+        ({seeded["beta"]: WS_A, seeded["alpha"]: WS_A}, sources),
+        ({seeded["alpha"]: WS_A}, sources),
+    ]

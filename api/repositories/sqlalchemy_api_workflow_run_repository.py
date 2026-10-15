@@ -62,6 +62,7 @@ from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import (
     APIWorkflowRunRepository,
+    AppWorkflowRunStats,
     RunsWithRelatedCountsDict,
     WorkflowRunCleanupRef,
 )
@@ -378,6 +379,53 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     status_counts[status_val] = count
 
             return {"total": total} | status_counts
+
+    @override
+    def get_stats_by_app_ids(
+        self,
+        tenant_id_by_app_id: Mapping[str, str],
+        triggered_from: Sequence[WorkflowRunTriggeredFrom],
+        created_since: datetime,
+    ) -> dict[str, AppWorkflowRunStats]:
+        if not tenant_id_by_app_id:
+            return {}
+        # SUM(CASE) instead of COUNT FILTER, which MySQL does not support.
+        in_window = func.sum(sa.case((WorkflowRun.created_at >= created_since, 1), else_=0))
+        stmt = (
+            select(
+                WorkflowRun.tenant_id,
+                WorkflowRun.app_id,
+                WorkflowRun.status,
+                in_window,
+                func.max(WorkflowRun.created_at),
+            )
+            .where(*self._app_run_conditions(tenant_id_by_app_id, triggered_from))
+            .group_by(WorkflowRun.tenant_id, WorkflowRun.app_id, WorkflowRun.status)
+        )
+        status_counts: dict[str, dict[WorkflowExecutionStatus, int]] = {}
+        last_created_at: dict[str, datetime] = {}
+        with self._session_maker() as session:
+            for tenant_id, app_id, status, count, created_at in session.execute(stmt):
+                # The IN filters match any tenant/app pairing, so keep only each app's own tenant.
+                if tenant_id_by_app_id[app_id] != tenant_id:
+                    continue
+                if count:
+                    status_counts.setdefault(app_id, {})[WorkflowExecutionStatus(status)] = int(count)
+                last_created_at[app_id] = max(created_at, last_created_at.get(app_id, created_at))
+        return {
+            app_id: AppWorkflowRunStats(status_counts=status_counts.get(app_id, {}), last_created_at=created_at)
+            for app_id, created_at in last_created_at.items()
+        }
+
+    @staticmethod
+    def _app_run_conditions(
+        tenant_id_by_app_id: Mapping[str, str], triggered_from: Sequence[WorkflowRunTriggeredFrom]
+    ) -> list[sa.ColumnElement[bool]]:
+        return [
+            WorkflowRun.tenant_id.in_(set(tenant_id_by_app_id.values())),
+            WorkflowRun.app_id.in_(list(tenant_id_by_app_id)),
+            WorkflowRun.triggered_from.in_(triggered_from),
+        ]
 
     @override
     def get_expired_runs_batch(

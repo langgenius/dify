@@ -1,4 +1,11 @@
-"""Own the read Session for the enterprise cross-workspace app reads."""
+"""Own the read Session for the enterprise cross-workspace app reads.
+
+Workflow runs are read through ``APIWorkflowRunRepository`` by the service,
+because deployments may keep them outside the database. The reads here that
+belong to other domains (workflows, Agents, sites, API tokens, MCP servers,
+triggers, messages) query those tables directly until each domain owns a
+repository that can serve them.
+"""
 
 from collections.abc import Sequence
 from datetime import datetime
@@ -7,7 +14,6 @@ from typing import override
 import sqlalchemy as sa
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
-from graphon.enums import WorkflowExecutionStatus
 from libs.helper import escape_like_pattern
 from libs.pagination import PaginatedResult, clamp_pagination
 from libs.url_utils import normalize_api_base_url
@@ -23,20 +29,21 @@ from models.agent import (
     AgentSource,
     AgentStatus,
 )
-from models.enums import ApiTokenType, AppStatus, AppTriggerType, InvokeFrom, MessageStatus, WorkflowRunTriggeredFrom
+from models.enums import ApiTokenType, AppStatus, AppTriggerType, InvokeFrom, MessageStatus
 from models.model import ApiToken, App, AppMCPServer, AppMode, Message, Site
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
-from models.workflow import Workflow, WorkflowRun
+from models.workflow import Workflow
 from services.app.enterprise_app_service import (
+    WORKFLOW_APP_MODES,
     EnterpriseAppApi,
-    EnterpriseAppBuiltIn,
-    EnterpriseAppBuiltInSummary,
+    EnterpriseAppBuiltInState,
     EnterpriseAppCreator,
-    EnterpriseAppDetail,
-    EnterpriseAppListItem,
+    EnterpriseAppListEntry,
     EnterpriseAppListParams,
     EnterpriseAppMCPServer,
+    EnterpriseAppMessageStats,
     EnterpriseAppPublishedVersion,
+    EnterpriseAppRecord,
     EnterpriseAppSite,
     EnterpriseAppStore,
     EnterpriseAppSummary,
@@ -46,17 +53,6 @@ from services.entities.app_entities import RECENT_APP_MODES
 
 # App modes a Studio user can open from the app list.
 ENTERPRISE_APP_LIST_MODES: tuple[AppMode, ...] = (*RECENT_APP_MODES, AppMode.AGENT)
-_WORKFLOW_APP_MODES = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)
-# Published workflow runs; debugging and RAG pipeline runs are excluded.
-_INVOKED_RUN_SOURCES = (
-    WorkflowRunTriggeredFrom.APP_RUN,
-    WorkflowRunTriggeredFrom.WEBHOOK,
-    WorkflowRunTriggeredFrom.SCHEDULE,
-    WorkflowRunTriggeredFrom.PLUGIN,
-)
-# Every finished run that is neither succeeded nor stopped by the user.
-_FAILED_RUN_STATUSES = (WorkflowExecutionStatus.FAILED, WorkflowExecutionStatus.PARTIAL_SUCCEEDED)
-_INVOKED_RUN = WorkflowRun.triggered_from.in_(_INVOKED_RUN_SOURCES)
 _INVOKED_MESSAGE = Message.invoke_from != InvokeFrom.DEBUGGER
 
 # Outer joins: the workspace and creator columns are None at runtime when the row is missing.
@@ -109,6 +105,8 @@ def _studio_visible_condition() -> sa.ColumnElement[bool]:
 
 
 def _summary_query() -> sa.Select[_SummaryRow]:
+    # TODO: read workspace names and creators through the workspace and account
+    # domain repositories once they can serve batch lookups.
     return (
         sa.select(App, Tenant.name, Account.id, Account.name, Account.email)
         .outerjoin(Tenant, Tenant.id == App.tenant_id)
@@ -142,9 +140,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
         self._api_base_url = normalize_api_base_url(service_api_url) if service_api_url else None
 
     @override
-    def list_apps(
-        self, params: EnterpriseAppListParams, *, invoked_since: datetime
-    ) -> PaginatedResult[EnterpriseAppListItem]:
+    def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppListEntry]:
         filters = [_studio_visible_condition()]
         if params.workspace_ids:
             filters.append(App.tenant_id.in_(params.workspace_ids))
@@ -167,61 +163,86 @@ class EnterpriseAppRepository(EnterpriseAppStore):
                 .offset((page - 1) * limit)
                 .limit(limit)
             ).all()
-            apps = [row[0] for row in rows]
-            published = self._published_app_ids(session, apps)
-            invocations = self._invocation_counts(session, apps, invoked_since)
-            items = [
-                EnterpriseAppListItem(
-                    app=_summary(row),
-                    built_in=EnterpriseAppBuiltInSummary(
-                        published=row[0].id in published, invocation_count=invocations.get(row[0].id, 0)
-                    ),
-                )
-                for row in rows
-            ]
+            published = self._published_app_ids(session, [row[0] for row in rows])
+            items = [EnterpriseAppListEntry(app=_summary(row), published=row[0].id in published) for row in rows]
         return PaginatedResult(items=items, total=total, page=page, per_page=limit)
 
     @override
-    def get_app(self, app_id: str, *, invoked_since: datetime) -> EnterpriseAppDetail | None:
+    def get_app(self, app_id: str) -> EnterpriseAppRecord | None:
         with self._session_factory() as session:
             row = session.execute(_summary_query().where(App.id == app_id)).one_or_none()
             if row is None:
                 return None
             app = row[0]
-            last_invoked_at, invocation_count, failed_invocation_count = self._invocations(session, app, invoked_since)
             published_version, published_version_count = self._published_versions(session, app)
-            return EnterpriseAppDetail(
+            return EnterpriseAppRecord(
                 app=_summary(row),
-                built_in=EnterpriseAppBuiltIn(
+                built_in=EnterpriseAppBuiltInState(
                     published_version=published_version,
                     published_version_count=published_version_count,
                     site=EnterpriseAppSite(
                         enabled=app.enable_site,
-                        code=session.scalar(sa.select(Site.code).where(Site.app_id == app.id).limit(1)),
+                        code=self._site_code(session, app),
                         app_base_url=self._app_base_url,
                     ),
                     api=EnterpriseAppApi(
                         enabled=app.enable_api,
                         base_url=self._api_base_url,
-                        api_key_count=session.scalar(
-                            sa.select(sa.func.count())
-                            .select_from(ApiToken)
-                            .where(ApiToken.app_id == app.id, ApiToken.type == ApiTokenType.APP)
-                        )
-                        or 0,
+                        api_key_count=self._api_key_count(session, app),
                     ),
                     mcp_server=self._mcp_server(session, app),
                     triggers=self._triggers(session, app),
-                    last_invoked_at=last_invoked_at,
-                    invocation_count=invocation_count,
-                    failed_invocation_count=failed_invocation_count,
                 ),
             )
+
+    @override
+    def get_message_stats_by_app_ids(
+        self, app_ids: Sequence[str], *, created_since: datetime
+    ) -> dict[str, EnterpriseAppMessageStats]:
+        # TODO: move to the message domain repository once it exists.
+        if not app_ids:
+            return {}
+        # SUM(CASE) instead of COUNT FILTER, which MySQL does not support.
+        in_window = sa.func.sum(sa.case((Message.created_at >= created_since, 1), else_=0))
+        status_counts: dict[str, dict[MessageStatus, int]] = {}
+        last_created_at: dict[str, datetime] = {}
+        with self._session_factory() as session:
+            rows = session.execute(
+                sa.select(Message.app_id, Message.status, in_window, sa.func.max(Message.created_at))
+                .where(Message.app_id.in_(app_ids), _INVOKED_MESSAGE)
+                .group_by(Message.app_id, Message.status)
+            )
+            for app_id, status, count, created_at in rows:
+                if count:
+                    status_counts.setdefault(app_id, {})[MessageStatus(status)] = int(count)
+                last_created_at[app_id] = max(created_at, last_created_at.get(app_id, created_at))
+        return {
+            app_id: EnterpriseAppMessageStats(status_counts=status_counts.get(app_id, {}), last_created_at=created_at)
+            for app_id, created_at in last_created_at.items()
+        }
+
+    @staticmethod
+    def _site_code(session: Session, app: App) -> str | None:
+        # TODO: move to the site domain repository once it has a read side.
+        return session.scalar(sa.select(Site.code).where(Site.app_id == app.id).limit(1))
+
+    @staticmethod
+    def _api_key_count(session: Session, app: App) -> int:
+        # TODO: move to AppApiKeyRepository once it can count keys without loading the tokens.
+        return (
+            session.scalar(
+                sa.select(sa.func.count())
+                .select_from(ApiToken)
+                .where(ApiToken.app_id == app.id, ApiToken.type == ApiTokenType.APP)
+            )
+            or 0
+        )
 
     @staticmethod
     def _published_app_ids(session: Session, apps: Sequence[App]) -> set[str]:
         """Batch form of the published_version check: ids whose detail reports a published version."""
-        workflow_app_ids = [app.id for app in apps if app.mode in _WORKFLOW_APP_MODES]
+        # TODO: move to the workflow and Agent domain repositories once they exist.
+        workflow_app_ids = [app.id for app in apps if app.mode in WORKFLOW_APP_MODES]
         agent_app_ids = [app.id for app in apps if app.mode == AppMode.AGENT]
         published: set[str] = set()
         if workflow_app_ids:
@@ -252,7 +273,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
     @classmethod
     def _published_versions(cls, session: Session, app: App) -> tuple[EnterpriseAppPublishedVersion | None, int]:
         """Return the served version and the size of the version history Studio shows."""
-        if app.mode in _WORKFLOW_APP_MODES:
+        if app.mode in WORKFLOW_APP_MODES:
             return cls._published_workflow(session, app)
         if app.mode == AppMode.AGENT:
             return cls._published_agent_snapshot(session, app)
@@ -260,6 +281,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
 
     @staticmethod
     def _published_workflow(session: Session, app: App) -> tuple[EnterpriseAppPublishedVersion | None, int]:
+        # TODO: move to the workflow domain repository once it exists.
         count = (
             session.scalar(
                 sa.select(sa.func.count())
@@ -307,6 +329,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
 
     @staticmethod
     def _published_agent_snapshot(session: Session, app: App) -> tuple[EnterpriseAppPublishedVersion | None, int]:
+        # TODO: move to the Agent domain repository once it exists.
         agent = session.execute(
             sa.select(Agent.id, Agent.source, Agent.active_config_snapshot_id, Agent.active_config_is_published)
             .where(_roster_agent_condition(app.tenant_id, app.id))
@@ -381,6 +404,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
 
     @staticmethod
     def _mcp_server(session: Session, app: App) -> EnterpriseAppMCPServer | None:
+        # TODO: read through AppMCPServerRepository.find_server, which already returns status and server_code.
         server = session.execute(
             sa.select(AppMCPServer.status, AppMCPServer.server_code).where(
                 AppMCPServer.tenant_id == app.tenant_id, AppMCPServer.app_id == app.id
@@ -390,6 +414,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
 
     @staticmethod
     def _triggers(session: Session, app: App) -> Sequence[EnterpriseAppTrigger]:
+        # TODO: move to the trigger domain repository once it exists.
         if app.mode != AppMode.WORKFLOW:
             return []
         # Keyed loosely to match the nullable AppTrigger.node_id lookups below.
@@ -420,57 +445,3 @@ class EnterpriseAppRepository(EnterpriseAppStore):
             )
             for trigger in triggers
         ]
-
-    @staticmethod
-    def _invocations(session: Session, app: App, since: datetime) -> tuple[datetime | None, int, int]:
-        """Read built-in invocations: workflow runs for workflow Apps, messages otherwise."""
-        if app.mode in _WORKFLOW_APP_MODES:
-            source = sa.and_(WorkflowRun.tenant_id == app.tenant_id, WorkflowRun.app_id == app.id, _INVOKED_RUN)
-            created_at = WorkflowRun.created_at
-            failed = WorkflowRun.status.in_(_FAILED_RUN_STATUSES)
-        else:
-            source = sa.and_(Message.app_id == app.id, _INVOKED_MESSAGE)
-            created_at = Message.created_at
-            failed = Message.status == MessageStatus.ERROR
-
-        last_invoked_at = session.scalar(sa.select(sa.func.max(created_at)).where(source))
-        # SUM(CASE) instead of COUNT FILTER, which MySQL does not support.
-        total, failed_total = session.execute(
-            sa.select(sa.func.count(), sa.func.coalesce(sa.func.sum(sa.case((failed, 1), else_=0)), 0)).where(
-                source, created_at >= since
-            )
-        ).one()
-        return last_invoked_at, int(total), int(failed_total)
-
-    @staticmethod
-    def _invocation_counts(session: Session, apps: Sequence[App], since: datetime) -> dict[str, int]:
-        """Batch form of the detail's invocation_count, keyed by app id; apps without invocations are absent."""
-        workflow_apps = [app for app in apps if app.mode in _WORKFLOW_APP_MODES]
-        message_app_ids = [app.id for app in apps if app.mode not in _WORKFLOW_APP_MODES]
-        counts: dict[str, int] = {}
-        if workflow_apps:
-            counts.update(
-                session.execute(
-                    sa.select(WorkflowRun.app_id, sa.func.count())
-                    .where(
-                        WorkflowRun.tenant_id.in_({app.tenant_id for app in workflow_apps}),
-                        WorkflowRun.app_id.in_([app.id for app in workflow_apps]),
-                        _INVOKED_RUN,
-                        WorkflowRun.created_at >= since,
-                    )
-                    .group_by(WorkflowRun.app_id)
-                )
-                .tuples()
-                .all()
-            )
-        if message_app_ids:
-            counts.update(
-                session.execute(
-                    sa.select(Message.app_id, sa.func.count())
-                    .where(Message.app_id.in_(message_app_ids), _INVOKED_MESSAGE, Message.created_at >= since)
-                    .group_by(Message.app_id)
-                )
-                .tuples()
-                .all()
-            )
-        return counts
