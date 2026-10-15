@@ -18,6 +18,14 @@ class AgentAppRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def resolve_roster_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Resolve a roster Agent's configuration owner without materializing inline Apps."""
+        with self._session_factory() as session:
+            try:
+                return AgentRosterService(session).get_agent_app_model(tenant_id=tenant_id, agent_id=agent_id).id
+            except AgentNotFoundError as exc:
+                raise AgentAppNotFoundError from exc
+
     def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         with self._session_factory() as session:
             try:

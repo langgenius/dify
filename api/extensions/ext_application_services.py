@@ -52,6 +52,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
@@ -98,6 +99,7 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent_tracing_config_service import AgentTracingConfigService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -268,6 +270,7 @@ class ApplicationServices:
     conversation_variables: ConversationVariableQuery
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
+    agent_tracing_configs: AgentTracingConfigService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_sources: DataSourceServices
@@ -453,6 +456,10 @@ def build_application_services(
         apps=console_apps,
         datasets=dataset_dependencies.datasets,
     )
+    tracing_configs = AppTracingConfigService(
+        configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
+        provider=OpsTraceManagerGateway(),
+    )
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
@@ -542,9 +549,11 @@ def build_application_services(
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
-        app_tracing_configs=AppTracingConfigService(
-            configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
-            provider=OpsTraceManagerGateway(),
+        app_tracing_configs=tracing_configs,
+        agent_tracing_configs=AgentTracingConfigService(
+            owners=AgentAppRepository(session_factory=database_client),
+            settings=apps.console,
+            configs=tracing_configs,
         ),
         billing_portal=BillingPortalService(
             accounts=accounts,

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Sequence
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import datetime
 from typing import Any, cast, override
 
@@ -330,7 +330,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
-            app.tracing = json.dumps({"enabled": settings.enabled, "tracing_provider": settings.tracing_provider})
+            app.tracing = json.dumps(asdict(settings))
 
     @staticmethod
     def _draft_trigger_app_ids(session: Session, workspace_id: str, apps: list[App]) -> set[str]:
