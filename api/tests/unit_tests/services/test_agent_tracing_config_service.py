@@ -9,6 +9,8 @@ from services.agent_tracing_config_service import AgentTracingConfigService
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.entities.app_entities import AppTraceSettings
 
+type TraceConfigArguments = tuple[()] | tuple[AppTraceSettings] | tuple[str] | tuple[str, dict[str, str]]
+
 CONTEXT = RequestContext("request", None, "account", "tenant")
 
 
@@ -17,7 +19,7 @@ def test_agent_operations_resolve_tenant_scoped_roster_app(method: str) -> None:
     owners, settings, configs = MagicMock(), MagicMock(), MagicMock()
     owners.resolve_roster_app_id.return_value = "backing-app"
     service = AgentTracingConfigService(owners=owners, settings=settings, configs=configs)
-    args: tuple = ()
+    args: TraceConfigArguments = ()
     if method == "set_trace":
         args = (AppTraceSettings(True, "langfuse", capture_content=True, capture_agent=False),)
     elif method in {"get", "delete"}:
@@ -35,7 +37,7 @@ def test_invalid_or_foreign_agent_never_reaches_app_services(method: str) -> Non
     owners, settings, configs = MagicMock(), MagicMock(), MagicMock()
     owners.resolve_roster_app_id.side_effect = AgentAppNotFoundError
     service = AgentTracingConfigService(owners=owners, settings=settings, configs=configs)
-    args: tuple = ()
+    args: TraceConfigArguments = ()
     if method == "set_trace":
         args = (AppTraceSettings(),)
     elif method in {"get", "delete"}:
