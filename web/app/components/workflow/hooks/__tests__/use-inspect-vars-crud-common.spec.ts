@@ -19,6 +19,7 @@ const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 const schemaTypeDefinitions: SchemaTypeDefinition[] = [
   {
     name: 'simple',
+    label: 'Simple',
     schema: {
       properties: {},
     },
