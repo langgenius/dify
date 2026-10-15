@@ -286,8 +286,9 @@ export const useExportPipelineDSL = () => {
   })
 }
 
-export const usePublishAsCustomizedPipeline = () => {
+export const usePublishAsCustomizedPipeline = (onError?: (error: Error) => void) => {
   return useMutation({
+    ...(onError && { onError }),
     mutationKey: [NAME_SPACE, 'publish-as-customized-pipeline'],
     mutationFn: ({
       pipelineId,

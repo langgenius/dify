@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from 'react'
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScopeProvider } from 'jotai-scope'
@@ -9,6 +9,7 @@ import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { createTestQueryClient } from '@/test/query-client'
 import { AgentConfigureComposerScope } from '../components/composer-session'
 import { useAgentConfigureData } from '../hooks'
 import { AgentConfigurePage } from '../page'
@@ -278,7 +279,10 @@ vi.mock('@/service/console', () => ({
             },
           },
           delete: {
-            mutationOptions: () => ({ mutationFn: mocks.discardBuildDraft }),
+            mutationOptions: (options = {}) => ({
+              ...options,
+              mutationFn: mocks.discardBuildDraft,
+            }),
           },
         },
         sandbox: {
@@ -560,7 +564,7 @@ vi.mock('../components/preview/versions-panel', () => ({
 }))
 
 function createQueryClient() {
-  const client = new QueryClient()
+  const client = createTestQueryClient()
   client.setQueryData<Partial<typeof mocks.queryState.agent.data>>(
     consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: 'agent-1' } } })
       .queryKey,
@@ -1176,6 +1180,7 @@ describe('AgentConfigurePage', () => {
       } finally {
         vi.useRealTimers()
       }
+      expect(toastMock.error).toHaveBeenCalledTimes(1)
     })
 
     it('should reset Build on mode switch, then save and force checkout when starting chat', async () => {

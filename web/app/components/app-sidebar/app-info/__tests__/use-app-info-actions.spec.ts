@@ -331,6 +331,7 @@ describe('useAppInfoActions', () => {
         type: 'error',
         message: 'app.newApp.appCreateFailed',
       })
+      expect(toastMocks.call.mock.calls.filter(([value]) => value.type === 'error')).toHaveLength(1)
     })
   })
 
@@ -480,6 +481,7 @@ describe('useAppInfoActions', () => {
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),
       })
+      expect(toastMocks.call.mock.calls.filter(([value]) => value.type === 'error')).toHaveLength(1)
     })
   })
 

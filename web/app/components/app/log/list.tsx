@@ -233,8 +233,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
       // Use functional update to avoid stale state issues
       setAllChatItems((prevItems: IChatItem[]) => mergeUniqueChatItems(prevItems, newItems))
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') return
-      console.error('fetchData execution failed:', err)
+      if (currentRequestId !== requestIdRef.current || controller.signal.aborted) return
+      notifyError(err)
     } finally {
       isLoadingRef.current = false
       if (abortControllerRef.current === controller) abortControllerRef.current = null
@@ -375,7 +375,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
         return nextItems.items
       })
     } catch (error) {
-      console.error(error)
+      notifyError(error)
       setHasMore(false)
       retryCountRef.current = 0
     } finally {

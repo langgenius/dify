@@ -313,8 +313,9 @@ export const useRestoreWorkflow = () => {
   })
 }
 
-export const usePublishWorkflow = () => {
+export const usePublishWorkflow = (onError?: (error: Error) => void) => {
   return useMutation({
+    ...(onError && { onError }),
     mutationKey: [NAME_SPACE, 'publish'],
     mutationFn: (params: PublishWorkflowParams) =>
       post<WorkflowPublishResponse>(params.url, {

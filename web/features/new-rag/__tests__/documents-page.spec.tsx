@@ -9,6 +9,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { createTestQueryClient } from '@/test/query-client'
 import { DocumentsPage } from '../documents-page'
 import { TaskEventObserver } from '../task-event-observer'
 
@@ -21,6 +22,8 @@ type InfiniteOptions = {
   queryKey?: readonly unknown[]
   refetchInterval?: (query: { state: { data?: unknown } }) => false | number
 }
+
+let mutationClient: ReturnType<typeof createTestQueryClient>
 
 const documentsQuery = vi.hoisted(() => ({
   data: undefined as
@@ -172,12 +175,23 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     },
     useMutation: (options: {
       mutationKind: 'bulk-upload' | 'cancel' | 'reindex' | 'retry' | 'upload'
+      onError?: (error: Error) => void
     }) => {
       if (options.mutationKind === 'cancel') return cancelMutation
       if (options.mutationKind === 'retry') return retryMutation
-      if (options.mutationKind === 'reindex') return reindexMutation
-      if (options.mutationKind === 'bulk-upload') return bulkUploadMutation
-      return uploadMutation
+      const mutation =
+        options.mutationKind === 'reindex'
+          ? reindexMutation
+          : options.mutationKind === 'bulk-upload'
+            ? bulkUploadMutation
+            : uploadMutation
+      return original.useMutation(
+        {
+          mutationFn: (input: unknown) => mutation.mutateAsync(input),
+          ...(options.onError && { onError: options.onError }),
+        },
+        mutationClient,
+      )
     },
     useQueryClient: () => queryClient,
   }
@@ -192,7 +206,7 @@ vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
       deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: {
-        mutationOptions: () => ({ mutationKind: 'cancel' }),
+        mutationOptions: (options = {}) => ({ ...options, mutationKind: 'cancel' }),
       },
       getKnowledgeSpacesByIdLogicalDocuments: {
         infiniteOptions: documentsInfiniteOptions,
@@ -207,16 +221,16 @@ vi.mock('@/service/console', () => ({
         key: () => ['knowledge-fs', 'sources'],
       },
       postKnowledgeSpacesByIdDocuments: {
-        mutationOptions: () => ({ mutationKind: 'upload' }),
+        mutationOptions: (options = {}) => ({ ...options, mutationKind: 'upload' }),
       },
       postKnowledgeSpacesByIdDocumentsBulk: {
-        mutationOptions: () => ({ mutationKind: 'bulk-upload' }),
+        mutationOptions: (options = {}) => ({ ...options, mutationKind: 'bulk-upload' }),
       },
       postKnowledgeSpacesByIdDocumentsBulkReindex: {
-        mutationOptions: () => ({ mutationKind: 'reindex' }),
+        mutationOptions: (options = {}) => ({ ...options, mutationKind: 'reindex' }),
       },
       postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry: {
-        mutationOptions: () => ({ mutationKind: 'retry' }),
+        mutationOptions: (options = {}) => ({ ...options, mutationKind: 'retry' }),
       },
     },
   },
@@ -314,6 +328,7 @@ const source = (overrides: Partial<Source> = {}): Source => ({
 
 describe('DocumentsPage', () => {
   beforeEach(() => {
+    mutationClient = createTestQueryClient()
     vi.clearAllMocks()
     queryCacheListeners.clear()
     queryClient.cancelQueries.mockResolvedValue(undefined)
@@ -5420,6 +5435,42 @@ describe('DocumentsPage', () => {
     ).toHaveAttribute('aria-disabled', 'true')
   })
 
+  it.each([1, 2])('reports a failed upload once for %i files', async (count) => {
+    const mutation = count === 1 ? uploadMutation : bulkUploadMutation
+    mutation.mutateAsync.mockRejectedValueOnce(new Error('Upload failed'))
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await userEvent.setup().upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      Array.from(
+        { length: count },
+        (_, index) => new File(['one'], `${index}.md`, { type: 'text/markdown' }),
+      ),
+    )
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
+        'dataset.newKnowledge.documentUploadFailed',
+      ),
+    )
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('reports a failed bulk reindex once and keeps the selection', async () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    reindexMutation.mutateAsync.mockRejectedValueOnce(new Error('Reindex failed'))
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledExactlyOnceWith(
+        'dataset.newKnowledge.documentsReindexFailed',
+      ),
+    )
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toBeChecked()
+  })
+
   it('locks uploads after a write mutation reveals revoked permission', async () => {
     const user = userEvent.setup()
     uploadMutation.mutateAsync.mockRejectedValueOnce(
@@ -5611,7 +5662,7 @@ describe('DocumentsPage', () => {
       target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
     })
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
-    expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce()
+    await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce())
 
     await act(async () => rejectUpload?.(createHttpError(new Response(null, { status: 403 }))))
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())

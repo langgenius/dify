@@ -306,7 +306,9 @@ export function useAgentConfigureBuildDraftActions({
     consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions(),
   )
   const discardBuildDraftMutation = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({
+      onError: () => toast.error(tCommon(($) => $['api.actionFailed'])),
+    }),
   )
   const { mutateAsync: finalizeBuildChatRequest, isPending: isFinalizingBuildChat } =
     finalizeBuildChatMutation
@@ -456,7 +458,6 @@ export function useAgentConfigureBuildDraftActions({
       toast.success(tCommon(($) => $['api.actionSuccess']))
       return true
     } catch {
-      toast.error(tCommon(($) => $['api.actionFailed']))
       return false
     }
   }

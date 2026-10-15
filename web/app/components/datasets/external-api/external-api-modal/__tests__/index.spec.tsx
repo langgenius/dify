@@ -237,7 +237,7 @@ describe('AddExternalAPIModal', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Failed to save/update External API',
+          message: 'Create failed',
         })
       })
 
@@ -413,4 +413,37 @@ describe('AddExternalAPIModal', () => {
       expect(link)!.toHaveAttribute('target', '_blank')
     })
   })
+  it.each([{ datasetBindings: [] }, { datasetBindings: [{ id: 'ds-1', name: 'Bound dataset' }] }])(
+    'keeps edited input and reports an update failure once (bindings: %j)',
+    async ({ datasetBindings }) => {
+      const user = userEvent.setup()
+      const onEdit = vi.fn().mockRejectedValue(new Error('Update failed'))
+      const onCancel = vi.fn()
+      render(
+        <AddExternalAPIModal
+          data={{
+            name: 'Edited API',
+            settings: { endpoint: 'https://example.com', api_key: 'valid-secret' },
+          }}
+          onSave={vi.fn()}
+          onCancel={onCancel}
+          onEdit={onEdit}
+          isEditMode
+          datasetBindings={datasetBindings}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIForm.save' }))
+      if (datasetBindings.length)
+        await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
+          type: 'error',
+          message: 'Update failed',
+        }),
+      )
+      expect(onEdit).toHaveBeenCalledTimes(1)
+      expect(onCancel).not.toHaveBeenCalled()
+      expect(screen.getByDisplayValue('Edited API')).toBeInTheDocument()
+    },
+  )
 })

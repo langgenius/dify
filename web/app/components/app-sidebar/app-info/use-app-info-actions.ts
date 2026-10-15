@@ -75,9 +75,23 @@ export function useAppInfoActions({
   const { replace } = useRouter()
   const queryClient = useQueryClient()
   const { mutateAsync: copyApp } = useMutation(
-    consoleQuery.apps.byAppId.copy.post.mutationOptions(),
+    consoleQuery.apps.byAppId.copy.post.mutationOptions({
+      onError: () =>
+        toast(
+          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+          { type: 'error' },
+        ),
+    }),
   )
-  const { mutateAsync: deleteApp } = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
+  const { mutateAsync: deleteApp } = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      onError: (error) =>
+        toast(
+          `${t(($) => $.appDeleteFailed, { ns: 'app' })}${error instanceof Error && error.message ? `: ${error.message}` : ''}`,
+          { type: 'error' },
+        ),
+    }),
+  )
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
@@ -211,10 +225,7 @@ export function useAppInfoActions({
         )
         getRedirection(newApp, replace, { isRbacEnabled })
       } catch {
-        toast(
-          t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          { type: 'error' },
-        )
+        // The mutation owns failure feedback; preserve the duplicate form input.
       }
     },
     [appId, closeModal, copyApp, isRbacEnabled, replace, t],
@@ -262,12 +273,8 @@ export function useAppInfoActions({
         { type: 'success' },
       )
       replace('/apps')
-    } catch (e: unknown) {
+    } catch {
       markAppDeletionFailed(appId)
-      toast(
-        `${t(($) => $.appDeleteFailed, { ns: 'app' })}${e instanceof Error && e.message ? `: ${e.message}` : ''}`,
-        { type: 'error' },
-      )
     }
     closeModal()
   }, [appId, closeModal, deleteApp, replace, t])

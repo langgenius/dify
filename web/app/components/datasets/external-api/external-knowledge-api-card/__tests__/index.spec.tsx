@@ -2,6 +2,7 @@ import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/d
 import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 // Import mocked services
 import {
   checkUsageExternalAPI,
@@ -173,7 +174,7 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should handle fetch error gracefully', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const errorToast = vi.spyOn(toast, 'error')
       vi.mocked(fetchExternalAPI).mockRejectedValue(new Error('Fetch failed'))
 
       render(<ExternalKnowledgeAPICard {...defaultProps} />)
@@ -182,13 +183,10 @@ describe('ExternalKnowledgeAPICard', () => {
       fireEvent.click(editButton!)
 
       await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Error fetching external knowledge API data:',
-          expect.any(Error),
-        )
+        expect(errorToast).toHaveBeenCalledExactlyOnceWith('Fetch failed')
       })
 
-      consoleSpy.mockRestore()
+      errorToast.mockRestore()
     })
 
     it('should invalidate the generated list query after editing', async () => {
@@ -349,7 +347,7 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should handle delete error gracefully', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const errorToast = vi.spyOn(toast, 'error')
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
       vi.mocked(deleteExternalAPI).mockRejectedValue(new Error('Delete failed'))
 
@@ -366,17 +364,14 @@ describe('ExternalKnowledgeAPICard', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Error deleting external knowledge API:',
-          expect.any(Error),
-        )
+        expect(errorToast).toHaveBeenCalledExactlyOnceWith('Delete failed')
       })
 
-      consoleSpy.mockRestore()
+      errorToast.mockRestore()
     })
 
     it('should handle check usage error gracefully', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const errorToast = vi.spyOn(toast, 'error')
       vi.mocked(checkUsageExternalAPI).mockRejectedValue(new Error('Check failed'))
 
       render(<ExternalKnowledgeAPICard {...defaultProps} />)
@@ -385,13 +380,10 @@ describe('ExternalKnowledgeAPICard', () => {
       fireEvent.click(deleteButton!)
 
       await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Error checking external API usage:',
-          expect.any(Error),
-        )
+        expect(errorToast).toHaveBeenCalledExactlyOnceWith('Check failed')
       })
 
-      consoleSpy.mockRestore()
+      errorToast.mockRestore()
     })
   })
 
@@ -412,7 +404,7 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should handle delete response with unsuccessful result', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const errorToast = vi.spyOn(toast, 'error')
       vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
       vi.mocked(deleteExternalAPI).mockResolvedValue({ result: 'error' })
 
@@ -429,10 +421,10 @@ describe('ExternalKnowledgeAPICard', () => {
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Failed to delete external API')
+        expect(errorToast).toHaveBeenCalledTimes(1)
       })
 
-      consoleSpy.mockRestore()
+      errorToast.mockRestore()
     })
   })
 })

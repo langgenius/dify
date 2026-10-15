@@ -53,7 +53,9 @@ export function useDocumentReindex({
   const acceptedTaskIdRef = useRef<string | undefined>(undefined)
   const invalidatedTerminalTaskRef = useRef<string | undefined>(undefined)
   const { mutateAsync: reindexDocument } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulkReindex.mutationOptions(),
+    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulkReindex.mutationOptions({
+      onError: () => toast.error(t(($) => $['newKnowledge.documentsReindexFailed'])),
+    }),
   )
   const taskStatus = useDocumentTaskStatus({
     documentId,
@@ -214,7 +216,6 @@ export function useDocumentReindex({
         setWritePermissionRevoked(true)
         await retryWritePermission()
       }
-      toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
     } finally {
       reindexPendingRef.current = false
       setReindexBusy(false)

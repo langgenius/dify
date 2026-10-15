@@ -136,7 +136,7 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   const handleEditExternalApiModal = useCallback(
     async (updatedFormValue: CreateExternalAPIReq) => {
       if (showExternalKnowledgeAPIModal?.onEditCallback)
-        showExternalKnowledgeAPIModal.onEditCallback(updatedFormValue)
+        await showExternalKnowledgeAPIModal.onEditCallback(updatedFormValue)
       setShowExternalKnowledgeAPIModal(null)
     },
     [showExternalKnowledgeAPIModal],

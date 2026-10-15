@@ -1,5 +1,5 @@
 import type { IconInfo } from '@/models/datasets'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { render as renderWithoutPricing } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import Publisher from '../index'
 import { Popup } from '../popup'
 
@@ -154,18 +155,17 @@ vi.mock('@/service/use-base', () => ({
   useInvalid: () => mockInvalidPublishedPipelineInfo,
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  publishedPipelineInfoQueryKeyPrefix: ['pipeline', 'published'],
+vi.mock('@/service/use-pipeline', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-pipeline')>()),
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline: () => ({
-    mutateAsync: mockPublishAsCustomizedPipeline,
-  }),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  usePublishWorkflow: () => ({
-    mutateAsync: mockPublishWorkflow,
-  }),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  post: (url: string, options: unknown) =>
+    url.endsWith('/customized/publish')
+      ? mockPublishAsCustomizedPipeline(url, options)
+      : mockPublishWorkflow(url, options),
 }))
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
@@ -199,18 +199,8 @@ vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   ),
 }))
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        staleTime: Infinity,
-      },
-    },
-  })
-
 const renderWithQueryClient = (ui: React.ReactElement) => {
-  const queryClient = createQueryClient()
+  const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
   seedFeatures(queryClient, { knowledge_pipeline: { publish_enabled: publishEnabled } })
@@ -548,12 +538,16 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-            pipelineId: 'test-pipeline-id',
-            name: 'Test Pipeline',
-            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
-            description: 'Test description',
-          })
+          expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith(
+            '/rag/pipelines/test-pipeline-id/customized/publish',
+            {
+              body: {
+                name: 'Test Pipeline',
+                icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
+                description: 'Test description',
+              },
+            },
+          )
         })
       })
 
@@ -577,12 +571,16 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-            pipelineId: '',
-            name: 'Test Pipeline',
-            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
-            description: 'Test description',
-          })
+          expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith(
+            '/rag/pipelines//customized/publish',
+            {
+              body: {
+                name: 'Test Pipeline',
+                icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
+                description: 'Test description',
+              },
+            },
+          )
         })
       })
     })
@@ -597,11 +595,10 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockPublishWorkflow).toHaveBeenCalledWith({
-            url: '/rag/pipelines/test-pipeline-id/workflows/publish',
-            title: '',
-            releaseNotes: '',
-          })
+          expect(mockPublishWorkflow).toHaveBeenCalledWith(
+            '/rag/pipelines/test-pipeline-id/workflows/publish',
+            { body: { marked_name: '', marked_comment: '' } },
+          )
         })
       })
 
@@ -732,6 +729,9 @@ describe('publisher', () => {
             message: 'datasetPipeline.publishPipeline.error.message',
           })
         })
+        expect(toastMocks.call.mock.calls.filter(([value]) => value.type === 'error')).toHaveLength(
+          1,
+        )
       })
 
       it('should show error notification when publish as template fails', async () => {
@@ -758,6 +758,9 @@ describe('publisher', () => {
             message: 'datasetPipeline.publishTemplate.error.message',
           })
         })
+        expect(toastMocks.call.mock.calls.filter(([value]) => value.type === 'error')).toHaveLength(
+          1,
+        )
       })
 
       it('should close modal after publish as template error', async () => {

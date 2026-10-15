@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { notifyError } from '@/app/notifications/notify-error'
 import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/console'
 import {
@@ -65,27 +66,23 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
         isEditMode: true,
         datasetBindings: response.dataset_bindings,
         onEditCallback: async (updatedData: CreateExternalAPIReq) => {
-          try {
-            await updateExternalAPI({
-              apiTemplateId: api.id,
-              body: {
-                ...response,
-                name: updatedData.name,
-                settings: {
-                  ...response.settings,
-                  endpoint: updatedData.settings.endpoint,
-                  api_key: updatedData.settings.api_key,
-                },
+          await updateExternalAPI({
+            apiTemplateId: api.id,
+            body: {
+              ...response,
+              name: updatedData.name,
+              settings: {
+                ...response.settings,
+                endpoint: updatedData.settings.endpoint,
+                api_key: updatedData.settings.api_key,
               },
-            })
-            await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
-          } catch (error) {
-            console.error('Error updating external knowledge API:', error)
-          }
+            },
+          })
+          await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
         },
       })
     } catch (error) {
-      console.error('Error fetching external knowledge API data:', error)
+      notifyError(error)
     }
   }
 
@@ -98,7 +95,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
 
       setShowConfirm(true)
     } catch (error) {
-      console.error('Error checking external API usage:', error)
+      notifyError(error)
     }
   }
 
@@ -111,10 +108,10 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
         setShowConfirm(false)
         await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
       } else {
-        console.error('Failed to delete external API')
+        notifyError(response)
       }
     } catch (error) {
-      console.error('Error deleting external knowledge API:', error)
+      notifyError(error)
     }
   }
 

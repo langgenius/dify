@@ -195,8 +195,9 @@ type OneMoreStepPayload = {
   interface_language: string
   timezone: string
 }
-export const useOneMoreStep = () => {
+export const useOneMoreStep = (onError?: (error: Error) => void) => {
   return useMutation({
+    ...(onError && { onError }),
     mutationKey: [NAME_SPACE, 'one-more-step'],
     mutationFn: (body: OneMoreStepPayload) => post<CommonResponse>('/account/init', { body }),
   })

@@ -504,7 +504,9 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions(),
   )
   const { mutateAsync: discardBuildDraft, isPending: isDiscardingBuildDraft } = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({
+      onError: () => toast.error(t(($) => $['api.actionFailed'])),
+    }),
   )
   const getInlineAgentSoulDraft = useCallback(
     () =>
@@ -592,7 +594,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       toast.success(t(($) => $['api.actionSuccess']))
       return true
     } catch {
-      toast.error(t(($) => $['api.actionFailed']))
       return false
     }
   }, [

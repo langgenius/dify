@@ -17,6 +17,7 @@ import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remi
 import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/notify-error'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
 
@@ -112,8 +113,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
       }
       onCancel()
     } catch (error) {
-      console.error('Error saving/updating external API:', error)
-      toast.error('Failed to save/update External API')
+      notifyError(error)
     } finally {
       setLoading(false)
     }
@@ -123,7 +123,6 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
     if (hasEmptyInputs || loading) return
 
     if (isEditMode && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
-    else if (isEditMode && onEdit) onEdit(formData)
     else handleSave()
   }
 

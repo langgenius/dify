@@ -172,4 +172,26 @@ describe('useCreateSnippet', () => {
       expect(result.current.isCreatingSnippet).toBe(false)
     })
   })
+  it.each([new Error('Draft write failed'), new DOMException('Aborted', 'AbortError')])(
+    'keeps the dialog open and reports only non-cancelled draft write failures: %s',
+    async (error) => {
+      mockMutateAsync.mockResolvedValue({ id: 'snippet-123' })
+      mockSyncDraftWorkflow.mockRejectedValue(error)
+      const { result } = renderHook(() => useCreateSnippet())
+      act(() => result.current.handleOpenCreateSnippetDialog())
+      await act(async () => {
+        await result.current.handleCreateSnippet({
+          name: 'My snippet',
+          description: '',
+          input_fields: [],
+          graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+        })
+      })
+      expect(mockSyncDraftWorkflow).toHaveBeenCalledTimes(1)
+      expect(mockPush).not.toHaveBeenCalled()
+      expect(result.current.isCreateSnippetDialogOpen).toBe(true)
+      expect(result.current.isCreatingSnippet).toBe(false)
+      expect(mockToastError).toHaveBeenCalledTimes(error.name === 'AbortError' ? 0 : 1)
+    },
+  )
 })

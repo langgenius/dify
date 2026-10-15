@@ -3,6 +3,7 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
@@ -332,6 +333,29 @@ describe('ConversationList', () => {
       has_more: false,
     })
   })
+
+  it.each([new Error('Messages unavailable'), new DOMException('Aborted', 'AbortError')])(
+    'reports initial message failures once while ignoring cancellation: %s',
+    async (error) => {
+      const errorToast = vi.spyOn(toast, 'error')
+      mockFetchChatMessages.mockRejectedValue(error)
+      mockChatConversationDetail = {
+        id: 'conversation-1',
+        created_at: 1710000000,
+        model_config: { model: 'gpt-4o', configs: {}, user_input_form: [] },
+        message: { inputs: {} },
+      }
+      renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+      await screen.findByRole('dialog')
+      await waitFor(() => expect(mockFetchChatMessages).toHaveBeenCalledTimes(1))
+      if (error.name !== 'AbortError')
+        await waitFor(() =>
+          expect(errorToast).toHaveBeenCalledExactlyOnceWith('Messages unavailable'),
+        )
+      else expect(errorToast).not.toHaveBeenCalled()
+      errorToast.mockRestore()
+    },
+  )
 
   it('should render chat rows and push the conversation id into the url when a row is clicked', async () => {
     const { onUrlUpdate } = renderConversationList()
@@ -666,6 +690,36 @@ describe('ConversationList', () => {
     expect(screen.getByText('2 Failures')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+  })
+
+  it('reports a pagination failure once and preserves loaded messages', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    mockChatConversationDetail = {
+      id: 'conversation-1',
+      created_at: 1710000000,
+      model_config: { model: 'gpt-4o', configs: {}, user_input_form: [] },
+      message: { inputs: {} },
+    }
+    mockFetchChatMessages
+      .mockResolvedValueOnce({
+        data: ['message-1', 'message-2', 'message-3', 'message-4'].map((id, index) =>
+          createChatMessage(id, { parent_message_id: index > 0 ? `message-${index}` : undefined }),
+        ),
+        has_more: true,
+      })
+      .mockRejectedValueOnce(new Error('Older messages unavailable'))
+    renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+    await waitFor(() => expect(screen.getByTestId('chat-panel')).toHaveTextContent('8'))
+    const scrollableDiv = document.getElementById('scrollableDiv') as HTMLDivElement
+    Object.defineProperty(scrollableDiv, 'clientHeight', { configurable: true, value: 100 })
+    Object.defineProperty(scrollableDiv, 'scrollHeight', { configurable: true, value: 500 })
+    Object.defineProperty(scrollableDiv, 'scrollTop', { configurable: true, value: -400 })
+    fireEvent.scroll(scrollableDiv)
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Older messages unavailable'),
+    )
+    expect(screen.getByTestId('chat-panel')).toHaveTextContent('8')
+    errorToast.mockRestore()
   })
 
   it('should support annotation changes and paginated scroll loading in the detail drawer', async () => {

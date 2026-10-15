@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { toast } from '@/app/notifications'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
@@ -71,6 +72,28 @@ const UpdatePluginTrigger = ({
       }
     >
       Open plugin update
+    </button>
+  )
+}
+
+const ExternalApiEditTrigger = ({ onEdit }: { onEdit: () => Promise<void> }) => {
+  const setShowExternalKnowledgeAPIModal = useModalContextSelector(
+    (state) => state.setShowExternalKnowledgeAPIModal,
+  )
+  return (
+    <button
+      onClick={() =>
+        setShowExternalKnowledgeAPIModal({
+          payload: {
+            name: 'Edited API',
+            settings: { endpoint: 'https://example.com', api_key: 'valid-secret' },
+          },
+          isEditMode: true,
+          onEditCallback: onEdit,
+        })
+      }
+    >
+      Edit external API
     </button>
   )
 }
@@ -302,5 +325,26 @@ describe('ModalContextProvider plugin update modal', () => {
 
     expect(onSave).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
+  })
+})
+
+describe('ModalContextProvider external API edits', () => {
+  it('keeps the modal and input when the update fails, then closes after a successful retry', async () => {
+    mockConsoleStateReader.mockReturnValue({ currentWorkspace: { id: 'workspace-1' } })
+    const errorToast = vi.spyOn(toast, 'error')
+    const onEdit = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Update failed'))
+      .mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderProvider(<ExternalApiEditTrigger onEdit={onEdit} />)
+    await user.click(screen.getByRole('button', { name: 'Edit external API' }))
+    await user.click(await screen.findByRole('button', { name: 'dataset.externalAPIForm.save' }))
+    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Update failed'))
+    expect(screen.getByDisplayValue('Edited API')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.externalAPIForm.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onEdit).toHaveBeenCalledTimes(2)
+    errorToast.mockRestore()
   })
 })

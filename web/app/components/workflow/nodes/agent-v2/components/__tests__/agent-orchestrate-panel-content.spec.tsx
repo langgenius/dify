@@ -283,7 +283,10 @@ vi.mock('@/service/console', async () => {
               }),
             },
             delete: {
-              mutationOptions: () => ({ mutationFn: mocks.deleteBuildDraft }),
+              mutationOptions: (options = {}) => ({
+                ...options,
+                mutationFn: mocks.deleteBuildDraft,
+              }),
             },
             put: {
               mutationOptions: () => ({ mutationFn: mocks.saveBuildDraft }),

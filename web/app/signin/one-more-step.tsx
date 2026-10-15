@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { notifyError } from '@/app/notifications/notify-error'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages } from '@/i18n/language'
@@ -77,7 +78,11 @@ const OneMoreStep = () => {
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })
-  const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
+  const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep((error) => {
+    if (getHttpErrorStatus(error) === 400)
+      toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))
+    else notifyError(error)
+  })
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === state.interface_language)
   const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === state.timezone)
 
@@ -101,9 +106,8 @@ const OneMoreStep = () => {
       })
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
       replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
-    } catch (error: unknown) {
-      if (getHttpErrorStatus(error) === 400)
-        toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))
+    } catch {
+      // The mutation owns error feedback.
     }
   }
 

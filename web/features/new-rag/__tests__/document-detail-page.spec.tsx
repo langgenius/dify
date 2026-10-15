@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { createTestQueryClient } from '@/test/query-client'
 import { DocumentDetailPage } from '../document-detail-page'
 
 type InfiniteOptions = {
@@ -97,6 +98,8 @@ const permissionState = vi.hoisted(() => ({
   refreshAtom: Symbol('refreshWorkspacePermissionKeysAfterMutationDenialAtom'),
   refresh: vi.fn(),
 }))
+let mutationClient: ReturnType<typeof createTestQueryClient>
+
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const queryClient = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
@@ -219,7 +222,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         return chunksQuery
       return tasksQuery
     },
-    useMutation: () => reindexMutation,
+    useMutation: (options: { onError?: (error: Error) => void }) =>
+      original.useMutation(
+        {
+          ...options,
+          mutationFn: (input: unknown) => reindexMutation.mutateAsync(input),
+        },
+        mutationClient,
+      ),
     useQuery: (options: { queryKind?: string }) => {
       if (options.queryKind === 'knowledge-space') return knowledgeSpaceQuery
       if (options.queryKind === 'task-snapshot') return taskSnapshotQuery
@@ -262,7 +272,7 @@ vi.mock('@/service/console', () => ({
         queryOptions: workspaceSubmissionTasksOptions,
       },
       postKnowledgeSpacesByIdDocumentsBulkReindex: {
-        mutationOptions: () => ({}),
+        mutationOptions: (options = {}) => options,
       },
     },
   },
@@ -360,6 +370,7 @@ const missingReindexResult = (): BulkDocumentReindexResult => ({
 
 describe('DocumentDetailPage', () => {
   beforeEach(() => {
+    mutationClient = createTestQueryClient()
     vi.clearAllMocks()
     permissionState.keys = ['dataset.acl.edit']
     documentQuery.data = logicalDocument()
@@ -1128,7 +1139,9 @@ describe('DocumentDetailPage', () => {
             finishRetry = resolve
           }),
       )
-      fireEvent.click(retryButton)
+      await act(async () => {
+        fireEvent.click(retryButton)
+      })
       expect(retryButton).toHaveAttribute('aria-disabled', 'true')
       expect(retryButton).not.toBeDisabled()
       expect(checkButton).toBeDisabled()
@@ -1179,9 +1192,11 @@ describe('DocumentDetailPage', () => {
           }),
       )
 
-      fireEvent.click(
-        screen.getByRole('button', { name: 'dataset.newKnowledge.retryReindexDocument' }),
-      )
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'dataset.newKnowledge.retryReindexDocument' }),
+        )
+      })
       tasksQuery.data = {
         pages: [{ items: [task({ documentRevision: 5, id: 'late-first', state: 'running' })] }],
       }
@@ -1427,5 +1442,17 @@ describe('DocumentDetailPage', () => {
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('button', { name: 'common.operation.retry' })).toHaveFocus()
+  })
+  it('reports a reindex failure once and makes the action available again', async () => {
+    reindexMutation.mutateAsync.mockRejectedValueOnce(new Error('Reindex failed'))
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })
+    await userEvent.setup().click(button)
+    await waitFor(() =>
+      expect(toastState.error).toHaveBeenCalledExactlyOnceWith(
+        'dataset.newKnowledge.documentsReindexFailed',
+      ),
+    )
+    expect(button).not.toHaveAttribute('data-disabled')
   })
 })
