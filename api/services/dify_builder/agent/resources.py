@@ -160,10 +160,16 @@ def _safe(build, source: str) -> list:
         return []
 
 
-def list_tenant_resources(tenant_id: str, *, account_id: str | None = None) -> TenantResources:
+def list_tenant_resources(
+    tenant_id: str, *, account_id: str | None = None, selected_agent_ids: frozenset[str] = frozenset()
+) -> TenantResources:
     """``account_id`` is the acting member whose credential visibility decides
     tool readiness; ``None`` (no acting member) counts team-shared
-    credentials only. Models and datasets do not depend on it."""
+    credentials only. Models and datasets do not depend on it.
+
+    With selected_agent_ids, resolve only those confirmed identities through the
+    same current eligibility/access filters; discovery otherwise stays bounded.
+    """
 
     def build_models():
         models: list[ResourceRef] = []
@@ -210,9 +216,16 @@ def list_tenant_resources(tenant_id: str, *, account_id: str | None = None) -> T
             from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
 
             with Session(db.engine) as session:
-                candidates = AgentCatalogService(session).list_candidates(
-                    tenant_id=tenant_id, actor_id=account_id, app_id=None, query=None
-                )
+                catalog = AgentCatalogService(session)
+                if selected_agent_ids:
+                    candidates = catalog.resolve_candidates(
+                        tenant_id=tenant_id, actor_id=account_id, app_id=None, agent_ids=selected_agent_ids
+                    )
+                else:
+                    candidates = catalog.list_candidates(
+                        tenant_id=tenant_id, actor_id=account_id, app_id=None, query=None
+                    )
+
             agents = [
                 ResourceRef(
                     id=item.resource_id,

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import JsonValue
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
@@ -112,6 +112,29 @@ class AgentCatalogService:
         """
         if page < 1 or not 1 <= limit <= 100:
             raise ValueError("Invalid Agent catalog pagination")
+        stmt = self._eligible_agents_stmt(tenant_id=tenant_id, actor_id=actor_id, app_id=app_id, query=query)
+        return self._project_candidates(tenant_id=tenant_id, stmt=stmt.offset((page - 1) * limit).limit(limit))
+
+    def resolve_candidates(
+        self, *, tenant_id: str, actor_id: str, app_id: str | None, agent_ids: frozenset[str]
+    ) -> list[PublishedAgentCandidate]:
+        """Revalidate only confirmed identities, independently of discovery page order.
+
+        At most one recommendation page of explicitly requested IDs is resolved;
+        this never enumerates the remaining workspace inventory. Active published
+        snapshot and current access are reread; callers compare the confirmed
+        snapshot/digest rather than silently adopting this current projection.
+        """
+        if not agent_ids or len(agent_ids) > 100:
+            raise ValueError("Agent selection must contain between 1 and 100 identities")
+        stmt = self._eligible_agents_stmt(tenant_id=tenant_id, actor_id=actor_id, app_id=app_id, query=None)
+        return self._project_candidates(
+            tenant_id=tenant_id, stmt=stmt.where(Agent.id.in_(agent_ids)).limit(len(agent_ids))
+        )
+
+    def _eligible_agents_stmt(
+        self, *, tenant_id: str, actor_id: str, app_id: str | None, query: str | None
+    ) -> Select[tuple[Agent]]:
         access = access_service.resolve_current_agent_access_filter(tenant_id=tenant_id, actor_id=actor_id)
         access_service.require_builder_agent_access(
             session=self.session, tenant_id=tenant_id, actor_id=actor_id, app_id=app_id
@@ -123,7 +146,10 @@ class AgentCatalogService:
         )
         if access.accessible_agent_ids is not None:
             stmt = stmt.where(Agent.id.in_(access.accessible_agent_ids))
-        agents = self.session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all()
+        return stmt
+
+    def _project_candidates(self, *, tenant_id: str, stmt: Select[tuple[Agent]]) -> list[PublishedAgentCandidate]:
+        agents = self.session.scalars(stmt).all()
         result = []
         for agent in agents:
             snapshot = self.session.scalar(

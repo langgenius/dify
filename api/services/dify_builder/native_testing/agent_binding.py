@@ -255,16 +255,41 @@ class AgentBindingService:
     def sync_prepared_bindings(
         self, *, actor: Actor, workflow: Workflow, selections: Mapping[str, AgentBindingSelection]
     ) -> set[str]:
-        """Use after prepare_node in the same transaction; errors roll back graph too."""
+        """Require preparation for the complete graph before whole-graph native sync.
+
+        Every native graph Agent must have a confirmed prepared roster selection.
+        Existing bindings omitted from the graph are protected from implicit
+        deletion. Inline/unprepared nodes and removals require their own admitted
+        owner path rather than piggybacking on this roster binding operation.
+        """
         if not self.session.in_transaction():
             raise ValueError("Agent sync requires the caller's draft transaction")
         if self.session.get_transaction() is not self._preparation_transaction:
             raise BuilderExecutionPolicyError("agent_binding_not_prepared")
         nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(workflow.graph_dict))
+        existing_node_ids = set(
+            self.session.scalars(
+                select(WorkflowAgentNodeBinding.node_id).where(
+                    WorkflowAgentNodeBinding.tenant_id == actor.tenant_id,
+                    WorkflowAgentNodeBinding.app_id == workflow.app_id,
+                    WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                    WorkflowAgentNodeBinding.workflow_version == workflow.version,
+                )
+            ).all()
+        )
+        prepared_node_ids = {node_id for workflow_id, node_id in self._prepared if workflow_id == workflow.id}
+        if (
+            not selections
+            or set(selections) != set(nodes)
+            or prepared_node_ids != set(nodes)
+            or not existing_node_ids.issubset(nodes)
+        ):
+            raise BuilderExecutionPolicyError("agent_binding_not_prepared")
         for node_id, selection in selections.items():
             prepared = self._prepared.get((workflow.id, node_id))
             if prepared is None or prepared[0] != selection or nodes.get(node_id) != prepared[1]:
                 raise BuilderExecutionPolicyError("agent_binding_not_prepared")
+            self.recheck_access(actor=actor, app_id=workflow.app_id, agent_id=selection.agent_id)
         retirements = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
             session=self.session, draft_workflow=workflow, account_id=actor.account_id
         )

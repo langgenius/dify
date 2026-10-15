@@ -758,7 +758,7 @@ def bind_resources(
     The fresh inventory remains authoritative for tenant/action identity;
     binding a schema does not select or authorize any stored credential.
     """
-    inv = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    inv = _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids)
     installed_tools = inv.tools
     kinds: dict[str, str] = {}
     kinds.update({r.id: "plugin" for r in installed_tools})
@@ -782,6 +782,19 @@ def bind_resources(
         if suffix not in bound[index]:
             bound[index] = bound[index] + suffix
     return bound
+
+
+def _inventory_for_selection(
+    tenant_id: str, *, account_id: str | None, resource_ids: Sequence[str]
+) -> resources.TenantResources:
+    from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
+
+    selected_ids = frozenset(
+        AgentBindingSelection.from_resource_id(rid).agent_id for rid in resource_ids if rid.startswith("agent:")
+    )
+    if selected_ids:
+        return resources.list_tenant_resources(tenant_id, account_id=account_id, selected_agent_ids=selected_ids)
+    return resources.list_tenant_resources(tenant_id, account_id=account_id)
 
 
 def _selected_agent_resources(inv: resources.TenantResources, resource_ids: Sequence[str]) -> list[ResourceRef]:
@@ -1113,7 +1126,9 @@ def build_nodes(
         tool_refs = _installed_tool_refs(tenant_id, account_id)
         ready_tool_keys = frozenset(tool_refs)
         agent_refs = (
-            _selected_agent_resources(resources.list_tenant_resources(tenant_id, account_id=account_id), resource_ids)
+            _selected_agent_resources(
+                _inventory_for_selection(tenant_id, account_id=account_id, resource_ids=resource_ids), resource_ids
+            )
             if any(rid.startswith("agent:") for rid in resource_ids)
             else []
         )

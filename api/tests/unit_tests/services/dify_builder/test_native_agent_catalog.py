@@ -154,3 +154,72 @@ def test_missing_tool_credentials_remain_discoverable_with_setup_status(sqlite_s
     assert len(candidates) == 1
     assert candidates[0].readiness == "missing_config"
     assert candidates[0].dependencies == ("model:model-plugin/provider/test-model", "tool:plugin/provider/read")
+
+
+@pytest.mark.parametrize("state", ["unchanged", "drifted", "revoked"])
+def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(sqlite_session, monkeypatch, state):
+    from datetime import datetime
+    from types import SimpleNamespace
+
+    from configs import dify_config
+    from models.agent import AgentConfigRevision, AgentConfigRevisionOperation
+    from services.agent import access_service
+    from services.dify_builder.agent import build, resources
+    from services.dify_builder.native_testing.agent_binding import AgentSnapshotChanged
+    from services.dify_builder.native_testing.agent_catalog import project_published_agent
+    from tests.builder_agent_fixtures import add_agent, make_case
+
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+    case = make_case(sqlite_session)
+    candidate = project_published_agent(agent=case.agent, snapshot=case.snapshot)
+    for index in range(101):
+        newer, _ = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name=f"Newer Agent {index}")
+        newer.updated_at = datetime(2026, 10, 14)
+    case.agent.updated_at = datetime(2000, 1, 1)
+    sqlite_session.commit()
+    monkeypatch.setattr(resources, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
+    inventory = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id)
+    assert len(inventory.agents) == 100
+    assert candidate.resource_id not in {ref.id for ref in inventory.agents}
+    if state == "drifted":
+        replacement = AgentConfigSnapshot(
+            tenant_id=case.actor.tenant_id,
+            agent_id=case.agent.id,
+            version=2,
+            config_snapshot=case.snapshot.config_snapshot,
+        )
+        sqlite_session.add(replacement)
+        sqlite_session.flush()
+        case.agent.active_config_snapshot_id = replacement.id
+        sqlite_session.add(
+            AgentConfigRevision(
+                tenant_id=case.actor.tenant_id,
+                agent_id=case.agent.id,
+                current_snapshot_id=replacement.id,
+                revision=2,
+                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+            )
+        )
+        sqlite_session.commit()
+        with pytest.raises(AgentSnapshotChanged):
+            build.bind_resources(
+                None, case.actor.tenant_id, ["Review risk"], [candidate.resource_id], account_id=case.actor.account_id
+            )
+    elif state == "revoked":
+        monkeypatch.setattr(
+            access_service,
+            "resolve_current_agent_access_filter",
+            lambda **_kwargs: access_service.AgentAccessFilter(accessible_agent_ids=set()),
+        )
+        with pytest.raises(ValueError, match="no longer available"):
+            build.bind_resources(
+                None, case.actor.tenant_id, ["Review risk"], [candidate.resource_id], account_id=case.actor.account_id
+            )
+    else:
+        result = build.bind_resources(
+            None, case.actor.tenant_id, ["Review risk"], [candidate.resource_id], account_id=case.actor.account_id
+        )
+        assert candidate.resource_id in result[0]

@@ -362,3 +362,124 @@ def test_native_authorization_rpc_precedes_draft_transaction(agent_case, sqlite_
         node_job=WorkflowNodeJobConfig(),
     )
     assert checked == ["RPC", "RPC"]
+
+
+@pytest.mark.parametrize("omission", ["additional", "empty", "advanced_existing", "removed_existing"])
+def test_sync_requires_complete_graph_and_existing_binding_coverage(agent_case, sqlite_session, omission):
+    import json
+
+    from models.agent import (
+        AgentConfigRevision,
+        AgentConfigRevisionOperation,
+        AgentConfigSnapshot,
+        WorkflowAgentBindingType,
+        WorkflowAgentNodeBinding,
+    )
+    from models.agent_config_entities import WorkflowNodeJobConfig
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.agent_binding import AgentBindingService, native_node_data
+    from tests.builder_agent_fixtures import add_agent
+
+    case = agent_case
+    selection = _selection(case)
+    service = AgentBindingService(sqlite_session)
+    data = service.prepare_node(
+        actor=case.actor,
+        workflow=case.workflow,
+        node_id="review",
+        selection=selection,
+        node_job=WorkflowNodeJobConfig(),
+    )
+    graph = case.workflow.graph_dict
+    graph["nodes"].append({"id": "review", "data": data})
+    if omission != "empty":
+        other_agent, other_snapshot = add_agent(sqlite_session, tenant_id=case.actor.tenant_id, name="Unprepared Agent")
+        other_data = native_node_data(
+            agent_id=other_agent.id, snapshot_id=other_snapshot.id, node_job=WorkflowNodeJobConfig()
+        )
+        if omission != "removed_existing":
+            graph["nodes"].append({"id": "unprepared", "data": other_data})
+        if omission in {"advanced_existing", "removed_existing"}:
+            sqlite_session.add(
+                WorkflowAgentNodeBinding(
+                    tenant_id=case.actor.tenant_id,
+                    app_id=case.workflow.app_id,
+                    workflow_id=case.workflow.id,
+                    workflow_version="draft",
+                    node_id="unprepared",
+                    binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                    agent_id=other_agent.id,
+                    current_snapshot_id=other_snapshot.id,
+                    node_job_config=WorkflowNodeJobConfig(),
+                )
+            )
+            if omission == "advanced_existing":
+                replacement = AgentConfigSnapshot(
+                    tenant_id=case.actor.tenant_id,
+                    agent_id=other_agent.id,
+                    version=2,
+                    config_snapshot=other_snapshot.config_snapshot,
+                )
+                sqlite_session.add(replacement)
+                sqlite_session.flush()
+                other_agent.active_config_snapshot_id = replacement.id
+                sqlite_session.add(
+                    AgentConfigRevision(
+                        tenant_id=case.actor.tenant_id,
+                        agent_id=other_agent.id,
+                        current_snapshot_id=replacement.id,
+                        revision=2,
+                        operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+                    )
+                )
+    case.workflow.graph = json.dumps(graph)
+    sqlite_session.flush()
+    with pytest.raises(BuilderExecutionPolicyError, match="agent_binding_not_prepared"):
+        service.sync_prepared_bindings(
+            actor=case.actor, workflow=case.workflow, selections={} if omission == "empty" else {"review": selection}
+        )
+    from sqlalchemy import select
+
+    bindings = sqlite_session.scalars(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == case.workflow.id)
+    ).all()
+    if omission in {"advanced_existing", "removed_existing"}:
+        assert [(binding.node_id, binding.current_snapshot_id) for binding in bindings] == [
+            ("unprepared", other_snapshot.id)
+        ]
+    else:
+        assert bindings == []
+
+
+def test_complete_prepared_multi_agent_graph_syncs_all_owned_bindings(agent_case, sqlite_session):
+    import json
+
+    from sqlalchemy import select
+
+    from models.agent import WorkflowAgentNodeBinding
+    from models.agent_config_entities import WorkflowNodeJobConfig
+    from services.dify_builder.native_testing.agent_binding import AgentBindingService
+
+    service = AgentBindingService(sqlite_session)
+    selection = _selection(agent_case)
+    graph = agent_case.workflow.graph_dict
+    for node_id in ("first", "second"):
+        data = service.prepare_node(
+            actor=agent_case.actor,
+            workflow=agent_case.workflow,
+            node_id=node_id,
+            selection=selection,
+            node_job=WorkflowNodeJobConfig(),
+        )
+        graph["nodes"].append({"id": node_id, "data": data})
+    agent_case.workflow.graph = json.dumps(graph)
+    service.sync_prepared_bindings(
+        actor=agent_case.actor, workflow=agent_case.workflow, selections={"first": selection, "second": selection}
+    )
+    bindings = sqlite_session.scalars(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == agent_case.workflow.id)
+    ).all()
+    assert {(binding.node_id, binding.current_snapshot_id) for binding in bindings} == {
+        ("first", selection.snapshot_id),
+        ("second", selection.snapshot_id),
+    }

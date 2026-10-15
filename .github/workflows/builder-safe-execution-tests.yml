@@ -343,6 +343,7 @@ jobs:
               "api/tests/unit_tests/services/dify_builder/test_dify_port_preflight.py",
               "api/tests/unit_tests/core/workflow/generator/test_runner.py",
               "api/tests/unit_tests/services/dify_builder/test_build_cognition.py",
+              "api/tests/unit_tests/services/dify_builder/test_llm_agent.py",
               "api/tests/unit_tests/services/dify_builder/test_build_nodes.py",
               "api/tests/unit_tests/services/dify_builder/test_draft_tool_setup.py",
               "api/tests/unit_tests/services/test_draft_tool_admission.py",
