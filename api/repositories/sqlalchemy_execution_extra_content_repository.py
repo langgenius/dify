@@ -125,10 +125,8 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
 
         submitted = form.submitted_at is not None or form.status == HumanInputFormStatus.SUBMITTED
         # Only a waiting form can still be answered; a timed-out or expired one gets no token.
-        if not submitted and form.status == HumanInputFormStatus.WAITING:
-            form_token = self._resolve_form_token(recipients_by_form_id.get(form.id, []))
-        else:
-            form_token = None
+        answerable = not submitted and form.status == HumanInputFormStatus.WAITING
+        form_token = self._resolve_form_token(recipients_by_form_id.get(form.id, [])) if answerable else None
         form_definition_domain_model = HumanInputFormDefinition(
             form_id=form.id,
             node_id=form.node_id,

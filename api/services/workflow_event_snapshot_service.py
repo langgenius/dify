@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import queue
@@ -692,10 +693,8 @@ def _start_buffering(subscription) -> BufferState:
                     buffer_state.queue.put_nowait(event)
                 except queue.Full:
                     dropped_count += 1
-                    try:
+                    with contextlib.suppress(queue.Empty):
                         buffer_state.queue.get_nowait()
-                    except queue.Empty:
-                        pass
                     try:
                         buffer_state.queue.put_nowait(event)
                     except queue.Full:

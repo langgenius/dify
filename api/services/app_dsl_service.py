@@ -750,10 +750,7 @@ class AppDslService:
                 current_draft_workflow = locked_draft or workflow_service.get_draft_workflow(
                     app_model=app, session=self._session
                 )
-                if current_draft_workflow:
-                    unique_hash = current_draft_workflow.unique_hash
-                else:
-                    unique_hash = None
+                unique_hash = current_draft_workflow.unique_hash if current_draft_workflow else None
                 graph = workflow_data.get("graph", {})
                 if not isinstance(graph, dict):
                     raise ValueError("Workflow graph must be a mapping")

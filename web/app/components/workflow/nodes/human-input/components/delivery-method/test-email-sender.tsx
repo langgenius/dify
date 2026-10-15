@@ -11,7 +11,6 @@ import { noop, unionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import { formatValue } from '@/app/components/workflow/nodes/_base/components/before-run-form/helpers'
@@ -25,6 +24,7 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useParams } from '@/next/navigation'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'
@@ -135,7 +135,7 @@ const EmailSenderContent = ({
     select: (data) => data.profile.email,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const appDetail = useAppStore((state) => state.appDetail)
+  const { appId } = useParams<{ appId?: string }>()
   const { mutateAsync: testEmailSender } = useTestEmailSender()
 
   const debugEnabled = !!config?.debug_mode
@@ -236,7 +236,7 @@ const EmailSenderContent = ({
     setSendingEmail(true)
     try {
       await testEmailSender({
-        appID: appDetail?.id || '',
+        appID: appId || '',
         nodeID: nodeId,
         deliveryID: deliveryId,
         inputs: formattedValues,
@@ -245,16 +245,7 @@ const EmailSenderContent = ({
     } finally {
       setSendingEmail(false)
     }
-  }, [
-    confirmChecked,
-    generatedInputs,
-    inputs,
-    testEmailSender,
-    appDetail?.id,
-    nodeId,
-    deliveryId,
-    t,
-  ])
+  }, [confirmChecked, generatedInputs, inputs, testEmailSender, appId, nodeId, deliveryId, t])
 
   if (done) {
     return (

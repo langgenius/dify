@@ -23,6 +23,7 @@ The transport-generic enum members, ``_CODE_BY_STATUS`` and the
 promote them to ``libs`` if a second surface adopts ``ErrorBody``.
 """
 
+import contextlib
 import logging
 from enum import StrEnum
 from typing import Any
@@ -206,10 +207,8 @@ class OpenApiErrorFormatter:
         # flask-restx Api.handle_error does `data = getattr(e, "data", default_data)`
         # AFTER our handler returns, so a pre-existing e.data (flask_restx.abort,
         # BaseHTTPException) would override the canonical body. Rewrite it.
-        try:
+        with contextlib.suppress(AttributeError):
             e.data = wire  # type: ignore[attr-defined]
-        except AttributeError:
-            pass
         return wire
 
     def _resolve_code(self, e: Exception, status_code: int) -> str:

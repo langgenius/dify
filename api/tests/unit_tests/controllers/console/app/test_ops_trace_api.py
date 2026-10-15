@@ -256,24 +256,42 @@ def test_trace_app_config_get_empty_returns_exact_legacy_body(
     )
 
 
+@pytest.mark.parametrize(
+    ("provider", "config"),
+    [
+        ("langfuse", {"public_key": "pk", "secret_key": "******"}),
+        (
+            "mlflow",
+            {
+                "tracking_uri": "http://localhost:5000",
+                "experiment_id": "0",
+                "username": None,
+                "password": "******",
+                "project_url": "http://localhost:5000",
+            },
+        ),
+    ],
+)
 def test_trace_app_config_get_configured_returns_exact_legacy_body(
     app: Flask,
     tracing_configs: MagicMock,
+    provider: str,
+    config: dict[str, str | None],
 ) -> None:
     tracing_configs.get.return_value = AppTracingConfigRecord(
         id="trace-config-1",
         app_id=APP_ID,
-        tracing_provider=PROVIDER,
-        tracing_config={"public_key": "pk", "secret_key": "******"},
+        tracing_provider=provider,
+        tracing_config=config,
         is_active=True,
         created_at=datetime(2026, 1, 2, 3, 4, 5),
         updated_at=datetime(2026, 1, 3, 4, 5, 6),
     )
 
-    with app.test_request_context("/?tracing_provider=langfuse"):
+    with app.test_request_context(f"/?tracing_provider={provider}"):
         result = _original(ops_trace_module.TraceAppConfigApi.get)(
             ops_trace_module.TraceAppConfigApi(),
-            ops_trace_module.TraceProviderQuery(tracing_provider=PROVIDER),
+            ops_trace_module.TraceProviderQuery(tracing_provider=provider),
             _request_context(),
             UUID(APP_ID),
         )
@@ -281,8 +299,8 @@ def test_trace_app_config_get_configured_returns_exact_legacy_body(
     assert result == {
         "id": "trace-config-1",
         "app_id": APP_ID,
-        "tracing_provider": PROVIDER,
-        "tracing_config": {"public_key": "pk", "secret_key": "******"},
+        "tracing_provider": provider,
+        "tracing_config": config,
         "is_active": True,
         "created_at": "2026-01-02 03:04:05",
         "updated_at": "2026-01-03 04:05:06",
@@ -296,15 +314,24 @@ def test_trace_app_config_get_configured_returns_exact_legacy_body(
         pytest.param("patch", {"result": "success"}, id="update"),
     ],
 )
+@pytest.mark.parametrize(
+    ("provider", "config"),
+    [
+        ("langfuse", {"public_key": "pk", "secret_key": "sk"}),
+        ("mlflow", {"tracking_uri": "", "experiment_id": "0", "username": None, "password": "******"}),
+    ],
+)
 def test_trace_app_config_write_returns_expected_response(
     app: Flask,
     tracing_configs: MagicMock,
     method_name: str,
     expected_result: object,
+    provider: str,
+    config: dict[str, str | None],
 ) -> None:
     payload = ops_trace_module.TraceConfigPayload(
-        tracing_provider=PROVIDER,
-        tracing_config={"public_key": "pk", "secret_key": "sk"},
+        tracing_provider=provider,
+        tracing_config=config,
     )
 
     with app.test_request_context("/", method=method_name.upper()):
@@ -319,8 +346,8 @@ def test_trace_app_config_write_returns_expected_response(
     _service_method(tracing_configs, method_name).assert_called_once_with(
         context=_request_context(),
         app_id=APP_ID,
-        tracing_provider=PROVIDER,
-        tracing_config={"public_key": "pk", "secret_key": "sk"},
+        tracing_provider=provider,
+        tracing_config=config,
     )
 
 
