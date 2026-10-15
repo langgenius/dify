@@ -13,7 +13,7 @@ from tests.unit_tests.core.datasource.factories import datasource_entity
 
 
 class TestOnlineDriveDatasourcePlugin:
-    def test_init(self):
+    def test_init(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")
@@ -37,7 +37,7 @@ class TestOnlineDriveDatasourcePlugin:
         assert plugin.icon == icon
         assert plugin.plugin_unique_identifier == plugin_unique_identifier
 
-    def test_online_drive_browse_files(self):
+    def test_online_drive_browse_files(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         entity.identity.provider = "test_provider"
@@ -84,7 +84,7 @@ class TestOnlineDriveDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_online_drive_download_file(self):
+    def test_online_drive_download_file(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         entity.identity.provider = "test_provider"
@@ -131,7 +131,7 @@ class TestOnlineDriveDatasourcePlugin:
                 provider_type=provider_type,
             )
 
-    def test_datasource_provider_type(self):
+    def test_datasource_provider_type(self) -> None:
         # Arrange
         entity = datasource_entity("test_name")
         runtime = DatasourceRuntime(tenant_id="test_tenant")

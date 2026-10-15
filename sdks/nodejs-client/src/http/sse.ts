@@ -74,11 +74,11 @@ export const parseSseStream = async function* <T>(stream: Readable): AsyncIterab
       continue
     }
     if (line.startsWith('event:')) {
-      eventName = line.slice('event:'.length).trim()
+      eventName = line.slice('event:'.length).replace(/^ /, '')
       continue
     }
     if (line.startsWith('data:')) {
-      dataLines.push(line.slice('data:'.length).trimStart())
+      dataLines.push(line.slice('data:'.length).replace(/^ /, ''))
       continue
     }
   }

@@ -1,4 +1,3 @@
-from typing import Any
 from uuid import UUID
 
 from flask_restx import Resource
@@ -55,7 +54,7 @@ class TraceProviderQuery(BaseModel):
 
 class TraceConfigPayload(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider name")
-    tracing_config: dict[str, Any] = Field(
+    tracing_config: dict[str, str | None] = Field(
         ...,
         description="Tracing configuration data",
     )
@@ -68,7 +67,7 @@ class TraceAppConfigResponse(ResponseModel):
     id: str | None = None
     app_id: str | None = None
     tracing_provider: str | None = None
-    tracing_config: dict[str, Any] | None = Field(default=None)
+    tracing_config: dict[str, str | None] | None = Field(default=None)
     is_active: bool | None = None
     created_at: str | None = None
     updated_at: str | None = None

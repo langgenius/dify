@@ -2014,7 +2014,7 @@ class WorkflowOnlineUsersApi(Resource):
                 pipe.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
 
             users_json_batch = pipe.execute()
-            for app_id, users_json in zip(app_id_batch, users_json_batch):
+            for app_id, users_json in zip(app_id_batch, users_json_batch, strict=False):
                 users_json_by_app_id[app_id] = users_json
 
         results = []

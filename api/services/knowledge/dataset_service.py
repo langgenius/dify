@@ -513,10 +513,7 @@ class DatasetService:
             model_schema = text_embedding_model.get_model_schema(model_instance.model_name, model_instance.credentials)
             if not model_schema:
                 raise ValueError("Model schema not found")
-            if model_schema.features and ModelFeature.VISION in model_schema.features:
-                return True
-            else:
-                return False
+            return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
         except LLMBadRequestError:
             raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
 
@@ -1837,9 +1834,9 @@ class DocumentService:
                 Document.tenant_id == dataset_ref.tenant_id,
                 Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_ids),
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
         return documents
@@ -1849,7 +1846,7 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
             )
         ).all()
 
@@ -1860,9 +1857,9 @@ class DocumentService:
         documents = session.scalars(
             select(Document).where(
                 Document.dataset_id == dataset_id,
-                Document.enabled == True,
+                Document.enabled.is_(True),
                 Document.indexing_status == IndexingStatus.COMPLETED,
-                Document.archived == False,
+                Document.archived.is_(False),
             )
         ).all()
 
@@ -1934,10 +1931,7 @@ class DocumentService:
 
     @staticmethod
     def check_archived(document):
-        if document.archived:
-            return True
-        else:
-            return False
+        return bool(document.archived)
 
     @staticmethod
     def delete_document(document, session: Session):
@@ -2407,7 +2401,7 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                             Document.name.in_(file_names),
                         )
                     ).all()
@@ -2462,7 +2456,7 @@ class DocumentService:
                             Document.dataset_id == dataset.id,
                             Document.tenant_id == account.current_tenant_id,
                             Document.data_source_type == DataSourceType.NOTION_IMPORT,
-                            Document.enabled == True,
+                            Document.enabled.is_(True),
                         )
                     ).all()
                 )
@@ -2908,8 +2902,8 @@ class DocumentService:
             session.scalar(
                 select(func.count(Document.id)).where(
                     Document.completed_at.isnot(None),
-                    Document.enabled == True,
-                    Document.archived == False,
+                    Document.enabled.is_(True),
+                    Document.archived.is_(False),
                     Document.tenant_id == current_user.current_tenant_id,
                 )
             )
@@ -3009,7 +3003,7 @@ class DocumentService:
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == account.current_tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
-                                DataSourceOauthBinding.disabled == False,
+                                DataSourceOauthBinding.disabled.is_(False),
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )

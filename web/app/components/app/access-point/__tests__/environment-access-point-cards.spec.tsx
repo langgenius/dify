@@ -60,22 +60,25 @@ vi.mock('../deployed-environment-access-points/environment-access-control', () =
   },
 }))
 
-vi.mock('@/app/components/app/access-point/shared/api-secret-key-button', () => ({
-  ApiSecretKeyButton: (props: {
-    apiKeyCount?: number
-    appId: string
-    canManage: boolean
-    disabled?: boolean
-    environmentId?: string
-  }) => {
-    mocks.apiKeyButtonProps(props)
-    return (
-      <button type="button" disabled={!props.canManage || props.disabled}>
-        environment-api-keys
-      </button>
-    )
-  },
-}))
+vi.mock(
+  '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button',
+  () => ({
+    EnvironmentApiKeyButton: (props: {
+      apiKeyCount?: number
+      appId: string
+      canManage: boolean
+      disabled?: boolean
+      environmentId?: string
+    }) => {
+      mocks.apiKeyButtonProps(props)
+      return (
+        <button type="button" disabled={!props.canManage || props.disabled}>
+          environment-api-keys
+        </button>
+      )
+    },
+  }),
+)
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -422,13 +425,17 @@ describe('environment access point cards', () => {
   })
 
   it('keeps view actions available while disabling deployed Web App management', async () => {
+    const user = userEvent.setup()
     renderCard(
       <EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint={false} />,
     )
 
     expect(await screen.findByRole('switch')).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toBeEnabled()
-    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
+    const regenerate = screen.getByRole('button', { name: /regenerate/ })
+    expect(regenerate).toHaveAttribute('aria-disabled', 'true')
+    await user.click(regenerate)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),

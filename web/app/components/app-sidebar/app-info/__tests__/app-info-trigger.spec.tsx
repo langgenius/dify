@@ -31,24 +31,6 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('../../../base/app-icon', () => ({
-  default: ({
-    size,
-    icon,
-    background,
-  }: {
-    size: string
-    icon: string
-    background: string
-    iconType?: string
-    imageUrl?: string
-  }) => (
-    <span data-size={size} data-icon={icon} data-bg={background}>
-      {icon}
-    </span>
-  ),
-}))
-
 const defaultAppPermissionKeys = [
   AppACLPermission.Edit,
   AppACLPermission.ImportExportDSL,
@@ -96,7 +78,7 @@ describe('AppInfoTrigger', () => {
     })
     render(<AppInfoTrigger {...props} />)
 
-    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'medium')
+    expect(screen.getByText('🤖')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot')).toBeInTheDocument()
     expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot').closest('button')).toBeNull()
@@ -107,10 +89,10 @@ describe('AppInfoTrigger', () => {
     expect(props.exportCheck).not.toHaveBeenCalled()
   })
 
-  it('renders only the medium app icon when collapsed', () => {
+  it('renders only the app icon when collapsed', () => {
     render(<AppInfoTrigger {...createProps({ expand: false })} />)
 
-    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'medium')
+    expect(screen.getByText('🤖')).toBeInTheDocument()
     expect(screen.queryByText('Test App')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })

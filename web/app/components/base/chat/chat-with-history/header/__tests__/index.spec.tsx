@@ -2,7 +2,7 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import type { AppData, ConversationItem } from '@/models/share'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useChatWithHistoryContext } from '../../context'
 import Header from '../index'
 
@@ -60,6 +60,8 @@ describe('Header Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   describe('Rendering', () => {
     it('should render conversation name when conversation is selected', () => {
@@ -298,7 +300,9 @@ describe('Header Component', () => {
     })
 
     it('should render app icon from URL when icon_url is provided', () => {
-      setup({
+      vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+      vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
+      const { container } = setup({
         appData: {
           ...mockAppData,
           site: {
@@ -308,8 +312,8 @@ describe('Header Component', () => {
           },
         },
       })
-      const img = screen.getByAltText('app icon')
-      expect(img)!.toHaveAttribute('src', 'https://example.com/icon.png')
+      expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/icon.png')
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
     it('should handle undefined appData gracefully (optional chaining)', () => {
