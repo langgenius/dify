@@ -20,8 +20,6 @@
   "analysis.tps.title": "Token Çıktı Hızı",
   "analysis.userSatisfactionRate.explanation": "Her 1.000 mesajda alınan beğeni sayısı. Bu, kullanıcıların çok memnun olduğu cevapların oranını gösterir.",
   "analysis.userSatisfactionRate.title": "Kullanıcı Memnuniyet Oranı",
-  "apiKeyInfo.cloud.trial.description": "Deneme kotası, test amaçlarınız için sağlanmıştır. Deneme kotası bitmeden önce kendi model sağlayıcınızı ayarlayın veya ek kota satın alın.",
-  "apiKeyInfo.cloud.trial.title": "{{providerName}} deneme kotasını kullanıyorsunuz.",
   "apiKeyInfo.selfHost.title.row1": "Başlamak için,",
   "apiKeyInfo.selfHost.title.row2": "model sağlayıcınızı ayarlayın.",
   "apiKeyInfo.setAPIBtn": "Model sağlayıcısını ayarlamaya git",

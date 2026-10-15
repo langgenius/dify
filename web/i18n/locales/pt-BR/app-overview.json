@@ -20,8 +20,6 @@
   "analysis.tps.title": "Velocidade de Saída do Token",
   "analysis.userSatisfactionRate.explanation": "O número de curtidas por 1.000 mensagens. Isso indica a proporção de respostas com as quais os usuários estão altamente satisfeitos.",
   "analysis.userSatisfactionRate.title": "Taxa de Satisfação do Usuário",
-  "apiKeyInfo.cloud.trial.description": "A cota de teste é fornecida para seu uso de teste. Antes que as chamadas de cota de teste se esgotem, configure seu próprio provedor de modelo ou compre cota adicional.",
-  "apiKeyInfo.cloud.trial.title": "Você está usando a cota de teste da {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "Para começar,",
   "apiKeyInfo.selfHost.title.row2": "configure primeiro seu provedor de modelo.",
   "apiKeyInfo.setAPIBtn": "Ir para configurar o provedor de modelo",

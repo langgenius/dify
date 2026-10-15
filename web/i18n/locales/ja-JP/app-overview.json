@@ -20,8 +20,6 @@
   "analysis.tps.title": "トークン出力速度",
   "analysis.userSatisfactionRate.explanation": "1,000 件のメッセージあたりの「いいね」の数。これは、ユーザーが非常に満足している回答の割合を示します。",
   "analysis.userSatisfactionRate.title": "ユーザー満足度率",
-  "apiKeyInfo.cloud.trial.description": "トライアルクォータはテスト用に提供されます。トライアルクォータのコールが使い切られる前に、独自のモデルプロバイダを設定するか、追加のクォータを購入してください。",
-  "apiKeyInfo.cloud.trial.title": "{{providerName}}トライアルクォータを使用しています。",
   "apiKeyInfo.selfHost.title.row1": "はじめるには、",
   "apiKeyInfo.selfHost.title.row2": "まずモデルプロバイダを設定してください。",
   "apiKeyInfo.setAPIBtn": "モデルプロバイダの設定へ",

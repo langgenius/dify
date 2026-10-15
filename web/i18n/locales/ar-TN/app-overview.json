@@ -20,8 +20,6 @@
   "analysis.tps.title": "سرعة إخراج الرمز",
   "analysis.userSatisfactionRate.explanation": "عدد الإعجابات لكل 1000 رسالة. يشير هذا إلى النسبة التي يرضى فيها المستخدمون للغاية عن الإجابات.",
   "analysis.userSatisfactionRate.title": "معدل رضا المستخدم",
-  "apiKeyInfo.cloud.trial.description": "يتم توفير حصة التجربة لأغراض الاختبار الخاصة بك. قبل استنفاد حصة التجربة، يرجى إعداد مزود النموذج الخاص بك أو شراء حصة إضافية.",
-  "apiKeyInfo.cloud.trial.title": "أنت تستخدم حصة تجربة {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "للبدء،",
   "apiKeyInfo.selfHost.title.row2": "قم بإعداد مزود النموذج الخاص بك أولاً.",
   "apiKeyInfo.setAPIBtn": "الذهاب لإعداد مزود النموذج",

@@ -20,8 +20,6 @@
   "analysis.tps.title": "Tốc độ đầu ra token",
   "analysis.userSatisfactionRate.explanation": "Số lượt thích trên mỗi 1.000 tin nhắn. Chỉ số này cho biết tỷ lệ câu trả lời mà người dùng rất hài lòng.",
   "analysis.userSatisfactionRate.title": "Tỷ lệ hài lòng của người dùng",
-  "apiKeyInfo.cloud.trial.description": "Gói dùng thử được cung cấp để bạn kiểm tra. Trước khi hết lượt gọi của gói dùng thử, vui lòng thiết lập nhà cung cấp mô hình riêng hoặc mua thêm hạn mức.",
-  "apiKeyInfo.cloud.trial.title": "Bạn đang sử dụng gói dùng thử của {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "Để bắt đầu,",
   "apiKeyInfo.selfHost.title.row2": "hãy thiết lập nhà cung cấp mô hình của bạn trước.",
   "apiKeyInfo.setAPIBtn": "Thiết lập nhà cung cấp mô hình",

@@ -20,8 +20,6 @@
   "analysis.tps.title": "Token-Ausgabegeschwindigkeit",
   "analysis.userSatisfactionRate.explanation": "Die Anzahl der Likes pro 1.000 Nachrichten. Dies zeigt den Anteil der Antworten an, mit denen die Benutzer sehr zufrieden sind.",
   "analysis.userSatisfactionRate.title": "Benutzerzufriedenheitsrate",
-  "apiKeyInfo.cloud.trial.description": "Das Testkontingent wird für Ihre Testnutzung bereitgestellt. Bevor das Testkontingent aufgebraucht ist, richten Sie bitte Ihren eigenen Modellanbieter ein oder kaufen zusätzliches Kontingent.",
-  "apiKeyInfo.cloud.trial.title": "Sie nutzen das Testkontingent von {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "Um zu beginnen,",
   "apiKeyInfo.selfHost.title.row2": "richten Sie zuerst Ihren Modellanbieter ein.",
   "apiKeyInfo.setAPIBtn": "Zum Einrichten des Modellanbieters gehen",

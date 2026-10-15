@@ -20,8 +20,6 @@
   "analysis.tps.title": "토큰 출력 속도",
   "analysis.userSatisfactionRate.explanation": "1,000 개의 메시지 당 \"좋아요\" 수입니다. 이는 사용자가 매우 만족한 응답의 비율을 나타냅니다.",
   "analysis.userSatisfactionRate.title": "사용자 만족도율",
-  "apiKeyInfo.cloud.trial.description": "트라이얼 쿼터는 테스트용으로 제공됩니다. 트라이얼 쿼터 소진 전에 고유한 모델 제공자를 설정하거나 추가 쿼터를 구매하세요.",
-  "apiKeyInfo.cloud.trial.title": "{{providerName}} 트라이얼 쿼터를 사용 중입니다.",
   "apiKeyInfo.selfHost.title.row1": "시작하려면,",
   "apiKeyInfo.selfHost.title.row2": "먼저 모델 제공자를 설정하세요.",
   "apiKeyInfo.setAPIBtn": "모델 제공자 설정으로 이동",

@@ -20,8 +20,6 @@
   "analysis.tps.title": "टोकन आउटपुट स्पीड",
   "analysis.userSatisfactionRate.explanation": "प्रति 1,000 संदेशों में से पसंदों की संख्या। यह उन उत्तरों के अनुपात को इंगित करता है जिनसे उपयोगकर्ता अत्यधिक संतुष्ट हैं।",
   "analysis.userSatisfactionRate.title": "उपयोगकर्ता संतोष दर",
-  "apiKeyInfo.cloud.trial.description": "परीक्षण कोटा आपके परीक्षण उपयोग के लिए प्रदान किया गया है। कृपया परीक्षण कोटा कॉल समाप्त होने से पहले अपना स्वयं का मॉडल प्रदाता सेट करें या अतिरिक्त कोटा खरीदें।",
-  "apiKeyInfo.cloud.trial.title": "आप {{providerName}} परीक्षण कोटा का उपयोग कर रहे हैं।",
   "apiKeyInfo.selfHost.title.row1": "शुरू करने के लिए,",
   "apiKeyInfo.selfHost.title.row2": "पहले अपना मॉडल प्रदाता सेटअप करें।",
   "apiKeyInfo.setAPIBtn": "मॉडल प्रदाता सेटअप पर जाएं",

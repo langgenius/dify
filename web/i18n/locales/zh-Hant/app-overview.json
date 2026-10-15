@@ -20,8 +20,6 @@
   "analysis.tps.title": "Token 輸出速度",
   "analysis.userSatisfactionRate.explanation": "每 1000 條訊息的點贊數。反映了使用者對回答十分滿意的比例。",
   "analysis.userSatisfactionRate.title": "使用者滿意度",
-  "apiKeyInfo.cloud.trial.description": "試用配額僅供您測試使用。在試用配額用完之前，請自行設定模型提供商或購買額外配額。",
-  "apiKeyInfo.cloud.trial.title": "您正在使用 {{providerName}} 的試用配額。",
   "apiKeyInfo.selfHost.title.row1": "首先，",
   "apiKeyInfo.selfHost.title.row2": "設定您的模型提供商。",
   "apiKeyInfo.setAPIBtn": "設定模型提供商",

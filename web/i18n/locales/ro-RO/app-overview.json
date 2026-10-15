@@ -20,8 +20,6 @@
   "analysis.tps.title": "Viteza de ieșire a tokenurilor",
   "analysis.userSatisfactionRate.explanation": "Numărul de aprecieri la 1.000 de mesaje. Acest lucru indică proporția de răspunsuri cu care utilizatorii sunt foarte mulțumiți.",
   "analysis.userSatisfactionRate.title": "Rata de satisfacție a utilizatorilor",
-  "apiKeyInfo.cloud.trial.description": "Cota de probă este furnizată pentru utilizarea de testare. Înainte ca apelurile cotei de probă să se epuizeze, vă rugăm să configurați propriul furnizor de modele sau să achiziționați o cotă suplimentară.",
-  "apiKeyInfo.cloud.trial.title": "Utilizați cota de probă a furnizorului {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "Pentru a începe,",
   "apiKeyInfo.selfHost.title.row2": "configurați mai întâi furnizorul de modele.",
   "apiKeyInfo.setAPIBtn": "Mergeți la configurarea furnizorului de modele",

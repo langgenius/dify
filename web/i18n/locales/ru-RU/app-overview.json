@@ -20,8 +20,6 @@
   "analysis.tps.title": "Скорость вывода токенов",
   "analysis.userSatisfactionRate.explanation": "Количество лайков на 1000 сообщений. Это указывает на долю ответов, которыми пользователи довольны.",
   "analysis.userSatisfactionRate.title": "Уровень удовлетворенности пользователей",
-  "apiKeyInfo.cloud.trial.description": "Пробная квота предоставляется для тестирования. Прежде чем пробная квота будет исчерпана, пожалуйста, настройте своего собственного поставщика модели или приобретите дополнительную квоту.",
-  "apiKeyInfo.cloud.trial.title": "Вы используете пробную квоту {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "Чтобы начать,",
   "apiKeyInfo.selfHost.title.row2": "сначала настройте своего поставщика модели.",
   "apiKeyInfo.setAPIBtn": "Перейти к настройке поставщика модели",

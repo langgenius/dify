@@ -20,8 +20,6 @@
   "analysis.tps.title": "Token çıxış sürəti",
   "analysis.userSatisfactionRate.explanation": "Hər 1000 mesaja düşən bəyənmə sayı. Bu, istifadəçilərin çox razı qaldığı cavabların nisbətini göstərir.",
   "analysis.userSatisfactionRate.title": "İstifadəçi məmnuniyyəti dərəcəsi",
-  "apiKeyInfo.cloud.trial.description": "Sınaq kvotası sınaq məqsədləriniz üçün verilir. Sınaq kvotası bitməzdən əvvəl öz model provayderinizi quraşdırın və ya əlavə kvota alın.",
-  "apiKeyInfo.cloud.trial.title": "{{providerName}} provayderinin sınaq kvotasından istifadə edirsiniz.",
   "apiKeyInfo.selfHost.title.row1": "Başlamaq üçün,",
   "apiKeyInfo.selfHost.title.row2": "əvvəlcə model provayderinizi quraşdırın.",
   "apiKeyInfo.setAPIBtn": "Model provayderinin quraşdırılmasına keç",

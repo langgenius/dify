@@ -20,8 +20,6 @@
   "analysis.tps.title": "Velocidad de salida de tokens",
   "analysis.userSatisfactionRate.explanation": "El número de likes por cada 1,000 mensajes. Esto indica la proporción de respuestas con las que los usuarios están muy satisfechos.",
   "analysis.userSatisfactionRate.title": "Tasa de satisfacción del usuario",
-  "apiKeyInfo.cloud.trial.description": "La cuota de prueba se proporciona para su uso de prueba. Antes de que se agoten las llamadas de la cuota de prueba, configure su propio proveedor de modelos o compre cuota adicional.",
-  "apiKeyInfo.cloud.trial.title": "Estás utilizando la cuota de prueba de {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "Para comenzar,",
   "apiKeyInfo.selfHost.title.row2": "configura primero tu proveedor de modelos.",
   "apiKeyInfo.setAPIBtn": "Ir a configurar proveedor de modelos",

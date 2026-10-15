@@ -20,8 +20,6 @@
   "analysis.tps.title": "Szybkość wydajności tokenów",
   "analysis.userSatisfactionRate.explanation": "Liczba polubień na 1000 wiadomości. Wskazuje to proporcję odpowiedzi, z których użytkownicy są bardzo zadowoleni.",
   "analysis.userSatisfactionRate.title": "Wskaźnik zadowolenia użytkowników",
-  "apiKeyInfo.cloud.trial.description": "Limit próbny jest dostarczany do użytku testowego. Zanim wykorzystasz dozwolone wywołania limitu próbnego, skonfiguruj swojego własnego dostawcę modelu lub zakup dodatkowy limit.",
-  "apiKeyInfo.cloud.trial.title": "Korzystasz z limitu próbnego {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "Aby rozpocząć,",
   "apiKeyInfo.selfHost.title.row2": "najpierw skonfiguruj swojego dostawcę modelu.",
   "apiKeyInfo.setAPIBtn": "Przejdź do konfiguracji dostawcy modelu",

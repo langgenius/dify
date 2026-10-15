@@ -20,8 +20,6 @@
   "analysis.tps.title": "ຄວາມໄວການສົ່ງອອກ Token",
   "analysis.userSatisfactionRate.explanation": "ຈຳນວນການກົດຖືກໃຈຕໍ່ 1,000 ຂໍ້ຄວາມ. ນີ້ບົ່ງບອກເຖິງສັດສ່ວນຂອງຄຳຕອບທີ່ຜູ້ໃຊ້ມີຄວາມເພິ່ງພໍໃຈສູງ.",
   "analysis.userSatisfactionRate.title": "ອັດຕາຄວາມເພິ່ງພໍໃຈຂອງຜູ້ໃຊ້",
-  "apiKeyInfo.cloud.trial.description": "ໂຄຕ້າທົດລອງແມ່ນໃຫ້ໄວ້ເພື່ອຈຸດປະສົງການທົດສອບຂອງທ່ານ. ກ່ອນທີ່ໂຄຕ້າທົດລອງຈະໝົດ, ກະລຸນາຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການໂມເດນຂອງທ່ານເອງ ຫຼື ຊື້ໂຄຕ້າເພີ່ມເຕີມ.",
-  "apiKeyInfo.cloud.trial.title": "ທ່ານກຳລັງໃຊ້ໂຄຕ້າທົດລອງຂອງ {{providerName}}.",
   "apiKeyInfo.selfHost.title.row1": "ເພື່ອເລີ່ມຕົ້ນ,",
   "apiKeyInfo.selfHost.title.row2": "ຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການໂມເດນຂອງທ່ານກ່ອນ.",
   "apiKeyInfo.setAPIBtn": "ໄປທີ່ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການໂມເດນ",
