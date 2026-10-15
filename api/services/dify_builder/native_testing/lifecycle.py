@@ -594,7 +594,11 @@ class NativeTestLifecycleService:
         return len(rows) + len(cancelled)
 
     def recover_dispatch(self, *, ref: NativeTestContextRef, dispatch_id: str) -> None:
-        """Explicit safe recovery requires native owner fencing evidence, not lease expiry."""
+        """Require native fencing proof and current authority before restoring execution.
+
+        Physical dispatch uncertainty cannot reopen a terminal business outcome.
+        Recheck authority under the root lock after collecting external proof.
+        """
         if self.runtime is None:
             raise BuilderExecutionPolicyError("native_runtime_unavailable")
         context = self.store.load_recovery_context(ref=ref)
@@ -630,6 +634,9 @@ class NativeTestLifecycleService:
         if scope.cancelled or owned.expires_at <= self.clock() or owned.state not in {"running", "waiting"}:
             raise BuilderExecutionPolicyError("native_recovery_unavailable")
         require_ancestor_authority(session, ref, owned.tenant_id)
+        state = invocation_state(session, ref, owned.tenant_id)
+        if state.state in {"completed", "stopped", "cancelled"}:
+            raise BuilderExecutionPolicyError("native_recovery_unavailable")
 
     def cancel(self, *, actor: Actor, request_id: str, idempotency_key: str) -> CancellationReceipt:
         ref = self._root_ref(actor, request_id)
