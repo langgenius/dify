@@ -23,8 +23,11 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetricName,
 )
 from core.evaluation.frameworks.deepeval.deepeval_model_wrapper import DifyDeepEvalModel
+from core.plugin.impl.base import use_plugin_daemon_request_timeout
 
 logger = logging.getLogger(__name__)
+
+_DEEPEVAL_METRIC_TIMEOUT_SECONDS = 180
 
 _DEEPEVAL_METRICS = {
     EvaluationMetricName.FAITHFULNESS.value,
@@ -212,7 +215,8 @@ class DeepEvalEvaluator(BaseEvaluationInstance):
             test_case = _build_test_case(item, category, components)
             for canonical_name, metric in _build_deepeval_metrics(supported_metrics, model, components):
                 try:
-                    measured_score = metric.measure(test_case, _show_indicator=False)
+                    with use_plugin_daemon_request_timeout(_DEEPEVAL_METRIC_TIMEOUT_SECONDS):
+                        measured_score = metric.measure(test_case, _show_indicator=False)
                     score = getattr(metric, "score", measured_score)
                     numeric_score = float(score)
                     if not math.isfinite(numeric_score):
