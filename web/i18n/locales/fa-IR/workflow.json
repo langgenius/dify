@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "مقدار نمی‌تواند خالی باشد",
   "errorMsg.authRequired": "احراز هویت الزامی است",
   "errorMsg.configureModel": "یک مدل پیکربندی کنید",
+  "errorMsg.conflictingOutputVariableTypes": "متغیر گره خروجی «{{variable}}» در شاخه‌هایی که هرگز با هم اجرا نمی‌شوند با نوع‌های {{types}} تعریف شده است. گره‌های خروجی که از یک نام متغیر مشترک استفاده می‌کنند باید نوع یکسانی تعریف کنند، زیرا خروجی منتشرشده برای هر نام فقط یک تعریف نگه می‌دارد.",
   "errorMsg.duplicateOutputVariable": "متغیر گره خروجی «{{variable}}» تکراری است. نام متغیرهای گره خروجی باید یکتا باشند.",
   "errorMsg.fieldRequired": "{{field}} الزامی است",
   "errorMsg.fields.code": "کد",

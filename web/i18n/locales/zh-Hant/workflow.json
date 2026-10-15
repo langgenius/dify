@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "值不能為空",
   "errorMsg.authRequired": "請先授權",
   "errorMsg.configureModel": "請配置模型",
+  "errorMsg.conflictingOutputVariableTypes": "輸出節點變數「{{variable}}」在互斥分支上被宣告為 {{types}}。重複使用同一變數名稱的輸出節點必須宣告相同類型，因為發佈後的輸出對每個名稱只保留一份定義。",
   "errorMsg.duplicateOutputVariable": "輸出節點變數「{{variable}}」重複。輸出節點變數名稱必須唯一。",
   "errorMsg.fieldRequired": "{{field}} 不能為空",
   "errorMsg.fields.code": "程式碼",

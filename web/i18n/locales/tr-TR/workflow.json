@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Değer boş olamaz",
   "errorMsg.authRequired": "Yetkilendirme gereklidir",
   "errorMsg.configureModel": "Bir model yapılandırın",
+  "errorMsg.conflictingOutputVariableTypes": "Çıktı düğümü değişkeni \"{{variable}}\", hiçbir zaman birlikte çalışmayan dallarda {{types}} olarak bildirilmiş. Yayımlanan çıktı her ad için yalnızca bir tanım tuttuğundan, aynı değişken adını yeniden kullanan çıktı düğümleri aynı türü bildirmelidir.",
   "errorMsg.duplicateOutputVariable": "Yinelenen çıktı düğümü değişkeni \"{{variable}}\". Çıktı düğümü değişken adları benzersiz olmalıdır.",
   "errorMsg.fieldRequired": "{{field}} gereklidir",
   "errorMsg.fields.code": "Kod",

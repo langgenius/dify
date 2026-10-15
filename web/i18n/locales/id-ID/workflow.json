@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Nilai tidak boleh kosong",
   "errorMsg.authRequired": "Otorisasi diperlukan",
   "errorMsg.configureModel": "Konfigurasikan model",
+  "errorMsg.conflictingOutputVariableTypes": "Variabel node output \"{{variable}}\" dideklarasikan sebagai {{types}} pada cabang yang tidak pernah berjalan bersamaan. Node output yang menggunakan ulang nama variabel harus mendeklarasikan tipe yang sama, karena output yang dipublikasikan hanya menyimpan satu definisi per nama.",
   "errorMsg.duplicateOutputVariable": "Variabel node output duplikat \"{{variable}}\". Nama variabel node output harus unik.",
   "errorMsg.fieldRequired": "{{field}} wajib diisi",
   "errorMsg.fields.code": "Kode",

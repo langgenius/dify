@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "لا يمكن أن تكون القيمة فارغة",
   "errorMsg.authRequired": "الترخيص مطلوب",
   "errorMsg.configureModel": "قم بتكوين نموذج",
+  "errorMsg.conflictingOutputVariableTypes": "متغير عقدة الإخراج \"{{variable}}\" مُعرَّف بالأنواع {{types}} في فروع لا تعمل معًا أبدًا. يجب أن تُعرِّف عقد الإخراج التي تعيد استخدام اسم المتغير النوع نفسه، لأن المخرجات المنشورة تحتفظ بتعريف واحد لكل اسم.",
   "errorMsg.duplicateOutputVariable": "متغير عقدة الإخراج \"{{variable}}\" مكرر. يجب أن تكون أسماء متغيرات عقدة الإخراج فريدة.",
   "errorMsg.fieldRequired": "{{field}} مطلوب",
   "errorMsg.fields.code": "الكود",

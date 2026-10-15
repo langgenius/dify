@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "ຄ່າບໍ່ສາມາດຫວ່າງເປົ່າໄດ້",
   "errorMsg.authRequired": "ຈຳເປັນຕ້ອງມີການຢືນຢັນຕົວຕົນ",
   "errorMsg.configureModel": "ກະລຸນາຕັ້ງຄ່າຕົວແບບ (Model)",
+  "errorMsg.conflictingOutputVariableTypes": "ຕົວປ່ຽນຜົນອອກ \"{{variable}}\" ຖືກກຳນົດເປັນ {{types}} ໃນສາຂາທີ່ບໍ່ເຄີຍເຮັດວຽກພ້ອມກັນ. ໂນດຜົນອອກທີ່ໃຊ້ຊື່ຕົວປ່ຽນຊ້ຳກັນຕ້ອງກຳນົດປະເພດດຽວກັນ, ເພາະຜົນອອກທີ່ເຜີຍແຜ່ຈະເກັບພຽງໜຶ່ງຄຳນິຍາມຕໍ່ໜຶ່ງຊື່.",
   "errorMsg.duplicateOutputVariable": "ຊື່ຕົວປ່ຽນຜົນອອກ \"{{variable}}\" ຊ້ຳກັນ. ຊື່ຕົວປ່ຽນຜົນອອກຕ້ອງບໍ່ຊ້ຳກັນ.",
   "errorMsg.fieldRequired": "ຕ້ອງລະບຸ {{field}}",
   "errorMsg.fields.code": "ໂຄ້ດ",

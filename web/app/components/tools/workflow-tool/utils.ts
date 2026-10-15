@@ -3,7 +3,9 @@ import type {
   WorkflowToolProviderOutputParameter,
   WorkflowToolProviderOutputSchema,
 } from '../types'
-import { VarType } from '@/app/components/workflow/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { getEndOutputConflicts } from '@/app/components/workflow/utils/end-output-conflicts'
 import { normalizeWorkflowOutputName } from '@/app/components/workflow/utils/variable'
 
 const validVarTypes = new Set<string>(Object.values(VarType))
@@ -51,6 +53,32 @@ export const getSourceNodeDisplayName = (
   if (sameTitleSourceCount < 2 || sourceIndex < 0) return title
 
   return `${title} (${sourceIndex + 1}/${sameTitleSourceCount})`
+}
+
+export const getNonConflictingWorkflowOutputNames = (nodes: Node[], edges: Edge[]) => {
+  const conflicts = getEndOutputConflicts(nodes, edges)
+  const occurrences = new Map<string, string[]>()
+  const scopes = new Map(nodes.map((node) => [node.id, node.parentId ?? '']))
+  nodes.forEach((node) => {
+    if (node.data.type !== BlockEnum.End) return
+    const outputs = (node.data as { outputs?: { variable?: string }[] }).outputs ?? []
+    outputs.forEach(({ variable }) => {
+      const name = normalizeWorkflowOutputName(variable)
+      if (name) occurrences.set(name, [...(occurrences.get(name) ?? []), node.id])
+    })
+  })
+
+  return [...occurrences]
+    .filter(
+      ([name, nodeIds]) =>
+        nodeIds.length > 1 &&
+        nodeIds.every(
+          (id) =>
+            scopes.get(id) === scopes.get(nodeIds[0]!) &&
+            !conflicts.get(id)?.some((conflict) => conflict.variable === name),
+        ),
+    )
+    .map(([name]) => name)
 }
 
 export const getDuplicateWorkflowOutputGroups = (

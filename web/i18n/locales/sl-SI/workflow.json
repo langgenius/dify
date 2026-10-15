@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Vrednost ne sme biti prazna",
   "errorMsg.authRequired": "Zahtevana je avtorizacija",
   "errorMsg.configureModel": "Konfiguriraj model",
+  "errorMsg.conflictingOutputVariableTypes": "Spremenljivka izhodnega vozlišča \"{{variable}}\" je v vejah, ki se nikoli ne izvedejo skupaj, deklarirana kot {{types}}. Izhodna vozlišča, ki ponovno uporabijo ime spremenljivke, morajo deklarirati isti tip, ker objavljeni izhod za vsako ime hrani samo eno definicijo.",
   "errorMsg.duplicateOutputVariable": "Podvojena spremenljivka izhodnega vozlišča \"{{variable}}\". Imena spremenljivk izhodnega vozlišča morajo biti enolična.",
   "errorMsg.fieldRequired": "{{field}} je obvezno",
   "errorMsg.fields.code": "Koda",

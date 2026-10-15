@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { getNonConflictingWorkflowOutputNames } from '@/app/components/tools/workflow-tool/utils'
 // useWorkflowRunValidation,
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
@@ -118,6 +119,11 @@ const FeaturesTrigger = () => {
         }))
       }),
     [nodes],
+  )
+
+  const nonConflictingOutputNames = useMemo(
+    () => getNonConflictingWorkflowOutputNames(nodes, edges),
+    [nodes, edges],
   )
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
@@ -274,6 +280,7 @@ const FeaturesTrigger = () => {
           toolPublished,
           inputs: variables,
           outputs: endVariables,
+          nonConflictingOutputNames,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
           onToggle: onPublisherToggle,

@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Valoarea nu poate fi goală",
   "errorMsg.authRequired": "Autorizarea este necesară",
   "errorMsg.configureModel": "Configurați un model",
+  "errorMsg.conflictingOutputVariableTypes": "Variabila nodului de ieșire „{{variable}}” este declarată ca {{types}} pe ramuri care nu rulează niciodată împreună. Nodurile de ieșire care reutilizează un nume de variabilă trebuie să declare același tip, deoarece ieșirea publicată păstrează o singură definiție pentru fiecare nume.",
   "errorMsg.duplicateOutputVariable": "Variabilă duplicată a nodului de ieșire „{{variable}}”. Numele variabilelor nodului de ieșire trebuie să fie unice.",
   "errorMsg.fieldRequired": "{{field}} este obligatoriu",
   "errorMsg.fields.code": "Cod",

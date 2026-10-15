@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Der Wert darf nicht leer sein",
   "errorMsg.authRequired": "Autorisierung ist erforderlich",
   "errorMsg.configureModel": "Modell konfigurieren",
+  "errorMsg.conflictingOutputVariableTypes": "Die Variable des Output-Knotens \"{{variable}}\" ist in Zweigen, die nie gemeinsam ausgeführt werden, als {{types}} deklariert. Output-Knoten, die denselben Variablennamen verwenden, müssen denselben Typ deklarieren, da die veröffentlichte Ausgabe pro Name nur eine Definition behält.",
   "errorMsg.duplicateOutputVariable": "Doppelte Variable des Output-Knotens \"{{variable}}\". Variablennamen von Output-Knoten müssen eindeutig sein.",
   "errorMsg.fieldRequired": "{{field}} ist erforderlich",
   "errorMsg.fields.code": "Code",

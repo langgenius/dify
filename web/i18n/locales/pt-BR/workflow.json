@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "O valor não pode estar vazio",
   "errorMsg.authRequired": "Autorização é necessária",
   "errorMsg.configureModel": "Configure um modelo",
+  "errorMsg.conflictingOutputVariableTypes": "A variável do nó de saída \"{{variable}}\" está declarada como {{types}} em ramificações que nunca são executadas juntas. Nós de saída que reutilizam um nome de variável devem declarar o mesmo tipo, porque a saída publicada mantém apenas uma definição por nome.",
   "errorMsg.duplicateOutputVariable": "Variável duplicada do nó de saída \"{{variable}}\". Os nomes das variáveis do nó de saída devem ser únicos.",
   "errorMsg.fieldRequired": "{{field}} é obrigatório",
   "errorMsg.fields.code": "Código",

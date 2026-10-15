@@ -257,6 +257,7 @@
   "env.modal.valueRequired": "Giá trị không được để trống",
   "errorMsg.authRequired": "Yêu cầu xác thực",
   "errorMsg.configureModel": "Cấu hình mô hình",
+  "errorMsg.conflictingOutputVariableTypes": "Biến của nút đầu ra \"{{variable}}\" được khai báo là {{types}} trên các nhánh không bao giờ chạy cùng nhau. Các nút đầu ra dùng lại cùng một tên biến phải khai báo cùng kiểu, vì đầu ra được xuất bản chỉ giữ một định nghĩa cho mỗi tên.",
   "errorMsg.duplicateOutputVariable": "Biến của nút đầu ra \"{{variable}}\" bị trùng lặp. Tên biến của nút đầu ra phải là duy nhất.",
   "errorMsg.fieldRequired": "{{field}} là bắt buộc",
   "errorMsg.fields.code": "Mã",
