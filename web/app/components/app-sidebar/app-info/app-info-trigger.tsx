@@ -116,11 +116,8 @@ const AppInfoTrigger = ({
       expand={expand}
       appName={appDetail.name}
       modeLabel={modeLabel}
-      iconType={appDetail.icon_type}
-      icon={appDetail.icon ?? undefined}
-      background={appDetail.icon_background}
-      imageUrl={appDetail.icon_url}
       operationGroups={[mainOperations, destructiveOperations, workflowConversionOperations]}
+      icon={appDetail}
     />
   )
 }

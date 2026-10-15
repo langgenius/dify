@@ -1,6 +1,6 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, isInaccessible, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
@@ -580,22 +580,19 @@ describe('AppCard', () => {
     })
 
     it('should render app icon', () => {
-      // AppIcon component renders the emoji icon from app data
-      const { container } = render(<AppCard app={mockApp} />)
+      render(<AppCard app={mockApp} />)
       const emojiIcon = screen.getByText(mockApp.icon!)
-      const imageIcon = container.querySelector('img')
-      expect(emojiIcon || imageIcon).toBeTruthy()
-      expect(emojiIcon).toHaveAttribute('aria-hidden', 'true')
+      expect(isInaccessible(emojiIcon)).toBe(true)
     })
 
-    it('should treat a redundant image icon as decorative', () => {
+    it('should keep an image fallback decorative beside the app name', () => {
       const imageApp = createMockApp({
         icon_type: 'image',
         icon_url: 'https://example.com/app-icon.png',
       })
-      const { container } = render(<AppCard app={imageApp} />)
+      render(<AppCard app={imageApp} />)
 
-      expect(container.querySelector('img')).toHaveAttribute('alt', '')
+      expect(isInaccessible(screen.getByText('🤖'))).toBe(true)
     })
 
     it('should render app type icon', () => {

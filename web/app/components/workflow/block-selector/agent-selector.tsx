@@ -166,13 +166,7 @@ function AgentSelectorList({
                 onClick={() => handleSelect(agent)}
               >
                 <span aria-hidden className="shrink-0">
-                  <AppIcon
-                    size="small"
-                    iconType={agent.icon_type}
-                    icon={agent.icon ?? undefined}
-                    background={agent.icon_background}
-                    imageUrl={agent.icon ?? undefined}
-                  />
+                  <AppIcon size="small" icon={{ ...agent, icon_url: agent.icon }} />
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate system-sm-medium text-text-secondary">

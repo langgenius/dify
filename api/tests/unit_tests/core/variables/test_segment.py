@@ -191,10 +191,10 @@ class TestSegmentDumpAndLoad:
             NoneSegment(),
             StringSegment(value="test string"),
             IntegerSegment(value=42),
-            FloatSegment(value=3.14),
+            FloatSegment(value=float("3.14")),
             ObjectSegment(value={"key": "value", "number": 123}),
             FileSegment(value=test_file),
-            ArrayAnySegment(value=[1, "string", 3.14, {"key": "value"}]),
+            ArrayAnySegment(value=[1, "string", float("3.14"), {"key": "value"}]),
             ArrayStringSegment(value=["hello", "world"]),
             ArrayNumberSegment(value=[1, 2.5, 3]),
             ArrayObjectSegment(value=[{"id": 1}, {"id": 2}]),
@@ -209,7 +209,7 @@ class TestSegmentDumpAndLoad:
         # Verify all segments are preserved
         assert len(loaded.segments) == len(all_segments)
 
-        for original, loaded_segment in zip(all_segments, loaded.segments):
+        for original, loaded_segment in zip(all_segments, loaded.segments, strict=False):
             assert type(loaded_segment) is type(original)
             assert loaded_segment.value_type == original.value_type
 
@@ -233,10 +233,10 @@ class TestSegmentDumpAndLoad:
             NoneVariable(name="none_var"),
             StringVariable(value="test string", name="string_var"),
             IntegerVariable(value=42, name="int_var"),
-            FloatVariable(value=3.14, name="float_var"),
+            FloatVariable(value=float("3.14"), name="float_var"),
             ObjectVariable(value={"key": "value", "number": 123}, name="object_var"),
             FileVariable(value=test_file, name="file_var"),
-            ArrayAnyVariable(value=[1, "string", 3.14, {"key": "value"}], name="array_any_var"),
+            ArrayAnyVariable(value=[1, "string", float("3.14"), {"key": "value"}], name="array_any_var"),
             ArrayStringVariable(value=["hello", "world"], name="array_string_var"),
             ArrayNumberVariable(value=[1, 2.5, 3], name="array_number_var"),
             ArrayObjectVariable(value=[{"id": 1}, {"id": 2}], name="array_object_var"),
@@ -251,7 +251,7 @@ class TestSegmentDumpAndLoad:
         # Verify all variables are preserved
         assert len(loaded.variables) == len(all_variables)
 
-        for original, loaded_variable in zip(all_variables, loaded.variables):
+        for original, loaded_variable in zip(all_variables, loaded.variables, strict=False):
             assert type(loaded_variable) is type(original)
             assert loaded_variable.value_type == original.value_type
             assert loaded_variable.name == original.name

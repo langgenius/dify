@@ -42,7 +42,7 @@ class TestPassportService:
         test_cases = [
             {"string": "value"},
             {"number": 42},
-            {"float": 3.14},
+            {"float": float("3.14")},
             {"boolean": True},
             {"null": None},
             {"array": [1, 2, 3]},

@@ -49,14 +49,7 @@ const StepThree = ({
                 </div>
               </div>
               <div className="flex items-center gap-x-4">
-                <AppIcon
-                  size="xxl"
-                  iconType={iconInfo.icon_type}
-                  icon={iconInfo.icon}
-                  background={iconInfo.icon_background}
-                  imageUrl={iconInfo.icon_url}
-                  className="shrink-0"
-                />
+                <AppIcon size="xxl" className="shrink-0" icon={iconInfo} />
                 <div className="flex min-w-0 grow flex-col gap-y-1">
                   <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
                     {t(($) => $['stepThree.label'], { ns: 'datasetCreation' })}
