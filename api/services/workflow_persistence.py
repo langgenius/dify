@@ -48,6 +48,7 @@ from graphon.enums import (
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from repositories.entities.workflow_execution import WorkflowExecution
+from services.tracing.runtime_bridge import freeze_workflow_run
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
 )
@@ -200,6 +201,12 @@ class WorkflowPersistenceLayer(Layer):
 
         self._workflow_execution_repository.save_synchronously(workflow_execution)
         self._workflow_execution = workflow_execution
+        freeze_workflow_run(
+            self._application_generate_entity,
+            workflow_id=self._workflow_info.workflow_id,
+            workflow_run_id=execution_id,
+            conversation_id=self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value),
+        )
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()

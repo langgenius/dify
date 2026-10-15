@@ -1477,7 +1477,14 @@ class TraceQueueManager:
 
         self.app_id = app_id
         self.user_id = user_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+        self.trace_instance = None
+        self._application_tracing_enabled = False
+        if dify_config.OPS_AGENT_TRACE_ENABLED:
+            from services.tracing.runtime_bridge import queue_enabled_at_start
+
+            self._application_tracing_enabled = queue_enabled_at_start(app_id)
+        else:
+            self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
@@ -1489,7 +1496,7 @@ class TraceQueueManager:
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer, trace_manager_queue
         try:
-            if self._enterprise_telemetry_enabled or self.trace_instance:
+            if self._enterprise_telemetry_enabled or self._application_tracing_enabled or self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception:

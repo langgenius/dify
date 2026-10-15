@@ -740,6 +740,8 @@ export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
  * AppTraceResponse
  */
 export const zAppTraceResponse = z.object({
+  capture_agent: z.boolean().optional().default(true),
+  capture_content: z.boolean().optional().default(false),
   enabled: z.boolean().optional().default(false),
   tracing_provider: z.string().nullish(),
 })
@@ -748,6 +750,8 @@ export const zAppTraceResponse = z.object({
  * AppTracePayload
  */
 export const zAppTracePayload = z.object({
+  capture_agent: z.boolean().optional().default(true),
+  capture_content: z.boolean().optional().default(false),
   enabled: z.boolean(),
   tracing_provider: z.string().nullish(),
 })
@@ -763,6 +767,21 @@ export const zTracingProviderUnavailableError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * TraceProviderCapabilitiesResponse
+ */
+export const zTraceProviderCapabilitiesResponse = z.object({
+  agent_spans: z.boolean(),
+  api_collection_enabled: z.boolean(),
+  export_ack: z.literal('accepted'),
+  native_cost: z.boolean(),
+  native_usage: z.boolean(),
+  provider: z.string(),
+  session: z.boolean(),
+  span_url: z.boolean(),
+  trace_url: z.boolean(),
+})
 
 /**
  * UnsupportedTracingProviderError
@@ -856,6 +875,85 @@ export const zTracingConfigVerificationFailedError = zErrorResponse.and(
 export const zTraceConfigAlreadyExistsError = zErrorResponse.and(
   z.object({
     code: z.literal('trace_config_already_exists'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingNodeNotFoundError
+ *
+ * The Agent node invocation does not belong to this trace.
+ */
+export const zTracingNodeNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_node_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TracingSourceNotFoundError
+ *
+ * The tracing source does not exist in this application.
+ */
+export const zTracingSourceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_source_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TraceRunRetryPayload
+ */
+export const zTraceRunRetryPayload = z.object({
+  acknowledge_possible_duplicates: z.boolean().optional().default(false),
+})
+
+/**
+ * TracingRunNotFoundError
+ *
+ * No collected trace is available to retry.
+ */
+export const zTracingRunNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_run_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TracingAlreadyAcceptedError
+ *
+ * An accepted trace cannot be exported again.
+ */
+export const zTracingAlreadyAcceptedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_already_accepted'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingDuplicateAcknowledgementRequiredError
+ *
+ * Acknowledge possible duplicates before retrying an uncertain export.
+ */
+export const zTracingDuplicateAcknowledgementRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_duplicate_acknowledgement_required'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingRetryNotAllowedError
+ *
+ * This trace is not in a retryable state.
+ */
+export const zTracingRetryNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_retry_not_allowed'),
     status: z.literal(409),
   }),
 )
@@ -2012,6 +2110,55 @@ export const zTextToSpeechVoiceResponse = z.object({
  * Available voices
  */
 export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
+
+/**
+ * TraceProviderSupportResponse
+ *
+ * Adapter support declarations, not successful-delivery or platform-verification results.
+ */
+export const zTraceProviderSupportResponse = z.object({
+  agent_spans: z.boolean(),
+  export_ack: z.literal('accepted'),
+  native_cost: z.boolean(),
+  native_usage: z.boolean(),
+  provider: z.string(),
+  session: z.boolean(),
+  span_url: z.boolean(),
+  trace_url: z.boolean(),
+})
+
+export const zTraceSourceKind = z.enum(['message', 'node', 'workflow'])
+
+/**
+ * TraceRunStatusResponse
+ */
+export const zTraceRunStatusResponse = z.object({
+  accepted_at: z.iso.datetime().nullish(),
+  attempts: z.int().nullish(),
+  capabilities: zTraceProviderSupportResponse.nullish(),
+  capture_agent: z.boolean().nullish(),
+  capture_content: z.boolean().nullish(),
+  config_revision: z.string().nullish(),
+  error_code: z.string().nullish(),
+  provider: z.string().nullish(),
+  queryable: z.boolean().nullish(),
+  source_id: z.string(),
+  source_kind: zTraceSourceKind,
+  span_count: z.int().nullish(),
+  span_url: z.string().nullish(),
+  status: z.enum([
+    'accepted',
+    'collecting',
+    'exporting',
+    'failed',
+    'not_collected',
+    'ready',
+    'retrying',
+    'uncertain',
+  ]),
+  trace_id: z.string().nullish(),
+  trace_url: z.string().nullish(),
+})
 
 /**
  * SimpleAccountResponse
@@ -7318,6 +7465,19 @@ export const zPostAppsByAppIdTracePath = z.object({
  */
 export const zPostAppsByAppIdTraceResponse = zSimpleResultResponse
 
+export const zGetAppsByAppIdTraceCapabilitiesPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdTraceCapabilitiesQuery = z.object({
+  tracing_provider: z.string(),
+})
+
+/**
+ * Provider support declarations
+ */
+export const zGetAppsByAppIdTraceCapabilitiesResponse = zTraceProviderCapabilitiesResponse
+
 export const zDeleteAppsByAppIdTraceConfigPath = z.object({
   app_id: z.uuid(),
 })
@@ -7365,6 +7525,38 @@ export const zPostAppsByAppIdTraceConfigPath = z.object({
  * Tracing configuration created successfully
  */
 export const zPostAppsByAppIdTraceConfigResponse = zTraceAppConfigResponse
+
+export const zGetAppsByAppIdTraceRunsBySourceKindBySourceIdPath = z.object({
+  app_id: z.uuid(),
+  source_id: z.uuid(),
+  source_kind: z.enum(['message', 'node', 'workflow']),
+})
+
+export const zGetAppsByAppIdTraceRunsBySourceKindBySourceIdQuery = z.object({
+  node_execution_id: z.uuid().optional(),
+})
+
+/**
+ * Frozen trace destination and export state
+ */
+export const zGetAppsByAppIdTraceRunsBySourceKindBySourceIdResponse = zTraceRunStatusResponse
+
+export const zPostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryBody = zTraceRunRetryPayload
+
+export const zPostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryPath = z.object({
+  app_id: z.uuid(),
+  source_id: z.uuid(),
+  source_kind: z.enum(['message', 'node', 'workflow']),
+})
+
+export const zPostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryQuery = z.object({
+  node_execution_id: z.uuid().optional(),
+})
+
+/**
+ * Retry state for the same frozen destination
+ */
+export const zPostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponse = zTraceRunStatusResponse
 
 export const zPostAppsByAppIdTriggerEnableBody = zParserEnable
 
