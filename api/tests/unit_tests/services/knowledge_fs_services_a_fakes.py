@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -49,14 +50,23 @@ class RecordedCall(NamedTuple):
 
 @dataclass
 class CallRecorder:
-    """Callable stand-in that records every call and returns or raises a fixed outcome."""
+    """Callable stand-in that records every call and returns or raises a fixed outcome.
+
+    Queued ``outcomes`` are consumed first, one per call; an exception outcome is raised.
+    """
 
     result: object = None
     error: Exception | None = None
+    outcomes: deque[object] = field(default_factory=deque)
     calls: list[RecordedCall] = field(default_factory=list)
 
     def __call__(self, *args: object, **kwargs: object) -> object:
         self.calls.append(RecordedCall(args, kwargs))
+        if self.outcomes:
+            outcome = self.outcomes.popleft()
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
         if self.error is not None:
             raise self.error
         return self.result
@@ -65,3 +75,10 @@ class CallRecorder:
     def last(self) -> RecordedCall:
         assert self.calls, "expected at least one call"
         return self.calls[-1]
+
+
+def sent_payload[T](recorder: CallRecorder, payload_type: type[T]) -> T:
+    """Return the ``payload`` keyword of the recorder's last call, checked against ``payload_type``."""
+    payload = recorder.last.kwargs["payload"]
+    assert isinstance(payload, payload_type)
+    return payload
