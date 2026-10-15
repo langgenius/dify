@@ -195,8 +195,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     @override
     def backfill_workflow_pause_task_id(
         self, *, tenant_id: str, app_id: str, workflow_run_id: str, pause_id: str, task_id: str
-    ) -> None:
-        self._control_repository.backfill_workflow_pause_task_id(
+    ) -> bool:
+        return self._control_repository.backfill_workflow_pause_task_id(
             tenant_id=tenant_id, app_id=app_id, workflow_run_id=workflow_run_id, pause_id=pause_id, task_id=task_id
         )
 

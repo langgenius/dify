@@ -56,6 +56,18 @@
 
 Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage directory. To manage it explicitly, generate a value with `openssl rand -base64 42` and set `SECRET_KEY` in `api/.env`.
 
+## Upgrading workflow task cancellation
+
+When upgrading from a version that did not persist `workflow_runs.task_id`, stop new workflow admissions and drain the old workers before switching versions. Old running tasks have no recoverable task-to-run index; do not terminate them by guessing a run ID or using an unscoped Redis fallback.
+
+After applying database migrations, keep API traffic and workflow consumers stopped and recover paused task IDs from their existing storage snapshots:
+
+```bash
+uv run --project "$PWD/api" --directory api flask backfill-workflow-task-ids
+```
+
+Run this with the deployment's database and storage configuration. The command processes bounded batches and can be rerun. It exits unsuccessfully if legacy running records or missing/invalid pause snapshots remain; inspect the reported run and repair its state before retrying. It preserves run ownership and skips pauses changed by another worker. Once it succeeds, start the new API and workers. Fresh installations need no backfill.
+
 ## Testing
 
 Run from the repository root:

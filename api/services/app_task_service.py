@@ -15,8 +15,9 @@ from sqlalchemy.orm import sessionmaker
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import send_abort_command, set_app_task_stop_flag
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import WorkflowFinishStreamResponse
+from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
@@ -28,6 +29,8 @@ from models import Account, EndUser, WorkflowRun
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowTaskOwnerMismatchError,
@@ -82,6 +85,40 @@ class AppTaskControlService:
         set_app_task_stop_flag(task_id, redis=self._redis_client)
         return True
 
+    def backfill_legacy_workflow_task_ids(self) -> int:
+        """Index saved pauses before admitting traffic after a legacy-worker drain."""
+        repository = DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker(bind=db.engine))
+        after_id: str | None = None
+        indexed = 0
+        while runs := repository.list_legacy_workflow_runs(after_id=after_id, limit=100):
+            for run in runs:
+                if run.status != WorkflowExecutionStatus.PAUSED:
+                    continue
+                try:
+                    pause = repository.get_workflow_pause(run.id)
+                    if pause is None:
+                        continue
+                    context = WorkflowResumptionContext.loads(pause.get_state().decode())
+                    indexed += AppTaskService.index_workflow_pause_task(
+                        workflow_run=run,
+                        pause_entity=pause,
+                        resumption_context=context,
+                        workflow_run_repo=repository,
+                    )
+                except Exception:
+                    logger.exception("Failed to index legacy workflow task, workflow_run_id=%s", run.id)
+            after_id = runs[-1].id
+
+        unresolved = repository.list_legacy_workflow_runs(after_id=None, limit=1)
+        if unresolved:
+            run = unresolved[0]
+            raise ValueError(
+                f"Legacy workflow task remains unindexed: {run.id} ({run.status}). "
+                "Drain legacy running executions and repair missing or invalid pause snapshots "
+                "before admitting traffic."
+            )
+        return indexed
+
     def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
         """Stop a workflow after app admission, without consulting the user ownership cache.
 
@@ -113,6 +150,42 @@ class AppTaskControlService:
 
 class AppTaskService:
     """Compatibility entry point for callers outside ApplicationServices."""
+
+    @staticmethod
+    def index_workflow_pause_task(
+        *,
+        workflow_run: WorkflowRun,
+        pause_entity: WorkflowPauseEntity,
+        resumption_context: WorkflowResumptionContext,
+        workflow_run_repo: APIWorkflowRunRepository,
+    ) -> bool:
+        """Recover a missing task ID only from the same run's saved invocation."""
+        if workflow_run.task_id is not None:
+            return False
+        generate_entity = resumption_context.get_generate_entity()
+        try:
+            task_id = str(UUID(generate_entity.task_id))
+        except ValueError:
+            return False
+        run_id = (
+            generate_entity.workflow_run_id
+            if isinstance(generate_entity, AdvancedChatAppGenerateEntity)
+            else generate_entity.workflow_execution_id
+        )
+        if (
+            run_id != workflow_run.id
+            or generate_entity.app_config.tenant_id != workflow_run.tenant_id
+            or generate_entity.app_config.app_id != workflow_run.app_id
+            or generate_entity.user_id != workflow_run.created_by
+        ):
+            return False
+        return workflow_run_repo.backfill_workflow_pause_task_id(
+            tenant_id=workflow_run.tenant_id,
+            app_id=workflow_run.app_id,
+            workflow_run_id=workflow_run.id,
+            pause_id=pause_entity.id,
+            task_id=task_id,
+        )
 
     @staticmethod
     def stop_workflow_task(
