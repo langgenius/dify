@@ -470,10 +470,7 @@ class DatasetRetrieval:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = self._get_available_datasets(tenant_id, dataset_ids)
 
-        if inputs:
-            inputs = {key: str(value) for key, value in inputs.items()}
-        else:
-            inputs = {}
+        inputs = {key: str(value) for key, value in inputs.items()} if inputs else {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
         metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
             session,
@@ -566,10 +563,7 @@ class DatasetRetrieval:
                         segment_content = sign_segment_content(segment, session=session)
 
                     # If summary exists, prepend it to the content
-                    if record.summary:
-                        final_content = f"{record.summary}\n{segment_content}"
-                    else:
-                        final_content = segment_content
+                    final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                     document_context_list.append(
                         DocumentContext(
