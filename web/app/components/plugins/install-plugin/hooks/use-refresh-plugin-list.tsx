@@ -7,11 +7,6 @@ import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
-import {
-  useInvalidateAllBuiltInTools,
-  useInvalidateAllToolProviders,
-  useInvalidateRAGRecommendedPlugins,
-} from '@/service/use-tools'
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
@@ -58,12 +53,7 @@ const useRefreshPluginList = () => {
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const queryClient = useQueryClient()
 
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-
   const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
-
-  const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
     refreshPluginList: (
       manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
@@ -76,9 +66,17 @@ const useRefreshPluginList = () => {
 
       // tool page, tool select
       if ((manifest && PluginCategoryEnum.tool.includes(manifest.category)) || refreshAllType) {
-        invalidateAllToolProviders()
-        invalidateAllBuiltInTools()
-        invalidateRAGRecommendedPlugins('tool')
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.toolProviders.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.recommendedPlugins.get.queryKey({
+            input: { query: { type: 'tool' } },
+          }),
+        })
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 

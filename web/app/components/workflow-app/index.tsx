@@ -2,11 +2,12 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { selectAppTriggers } from '@/app/components/tools/utils/query-select'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -18,7 +19,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
-import { useAppTriggers } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
@@ -54,10 +54,15 @@ const WorkflowAppWithAdditionalContext = () => {
     [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const isWorkflowMode = appDetail.mode === AppModeEnum.WORKFLOW
-  const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnWindowFocus: false,
-  })
+  const { data: triggersResponse } = useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      input: { params: { app_id: appId } },
+      enabled: isWorkflowMode && !!appId,
+      select: selectAppTriggers,
+      staleTime: 5 * 60 * 1000, // 5 minutes cache
+      refetchOnWindowFocus: false,
+    }),
+  )
 
   // Sync trigger statuses to store when data loads
   useEffect(() => {

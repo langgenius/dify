@@ -50,7 +50,6 @@ const mockHandleSyncWorkflowDraft = vi.fn()
 const mockPublishWorkflow = vi.fn()
 const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
-const mockInvalidateAppTriggers = vi.fn()
 const mockInvalidateQueries = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
@@ -220,10 +219,6 @@ vi.mock('@/service/use-workflow', () => ({
   useInvalidateAppWorkflow: () => mockUpdatePublishedWorkflow,
   usePublishWorkflow: () => ({ mutateAsync: mockPublishWorkflow }),
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateAppTriggers: () => mockInvalidateAppTriggers,
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -618,7 +613,11 @@ describe('FeaturesTrigger', () => {
           releaseNotes: '',
         })
         expect(mockUpdatePublishedWorkflow).toHaveBeenCalledWith('app-id')
-        expect(mockInvalidateAppTriggers).toHaveBeenCalledWith('app-id')
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+            input: { params: { app_id: 'app-id' } },
+          }),
+        })
         expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
@@ -785,7 +784,11 @@ describe('FeaturesTrigger', () => {
         message: 'common.api.actionSuccess',
       })
       expect(mockUpdatePublishedWorkflow).not.toHaveBeenCalled()
-      expect(mockInvalidateAppTriggers).not.toHaveBeenCalled()
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+          input: { params: { app_id: 'app-id' } },
+        }),
+      })
       expect(mockSetPublishedAt).not.toHaveBeenCalled()
       expect(mockSetLastPublishedHasUserInput).not.toHaveBeenCalled()
       expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()

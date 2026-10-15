@@ -9,12 +9,15 @@ const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
 const mockUseAllMCPTools = vi.hoisted(() => vi.fn())
 const mockCanFindTool = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => mockUseAllBuiltInTools(),
-  useAllCustomTools: () => mockUseAllCustomTools(),
-  useAllWorkflowTools: () => mockUseAllWorkflowTools(),
-  useAllMCPTools: () => mockUseAllMCPTools(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => mockUseAllBuiltInTools(),
+    'workspaces.current.tools.api.get': () => mockUseAllCustomTools(),
+    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
+    'workspaces.current.tools.mcp.get': () => mockUseAllMCPTools(),
+  })
+})
 
 vi.mock('@/utils', () => ({
   canFindTool: (...args: unknown[]) => mockCanFindTool(...args),

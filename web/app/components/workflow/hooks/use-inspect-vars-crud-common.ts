@@ -2,9 +2,11 @@ import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import {
   isConversationVar,
   isENV,
@@ -12,13 +14,8 @@ import {
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import useFLow from '@/service/use-flow'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
@@ -53,10 +50,22 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
   const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(flowId)
   const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
 
   const getNodeInspectVars = useCallback(
     (nodeId: string) => {

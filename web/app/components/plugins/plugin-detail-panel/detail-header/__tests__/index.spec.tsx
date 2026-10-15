@@ -24,17 +24,20 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: () => ({
-    data: [
-      {
-        name: 'tool-plugin/provider-a',
-        type: 'builtin',
-        allow_delete: true,
-      },
-    ],
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.toolProviders.get': () => ({
+      data: [
+        {
+          name: 'tool-plugin/provider-a',
+          type: 'builtin',
+          allow_delete: true,
+        },
+      ],
+    }),
+  })
+})
 
 vi.mock('@/service/use-plugins', () => ({
   useVersionListOfPlugin: () => ({ data: { data: { versions: [] } } }),

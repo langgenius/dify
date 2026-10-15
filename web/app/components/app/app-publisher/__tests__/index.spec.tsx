@@ -132,14 +132,15 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useWorkflowToolDetailByAppID: () => ({
-    data: undefined,
-    isLoading: false,
-  }),
-  useInvalidateAllWorkflowTools: () => vi.fn(),
-  useInvalidateWorkflowToolDetailByAppID: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.toolProvider.workflow.get.get': () => ({
+      data: undefined,
+      isLoading: false,
+    }),
+  })
+})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')

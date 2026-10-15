@@ -6,8 +6,11 @@ vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
 )
 
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
+  ),
 )
 
 const { mockToNodeAvailableVars, mockGetVarType } = vi.hoisted(() => ({

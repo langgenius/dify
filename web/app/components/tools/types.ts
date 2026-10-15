@@ -291,3 +291,15 @@ export const MCPAuthMethod = {
 } as const
 
 export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]
+
+export type AppTrigger = {
+  id: string
+  trigger_type: 'trigger-webhook' | 'trigger-schedule' | 'trigger-plugin'
+  title: string
+  node_id: string
+  provider_name: string
+  icon: string
+  status: 'enabled' | 'disabled' | 'unauthorized'
+  created_at: string
+  updated_at: string
+}

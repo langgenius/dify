@@ -13,27 +13,20 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
+import { consoleQuery } from '@/service/console'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-  useInvalidateAllCustomTools,
-  useInvalidateAllMCPTools,
-  useInvalidateAllWorkflowTools,
-} from '@/service/use-tools'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
 import ToolPicker, { ToolPickerContent } from '../tool-picker'
 
 const mockNotify = vi.fn()
-const mockInvalidateBuiltInTools = vi.fn()
-const mockInvalidateCustomTools = vi.fn()
-const mockInvalidateWorkflowTools = vi.fn()
-const mockInvalidateMcpTools = vi.fn()
+const toolListKeys = {
+  builtin: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+  custom: consoleQuery.workspaces.current.tools.api.get.queryKey(),
+  workflow: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+  mcp: consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
+}
 const mockCreateCustomCollection = vi.mocked(createCustomCollection)
 const mockInstallPackageFromMarketPlace = vi.fn()
 const mockCheckInstalled = vi.fn()
@@ -44,14 +37,13 @@ const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
 const mockUseTags = vi.mocked(useTags)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
-const mockUseAllBuiltInTools = vi.mocked(useAllBuiltInTools)
-const mockUseAllCustomTools = vi.mocked(useAllCustomTools)
-const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
-const mockUseAllMCPTools = vi.mocked(useAllMCPTools)
-const mockUseInvalidateAllBuiltInTools = vi.mocked(useInvalidateAllBuiltInTools)
-const mockUseInvalidateAllCustomTools = vi.mocked(useInvalidateAllCustomTools)
-const mockUseInvalidateAllWorkflowTools = vi.mocked(useInvalidateAllWorkflowTools)
-const mockUseInvalidateAllMCPTools = vi.mocked(useInvalidateAllMCPTools)
+const { mockBuiltInToolsQuery, mockCustomToolsQuery, mockWorkflowToolsQuery, mockMCPToolsQuery } =
+  vi.hoisted(() => ({
+    mockBuiltInToolsQuery: vi.fn(),
+    mockCustomToolsQuery: vi.fn(),
+    mockWorkflowToolsQuery: vi.fn(),
+    mockMCPToolsQuery: vi.fn(),
+  }))
 const mockUseFeaturedToolsRecommendations = vi.mocked(useFeaturedToolsRecommendations)
 
 vi.mock('@/context/i18n', () => ({
@@ -121,16 +113,17 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: vi.fn(),
-  useAllCustomTools: vi.fn(),
-  useAllWorkflowTools: vi.fn(),
-  useAllMCPTools: vi.fn(),
-  useInvalidateAllBuiltInTools: vi.fn(),
-  useInvalidateAllCustomTools: vi.fn(),
-  useInvalidateAllWorkflowTools: vi.fn(),
-  useInvalidateAllMCPTools: vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => mockBuiltInToolsQuery(),
+    'workspaces.current.tools.api.get': ({ enabled }: { enabled?: boolean }) =>
+      mockCustomToolsQuery(enabled),
+    'workspaces.current.tools.workflow.get': ({ enabled }: { enabled?: boolean }) =>
+      mockWorkflowToolsQuery(enabled),
+    'workspaces.current.tools.mcp.get': () => mockMCPToolsQuery(),
+  })
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -363,26 +356,14 @@ describe('ToolPicker', () => {
     mockUseMarketplacePlugins.mockReturnValue({
       data: undefined,
     } as ReturnType<typeof useMarketplacePlugins>)
-    mockUseAllBuiltInTools.mockReturnValue({ data: builtInTools } as ReturnType<
-      typeof useAllBuiltInTools
-    >)
-    mockUseAllCustomTools.mockImplementation(
-      (enabled = true) =>
-        ({
-          data: enabled ? customTools : [],
-        }) as ReturnType<typeof useAllCustomTools>,
-    )
-    mockUseAllWorkflowTools.mockImplementation(
-      (enabled = true) =>
-        ({
-          data: enabled ? workflowTools : [],
-        }) as ReturnType<typeof useAllWorkflowTools>,
-    )
-    mockUseAllMCPTools.mockReturnValue({ data: mcpTools } as ReturnType<typeof useAllMCPTools>)
-    mockUseInvalidateAllBuiltInTools.mockReturnValue(mockInvalidateBuiltInTools)
-    mockUseInvalidateAllCustomTools.mockReturnValue(mockInvalidateCustomTools)
-    mockUseInvalidateAllWorkflowTools.mockReturnValue(mockInvalidateWorkflowTools)
-    mockUseInvalidateAllMCPTools.mockReturnValue(mockInvalidateMcpTools)
+    mockBuiltInToolsQuery.mockReturnValue({ data: builtInTools })
+    mockCustomToolsQuery.mockImplementation((enabled = true) => ({
+      data: enabled ? customTools : [],
+    }))
+    mockWorkflowToolsQuery.mockImplementation((enabled = true) => ({
+      data: enabled ? workflowTools : [],
+    }))
+    mockMCPToolsQuery.mockReturnValue({ data: mcpTools })
     mockUseFeaturedToolsRecommendations.mockReturnValue({
       plugins: [],
       isLoading: false,
@@ -587,9 +568,9 @@ describe('ToolPicker', () => {
         plugin_id: 'available-plugin',
         label: { en_US: 'Available Plugin' },
       })
-      mockUseAllBuiltInTools.mockReturnValue({
+      mockBuiltInToolsQuery.mockReturnValue({
         data: [createToolProvider({ ...builtInTools[0], plugin_id: installedPlugin.plugin_id })],
-      } as ReturnType<typeof useAllBuiltInTools>)
+      })
       mockUseMarketplacePlugins.mockImplementation(
         (params) =>
           ({
@@ -670,12 +651,12 @@ describe('ToolPicker', () => {
       expect(await screen.findByText('New Plugin')).toBeInTheDocument()
       expect(screen.getByText('Available Plugin')).toBeInTheDocument()
 
-      mockUseAllBuiltInTools.mockReturnValue({
+      mockBuiltInToolsQuery.mockReturnValue({
         data: [
           ...builtInTools,
           createToolProvider({ id: 'new-provider', plugin_id: newlyInstalledPlugin.plugin_id }),
         ],
-      } as ReturnType<typeof useAllBuiltInTools>)
+      })
       rerender(<ToolPickerContent {...props} />)
 
       expect(screen.queryByText('New Plugin')).not.toBeInTheDocument()
@@ -686,10 +667,11 @@ describe('ToolPicker', () => {
 
   it('should create a custom collection from the add button and refresh custom tools', async () => {
     const user = userEvent.setup()
-    renderToolPicker({
+    const { queryClient } = renderToolPicker({
       isShow: true,
       supportAddCustomTool: true,
     })
+    for (const key of Object.values(toolListKeys)) queryClient.setQueryData(key, [])
 
     await user.click(screen.getByRole('button', { name: 'tools.addToolModal.custom.tip' }))
     expect(screen.getByTestId('edit-custom-tool-modal')).toBeInTheDocument()
@@ -699,7 +681,8 @@ describe('ToolPicker', () => {
     await waitFor(() => {
       expect(mockCreateCustomCollection).toHaveBeenCalledWith({ name: 'collection-a' })
     })
-    expect(mockInvalidateCustomTools).toHaveBeenCalledTimes(1)
+    expect(queryClient.getQueryState(toolListKeys.custom)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(toolListKeys.builtin)?.isInvalidated).toBe(false)
     expect(screen.queryByTestId('edit-custom-tool-modal')).not.toBeInTheDocument()
   })
 
@@ -711,8 +694,8 @@ describe('ToolPicker', () => {
       supportAddCustomTool: true,
     })
 
-    expect(mockUseAllCustomTools).toHaveBeenCalledWith(true)
-    expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(true)
+    expect(mockCustomToolsQuery).toHaveBeenCalledWith(true)
+    expect(mockWorkflowToolsQuery).toHaveBeenCalledWith(true)
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
     expect(screen.getByText('Built-in Provider')).toBeInTheDocument()
     expect(screen.getByText('MCP Provider')).toBeInTheDocument()
@@ -731,10 +714,11 @@ describe('ToolPicker', () => {
       isLoading: false,
     } as ReturnType<typeof useFeaturedToolsRecommendations>)
 
-    renderToolPicker({
+    const { queryClient } = renderToolPicker({
       isShow: true,
       selectedTools: [],
     })
+    for (const key of Object.values(toolListKeys)) queryClient.setQueryData(key, [])
 
     const featuredPluginItem = await screen.findByText('Plugin One')
     await user.hover(featuredPluginItem)
@@ -744,10 +728,8 @@ describe('ToolPicker', () => {
 
     await waitFor(
       () => {
-        expect(mockInvalidateBuiltInTools).toHaveBeenCalledTimes(1)
-        expect(mockInvalidateCustomTools).toHaveBeenCalledTimes(1)
-        expect(mockInvalidateWorkflowTools).toHaveBeenCalledTimes(1)
-        expect(mockInvalidateMcpTools).toHaveBeenCalledTimes(1)
+        for (const key of Object.values(toolListKeys))
+          expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
       },
       { timeout: 3000 },
     )

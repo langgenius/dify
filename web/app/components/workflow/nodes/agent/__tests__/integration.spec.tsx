@@ -55,13 +55,6 @@ vi.mock('@langgenius/dify-ui/status-dot', () => ({
   StatusDot: ({ status }: any) => <div>{`indicator:${status}`}</div>,
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
-  useAllCustomTools: () => ({ data: mockCustomTools }),
-  useAllWorkflowTools: () => ({ data: mockWorkflowTools }),
-  useAllMCPTools: () => ({ data: mockMcpTools }),
-}))
-
 vi.mock('@/utils/get-icon', () => ({
   getIconFromMarketPlace: () => mockMarketplaceIcon,
 }))
@@ -372,7 +365,8 @@ describe('agent path', () => {
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const reactQuery = {
     ...actual,
     useQuery: (options: {
       queryKey: OperationKey<
@@ -391,5 +385,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (modelType === ModelTypeEnum.textEmbedding) return { data: mockTextEmbeddingModels }
       return { data: mockTtsModels }
     },
-  }
+  } as typeof actual
+  return mockConsoleOperationHooks(reactQuery, {
+    'workspaces.current.tools.builtin.get': () => ({ data: mockBuiltInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: mockCustomTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: mockWorkflowTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: mockMcpTools }),
+  })
 })

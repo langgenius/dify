@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
@@ -46,15 +47,11 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { fetchAllInspectVars } from '@/service/workflow'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
@@ -567,10 +564,26 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const { schemaTypeDefinitions } = useMatchSchemaType()
     const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-    const { data: buildInTools } = useAllBuiltInTools()
-    const { data: customTools } = useAllCustomTools()
-    const { data: workflowTools } = useAllWorkflowTools()
-    const { data: mcpTools } = useAllMCPTools()
+    const { data: buildInTools } = useQuery(
+      consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: customTools } = useQuery(
+      consoleQuery.workspaces.current.tools.api.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: workflowTools } = useQuery(
+      consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: mcpTools } = useQuery(
+      consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
     const dataSourceList = useStore((s) => s.dataSourceList)
     // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
     const configsMap = useHooksStore((s) => s.configsMap)

@@ -54,7 +54,6 @@ import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
 // oxlint-disable-next-line no-restricted-imports
 import { getMarketplace, postMarketplace } from './base'
-import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
@@ -760,7 +759,10 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const invalidateAllBuiltInTools = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+    })
   return (category?: PluginCategoryEnum) => {
     if (category) {
       const invalidateCategoryPluginList = queryClient.invalidateQueries({

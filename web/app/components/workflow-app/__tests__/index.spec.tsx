@@ -126,9 +126,12 @@ vi.mock('@/service/log', () => ({
   fetchRunDetail: (...args: unknown[]) => mockFetchRunDetail(...args),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAppTriggers: () => appTriggersState,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'apps.byAppId.triggers.get': () => appTriggersState,
+  })
+})
 
 vi.mock('../hooks/use-workflow-init', () => ({
   useWorkflowInit: () => workflowInitState,

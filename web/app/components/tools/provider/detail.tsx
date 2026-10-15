@@ -61,7 +61,6 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -85,7 +84,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
   const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
-  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
@@ -205,7 +203,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     await saveWorkflowToolProvider(data)
-    invalidateAllWorkflowTools()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
     onRefreshData()
     getWorkflowToolProvider()
     setWorkflowToolDrawerOpen(false)

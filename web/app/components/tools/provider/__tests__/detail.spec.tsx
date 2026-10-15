@@ -109,10 +109,6 @@ vi.mock('@/service/tools', () => ({
   saveWorkflowToolProvider: (...args: unknown[]) => mockSaveWorkflowToolProvider(...args),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateAllWorkflowTools: () => vi.fn(),
-}))
-
 vi.mock('@/utils/var', () => ({
   basePath: '',
 }))

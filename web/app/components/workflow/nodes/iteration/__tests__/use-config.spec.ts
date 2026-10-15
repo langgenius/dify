@@ -43,12 +43,15 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: (...args: unknown[]) => mockUseNodeCrud(...args),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => mockUseAllBuiltInTools(),
-  useAllCustomTools: () => mockUseAllCustomTools(),
-  useAllWorkflowTools: () => mockUseAllWorkflowTools(),
-  useAllMCPTools: () => mockUseAllMCPTools(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => mockUseAllBuiltInTools(),
+    'workspaces.current.tools.api.get': () => mockUseAllCustomTools(),
+    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
+    'workspaces.current.tools.mcp.get': () => mockUseAllMCPTools(),
+  })
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
   toNodeOutputVars: (...args: unknown[]) => mockToNodeOutputVars(...args),

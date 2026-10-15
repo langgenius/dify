@@ -44,9 +44,8 @@ type MCPModalConfirmPayload = {
   headers?: Record<string, string>
   is_dynamic_registration?: boolean
   authentication?: {
-    client_id?: string
+    client_id: string
     client_secret?: string
-    grant_type?: string
   }
   configuration: {
     timeout: number

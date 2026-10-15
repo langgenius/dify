@@ -6,7 +6,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
@@ -28,6 +28,7 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
@@ -48,7 +49,7 @@ import {
 } from '@/app/components/workflow/utils'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
-import { useAllBuiltInTools } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
 import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
@@ -361,7 +362,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [data.type, logParams])
 
   const storeBuildInTools = useStore((s) => s.buildInTools)
-  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
   const currToolCollection = useMemo(
     () => getCurrentToolCollection(buildInTools, storeBuildInTools, data.provider_id),
     [buildInTools, storeBuildInTools, data.provider_id],

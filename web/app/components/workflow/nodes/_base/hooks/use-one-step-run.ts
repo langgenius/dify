@@ -8,6 +8,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -16,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import {
   getNodeInfoById,
   isConversationVar,
@@ -50,12 +52,7 @@ import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { post, ssePost } from '@/service/base'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import {
   fetchNodeInspectVars,
@@ -171,10 +168,22 @@ const useOneStepRun = <T>({
   const workflowStore = useWorkflowStore()
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
 
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
     const isSystem = valueSelector[0] === 'sys'

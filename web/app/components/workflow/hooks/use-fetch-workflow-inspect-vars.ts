@@ -2,15 +2,12 @@ import type { Node, WorkflowPluginCatalogs } from '@/app/components/workflow/typ
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import {
   useInvalidateConversationVarValues,
   useInvalidateSysVarValues,
@@ -32,10 +29,22 @@ export const useSetWorkflowVarsWithValue = ({ flowType, flowId }: Params) => {
   const invalidateSysVarValues = useInvalidateSysVarValues(flowType, flowId)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { schemaTypeDefinitions } = useMatchSchemaType()
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const dataSourceList = useStore((s) => s.dataSourceList)
 
   const allPluginInfoList = useMemo(() => {

@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { useEdges, useStoreApi } from 'reactflow'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { toast } from '@/app/notifications'
 import { MAX_TREE_DEPTH } from '@/config'
@@ -38,12 +39,6 @@ import {
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
@@ -166,10 +161,22 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider'])
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const inlineAgentToolProviderCatalog = useMemo(
     () => createAgentToolProviderCatalog({ buildInTools, customTools, mcpTools, workflowTools }),
     [buildInTools, customTools, mcpTools, workflowTools],
@@ -653,9 +660,19 @@ export const useChecklistBeforePublish = () => {
       select: (response) => response.data,
     }),
   )
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const { appId } = useParams<{ appId?: string }>()
   const { data: appMode } = useQuery(
