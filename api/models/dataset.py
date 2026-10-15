@@ -262,40 +262,14 @@ class Dataset(Base):
             for dataset_metadata in dataset_metadatas
         ]
         if self.built_in_field_enabled:
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.document_name,
-                    "type": "string",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.uploader,
-                    "type": "string",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.upload_date,
-                    "type": "time",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.last_update_date,
-                    "type": "time",
-                }
-            )
-            doc_metadata.append(
-                {
-                    "id": "built-in",
-                    "name": BuiltInField.source,
-                    "type": "string",
-                }
+            doc_metadata.extend(
+                (
+                    {"id": "built-in", "name": BuiltInField.document_name, "type": "string"},
+                    {"id": "built-in", "name": BuiltInField.uploader, "type": "string"},
+                    {"id": "built-in", "name": BuiltInField.upload_date, "type": "time"},
+                    {"id": "built-in", "name": BuiltInField.last_update_date, "type": "time"},
+                    {"id": "built-in", "name": BuiltInField.source, "type": "string"},
+                )
             )
         return doc_metadata
 

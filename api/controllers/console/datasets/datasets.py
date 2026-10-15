@@ -6,21 +6,21 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_errors
+from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_errors, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
-    DatasetInUseError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
+from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -36,11 +36,11 @@ from fields.dataset_fields import (
     DatasetDetailResponse,
     NotionEstimateWorkspacePayload,
 )
+from libs.external_api import error_responses
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.enums import PermissionEnum as DatasetPermissionEnum
-from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
@@ -66,15 +66,18 @@ _DATASET_EDIT_ROLES = frozenset(
 
 
 def _raise_dataset_error(error: Exception) -> Never:
+    """Translate the scope errors every dataset operation can raise."""
     if isinstance(error, DatasetNotFoundError):
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
+    raise error
+
+
+def _raise_dataset_create_error(error: Exception) -> Never:
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
-    if isinstance(error, DatasetInUseFailure):
-        raise DatasetInUseError() from error
-    raise error
+    _raise_dataset_error(error)
 
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
@@ -446,6 +449,7 @@ class DatasetListApi(Resource):
         )
         return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
     @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
@@ -465,7 +469,7 @@ class DatasetListApi(Resource):
                 request_context, values=req_data.model_dump()
             )
         except Exception as error:
-            _raise_dataset_error(error)
+            _raise_dataset_create_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 201
 
 
@@ -571,6 +575,7 @@ class DatasetQueryApi(Resource):
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
+    @error_responses(DatasetAccessDeniedRequestError, IndexingEstimateError, ProviderNotInitializeError)
     @console_ns.doc("estimate_dataset_indexing")
     @console_ns.doc(description="Estimate dataset indexing cost")
     @console_ns.response(
@@ -689,6 +694,7 @@ class DatasetApiKeyApi(Resource):
             keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
+    @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -701,8 +707,8 @@ class DatasetApiKeyApi(Resource):
         payload = request.get_json(silent=True) or {}
         dataset_ids = payload.get("dataset_ids") or []
         if not isinstance(dataset_ids, list) or any(not isinstance(item, str) for item in dataset_ids):
-            console_ns.abort(400, message="dataset_ids must be a list of strings.")
-        with api_key_errors():
+            raise BadRequest("dataset_ids must be a list of strings.")
+        with api_key_create_errors():
             key = application_services().dataset_api_keys.create_workspace_key(request_context, tuple(dataset_ids))
         return dump_response(ApiKeyItem, key), 200
 

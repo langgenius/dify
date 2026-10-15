@@ -121,12 +121,8 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
 
     for (let i = 0; i < count; i++) {
       const execution = new Date(userToday)
+      // setHours rolls past midnight into the next day, month and year on its own
       execution.setHours(hour + i, onMinute, 0, 0)
-      // Handle day overflow
-      if (hour + i >= 24) {
-        execution.setDate(userToday.getDate() + Math.floor((hour + i) / 24))
-        execution.setHours((hour + i) % 24, onMinute, 0, 0)
-      }
       times.push(execution)
     }
   } else if (data.frequency === 'daily') {

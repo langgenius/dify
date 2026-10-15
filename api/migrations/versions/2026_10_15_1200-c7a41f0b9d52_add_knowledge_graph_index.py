@@ -5,8 +5,8 @@ entities, relations, and the chunk provenance links that keep graph hits
 citable back to ``document_segments``.
 
 Revision ID: c7a41f0b9d52
-Revises: a8c9e2f1b704
-Create Date: 2026-09-30 12:00:00.000000
+Revises: f1d3c5b7a902
+Create Date: 2026-10-15 12:00:00.000000
 
 """
 
@@ -17,7 +17,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "c7a41f0b9d52"
-down_revision = "a8c9e2f1b704"
+down_revision = "f1d3c5b7a902"
 branch_labels = None
 depends_on = None
 

@@ -67,17 +67,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 3
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-reset-password/layout.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -540,19 +529,6 @@
   "web/app/components/app/overview/__tests__/app-chart-utils.spec.ts": {
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/app/overview/apikey-info-panel/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/overview/app-chart.tsx": {
-    "react/only-export-components": {
-      "count": 12
     }
   },
   "web/app/components/app/text-generate/item/__tests__/index.spec.tsx": {
@@ -2281,19 +2257,11 @@
   "web/app/components/rag-pipeline/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/hooks/use-pipeline-init.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
@@ -2618,11 +2586,6 @@
   },
   "web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
     "eslint-react/error-boundaries": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/hooks/use-auto-generate-webhook-url.ts": {
-    "dify/no-app-store-imports": {
       "count": 1
     }
   },
@@ -2980,7 +2943,7 @@
   },
   "web/app/components/workflow/nodes/agent/__tests__/integration.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 17
+      "count": 16
     }
   },
   "web/app/components/workflow/nodes/agent/default.ts": {
@@ -3513,11 +3476,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/trigger-webhook/__tests__/use-config.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/trigger-webhook/components/generic-table.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -3525,11 +3483,6 @@
   },
   "web/app/components/workflow/nodes/trigger-webhook/components/parameter-table.tsx": {
     "typescript/no-non-null-asserted-optional-chain": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/trigger-webhook/use-config.ts": {
-    "dify/no-app-store-imports": {
       "count": 1
     }
   },
@@ -3612,15 +3565,7 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/chat-record/__tests__/index.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/chat-record/index.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -3628,7 +3573,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 7
     }
   },
   "web/app/components/workflow/panel/chat-record/user-input.tsx": {
@@ -3681,16 +3626,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/__tests__/chat-wrapper.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/panel/debug-and-preview/__tests__/components.spec.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks.spec.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -3698,7 +3633,7 @@
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-resume.spec.ts": {
     "typescript/no-explicit-any": {
-      "count": 69
+      "count": 68
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-send.spec.ts": {
@@ -3708,7 +3643,7 @@
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/handle-stop-restart.spec.ts": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 13
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/misc.spec.ts": {
@@ -3727,9 +3662,6 @@
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
-    "dify/no-app-store-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 5
     }
@@ -3744,7 +3676,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 11
+      "count": 8
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/user-input.tsx": {
@@ -4140,7 +4072,7 @@
   },
   "web/features/agent-v2/agent-detail/configure/components/preview/working-directory-panel.tsx": {
     "@tanstack/query/prefer-query-options": {
-      "count": 4
+      "count": 2
     }
   },
   "web/features/agent-v2/agent-detail/logs/__tests__/page.spec.tsx": {
@@ -4315,9 +4247,6 @@
   },
   "web/service/apps.ts": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
       "count": 1
     }
   },

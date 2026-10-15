@@ -61,6 +61,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
+from services.enterprise import rbac_service
 from services.enterprise.rbac_service import RBACService
 from services.entities.dsl_entities import (
     AppDslExportData,
@@ -92,6 +93,26 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
+
+
+def initialize_imported_app_creator_access(result: Import, *, tenant_id: str, account_id: str) -> None:
+    """Initialize ordinary App creator access only after the caller commits the import."""
+    if (
+        result.status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
+        and result.app_created
+        and result.app_id
+        and result.app_mode
+        in (
+            AppMode.CHAT,
+            AppMode.ADVANCED_CHAT,
+            AppMode.COMPLETION,
+            AppMode.WORKFLOW,
+            AppMode.AGENT_CHAT,
+        )
+    ):
+        rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id, account_id, rbac_service.RBACResourceType.APP, result.app_id
+        )
 
 
 def missing_app_section_error(top_level_keys: list[str]) -> str:
@@ -347,6 +368,7 @@ class AppDslService:
                 )
 
             # Create or update app
+            app_created = app is None
             app = self._create_or_update_app(
                 app=app,
                 data=data,
@@ -369,6 +391,7 @@ class AppDslService:
                 id=import_id,
                 status=result_status,
                 app_id=app.id,
+                app_created=app_created,
                 app_mode=app.mode,
                 imported_dsl_version=imported_version,
                 warnings=self._warnings,
@@ -448,6 +471,7 @@ class AppDslService:
                 self._validate_workflow_overwrite(app, data)
 
             # Create or update app
+            app_created = app is None
             app = self._create_or_update_app(
                 app=app,
                 data=data,
@@ -467,6 +491,7 @@ class AppDslService:
                 id=import_id,
                 status=self._status_with_warnings(ImportStatus.COMPLETED),
                 app_id=app.id,
+                app_created=app_created,
                 app_mode=app.mode,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
@@ -698,10 +723,7 @@ class AppDslService:
 
                 workflow_service = WorkflowService()
                 current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
-                if current_draft_workflow:
-                    unique_hash = current_draft_workflow.unique_hash
-                else:
-                    unique_hash = None
+                unique_hash = current_draft_workflow.unique_hash if current_draft_workflow else None
                 graph = workflow_data.get("graph", {})
                 if not isinstance(graph, dict):
                     raise ValueError("Workflow graph must be a mapping")

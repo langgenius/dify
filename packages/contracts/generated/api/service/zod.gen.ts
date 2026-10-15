@@ -1097,6 +1097,115 @@ export const zEndUserDetail = z.object({
 })
 
 /**
+ * ErrorMessageResponse
+ *
+ * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+ */
+export const zErrorMessageResponse = z.object({
+  error: z.string(),
+})
+
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AgentNotPublishedError
+ *
+ * Agent has not been published. Please publish the Agent before using the API.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * EndUserNotFoundError
+ *
+ * End user not found.
+ */
+export const zEndUserNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
@@ -1120,6 +1229,42 @@ export const zFeedbackListQuery = z.object({
  * Enum class for fetch from.
  */
 export const zFetchFrom = z.enum(['customizable-model', 'predefined-model'])
+
+/**
+ * FileAccessDeniedError
+ *
+ * Access to the requested file is denied.
+ */
+export const zFileAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
+ */
+export const zFileExtensionBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * FileNotFoundError
+ *
+ * The requested file was not found.
+ */
+export const zFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * FilePreviewQuery
@@ -1148,6 +1293,18 @@ export const zFileResponse = z.object({
   tenant_id: z.uuid().nullish(),
   user_id: z.uuid().nullish(),
 })
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413),
+  }),
+)
 
 /**
  * FileTransferMethod
@@ -1186,6 +1343,18 @@ export const zFileListInputConfig = z.object({
   output_variable_name: z.string(),
   type: z.literal('file-list').optional().default('file-list'),
 })
+
+/**
+ * FilenameNotExistsError
+ *
+ * The specified filename does not exist.
+ */
+export const zFilenameNotExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('filename_not_exists_error'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * HitTestingChildChunk
@@ -1277,9 +1446,31 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
+
+/**
+ * HumanInputFormSubmittedError
+ *
+ * This form has already been submitted by another user, form_id={form_id}
+ */
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412),
+  }),
+)
 
 /**
  * I18nObject
@@ -1299,6 +1490,40 @@ export const zIndexInfoResponse = z.object({
   server_version: z.string(),
   welcome: z.string(),
 })
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidFormDataError
+ */
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidMetadataError
+ *
+ * The metadata content is incorrect. Please check and verify.
+ */
+export const zInvalidMetadataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_metadata'),
+    status: z.literal(400),
+  }),
+)
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
@@ -1532,6 +1757,18 @@ export const zMetadataUpdatePayload = z.object({
 })
 
 /**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ModelFeature
  *
  * Enum class for llm feature.
@@ -1595,6 +1832,54 @@ export const zModelType = z.enum([
   'text-embedding',
   'tts',
 ])
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotChatAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotChatAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_chat_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotWorkflowAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotWorkflowAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_workflow_app'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ServiceApiUserPayload
@@ -1673,6 +1958,18 @@ export const zPipelineRunApiEntity = z.object({
 })
 
 /**
+ * PipelineRunError
+ *
+ * An error occurred while running the pipeline.
+ */
+export const zPipelineRunError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pipeline_run_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * PipelineUploadFileResponse
  */
 export const zPipelineUploadFileResponse = z.object({
@@ -1725,6 +2022,42 @@ export const zProviderModelWithStatusEntity = z.object({
 })
 
 /**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ProviderWithModelsResponse
  *
  * Model class for provider with models response.
@@ -1754,6 +2087,18 @@ export const zPublishedPipelineRunResponse = z.object({
   dataset: zPipelineDataset,
   documents: z.array(zPipelineDocument),
 })
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * RerankingModel
@@ -2046,6 +2391,18 @@ export const zSite = z.object({
   title: z.string(),
   use_icon_as_answer_icon: z.boolean(),
 })
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * SystemParameters
@@ -2470,6 +2827,18 @@ export const zTextToAudioPayloadWithUser = z.object({
 })
 
 /**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ToolIcon
  */
 export const zToolIcon = z.object({
@@ -2483,6 +2852,42 @@ export const zToolIcon = z.object({
 export const zAppMetaResponse = z.object({
   tool_icons: z.record(z.string(), z.union([z.string(), zToolIcon])).optional(),
 })
+
+/**
+ * TriggerWorkflowServiceModeUnavailableError
+ *
+ * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
+ */
+export const zTriggerWorkflowServiceModeUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_workflow_service_mode_unavailable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415),
+  }),
+)
 
 /**
  * UrlResponse
@@ -3086,6 +3491,18 @@ export const zWorkflowRunResponse = z.object({
 export const zWorkflowTaskStopPayload = z.object({
   user: z.string(),
 })
+
+/**
+ * WorkflowVersionExecutionNotAllowedError
+ *
+ * Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
+ */
+export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_version_execution_not_allowed'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * HumanInputFormSubmitResponse

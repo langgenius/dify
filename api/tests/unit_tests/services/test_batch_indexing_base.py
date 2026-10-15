@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Any, ClassVar, cast
+from typing import ClassVar, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,8 +18,8 @@ class ConcreteBatchProxy(BatchDocumentIndexingProxy):
     """Minimal concrete implementation that provides the required class-level vars."""
 
     QUEUE_NAME: ClassVar[str] = "test_queue"
-    NORMAL_TASK_FUNC: ClassVar[Any] = MagicMock(name="NORMAL_TASK_FUNC")
-    PRIORITY_TASK_FUNC: ClassVar[Any] = MagicMock(name="PRIORITY_TASK_FUNC")
+    NORMAL_TASK_FUNC = MagicMock(name="NORMAL_TASK_FUNC")
+    PRIORITY_TASK_FUNC = MagicMock(name="PRIORITY_TASK_FUNC")
 
 
 # ---------------------------------------------------------------------------
@@ -31,13 +31,15 @@ DATASET_ID = "dataset-xyz"
 DOC_IDS: list[str] = ["doc-1", "doc-2", "doc-3"]
 
 
-def make_proxy(**kwargs: Any) -> ConcreteBatchProxy:
+def make_proxy(
+    *, tenant_id: str = TENANT_ID, dataset_id: str = DATASET_ID, document_ids: list[str] | None = None
+) -> ConcreteBatchProxy:
     """Factory: returns a ConcreteBatchProxy with TenantIsolatedTaskQueue mocked out."""
     with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as MockQueue:
         proxy = ConcreteBatchProxy(
-            tenant_id=kwargs.get("tenant_id", TENANT_ID),
-            dataset_id=kwargs.get("dataset_id", DATASET_ID),
-            document_ids=kwargs.get("document_ids", DOC_IDS),
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=document_ids if document_ids is not None else DOC_IDS,
         )
         # Expose the mock queue on the proxy so tests can assert on it
         proxy._tenant_isolated_task_queue = MockQueue.return_value
@@ -256,7 +258,7 @@ class TestSendToTenantQueue:
         mock_queue.push_tasks.assert_not_called()
 
     @pytest.mark.parametrize("falsy_key", [None, "", 0, False])
-    def test_should_init_task_when_key_is_any_falsy_value(self, falsy_key: Any) -> None:
+    def test_should_init_task_when_key_is_any_falsy_value(self, falsy_key: object) -> None:
         """Verify that any falsy return from get_task_key() triggers the init branch."""
         # Arrange
         proxy = make_proxy()

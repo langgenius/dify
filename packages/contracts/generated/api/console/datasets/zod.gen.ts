@@ -3,6 +3,34 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * ApiBaseUrlResponse
  */
 export const zApiBaseUrlResponse = z.object({
@@ -34,6 +62,18 @@ export const zApiKeyItem = z.object({
 export const zApiKeyList = z.object({
   data: z.array(zApiKeyItem),
 })
+
+/**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * SegmentBatchImportStatusResponse
@@ -90,6 +130,66 @@ export const zIndexingEstimatePayload = z.object({
 })
 
 /**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * DatasetAccessDeniedError
+ *
+ * Dataset access denied.
+ */
+export const zDatasetAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * IndexingEstimateError
+ *
+ * Knowledge indexing estimate failed: {message}
+ */
+export const zIndexingEstimateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('indexing_estimate_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * RetrievalSettingResponse
  */
 export const zRetrievalSettingResponse = z.object({
@@ -112,6 +212,18 @@ export const zAutoDisableLogsResponse = z.object({
 })
 
 /**
+ * DocumentAlreadyFinishedError
+ *
+ * The document has been processed. Please refresh the page or go to the document details.
+ */
+export const zDocumentAlreadyFinishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_already_finished'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * DocumentBatchDownloadZipPayload
  *
  * Request payload for bulk downloading documents as a zip archive.
@@ -126,6 +238,30 @@ export const zDocumentBatchDownloadZipPayload = z.object({
 export const zGenerateSummaryPayload = z.object({
   document_list: z.array(z.string()),
 })
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidMetadataError
+ *
+ * The metadata content is incorrect. Please check and verify.
+ */
+export const zInvalidMetadataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_metadata'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * UrlResponse
@@ -176,6 +312,30 @@ export const zSimpleResultMessageResponse = z.object({
 })
 
 /**
+ * DocumentIndexingError
+ *
+ * The document is being processed and cannot be edited.
+ */
+export const zDocumentIndexingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_indexing'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * DocumentRenamePayload
  */
 export const zDocumentRenamePayload = z.object({
@@ -200,6 +360,15 @@ export const zBatchImportPayload = z.object({
 })
 
 /**
+ * ErrorMessageResponse
+ *
+ * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+ */
+export const zErrorMessageResponse = z.object({
+  error: z.string(),
+})
+
+/**
  * SegmentUpdatePayload
  */
 export const zSegmentUpdatePayload = z.object({
@@ -212,11 +381,35 @@ export const zSegmentUpdatePayload = z.object({
 })
 
 /**
+ * ChildChunkIndexingError
+ *
+ * Create child chunk index failed: {message}
+ */
+export const zChildChunkIndexingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('child_chunk_indexing_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * ChildChunkCreatePayload
  */
 export const zChildChunkCreatePayload = z.object({
   content: z.string(),
 })
+
+/**
+ * ChildChunkDeleteIndexError
+ *
+ * Delete child chunk index failed: {message}
+ */
+export const zChildChunkDeleteIndexError = zErrorResponse.and(
+  z.object({
+    code: z.literal('child_chunk_delete_index_error'),
+    status: z.literal(500),
+  }),
+)
 
 /**
  * ChildChunkUpdatePayload
@@ -254,6 +447,18 @@ export const zDatasetGraphStatsResponse = z.object({
   last_failed_at: z.int().nullable(),
   relation_count: z.int(),
 })
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * MetadataArgs

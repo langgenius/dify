@@ -253,33 +253,29 @@ def get_document_built_in_fields(document: Document, *, session: Session) -> lis
 
 def format_document_built_in_fields(document: Document, *, uploader_name: str | None) -> list[DocMetadataDetailItem]:
     built_in_fields: list[DocMetadataDetailItem] = []
-    built_in_fields.append(
-        {"id": "built-in", "name": BuiltInField.document_name, "type": "string", "value": document.name}
-    )
-    built_in_fields.append({"id": "built-in", "name": BuiltInField.uploader, "type": "string", "value": uploader_name})
-    built_in_fields.append(
-        {
-            "id": "built-in",
-            "name": BuiltInField.upload_date,
-            "type": "time",
-            "value": str(document.created_at.timestamp()),
-        }
-    )
-    built_in_fields.append(
-        {
-            "id": "built-in",
-            "name": BuiltInField.last_update_date,
-            "type": "time",
-            "value": str(document.updated_at.timestamp()),
-        }
-    )
-    built_in_fields.append(
-        {
-            "id": "built-in",
-            "name": BuiltInField.source,
-            "type": "string",
-            "value": MetadataDataSource[document.data_source_type],
-        }
+    built_in_fields.extend(
+        (
+            {"id": "built-in", "name": BuiltInField.document_name, "type": "string", "value": document.name},
+            {"id": "built-in", "name": BuiltInField.uploader, "type": "string", "value": uploader_name},
+            {
+                "id": "built-in",
+                "name": BuiltInField.upload_date,
+                "type": "time",
+                "value": str(document.created_at.timestamp()),
+            },
+            {
+                "id": "built-in",
+                "name": BuiltInField.last_update_date,
+                "type": "time",
+                "value": str(document.updated_at.timestamp()),
+            },
+            {
+                "id": "built-in",
+                "name": BuiltInField.source,
+                "type": "string",
+                "value": MetadataDataSource[document.data_source_type],
+            },
+        )
     )
     return built_in_fields
 

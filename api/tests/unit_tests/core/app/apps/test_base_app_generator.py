@@ -189,7 +189,7 @@ def test_validate_inputs_with_default_value():
         label="test_number_float",
         type=VariableEntityType.NUMBER,
         required=False,
-        default=3.14,
+        default=float("3.14"),
     )
 
     result = base_app_generator._validate_inputs(
@@ -197,7 +197,7 @@ def test_validate_inputs_with_default_value():
         value=None,
     )
 
-    assert result == 3.14
+    assert result == float("3.14")
 
     # Test with number default value as string (frontend sends as string)
     var_number_string = VariableEntity(

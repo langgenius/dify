@@ -173,15 +173,7 @@ export function WebAppAccessPointCard({
         description={t(($) => $['studio.accessPoint.webAppDescription'], {
           ns: 'deployments',
         })}
-        icon={
-          <AppIcon
-            size="large"
-            iconType={appInfo.icon_type}
-            icon={appInfo.icon ?? undefined}
-            background={appInfo.icon_background}
-            imageUrl={appInfo.icon_url}
-          />
-        }
+        icon={<AppIcon size="large" icon={appInfo} />}
         status={status}
         statusLabel={statusLabel}
         highlighted={highlighted}

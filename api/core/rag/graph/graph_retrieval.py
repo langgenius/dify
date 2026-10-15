@@ -402,7 +402,7 @@ class GraphRetrieval:
             stmt = select(DocumentSegment).where(
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.index_node_id.in_(batch),
-                DocumentSegment.enabled == True,
+                DocumentSegment.enabled.is_(True),
                 DocumentSegment.status == SegmentStatus.COMPLETED,
             )
             if document_ids_filter:

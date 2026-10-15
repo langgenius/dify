@@ -52,7 +52,7 @@ def fake_features(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
     )
     monkeypatch.setattr(
         "services.knowledge.dataset_service.FeatureService.get_features",
-        lambda tenant_id, **_kwargs: features,
+        lambda _tenant_id, **_kwargs: features,
     )
     return features
 
@@ -61,7 +61,7 @@ def fake_features(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
 def fake_lock(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch redis_client.lock to always raise LockNotOwnedError on enter."""
 
-    def _fake_lock(name: str, timeout: float | None = None, *args: object, **kwargs: object) -> FakeLock:
+    def _fake_lock(*_args: object, **_kwargs: object) -> FakeLock:
         return FakeLock()
 
     # DatasetService imports redis_client directly from extensions.ext_redis
@@ -74,11 +74,10 @@ def fake_lock(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, Dataset, DatasetProcessRule, Document)], indirect=True)
+@pytest.mark.usefixtures("fake_features", "fake_lock")
 def test_save_document_with_dataset_id_ignores_lock_not_owned(
     monkeypatch: pytest.MonkeyPatch,
     fake_current_user: Account,
-    fake_features: types.SimpleNamespace,
-    fake_lock: None,
     sqlite_session: Session,
 ) -> None:
     # Arrange
@@ -112,7 +111,9 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
     account = fake_current_user
 
     # Avoid touching real doc_form logic
-    monkeypatch.setattr("services.knowledge.dataset_service.DatasetService.check_doc_form", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "services.knowledge.dataset_service.DatasetService.check_doc_form", lambda *_args, **_kwargs: None
+    )
 
     # Act: this would hit the redis lock, whose __enter__ raises LockNotOwnedError.
     # Our implementation should catch it and still return (documents, batch).
@@ -146,10 +147,9 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
 
 
 @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, Dataset, Document, DocumentSegment)], indirect=True)
+@pytest.mark.usefixtures("fake_lock")
 def test_multi_create_segment_ignores_lock_not_owned(
-    monkeypatch: pytest.MonkeyPatch,
     fake_current_user: Account,
-    fake_lock: None,
     sqlite_session: Session,
 ) -> None:
     # Arrange

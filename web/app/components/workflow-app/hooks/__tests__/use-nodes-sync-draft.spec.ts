@@ -92,9 +92,27 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
-}))
+// Stand in for the draft sync request at the client boundary. Calls are recorded as the
+// request they send (endpoint and body), and rejections pass through the console link's
+// contract error validation, as they do in production.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { apps } = await import('@dify/contracts/api/console/apps/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ apps })
+  const post = (input: { params: { app_id: string }; body: unknown }) =>
+    validate({
+      context: {},
+      input,
+      path: ['apps', 'byAppId', 'workflows', 'draft', 'post'],
+      next: () =>
+        mockSyncWorkflowDraft({
+          url: `/apps/${input.params.app_id}/workflows/draft`,
+          params: input.body,
+        }),
+    })
+  return { ...actual, consoleClient: { apps: { byAppId: { workflows: { draft: { post } } } } } }
+})
 
 vi.mock('@/service/fetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/fetch')>()
@@ -594,8 +612,10 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
-    const error = createHttpError(new Response(null, { status: 400 }), {
+    const error = createHttpError(new Response(null, { status: 409 }), {
       code: 'draft_workflow_not_sync',
+      message: 'Workflow not synced.',
+      status: 409,
     })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
@@ -609,8 +629,10 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should NOT refresh when notRefreshWhenSyncError=true', async () => {
-    const error = createHttpError(new Response(null, { status: 400 }), {
+    const error = createHttpError(new Response(null, { status: 409 }), {
       code: 'draft_workflow_not_sync',
+      message: 'Workflow not synced.',
+      status: 409,
     })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
