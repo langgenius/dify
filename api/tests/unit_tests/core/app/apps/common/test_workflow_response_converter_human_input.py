@@ -9,6 +9,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from models.account import Account
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
 
 def _build_converter():
@@ -28,6 +29,7 @@ def _build_converter():
         inputs={},
         workflow_execution_id="run-1",
         call_depth=0,
+        workflow_execution_timing=WorkflowExecutionTiming(),
     )
     account = Account(name="tester", email="tester@example.com")
     account.id = "acc-1"

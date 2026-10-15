@@ -52,3 +52,10 @@ def test_dict_to_workflow_run_defaults_missing_started_at_to_naive_utc_now() -> 
     assert model.created_at.tzinfo is None
     # A naive local-time default would sit 5h30m ahead of UTC and drive elapsed_time negative.
     assert abs((model.created_at - datetime.datetime.now(tz=datetime.UTC).replace(tzinfo=None)).total_seconds()) < 60
+
+
+@pytest.mark.parametrize("elapsed_time", ["0.0", "5.5"])
+def test_dict_to_workflow_run_prefers_stored_active_duration(elapsed_time: str) -> None:
+    model = _dict_to_workflow_run({**_BASE, "started_at": _START, "finished_at": _FINISH, "elapsed_time": elapsed_time})
+
+    assert model.elapsed_time == float(elapsed_time)

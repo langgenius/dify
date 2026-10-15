@@ -14,6 +14,7 @@ from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -44,6 +45,7 @@ class WorkflowResumptionContext(BaseModel):
     # Only workflow / chatflow could be paused.
     generate_entity: _GenerateEntityUnion
     serialized_graph_runtime_state: str
+    elapsed_time: float = Field(default=0.0, ge=0, allow_inf_nan=False)
     # Optional so that a workflow run paused before this field existed still
     # loads: it just degrades to fresh-filter behavior on resume for that one
     # stale run.
@@ -54,7 +56,11 @@ class WorkflowResumptionContext(BaseModel):
 
     @classmethod
     def loads(cls, value: str) -> Self:
-        return cls.model_validate_json(value)
+        state = cls.model_validate_json(value)
+        state.generate_entity.entity.workflow_execution_timing = WorkflowExecutionTiming(
+            elapsed_time=state.elapsed_time,
+        )
+        return state
 
     def get_generate_entity(self) -> WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity:
         return self.generate_entity.entity
@@ -138,6 +144,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
 
         state = WorkflowResumptionContext(
             serialized_graph_runtime_state=self.graph_runtime_state.dumps(),
+            elapsed_time=self._generate_entity.workflow_execution_timing.finish(),
             generate_entity=entity_wrapper,
             serialized_response_stream_filter_state=self._response_stream_filter.dumps(),
         )
