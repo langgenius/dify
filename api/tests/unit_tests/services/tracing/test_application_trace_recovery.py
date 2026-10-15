@@ -99,6 +99,49 @@ def complete_metadata() -> str:
     )
 
 
+@pytest.mark.parametrize("outcome", ["succeeded", "cancelled", "failed"])
+def test_worker_terminal_survives_closed_sse_without_inventing_a_message_write(case: RecoveryCase, outcome: str):
+    with case.collection.sessions.begin() as session:
+        message = session.get(Message, case.collection.run.source_id)
+        message.message_metadata = json.dumps({"usage": {"prompt_tokens": 2, "completion_tokens": 1}})
+        message.answer = ""
+    # A runtime final/usage flush still does not imply that an API message ended.
+    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    output = "actual worker result" if outcome == "succeeded" else None
+    case.service.capture_agent_app_terminal(
+        tenant_id=case.collection.run.tenant_id,
+        app_id=case.collection.run.app_id,
+        message_id=case.collection.run.source_id,
+        outcome=outcome,
+        output=output,
+    )
+    stored = case.collection.repository.get(case.collection.run.id)
+    trace = CanonicalTrace.model_validate(stored.outer_trace)
+    root = trace.spans[0]
+    assert root.metadata["message_execution_state"] == outcome
+    assert root.status.value == ("ok" if outcome == "succeeded" else "error")
+    assert root.outputs == (output or "")
+    assert case.scheduled == [stored.id]
+    with case.collection.sessions() as session:
+        message = session.get(Message, case.collection.run.source_id)
+        assert message.answer == ""
+        assert set(json.loads(message.message_metadata)) == {"usage"}
+
+
+def test_worker_terminal_revalidates_message_tenant(case: RecoveryCase):
+    from repositories.application_trace_repository import TraceCollectionError
+
+    with pytest.raises(TraceCollectionError, match="tracing_source_not_found"):
+        case.service.capture_agent_app_terminal(
+            tenant_id=identifier("foreign-tenant"),
+            app_id=case.collection.run.app_id,
+            message_id=case.collection.run.source_id,
+            outcome="succeeded",
+            output="must not export",
+        )
+    assert case.collection.repository.get(case.collection.run.id).outer_trace is None
+
+
 def test_recovers_real_message_terminal_once_through_existing_trace_task(case: RecoveryCase) -> None:
     with case.collection.sessions.begin() as session:
         message = session.get(Message, case.collection.run.source_id)
