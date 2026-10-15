@@ -4,6 +4,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum, TransferMethod } from '@/types/app'
 import useSingleRunFormParams from '../use-single-run-form-params'
@@ -379,5 +380,25 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     })
 
     expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the generated form and reports failure when form generation is rejected', async () => {
+    mockFetchHumanInputNodeStepRunForm.mockRejectedValueOnce(new Error('Form unavailable'))
+    const errorToast = vi.spyOn(toast, 'error')
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'node-1',
+        payload: currentInputs,
+        runInputData: {},
+        getInputVars,
+        setRunInputData: mockSetRunInputData,
+      }),
+    )
+    await act(async () => {
+      await result.current.handleShowGeneratedForm({ topic: 'Keep input' })
+    })
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Form unavailable')
+    expect(result.current.showGeneratedForm).toBe(false)
+    expect(mockSubmitHumanInputNodeStepRunForm).not.toHaveBeenCalled()
   })
 })

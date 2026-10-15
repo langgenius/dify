@@ -665,8 +665,12 @@ describe('OAuthClientSettingsModal', () => {
         fireEvent.click(getConfirmButton())
       })
 
-      await vi.advanceTimersByTimeAsync(3000)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000)
+      })
       expect(mockVerifyBuilder).toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent('Verify failed')
+      expect(mockToastNotify).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
 
       // Should still be in pending state (polling continues)
       expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.authorizing')

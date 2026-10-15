@@ -1,6 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { useMutation } from '@tanstack/react-query'
+import { render as renderBase, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import CreateCard from '../create-card'
+
+const render = (ui: Parameters<typeof renderBase>[0]) =>
+  renderBase(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -33,9 +40,7 @@ const mockCreateEmptyDataset = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
 vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDataset: () => ({
-    mutateAsync: mockCreateEmptyDataset,
-  }),
+  useCreatePipelineDataset: () => useMutation({ mutationFn: () => mockCreateEmptyDataset() }),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -77,5 +82,20 @@ describe('CreateCard', () => {
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
     })
+  })
+  it('reports a failed creation once and navigates only after a successful retry', async () => {
+    mockCreateEmptyDataset
+      .mockRejectedValueOnce(new Error('Create failed'))
+      .mockResolvedValue({ id: 'new-dataset' })
+    const user = userEvent.setup()
+    render(<CreateCard />)
+    await user.click(screen.getByText(/createFromScratch.title/))
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledExactlyOnceWith('Create failed'))
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockInvalidDatasetList).not.toHaveBeenCalled()
+    await user.click(screen.getByText(/createFromScratch.title/))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/datasets/new-dataset/pipeline'))
+    expect(mockInvalidDatasetList).toHaveBeenCalledTimes(1)
+    expect(mockToastSuccess).toHaveBeenCalledTimes(1)
   })
 })

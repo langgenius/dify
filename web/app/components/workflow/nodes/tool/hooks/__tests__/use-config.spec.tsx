@@ -1,10 +1,13 @@
 import type { ToolNodeType } from '../../types'
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { updateBuiltInToolCredential } from '@/service/tools'
 import useConfig from '../use-config'
 
+const mockInvalidateTools = vi.hoisted(() => vi.fn())
 const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockSetControlPromptEditorRerenderKey = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
@@ -42,7 +45,7 @@ vi.mock('@/service/tools', () => ({
 }))
 
 vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
+  useInvalidToolsByType: () => mockInvalidateTools,
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -206,5 +209,25 @@ describe('useConfig', () => {
 
       expect(mockSetInputs).not.toHaveBeenCalled()
     })
+  })
+
+  it('keeps authorization open on failure and closes it after a successful retry', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    vi.mocked(updateBuiltInToolCredential).mockRejectedValueOnce(new Error('Credential rejected'))
+    const { result } = renderHook(() => useConfig('tool-node-1', createNodeData()))
+    act(() => result.current.showSetAuthModal())
+    await act(async () => {
+      await result.current.handleSaveAuth({ api_key: 'secret' })
+    })
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Credential rejected')
+    expect(result.current.showSetAuth).toBe(true)
+    expect(mockInvalidateTools).not.toHaveBeenCalled()
+    vi.mocked(updateBuiltInToolCredential).mockResolvedValueOnce({ result: 'success' })
+    await act(async () => {
+      await result.current.handleSaveAuth({ api_key: 'secret' })
+    })
+    expect(mockInvalidateTools).toHaveBeenCalledTimes(1)
+    expect(result.current.showSetAuth).toBe(false)
+    expect(errorToast).toHaveBeenCalledTimes(1)
   })
 })

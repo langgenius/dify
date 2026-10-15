@@ -92,4 +92,19 @@ describe('usePluginDependencies', () => {
       expect(useStore.getState().dependencies).toEqual([])
     },
   )
+
+  it('stores pipeline dependencies after an imported pipeline is checked', async () => {
+    const dependencies = [
+      { type: 'marketplace', value: { marketplace_plugin_unique_identifier: 'pipeline-plugin' } },
+    ]
+    mocks.pipeline.mockResolvedValueOnce({ leaked_dependencies: dependencies })
+    const { result } = renderDependencies()
+    await act(async () => {
+      expect(await result.current.handleCheckPluginDependencies('pipeline-1', true)).toBe(true)
+    })
+    expect(mocks.pipeline).toHaveBeenCalledExactlyOnceWith('pipeline-1')
+    expect(mocks.request).not.toHaveBeenCalled()
+    expect(useStore.getState().dependencies).toEqual(dependencies)
+    expect(mocks.error).not.toHaveBeenCalled()
+  })
 })

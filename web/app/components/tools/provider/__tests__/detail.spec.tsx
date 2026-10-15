@@ -1062,4 +1062,70 @@ describe('ProviderDetail', () => {
       })
     })
   })
+  it.each([
+    [CollectionType.custom, 'edit-save', mockUpdateCustomCollection],
+    [CollectionType.custom, 'edit-remove', mockRemoveCustomCollection],
+    [CollectionType.workflow, 'wf-save', mockSaveWorkflowToolProvider],
+    [CollectionType.workflow, 'wf-remove', mockDeleteWorkflowTool],
+  ] as const)('reports %s %s failure and retains the editor', async (type, action, request) => {
+    request.mockRejectedValueOnce(new Error('Provider request failed'))
+    render(
+      <ProviderDetail
+        collection={createMockCollection({ type })}
+        onHide={mockOnHide}
+        onRefreshData={mockOnRefreshData}
+      />,
+    )
+    fireEvent.click(await screen.findByText('tools.createTool.editAction'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId(action))
+    })
+    if (action.endsWith('remove'))
+      await act(async () => {
+        fireEvent.click(getDeleteConfirmButton())
+      })
+    await waitFor(() =>
+      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('Provider request failed'),
+    )
+    expect(mockOnRefreshData).not.toHaveBeenCalled()
+    expect(screen.getByTestId(action)).toBeInTheDocument()
+  })
+
+  it.each([
+    ['credential-save', mockUpdateBuiltInToolCredential],
+    ['credential-remove', mockRemoveBuiltInToolCredential],
+  ] as const)(
+    'reports failed %s once and retains credentials for retry',
+    async (action, request) => {
+      request.mockRejectedValueOnce(new Error('Credential update failed'))
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      fireEvent.click(await screen.findByText('tools.auth.unauthorized'))
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(action))
+      })
+      await waitFor(() =>
+        expect(mockToastError).toHaveBeenCalledExactlyOnceWith('Credential update failed'),
+      )
+      expect(screen.getByTestId('config-credential')).toBeInTheDocument()
+      expect(mockOnRefreshData).not.toHaveBeenCalled()
+    },
+  )
+
+  it('reports a failed tool list request', async () => {
+    mockFetchBuiltInToolList.mockRejectedValueOnce(new Error('Tool list failed'))
+    render(
+      <ProviderDetail
+        collection={createMockCollection()}
+        onHide={mockOnHide}
+        onRefreshData={mockOnRefreshData}
+      />,
+    )
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledExactlyOnceWith('Tool list failed'))
+  })
 })

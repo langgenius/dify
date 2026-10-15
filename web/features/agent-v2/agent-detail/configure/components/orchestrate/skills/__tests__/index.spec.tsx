@@ -919,10 +919,17 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('explains when an agent has reached the library skill limit', async () => {
+  it.each([
+    [
+      'too_many_agent_skills',
+      'agentV2.agentDetail.configure.skills.workspaceSelector.limitReached',
+    ],
+    ['skill_name_conflict', 'skill.skillManagement.errors.nameConflict:{"name":""}'],
+    ['unavailable', 'agentV2.agentDetail.configure.skills.workspaceSelector.saveFailed'],
+  ])('explains %s when binding a library skill fails', async (code, message) => {
     const user = userEvent.setup()
     mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 400 }), { code: 'too_many_agent_skills' }),
+      createHttpError(new Response(null, { status: 400 }), { code }),
     )
     mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
       const { input, getNextPageParam, initialPageParam } = options as {
@@ -957,9 +964,7 @@ describe('AgentSkills', () => {
     await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        'agentV2.agentDetail.configure.skills.workspaceSelector.limitReached',
-      )
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
     })
   })
 

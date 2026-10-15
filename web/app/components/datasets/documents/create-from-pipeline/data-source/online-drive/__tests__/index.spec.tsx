@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import OnlineDrive from '../index'
 
@@ -434,5 +434,23 @@ describe('OnlineDrive', () => {
 
     expect(mocks.setSettingsDestination).toHaveBeenCalledWith('data-source')
     expect(onCredentialChange).toHaveBeenCalledWith('credential-2')
+  })
+
+  it('ends loading after a transport error and allows the next request', async () => {
+    mockStoreState.currentCredentialId = 'credential-1'
+    const { rerender } = renderOnlineDrive()
+    await waitFor(() => expect(mocks.ssePost).toHaveBeenCalledTimes(1))
+    expect(screen.getByTestId('file-list-loading')).toHaveTextContent('true')
+    const callbacks = mocks.ssePost.mock.calls[0]![2] as { onError: (message: string) => void }
+    act(() => callbacks.onError('Network interrupted'))
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Network interrupted')
+    expect(screen.getByTestId('file-list-loading')).toHaveTextContent('false')
+    expect(mockStoreState.setOnlineDriveFileList).not.toHaveBeenCalled()
+    mockStoreState.currentCredentialId = 'credential-2'
+    rerender(
+      <OnlineDrive nodeId="node-1" nodeData={createNodeData()} onCredentialChange={vi.fn()} />,
+    )
+    await waitFor(() => expect(mocks.ssePost).toHaveBeenCalledTimes(2))
+    expect(screen.getByTestId('file-list-loading')).toHaveTextContent('true')
   })
 })

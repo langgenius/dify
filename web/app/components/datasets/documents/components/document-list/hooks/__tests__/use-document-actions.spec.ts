@@ -256,4 +256,22 @@ describe('useDocumentActions', () => {
       expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
     })
   })
+  it.each([
+    [DocumentActionType.summary, mockSummary],
+    [DocumentActionType.enable, mockEnable],
+    [DocumentActionType.disable, mockDisable],
+    [DocumentActionType.delete, mockDelete],
+  ] as const)('preserves selection and reports failed %s once', async (action, request) => {
+    request.mockRejectedValueOnce(new Error('Batch action failed'))
+    const { result } = renderHook(() => useDocumentActions(defaultOptions))
+    await act(async () => {
+      await result.current.handleAction(action)()
+    })
+    expect(mockToastError).toHaveBeenCalledExactlyOnceWith(
+      'common.actionMsg.modifiedUnsuccessfully',
+    )
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+    expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
+    expect(defaultOptions.onUpdate).not.toHaveBeenCalled()
+  })
 })

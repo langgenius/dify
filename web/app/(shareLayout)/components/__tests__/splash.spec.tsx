@@ -1,4 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import Splash from '../splash'
 
@@ -224,5 +226,43 @@ describe('Splash', () => {
     )
 
     expect(screen.getByRole('button', { name: 'share.login.backToHome' })).toBeInTheDocument()
+  })
+  it('reports logout failure, retains the unavailable page, and redirects only after retry succeeds', async () => {
+    const notify = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+    navigationMocks.searchParams = new URLSearchParams({ code: '404', message: 'Unavailable' })
+    webAppAuthMocks.webAppLogout
+      .mockRejectedValueOnce(new Error('Logout failed'))
+      .mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+    await user.click(screen.getByRole('button', { name: 'share.login.backToHome' }))
+    expect(notify).toHaveBeenCalledExactlyOnceWith('Logout failed')
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'share.login.backToHome' }))
+    expect(webAppAuthMocks.webAppLogout).toHaveBeenLastCalledWith({
+      kind: 'default',
+      code: 'share-app',
+    })
+    expect(navigationMocks.replace).toHaveBeenCalledWith('/webapp-signin?')
+    notify.mockRestore()
+  })
+
+  it('returns to the fallback from an unavailable sign-in page without logging out a stale app', async () => {
+    navigationMocks.pathname = '/webapp-signin'
+    window.history.replaceState({}, '', navigationMocks.pathname)
+    navigationMocks.searchParams = new URLSearchParams({ code: '404', message: 'Unavailable' })
+    const user = userEvent.setup()
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+    await user.click(screen.getByRole('button', { name: 'share.login.backToHome' }))
+    expect(navigationMocks.replace).toHaveBeenCalledWith('/')
+    expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()
   })
 })

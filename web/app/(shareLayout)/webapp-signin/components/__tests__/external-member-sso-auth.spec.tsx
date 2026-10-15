@@ -1,5 +1,6 @@
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { screen, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ExternalMemberSSOAuth from '../external-member-sso-auth'
 
@@ -77,5 +78,23 @@ describe('ExternalMemberSSOAuth redirect security', () => {
       expect(serviceMock).toHaveBeenCalledWith('share-app', '/chatbot/share-app?foo=bar')
     })
     expect(navigationMocks.push).toHaveBeenCalledWith('https://idp.example/authorize')
+  })
+
+  it.each([
+    [zSsoProtocol.enum.saml, serviceMocks.fetchWebSAMLSSOUrl],
+    [zSsoProtocol.enum.oidc, serviceMocks.fetchWebOIDCSSOUrl],
+    [zSsoProtocol.enum.oauth2, serviceMocks.fetchWebOAuth2SSOUrl],
+  ])('reports a failed %s authorization without redirecting', async (protocol, request) => {
+    navigationMocks.searchParams = new URLSearchParams({ redirect_url: '/chatbot/share-app' })
+    request.mockRejectedValueOnce(new Error('Identity provider unavailable'))
+    const errorToast = vi.spyOn(toast, 'error')
+    renderWithConsoleQuery(<ExternalMemberSSOAuth />, {
+      systemFeatures: { webapp_auth: { sso_config: { protocol } } },
+    })
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Identity provider unavailable'),
+    )
+    expect(navigationMocks.push).not.toHaveBeenCalled()
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
   })
 })

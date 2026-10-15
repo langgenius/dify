@@ -16,6 +16,12 @@ const mockHandleCancelNodeSuccessStatus = vi.hoisted(() => vi.fn())
 const mockHandleEdgeCancelRunningStatus = vi.hoisted(() => vi.fn())
 const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 
+const mockDeleteNode = vi.hoisted(() => vi.fn())
+const mockDeleteVar = vi.hoisted(() => vi.fn())
+const mockResetConversation = vi.hoisted(() => vi.fn())
+const mockResetLastRun = vi.hoisted(() => vi.fn())
+const mockEditVar = vi.hoisted(() => vi.fn())
+
 const schemaTypeDefinitions: SchemaTypeDefinition[] = [
   {
     name: 'simple',
@@ -33,12 +39,12 @@ vi.mock('@/service/use-flow', () => ({
   default: () => ({
     useInvalidateConversationVarValues: () => mockInvalidateConversationVarValues,
     useInvalidateSysVarValues: () => mockInvalidateSysVarValues,
-    useResetConversationVar: () => ({ mutateAsync: vi.fn() }),
-    useResetToLastRunValue: () => ({ mutateAsync: vi.fn() }),
+    useResetConversationVar: () => ({ mutateAsync: mockResetConversation }),
+    useResetToLastRunValue: () => ({ mutateAsync: mockResetLastRun }),
     useDeleteAllInspectorVars: () => ({ mutateAsync: mockDoDeleteAllInspectorVars }),
-    useDeleteNodeInspectorVars: () => ({ mutate: vi.fn() }),
-    useDeleteInspectVar: () => ({ mutate: vi.fn() }),
-    useEditInspectorVar: () => ({ mutateAsync: vi.fn() }),
+    useDeleteNodeInspectorVars: () => ({ mutateAsync: mockDeleteNode }),
+    useDeleteInspectVar: () => ({ mutateAsync: mockDeleteVar }),
+    useEditInspectorVar: () => ({ mutateAsync: mockEditVar }),
   }),
 }))
 
@@ -224,5 +230,55 @@ describe('useInspectVarsCrudCommon', () => {
     expect(mockInvalidateSysVarValues).toHaveBeenCalledTimes(1)
     expect(mockHandleEdgeCancelRunningStatus).toHaveBeenCalledTimes(1)
     expect(store.getState().nodesWithInspectVars).toEqual([])
+  })
+  it.each([
+    'delete variable',
+    'delete node',
+    'delete all',
+    'reset conversation',
+    'reset last run',
+    'edit value',
+    'rename',
+  ] as const)('preserves inspector data and cached values when %s fails', async (operation) => {
+    const request = {
+      'delete variable': mockDeleteVar,
+      'delete node': mockDeleteNode,
+      'delete all': mockDoDeleteAllInspectorVars,
+      'reset conversation': mockResetConversation,
+      'reset last run': mockResetLastRun,
+      'edit value': mockEditVar,
+      rename: mockEditVar,
+    }[operation]
+    request.mockRejectedValueOnce(new Error('Inspector request failed'))
+    const initialNodes = [
+      {
+        nodeId: 'node-1',
+        nodePayload: { type: BlockEnum.Code, title: 'Code', desc: '' },
+        nodeType: BlockEnum.Code,
+        title: 'Code',
+        vars: [createInspectVar()],
+      },
+    ]
+    const { result, store } = renderWorkflowHook(
+      () => useInspectVarsCrudCommon({ flowId: 'flow-1', flowType: FlowType.appFlow }),
+      { initialStoreState: { nodesWithInspectVars: initialNodes } },
+    )
+    await act(async () => {
+      const operations = {
+        'delete variable': () => result.current.deleteInspectVar('node-1', 'var-1'),
+        'delete node': () => result.current.deleteNodeInspectorVars('node-1'),
+        'delete all': () => result.current.deleteAllInspectorVars(),
+        'reset conversation': () => result.current.resetConversationVar('var-1'),
+        'reset last run': () => result.current.resetToLastRunVar('node-1', 'var-1'),
+        'edit value': () => result.current.editInspectVarValue('node-1', 'var-1', 'draft'),
+        rename: () => result.current.renameInspectVarName('node-1', 'answer', 'draft'),
+      }
+      await operations[operation]()
+    })
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(store.getState().nodesWithInspectVars).toEqual(initialNodes)
+    expect(mockInvalidateConversationVarValues).not.toHaveBeenCalled()
+    expect(mockInvalidateSysVarValues).not.toHaveBeenCalled()
+    expect(mockHandleEdgeCancelRunningStatus).not.toHaveBeenCalled()
   })
 })

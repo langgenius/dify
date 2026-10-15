@@ -7,6 +7,7 @@ import {
   useDataSourceStoreWithSelector,
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
 import { useInvalidLastRun } from '@/service/use-workflow'
@@ -335,5 +336,31 @@ describe('data-source/hooks/use-before-run-form', () => {
         _singleRunningStatus: NodeRunningStatus.Failed,
       }),
     })
+  })
+
+  it('reports inspector refresh failure without claiming the datasource run completed', async () => {
+    dataSourceStoreState.localFileList = [
+      {
+        file: {
+          id: 'file-1',
+          name: 'doc.pdf',
+          type: 'document',
+          size: 12,
+          extension: 'pdf',
+          mime_type: 'application/pdf',
+        },
+      },
+    ]
+    mockMutateAsync.mockResolvedValue({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
+    mockFetchNodeInspectVars.mockRejectedValueOnce(new Error('Inspector unavailable'))
+    const errorToast = vi.spyOn(toast, 'error')
+    const props = createProps()
+    const { result } = renderHook(() => useBeforeRunForm(props))
+    await act(async () => {
+      result.current.handleRunWithSyncDraft()
+    })
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Inspector unavailable')
+    expect(props.onSuccess).not.toHaveBeenCalled()
+    expect(props.setRunResult).not.toHaveBeenCalled()
   })
 })

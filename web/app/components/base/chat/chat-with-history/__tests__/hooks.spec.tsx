@@ -4,6 +4,7 @@ import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import { AppToastHost } from '@/app/notifications/host'
 import { httpErrorFromResponse } from '@/service/http-error'
 import {
@@ -2496,4 +2497,47 @@ describe('useChatWithHistory', () => {
       })
     })
   })
+
+  it.each(['pin', 'unpin', 'delete', 'rename'] as const)(
+    'reports %s failure once and preserves the conversation for retry',
+    async (operation) => {
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const request = {
+        pin: mockPinConversation,
+        unpin: mockUnpinConversation,
+        delete: mockDelConversation,
+        rename: mockRenameConversation,
+      }[operation]
+      request.mockRejectedValueOnce(new Error('Conversation request failed'))
+      const errorToast = vi.spyOn(toast, 'error')
+      const successToast = vi.spyOn(toast, 'success')
+      const onSuccess = vi.fn()
+      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
+      await waitFor(() => expect(result!.current.conversationList).toHaveLength(1))
+      const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+      const perform = () => {
+        if (operation === 'pin') return result!.current.handlePinConversation('conversation-1')
+        if (operation === 'unpin') return result!.current.handleUnpinConversation('conversation-1')
+        if (operation === 'delete')
+          return result!.current.handleDeleteConversation('conversation-1', { onSuccess })
+        return result!.current.handleRenameConversation('conversation-1', 'New Name', { onSuccess })
+      }
+      await act(async () => {
+        await perform()
+      })
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Conversation request failed')
+      expect(successToast).not.toHaveBeenCalled()
+      expect(onSuccess).not.toHaveBeenCalled()
+      expect(invalidate).not.toHaveBeenCalled()
+      expect(result!.current.conversationList[0]!.name).toBe('Conversation 1')
+      expect(result!.current.clearChatList).toBe(false)
+      request.mockResolvedValueOnce(undefined)
+      await act(async () => {
+        await perform()
+      })
+      expect(request).toHaveBeenCalledTimes(2)
+      expect(errorToast).toHaveBeenCalledTimes(1)
+    },
+  )
 })

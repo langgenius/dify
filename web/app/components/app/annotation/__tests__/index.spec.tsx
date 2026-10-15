@@ -554,4 +554,44 @@ describe('Annotation', () => {
     fireEvent.click(screen.getByTestId('config-hide'))
     expect(screen.queryByTestId('config-modal')).not.toBeInTheDocument()
   })
+
+  it('reports annotation list failure', async () => {
+    fetchAnnotationListMock.mockRejectedValueOnce(new Error('Annotations unavailable'))
+    renderComponent()
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Annotations unavailable',
+      }),
+    )
+  })
+
+  it.each([true, false])(
+    'keeps annotation configuration when enabled=%s and updating fails',
+    async (enabled) => {
+      fetchAnnotationConfigMock.mockResolvedValue({
+        id: 'config-id',
+        enabled,
+        embedding_model: { embedding_model_name: 'model', embedding_provider_name: 'provider' },
+        score_threshold: 0.5,
+      })
+      updateAnnotationStatusMock.mockRejectedValueOnce(
+        new Error('Annotation configuration unavailable'),
+      )
+      renderComponent()
+      const toggle = await screen.findByRole('switch')
+      await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', String(enabled)))
+      fireEvent.click(toggle)
+      if (!enabled) fireEvent.click(screen.getByTestId('config-save'))
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
+          type: 'error',
+          message: 'Annotation configuration unavailable',
+        }),
+      )
+      expect(toggle).toHaveAttribute('aria-checked', String(enabled))
+      expect(updateAnnotationScoreMock).not.toHaveBeenCalled()
+      if (!enabled) expect(screen.getByTestId('config-modal')).toBeInTheDocument()
+    },
+  )
 })

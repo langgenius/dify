@@ -382,6 +382,37 @@ describe('Operations', () => {
       }
     }
 
+    it.each([
+      ['unarchive', mockUnArchive, { archived: true }],
+      ['delete', mockDelete, {}],
+      ['sync', mockSync, { data_source_type: 'notion_import' }],
+      ['sync', mockSyncWebsite, { data_source_type: 'website_crawl' }],
+      ['pause', mockPause, { display_status: 'indexing' }],
+      ['resume', mockResume, { display_status: 'paused' }],
+      ['summary', mockGenerateSummary, {}],
+    ] as const)(
+      'reports failed %s once without refreshing the document',
+      async (action, request, overrides) => {
+        request.mockRejectedValueOnce(new Error('Document request failed'))
+        render(<Operations {...defaultProps} detail={{ ...defaultDetail, ...overrides }} />)
+        await openPopover()
+        await act(async () => {
+          fireEvent.click(screen.getByText(`datasetDocuments.list.action.${action}`))
+        })
+        if (action === 'delete')
+          await act(async () => {
+            fireEvent.click(screen.getByText('common.operation.sure'))
+          })
+        await waitFor(() =>
+          expect(mockToast.error).toHaveBeenCalledExactlyOnceWith(
+            'common.actionMsg.modifiedUnsuccessfully',
+          ),
+        )
+        expect(mockOnUpdate).not.toHaveBeenCalled()
+        expect(mockToast.success).not.toHaveBeenCalled()
+      },
+    )
+
     it('should open popover when more button is clicked', async () => {
       render(<Operations {...defaultProps} />)
       await openPopover()
@@ -753,4 +784,22 @@ describe('Operations', () => {
       expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
     })
   })
+  it.each([true, false])(
+    'keeps the enabled state after a failed toggle from %s',
+    async (enabled) => {
+      const request = enabled ? mockDisable : mockEnable
+      request.mockRejectedValueOnce(new Error('Toggle failed'))
+      const user = userEvent.setup()
+      render(<Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled }} />)
+      const toggle = screen.getByRole('switch')
+      await user.click(toggle)
+      await waitFor(() =>
+        expect(mockToast.error).toHaveBeenCalledExactlyOnceWith(
+          'common.actionMsg.modifiedUnsuccessfully',
+        ),
+      )
+      expect(toggle).toHaveAttribute('aria-checked', String(enabled))
+      expect(mockOnUpdate).not.toHaveBeenCalled()
+    },
+  )
 })

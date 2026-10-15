@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { fetchNodeDefault, fetchPipelineNodeDefault } from '@/service/workflow'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import useOutputVarList from '../../_base/hooks/use-output-var-list'
@@ -341,4 +342,19 @@ describe('code/use-config', () => {
       }),
     )
   })
+
+  it.each(['appId', 'pipelineId'] as const)(
+    'reports a default-code request failure for %s without changing the editor',
+    async (kind) => {
+      workflowStoreState[kind] = 'flow-1'
+      const request = kind === 'appId' ? mockFetchNodeDefault : mockFetchPipelineNodeDefault
+      request.mockReset().mockRejectedValueOnce(new Error('Default code unavailable'))
+      const errorToast = vi.spyOn(toast, 'error')
+      renderHook(() => useConfig('code-1', currentInputs))
+      await waitFor(() =>
+        expect(errorToast).toHaveBeenCalledExactlyOnceWith('Default code unavailable'),
+      )
+      expect(mockSetInputs).not.toHaveBeenCalled()
+    },
+  )
 })

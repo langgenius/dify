@@ -1,14 +1,15 @@
 import type { StructuredOutput } from '../../../types'
-import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createTestQueryClient } from '@/test/query-client'
 import { Type } from '../../../types'
 import { StructureOutput } from '../../structure-output'
 
@@ -57,9 +58,7 @@ const instructionName = 'workflowModels.nodes.llm.jsonSchema.instruction'
 const applyName = 'workflowModels.nodes.llm.jsonSchema.apply'
 
 function renderOutput({ readOnly = false, onChange = vi.fn() } = {}) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-  })
+  const client = createTestQueryClient()
   client.setQueryData(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
@@ -300,6 +299,43 @@ describe('StructureOutput schema sessions', () => {
     expect(screen.getByRole('textbox', { name: 'JSON schema editor' })).toHaveValue(
       JSON.stringify(emptySchema, null, 2),
     )
+    expect(onChange).not.toHaveBeenCalled()
+  })
+  it.each(['request', 'invalid JSON'] as const)(
+    'retains the instruction and reports %s failure once',
+    async (failure) => {
+      const notify = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+      const fetch = vi.spyOn(globalThis, 'fetch')
+      if (failure === 'request') fetch.mockRejectedValue(new Error('Generation failed'))
+      else fetch.mockResolvedValue(Response.json({ output: 'invalid JSON' }))
+      const user = userEvent.setup()
+      const { onChange } = renderOutput()
+      await openEditor(user)
+      await generate(user)
+      expect(await screen.findByRole('textbox', { name: instructionName })).toHaveValue(
+        'Generate a name',
+      )
+      expect(notify).toHaveBeenCalledTimes(1)
+      expect(onChange).not.toHaveBeenCalled()
+    },
+  )
+
+  it('recovers from invalid regeneration output without applying or losing the instruction', async () => {
+    const notify = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ output: JSON.stringify(namedSchema) }))
+      .mockResolvedValue(Response.json({ output: 'invalid JSON' }))
+    const user = userEvent.setup()
+    const { onChange } = renderOutput()
+    await openEditor(user)
+    await generate(user)
+    await user.click(
+      await screen.findByRole('button', { name: 'workflowModels.nodes.llm.jsonSchema.regenerate' }),
+    )
+    expect(await screen.findByRole('textbox', { name: instructionName })).toHaveValue(
+      'Generate a name',
+    )
+    expect(notify).toHaveBeenCalledTimes(1)
     expect(onChange).not.toHaveBeenCalled()
   })
 })

@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => {
     invalidChildSegmentList: vi.fn(),
     useDocumentTitle: vi.fn(),
     toastNotify: vi.fn(),
+    toastError: vi.fn(),
   }
 })
 
@@ -100,6 +101,7 @@ vi.mock('@/service/use-base', () => ({
 
 vi.mock('@/app/notifications', () => ({
   default: { notify: mocks.toastNotify },
+  toast: { error: mocks.toastError },
 }))
 
 // --- Child component mocks ---
@@ -183,12 +185,14 @@ vi.mock('../segment-add', () => ({
     showNewSegmentModal,
     showBatchModal,
     embedding,
+    importStatus,
   }: {
     showNewSegmentModal?: () => void
     showBatchModal?: () => void
     embedding?: boolean
+    importStatus?: string
   }) => (
-    <div data-testid="segment-add" data-embedding={embedding}>
+    <div data-testid="segment-add" data-embedding={embedding} data-status={importStatus}>
       <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>
         New Segment
       </button>
@@ -596,5 +600,51 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByTestId('document-title')).toBeInTheDocument()
     })
+  })
+
+  it.each(['upload', 'progress'] as const)(
+    'keeps the batch dialog with an error status when %s fails',
+    async (stage) => {
+      mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+      mocks.checkProgress.mockResolvedValue({ job_id: 'job-1', job_status: 'completed' })
+      const request = stage === 'upload' ? mocks.batchImport : mocks.checkProgress
+      request.mockRejectedValueOnce(new Error('Import unavailable'))
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      fireEvent.click(screen.getByTestId('batch-btn'))
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('batch-confirm'))
+      })
+      expect(screen.getByTestId('segment-add')).toHaveAttribute('data-status', 'error')
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Import unavailable')
+      expect(mocks.invalidSegmentList).not.toHaveBeenCalled()
+      if (stage === 'upload') expect(mocks.checkProgress).not.toHaveBeenCalled()
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('batch-confirm'))
+      })
+      expect(screen.getByTestId('segment-add')).toHaveAttribute('data-status', 'completed')
+      expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it('polls a running import and displays one error when the job fails', async () => {
+    mocks.batchImport.mockResolvedValue({ job_id: 'job-1', job_status: 'waiting' })
+    mocks.checkProgress
+      .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'processing' })
+      .mockResolvedValueOnce({ job_id: 'job-1', job_status: 'error' })
+    render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+    fireEvent.click(screen.getByTestId('batch-btn'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('batch-confirm'))
+    })
+    expect(screen.getByTestId('segment-add')).toHaveAttribute('data-status', 'processing')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500)
+    })
+    expect(screen.getByTestId('segment-add')).toHaveAttribute('data-status', 'error')
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(mocks.checkProgress).toHaveBeenCalledTimes(2)
   })
 })

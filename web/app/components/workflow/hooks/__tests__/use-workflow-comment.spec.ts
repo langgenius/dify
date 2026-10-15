@@ -3,6 +3,7 @@ import type {
   WorkflowCommentList,
 } from '@/app/components/workflow/comment/types'
 import { act, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -729,4 +730,43 @@ describe('useWorkflowComment', () => {
     expect(store.getState().activeCommentDetail?.id).toBe(commentA.id)
     expect(store.getState().activeCommentDetail?.content).toBe('refreshed content')
   })
+
+  it.each(['create', 'resolve', 'delete', 'edit'] as const)(
+    'reports %s failure without clearing comments or broadcasting a change',
+    async (operation) => {
+      const comment = baseComment()
+      mockFetchWorkflowComments.mockResolvedValue({ data: [comment] })
+      const request = {
+        create: mockCreateWorkflowComment,
+        resolve: mockResolveWorkflowComment,
+        delete: mockDeleteWorkflowComment,
+        edit: mockUpdateWorkflowComment,
+      }[operation]
+      request.mockRejectedValueOnce(new Error('Comment unavailable'))
+      const errorToast = vi.spyOn(toast, 'error')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const pendingComment = { pageX: 100, pageY: 200, elementX: 10, elementY: 20 }
+      const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+        queryClient: createSeededQueryClient(),
+        initialStoreState: {
+          comments: [comment],
+          activeCommentId: comment.id,
+          pendingComment,
+          isCommentQuickAdd: true,
+        },
+      })
+      await waitFor(() => expect(store.getState().commentsLoading).toBe(false))
+      await act(async () => {
+        if (operation === 'create') await result.current.handleCommentSubmit('Keep this draft')
+        else if (operation === 'resolve') await result.current.handleCommentResolve(comment.id)
+        else if (operation === 'delete') await result.current.handleCommentDelete(comment.id)
+        else await result.current.handleCommentUpdate(comment.id, 'Keep this edit')
+      })
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Comment unavailable')
+      expect(store.getState().comments).toEqual([comment])
+      expect(store.getState().activeCommentDetailLoading).toBe(false)
+      expect(mockEmitCommentsUpdate).not.toHaveBeenCalled()
+      if (operation === 'create') expect(store.getState().pendingComment).toEqual(pendingComment)
+    },
+  )
 })

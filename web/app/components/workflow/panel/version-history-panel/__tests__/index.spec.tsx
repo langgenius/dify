@@ -15,6 +15,11 @@ const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
+const mockDeleteWorkflow = vi.fn()
+const mockResetHistory = vi.fn()
+const mockDeleteInspectVars = vi.fn()
+const mockInvalidLastRun = vi.fn()
+
 const mockRestoreWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
@@ -74,6 +79,8 @@ type MockRestoreConfirmModalProps = {
 }
 type MockDeleteConfirmModalProps = {
   isOpen: boolean
+  versionInfo: VersionHistory
+  onDelete: (id: string) => Promise<void>
 }
 type MockVersionHistoryItemProps = {
   item: VersionHistory
@@ -88,10 +95,11 @@ vi.mock('@/service/use-workflow', async () => {
   const { createTestQueryClient } = await import('@/test/query-client')
   const mutationClient = createTestQueryClient()
   return {
-    useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
+    useDeleteWorkflow: () =>
+      useMutation({ mutationFn: (input: unknown) => mockDeleteWorkflow(input) }, mutationClient),
     useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
-    useInvalidAllLastRun: () => vi.fn(),
-    useResetWorkflowVersionHistory: () => vi.fn(),
+    useInvalidAllLastRun: () => mockInvalidLastRun,
+    useResetWorkflowVersionHistory: () => mockResetHistory,
     useRestoreWorkflow: (options: Record<string, unknown> = {}) =>
       useMutation(
         { mutationFn: (variables: unknown) => mockRestoreWorkflow(variables), ...options },
@@ -179,7 +187,7 @@ vi.mock('../../../store', () => ({
   },
   useWorkflowStore: () => ({
     getState: () => ({
-      deleteAllInspectVars: vi.fn(),
+      deleteAllInspectVars: mockDeleteInspectVars,
       setShowWorkflowVersionHistoryPanel: mockSetShowWorkflowVersionHistoryPanel,
       setCurrentVersion: mockSetCurrentVersion,
     }),
@@ -188,7 +196,8 @@ vi.mock('../../../store', () => ({
 }))
 
 vi.mock('../delete-confirm-modal', () => ({
-  default: ({ isOpen }: MockDeleteConfirmModalProps) => (isOpen ? <div>confirm delete</div> : null),
+  default: ({ isOpen, versionInfo, onDelete }: MockDeleteConfirmModalProps) =>
+    isOpen ? <button onClick={() => onDelete(versionInfo.id)}>confirm delete</button> : null,
 }))
 
 vi.mock('../restore-confirm-modal', () => ({
@@ -527,6 +536,31 @@ describe('VersionHistoryPanel', () => {
       })
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
+  })
+  it('retains the delete confirmation and caches on failure, then clears them after retry', async () => {
+    const { VersionHistoryPanel } = await import('../index')
+    mockDeleteWorkflow
+      .mockRejectedValueOnce(new Error('Delete failed'))
+      .mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={(id) => `/apps/app-1/workflows/${id}/restore`}
+        deleteVersionUrl={(id) => `/apps/app-1/workflows/${id}`}
+      />,
+    )
+    await user.click(screen.getByText('delete-published-version-id'))
+    await user.click(screen.getByRole('button', { name: 'confirm delete' }))
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalledExactlyOnceWith('Delete failed'))
+    expect(mockResetHistory).not.toHaveBeenCalled()
+    expect(mockDeleteInspectVars).not.toHaveBeenCalled()
+    expect(mockInvalidLastRun).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'confirm delete' }))
+    await waitFor(() => expect(screen.queryByText('confirm delete')).not.toBeInTheDocument())
+    expect(mockResetHistory).toHaveBeenCalledTimes(1)
+    expect(mockDeleteInspectVars).toHaveBeenCalledTimes(1)
+    expect(mockInvalidLastRun).toHaveBeenCalledTimes(1)
   })
 })
 

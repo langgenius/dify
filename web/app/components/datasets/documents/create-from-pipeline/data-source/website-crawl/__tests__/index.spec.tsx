@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { CrawlResultItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { CrawlStep } from '@/models/datasets'
 import WebsiteCrawl from '../index'
@@ -1127,32 +1127,22 @@ describe('WebsiteCrawl', () => {
 
   // Error Display
   describe('Error Display', () => {
-    it('should show ErrorMessage when crawl finishes with error', async () => {
-      // Arrange - Need to create a scenario where error message is set
+    it.each(['stream', 'transport'])('shows the %s error and ends crawling', async (failure) => {
       mockStoreState.currentCredentialId = 'cred-1'
-
-      // First render with init state
-      const props = createDefaultProps()
-      const { rerender } = render(<WebsiteCrawl {...props} />)
-
-      // Simulate error by setting up ssePost to call error callback
-      mockSsePost.mockImplementation((url, options, callbacks) => {
-        callbacks.onDataSourceNodeError({
-          error: 'Network error',
-        })
+      mockStoreState.setStep.mockImplementation((step: CrawlStep) => {
+        mockStoreState.step = step
       })
-
-      // Trigger submit
-      fireEvent.click(screen.getByTestId('options-submit-btn'))
-
-      // Now update store state to finished to simulate the state after error
-      mockStoreState.step = CrawlStep.finished
-      rerender(<WebsiteCrawl {...props} />)
-
-      // Assert - The component should check for error message state
-      await waitFor(() => {
-        expect(mockStoreState.setStep).toHaveBeenCalledWith(CrawlStep.finished)
+      mockSsePost.mockImplementation((_url, _options, callbacks) => {
+        if (failure === 'transport') callbacks.onError('Network error')
+        else callbacks.onDataSourceNodeError({ error: 'Network error' })
       })
+      render(<WebsiteCrawl {...createDefaultProps()} />)
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('options-submit-btn'))
+      })
+      expect(mockStoreState.setStep).toHaveBeenLastCalledWith(CrawlStep.finished)
+      expect(screen.getByTestId('error-message')).toHaveTextContent('Network error')
+      expect(mockStoreState.setWebsitePages).not.toHaveBeenCalled()
     })
 
     it('should not show ErrorMessage when crawl finishes without error', () => {

@@ -576,4 +576,42 @@ describe('useTextGenerationAppState', () => {
       )
     })
   })
+
+  it.each(['save', 'remove'] as const)(
+    'reports %s failure and retains saved messages',
+    async (operation) => {
+      const { result } = renderHook(() =>
+        useTextGenerationAppState({ isInstalledApp: false, isWorkflow: false }),
+      )
+      await waitFor(() => expect(result.current.savedMessages).toEqual([{ id: 'saved-1' }]))
+      const request = operation === 'save' ? saveMessageMock : removeMessageMock
+      request.mockRejectedValueOnce(new Error('Message unavailable'))
+      fetchSavedMessageMock.mockClear()
+      await act(async () => {
+        if (operation === 'save') await result.current.handleSaveMessage('saved-1')
+        else await result.current.handleRemoveSavedMessage('saved-1')
+      })
+      expect(notifyMock).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Message unavailable',
+      })
+      expect(result.current.savedMessages).toEqual([{ id: 'saved-1' }])
+      expect(fetchSavedMessageMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('reports saved-message initialization failure while retaining the input configuration', async () => {
+    fetchSavedMessageMock.mockRejectedValue(new Error('Saved messages unavailable'))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({ isInstalledApp: false, isWorkflow: false }),
+    )
+    await waitFor(() =>
+      expect(notifyMock).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Saved messages unavailable',
+      }),
+    )
+    expect(result.current.promptConfig?.prompt_variables).toHaveLength(2)
+    expect(result.current.appId).toBe('app-123')
+  })
 })

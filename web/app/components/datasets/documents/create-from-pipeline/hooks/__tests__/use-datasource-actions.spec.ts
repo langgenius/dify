@@ -4,6 +4,7 @@ import type { CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { DatasourceType } from '@/models/pipeline'
 import { createDataSourceStore } from '../../data-source/store'
 import { useDatasourceActions } from '../use-datasource-actions'
@@ -248,5 +249,28 @@ describe('useDatasourceActions', () => {
 
     expect(mockRunPublishedPipeline).not.toHaveBeenCalled()
     expect(params.handleNextStep).not.toHaveBeenCalled()
+  })
+
+  it('preserves the processing step after failure and advances after retry', async () => {
+    const params = defaultParams()
+    const errorToast = vi.spyOn(toast, 'error')
+    mockRunPublishedPipeline
+      .mockRejectedValueOnce(new Error('Pipeline unavailable'))
+      .mockResolvedValueOnce({ batch: 'batch-1', documents: [{ id: 'doc-1' }] })
+    const { result } = renderHook(() => useDatasourceActions(params))
+    await act(async () => {
+      result.current.handleSubmit({ query: 'Keep input' })
+    })
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Pipeline unavailable')
+    expect(params.handleNextStep).not.toHaveBeenCalled()
+    expect(params.setBatchId).not.toHaveBeenCalled()
+    expect(params.setDocuments).not.toHaveBeenCalled()
+    await act(async () => {
+      result.current.handleSubmit({ query: 'Keep input' })
+    })
+    expect(params.setBatchId).toHaveBeenCalledExactlyOnceWith('batch-1')
+    expect(params.setDocuments).toHaveBeenCalledExactlyOnceWith([{ id: 'doc-1' }])
+    expect(params.handleNextStep).toHaveBeenCalledTimes(1)
+    expect(errorToast).toHaveBeenCalledTimes(1)
   })
 })
