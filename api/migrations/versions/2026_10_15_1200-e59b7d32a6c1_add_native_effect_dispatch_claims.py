@@ -43,6 +43,8 @@ def upgrade():
 def downgrade():
     # Deleting evidence could let a lost response or restarted owner replay IO.
     connection = op.get_bind()
+    # Serialize the empty check and DROP with every concurrent claim transaction.
+    connection.execute(sa.text("LOCK TABLE dify_builder_native_effect_dispatch_claims IN ACCESS EXCLUSIVE MODE"))
     if connection.execute(sa.text("SELECT 1 FROM dify_builder_native_effect_dispatch_claims LIMIT 1")).first():
         raise RuntimeError("native dispatch claim evidence must be retained")
     op.drop_table("dify_builder_native_effect_dispatch_claims")
