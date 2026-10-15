@@ -16,6 +16,7 @@ import chineseAgent from '@/i18n/locales/zh-Hans/workflow-agent.json'
 import chineseWorkflow from '@/i18n/locales/zh-Hans/workflow.json'
 import { ConversationCard } from '../conversation/conversation-card'
 import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
+import { DifyBuilderLocaleProvider } from '../interactions/locale-provider'
 import { createSessionView } from '../session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../session/state'
 
@@ -67,30 +68,32 @@ const renderInteraction = ({
     <I18nClientProvider locale={accountLocale} resource={{}}>
       <Provider store={store}>
         <Suspense fallback={<p>Loading translations</p>}>
-          <AccountCopy />
-          <ConversationCard
-            invalidated={false}
-            item={{
-              kind: 'interaction_response',
-              seq: 2,
-              at_version: 1,
-              payload: {
-                interaction_kind: 'form',
-                question: '历史服务端回执',
-                fields: [
-                  { key: 'message', label: 'History', value: 'Goal', display_value: 'Goal' },
-                ],
-              },
-            }}
-          />
-          <DifyBuilderInteractionDock
-            activeInteraction={activeInteraction}
-            busy={false}
-            decision={decision}
-            interactionPending={false}
-            recheckReady
-            submitInteraction={submitInteraction}
-          />
+          <DifyBuilderLocaleProvider>
+            <AccountCopy />
+            <ConversationCard
+              invalidated={false}
+              item={{
+                kind: 'interaction_response',
+                seq: 2,
+                at_version: 1,
+                payload: {
+                  interaction_kind: 'form',
+                  question: '历史服务端回执',
+                  fields: [
+                    { key: 'message', label: 'History', value: 'Goal', display_value: 'Goal' },
+                  ],
+                },
+              }}
+            />
+            <DifyBuilderInteractionDock
+              activeInteraction={activeInteraction}
+              busy={false}
+              decision={decision}
+              interactionPending={false}
+              recheckReady
+              submitInteraction={submitInteraction}
+            />
+          </DifyBuilderLocaleProvider>
         </Suspense>
       </Provider>
     </I18nClientProvider>,
@@ -216,7 +219,7 @@ describe('Builder interaction language', () => {
     })
     expect(await screen.findByRole('button', { name: '服务端提交标签' })).toBeEnabled()
     expect(
-      screen.getByRole('region', { name: chineseBuilder['copy.labels.noRepairAvailable'] }),
+      await screen.findByRole('region', { name: chineseBuilder['copy.labels.noRepairAvailable'] }),
     ).toBeVisible()
     expect(
       screen.getByRole('radio', { name: chineseBuilder['copy.actions.tryAgain'] }),
