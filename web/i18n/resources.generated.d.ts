@@ -1766,7 +1766,6 @@ export default interface Resources {
     'operation.create': 'Create'
     'operation.deSelectAll': 'Deselect All'
     'operation.delete': 'Delete'
-    'operation.deleteConfirmTitle': 'Delete?'
     'operation.download': 'Download'
     'operation.downloadFailed': 'Download failed. Please try again later.'
     'operation.downloadSuccess': 'Download Completed.'
