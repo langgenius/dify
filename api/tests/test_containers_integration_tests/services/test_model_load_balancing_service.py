@@ -125,7 +125,6 @@ class TestModelLoadBalancingService:
             tuple: (provider, provider_model_setting) - Created provider and setting instances
         """
 
-
         # Create provider
         provider = Provider(
             tenant_id=tenant_id,

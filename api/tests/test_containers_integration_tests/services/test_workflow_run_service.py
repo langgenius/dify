@@ -136,7 +136,6 @@ class TestWorkflowRunService:
             WorkflowRun: Created workflow run instance
         """
 
-
         # Create workflow run with offset timestamp
         base_time = datetime.now(UTC)
         created_time = base_time - timedelta(minutes=offset_minutes)

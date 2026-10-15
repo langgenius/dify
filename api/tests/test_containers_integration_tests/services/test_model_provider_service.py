@@ -101,7 +101,6 @@ class TestModelProviderService:
             Provider: Created provider instance
         """
 
-
         provider = Provider(
             tenant_id=tenant_id,
             provider_name=provider_name,
@@ -141,7 +140,6 @@ class TestModelProviderService:
             ProviderModel: Created provider model instance
         """
 
-
         provider_model = ProviderModel(
             tenant_id=tenant_id,
             provider_name=provider_name,
@@ -178,7 +176,6 @@ class TestModelProviderService:
         Returns:
             ProviderModelSetting: Created provider model setting instance
         """
-
 
         provider_model_setting = ProviderModelSetting(
             tenant_id=tenant_id,

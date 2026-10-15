@@ -225,7 +225,6 @@ class TestAgentService:
             list: Created agent thoughts
         """
 
-
         agent_thoughts = []
 
         # Create first agent thought
@@ -288,7 +287,6 @@ class TestAgentService:
         """
         Test successful retrieval of agent logs with complete data.
         """
-
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -538,7 +536,6 @@ class TestAgentService:
         Test agent logs retrieval with tool errors.
         """
 
-
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
@@ -587,7 +584,6 @@ class TestAgentService:
         """
         Test agent logs retrieval when message has no agent thoughts.
         """
-
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -665,7 +661,6 @@ class TestAgentService:
         Test error handling when agent config is not found.
         """
 
-
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
@@ -683,7 +678,6 @@ class TestAgentService:
         """
         Test successful listing of agent providers.
         """
-
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -704,7 +698,6 @@ class TestAgentService:
         """
         Test successful retrieval of specific agent provider.
         """
-
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -729,7 +722,6 @@ class TestAgentService:
         Test error handling when plugin daemon client raises an error.
         """
 
-
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
@@ -750,7 +742,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with complex tool data and multiple tools.
         """
-
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -838,7 +829,6 @@ class TestAgentService:
         Test agent logs retrieval with message files and agent thought files.
         """
 
-
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
@@ -918,7 +908,6 @@ class TestAgentService:
         Test agent logs retrieval with different timezone settings.
         """
 
-
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
@@ -944,7 +933,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with empty tool data.
         """
-
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
@@ -985,7 +973,6 @@ class TestAgentService:
         """
         Test agent logs retrieval with malformed JSON data in tool fields.
         """
-
 
         # Create test data
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)

@@ -1,7 +1,6 @@
 import copy
 
 import pytest
-from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.prompt.prompt_templates.advanced_prompt_templates import (
@@ -33,7 +32,6 @@ class TestAdvancedPromptTemplateService:
         - Proper prompt generation
         - Appropriate prompt template selection
         """
-
 
         args = {
             "app_mode": AppMode.CHAT,
@@ -69,7 +67,6 @@ class TestAdvancedPromptTemplateService:
         - Template structure validation
         """
 
-
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
             app_mode=AppMode.CHAT, model_mode="completion", has_context="true"
@@ -102,7 +99,6 @@ class TestAdvancedPromptTemplateService:
         - Template structure validation
         """
 
-
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(app_mode=AppMode.CHAT, model_mode="chat", has_context="true")
 
@@ -130,7 +126,6 @@ class TestAdvancedPromptTemplateService:
         - Proper context integration
         - Template structure validation
         """
-
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -161,7 +156,6 @@ class TestAdvancedPromptTemplateService:
         - Template structure validation
         """
 
-
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
             app_mode=AppMode.COMPLETION, model_mode="chat", has_context="true"
@@ -189,7 +183,6 @@ class TestAdvancedPromptTemplateService:
         - Context is not included in prompt
         - Template structure remains intact
         """
-
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -220,7 +213,6 @@ class TestAdvancedPromptTemplateService:
         - Default empty dict return
         """
 
-
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
             app_mode="unsupported_mode", model_mode="completion", has_context="true"
@@ -239,7 +231,6 @@ class TestAdvancedPromptTemplateService:
         - Proper handling of unsupported model modes
         - Default empty dict return
         """
-
 
         # Act: Execute the method under test
         result = AdvancedPromptTemplateService.get_prompt(
@@ -260,7 +251,6 @@ class TestAdvancedPromptTemplateService:
         - Template structure preservation
         - Context placement at the beginning
         """
-
 
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG)
@@ -292,7 +282,6 @@ class TestAdvancedPromptTemplateService:
         - No modification to prompt text
         """
 
-
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG)
         original_text = prompt_template["completion_prompt_config"]["prompt"]["text"]
@@ -322,7 +311,6 @@ class TestAdvancedPromptTemplateService:
         - Template structure preservation
         - Context placement at the beginning of first message
         """
-
 
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_CHAT_PROMPT_CONFIG)
@@ -355,7 +343,6 @@ class TestAdvancedPromptTemplateService:
         - No modification to prompt text
         """
 
-
         # Create test prompt template
         prompt_template = copy.deepcopy(CHAT_APP_CHAT_PROMPT_CONFIG)
         original_text = prompt_template["chat_prompt_config"]["prompt"][0]["text"]
@@ -383,7 +370,6 @@ class TestAdvancedPromptTemplateService:
         - All app modes work correctly
         - Proper template selection for each combination
         """
-
 
         # Test all app modes
         app_modes = [AppMode.CHAT, AppMode.COMPLETION]
@@ -414,7 +400,6 @@ class TestAdvancedPromptTemplateService:
         - Consistent behavior with unusual inputs
         """
 
-
         # Test edge cases
         edge_cases = [
             {"app_mode": "", "model_mode": "completion", "has_context": "true"},
@@ -443,7 +428,6 @@ class TestAdvancedPromptTemplateService:
         - Deep copy is used properly
         - Template immutability is maintained
         """
-
 
         # Store original templates
         original_chat_completion = copy.deepcopy(CHAT_APP_COMPLETION_PROMPT_CONFIG)
@@ -478,7 +462,6 @@ class TestAdvancedPromptTemplateService:
         - Context integration is consistent across different templates
         - No context duplication or corruption
         """
-
 
         # Test different scenarios
         test_scenarios = [

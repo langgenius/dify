@@ -640,7 +640,6 @@ class TestApiToolManageService:
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
 
-
         # Firmware fix for cache.delete() in update flow
         mock_encrypter = mock_external_service_dependencies["encrypter"]
         mock_cache = MagicMock()

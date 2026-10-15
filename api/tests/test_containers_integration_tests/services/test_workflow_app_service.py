@@ -202,7 +202,6 @@ class TestWorkflowAppLogQueryService:
             tuple: (workflow, workflow_run, workflow_app_log) - Created workflow entities
         """
 
-
         # Create workflow
         workflow = Workflow(
             id=str(uuid.uuid4()),
@@ -1459,7 +1458,6 @@ class TestWorkflowAppLogQueryService:
         Test workflow app logs pagination with proper tenant isolation.
         """
         # Arrange: Create multiple tenants and apps
-
 
         # Create first tenant and app
         tenant1, account1 = self._create_test_tenant_and_account(
