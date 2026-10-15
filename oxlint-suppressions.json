@@ -4229,14 +4229,6 @@
       "count": 1
     }
   },
-  "web/service/use-models.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 3
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-pipeline.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 8
