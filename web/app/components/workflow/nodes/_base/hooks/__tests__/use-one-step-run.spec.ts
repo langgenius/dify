@@ -1,5 +1,9 @@
-import { renderHook } from '@testing-library/react'
+import { ORPCError } from '@orpc/client'
+import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+// oxlint-disable-next-line no-restricted-imports -- Mock the request boundary while preserving the single-run error owner.
+import { post } from '@/service/base'
 import { FlowType } from '@/types/common'
 import useOneStepRun from '../use-one-step-run'
 
@@ -180,14 +184,14 @@ vi.mock('@/app/components/workflow/nodes/variable-assigner/default', () => ({
   default: {},
 }))
 
-const renderUseOneStepRun = () =>
+const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
   renderHook(() =>
     useOneStepRun({
       id: 'if-else-node',
       flowId: 'app-id',
       flowType: FlowType.appFlow,
       data: {
-        type: BlockEnum.IfElse,
+        type,
         title: 'IF/ELSE',
         desc: '',
       },
@@ -238,5 +242,25 @@ describe('useOneStepRun single-run input vars', () => {
         type: InputVarType.number,
       },
     ])
+  })
+
+  it('preserves the plugin request error and metadata when reporting a failed run', async () => {
+    const error = new ORPCError('forbidden', {
+      status: 403,
+      message: 'Plugin access denied',
+      data: { reason: 'PLUGIN_ACCESS_DENIED' },
+      cause: { headers: new Headers({ 'X-Request-Id': 'plugin-run-1' }) },
+    })
+    vi.mocked(post).mockRejectedValueOnce(error)
+    const reportError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { result } = renderUseOneStepRun(BlockEnum.TriggerPlugin)
+
+    await act(async () => {
+      expect(await result.current.handleRun({})).toBe(false)
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('Plugin access denied')
+    expect(reportError).toHaveBeenCalledWith(error)
+    expect(reportError.mock.calls[0]?.[0]).toBe(error)
   })
 })

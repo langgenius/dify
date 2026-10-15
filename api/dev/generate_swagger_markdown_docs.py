@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 SWAGGER_MARKDOWN_PACKAGE = "swagger-markdown@3.0.0"
 CONSOLE_OPENAPI_FILENAME = "console-openapi.json"
 STALE_COMBINED_MARKDOWN_FILENAME = "api-reference.md"
+# The inner API is a trusted server-to-server surface, not part of the published API reference.
+MARKDOWN_SPEC_TARGETS = tuple(target for target in SPEC_TARGETS if target.filename != "inner-openapi.json")
 
 
 def _schema_ref_name(schema: object) -> str | None:
@@ -182,6 +184,54 @@ def _strip_trailing_line_whitespace(markdown: str) -> str:
     return "\n".join(line.rstrip(" \t") for line in markdown.split("\n"))
 
 
+# Deprecated operations render struck through: ``### ~~[POST] /path~~``.
+_OPERATION_HEADING = re.compile(r"^### (?:~~)?\[(?P<method>[A-Z]+)\] (?P<path>\S+?)(?:~~)?$")
+_BLANK_MEDIA_TYPE_CELL = re.compile(r"\*\*(?P<media>[^*]+)\*\*: <br>")
+
+
+def _patch_union_response_markdown(markdown: str, spec_path: Path) -> str:
+    """Fill the response Schema cells `swagger-markdown` leaves blank for union bodies.
+
+    An error status that documents business errors is an ``anyOf`` of their components and
+    the open error body; the converter renders such a body as ``**application/json**: <br>``.
+    Only blank cells are filled, from the operation the enclosing ``### [METHOD] /path`` names.
+    """
+
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    paths = spec.get("paths")
+    if not isinstance(paths, dict):
+        return markdown
+
+    lines = markdown.splitlines()
+    responses: dict[str, object] = {}
+    for index, line in enumerate(lines):
+        heading = _OPERATION_HEADING.match(line)
+        if heading is not None:
+            path_item = paths.get(heading["path"])
+            operation = path_item.get(heading["method"].lower()) if isinstance(path_item, dict) else None
+            found = operation.get("responses") if isinstance(operation, dict) else None
+            responses = found if isinstance(found, dict) else {}
+            continue
+        if not responses or not line.startswith("|") or "**: <br>" not in line:
+            continue
+        cells = re.split(r"(?<!\\)\|", line.strip().strip("|"))
+        if len(cells) != 3:
+            continue
+        response = responses.get(cells[0].strip())
+        content = response.get("content") if isinstance(response, dict) else None
+        if not isinstance(content, dict):
+            continue
+
+        def fill(match: re.Match[str], content: dict[str, object] = content) -> str:
+            media = content.get(match["media"])
+            schema_type = _schema_markdown_type(media.get("schema")) if isinstance(media, dict) else ""
+            return f"**{match['media']}**: {schema_type}<br>" if schema_type else match.group(0)
+
+        cells[2] = _BLANK_MEDIA_TYPE_CELL.sub(fill, cells[2])
+        lines[index] = f"|{'|'.join(cells)}|"
+    return "\n".join(lines) + ("\n" if markdown.endswith("\n") else "")
+
+
 def _patch_wildcard_media_type_markdown(markdown: str) -> str:
     """Keep swagger-markdown from interpreting the wildcard media type as emphasis."""
 
@@ -255,6 +305,7 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             temp_markdown_path.read_text(encoding="utf-8"),
             spec_path,
         )
+        converted_markdown = _patch_union_response_markdown(converted_markdown, spec_path)
         converted_markdown = _patch_wildcard_media_type_markdown(converted_markdown)
         converted_markdown = _patch_request_body_markdown(converted_markdown)
         converted_markdown = _strip_trailing_line_whitespace(converted_markdown)
@@ -319,7 +370,7 @@ def generate_markdown_docs(
         with tempfile.TemporaryDirectory(prefix="dify-api-docs-") as temp_dir:
             temp_markdown_dir = Path(temp_dir)
 
-            for target in SPEC_TARGETS:
+            for target in MARKDOWN_SPEC_TARGETS:
                 openapi_path = openapi_paths_by_name[target.filename]
                 markdown_path = markdown_dir / f"{openapi_path.stem}.md"
                 _convert_spec_to_markdown(openapi_path, markdown_path)

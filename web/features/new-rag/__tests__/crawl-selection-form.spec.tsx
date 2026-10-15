@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import datasetTranslations from '@/i18n/locales/en-US/dataset.json'
 import { getInitOptions } from '@/i18n/settings'
+import { createHttpError } from '@/service/http-error'
 import { render } from '@/test/console/render'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
@@ -563,7 +564,9 @@ describe('CrawlSelectionForm', () => {
         }),
       )
     clientMock.updatePolicy
-      .mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 409 }), { message: 'conflict' }),
+      )
       .mockResolvedValueOnce(policy({ enabled: false, mode: 'manual', revision: 4 }))
     const user = userEvent.setup()
     renderSelectionForm()
@@ -611,7 +614,7 @@ describe('CrawlSelectionForm', () => {
 
   it('creates the initial provider policy when a provisional source has no policy yet', async () => {
     clientMock.getPolicy.mockRejectedValue(
-      Object.assign(new Error('policy not found'), { status: 404 }),
+      createHttpError(new Response(null, { status: 404 }), { message: 'policy not found' }),
     )
     clientMock.updatePolicy.mockResolvedValue(policy({ mode: 'provider', revision: 1 }))
     const user = userEvent.setup()

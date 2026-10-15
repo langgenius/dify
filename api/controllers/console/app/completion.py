@@ -47,6 +47,7 @@ from core.errors.error import (
 from core.helper.trace_id_helper import get_external_trace_id
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
@@ -147,6 +148,13 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 # define completion message api for user
 @console_ns.route("/apps/<uuid:app_id>/completion-messages")
 class CompletionMessageApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("create_completion_message")
     @console_ns.doc(description="Generate completion message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -227,6 +235,15 @@ class CompletionMessageStopApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("create_chat_message")
     @console_ns.doc(description="Generate chat message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -251,6 +268,15 @@ class ChatMessageApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
 class AgentChatMessageApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("create_agent_chat_message")
     @console_ns.doc(description="Generate an Agent App chat message for debugging")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -281,6 +307,15 @@ class AgentChatMessageApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-chat/finalize")
 class AgentBuildChatFinalizeApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -325,6 +360,7 @@ class ChatMessageStopApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop")
 class AgentChatMessageStopApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("stop_agent_chat_message")
     @console_ns.doc(description="Stop a running Agent App chat message generation")
     @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID to stop"})
