@@ -568,9 +568,9 @@ Generate a new completion similar to an existing message (completion apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request - Not a completion app or feature disabled | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request - Not a completion app, app unavailable, or model invocation failed | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - Access denied or more-like-this disabled | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
