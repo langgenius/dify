@@ -238,6 +238,25 @@ class TestArrayTruncation:
         for item in result.value:
             assert isinstance(item, dict)
 
+    def test_array_truncated_flag_accumulates_across_elements(self):
+        """The truncated flag must accumulate (OR) across array elements.
+
+        Element 0 is truncated, element 1 is not. The final result must
+        still report truncated=True (regression test for #39773).
+        """
+        truncator = VariableTruncator(string_length_limit=10, max_size_bytes=100)
+        long_str = "a" * 40  # 42 chars serialized -> exceeds budget
+        arr: list[object] = [long_str, 1]
+        result = truncator._truncate_array(arr, 20)
+
+        # First element was truncated
+        assert isinstance(result.value[0], str)
+        assert result.value[0] != long_str
+        # Second element passed through unchanged
+        assert result.value[1] == 1
+        # The flag must reflect that at least one element was truncated
+        assert result.truncated is True
+
 
 class TestObjectTruncation:
     """Test object truncation functionality."""
