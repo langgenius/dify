@@ -772,7 +772,7 @@ class TestRagPipelineRunTasks:
         - Function raises ValueError for missing entities
         """
         # Arrange: Create entity data with valid UUIDs but non-existent entities
-        Faker()
+
         invalid_entity_data = {
             "pipeline_id": str(uuid.uuid4()),
             "application_generate_entity": {
@@ -817,7 +817,7 @@ class TestRagPipelineRunTasks:
         - Function raises ValueError for missing entities
         """
         # Arrange: Create test data with non-existent IDs
-        Faker()
+
         entity_data = {
             "pipeline_id": str(uuid.uuid4()),
             "application_generate_entity": {

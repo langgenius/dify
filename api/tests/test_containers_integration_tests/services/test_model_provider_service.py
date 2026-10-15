@@ -100,7 +100,7 @@ class TestModelProviderService:
         Returns:
             Provider: Created provider instance
         """
-        Faker()
+
 
         provider = Provider(
             tenant_id=tenant_id,
@@ -140,7 +140,7 @@ class TestModelProviderService:
         Returns:
             ProviderModel: Created provider model instance
         """
-        Faker()
+
 
         provider_model = ProviderModel(
             tenant_id=tenant_id,
@@ -178,7 +178,7 @@ class TestModelProviderService:
         Returns:
             ProviderModelSetting: Created provider model setting instance
         """
-        Faker()
+
 
         provider_model_setting = ProviderModelSetting(
             tenant_id=tenant_id,
@@ -205,7 +205,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -281,7 +281,7 @@ class TestModelProviderService:
         - Correct handling of unsupported model types
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -381,7 +381,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -492,7 +492,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -549,7 +549,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -589,7 +589,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -621,7 +621,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -675,7 +675,7 @@ class TestModelProviderService:
         - Database state management
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -707,7 +707,7 @@ class TestModelProviderService:
         - Mock interactions with ModelProviderFactory
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -744,7 +744,7 @@ class TestModelProviderService:
         - Provider configuration management
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -778,7 +778,7 @@ class TestModelProviderService:
         - Model configuration management
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -814,7 +814,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -871,7 +871,7 @@ class TestModelProviderService:
         - Model credential validation process
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -913,7 +913,7 @@ class TestModelProviderService:
         - Model credential management
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -954,7 +954,7 @@ class TestModelProviderService:
         - Model credential cleanup
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -992,7 +992,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -1069,7 +1069,7 @@ class TestModelProviderService:
         - Model schema handling
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -1135,7 +1135,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -1177,7 +1177,7 @@ class TestModelProviderService:
         - Mock interactions with ProviderManager
         """
         # Arrange: Create test data
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )

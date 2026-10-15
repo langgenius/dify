@@ -260,7 +260,7 @@ class TestMessageService:
         """
         Test pagination by first ID when no conversation ID is provided.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Test pagination with no conversation ID
@@ -376,7 +376,7 @@ class TestMessageService:
         """
         Test pagination by last ID when no user is provided.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Test pagination with no user,

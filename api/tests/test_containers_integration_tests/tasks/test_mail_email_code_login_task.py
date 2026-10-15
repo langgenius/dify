@@ -403,7 +403,7 @@ class TestSendEmailCodeLoginMailTask:
         4. Process extreme language codes
         """
         # Arrange: Setup test data
-        Faker()
+
         test_language = "en-US"
 
         # Edge case test data

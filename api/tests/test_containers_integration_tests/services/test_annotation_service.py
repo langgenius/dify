@@ -497,7 +497,7 @@ class TestAnnotationService:
         - Search treats special characters as literal characters, not wildcards
         - SQL injection via LIKE wildcards is prevented
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create annotations with special characters in content
@@ -657,7 +657,7 @@ class TestAnnotationService:
         """
         Test successful enabling of app annotation.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Setup enable arguments
@@ -685,7 +685,7 @@ class TestAnnotationService:
         """
         Test successful disabling of app annotation.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Disable annotation
@@ -887,7 +887,7 @@ class TestAnnotationService:
         """
         Test successful batch import of app annotations.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create CSV content
@@ -929,7 +929,7 @@ class TestAnnotationService:
         """
         Test batch import with empty CSV file.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create empty CSV content
@@ -965,7 +965,7 @@ class TestAnnotationService:
         """
         Test batch import when quota is exceeded.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create CSV content
@@ -1055,7 +1055,7 @@ class TestAnnotationService:
         """
         Test getting disabled app annotation setting by app ID.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Get annotation setting (no setting exists)

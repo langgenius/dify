@@ -167,7 +167,7 @@ class TestCleanNotionDocumentTask:
         This test verifies that the task properly handles the case where
         the specified dataset does not exist in the database.
         """
-        Faker()
+
         non_existent_dataset_id = str(uuid.uuid4())
         document_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 

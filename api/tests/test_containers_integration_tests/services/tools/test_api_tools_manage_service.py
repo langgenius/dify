@@ -625,7 +625,7 @@ class TestApiToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test deletion raises ValueError when provider not found."""
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -639,7 +639,7 @@ class TestApiToolManageService:
         db_session_with_containers: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
-        Faker()
+
 
         # Firmware fix for cache.delete() in update flow
         mock_encrypter = mock_external_service_dependencies["encrypter"]
@@ -879,7 +879,7 @@ class TestApiToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test listing tools raises ValueError when provider not found."""
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -891,7 +891,7 @@ class TestApiToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test preview raises ValueError for invalid schema type."""
-        Faker()
+
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )

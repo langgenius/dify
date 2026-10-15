@@ -1092,7 +1092,7 @@ class TestWorkflowToolManageService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test listing workflow tools when none exist returns empty list."""
-        Faker()
+
         app, account, workflow = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies
         )

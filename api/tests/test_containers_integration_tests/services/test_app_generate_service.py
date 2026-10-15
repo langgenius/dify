@@ -983,7 +983,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with app-specific limit.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1003,7 +1003,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with config limit being smaller.
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
@@ -1024,7 +1024,7 @@ class TestAppGenerateService:
         """
         Test getting max active requests with zero limits (infinite).
         """
-        Faker()
+
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
