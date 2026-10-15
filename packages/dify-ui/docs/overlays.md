@@ -66,6 +66,9 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
 
 - Use `Dialog` for modal content that needs focus containment and scroll locking.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
+  It blocks outside-press dismissal but still closes on Escape; cancel that close in
+  `onOpenChange` when the answer must be explicit. The confirm part defaults to the destructive
+  tone, so a non-destructive confirmation sets its tone. Give initial focus to the primary action.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
 - Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
   A long action list filters with `DropdownMenuFilterProvider`; choosing a value is

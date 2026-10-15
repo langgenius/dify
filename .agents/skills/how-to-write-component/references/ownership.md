@@ -39,6 +39,7 @@ Read this document when adding, moving, splitting, or refactoring React componen
 
 - Choose component declaration and export forms from the actual component contract, framework requirements, and enforced package rules. Existing style is context, not authority; do not rewrite unaffected code solely to normalize `FC`, `function`, arrow-function, named-export, or default-export forms.
 - Use API-generated or API-returned types at component boundaries. Keep one-off UI refinements and conversions beside their owner.
+- Derive primitive-facing props with `Pick` from the part that actually receives them. A prop rendered at the Root is not typed from the content part.
 - Name props and converted data after their domain/API role, preserving traceability to the original contract.
 - Preserve domain value types for selections. Do not widen enums, unions, booleans, numbers, objects, or nullable values to `string` before a real boundary requires it.
 - Avoid generic `common.tsx` buckets and aliases that only rename another type. Name files, values, and public types after their domain role.
