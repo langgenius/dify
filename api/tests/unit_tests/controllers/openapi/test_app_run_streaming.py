@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from dataclasses import replace
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -30,6 +31,7 @@ from controllers.openapi._models import (
 from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
 from controllers.openapi.auth.subjects import Subject, subject_from_auth
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.file import FileType
 from libs.oauth_bearer import AuthContext
@@ -105,6 +107,7 @@ def test_chat_payload_normalizes_conversation_id():
 @pytest.mark.parametrize("owns_task", [False, True])
 def test_stop_task_enforces_resolved_caller_ownership(
     app: Flask,
+    account_application_services: ApplicationServices,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     token_type: TokenType,
@@ -139,7 +142,7 @@ def test_stop_task_enforces_resolved_caller_ownership(
     monkeypatch.setattr(
         sys.modules["controllers.openapi.app_run"],
         "application_services",
-        lambda: SimpleNamespace(app_tasks=AppTaskControlService(redis_client=redis)),
+        lambda: replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
     )
     ctx = _SealableContext(
         subject=subject,
