@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Generator, Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 from graphon.entities.pause_reason import HitlRequired
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
-from models import Account, EndUser, Workflow
+from models import Account, EndUser
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
-from models.dataset import Dataset
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input_contracts import HumanInputFormFactory, PauseFormSnapshot
 from models.tool_runtime_contracts import WorkflowToolQueries
 from models.workflow import WorkflowAppLogCreatedFrom, WorkflowNodeExecutionTriggeredFrom
 from services.tools.provider_queries import ToolProviders
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
 
 if TYPE_CHECKING:
@@ -31,14 +32,24 @@ class PauseReasonResolver(Protocol):
     ) -> list[PauseReason]: ...
 
 
+@dataclass(frozen=True, slots=True)
+class PipelineDatasetSnapshot:
+    id: str
+    tenant_id: str
+    name: str
+    description: str | None
+    chunk_structure: str | None
+    built_in_field_enabled: bool
+
+
 class ExecutionContexts(Protocol):
     def pause_forms(
         self, *, tenant_id: str, app_id: str, workflow_run_id: str, form_ids: Sequence[str]
     ) -> list[PauseFormSnapshot]: ...
-    def pipeline_workflow(self, *, tenant_id: str, pipeline_id: str, draft: bool) -> Workflow: ...
-    def pipeline_dataset(self, *, tenant_id: str, pipeline_id: str) -> Dataset: ...
-    def restore_graph(self, workflow: Workflow, workflow_run_id: str | None) -> None: ...
-    def workflow(self, *, tenant_id: str, app_id: str, workflow_id: str) -> Workflow: ...
+    def pipeline_workflow(self, *, tenant_id: str, pipeline_id: str, draft: bool) -> WorkflowSnapshot: ...
+    def pipeline_dataset(self, *, tenant_id: str, pipeline_id: str) -> PipelineDatasetSnapshot: ...
+    def restore_graph(self, workflow: WorkflowSnapshot, workflow_run_id: str | None) -> WorkflowSnapshot: ...
+    def workflow(self, *, tenant_id: str, app_id: str, workflow_id: str) -> WorkflowSnapshot: ...
 
 
 class ExecutionWriterFactory(Protocol):

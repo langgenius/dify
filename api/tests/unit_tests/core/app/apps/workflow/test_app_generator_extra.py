@@ -646,7 +646,7 @@ class TestWorkflowAppGeneratorWorker:
             lambda flask_app, context_vars: contextlib.nullcontext(),
         )
         monkeypatch.setattr("services.workflow.execution.adapters.workflow.app_generator.WorkflowAppRunner", _Runner)
-        restore_workflow_run_graph = Mock()
+        restore_workflow_run_graph = Mock(side_effect=lambda workflow, _run_id: workflow)
         monkeypatch.setattr(generator._runtime.contexts, "restore_graph", restore_workflow_run_graph)
 
         app_config = WorkflowUIBasedAppConfig(

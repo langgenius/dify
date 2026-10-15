@@ -41,8 +41,9 @@ from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
-from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from services.app.generation.input_adapter import AppInputAdapter
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.node_factory import get_default_root_node_id
 from services.workflow.execution.adapters.workflow.active_workflow_tasks import active_workflow_task
 from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfigManager
@@ -63,7 +64,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         runtime: WorkflowRuntime,
-        draft_variable_loader: Callable[[Workflow, str], VariableLoader] | None = None,
+        draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         cancellation: WorkflowExecutionCancellation | None = None,
     ) -> None:
@@ -79,7 +80,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -97,7 +98,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -115,7 +116,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -132,7 +133,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -255,7 +256,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         application_generate_entity: WorkflowAppGenerateEntity,
         graph_runtime_state: GraphRuntimeState,
@@ -302,7 +303,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
@@ -351,6 +352,7 @@ class WorkflowAppGenerator(AppInputAdapter):
                     PauseStatePersistenceLayer(
                         session_factory=pause_state_config.session_factory,
                         generate_entity=application_generate_entity,
+                        human_form_reader=self._runtime.human_form_reader,
                         state_owner_user_id=pause_state_config.state_owner_user_id,
                         response_stream_filter=resolved_response_stream_filter,
                     )
@@ -404,7 +406,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     def single_iteration_generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -487,7 +489,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     def single_loop_generate(
         self,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -570,7 +572,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         self,
         flask_app: Flask,
         system_user_id: str,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         application_generate_entity: WorkflowAppGenerateEntity,
         queue_manager: AppQueueManager,
         context: contextvars.Context,
@@ -593,7 +595,9 @@ class WorkflowAppGenerator(AppInputAdapter):
         with preserve_flask_contexts(flask_app, context_vars=context):
             try:
                 if graph_runtime_state is not None:
-                    self._runtime.contexts.restore_graph(workflow, application_generate_entity.workflow_execution_id)
+                    workflow = self._runtime.contexts.restore_graph(
+                        workflow, application_generate_entity.workflow_execution_id
+                    )
                 runner = WorkflowAppRunner(
                     runtime=self._runtime,
                     draft_variable_saver=self._draft_variable_saver,
@@ -634,7 +638,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     def _handle_response(
         self,
         application_generate_entity: WorkflowAppGenerateEntity,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         queue_manager: AppQueueManager,
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,

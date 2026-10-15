@@ -3,6 +3,7 @@ root_packages =
     services.entities.external_knowledge_entities
     enums
     core
+    errors
     core.rag.extractor.entity
     constants
     context

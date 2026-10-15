@@ -21,9 +21,8 @@ Supported execution modes:
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
+from dataclasses import replace
 from typing import Any, Protocol, Union, cast
-
-from sqlalchemy.orm import make_transient
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -35,7 +34,9 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.app.generation.response import convert_to_event_stream
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
@@ -173,9 +174,10 @@ class SnippetGenerateService:
         :return: Blocking response mapping or SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        workflow = self._snippets.get_draft_workflow(snippet=snippet)
-        if not workflow:
+        workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
+        if not workflow_model:
             raise ValueError("Workflow not initialized")
+        workflow = workflow_snapshot(workflow_model)
 
         # Inject a virtual Start node when the graph doesn't have one.
         workflow = self._ensure_start_node(workflow, snippet)
@@ -200,14 +202,13 @@ class SnippetGenerateService:
         return convert_to_event_stream(self._filter_virtual_start_events(response))
 
     @classmethod
-    def _ensure_start_node(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
+    def _ensure_start_node(cls, workflow: WorkflowSnapshot, snippet: CustomizedSnippet) -> WorkflowSnapshot:
         """
         Return *workflow* with a Start node.
 
         If the graph already contains a Start node, the original workflow is
         returned unchanged.  Otherwise a virtual Start node is injected and the
-        workflow object is detached from the SQLAlchemy session so the in-memory
-        change is never flushed to the database.
+        returned snapshot contains the in-memory graph used for this execution.
         """
         graph_dict = workflow.graph_dict
         nodes: list[dict[str, Any]] = graph_dict.get("nodes", [])
@@ -221,11 +222,7 @@ class SnippetGenerateService:
             input_fields=snippet.input_fields_list,
         )
 
-        # Detach from session to prevent accidental DB persistence of the
-        # modified graph.  All attributes remain accessible for read.
-        make_transient(workflow)
-        workflow.graph = json.dumps(modified_graph)
-        return workflow
+        return replace(workflow, graph=json.dumps(modified_graph))
 
     @classmethod
     def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
@@ -324,9 +321,10 @@ class SnippetGenerateService:
         :return: WorkflowNodeExecutionModel with execution results
         :raises ValueError: If the snippet has no draft workflow
         """
-        draft_workflow = self._snippets.get_draft_workflow(snippet=snippet)
-        if not draft_workflow:
+        draft_workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
+        if not draft_workflow_model:
             raise ValueError("Workflow not initialized")
+        draft_workflow = workflow_snapshot(draft_workflow_model)
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
@@ -364,9 +362,10 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        workflow = self._snippets.get_draft_workflow(snippet=snippet)
-        if not workflow:
+        workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
+        if not workflow_model:
             raise ValueError("Workflow not initialized")
+        workflow = workflow_snapshot(workflow_model)
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
@@ -408,9 +407,10 @@ class SnippetGenerateService:
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        workflow = self._snippets.get_draft_workflow(snippet=snippet)
-        if not workflow:
+        workflow_model = self._snippets.get_draft_workflow(snippet=snippet)
+        if not workflow_model:
             raise ValueError("Workflow not initialized")
+        workflow = workflow_snapshot(workflow_model)
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 

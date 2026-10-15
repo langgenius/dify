@@ -30,6 +30,7 @@ from models.account import Account
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.app.generation.runtime import AppGenerationRuntime
 from services.app_generate_service import AppGenerateService
 from services.errors.app import (
@@ -37,6 +38,7 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 
@@ -334,7 +336,7 @@ class TestGenerate(_RealSessionTest):
             # Keep the real generator constructor and debugger saver selection.
             assert generator._draft_variable_loader == workflow_variables.workflow_loader
             assert generator._draft_variable_saver == workflow_variables.saver_factory
-            loader = workflow_variables.workflow_loader(workflow, user.id)
+            loader = workflow_variables.workflow_loader(workflow_snapshot(workflow), user.id)
             saver = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, user, tenant_id=workflow.tenant_id)
             saver(workflow.app_id, "node", BuiltinNodeTypes.CODE, "execution").save(
                 process_data=None, outputs={"text": "injected value"}
@@ -1060,10 +1062,17 @@ class TestGetWorkflow(_RealSessionTest):
         workflow = _make_workflow()
         self.session.add(workflow)
         self.session.commit()
-        assert (
-            AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.DEBUGGER, session=self.session)
-            is workflow
+        result = AppGenerateService._get_workflow(
+            _make_app(AppMode.WORKFLOW), InvokeFrom.DEBUGGER, session=self.session
         )
+        assert isinstance(result, WorkflowSnapshot)
+        assert (result.id, result.tenant_id, result.app_id, result.version) == (
+            workflow.id,
+            workflow.tenant_id,
+            workflow.app_id,
+            "draft",
+        )
+        assert result.graph == workflow.graph
 
     def test_debugger_raises_when_no_draft(self):
         with pytest.raises(ValueError, match="Workflow not initialized"):
@@ -1076,7 +1085,10 @@ class TestGetWorkflow(_RealSessionTest):
         self.session.commit()
         app = _make_app(AppMode.WORKFLOW)
         app.workflow_id = workflow.id
-        assert AppGenerateService._get_workflow(app, InvokeFrom.SERVICE_API, session=self.session) is workflow
+        result = AppGenerateService._get_workflow(app, InvokeFrom.SERVICE_API, session=self.session)
+        assert isinstance(result, WorkflowSnapshot)
+        assert (result.id, result.version) == (workflow.id, "published")
+        assert result.graph == workflow.graph
 
     def test_non_debugger_raises_when_no_published(self):
         with pytest.raises(ValueError, match="Workflow not published"):
@@ -1087,12 +1099,12 @@ class TestGetWorkflow(_RealSessionTest):
         workflow.version = "published"
         self.session.add(workflow)
         self.session.commit()
-        assert (
-            AppGenerateService._get_workflow(
-                _make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API, workflow_id=workflow.id, session=self.session
-            )
-            is workflow
+        result = AppGenerateService._get_workflow(
+            _make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API, workflow_id=workflow.id, session=self.session
         )
+        assert isinstance(result, WorkflowSnapshot)
+        assert (result.id, result.version) == (workflow.id, "published")
+        assert result.graph == workflow.graph
 
     def test_specific_workflow_id_invalid_uuid(self):
         with pytest.raises(WorkflowIdFormatError):

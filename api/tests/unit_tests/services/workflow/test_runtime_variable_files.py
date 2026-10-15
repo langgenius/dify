@@ -16,6 +16,7 @@ from graphon.variables import SegmentType, StringSegment
 from models.dataset import Pipeline
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowKind, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.variable_service import WorkflowVariableService
 from tests.unit_tests.model_factories import make_account, make_app, make_upload_file, make_workflow
 
@@ -106,7 +107,7 @@ def test_load_file_variables_restores_canonical_metadata(
     _persist_file_variable(
         sqlite_session_factory, workflow, value_type, [mapping] if value_type == SegmentType.ARRAY_FILE else mapping
     )
-    loaded = variables.workflow_loader(workflow, "account-1").load_variables([["node", "file"]])
+    loaded = variables.workflow_loader(workflow_snapshot(workflow), "account-1").load_variables([["node", "file"]])
     assert len(loaded) == 1
     assert loaded[0].selector == ["node", "file"]
     files = loaded[0].value if value_type == SegmentType.ARRAY_FILE else [loaded[0].value]
@@ -135,7 +136,7 @@ def test_load_file_variables_rejects_another_tenants_upload(
         sqlite_session_factory, workflow, value_type, [mapping] if value_type == SegmentType.ARRAY_FILE else mapping
     )
     with pytest.raises(ValueError, match="Invalid upload file"):
-        variables.workflow_loader(workflow, "account-1").load_variables([["node", "file"]])
+        variables.workflow_loader(workflow_snapshot(workflow), "account-1").load_variables([["node", "file"]])
 
 
 @pytest.mark.parametrize("value_type", [SegmentType.FILE, SegmentType.ARRAY_FILE])
@@ -156,7 +157,7 @@ def test_load_external_file_does_not_fetch_it_again(
     _persist_file_variable(
         sqlite_session_factory, workflow, value_type, [mapping] if value_type == SegmentType.ARRAY_FILE else mapping
     )
-    loaded = variables.workflow_loader(workflow, "account-1").load_variables([["node", "file"]])
+    loaded = variables.workflow_loader(workflow_snapshot(workflow), "account-1").load_variables([["node", "file"]])
     file = loaded[0].value[0] if value_type == SegmentType.ARRAY_FILE else loaded[0].value
     assert (file.remote_url, file.filename, file.size) == (mapping["url"], "document.txt", 12)
 
@@ -166,7 +167,7 @@ def test_load_empty_file_array(
 ) -> None:
     variables, workflow = runtime_scope
     _persist_file_variable(sqlite_session_factory, workflow, SegmentType.ARRAY_FILE, [])
-    loaded = variables.workflow_loader(workflow, "account-1").load_variables([["node", "file"]])
+    loaded = variables.workflow_loader(workflow_snapshot(workflow), "account-1").load_variables([["node", "file"]])
     assert loaded[0].value == []
 
 
@@ -192,5 +193,5 @@ def test_start_node_files_round_trip_through_injected_gateway(
             ]
         },
     )
-    loaded = variables.workflow_loader(workflow, "account-1").load_variables([["sys", "files"]])
+    loaded = variables.workflow_loader(workflow_snapshot(workflow), "account-1").load_variables([["sys", "files"]])
     assert [file.filename for file in loaded[0].value] == ["start.txt"]

@@ -1,7 +1,7 @@
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -59,6 +59,7 @@ from services.errors.app import (
     TriggerNodeLimitExceededError,
 )
 from services.system_feature_service import SystemFeatureService
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfigManager
 from services.workflow.execution.adapters.node_factory import (
     LATEST_VERSION,
@@ -67,11 +68,16 @@ from services.workflow.execution.adapters.node_factory import (
 )
 from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfigManager
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
-from services.workflow.variable_contracts import WorkflowExecutionVariables
+from services.workflow.variable_contracts import WorkflowExecutionVariables, environment_variable_values
 
 _file_access_controller = DatabaseFileAccessController()
 
 from services.workflow.execution.ports import WorkflowRuntime
+
+
+class WorkflowIdentity(Protocol):
+    @property
+    def id(self) -> str: ...
 
 
 class WorkflowService:
@@ -94,7 +100,9 @@ class WorkflowService:
             session_maker
         )
 
-    def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
+    def get_node_last_run(
+        self, app_model: App, workflow: WorkflowIdentity, node_id: str
+    ) -> WorkflowNodeExecutionModel | None:
         """
         Get the most recent execution for a specific node.
 
@@ -480,7 +488,7 @@ class WorkflowService:
     def run_draft_workflow_node(
         self,
         app_model: App,
-        draft_workflow: Workflow,
+        draft_workflow: WorkflowSnapshot,
         node_id: str,
         user_inputs: Mapping[str, Any],
         account: Account,
@@ -495,7 +503,7 @@ class WorkflowService:
         files = files or []
 
         node_config = draft_workflow.get_node_config_by_id(node_id)
-        node_type = Workflow.get_node_type_from_node_config(node_config)
+        node_type = draft_workflow.get_node_type_from_node_config(node_config)
         node_data = node_config["data"]
         if is_start_node_type(node_type):
             conversation_id = variables.get_or_create_conversation(
@@ -528,7 +536,7 @@ class WorkflowService:
                 variable_pool,
                 build_bootstrap_variables(
                     system_variables=default_system_variables(),
-                    environment_variables=draft_workflow.environment_variables,
+                    environment_variables=environment_variable_values(draft_workflow),
                 ),
             )
 
@@ -823,7 +831,7 @@ def _setup_variable_pool(
     files: Sequence[File],
     user_id: str,
     user_inputs: Mapping[str, Any],
-    workflow: Workflow,
+    workflow: WorkflowSnapshot,
     node_id: str,
     node_type: NodeType,
     conversation_id: str,
@@ -860,7 +868,7 @@ def _setup_variable_pool(
         variable_pool,
         build_bootstrap_variables(
             system_variables=system_variable,
-            environment_variables=workflow.environment_variables,
+            environment_variables=environment_variable_values(workflow),
             conversation_variables=cast(list[Variable], conversation_variables),
         ),
     )

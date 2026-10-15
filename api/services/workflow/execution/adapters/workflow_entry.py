@@ -16,6 +16,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.system_variables import (
     default_system_variables,
     get_node_creation_preload_selectors,
@@ -41,8 +42,8 @@ from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper,
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
-from models.workflow import Workflow
 from services.human_input.ports import HumanInputFormReader
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 from services.workflow.execution.adapters.node_factory import (
     DifyGraphInitContext,
@@ -212,7 +213,7 @@ class WorkflowEntry:
     def single_step_run(
         cls,
         *,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         node_id: str,
         user_id: str,
         user_inputs: Mapping[str, Any],
@@ -224,13 +225,15 @@ class WorkflowEntry:
     ) -> tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]]:
         """
         Single step run workflow node
-        :param workflow: Workflow instance
+        :param workflow: immutable workflow definition
         :param node_id: node id
         :param user_id: user id
         :param user_inputs: user inputs
         :return:
         """
-        node_config = workflow.get_node_config_by_id(node_id)
+        node_config = NodeConfigDictAdapter.validate_python(
+            adapt_node_config_for_graph(workflow.get_node_config_by_id(node_id))
+        )
         node_config_data = node_config["data"]
 
         # Get node type
