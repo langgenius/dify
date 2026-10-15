@@ -107,14 +107,14 @@ class DatasourceNodeRunPayload(BaseModel):
     credential_id: str | None = None
 
 
-class DraftWorkflowRunPayload(BaseModel):
+class RagPipelineDraftWorkflowRunPayload(BaseModel):
     inputs: dict[str, Any]
     datasource_type: str
     datasource_info_list: list[dict[str, Any]]
     start_node_id: str
 
 
-class PublishedWorkflowRunPayload(DraftWorkflowRunPayload):
+class PublishedWorkflowRunPayload(RagPipelineDraftWorkflowRunPayload):
     is_preview: bool = False
     response_mode: Literal["streaming", "blocking"] = "streaming"
     original_document_id: str | None = None
@@ -124,7 +124,7 @@ class NodeIdQuery(BaseModel):
     node_id: str
 
 
-class WorkflowRunQuery(BaseModel):
+class RagPipelineWorkflowRunQuery(BaseModel):
     last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
@@ -173,13 +173,13 @@ register_schema_models(
     NodeRunPayload,
     NodeRunRequiredPayload,
     DatasourceNodeRunPayload,
-    DraftWorkflowRunPayload,
+    RagPipelineDraftWorkflowRunPayload,
     PublishedWorkflowRunPayload,
     DefaultBlockConfigQuery,
     WorkflowListQuery,
     WorkflowUpdatePayload,
     NodeIdQuery,
-    WorkflowRunQuery,
+    RagPipelineWorkflowRunQuery,
     DatasourceVariablesPayload,
     RagPipelineRecommendedPluginQuery,
 )
@@ -374,7 +374,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
 class DraftRagPipelineRunApi(Resource):
     @error_responses(InvokeRateLimitHttpError, PipelineNotFoundError)
-    @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__])
+    @console_ns.expect(console_ns.models[RagPipelineDraftWorkflowRunPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
@@ -383,8 +383,10 @@ class DraftRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
     @with_session
-    @model_validate(DraftWorkflowRunPayload)
-    def post(self, req_data: DraftWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID):
+    @model_validate(RagPipelineDraftWorkflowRunPayload)
+    def post(
+        self, req_data: RagPipelineDraftWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID
+    ):
         """
         Run draft workflow
         """
@@ -939,7 +941,7 @@ class DraftRagPipelineSecondStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs")
 class RagPipelineWorkflowRunListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(WorkflowRunQuery))
+    @console_ns.doc(params=query_params_from_model(RagPipelineWorkflowRunQuery))
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",
@@ -954,7 +956,7 @@ class RagPipelineWorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        query = WorkflowRunQuery.model_validate(
+        query = RagPipelineWorkflowRunQuery.model_validate(
             {
                 "last_id": request.args.get("last_id"),
                 "limit": request.args.get("limit", type=int, default=20),

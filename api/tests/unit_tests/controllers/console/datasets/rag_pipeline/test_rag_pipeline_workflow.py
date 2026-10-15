@@ -17,9 +17,9 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
-    DraftWorkflowRunPayload,
     NodeIdQuery,
     PublishedWorkflowRunPayload,
+    RagPipelineDraftWorkflowRunPayload,
     RagPipelineRecommendedPluginQuery,
     WorkflowListQuery,
     WorkflowUpdatePayload,
@@ -404,7 +404,7 @@ def test_rag_pipeline_run_uses_sqlite_session(
         patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
     ):
         req_data = (
-            DraftWorkflowRunPayload.model_validate(payload)
+            RagPipelineDraftWorkflowRunPayload.model_validate(payload)
             if api_type is module.DraftRagPipelineRunApi
             else PublishedWorkflowRunPayload.model_validate(payload)
         )
@@ -434,7 +434,7 @@ def test_rag_pipeline_run_translates_rate_limit(
     handler = unwrap_all(api.post)
     pipeline = _pipeline()
     req_data = (
-        DraftWorkflowRunPayload.model_validate(payload)
+        RagPipelineDraftWorkflowRunPayload.model_validate(payload)
         if api_type is module.DraftRagPipelineRunApi
         else PublishedWorkflowRunPayload.model_validate(payload)
     )

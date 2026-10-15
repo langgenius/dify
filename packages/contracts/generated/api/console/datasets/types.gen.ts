@@ -995,7 +995,7 @@ export type DatasetWeightedScoreResponse = {
 
 export type InfoList = {
   data_source_type: 'notion_import' | 'upload_file' | 'website_crawl'
-  file_info_list?: FileInfo | null
+  file_info_list?: KnowledgeFileInfo | null
   notion_info_list?: Array<NotionInfo> | null
   website_info_list?: WebsiteInfo | null
 }
@@ -1111,7 +1111,7 @@ export type DatasetVectorSettingResponse = {
   vector_weight?: number | null
 }
 
-export type FileInfo = {
+export type KnowledgeFileInfo = {
   file_ids: Array<string>
 }
 

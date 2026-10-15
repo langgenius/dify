@@ -140,11 +140,6 @@ class AnnotationBatchImportResponse(ResponseModel):
 
 register_schema_models(
     console_ns,
-    Annotation,
-    AnnotationList,
-    AnnotationExportList,
-    AnnotationHitHistory,
-    AnnotationHitHistoryList,
     AnnotationReplyPayload,
     AnnotationSettingUpdatePayload,
     AnnotationListQuery,

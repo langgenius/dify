@@ -302,7 +302,7 @@ export type RagPipelineStepParametersResponse = {
   variables: unknown
 }
 
-export type DraftWorkflowRunPayload = {
+export type RagPipelineDraftWorkflowRunPayload = {
   datasource_info_list: Array<{
     [key: string]: unknown
   }>
@@ -332,7 +332,7 @@ export type WorkflowDraftVariableResponse = {
   name: string
   selector: Array<string>
   type: string
-  value: JsonValue
+  value: RecursiveJsonValue
   value_type: string
   visible: boolean
 }
@@ -347,7 +347,7 @@ export type RagPipelineWorkflowPublishResponse = {
   result: string
 }
 
-export type Parser = {
+export type DatasourceContentPreviewPayload = {
   credential_id?: string | null
   datasource_type: string
   inputs: {
@@ -450,7 +450,7 @@ export type RagPipelineDatasourceProviderResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
 }
 
 export type WorkflowRunForListResponse = {
@@ -545,15 +545,15 @@ export type WorkflowDraftVariableFullContentResponse = {
   value_type: string
 }
 
-export type JsonValue =
+export type RecursiveJsonValue =
   | string
   | number
   | number
   | boolean
   | {
-      [key: string]: unknown
+      [key: string]: RecursiveJsonValue
     }
-  | Array<unknown>
+  | Array<RecursiveJsonValue>
   | null
 
 export type DatasetRerankingModelResponse = {
@@ -577,19 +577,19 @@ export type DatasourceProviderEntityWithPlugin = {
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
-export type Github = {
+export type PluginDependencyGithub = {
   github_plugin_unique_identifier: string
   package: string
   repo: string
   version: string
 }
 
-export type Marketplace = {
+export type PluginDependencyMarketplace = {
   marketplace_plugin_unique_identifier: string
   version?: string | null
 }
 
-export type Package = {
+export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
 }
@@ -629,9 +629,9 @@ export type DatasourceEntity = {
 
 export type DatasourceProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon: string
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
@@ -713,13 +713,6 @@ export type DatasourceParameter = {
   scope?: string | null
   template?: PluginParameterTemplate | null
   type: DatasourceParameterType
-}
-
-export type CoreToolsEntitiesCommonEntitiesI18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
 }
 
 export type ToolLabelEnum =
@@ -1627,7 +1620,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersRespons
   GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
-  body: DraftWorkflowRunPayload
+  body: RagPipelineDraftWorkflowRunPayload
   path: {
     pipeline_id: string
   }
@@ -1876,7 +1869,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse =
   PostRagPipelinesByPipelineIdWorkflowsPublishResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewData = {
-  body: Parser
+  body: DatasourceContentPreviewPayload
   path: {
     node_id: string
     pipeline_id: string

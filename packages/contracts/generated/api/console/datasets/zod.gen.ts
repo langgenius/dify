@@ -1329,7 +1329,7 @@ export const zDatasetListResponse = z.object({
 /**
  * FileInfo
  */
-export const zFileInfo = z.object({
+export const zKnowledgeFileInfo = z.object({
   file_ids: z.array(z.string()),
 })
 
@@ -1650,7 +1650,7 @@ export const zNotionInfo = z.object({
  */
 export const zInfoList = z.object({
   data_source_type: z.enum(['notion_import', 'upload_file', 'website_crawl']),
-  file_info_list: zFileInfo.nullish(),
+  file_info_list: zKnowledgeFileInfo.nullish(),
   notion_info_list: z.array(zNotionInfo).nullish(),
   website_info_list: zWebsiteInfo.nullish(),
 })

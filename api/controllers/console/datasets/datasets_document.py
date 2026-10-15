@@ -19,6 +19,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.datasets.datasets import IndexingEstimateResponse
 from controllers.console.datasets.error import (
     ArchivedDocumentImmutableError,
     DatasetAccessDeniedRequestError,
@@ -190,12 +191,6 @@ class DocumentWithSegmentsListResponse(ResponseModel):
     limit: int
     total: int
     page: int
-
-
-class IndexingEstimateResponse(IndexingEstimate):
-    tokens: int
-    total_price: float | int
-    currency: str
 
 
 def _serialize_indexing_estimate(estimate: IndexingEstimate) -> tuple[dict[str, object], int]:

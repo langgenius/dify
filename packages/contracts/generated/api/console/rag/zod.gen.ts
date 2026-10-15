@@ -202,9 +202,9 @@ export const zRagPipelineStepParametersResponse = z.object({
 })
 
 /**
- * DraftWorkflowRunPayload
+ * RagPipelineDraftWorkflowRunPayload
  */
-export const zDraftWorkflowRunPayload = z.object({
+export const zRagPipelineDraftWorkflowRunPayload = z.object({
   datasource_info_list: z.array(z.record(z.string(), z.unknown())),
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
@@ -240,9 +240,9 @@ export const zRagPipelineWorkflowPublishResponse = z.object({
 })
 
 /**
- * Parser
+ * DatasourceContentPreviewPayload
  */
-export const zParser = z.object({
+export const zDatasourceContentPreviewPayload = z.object({
   credential_id: z.string().nullish(),
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
@@ -598,14 +598,17 @@ export const zWorkflowDraftVariableFullContentResponse = z.object({
   value_type: z.string(),
 })
 
-export const zJsonValue = z
+export const zRecursiveJsonValue = z
   .union([
     z.string(),
     z.int(),
     z.number(),
     z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
+    z.record(
+      z.string(),
+      z.lazy((): any => zRecursiveJsonValue),
+    ),
+    z.array(z.lazy((): any => zRecursiveJsonValue)),
   ])
   .nullable()
 
@@ -621,7 +624,7 @@ export const zWorkflowDraftVariableResponse = z.object({
   name: z.string(),
   selector: z.array(z.string()),
   type: z.string(),
-  value: zJsonValue,
+  value: zRecursiveJsonValue,
   value_type: z.string(),
   visible: z.boolean(),
 })
@@ -649,7 +652,7 @@ export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package']
 /**
  * Github
  */
-export const zGithub = z.object({
+export const zPluginDependencyGithub = z.object({
   github_plugin_unique_identifier: z.string(),
   package: z.string(),
   repo: z.string(),
@@ -659,7 +662,7 @@ export const zGithub = z.object({
 /**
  * Marketplace
  */
-export const zMarketplace = z.object({
+export const zPluginDependencyMarketplace = z.object({
   marketplace_plugin_unique_identifier: z.string(),
   version: z.string().nullish(),
 })
@@ -667,7 +670,7 @@ export const zMarketplace = z.object({
 /**
  * Package
  */
-export const zPackage = z.object({
+export const zPluginDependencyPackage = z.object({
   plugin_unique_identifier: z.string(),
   version: z.string().nullish(),
 })
@@ -678,7 +681,7 @@ export const zPackage = z.object({
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
   type: zPluginDependencyType,
-  value: z.union([zGithub, zMarketplace, zPackage]),
+  value: z.union([zPluginDependencyGithub, zPluginDependencyMarketplace, zPluginDependencyPackage]),
 })
 
 /**
@@ -879,18 +882,6 @@ export const zDatasourceIdentity = z.object({
 })
 
 /**
- * I18nObject
- *
- * Model class for i18n object.
- */
-export const zCoreToolsEntitiesCommonEntitiesI18nObject = z.object({
-  en_US: z.string(),
-  ja_JP: z.string().nullish(),
-  pt_BR: z.string().nullish(),
-  zh_Hans: z.string().nullish(),
-})
-
-/**
  * ToolLabelEnum
  */
 export const zToolLabelEnum = z.enum([
@@ -918,9 +909,9 @@ export const zToolLabelEnum = z.enum([
  */
 export const zDatasourceProviderIdentity = z.object({
   author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  description: zI18nObject,
   icon: z.string(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  label: zI18nObject,
   name: z.string(),
   tags: z.array(zToolLabelEnum).nullish().default([]),
 })
@@ -1422,7 +1413,8 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersQuery
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse =
   zRagPipelineStepParametersResponse
 
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody = zDraftWorkflowRunPayload
+export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody =
+  zRagPipelineDraftWorkflowRunPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath = z.object({
   pipeline_id: z.uuid(),
@@ -1531,7 +1523,7 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse =
   zRagPipelineWorkflowPublishResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody =
-  zParser
+  zDatasourceContentPreviewPayload
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath =
   z.object({

@@ -281,13 +281,6 @@ export type FormSubmitResponse = {
   [key: string]: never
 }
 
-export type Github = {
-  github_plugin_unique_identifier: string
-  package: string
-  repo: string
-  version: string
-}
-
 export type HealthResponse = {
   ok: boolean
 }
@@ -332,11 +325,6 @@ export type Import = {
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
 export type JsonValue = unknown
-
-export type Marketplace = {
-  marketplace_plugin_unique_identifier: string
-  version?: string | null
-}
 
 export type MemberActionResponse = {
   result?: 'success'
@@ -436,11 +424,6 @@ export type OpenApiFormSubmitPayload = {
   }
 }
 
-export type Package = {
-  plugin_unique_identifier: string
-  version?: string | null
-}
-
 export type PermittedExternalAppsListQuery = {
   limit?: number
   mode?: SupportedAppType | null
@@ -460,7 +443,24 @@ export type PermittedExternalAppsListResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
+}
+
+export type PluginDependencyGithub = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
+export type PluginDependencyMarketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type PluginDependencyPackage = {
+  plugin_unique_identifier: string
+  version?: string | null
 }
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'

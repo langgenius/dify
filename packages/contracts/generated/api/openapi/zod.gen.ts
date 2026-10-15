@@ -354,16 +354,6 @@ export const zFileUploadPayload = z.object({
 export const zFormSubmitResponse = z.record(z.string(), z.never())
 
 /**
- * Github
- */
-export const zGithub = z.object({
-  github_plugin_unique_identifier: z.string(),
-  package: z.string(),
-  repo: z.string(),
-  version: z.string(),
-})
-
-/**
  * HealthResponse
  *
  * Liveness payload for `GET /openapi/v1/_health` — no auth required.
@@ -446,14 +436,6 @@ export const zImport = z.object({
 })
 
 export const zJsonValue = z.unknown()
-
-/**
- * Marketplace
- */
-export const zMarketplace = z.object({
-  marketplace_plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
-})
 
 /**
  * MemberActionResponse
@@ -583,14 +565,6 @@ export const zOpenApiFormSubmitPayload = z.object({
 })
 
 /**
- * Package
- */
-export const zPackage = z.object({
-  plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
-})
-
-/**
  * PermittedExternalAppsListResponse
  */
 export const zPermittedExternalAppsListResponse = z.object({
@@ -600,6 +574,32 @@ export const zPermittedExternalAppsListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * Github
+ */
+export const zPluginDependencyGithub = z.object({
+  github_plugin_unique_identifier: z.string(),
+  package: z.string(),
+  repo: z.string(),
+  version: z.string(),
+})
+
+/**
+ * Marketplace
+ */
+export const zPluginDependencyMarketplace = z.object({
+  marketplace_plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * Package
+ */
+export const zPluginDependencyPackage = z.object({
+  plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
 })
 
 /**
@@ -613,7 +613,7 @@ export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package']
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
   type: zPluginDependencyType,
-  value: z.union([zGithub, zMarketplace, zPackage]),
+  value: z.union([zPluginDependencyGithub, zPluginDependencyMarketplace, zPluginDependencyPackage]),
 })
 
 /**

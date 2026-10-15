@@ -21,7 +21,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
 
 export type Annotation = {
@@ -67,6 +67,8 @@ export type AnnotationReplyActionPayload = {
   embedding_provider_name: string
   score_threshold: number
 }
+
+export type AnyJsonValue = unknown
 
 export type AppFeedbackListResponse = {
   data: Array<AppFeedbackResponse>
@@ -1279,21 +1281,21 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
 }
 
 export type HumanInputFormSubmitPayloadWithUser = {
   action: string
   inputs: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   user: string
 }
@@ -1305,11 +1307,6 @@ export type HumanInputFormSubmitResponse = {
 export type HumanInputFormSubmittedError = ErrorResponse & {
   code: 'human_input_form_submitted'
   status: 412
-}
-
-export type I18nObject = {
-  en_US: string
-  zh_Hans?: string | null
 }
 
 export type IndexInfoResponse = {
@@ -1337,11 +1334,9 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue = unknown
-
 export type JsonValueType = unknown
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type KnowledgeTagListResponse = Array<KnowledgeTagResponse>
 
@@ -1465,6 +1460,11 @@ export type ModelPropertyKey =
   | 'supported_file_extensions'
   | 'voices'
   | 'word_limit'
+
+export type ModelRuntimeI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
 
 export type ModelStatus =
   | 'active'
@@ -1923,7 +1923,7 @@ export type ProviderModelWithStatusEntity = {
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
   has_invalid_load_balancing_configs?: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   load_balancing_enabled?: boolean
   model: string
   model_properties: {
@@ -1953,9 +1953,9 @@ export type ProviderWithModelsListResponse = {
 }
 
 export type ProviderWithModelsResponse = {
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   models: Array<ProviderModelWithStatusEntity>
   provider: string
   status: CustomConfigurationStatus
@@ -2152,7 +2152,7 @@ export type SimpleConversation = {
   created_at?: number | null
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   introduction?: string | null
   name: string
