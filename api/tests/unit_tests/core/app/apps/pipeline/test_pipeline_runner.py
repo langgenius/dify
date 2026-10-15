@@ -13,7 +13,6 @@ Primary collaborators include ``PipelineRunner``,
 ``UserFrom``, and patched DB/runtime dependencies used by the runner.
 """
 
-import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -31,6 +30,7 @@ from models.enums import DocumentCreatedFrom
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.pipeline.pipeline_runner import PipelineRunner
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
@@ -125,7 +125,7 @@ def runner(sqlite_engine: Engine, *, workflow_runtime: WorkflowRuntime):
     app_generate_entity = _build_app_generate_entity()
     queue_manager = MagicMock()
     variable_loader = MagicMock()
-    workflow = _workflow()
+    workflow = workflow_snapshot(_workflow())
     workflow_execution_repository = MagicMock()
     workflow_node_execution_repository = MagicMock()
 
@@ -151,22 +151,26 @@ def test_get_workflow_returns_workflow(runner, sqlite_session: Session):
 
 
 def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
-    workflow = _workflow(graph={})
+    with pytest.raises(ValueError):
+        runner._init_rag_pipeline_graph(
+            workflow=workflow_snapshot(_workflow(graph={})), graph_runtime_state=MagicMock()
+        )
 
     with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+        runner._init_rag_pipeline_graph(
+            workflow=workflow_snapshot(_workflow(graph={"nodes": "bad", "edges": []})),
+            graph_runtime_state=MagicMock(),
+        )
 
-    workflow.graph = json.dumps({"nodes": "bad", "edges": []})
     with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
-
-    workflow.graph = json.dumps({"nodes": [], "edges": "bad"})
-    with pytest.raises(ValueError):
-        runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=MagicMock())
+        runner._init_rag_pipeline_graph(
+            workflow=workflow_snapshot(_workflow(graph={"nodes": [], "edges": "bad"})),
+            graph_runtime_state=MagicMock(),
+        )
 
 
 def test_init_rag_pipeline_graph_not_found(mocker, runner):
-    workflow = _workflow()
+    workflow = workflow_snapshot(_workflow())
     mocker.patch.object(module.Graph, "init", return_value=None)
 
     with pytest.raises(ValueError):
@@ -237,7 +241,7 @@ def test_run_pipeline_not_found(sqlite_engine: Engine, *, workflow_runtime: Work
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
-        workflow=_workflow(),
+        workflow=workflow_snapshot(_workflow()),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
@@ -329,7 +333,7 @@ def test_run_workflow_not_initialized(
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
-        workflow=_workflow(),
+        workflow=workflow_snapshot(_workflow()),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
@@ -356,7 +360,7 @@ def test_run_single_iteration_path(
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
-        workflow=_workflow(),
+        workflow=workflow_snapshot(_workflow()),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
@@ -420,7 +424,7 @@ def test_run_normal_path_builds_graph(
         application_generate_entity=app_generate_entity,
         queue_manager=MagicMock(),
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         system_user_id="sys",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),

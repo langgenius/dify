@@ -14,7 +14,9 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.tools.workflow.tool import WorkflowTool
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.unit_tests.model_factories import make_account, make_app, make_workflow
@@ -57,7 +59,7 @@ class _WorkflowQueries:
 @dataclass(frozen=True)
 class _GenerateCall:
     app_model: App
-    workflow: Workflow
+    workflow: WorkflowSnapshot
     user: Account | EndUser
     args: Mapping[str, object]
     invoke_from: InvokeFrom
@@ -83,7 +85,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
         generator: WorkflowAppGenerator,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, object],
         invoke_from: InvokeFrom,
@@ -147,7 +149,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
     assert calls == [
         _GenerateCall(
             app_model=app,
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             user=actor,
             args={"inputs": {"question": "What is six times seven?"}, "files": []},
             invoke_from=InvokeFrom.EXPLORE,

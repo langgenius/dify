@@ -31,7 +31,9 @@ from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.tools.workflow_repository import WorkflowToolRepository
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.tools.workflow.tool import WorkflowTool
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -720,9 +722,11 @@ def test_get_workflow_and_get_app_db_branches(
 
     assert latest.id == latest_workflow.id
     assert specific.id == specific_workflow.id
+    assert isinstance(latest, WorkflowSnapshot)
+    assert isinstance(specific, WorkflowSnapshot)
+    assert latest == workflow_snapshot(latest_workflow)
+    assert specific == workflow_snapshot(specific_workflow)
     assert resolved_app.id == app.id
-    assert inspect(latest).detached is True
-    assert inspect(specific).detached is True
     assert inspect(resolved_app).detached is True
 
     with pytest.raises(ToolNotFoundError, match="workflow not found"):

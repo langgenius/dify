@@ -1,21 +1,40 @@
 """Shared workflow-variable persistence results."""
 
 import dataclasses
-from collections.abc import Mapping
-from typing import Any, Protocol
+import json
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol, cast
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+from core.workflow.environment_variables import load_environment_variables
+from factories import variable_factory
 from graphon.variable_loader import VariableLoader
 from graphon.variables import Segment
+from graphon.variables.variables import Variable
 from models import Account, App
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel
-from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.contracts import WorkflowBindingScope, WorkflowSnapshot
+
+
+def environment_variable_values(workflow: WorkflowSnapshot) -> Sequence[Variable]:
+    return cast(
+        Sequence[Variable],
+        load_environment_variables(tenant_id=workflow.tenant_id, serialized_variables=workflow.environment_variables),
+    )
+
+
+def conversation_variable_values(workflow: WorkflowSnapshot) -> Sequence[Variable]:
+    variables = cast(dict[str, dict[str, Any]], json.loads(workflow.conversation_variables or "{}"))
+    return cast(
+        Sequence[Variable],
+        [variable_factory.build_conversation_variable_from_mapping(value) for value in variables.values()],
+    )
 
 
 class WorkflowExecutionVariables(Protocol):
-    def workflow_loader(self, workflow: Workflow, user_id: str) -> VariableLoader: ...
+    def workflow_loader(self, workflow: WorkflowSnapshot, user_id: str) -> VariableLoader: ...
     def saver_factory(self, tenant_id: str, account: Account) -> DraftVariableSaverFactory: ...
-    def get_or_create_conversation(self, account_id: str, app: App, workflow: Workflow) -> str: ...
+    def get_or_create_conversation(self, account_id: str, app: App, workflow: WorkflowBindingScope) -> str: ...
     def load_execution_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None: ...
 
 

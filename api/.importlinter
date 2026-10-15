@@ -2,6 +2,7 @@
 root_packages =
     core
     enums
+    errors
     core.rag.extractor.entity
     core.tools.__base
     services.entities.external_knowledge_entities

@@ -18,6 +18,7 @@ from models import UploadFile
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.definition_repository import workflow_snapshot
 from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
 from services.app.generation.input_adapter import AppInputAdapter
 from services.file_service import FileService
@@ -74,7 +75,7 @@ def test_core_saver_and_loader_use_injected_database_without_open_transactions_d
     account = make_account()
     workflow = make_workflow()
     workflow.conversation_variables = [StringVariable(name="greeting", value="hello")]
-    loader = variables.workflow_loader(workflow, account.id)
+    loader = variables.workflow_loader(workflow_snapshot(workflow), account.id)
     assert loader.load_variables([["conversation", "greeting"]])[0].value == "hello"
 
     saver_factory = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, account, tenant_id=workflow.tenant_id)
@@ -334,7 +335,7 @@ def test_offloaded_variables_use_injected_storage_outside_transactions(
     assert len(contents) == 2
 
     loader = (
-        variables.workflow_loader(workflow, account.id)
+        variables.workflow_loader(workflow_snapshot(workflow), account.id)
         if loader_entry == "workflow"
         else variables.loader(RequestContext("request", None, account.id, workflow.tenant_id), workflow.app_id, [])
     )

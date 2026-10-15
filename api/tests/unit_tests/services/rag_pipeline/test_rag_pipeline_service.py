@@ -39,7 +39,7 @@ from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from repositories.workflow.definition_repository import WorkflowDefinitionRepository
+from repositories.workflow.definition_repository import WorkflowDefinitionRepository, workflow_snapshot
 from services.credentials.query import CredentialQuery
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
@@ -48,6 +48,7 @@ from services.rag_pipeline import execution_service as execution_module
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
 from services.rag_pipeline.execution_service import RagPipelineExecutionService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
@@ -898,6 +899,10 @@ def test_retry_error_document_success(
 
     # 3. Assertions
     mock_gen_instance.generate.assert_called_once()
+    execution_workflow = mock_gen_instance.generate.call_args.kwargs["workflow"]
+    assert isinstance(execution_workflow, WorkflowSnapshot)
+    assert execution_workflow == workflow_snapshot(workflow)
+    assert mock_gen_instance.generate.call_args.kwargs["is_retry"] is True
 
 
 # --- set_datasource_variables ---
@@ -916,9 +921,10 @@ def test_set_datasource_variables_success(
     )
     pipeline.id = "p-1"
 
-    draft_wf = mocker.Mock()
-    draft_wf.id = "wf-1"
-    draft_wf.get_enclosing_node_type_and_id.return_value = None  # Avoid unpacking error
+    draft_wf = _make_workflow(
+        workflow_id="wf-1",
+        graph={"nodes": [{"id": "node-1", "data": {"type": "datasource"}}], "edges": []},
+    )
     mocker.patch.object(rag_pipeline_service.execution._workflows, "get_draft_workflow", return_value=draft_wf)
 
     execution = WorkflowNodeExecution(
@@ -1088,10 +1094,11 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
             "description": "Shared summarization model",
         }
     )
-    draft_workflow = _make_workflow(workflow_id="wf-1")
+    draft_workflow = _make_workflow(
+        workflow_id="wf-1",
+        graph={"nodes": [{"id": "node-1", "data": {"type": "llm"}}], "edges": []},
+    )
     draft_workflow.environment_variables = [llm_environment_variable]
-    mocker.patch.object(draft_workflow, "get_node_config_by_id", return_value={"id": "node-1"})
-    mocker.patch.object(draft_workflow, "get_enclosing_node_type_and_id", return_value=None)
     mocker.patch.object(rag_pipeline_service.execution._workflows, "get_draft_workflow", return_value=draft_workflow)
 
     execution = WorkflowNodeExecution(
@@ -1146,9 +1153,20 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
 ) -> None:
     pipeline = _make_pipeline()
     account = _make_account()
-    draft_workflow = _make_workflow(workflow_id="wf-1")
-    mocker.patch.object(draft_workflow, "get_node_config_by_id", return_value={"id": "node-1"})
-    mocker.patch.object(draft_workflow, "get_enclosing_node_type_and_id", return_value=("loop", "enclosing-node"))
+    draft_workflow = _make_workflow(
+        workflow_id="wf-1",
+        graph={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {"type": "llm"},
+                    "isInLoop": True,
+                    "loop_id": "enclosing-node",
+                }
+            ],
+            "edges": [],
+        },
+    )
     mocker.patch.object(rag_pipeline_service.execution._workflows, "get_draft_workflow", return_value=draft_workflow)
 
     execution = WorkflowNodeExecution(
@@ -1247,7 +1265,7 @@ def test_single_node_uses_the_injected_variable_store(
     assert saved.tenant_id == pipeline.tenant_id
     assert saved.app_id == pipeline.id
     assert loaded == ["injected input"]
-    loader = workflow_variables.workflow_loader(workflow, account.id)
+    loader = workflow_variables.workflow_loader(workflow_snapshot(workflow), account.id)
     assert loader.load_variables([["node-1", "text"]])[0].value == "injected output"
 
 
@@ -1315,7 +1333,9 @@ def test_debug_execution_commits_before_variable_save_with_celery_repository(
     assert saved is not None
     assert executions.get_execution_by_id(saved.id, tenant_id=pipeline.tenant_id) is not None
     queued.assert_called_once()  # Debug writes did not depend on the queued task running.
-    loaded = workflow_variables.workflow_loader(workflow, account.id).load_variables([["node-1", "text"]])
+    loaded = workflow_variables.workflow_loader(workflow_snapshot(workflow), account.id).load_variables(
+        [["node-1", "text"]]
+    )
     assert loaded[0].value == "saved"
 
 

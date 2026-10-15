@@ -7,6 +7,7 @@ from models.dataset import Dataset, Pipeline
 from models.model import Account, EndUser
 from models.workflow import Workflow, WorkflowType
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 
 
@@ -126,13 +127,11 @@ def test_generate_single_loop_delegates(mocker: MockerFixture, pipeline_generato
 
 
 @pytest.mark.parametrize("draft", [True, False])
-def test_pipeline_execution_definition_is_owned_and_detached_before_generation(
+def test_pipeline_execution_definition_is_owned_snapshot_before_generation(
     sqlite_session_factory,
     workflow_application,
     draft: bool,
 ) -> None:
-    from sqlalchemy import inspect
-
     from services.errors.app import WorkflowNotFoundError
 
     pipeline = _make_pipeline()
@@ -145,8 +144,15 @@ def test_pipeline_execution_definition_is_owned_and_detached_before_generation(
     generator = workflow_application.knowledge.pipeline_generator
     invocation = InvokeFrom.DEBUGGER if draft else InvokeFrom.PUBLISHED_PIPELINE
     loaded = generator.load_workflow(pipeline, invocation)
-    assert loaded.id == workflow.id
-    assert inspect(loaded).detached
+    assert isinstance(loaded, WorkflowSnapshot)
+    assert (loaded.id, loaded.tenant_id, loaded.app_id, loaded.version) == (
+        workflow.id,
+        workflow.tenant_id,
+        workflow.app_id,
+        workflow.version,
+    )
+    assert loaded.graph_dict == {}
+    assert loaded.features_dict == {}
     assert sqlite_session_factory.kw["bind"].pool.checkedout() == 0
     pipeline.tenant_id = "other-tenant"
     with pytest.raises(WorkflowNotFoundError):

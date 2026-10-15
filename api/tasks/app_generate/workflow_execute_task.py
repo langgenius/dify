@@ -2,6 +2,7 @@ import contextlib
 import logging
 import uuid
 from collections.abc import Callable, Generator, Mapping
+from dataclasses import replace
 from enum import StrEnum
 from typing import Annotated, Any
 
@@ -35,7 +36,7 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.workflow.debug_reservation_repository import WorkflowDebugReservationRepository
-from repositories.workflow.definition_repository import workflow_from_snapshot
+from repositories.workflow.definition_repository import workflow_snapshot
 from repositories.workflow.execution_write_repository import WorkflowExecutionWriteRepository
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.workflow_service import WorkflowDebugReservationExpiredError
@@ -113,7 +114,7 @@ class AppExecutionParams(BaseModel):
     def new(
         cls,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
@@ -232,13 +233,13 @@ class _AppRunner:
                     snapshot.id,
                 ) != (reserved_run.id, reserved_run.tenant_id, reserved_run.app_id, reserved_run.workflow_id):
                     raise ValueError("Workflow snapshot does not belong to this debugger invocation")
-            workflow = session.get(Workflow, exec_params.workflow_id)
-            if workflow is None:
+            persisted_workflow = session.get(Workflow, exec_params.workflow_id)
+            if persisted_workflow is None:
                 logger.warning("Workflow %s not found for execution", exec_params.workflow_id)
                 return None
-            app = session.get(App, workflow.app_id)
+            app = session.get(App, persisted_workflow.app_id)
             if app is None:
-                logger.warning("App %s not found for workflow %s", workflow.app_id, exec_params.workflow_id)
+                logger.warning("App %s not found for workflow %s", persisted_workflow.app_id, exec_params.workflow_id)
                 return None
 
             snapshot = exec_params.workflow_snapshot
@@ -248,14 +249,15 @@ class _AppRunner:
                     or exec_params.invoke_from != InvokeFrom.DEBUGGER
                     or exec_params.app_mode != AppMode.WORKFLOW
                     or app.mode != AppMode.WORKFLOW
-                    or (workflow.id, workflow.tenant_id, workflow.app_id)
+                    or (persisted_workflow.id, persisted_workflow.tenant_id, persisted_workflow.app_id)
                     != (exec_params.workflow_id, exec_params.tenant_id, exec_params.app_id)
-                    or (snapshot.id, snapshot.tenant_id, snapshot.app_id) != (workflow.id, app.tenant_id, app.id)
+                    or (snapshot.id, snapshot.tenant_id, snapshot.app_id)
+                    != (persisted_workflow.id, app.tenant_id, app.id)
                 ):
                     raise ValueError("Workflow snapshot does not belong to this debugger invocation")
-                workflow = workflow_from_snapshot(snapshot)
+                workflow = snapshot
                 if reserved_run is not None:
-                    workflow.graph = reserved_run.graph or snapshot.graph
+                    workflow = replace(snapshot, graph=reserved_run.graph or snapshot.graph)
                     if WorkflowDebugReservationRepository.claim(session, reserved_run, naive_utc_now()):
                         self._validated_snapshot = True
                     else:
@@ -263,6 +265,8 @@ class _AppRunner:
                         self._mark_execution_finalized()
                         if exec_params.streaming:
                             completed_creator = _resolve_user_for_run(session, reserved_run)
+            else:
+                workflow = workflow_snapshot(persisted_workflow)
 
         if completed_run is not None:
             # Redelivery never claims a lease, runs the engine, or repeats cleanup.
@@ -336,7 +340,7 @@ class _AppRunner:
         self,
         *,
         app: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         pause_state_config: PauseStateLayerConfig,
     ):
@@ -725,8 +729,8 @@ def _resume_app_execution(payload: dict[str, Any], *, variables: WorkflowExecuti
             logger.warning("Workflow run %s not found during resume", workflow_run_id)
             return
 
-        workflow = session.get(Workflow, workflow_run.workflow_id)
-        if workflow is None:
+        workflow_model = session.get(Workflow, workflow_run.workflow_id)
+        if workflow_model is None:
             logger.warning("Workflow %s not found during resume", workflow_run.workflow_id)
             return
 
@@ -765,10 +769,12 @@ def _resume_app_execution(payload: dict[str, Any], *, variables: WorkflowExecuti
                 logger.warning("Message not found for workflow run %s", workflow_run_id)
                 return
 
+        workflow = workflow_snapshot(workflow_model)
+
     binding_snapshot = workflow_run.graph_dict.get("_agent_bindings", {})
     if binding_snapshot.get("execution_id") == workflow_run.id and workflow_run.graph is not None:
         # The resumed graph and its Agent generations belong to the original execution.
-        workflow.graph = workflow_run.graph
+        workflow = replace(workflow, graph=workflow_run.graph)
 
     if not isinstance(generate_entity, (AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity)):
         logger.error(
@@ -832,7 +838,7 @@ def _resume_advanced_chat(
     *,
     variables: WorkflowExecutionVariables,
     app_model: App,
-    workflow: Workflow,
+    workflow: WorkflowSnapshot,
     user: Account | EndUser,
     conversation: Conversation,
     message: Message,
@@ -909,7 +915,7 @@ def _resume_workflow(
     *,
     variables: WorkflowExecutionVariables,
     app_model: App,
-    workflow: Workflow,
+    workflow: WorkflowSnapshot,
     user: Account | EndUser,
     generate_entity: WorkflowAppGenerateEntity,
     graph_runtime_state: GraphRuntimeState,
