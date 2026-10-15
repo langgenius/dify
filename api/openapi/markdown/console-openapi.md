@@ -9399,7 +9399,7 @@ Generate structured output rules using LLM
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Structured output generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 200 | Structured output generated successfully | **application/json**: [StructuredOutputGenerateResponse](#structuredoutputgenerateresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19238,6 +19238,14 @@ TEAM: Team collaboration paid plan
 | ---- | ---- | ----------- | -------- |
 | CloudPlan | string | Enum representing user plan types in the cloud platform.  SANDBOX: Free/default plan with limited features PROFESSIONAL: Professional paid plan TEAM: Team collaboration paid plan |  |
 
+#### CodeBasedExtensionItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_schema | [ object ] |  | No |
+| label | object |  | No |
+| name | string |  | Yes |
+
 #### CodeBasedExtensionQuery
 
 | Name | Type | Description | Required |
@@ -19248,7 +19256,7 @@ TEAM: Team collaboration paid plan
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data |  | Extension data | Yes |
+| data | [ [CodeBasedExtensionItemResponse](#codebasedextensionitemresponse) ] | Non-builtin extensions of the module | Yes |
 | module | string | Module name | Yes |
 
 #### CompletionConversationQuery
@@ -26721,6 +26729,13 @@ Default configuration for form inputs.
 | selector | [ string ] |  | No |
 | type | [ValueSourceType](#valuesourcetype) |  | Yes |
 | value | string |  | No |
+
+#### StructuredOutputGenerateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string | Failure reason, empty on success | Yes |
+| output | string | Generated JSON Schema, empty when generation failed | Yes |
 
 #### SubscriptionBuilderApiEntity
 
