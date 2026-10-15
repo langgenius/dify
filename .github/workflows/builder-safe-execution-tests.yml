@@ -579,3 +579,61 @@ jobs:
         with:
           name: builder-api-contracts
           path: builder-api-contracts/
+
+  native-testing-foundation:
+    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      STORAGE_TYPE: opendal
+      OPENDAL_SCHEME: fs
+      OPENDAL_FS_ROOT: /tmp/dify-builder-native-storage
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - name: Native effect ledger on real PostgreSQL
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-native-foundation.log
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          import pytest
+
+          report = "builder-native-foundation.xml"
+          expected = {'test_duplicate_delivery_does_not_get_second_permit': 1, 'test_unapproved_and_denied_never_dispatch': 1, 'test_forged_binding_never_dispatches': 4, 'test_rotation_and_cross_tenant_reference_fail_closed': 1, 'test_completed_result_replays_and_changed_intent_conflicts': 1, 'test_iteration_quota_is_shared_and_third_occurrence_waits': 1, 'test_two_processes_compete_for_one_dispatch': 1, 'test_crash_after_committed_claim_becomes_unknown': 1, 'test_budget_reference_requires_matching_identity_and_consumes_no_extra_quota': 1, 'test_configuration_and_interaction_are_not_effect_approvals': 1, 'test_sql_checks_reject_overspend_and_invalid_outcome': 1, 'test_native_migration_upgrade_downgrade_reupgrade': 1}
+          code = pytest.main([
+              "api/tests/test_containers_integration_tests/core/workflow/test_builder_native_effect_ledger.py",
+              "-p", "no:benchmark", "--no-cov", "-vv", "-rA", "--tb=long",
+              "--timeout=360", "--timeout-method=thread", f"--junitxml={report}",
+          ])
+          problems = []
+          actual = {}
+          if not Path(report).is_file():
+              problems.append("missing native foundation report")
+          else:
+              for case in ET.parse(report).getroot().iter("testcase"):
+                  name = (case.get("name") or "").split("[", 1)[0]
+                  actual[name] = actual.get(name, 0) + 1
+                  if any(case.find(tag) is not None for tag in ("skipped", "failure", "error")):
+                      problems.append(f"nonpassing required native case: {name}")
+              if actual != expected:
+                  problems.append(f"native case inventory mismatch: {actual}")
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          raise SystemExit(int(code) or bool(problems))
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-native-foundation
+          path: |
+            builder-native-foundation.xml
+            builder-native-foundation.log
