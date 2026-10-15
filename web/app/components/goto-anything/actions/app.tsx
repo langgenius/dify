@@ -1,6 +1,6 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ActionItem, AppSearchResult, SearchQueryOptions, SearchResult } from './types'
-import type { AppIconType, AppModeEnum as AppMode } from '@/types/app'
+import type { AppModeEnum as AppMode } from '@/types/app'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -9,16 +9,11 @@ import AppIcon from '../../base/app-icon'
 
 const WORKFLOW_MODES = new Set([AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT])
 const APP_MODES = new Set<string>(Object.values(AppModeEnum))
-const APP_ICON_TYPES = new Set<string>(['emoji', 'image', 'link'])
 
 type AppSection = { id: string; label: string; path: string; iconClassName: string }
 
 function getAppMode(app: AppPartial): AppMode {
   return APP_MODES.has(app.mode) ? (app.mode as AppMode) : AppModeEnum.CHAT
-}
-
-function getAppIconType(app: AppPartial): AppIconType | null {
-  return app.icon_type && APP_ICON_TYPES.has(app.icon_type) ? (app.icon_type as AppIconType) : null
 }
 
 function getAppPath(app: AppPartial) {
@@ -77,13 +72,7 @@ const getAppSections = (app: AppPartial): AppSection[] => {
 
 const appIcon = (app: AppPartial) => (
   <div className="relative shrink-0">
-    <AppIcon
-      size="large"
-      iconType={getAppIconType(app)}
-      icon={app.icon ?? undefined}
-      background={app.icon_background}
-      imageUrl={app.icon_url}
-    />
+    <AppIcon size="large" icon={app} />
     <AppTypeIcon
       wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
       className="size-3"
