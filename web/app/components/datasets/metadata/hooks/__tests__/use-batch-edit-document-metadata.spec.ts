@@ -1,5 +1,9 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import type { GetDatasetsByDatasetIdDocumentsByDocumentIdResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { act, renderHook as renderHookWithoutQuery, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import { DataType, UpdateType } from '../../types'
 import useBatchEditDocumentMetadata from '../use-batch-edit-document-metadata'
 
@@ -26,6 +30,24 @@ type MetadataItemWithEdit = {
   updateType?: UpdateType
 }
 
+const createDeferred = <T>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
+const renderHook = (callback: () => ReturnType<typeof useBatchEditDocumentMetadata>) =>
+  renderHookWithoutQuery(callback, {
+    wrapper: createQueryClientWrapper(createTestQueryClient()),
+  })
+
+const mockConsoleCall = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockConsoleCall },
+}))
+
 // Mock useBatchUpdateDocMetadata
 const mockMutateAsync = vi.fn().mockResolvedValue({})
 vi.mock('@/service/knowledge/use-metadata', () => ({
@@ -40,6 +62,12 @@ vi.mock('@/app/notifications', () => ({
     error: vi.fn(),
   },
 }))
+
+vi.mock('i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('i18next')>()
+  const { createI18nextMock } = await import('@/test/i18n-mock')
+  return { ...actual, ...createI18nextMock() }
+})
 
 describe('useBatchEditDocumentMetadata', () => {
   const mockDocList: DocListItem[] = [
@@ -66,6 +94,8 @@ describe('useBatchEditDocumentMetadata', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConsoleCall.mockReset()
+    mockMutateAsync.mockReset().mockResolvedValue({})
   })
 
   describe('Hook Initialization', () => {
@@ -96,21 +126,21 @@ describe('useBatchEditDocumentMetadata', () => {
   })
 
   describe('Modal Control', () => {
-    it('should show modal when showEditModal is called', () => {
+    it('should show modal when showEditModal is called', async () => {
       const { result } = renderHook(() => useBatchEditDocumentMetadata(defaultProps))
 
-      act(() => {
-        result.current.showEditModal()
+      await act(async () => {
+        await result.current.showEditModal()
       })
 
       expect(result.current.isShowEditModal).toBe(true)
     })
 
-    it('should hide modal when hideEditModal is called', () => {
+    it('should hide modal when hideEditModal is called', async () => {
       const { result } = renderHook(() => useBatchEditDocumentMetadata(defaultProps))
 
-      act(() => {
-        result.current.showEditModal()
+      await act(async () => {
+        await result.current.showEditModal()
       })
 
       act(() => {
@@ -243,6 +273,10 @@ describe('useBatchEditDocumentMetadata', () => {
       )
 
       await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      await act(async () => {
         await result.current.handleSave([], [], false)
       })
 
@@ -256,6 +290,10 @@ describe('useBatchEditDocumentMetadata', () => {
       )
 
       await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      await act(async () => {
         await result.current.handleSave([], [], false)
       })
 
@@ -267,11 +305,15 @@ describe('useBatchEditDocumentMetadata', () => {
     it('should hide modal after successful save', async () => {
       const { result } = renderHook(() => useBatchEditDocumentMetadata(defaultProps))
 
-      act(() => {
-        result.current.showEditModal()
+      await act(async () => {
+        await result.current.showEditModal()
       })
 
       expect(result.current.isShowEditModal).toBe(true)
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
 
       await act(async () => {
         await result.current.handleSave([], [], false)
@@ -308,6 +350,10 @@ describe('useBatchEditDocumentMetadata', () => {
           updateType: UpdateType.changeValue,
         },
       ]
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
 
       await act(async () => {
         await result.current.handleSave(editedList, [], false)
@@ -361,6 +407,10 @@ describe('useBatchEditDocumentMetadata', () => {
       ]
 
       await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      await act(async () => {
         await result.current.handleSave(editedList, [], false)
       })
 
@@ -393,6 +443,10 @@ describe('useBatchEditDocumentMetadata', () => {
           isMultipleValue: false,
         },
       ]
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
 
       await act(async () => {
         await result.current.handleSave([], addedList, false)
@@ -447,6 +501,10 @@ describe('useBatchEditDocumentMetadata', () => {
       ]
 
       await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      await act(async () => {
         await result.current.handleSave(editedList, [], true)
       })
 
@@ -495,6 +553,10 @@ describe('useBatchEditDocumentMetadata', () => {
       ]
 
       await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      await act(async () => {
         await result.current.handleSave(editedList, [], true)
       })
 
@@ -540,6 +602,10 @@ describe('useBatchEditDocumentMetadata', () => {
       ]
 
       await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      await act(async () => {
         await result.current.handleSave(editedList, [], false)
       })
 
@@ -558,6 +624,371 @@ describe('useBatchEditDocumentMetadata', () => {
     })
   })
 
+  describe('cross-page editing sessions', () => {
+    const category: DocMetadataItem = {
+      id: 'category',
+      name: 'category',
+      type: DataType.string,
+      value: 'Current page',
+    }
+    const removable: DocMetadataItem = {
+      id: 'removable',
+      name: 'removable',
+      type: DataType.string,
+      value: 'Remove me',
+    }
+    const currentPageOnly: DocMetadataItem = {
+      id: 'current-only',
+      name: 'current_only',
+      type: DataType.number,
+      value: 42,
+    }
+    const otherPageOnly: DocMetadataItem = {
+      id: 'other-only',
+      name: 'other_only',
+      type: DataType.string,
+      value: 'Keep me',
+    }
+    const otherPageDocument: GetDatasetsByDatasetIdDocumentsByDocumentIdResponse = {
+      id: 'other-page',
+      doc_metadata: [{ ...category, value: 'Other page' }, removable, otherPageOnly],
+    }
+    const crossPageProps = {
+      ...defaultProps,
+      docList: [
+        {
+          id: 'current-page',
+          doc_metadata: [category, removable, currentPageOnly],
+        },
+      ] as Parameters<typeof useBatchEditDocumentMetadata>[0]['docList'],
+      selectedDocumentIds: ['other-page', 'current-page'],
+    }
+
+    it('waits for the other page before showing mixed values and fields absent from the current page', async () => {
+      const pending = createDeferred<GetDatasetsByDatasetIdDocumentsByDocumentIdResponse>()
+      mockConsoleCall.mockReturnValueOnce(pending.promise)
+      const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+      let opening: Promise<void> | void
+
+      act(() => {
+        opening = result.current.showEditModal()
+      })
+
+      expect(result.current.isShowEditModal).toBe(false)
+      expect(mockMutateAsync).not.toHaveBeenCalled()
+
+      await act(async () => {
+        pending.resolve(otherPageDocument)
+        await opening
+      })
+
+      expect(result.current.isShowEditModal).toBe(true)
+      expect(result.current.originalList).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'category', isMultipleValue: true, value: null }),
+          expect.objectContaining(otherPageOnly),
+        ]),
+      )
+    })
+
+    it('updates and removes fields on both pages while preserving untouched metadata per document', async () => {
+      mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
+      const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      const editedList = result.current.originalList
+        .filter((item) => item.id !== removable.id)
+        .map((item) =>
+          item.id === category.id
+            ? {
+                ...item,
+                value: 'Updated',
+                isMultipleValue: false,
+                updateType: UpdateType.changeValue,
+              }
+            : item,
+        )
+      const added: DocMetadataItem = {
+        id: 'added',
+        name: 'added',
+        type: DataType.string,
+        value: 'New field',
+      }
+
+      await act(async () => {
+        await result.current.handleSave(editedList, [added], false)
+      })
+
+      const operations = mockMutateAsync.mock.calls[0]![0].metadata_list
+      expect(operations).toHaveLength(2)
+      for (const [documentId, untouched] of [
+        ['current-page', currentPageOnly],
+        ['other-page', otherPageOnly],
+      ] as const) {
+        const operation = operations.find(
+          (item: { document_id: string }) => item.document_id === documentId,
+        )
+        expect(operation).toEqual({
+          document_id: documentId,
+          metadata_list: expect.arrayContaining([
+            { ...category, value: 'Updated' },
+            untouched,
+            added,
+          ]),
+          partial_update: false,
+        })
+        expect(operation.metadata_list).toHaveLength(3)
+      }
+    })
+
+    it('keeps the editor closed after a metadata load failure and allows retrying', async () => {
+      mockConsoleCall.mockRejectedValueOnce(new Error('Metadata unavailable'))
+      const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      expect(result.current.isShowEditModal).toBe(false)
+      expect(mockMutateAsync).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('api.actionFailed')
+
+      mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+      expect(result.current.isShowEditModal).toBe(true)
+      expect(result.current.originalList).toEqual(
+        expect.arrayContaining([expect.objectContaining(otherPageOnly)]),
+      )
+    })
+
+    it.each([
+      { type: 'unsupported', value: 'Unsupported type' },
+      { type: DataType.string, value: true },
+    ])(
+      'rejects unsupported server metadata ($type, $value) without allowing edits',
+      async (field) => {
+        const response: GetDatasetsByDatasetIdDocumentsByDocumentIdResponse = {
+          id: 'other-page',
+          doc_metadata: [{ ...otherPageOnly, ...field }],
+        }
+        mockConsoleCall.mockResolvedValueOnce(response)
+        const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+
+        await act(async () => {
+          await result.current.showEditModal()
+        })
+        await act(async () => {
+          await result.current.handleSave([], [], false)
+        })
+
+        expect(result.current.isShowEditModal).toBe(false)
+        expect(result.current.isLoadingMetadata).toBe(false)
+        expect(mockMutateAsync).not.toHaveBeenCalled()
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith('api.actionFailed')
+      },
+    )
+
+    it('stops queued metadata requests when loading is cancelled without reporting an error', async () => {
+      const pending = createDeferred<GetDatasetsByDatasetIdDocumentsByDocumentIdResponse>()
+      mockConsoleCall.mockReturnValue(pending.promise)
+      const { result } = renderHook(() =>
+        useBatchEditDocumentMetadata({
+          ...crossPageProps,
+          docList: [],
+          selectedDocumentIds: ['doc-1', 'doc-2', 'doc-3', 'doc-4', 'doc-5', 'doc-6'],
+        }),
+      )
+      let opening: Promise<void>
+      act(() => {
+        opening = result.current.showEditModal()
+      })
+      await waitFor(() => expect(mockConsoleCall).toHaveBeenCalledTimes(4))
+
+      act(() => result.current.hideEditModal())
+      await act(async () => {
+        pending.resolve(otherPageDocument)
+        await opening
+      })
+
+      expect(mockConsoleCall).toHaveBeenCalledTimes(4)
+      expect(result.current.isShowEditModal).toBe(false)
+      expect(result.current.isLoadingMetadata).toBe(false)
+      expect(mockMutateAsync).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('loads fresh metadata when the editing session is reopened', async () => {
+      mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
+      const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+      expect(result.current.originalList).toEqual(
+        expect.arrayContaining([expect.objectContaining(otherPageOnly)]),
+      )
+
+      act(() => result.current.hideEditModal())
+      mockConsoleCall.mockResolvedValueOnce({
+        ...otherPageDocument,
+        doc_metadata: [{ ...otherPageOnly, value: 'Changed since closing' }],
+      })
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      expect(result.current.originalList).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ ...otherPageOnly, value: 'Changed since closing' }),
+        ]),
+      )
+    })
+
+    it('does not close a newer editing session when an earlier save finishes', async () => {
+      mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
+      const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+
+      const pendingSave = createDeferred<void>()
+      mockMutateAsync.mockReturnValueOnce(pendingSave.promise)
+      let saving: Promise<void>
+      act(() => {
+        saving = result.current.handleSave(result.current.originalList, [], false)
+      })
+      act(() => result.current.hideEditModal())
+      mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+      expect(result.current.isShowEditModal).toBe(true)
+
+      await act(async () => {
+        pendingSave.resolve()
+        await saving
+      })
+
+      expect(result.current.isShowEditModal).toBe(true)
+    })
+
+    it('keeps the editing session open when saving fails', async () => {
+      mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
+      const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+      const originalList = result.current.originalList
+      mockMutateAsync.mockRejectedValueOnce(new Error('Saving failed'))
+
+      await act(async () => {
+        await result.current.handleSave(originalList, [], false)
+      })
+
+      expect(result.current.isShowEditModal).toBe(true)
+      expect(result.current.originalList).toEqual(originalList)
+      expect(toast.success).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('actionMsg.modifiedUnsuccessfully')
+    })
+
+    it('discards an in-flight editing session when switching datasets', async () => {
+      const pending = createDeferred<GetDatasetsByDatasetIdDocumentsByDocumentIdResponse>()
+      mockConsoleCall.mockReturnValueOnce(pending.promise)
+      let props = crossPageProps
+      const { result, rerender } = renderHook(() => useBatchEditDocumentMetadata(props))
+      let opening: Promise<void> | void
+      act(() => {
+        opening = result.current.showEditModal()
+      })
+
+      props = { ...crossPageProps, datasetId: 'another-dataset' }
+      rerender()
+      await act(async () => {
+        pending.resolve(otherPageDocument)
+        await opening
+      })
+
+      props = crossPageProps
+      rerender()
+      expect(result.current.isShowEditModal).toBe(false)
+      expect(result.current.isLoadingMetadata).toBe(false)
+      expect(mockMutateAsync).not.toHaveBeenCalled()
+    })
+
+    it('does not revive an old editing session after switching away and back to its dataset', async () => {
+      mockConsoleCall.mockResolvedValueOnce(otherPageDocument)
+      let props = crossPageProps
+      const { result, rerender } = renderHook(() => useBatchEditDocumentMetadata(props))
+      await act(async () => {
+        await result.current.showEditModal()
+      })
+      expect(result.current.isShowEditModal).toBe(true)
+
+      props = { ...crossPageProps, datasetId: 'another-dataset' }
+      rerender()
+      props = crossPageProps
+      rerender()
+
+      expect(result.current.isShowEditModal).toBe(false)
+      expect(result.current.isLoadingMetadata).toBe(false)
+    })
+
+    it('ignores a repeated open action and edits each selected document once', async () => {
+      const pending = createDeferred<GetDatasetsByDatasetIdDocumentsByDocumentIdResponse>()
+      mockConsoleCall.mockReturnValueOnce(pending.promise)
+      const { result } = renderHook(() =>
+        useBatchEditDocumentMetadata({
+          ...crossPageProps,
+          selectedDocumentIds: ['other-page', 'current-page', 'other-page'],
+        }),
+      )
+      let opening: Promise<void>
+      await act(async () => {
+        opening = result.current.showEditModal()
+        await result.current.showEditModal()
+      })
+      expect(result.current.isShowEditModal).toBe(false)
+
+      await act(async () => {
+        pending.resolve(otherPageDocument)
+        await opening
+      })
+      expect(result.current.documentCount).toBe(2)
+      expect(mockConsoleCall).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        await result.current.handleSave(result.current.originalList, [], false)
+      })
+      expect(mockMutateAsync.mock.calls[0]![0].metadata_list).toHaveLength(2)
+    })
+
+    it('does not reopen the editor when a cancelled metadata request finishes', async () => {
+      const pending = createDeferred<GetDatasetsByDatasetIdDocumentsByDocumentIdResponse>()
+      mockConsoleCall.mockReturnValueOnce(pending.promise)
+      const { result } = renderHook(() => useBatchEditDocumentMetadata(crossPageProps))
+      let opening: Promise<void> | void
+
+      act(() => {
+        opening = result.current.showEditModal()
+      })
+      await waitFor(() => expect(mockConsoleCall).toHaveBeenCalledOnce())
+      act(() => result.current.hideEditModal())
+      await act(async () => {
+        pending.resolve(otherPageDocument)
+        await opening
+      })
+
+      expect(result.current.isShowEditModal).toBe(false)
+      expect(result.current.isLoadingMetadata).toBe(false)
+      expect(toast.error).not.toHaveBeenCalled()
+      expect(mockMutateAsync).not.toHaveBeenCalled()
+    })
+  })
+
   describe('Selected Document IDs', () => {
     it('should use selectedDocumentIds when provided', async () => {
       const selectedIds = ['doc-1']
@@ -567,6 +998,10 @@ describe('useBatchEditDocumentMetadata', () => {
           selectedDocumentIds: selectedIds,
         }),
       )
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
 
       await act(async () => {
         await result.current.handleSave([], [], false)
@@ -584,13 +1019,11 @@ describe('useBatchEditDocumentMetadata', () => {
       )
     })
 
-    it('should handle selectedDocumentIds not in docList', async () => {
-      // Select a document that's not in docList
-      const selectedIds = ['doc-1', 'doc-not-in-list']
+    it('does not save selected documents before their editing session is ready', async () => {
       const { result } = renderHook(() =>
         useBatchEditDocumentMetadata({
           ...defaultProps,
-          selectedDocumentIds: selectedIds,
+          selectedDocumentIds: ['doc-1', 'doc-not-in-list'],
         }),
       )
 
@@ -598,16 +1031,7 @@ describe('useBatchEditDocumentMetadata', () => {
         await result.current.handleSave([], [], false)
       })
 
-      expect(mockMutateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({
-          metadata_list: expect.arrayContaining([
-            expect.objectContaining({
-              document_id: 'doc-not-in-list',
-              partial_update: true,
-            }),
-          ]),
-        }),
-      )
+      expect(mockMutateAsync).not.toHaveBeenCalled()
     })
   })
 
@@ -640,6 +1064,10 @@ describe('useBatchEditDocumentMetadata', () => {
           updateType: UpdateType.changeValue,
         },
       ]
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
 
       await act(async () => {
         await result.current.handleSave(editedList, [], false)
@@ -682,6 +1110,10 @@ describe('useBatchEditDocumentMetadata', () => {
           updateType: UpdateType.changeValue,
         },
       ]
+
+      await act(async () => {
+        await result.current.showEditModal()
+      })
 
       await act(async () => {
         await result.current.handleSave(editedList, [], false)

@@ -103,23 +103,40 @@ const DocumentList = ({
     })
   const documentIds = useMemo(() => documents.map((doc) => doc.id), [documents])
 
+  // Batch edit metadata
+  const {
+    isShowEditModal,
+    isLoadingMetadata,
+    documentCount,
+    showEditModal,
+    hideEditModal,
+    originalList,
+    handleSave,
+  } = useBatchEditDocumentMetadata({
+    datasetId,
+    docList: documents.filter((doc) => selectedIds.includes(doc.id)),
+    selectedDocumentIds: selectedIds,
+    onUpdate,
+  })
+
+  const handleCancelSelection = () => {
+    hideEditModal()
+    clearSelection()
+  }
+
+  const handleSelectionChange = (nextSelectedIds: string[]) => {
+    hideEditModal()
+    onSelectedIdChange(nextSelectedIds)
+  }
+
   // Actions
   const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
     datasetId,
     selectedIds,
     downloadableSelectedIds,
     onUpdate,
-    onClearSelection: clearSelection,
+    onClearSelection: handleCancelSelection,
   })
-
-  // Batch edit metadata
-  const { isShowEditModal, showEditModal, hideEditModal, originalList, handleSave } =
-    useBatchEditDocumentMetadata({
-      datasetId,
-      docList: documents.filter((doc) => selectedIds.includes(doc.id)),
-      selectedDocumentIds: selectedIds,
-      onUpdate,
-    })
 
   // Rename modal
   const [currDocument, setCurrDocument] = useState<LocalDoc | null>(null)
@@ -150,7 +167,7 @@ const DocumentList = ({
       </div>
       <CheckboxGroup
         value={selectedIds}
-        onValueChange={(nextSelectedIds) => onSelectedIdChange(nextSelectedIds)}
+        onValueChange={handleSelectionChange}
         allValues={documentIds}
         className="relative h-0 grow overflow-x-auto"
       >
@@ -233,7 +250,7 @@ const DocumentList = ({
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
                 selectedIds={selectedIds}
-                onSelectedIdChange={onSelectedIdChange}
+                onSelectedIdChange={handleSelectionChange}
                 onShowRenameModal={handleShowRenameModal}
                 onUpdate={onUpdate}
               />
@@ -246,6 +263,7 @@ const DocumentList = ({
         <BatchAction
           className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedIds}
+          disabled={isLoadingMetadata}
           onArchive={
             datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.archive) : undefined
           }
@@ -274,7 +292,7 @@ const DocumentList = ({
               ? handleBatchReIndex
               : undefined
           }
-          onCancel={clearSelection}
+          onCancel={handleCancelSelection}
         />
       )}
 
@@ -318,7 +336,7 @@ const DocumentList = ({
       {isShowEditModal && (
         <EditMetadataBatchModal
           datasetId={datasetId}
-          documentNum={selectedIds.length}
+          documentNum={documentCount}
           list={originalList}
           onSave={handleSave}
           onHide={hideEditModal}
