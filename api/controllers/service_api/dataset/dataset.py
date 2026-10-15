@@ -39,6 +39,7 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination
@@ -484,6 +485,7 @@ class DatasetListApi(DatasetApiResource):
         }
         return _dump_service_dataset_list(response), HTTPStatus.OK
 
+    @error_responses(DatasetNameDuplicateError)
     @service_api_ns.doc(
         summary="Create an Empty Knowledge Base",
         description=(
@@ -797,6 +799,7 @@ class DatasetApi(DatasetApiResource):
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
+    @error_responses(InvalidActionError)
     @service_api_ns.doc(
         summary="Update Document Status in Batch",
         description="Enable, disable, archive, or unarchive multiple documents at once.",

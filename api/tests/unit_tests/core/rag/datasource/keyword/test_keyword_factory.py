@@ -40,7 +40,7 @@ def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.Monk
     fake_processor = MagicMock()
 
     apply_config_overrides(monkeypatch, KEYWORD_STORE=KeyWordType.JIEBA)
-    monkeypatch.setattr(Keyword, "get_keyword_factory", staticmethod(lambda keyword_type: lambda _: fake_processor))
+    monkeypatch.setattr(Keyword, "get_keyword_factory", staticmethod(lambda _keyword_type: lambda _: fake_processor))
 
     keyword = Keyword(dataset)
 

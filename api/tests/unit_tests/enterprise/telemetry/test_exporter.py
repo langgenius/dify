@@ -539,12 +539,12 @@ def test_record_histogram_calls_record_on_histogram() -> None:
     labels = {"tenant_id": "t1"}
     with _running_exporter(_make_grpc_config()) as exporter:
         exporter._histograms[EnterpriseTelemetryHistogram.WORKFLOW_DURATION] = histogram
-        exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, 3.14, labels)
+        exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, float("3.14"), labels)
 
     metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics
     data_point = metrics[0].data.data_points[0]
     assert data_point.count == 1
-    assert data_point.sum == 3.14
+    assert data_point.sum == float("3.14")
     assert dict(data_point.attributes) == labels
     provider.shutdown()
 

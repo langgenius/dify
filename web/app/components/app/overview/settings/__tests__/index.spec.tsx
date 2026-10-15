@@ -1,7 +1,7 @@
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement, ReactNode } from 'react'
 import type { SettingsAppInfo } from '../index'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
@@ -39,32 +39,6 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-const toastMocks = vi.hoisted(() => ({
-  call: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'success', message, ...options }),
-    ),
-    error: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'error', message, ...options }),
-    ),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'warning', message, ...options }),
-    ),
-    info: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'info', message, ...options }),
-    ),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
-  }),
-}))
 const mockOnSave = vi.fn<(params: AppSiteUpdatePayload) => Promise<boolean>>()
 
 vi.mock('@/context/i18n', async () => {
@@ -121,7 +95,6 @@ function render(...args: Parameters<typeof renderWithData>) {
 
 describe('SettingsDialog', () => {
   beforeEach(() => {
-    toastMocks.call.mockClear()
     mockOnSave.mockReset().mockResolvedValue(true)
     onPricingUrlUpdate.mockClear()
     deploymentEdition = 'CLOUD'
@@ -190,7 +163,7 @@ describe('SettingsDialog', () => {
     )
   })
 
-  it('names the Inverted switch from its visible label and exposes its state', async () => {
+  it('toggles inversion through its label without changing the theme color', async () => {
     const user = userEvent.setup()
     await renderSettingsDialog()
 
@@ -199,58 +172,84 @@ describe('SettingsDialog', () => {
     })
     expect(invertedSwitch).toBeChecked()
 
-    await user.click(invertedSwitch)
-
-    expect(invertedSwitch).not.toBeChecked()
-  })
-
-  it('should notify the user when the name is empty', async () => {
-    await renderSettingsDialog()
-    const nameInput = screen.getByPlaceholderText('app.appNamePlaceholder')
-    fireEvent.change(nameInput, { target: { value: '' } })
-    fireEvent.click(screen.getByText('common.operation.save'))
-
-    await waitFor(() => {
-      expect(toastMocks.call).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'app.newApp.nameNotEmpty' }),
-      )
-    })
-    expect(mockOnSave).not.toHaveBeenCalled()
-  })
-
-  it('should validate the theme color and show an error when the hex is invalid', async () => {
-    await renderSettingsDialog()
-    const colorInput = screen.getByPlaceholderText('E.g #A020F0')
-    fireEvent.change(colorInput, { target: { value: 'not-a-hex' } })
-
-    fireEvent.click(screen.getByText('common.operation.save'))
-    await waitFor(() => {
-      expect(toastMocks.call).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'appOverview.overview.appInfo.settings.invalidHexMessage',
-        }),
-      )
-    })
-    expect(mockOnSave).not.toHaveBeenCalled()
-  })
-
-  it('should validate the privacy policy URL', async () => {
-    await renderSettingsDialog()
-    const privacyInput = screen.getByPlaceholderText(
-      'appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder',
+    await user.click(
+      screen.getByText('appOverview.overview.appInfo.settings.chatColorThemeInverted'),
     )
 
-    fireEvent.change(privacyInput, { target: { value: 'ftp://invalid-url' } })
+    expect(invertedSwitch).not.toBeChecked()
+    expect(
+      screen.getByRole('textbox', { name: 'appOverview.overview.appInfo.settings.chatColorTheme' }),
+    ).toHaveValue('#123456')
+  })
 
-    fireEvent.click(screen.getByText('common.operation.save'))
-    await waitFor(() => {
-      expect(toastMocks.call).toHaveBeenCalledWith(
+  it.each([
+    {
+      label: 'webName',
+      invalid: '',
+      valid: 'Updated app',
+      error: 'app.newApp.nameNotEmpty',
+    },
+    {
+      label: 'chatColorTheme',
+      invalid: '#123456extra',
+      valid: '#A020F0',
+      error: 'appOverview.overview.appInfo.settings.invalidHexMessage',
+    },
+    {
+      label: 'more.privacyPolicy',
+      invalid: 'ftp://invalid-url',
+      valid: 'https://example.com/privacy',
+      error: 'appOverview.overview.appInfo.settings.invalidPrivacyPolicy',
+    },
+  ])(
+    'associates the $label validation error with its control and permits correction',
+    async ({ label, invalid, valid, error }) => {
+      const user = userEvent.setup()
+      await renderSettingsDialog()
+      const input = screen.getByRole('textbox', {
+        name: `appOverview.overview.appInfo.settings.${label}`,
+      })
+      await user.clear(input)
+      if (invalid) await user.type(input, invalid)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(await screen.findByText(error)).toBeVisible()
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(input).toHaveAccessibleDescription(expect.stringContaining(error))
+      expect(mockOnSave).not.toHaveBeenCalled()
+
+      await user.clear(input)
+      await user.type(input, valid)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await waitFor(() => expect(mockOnSave).toHaveBeenCalledOnce())
+    },
+  )
+
+  it('preserves the copyright draft when toggled and saves it with the selected language', async () => {
+    const user = userEvent.setup()
+    await renderSettingsDialog()
+    const prefix = 'appOverview.overview.appInfo.settings'
+    const copyrightGroup = within(screen.getByRole('group', { name: `${prefix}.more.copyright` }))
+    const copyrightSwitch = copyrightGroup.getByRole('switch', { name: `${prefix}.more.copyright` })
+    await user.click(copyrightSwitch)
+    expect(copyrightGroup.queryByRole('textbox')).not.toBeInTheDocument()
+    await user.click(copyrightSwitch)
+    expect(copyrightGroup.getByRole('textbox')).toHaveValue('© Dify')
+    await user.clear(copyrightGroup.getByRole('textbox'))
+    await user.type(copyrightGroup.getByRole('textbox'), 'Updated copyright')
+    const language = screen.getByRole('combobox', { name: `${prefix}.language` })
+    await user.click(language)
+    await user.click(screen.getByRole('option', { name: '简体中文' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() =>
+      expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'appOverview.overview.appInfo.settings.invalidPrivacyPolicy',
+          default_language: 'zh-Hans',
+          copyright: 'Updated copyright',
         }),
-      )
-    })
-    expect(mockOnSave).not.toHaveBeenCalled()
+      ),
+    )
   })
 
   it('should save valid settings and close the modal', async () => {
@@ -343,7 +342,6 @@ describe('SettingsDialog', () => {
       await waitFor(() => expect(name).not.toHaveAttribute('readonly'))
       expect(screen.getByRole('dialog', { name: dialogName })).toBeInTheDocument()
       expect(name).toHaveValue('Unsaved title')
-      expect(toastMocks.call).not.toHaveBeenCalled()
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
       await waitFor(() =>
         expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument(),
@@ -530,7 +528,18 @@ describe('SettingsDialog', () => {
     copyrightEnabled = false
 
     await renderSettingsDialog()
-    fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
+    const copyrightGroup = within(
+      screen.getByRole('group', {
+        name: 'appOverview.overview.appInfo.settings.more.copyright',
+      }),
+    )
+    expect(copyrightGroup.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(copyrightGroup.getByRole('textbox')).toBeDisabled()
+    await userEvent.setup().click(
+      copyrightGroup.getByRole('button', {
+        name: 'billing.upgradeBtn.encourageShort',
+      }),
+    )
 
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),

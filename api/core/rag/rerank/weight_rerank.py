@@ -62,7 +62,9 @@ class WeightRerankRunner(BaseRerankRunner):
         query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
 
         rerank_documents = []
-        for document, query_score, query_vector_score in zip(documents, query_scores, query_vector_scores):
+        for document, query_score, query_vector_score in zip(
+            documents, query_scores, query_vector_scores, strict=False
+        ):
             score = (
                 self.weights.vector_setting.vector_weight * query_vector_score
                 + self.weights.keyword_setting.keyword_weight * query_score

@@ -173,7 +173,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 mappings=files,
                 tenant_id=app_model.tenant_id,
                 config=file_extra_config,
-                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 access_controller=self._file_access_controller,
             )
 
@@ -206,7 +206,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     user_inputs=inputs,
                     variables=app_config.variables,
                     tenant_id=app_model.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(

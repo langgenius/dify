@@ -71,7 +71,7 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
-def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: Path):
+def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -88,6 +88,20 @@ def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: P
         payload = json.loads(path.read_text(encoding="utf-8"))
         assert payload["openapi"] == "3.1.0"
         assert "paths" in payload
+
+    inner_path = next(path for path in written_paths if path.name == "inner-openapi.json")
+    inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
+    assert inner_payload["security"] == [{"InnerApiKey": []}]
+    assert inner_payload["components"]["securitySchemes"] == {
+        "InnerApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Inner-Api-Key",
+            "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        }
+    }
+    assert "Bearer" not in inner_payload["components"]["securitySchemes"]
+    assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
 
 
 def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
@@ -341,7 +355,8 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     assert pipeline_operation["operationId"] == "run_pipeline"
 
     chat_error_content = chat_operation["responses"]["401"]["content"]
-    assert chat_error_content == {"application/json": {}}
+    # No business error on chat-messages answers 401, so it keeps the open error body.
+    assert chat_error_content == {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
     chat_success_content = chat_operation["responses"]["200"]["content"]
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}
@@ -656,7 +671,7 @@ def test_generate_specs_is_idempotent(tmp_path: Path):
     second_paths = module.generate_specs(tmp_path / "second")
 
     assert [path.name for path in first_paths] == [path.name for path in second_paths]
-    for first_path, second_path in zip(first_paths, second_paths):
+    for first_path, second_path in zip(first_paths, second_paths, strict=False):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 
