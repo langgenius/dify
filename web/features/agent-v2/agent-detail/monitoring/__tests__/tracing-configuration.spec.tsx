@@ -152,6 +152,9 @@ describe('Agent tracing configuration', () => {
       'aria-disabled',
       'true',
     )
+    expect(
+      screen.getByRole('switch', { name: 'app.tracing.captureContent' }),
+    ).toHaveAccessibleDescription('app.tracing.captureContentDescription')
     expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).toBeChecked()
     expect(screen.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
     expect(sent.some((req) => new URL(req.url).pathname.endsWith('/trace-config'))).toBe(false)
