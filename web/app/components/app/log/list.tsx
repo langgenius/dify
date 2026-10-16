@@ -61,7 +61,6 @@ import {
 } from '@/service/log'
 import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
-import { AppModeEnum } from '@/types/app'
 import PromptLogModal from '../../base/prompt-log-modal'
 import {
   applyAnnotationAdded,
@@ -301,12 +300,7 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
 
   // Only load initial messages, don't auto-load more
   useEffect(() => {
-    if (
-      appDetail.id &&
-      detail.id &&
-      appDetail.mode !== AppModeEnum.COMPLETION &&
-      !fetchInitiated.current
-    ) {
+    if (appDetail.id && detail.id && appDetail.mode !== 'completion' && !fetchInitiated.current) {
       // Mark as initialized, but don't auto-load more messages
       fetchInitiated.current = true
       // Still call fetchData to get initial messages
@@ -400,8 +394,8 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
-  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
-  const isAdvanced = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+  const isChatMode = appDetail.mode !== 'completion'
+  const isAdvanced = appDetail.mode === 'advanced-chat'
   const logKind = selectedLogItem?.workflow_run_id
     ? 'workflow'
     : selectedLogItem?.agent_thoughts?.length
@@ -752,8 +746,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const closingConversationIdRef = useRef<string | null>(null)
   const pendingConversationIdRef = useRef<string | null>(null)
   const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
-  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION // Whether the app is a chat app
-  const isChatflow = appDetail.mode === AppModeEnum.ADVANCED_CHAT // Whether the app is a chatflow app
+  const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
+  const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
   const activeConversationId =
     conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
 

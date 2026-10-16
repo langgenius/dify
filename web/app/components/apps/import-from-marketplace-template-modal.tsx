@@ -113,15 +113,14 @@ const ImportFromMarketplaceTemplateModal = ({
               <div className="flex items-center gap-3">
                 <AppIcon
                   size="large"
-                  iconType={template.icon_file_key ? 'image' : 'emoji'}
-                  icon={template.icon || 'page_facing_up'}
-                  background={template.icon_file_key ? undefined : template.icon_background}
-                  decorative
-                  imageUrl={
-                    template.icon_file_key
+                  icon={{
+                    icon_type: template.icon_file_key ? 'image' : 'emoji',
+                    icon: template.icon || 'page_facing_up',
+                    icon_url: template.icon_file_key
                       ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
-                      : undefined
-                  }
+                      : undefined,
+                    icon_background: template.icon_file_key ? undefined : template.icon_background,
+                  }}
                 />
                 <div className="flex flex-col">
                   <div className="system-md-semibold text-text-primary">

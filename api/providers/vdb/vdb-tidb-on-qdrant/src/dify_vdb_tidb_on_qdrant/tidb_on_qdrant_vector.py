@@ -228,6 +228,7 @@ class TidbOnQdrantVector(BaseVector):
                         group_id or "",
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 
@@ -456,7 +457,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 else:
                     idle_tidb_auth_binding = db.session.scalar(
                         select(TidbAuthBinding)
-                        .where(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
+                        .where(TidbAuthBinding.active.is_(False), TidbAuthBinding.status == "ACTIVE")
                         .limit(1)
                     )
                     if idle_tidb_auth_binding:

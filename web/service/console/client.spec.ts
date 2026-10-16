@@ -1,7 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppDetail, AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
@@ -407,74 +406,6 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.getAll('ids')).toEqual(['id-1', 'id-2'])
     expect(requestURL.searchParams.has('ids[0]')).toBe(false)
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
-  })
-
-  it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
-    const request = vi.fn().mockResolvedValue(
-      new Response(
-        [
-          'id: task-1:1',
-          'event: message',
-          'data: {"event":"progress","data":{"progressPercent":25,"stage":"parsed","state":"running","updatedAt":"2026-07-22T10:00:00.000Z"}}',
-          '',
-          'id: task-1:terminal',
-          'event: message',
-          'data: {"event":"terminal","data":{"state":"succeeded"}}',
-          '',
-          '',
-        ].join('\n'),
-        {
-          status: 200,
-          headers: {
-            'content-type': 'text/event-stream',
-          },
-        },
-      ),
-    )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
-    const queryOptions =
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents.experimental_streamedOptions(
-        {
-          input: {
-            headers: {
-              'last-event-id': 'task-1:0',
-            },
-            params: {
-              documentId: 'document-1',
-              id: 'space-1',
-              taskId: 'task-1',
-            },
-          },
-        },
-      )
-
-    const events = await queryOptions.queryFn({
-      client: new QueryClient(),
-      signal: new AbortController().signal,
-    } as QueryFunctionContext)
-
-    expectTypeOf(events[0]!).toMatchTypeOf<DocumentProcessingTaskEvent>()
-    expect(events).toEqual([
-      {
-        data: {
-          progressPercent: 25,
-          stage: 'parsed',
-          state: 'running',
-          updatedAt: '2026-07-22T10:00:00.000Z',
-        },
-        event: 'progress',
-      },
-      { data: { state: 'succeeded' }, event: 'terminal' },
-    ])
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining(
-        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
-      ),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-      }),
-    )
   })
 })
 
@@ -1061,6 +992,45 @@ describe('consoleQuery agent mutation defaults', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  it.each(['creation', 'deletion'])(
+    'invalidates agent keys and access status after key %s',
+    async (operation) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      const context = createMutationContext(queryClient)
+      if (operation === 'creation') {
+        await consoleQuery.agent.byAgentId.apiKeys.post
+          .mutationOptions()
+          .onSuccess?.(
+            { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
+            { params: { agent_id: 'agent-1' } },
+            undefined,
+            context,
+          )
+      } else {
+        await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
+          .mutationOptions()
+          .onSuccess?.(
+            undefined,
+            { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
+            undefined,
+            context,
+          )
+      }
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+    },
+  )
 
   it('should invalidate roster and invite option lists after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()

@@ -1,5 +1,5 @@
 import type { ListFilterNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
 import { ComparisonOperator } from '../../if-else/types'
@@ -32,7 +32,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
-    useIsChatMode: () => mockIsChatMode,
+
     useWorkflow: () => ({
       getBeforeNodesInSameBranch: (...args: unknown[]) => mockGetBeforeNodesInSameBranch(...args),
     }),
@@ -106,7 +106,9 @@ describe('list-operator/use-config', () => {
   })
 
   it('should expose derived state and update inputs through the helper pipeline', () => {
-    const { result } = renderHook(() => useConfig('list-node', createPayload()))
+    const { result } = renderHook(() => useConfig('list-node', createPayload()), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(result.current.readOnly).toBe(false)
     expect(result.current.varType).toBe(VarType.arrayFile)
@@ -207,24 +209,28 @@ describe('list-operator/use-config', () => {
       { id: 'loop-parent' },
     ])
 
-    const { result: iterationResult } = renderHook(() =>
-      useConfig(
-        'list-node',
-        createPayload({
-          isInIteration: true,
-          variable: ['iteration', 'files'],
-        }),
-      ),
+    const { result: iterationResult } = renderHook(
+      () =>
+        useConfig(
+          'list-node',
+          createPayload({
+            isInIteration: true,
+            variable: ['iteration', 'files'],
+          }),
+        ),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
-    const { result: loopResult } = renderHook(() =>
-      useConfig(
-        'loop-node',
-        createPayload({
-          isInLoop: true,
-          isInIteration: false,
-          variable: ['loop', 'names'],
-        }),
-      ),
+    const { result: loopResult } = renderHook(
+      () =>
+        useConfig(
+          'loop-node',
+          createPayload({
+            isInLoop: true,
+            isInIteration: false,
+            variable: ['loop', 'names'],
+          }),
+        ),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
 
     iterationResult.current.handleVarChanges(['iteration', 'files'])
@@ -234,7 +240,7 @@ describe('list-operator/use-config', () => {
     expect(mockGetCurrentVariableType).toHaveBeenCalledWith(
       expect.objectContaining({
         parentNode: expect.objectContaining({ id: 'iteration-parent' }),
-        isChatMode: true,
+        isChatflow: true,
       }),
     )
     expect(mockGetCurrentVariableType).toHaveBeenCalledWith(
@@ -252,4 +258,11 @@ describe('list-operator/use-config', () => {
       }),
     )
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

@@ -6,6 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
 
 from constants import HIDDEN_VALUE
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.flask_admission import console_account_admission
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -20,7 +21,6 @@ from services.api_based_extension_application_service import (
 )
 from services.code_based_extension_service import CodeBasedExtensionService
 
-from ..common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from . import console_ns
 from .wraps import account_initialization_required, model_validate, setup_required
 

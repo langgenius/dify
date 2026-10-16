@@ -806,7 +806,7 @@ export const zTraceAppConfigResponse = z.object({
   id: z.string().nullish(),
   is_active: z.boolean().nullish(),
   result: z.string().nullish(),
-  tracing_config: z.record(z.string(), z.unknown()).nullish(),
+  tracing_config: z.record(z.string(), z.string().nullable()).nullish(),
   tracing_provider: z.string().nullish(),
   updated_at: z.string().nullish(),
 })
@@ -815,7 +815,7 @@ export const zTraceAppConfigResponse = z.object({
  * TraceConfigPayload
  */
 export const zTraceConfigPayload = z.object({
-  tracing_config: z.record(z.string(), z.unknown()),
+  tracing_config: z.record(z.string(), z.string().nullable()),
   tracing_provider: z.string(),
 })
 

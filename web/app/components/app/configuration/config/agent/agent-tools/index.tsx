@@ -230,8 +230,11 @@ const AgentTools: FC = () => {
                       <AppIcon
                         className="rounded-md"
                         size="xs"
-                        icon={item.icon?.content}
-                        background={item.icon?.background}
+                        icon={{
+                          icon_type: 'emoji',
+                          icon: item.icon?.content,
+                          icon_background: item.icon?.background,
+                        }}
                       />
                     )}
                   </div>

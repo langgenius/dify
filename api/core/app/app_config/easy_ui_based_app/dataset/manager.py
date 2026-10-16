@@ -295,7 +295,4 @@ class DatasetConfigManager:
         if not dataset:
             return False
 
-        if dataset.tenant_id != tenant_id:
-            return False
-
-        return True
+        return dataset.tenant_id == tenant_id

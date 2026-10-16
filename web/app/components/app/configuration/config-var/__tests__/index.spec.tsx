@@ -9,7 +9,6 @@ import { vi } from 'vite-plus/test'
 import { toast } from '@/app/components/app/configuration/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
@@ -22,6 +21,11 @@ type SubscriptionEvent = {
 }
 
 let subscriptionCallback: ((event: SubscriptionEvent) => void) | null = null
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({}),
+}))
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -64,7 +68,7 @@ type DebugConfigurationState = React.ComponentProps<
 >['value']
 
 const defaultDebugConfigValue = {
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   dataSets: [],
   modelConfig: {
     model_id: 'test-model',
@@ -394,7 +398,7 @@ describe('ConfigVar', () => {
           onPromptVariablesChange,
         },
         {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           dataSets: [{ id: 'dataset-1' } as DebugConfigurationState['dataSets'][number]],
         },
       )

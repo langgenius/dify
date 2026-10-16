@@ -30,7 +30,7 @@ const runtimeNodesMetaDataMap = vi.hoisted(() => ({
 }))
 
 const runtimeState = vi.hoisted(() => ({
-  isChatMode: false,
+  isChatflow: false,
   nodesReadOnly: false,
   workflowReadOnly: false,
 }))
@@ -43,7 +43,6 @@ vi.mock('reactflow', async () =>
 )
 
 vi.mock('../use-workflow', () => ({
-  useIsChatMode: () => runtimeState.isChatMode,
   useWorkflow: () => ({
     getAfterNodesInSameBranch: () => [],
   }),
@@ -119,7 +118,7 @@ describe('useNodesInteractions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetReactFlowMockState()
-    runtimeState.isChatMode = false
+    runtimeState.isChatflow = false
     runtimeState.nodesReadOnly = false
     runtimeState.workflowReadOnly = false
     mockCreateInlineAgentBinding.mockImplementation(
@@ -974,13 +973,13 @@ describe('useNodesInteractions', () => {
         BlockEnum.ParameterExtractor,
         BlockEnum.Agent,
       ].flatMap((type) => [
-        { type, isChatMode: false },
-        { type, isChatMode: true },
+        { type, isChatflow: false },
+        { type, isChatflow: true },
       ]),
     )(
-      'pastes $type with conversation memory only when isChatMode=$isChatMode',
-      async ({ type, isChatMode }) => {
-        runtimeState.isChatMode = isChatMode
+      'pastes $type with conversation memory only when isChatflow=$isChatflow',
+      async ({ type, isChatflow }) => {
+        runtimeState.isChatflow = isChatflow
         runtimeNodesMetaDataMap.value = {
           [type]: { defaultValue: { type, title: type, desc: '' } },
         }
@@ -997,7 +996,7 @@ describe('useNodesInteractions', () => {
 
         const pastedNodes = rfState.setNodes.mock.calls.at(-1)?.[0] as Node[]
         const pastedNode = pastedNodes.find((node) => node.data.type === type)!
-        if (isChatMode) expect(pastedNode.data).toHaveProperty('memory', memory)
+        if (isChatflow) expect(pastedNode.data).toHaveProperty('memory', memory)
         else expect(pastedNode.data).not.toHaveProperty('memory')
         expect(pastedNode.data).toHaveProperty('prompt_template', promptTemplate)
         expect(store.getState().clipboardElements[0]?.data).toHaveProperty('memory', memory)
@@ -1389,4 +1388,11 @@ describe('useNodesInteractions', () => {
       },
     )
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => runtimeState.isChatflow) }
 })

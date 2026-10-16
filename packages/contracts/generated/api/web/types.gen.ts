@@ -1054,7 +1054,6 @@ export type SystemFeatureModel = {
   enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  knowledge_fs_enabled: boolean
   license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
   rbac_enabled: boolean

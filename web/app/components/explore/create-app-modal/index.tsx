@@ -1,4 +1,5 @@
 'use client'
+
 import type {
   AppDetailWithSite,
   UpdateAppPayload,
@@ -29,7 +30,6 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -269,9 +269,7 @@ const CreateAppModal = ({
             </div>
             {/* answer icon */}
             {isEditModal &&
-              (appMode === AppModeEnum.CHAT ||
-                appMode === AppModeEnum.ADVANCED_CHAT ||
-                appMode === AppModeEnum.AGENT_CHAT) && (
+              (appMode === 'chat' || appMode === 'advanced-chat' || appMode === 'agent-chat') && (
                 <div className="pt-2">
                   <div className="flex items-center justify-between">
                     <div className="py-2 text-sm leading-5 font-medium text-text-primary">

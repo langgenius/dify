@@ -667,7 +667,7 @@ class BillingService:
             # Map cached values back to tenant_ids
             cache_misses: list[str] = []
 
-            for tenant_id, cached_value in zip(tenant_ids, cached_values):
+            for tenant_id, cached_value in zip(tenant_ids, cached_values, strict=False):
                 if cached_value:
                     try:
                         # Redis returns bytes, decode to string and parse JSON

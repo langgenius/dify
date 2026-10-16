@@ -19,6 +19,21 @@ import click
 from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
+
+
+class _TableInfo(TypedDict, total=False):
+    row_count: int
+
+
+class ArchiveManifest(TypedDict, total=False):
+    tables: dict[str, _TableInfo]
+    schema_version: str
+
+
+_manifest_adapter: TypeAdapter[ArchiveManifest] = TypeAdapter(ArchiveManifest)
+
+import contextlib
+
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from extensions.ext_database import db
@@ -337,10 +352,8 @@ class WorkflowRunRestore:
             if isinstance(column.type, DateTime):
                 value = result.get(column.key)
                 if isinstance(value, str):
-                    try:
+                    with contextlib.suppress(ValueError):
                         result[column.key] = datetime.fromisoformat(value)
-                    except ValueError:
-                        pass
 
         return result
 

@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal from '../index'
 import { CreateFromDSLModalTab } from '../types'
 
@@ -163,7 +162,7 @@ describe('CreateFromDSLModal', () => {
         id: 'package-import',
         status: 'completed-with-warnings',
         app_id: 'agent-app',
-        app_mode: AppModeEnum.AGENT,
+        app_mode: 'agent',
         warnings: [
           { code: 'agent_skill_missing', path: 'skills.s_000001', message: 'Missing Skill' },
         ],
@@ -180,7 +179,7 @@ describe('CreateFromDSLModal', () => {
       })
       expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
         id: 'agent-app',
-        mode: AppModeEnum.AGENT,
+        mode: 'agent' as const,
         permission_keys: undefined,
       })
     },
@@ -193,7 +192,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSL.mockResolvedValue({
       id: 'import',
       status: 'completed',
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
     })
     render(<CreateFromDSLModal show onClose={vi.fn()} />)
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')
@@ -309,7 +308,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
-      app_mode: AppModeEnum.CHAT,
+      app_mode: 'chat',
       permission_keys: ['app.acl.view_layout'],
     })
 
@@ -336,7 +335,7 @@ describe('CreateFromDSLModal', () => {
     })
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
       source: 'studio_upload',
-      appMode: AppModeEnum.CHAT,
+      appMode: 'chat' as const,
     })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
@@ -358,7 +357,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-no-permissions',
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-no-permissions',
-      app_mode: AppModeEnum.WORKFLOW,
+      app_mode: 'workflow',
     })
 
     render(
@@ -375,7 +374,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     expect(mockGetRedirection).toHaveBeenCalledWith(
-      { id: 'app-no-permissions', mode: AppModeEnum.WORKFLOW, permission_keys: undefined },
+      { id: 'app-no-permissions', mode: 'workflow' as const, permission_keys: undefined },
       mockPush,
       {
         currentUserId: 'user-1',
@@ -391,7 +390,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-2',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-2',
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       permission_keys: ['app.acl.view_layout'],
       warnings: [
         {
@@ -446,7 +445,7 @@ describe('CreateFromDSLModal', () => {
       id: 'import-file-in-flight',
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
-      app_mode: AppModeEnum.CHAT,
+      app_mode: 'chat',
       permission_keys: ['app.acl.view_layout'],
     })
 
@@ -517,7 +516,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSLConfirm.mockResolvedValue({
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-3',
-      app_mode: AppModeEnum.WORKFLOW,
+      app_mode: 'workflow',
       permission_keys: ['app.acl.view_layout'],
     })
 
@@ -548,10 +547,10 @@ describe('CreateFromDSLModal', () => {
     })
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
       source: 'studio_upload',
-      appMode: AppModeEnum.WORKFLOW,
+      appMode: 'workflow' as const,
     })
     expect(mockGetRedirection).toHaveBeenCalledWith(
-      { id: 'app-3', mode: AppModeEnum.WORKFLOW, permission_keys: ['app.acl.view_layout'] },
+      { id: 'app-3', mode: 'workflow' as const, permission_keys: ['app.acl.view_layout'] },
       mockPush,
       {
         currentUserId: 'user-1',
@@ -569,7 +568,7 @@ describe('CreateFromDSLModal', () => {
       const completed = {
         status: DSLImportStatus.COMPLETED,
         app_id: 'created-app',
-        app_mode: AppModeEnum.WORKFLOW,
+        app_mode: 'workflow',
       }
       mockImportDSL.mockResolvedValue(
         confirmed ? { id: 'pending-import', status: DSLImportStatus.PENDING } : completed,
@@ -606,7 +605,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSLConfirm.mockResolvedValue({
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'agent-app-1',
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       warnings: [
         {
           code: 'agent_tool_authorization_required',
@@ -618,7 +617,7 @@ describe('CreateFromDSLModal', () => {
     })
     mockResolveImportedAppRedirectionTarget.mockResolvedValueOnce({
       id: 'agent-app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       permission_keys: undefined,
       bound_agent_id: 'agent-1',
     })
@@ -645,13 +644,13 @@ describe('CreateFromDSLModal', () => {
     })
     expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
       id: 'agent-app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       permission_keys: undefined,
     })
     expect(mockGetRedirection).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'agent-app-1',
-        mode: AppModeEnum.AGENT,
+        mode: 'agent' as const,
         bound_agent_id: 'agent-1',
       }),
       mockPush,
@@ -771,7 +770,7 @@ describe('CreateFromDSLModal', () => {
         id: 'import-in-flight',
         status: DSLImportStatus.COMPLETED,
         app_id: 'app-1',
-        app_mode: AppModeEnum.CHAT,
+        app_mode: 'chat',
         permission_keys: ['app.acl.view_layout'],
       })
     })
@@ -834,7 +833,7 @@ describe('CreateFromDSLModal', () => {
         id: 'import-confirming',
         status: DSLImportStatus.COMPLETED,
         app_id: 'app-confirming',
-        app_mode: AppModeEnum.WORKFLOW,
+        app_mode: 'workflow',
       })
     })
   })
@@ -882,7 +881,7 @@ describe('CreateFromDSLModal', () => {
       mockImportDSL.mockResolvedValue({
         id: 'package-import',
         status: 'completed',
-        app_mode: AppModeEnum.AGENT,
+        app_mode: 'agent',
       })
       render(<CreateFromDSLModal show onClose={vi.fn()} />)
       expect(screen.getByText('apps-full')).toBeInTheDocument()
@@ -918,7 +917,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSL.mockResolvedValue({
       id: 'package-import',
       status: 'completed',
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
     })
     render(<CreateFromDSLModal show onClose={vi.fn()} />)
     expect(
