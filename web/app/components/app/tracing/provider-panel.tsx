@@ -64,7 +64,7 @@ export function ProviderPanel({
         <div className="flex items-center">
           <span aria-hidden className={cn(iconClassName, 'h-6')} />
           {isChosen && (
-            <div className="ml-1 flex h-4 items-center rounded-sm border border-text-accent-secondary px-1 system-2xs-medium-uppercase text-text-accent-secondary">
+            <div className="ml-1 flex min-w-4.5 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent inset-ring-1 inset-ring-text-accent">
               {t(($) => $[`${I18N_PREFIX}.inUse`], { ns: 'app' })}
             </div>
           )}
@@ -90,7 +90,7 @@ export function ProviderPanel({
                 </a>
               )}
               <DialogTrigger payload={type} render={<Button size="small" disabled={pending} />}>
-                <span aria-hidden className="i-ri-equalizer-2-line size-3" />
+                <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
                 {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
               </DialogTrigger>
             </div>
