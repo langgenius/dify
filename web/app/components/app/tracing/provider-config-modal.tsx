@@ -1,5 +1,7 @@
 'use client'
 import type {
+  AppTracePayload,
+  AppTraceResponse,
   TraceAppConfigResponse,
   TraceConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -24,7 +26,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { tracingProviders } from './providers'
@@ -36,8 +37,7 @@ type ProviderConfigModalProps = {
   onRemoved: () => void
   firstInputRef: RefObject<HTMLInputElement | null>
   onSaved: () => void
-  onChosen: (provider: ConfigurableTracingProvider) => Promise<void>
-  onBeforeRemove: () => Promise<void>
+  policy: AppTraceResponse
 }
 
 const I18N_PREFIX = 'tracing.configProvider'
@@ -49,8 +49,7 @@ export function ProviderConfigModal({
   onRemoved,
   firstInputRef,
   onSaved,
-  onChosen,
-  onBeforeRemove,
+  policy,
 }: ProviderConfigModalProps) {
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const createAppConfig = useMutation(
@@ -65,83 +64,93 @@ export function ProviderConfigModal({
   const updateAgentConfig = useMutation(
     consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
   )
+  const resourceId = resource.kind === 'agent' ? resource.agentId : resource.appId
+  const scope = { id: `tracing:${resource.kind}:${resourceId}` }
+  const updateAppTrace = useMutation(
+    consoleQuery.apps.byAppId.trace.post.mutationOptions({ context: { silent: true }, scope }),
+  )
+  const updateAgentTrace = useMutation(
+    consoleQuery.agent.byAgentId.trace.post.mutationOptions({ context: { silent: true }, scope }),
+  )
   const removeAppConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
   )
   const removeAgentConfig = useMutation(
     consoleQuery.agent.byAgentId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
   )
-  const [created, setCreated] = useState(false)
-  const [enableFailed, setEnableFailed] = useState(false)
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string>()
-  const [removeError, setRemoveError] = useState<string>()
-  const isEdit = !!payload || created
-  const reportError = (error: unknown) =>
-    setError(error instanceof Error ? error.message : String(error))
+  const createConfig = resource.kind === 'agent' ? createAgentConfig : createAppConfig
+  const updateConfig = resource.kind === 'agent' ? updateAgentConfig : updateAppConfig
+  const removeConfig = resource.kind === 'agent' ? removeAgentConfig : removeAppConfig
+  const updateTrace = resource.kind === 'agent' ? updateAgentTrace : updateAppTrace
+  const isEdit = !!payload || createConfig.isSuccess
+  const pending =
+    createConfig.isPending ||
+    updateConfig.isPending ||
+    removeConfig.isPending ||
+    updateTrace.isPending
+  const enableFailed =
+    createConfig.isSuccess && updateTrace.isError && updateTrace.variables.body.enabled
+  const saveConfig =
+    updateConfig.submittedAt > createConfig.submittedAt ? updateConfig : createConfig
+  const error = pending
+    ? undefined
+    : saveConfig.submittedAt > updateTrace.submittedAt
+      ? saveConfig.error?.message
+      : updateTrace.variables?.body.enabled
+        ? updateTrace.error?.message
+        : undefined
 
-  const enableSavedConfiguration = async () => {
-    try {
-      await onChosen(type)
-      onSaved()
-    } catch (error) {
-      setEnableFailed(true)
-      reportError(error)
+  const removeError =
+    removeConfig.error ?? (updateTrace.variables?.body.enabled === false ? updateTrace.error : null)
+  const updatePolicy = (enabled: boolean, onSuccess: () => void) => {
+    const body: AppTracePayload = {
+      enabled,
+      tracing_provider: enabled ? type : null,
+      capture_content: policy.capture_content ?? false,
+      capture_agent: policy.capture_agent ?? true,
     }
+    if (resource.kind === 'agent')
+      updateAgentTrace.mutate({ params: { agent_id: resource.agentId }, body }, { onSuccess })
+    else updateAppTrace.mutate({ params: { app_id: resource.appId }, body }, { onSuccess })
   }
-  const handleRetryEnable = async () => {
-    setPending(true)
-    setError(undefined)
-    await enableSavedConfiguration()
-    setPending(false)
-  }
-  const handleRemove = async () => {
+  const handleRemove = () => {
     if (pending) return
-    setPending(true)
-    setRemoveError(undefined)
-    try {
-      await onBeforeRemove()
+    const removeSavedConfiguration = () => {
       const query = { tracing_provider: type }
       if (resource.kind === 'agent')
-        await removeAgentConfig.mutateAsync({ params: { agent_id: resource.agentId }, query })
-      else await removeAppConfig.mutateAsync({ params: { app_id: resource.appId }, query })
-      onRemoved()
-    } catch (error) {
-      setRemoveError(error instanceof Error ? error.message : String(error))
-    } finally {
-      setPending(false)
+        removeAgentConfig.mutate(
+          { params: { agent_id: resource.agentId }, query },
+          { onSuccess: onRemoved },
+        )
+      else
+        removeAppConfig.mutate(
+          { params: { app_id: resource.appId }, query },
+          { onSuccess: onRemoved },
+        )
     }
+    if (policy.tracing_provider === type) updatePolicy(false, removeSavedConfiguration)
+    else removeSavedConfiguration()
   }
-  const handleSave = async (values: TraceConfigPayload['tracing_config']) => {
+  const handleSave = (values: TraceConfigPayload['tracing_config']) => {
     if (pending) return
-    setPending(true)
-    setError(undefined)
     const config: TraceConfigPayload['tracing_config'] = {}
     for (const [key, value] of Object.entries(values))
       config[key] = value === '' && payload?.[key] === null ? null : value
-    try {
-      const body: TraceConfigPayload = { tracing_provider: type, tracing_config: config }
-      if (resource.kind === 'agent')
-        await (isEdit ? updateAgentConfig : createAgentConfig).mutateAsync({
-          params: { agent_id: resource.agentId },
-          body,
-        })
-      else
-        await (isEdit ? updateAppConfig : createAppConfig).mutateAsync({
-          params: { app_id: resource.appId },
-          body,
-        })
-      if (!isEdit || enableFailed) {
-        setCreated(true)
-        await enableSavedConfiguration()
-      } else {
-        onSaved()
-      }
-    } catch (error) {
-      reportError(error)
-    } finally {
-      setPending(false)
+    const body: TraceConfigPayload = { tracing_provider: type, tracing_config: config }
+    const onSuccess = () => {
+      if (!isEdit || createConfig.isSuccess) updatePolicy(true, onSaved)
+      else onSaved()
     }
+    if (resource.kind === 'agent')
+      (isEdit ? updateAgentConfig : createAgentConfig).mutate(
+        { params: { agent_id: resource.agentId }, body },
+        { onSuccess },
+      )
+    else
+      (isEdit ? updateAppConfig : createAppConfig).mutate(
+        { params: { app_id: resource.appId }, body },
+        { onSuccess },
+      )
   }
 
   return (
@@ -735,7 +744,12 @@ export function ProviderConfigModal({
         {enableFailed && (
           <div role="status" className="mt-4 system-sm-regular text-text-warning">
             {t(($) => $['tracing.configurationSavedEnableFailed'], { ns: 'app' })}
-            <Button disabled={pending} onClick={handleRetryEnable}>
+            <Button
+              disabled={pending}
+              onClick={() => {
+                updatePolicy(true, onSaved)
+              }}
+            >
               {t(($) => $['tracing.retryEnable'], { ns: 'app' })}
             </Button>
           </div>
@@ -788,7 +802,7 @@ export function ProviderConfigModal({
                     </div>
                     {removeError && (
                       <p role="alert" className="px-6 system-sm-regular text-text-destructive">
-                        {removeError}
+                        {removeError.message}
                       </p>
                     )}
                     <AlertDialogFooter>
