@@ -113,11 +113,34 @@ def test_default_plugin_metadata_path_does_not_call_dynamic_or_credential_runtim
     assert result.plugin_tools.tools[0].credentials == {}
 
 
-@pytest.mark.parametrize("change", [None, "owner", "intent", "key", "scope", "state", "expiry", "permit_expiry"])
+@pytest.mark.parametrize(
+    "change",
+    [
+        None,
+        "owner",
+        "intent",
+        "key",
+        "scope",
+        "state",
+        "expiry",
+        "permit_expiry",
+        "missing_invocation_state",
+        "self_fence",
+    ],
+)
 def test_same_permit_validation_does_not_claim_or_spend(change):
     from contextlib import contextmanager
+    from copy import deepcopy
     from datetime import UTC, datetime, timedelta
+    from typing import override
 
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import (
+        NativeEffectOperation,
+        NativeInvocationState,
+        NativeTestInvocation,
+        NativeTestScope,
+    )
     from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
     from services.dify_builder.native_testing.authorization import EffectAuthorizationService, _scope_digest
     from services.dify_builder.native_testing.contracts import DispatchPermit, NativeTestContextRef, operation_digest
@@ -152,12 +175,75 @@ def test_same_permit_validation_does_not_claim_or_spend(change):
     if change == "permit_expiry":
         permit = permit.model_copy(update={"expires_at": (expiry + timedelta(seconds=1)).isoformat()})
 
+    request = SimpleNamespace(
+        id=ref.request_id, tenant_id="tenant", context_digest=ref.context_digest, app_id="app", workflow_id="workflow"
+    )
+    scope = SimpleNamespace(tenant_id="tenant", request_id=ref.request_id, expires_at=expiry, cancelled=False)
+    state = SimpleNamespace(
+        tenant_id="tenant",
+        request_id=ref.request_id,
+        invocation_id=ref.invocation_id,
+        parent_invocation_id=None,
+        app_id="app",
+        workflow_id="workflow",
+        state="running",
+        pending_ids=["pending"] if change == "self_fence" else [],
+        wait_reason="approval" if change == "self_fence" else None,
+    )
+    invocation = SimpleNamespace(
+        tenant_id="tenant", request_id=ref.request_id, invocation_id=ref.invocation_id, active=True
+    )
+    scalar_rows = {
+        NativeEffectOperation: operation,
+        DifyBuilderExecutionRequest: request,
+        NativeTestScope: scope,
+    }
+    collection_rows = {
+        NativeInvocationState: [] if change == "missing_invocation_state" else [state],
+        NativeTestInvocation: [invocation],
+    }
+
+    def selected_model(query):
+        assert len(query.column_descriptions) == 1
+        return query.column_descriptions[0]["entity"]
+
+    def scalar(query):
+        model = selected_model(query)
+        assert model in scalar_rows, f"unexpected scalar query: {model}"
+        return scalar_rows[model]
+
+    def scalars(query):
+        model = selected_model(query)
+        assert model in collection_rows, f"unexpected collection query: {model}"
+        expression = query.column_descriptions[0]["expr"]
+        if expression is NativeTestInvocation.invocation_id:
+            return iter(row.invocation_id for row in collection_rows[model] if row.active)
+        assert expression is model, f"unexpected collection projection: {expression}"
+        return iter(collection_rows[model])
+
+    def forbidden_write(*_args, **_kwargs):
+        pytest.fail("validation mutated the dispatch ledger")
+
+    session = SimpleNamespace(
+        scalar=scalar,
+        scalars=scalars,
+        add=forbidden_write,
+        add_all=forbidden_write,
+        execute=forbidden_write,
+        flush=forbidden_write,
+        commit=forbidden_write,
+        delete=forbidden_write,
+    )
+    facts = (operation, attempt, request, scope, state, invocation)
+    before = deepcopy([vars(fact) for fact in facts])
+    permit_before = permit.model_dump(mode="json")
+
     @contextmanager
     def locked(**_kwargs):
         yield (
-            SimpleNamespace(scalar=lambda _query: operation),
+            session,
             SimpleNamespace(tenant_id="tenant", ref=ref),
-            SimpleNamespace(expires_at=expiry),
+            scope,
         )
 
     loader = SimpleNamespace(load=lambda **_kwargs: None, locked=locked)
@@ -175,13 +261,25 @@ def test_same_permit_validation_does_not_claim_or_spend(change):
         def _claim(self, *_args):
             pytest.fail("validation spent a second permit")
 
+        @override
+        def claim_dispatch(self, **_kwargs):
+            pytest.fail("validation consumed a physical dispatch claim")
+
     service = Service(loader, clock=lambda: now)
     assert hasattr(service, "validate_dispatch"), "Same-permit validator is missing"
     if change is None:
         assert service.validate_dispatch(ref=ref, intent=effect, permit=permit) is None
+        assert service.validate_dispatch(ref=ref, intent=effect, permit=permit) is None
+    elif change in {"missing_invocation_state", "self_fence"}:
+        reason = "native_ancestor_quarantined" if change == "missing_invocation_state" else "native_dispatch_fenced"
+        with pytest.raises(BuilderExecutionPolicyError) as error:
+            service.validate_dispatch(ref=ref, intent=effect, permit=permit)
+        assert error.value.reason_code == reason
     else:
         with pytest.raises(BuilderExecutionPolicyError):
             service.validate_dispatch(ref=ref, intent=effect, permit=permit)
+    assert [vars(fact) for fact in facts] == before
+    assert permit.model_dump(mode="json") == permit_before
 
 
 def test_marked_request_builder_stops_missing_ref_before_metadata():
