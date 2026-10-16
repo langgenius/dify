@@ -11,7 +11,7 @@ from typing import Any, Literal, cast
 from dify_agent.layers.execution_context import ApplicationTracingContext
 from dify_agent.protocol.tracing import AgentTraceBatch
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.ops.entities.trace_entity import BaseTraceInfo, MessageTraceInfo, TraceTaskName, WorkflowTraceInfo
@@ -134,13 +134,10 @@ class ApplicationTracingService:
         This handoff is made only after the runner observes a terminal result or
         finishes handling an explicit stop, and it does not rewrite Message data.
         """
-        with self.repository.sessions() as session:
-            source = self.repository._source(
-                session, tenant_id=tenant_id, app_id=app_id, kind="message", source_id=message_id
-            )
-            if not isinstance(source, Message):
-                raise TraceCollectionError("tracing_source_not_found", 404)
-            conversation_id = source.conversation_id
+        source = self.repository._source(tenant_id=tenant_id, app_id=app_id, kind="message", source_id=message_id)
+        if not isinstance(source, Message):
+            raise TraceCollectionError("tracing_source_not_found", 404)
+        conversation_id = source.conversation_id
         run = self.repository.source_run(
             tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id
         )
@@ -219,9 +216,7 @@ class ApplicationTracingService:
                 )
         return run
 
-    def _managed_owner(
-        self, session: Session, app: App, message: Message | None = None, workflow_run_id: str | None = None
-    ) -> bool:
+    def _managed_owner(self, app: App, message: Message | None = None, workflow_run_id: str | None = None) -> bool:
         """Honor frozen owners first; ordinary workflows retain legacy tracing."""
         if message is not None:
             if self._run_for_source(
@@ -232,38 +227,40 @@ class ApplicationTracingService:
         if app.mode == AppMode.AGENT:
             return True
         if workflow_run_id:
-            workflow = session.scalar(
-                select(WorkflowRun).where(
-                    WorkflowRun.id == workflow_run_id,
-                    WorkflowRun.app_id == app.id,
-                    WorkflowRun.tenant_id == app.tenant_id,
-                )
+            if self.repository.source_run(
+                tenant_id=app.tenant_id, app_id=app.id, source_kind="workflow", source_id=workflow_run_id
+            ):
+                return True
+            workflow = self.repository._source(
+                tenant_id=app.tenant_id, app_id=app.id, kind="workflow", source_id=workflow_run_id
             )
-            if workflow is not None:
-                if self.repository.source_run(
-                    tenant_id=app.tenant_id, app_id=app.id, source_kind="workflow", source_id=workflow.id
-                ):
-                    return True
+            if isinstance(workflow, WorkflowRun):
                 return workflow_has_agent_v2(workflow.graph)
-        if app.mode == AppMode.ADVANCED_CHAT:
+        if app.mode == AppMode.ADVANCED_CHAT or (app.mode == AppMode.WORKFLOW and workflow_run_id):
             # Naming may run before Message.workflow_run_id is populated. Use
-            # the owned app workflow; an unknown snapshot fails closed.
-            workflow = (
-                session.scalar(
-                    select(Workflow).where(
-                        Workflow.id == app.workflow_id, Workflow.app_id == app.id, Workflow.tenant_id == app.tenant_id
+            # the owned app workflow; an unknown snapshot fails closed. The same
+            # applies to a Workflow whose run is not yet indexed by LogStore.
+            with self.repository.sessions() as session:
+                definition = (
+                    session.scalar(
+                        select(Workflow).where(
+                            Workflow.id == app.workflow_id,
+                            Workflow.app_id == app.id,
+                            Workflow.tenant_id == app.tenant_id,
+                        )
                     )
+                    if app.workflow_id
+                    else None
                 )
-                if app.workflow_id
-                else None
-            )
-            return workflow is None or workflow_has_agent_v2(workflow.graph)
+                return definition is None or workflow_has_agent_v2(definition.graph)
         return False
 
     def _capture_auxiliary(self, info: BaseTraceInfo) -> bool:
         """Resolve real business owners even when message_id is a workflow-log ID."""
         actual_message_id = info.message_data.id if isinstance(info.message_data, Message) else None
         message_ids = [actual_message_id, info.metadata.get("message_id"), info.message_id]
+        message: Message | None = None
+        app: App | None = None
         with self.repository.sessions() as session:
             for message_id in message_ids:
                 if not isinstance(message_id, str):
@@ -273,9 +270,9 @@ class ApplicationTracingService:
                 ).first()
                 if owner is not None:
                     message, app = owner
-                    return self._managed_owner(session, app, message)
+                    break
             conversation_id = info.metadata.get("conversation_id")
-            if isinstance(conversation_id, str):
+            if app is None and isinstance(conversation_id, str):
                 app = session.scalar(
                     select(App)
                     .join(Conversation, Conversation.app_id == App.id)
@@ -288,16 +285,36 @@ class ApplicationTracingService:
                         .order_by(Message.created_at.desc())
                         .limit(1)
                     )
-                    return self._managed_owner(session, app, message)
-            workflow_run_id = info.metadata.get("workflow_run_id")
-            if isinstance(workflow_run_id, str):
-                app = session.scalar(
+        if app is not None:
+            return self._managed_owner(app, message)
+        workflow_run_id = info.metadata.get("workflow_run_id")
+        if isinstance(workflow_run_id, str):
+            with self.repository.sessions() as session:
+                # A durable managed owner already passed the trusted start boundary.
+                # Suppress auxiliary content even before LogStore indexing catches up.
+                managed_app = session.scalar(
                     select(App)
-                    .join(WorkflowRun, WorkflowRun.app_id == App.id)
-                    .where(WorkflowRun.id == workflow_run_id, WorkflowRun.tenant_id == App.tenant_id)
+                    .join(ApplicationTraceRun, ApplicationTraceRun.app_id == App.id)
+                    .where(
+                        ApplicationTraceRun.source_kind == "workflow",
+                        ApplicationTraceRun.source_id == workflow_run_id,
+                        ApplicationTraceRun.tenant_id == App.tenant_id,
+                    )
                 )
-                if app is not None:
-                    return self._managed_owner(session, app, workflow_run_id=workflow_run_id)
+                if managed_app is not None:
+                    return True
+                app_id = info.metadata.get("app_id")
+                app = (
+                    session.scalar(select(App).where(App.id == app_id))
+                    if isinstance(app_id, str)
+                    else session.scalar(
+                        select(App)
+                        .join(WorkflowRun, WorkflowRun.app_id == App.id)
+                        .where(WorkflowRun.id == workflow_run_id, WorkflowRun.tenant_id == App.tenant_id)
+                    )
+                )
+            if app is not None:
+                return self._managed_owner(app, workflow_run_id=workflow_run_id)
         return False
 
     def _link_managed_parent(self, info: WorkflowTraceInfo, tenant_id: str) -> None:
@@ -308,18 +325,20 @@ class ApplicationTracingService:
         with self.repository.sessions() as session:
             parent = session.scalar(
                 select(ApplicationTraceRun)
-                .join(WorkflowRun, WorkflowRun.id == ApplicationTraceRun.source_id)
-                .join(App, App.id == WorkflowRun.app_id)
+                .join(App, App.id == ApplicationTraceRun.app_id)
                 .where(
                     ApplicationTraceRun.source_kind == "workflow",
                     ApplicationTraceRun.source_id == parent_run_id,
-                    ApplicationTraceRun.app_id == WorkflowRun.app_id,
                     ApplicationTraceRun.tenant_id == tenant_id,
-                    WorkflowRun.tenant_id == tenant_id,
                     App.tenant_id == tenant_id,
                 )
             )
         if parent is None:
+            return
+        if (
+            self.repository._source(tenant_id=tenant_id, app_id=parent.app_id, kind="workflow", source_id=parent_run_id)
+            is None
+        ):
             return
         metadata = dict(info.metadata)
         metadata.pop("parent_trace_context", None)
@@ -349,7 +368,7 @@ class ApplicationTracingService:
                 if source_kind == "message"
                 else None
             )
-            managed = self._managed_owner(session, app, message, source_id if source_kind == "workflow" else None)
+        managed = self._managed_owner(app, message, source_id if source_kind == "workflow" else None)
         run = self._run_for_source(tenant_id=app.tenant_id, app_id=app.id, source_kind=source_kind, source_id=source_id)
         if run is not None and source_kind == "message" and run.source_kind == "workflow":
             # Chatflow emits both events; the message is already in the workflow tree.
@@ -389,32 +408,25 @@ class ApplicationTracingService:
     def settle_preview(self, run: ApplicationTraceRun) -> None:
         if run.source_kind != "node" or run.outer_trace is not None:
             return
-        with self.repository.sessions() as session:
-            node = session.scalar(
-                select(WorkflowNodeExecutionModel).where(
-                    WorkflowNodeExecutionModel.id == run.source_id,
-                    WorkflowNodeExecutionModel.app_id == run.app_id,
-                    WorkflowNodeExecutionModel.tenant_id == run.tenant_id,
-                )
-            )
-            if node is None or str(node.status) in {"running", "pending", "paused"}:
-                return
-            error = node.error
-            started_at = node.created_at.replace(tzinfo=UTC)
-            ended_at = started_at + timedelta(seconds=node.elapsed_time or 0)
-            span = CanonicalSpan(
-                id=run.root_span_id,
-                parent_id=None,
-                name=node.title or "Agent preview",
-                kind=CanonicalSpanKind.AGENT,
-                start_time=started_at,
-                end_time=ended_at,
-                inputs=sanitize(node.inputs) if run.capture_content else None,
-                outputs=sanitize(node.outputs) if run.capture_content else None,
-                status=CanonicalSpanStatus.ERROR if error else CanonicalSpanStatus.OK,
-                error=error if run.capture_content else "Node execution failed" if error else None,
-                metadata={"node_execution_id": node.id, "node_id": node.node_id, "source": "single_step"},
-            )
+        node = self.repository._source(tenant_id=run.tenant_id, app_id=run.app_id, kind="node", source_id=run.source_id)
+        if not isinstance(node, WorkflowNodeExecutionModel) or str(node.status) in {"running", "pending", "paused"}:
+            return
+        error = node.error
+        started_at = node.created_at.replace(tzinfo=UTC)
+        ended_at = started_at + timedelta(seconds=node.elapsed_time or 0)
+        span = CanonicalSpan(
+            id=run.root_span_id,
+            parent_id=None,
+            name=node.title or "Agent preview",
+            kind=CanonicalSpanKind.AGENT,
+            start_time=started_at,
+            end_time=ended_at,
+            inputs=sanitize(node.inputs) if run.capture_content else None,
+            outputs=sanitize(node.outputs) if run.capture_content else None,
+            status=CanonicalSpanStatus.ERROR if error else CanonicalSpanStatus.OK,
+            error=error if run.capture_content else "Node execution failed" if error else None,
+            metadata={"node_execution_id": node.id, "node_id": node.node_id, "source": "single_step"},
+        )
         trace = CanonicalTrace(
             trace_id=run.trace_id, session_id=run.session_id, root_span_id=run.root_span_id, spans=(span,)
         )
@@ -584,16 +596,8 @@ class ApplicationTracingService:
     def status(
         self, *, tenant_id: str, app_id: str, source_kind: str, source_id: str, node_execution_id: str | None = None
     ) -> dict[str, Any]:
-        with self.repository.sessions() as session:
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
-            if (
-                app is None
-                or self.repository._source(
-                    session, tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id
-                )
-                is None
-            ):
-                raise TraceCollectionError("tracing_source_not_found", 404)
+        if self.repository._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id) is None:
+            raise TraceCollectionError("tracing_source_not_found", 404)
         run = self._run_for_source(tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id)
         if run is None or run.state == "not_collected":
             return {"status": "not_collected", "source_kind": source_kind, "source_id": source_id}

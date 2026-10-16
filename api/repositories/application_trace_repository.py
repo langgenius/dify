@@ -15,6 +15,7 @@ from libs.uuid_utils import uuidv7
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
 from models.model import App, Message, TraceAppConfig
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from services.tracing.normalization import safe_attributes, span_id
 
 
@@ -29,14 +30,30 @@ class ApplicationTraceRepository:
     def __init__(self, sessions: sessionmaker[Session]) -> None:
         self.sessions = sessions
 
-    @staticmethod
-    def _source(session: Session, *, tenant_id: str, app_id: str, kind: str, source_id: str) -> object | None:
-        model = {"message": Message, "workflow": WorkflowRun, "node": WorkflowNodeExecutionModel}[kind]
-        return session.scalar(
-            select(model)
-            .join(App, App.id == model.app_id)
-            .where(model.id == source_id, model.app_id == app_id, App.tenant_id == tenant_id)
-        )
+    def _source(
+        self, *, tenant_id: str, app_id: str, kind: str, source_id: str
+    ) -> Message | WorkflowRun | WorkflowNodeExecutionModel | None:
+        # Close the SQL owner read before consulting a configured backend: LogStore
+        # can perform network I/O and need not have a corresponding SQL run/node row.
+        with self.sessions() as session:
+            if session.scalar(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id)) is None:
+                return None
+            if kind == "message":
+                return session.scalar(select(Message).where(Message.id == source_id, Message.app_id == app_id))
+        source: WorkflowRun | WorkflowNodeExecutionModel | None
+        if kind == "workflow":
+            repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self.sessions)
+            source = repository.get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=source_id)
+        elif kind == "node":
+            node_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(self.sessions)
+            source = node_repository.get_execution_by_id(execution_id=source_id, tenant_id=tenant_id)
+        else:
+            return None
+        # The node reader has no app filter. Check the entire chain on either
+        # backend's result before exposing a destination or authorizing a retry.
+        if source is None or (source.id, source.tenant_id, source.app_id) != (source_id, tenant_id, app_id):
+            return None
+        return source
 
     def start(
         self,
@@ -48,6 +65,22 @@ class ApplicationTraceRepository:
         session_id: str,
         workflow_id: str | None = None,
     ) -> ApplicationTraceRun | None:
+        # Re-entry uses the already validated, frozen source. It must not depend
+        # on LogStore availability or indexing latency after collection began.
+        with self.sessions() as session:
+            if session.scalar(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id)) is None:
+                return None
+            existing = session.scalar(
+                select(ApplicationTraceRun).where(
+                    ApplicationTraceRun.tenant_id == tenant_id,
+                    ApplicationTraceRun.app_id == app_id,
+                    ApplicationTraceRun.source_kind == source_kind,
+                    ApplicationTraceRun.source_id == source_id,
+                )
+            )
+            if existing is not None:
+                return existing
+        source = self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
         # The app row serializes parallel node starts, so one workflow freezes one
         # destination even when its first two Agent nodes start concurrently.
         with self.sessions.begin() as session:
@@ -64,7 +97,6 @@ class ApplicationTraceRepository:
             )
             if existing is not None:
                 return existing
-            source = self._source(session, tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
             if source is None:
                 # A single-node preview allocates its execution ID before the
                 # node row is saved. Only the trusted workflow builder may reserve
@@ -144,13 +176,12 @@ class ApplicationTraceRepository:
         source_id: str,
     ) -> ApplicationTraceRun | None:
         """A missing start snapshot must never fall back to an unmasked exporter."""
+        source = self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
+        if source is None:
+            return None
         with self.sessions.begin() as session:
             app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
-            if (
-                app is None
-                or self._source(session, tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
-                is None
-            ):
+            if app is None:
                 return None
             current = session.scalar(
                 select(ApplicationTraceRun).where(
