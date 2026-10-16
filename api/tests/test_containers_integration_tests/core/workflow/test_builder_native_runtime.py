@@ -544,3 +544,151 @@ def test_actual_initial_run_null_outputs_survive_first_native_node_persistence(r
     assert execution.outputs is None
     assert not guard.failed
     assert c.sends == []
+
+
+def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown(runtime_case, monkeypatch):
+    """CI-only actual WAIT/SQL/checkpoint/verifier race; no synthesized ACK or source settlement."""
+    from models.dify_builder_native_tests import (
+        NativeContinuation,
+        NativeEffectAttempt,
+        NativeEffectDispatchClaim,
+        NativeEffectOperation,
+        NativePendingAction,
+    )
+
+    c = runtime_case
+    message = c.published[0]
+    ref = decode_native_ref(message["ref"])
+    lifecycle = delivery(c, message)
+    held, release = Event(), Event()
+    actual_pause = lifecycle.pause
+    waits = []
+
+    def pause(**kwargs):
+        receipt = actual_pause(**kwargs)
+        if lifecycle._capacity._verifier._consumed:
+            waits.append(receipt)
+            held.set()  # Real protected WAIT + consumed physical verifier, before finalizer.
+            assert release.wait(15)
+        return receipt
+
+    monkeypatch.setattr(lifecycle, "pause", pause)
+    # A separate API process owner has no retained worker lifetime to fabricate ACK.
+    api = build_native_api(
+        sessions=c.factory, actor=c.actor, owner=DifyNativeRuntimeOwner(), publish=lambda **msg: c.published.append(msg)
+    )
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(execute, c, lifecycle, message)
+        try:
+            assert held.wait(15)
+            assert lifecycle.runtime.host.lifetime._consumed
+            waiting = waits[0]
+            assert waiting.generation == 0
+            assert waiting.wait_reason == "approval"
+            checkpoint = c.api.store.read_checkpoint(ref=ref, checkpoint=waiting.checkpoint)
+            assert checkpoint.generation == 0
+            assert checkpoint.node_journals
+            assert checkpoint.approval_proposals
+            with c.factory() as session:
+                request = session.get(DifyBuilderExecutionRequest, c.request_id)
+                state = session.scalar(
+                    select(NativeInvocationState).where(
+                        NativeInvocationState.tenant_id == c.actor.tenant_id,
+                        NativeInvocationState.request_id == c.request_id,
+                        NativeInvocationState.invocation_id == ref.invocation_id,
+                    )
+                )
+                scope = session.get(NativeTestScope, c.request_id)
+                source = session.get(NativeDispatch, message["dispatch_id"])
+                continuation = session.scalar(
+                    select(NativeContinuation).where(
+                        NativeContinuation.tenant_id == c.actor.tenant_id,
+                        NativeContinuation.request_id == c.request_id,
+                        NativeContinuation.invocation_id == ref.invocation_id,
+                        NativeContinuation.checkpoint_id == waiting.checkpoint.checkpoint_id,
+                    )
+                )
+                pending = session.scalars(
+                    select(NativePendingAction).where(NativePendingAction.request_id == c.request_id)
+                ).all()
+                assert continuation is not None
+                assert continuation.generation == 0
+                assert continuation.payload_digest == waiting.checkpoint.payload_digest
+                assert set(state.pending_ids) == set(waiting.pending_operation_ids) == {row.id for row in pending}
+                assert all(row.generation == 0 and row.category == "approval" for row in pending)
+                assert state.checkpoint_id == continuation.checkpoint_id
+                assert state.generation == scope.generation == source.generation == 0
+                assert state.cleanup_complete
+                assert source.state == "claimed"
+                assert (source.tenant_id, source.request_id, source.invocation_id) == (
+                    c.actor.tenant_id, c.request_id, ref.invocation_id
+                )
+                native_run_id = checkpoint.native_run_id
+                run = session.get(WorkflowRun, native_run_id)
+                created_at = run.created_at
+                assert run.status == "paused"
+                assert request.context["native_run_id"] == run.id
+                assert scope.spent_calls == scope.spent_dispatches == 0
+                operation_ids = {row.id for row in session.scalars(
+                    select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
+                )}
+                for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
+                    assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
+            cancelled = api.cancel(
+                actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="ack-window-cancel"
+            )
+            assert cancelled.cancellation.status == "cancelling"
+            assert cancelled.outcome is None
+            assert cancelled.status == "running"
+            assert cancelled.native_run_id == native_run_id
+            assert cancelled.native_status == "paused"
+        finally:
+            release.set()
+        # The unchanged finalizer rejects cancelled authority. execute_dispatch's
+        # real exception tail must persist unknown while retaining the physical ACK.
+        with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_conflict"):
+            future.result(timeout=15)
+    assert c.sends == []
+    assert lifecycle.runtime.host.lifetime._consumed
+    for _ in range(2):
+        for receipt in (
+            api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id),
+            api.cancel(
+                actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="ack-window-cancel"
+            ),
+        ):
+            assert receipt.cancellation.status == receipt.outcome == "unknown"
+            assert receipt.status == "terminal"
+            assert set(receipt.cancellation.operation_states) == operation_ids
+            assert set(receipt.cancellation.operation_states.values()) <= {"not_dispatched"}
+            assert receipt.native_run_id == native_run_id
+            assert receipt.native_status == "paused"
+            assert receipt.generation == 0
+            assert receipt.pending == ()
+        assert api.lifecycle.reconcile() == 0
+    with c.factory() as session:
+        state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
+        scope = session.get(NativeTestScope, c.request_id)
+        sources = session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all()
+        assert len(sources) == 1
+        source = sources[0]
+        assert (source.id, source.tenant_id, source.request_id, source.invocation_id, source.generation, source.state) == (
+            message["dispatch_id"], c.actor.tenant_id, c.request_id, ref.invocation_id, 0, "unknown"
+        )
+        assert state.state == "cancelled"
+        assert state.cleanup_complete
+        assert scope.cancelled
+        assert state.generation == scope.generation == 0
+        assert state.checkpoint_id == waiting.checkpoint.checkpoint_id
+        assert scope.spent_calls == scope.spent_dispatches == 0
+        run = session.get(WorkflowRun, native_run_id)
+        assert run.status == "paused"
+        assert run.created_at == created_at
+        assert len(session.scalars(select(WorkflowRun).where(WorkflowRun.id == native_run_id)).all()) == 1
+        assert {row.id for row in session.scalars(
+            select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
+        )} == operation_ids
+        for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
+            assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
+    assert len(c.published) == 1
+    assert c.sends == []

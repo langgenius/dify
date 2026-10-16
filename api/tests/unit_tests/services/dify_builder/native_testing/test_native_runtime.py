@@ -1460,7 +1460,9 @@ def test_cancel_original_joined_owner_rechecks_retained_snapshot(
     result = c.api.cancel(
         actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="cancel-joined"
     )
-    assert result.cancellation.status == ("cancelling" if replace_after_settlement else "cancelled")
+    # Cleanup ACK retains its original assertion below; the source is still claimed,
+    # so truthful cancellation now waits for source finalization in both races.
+    assert result.cancellation.status == "cancelling"
     assert c.rows[NativeInvocationState][0].cleanup_complete is (not replace_after_settlement)
     assert runtime.host.lifetime._consumed is (not replace_after_settlement)
     assert not replacement.host.lifetime._consumed
@@ -1652,3 +1654,385 @@ def test_logical_preclaim_retirement_rechecks_proof_and_exact_retained_owners(ca
         if worker is not None:
             worker.join(2)
     assert not replacement.host.lifetime._consumed
+
+
+def _cancel_projection_post_wait(c, dispatch_state):
+    """Explicit post-WAIT SQL boundary; no physical or checkpoint attestation."""
+    from datetime import datetime
+    from uuid import uuid4
+
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+    from models.workflow import WorkflowRun, WorkflowType
+    from services.dify_builder.native_testing.contracts import decode_native_ref
+
+    ref = decode_native_ref(c.published[0]["ref"])
+    context = c.api.store.load_context(ref=ref)
+    state = c.rows[NativeInvocationState][0]
+    state.state, state.cleanup_complete = "waiting", True
+    state.checkpoint_id = str(uuid4())
+    state.pending_ids, state.wait_reason = [str(uuid4())], "approval"
+    c.rows[DifyBuilderExecutionRequest][0].state = "waiting"
+    dispatch = c.rows[NativeDispatch][0]
+    dispatch.state = dispatch_state
+    run = WorkflowRun(
+        id=context.native_run_id,
+        tenant_id=context.tenant_id,
+        app_id=context.app_id,
+        workflow_id=context.workflow_id,
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        version="draft",
+        graph="{}",
+        inputs="null",
+        outputs="null",
+        status="paused",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=context.actor_id,
+        created_at=datetime(2026, 10, 16),
+        elapsed_time=0.0,
+        total_tokens=0,
+        total_steps=0,
+        exceptions_count=0,
+    )
+    c.sql.add(run)
+    return ref, context, state, dispatch, run
+
+
+@pytest.mark.parametrize("source_owner", ["root", "child"])
+@pytest.mark.parametrize(
+    ("source_state", "cleaned", "expected"),
+    [
+        ("unknown", True, "unknown"),
+        ("unknown", False, "unknown"),
+        ("claimed", True, "cancelling"),
+        ("claimed", False, "cancelling"),
+        ("completed", True, "cancelled"),
+        ("completed", False, "cancelling"),
+    ],
+)
+def test_cancel_projection_includes_owned_sources(cancel_composition, source_owner, source_state, cleaned, expected):
+    """Omitting a child/source or treating physical ACK as finalization breaks this table."""
+    from uuid import uuid4
+
+    from models.dify_builder_native_tests import (
+        NativeDispatch,
+        NativeEffectOperation,
+        NativeInvocationState,
+        NativePayloadObject,
+        NativeTestInvocation,
+    )
+
+    c = cancel_composition
+    ref, context, root, source, run = _cancel_projection_post_wait(c, "completed")
+    selected = root
+    if source_owner == "child":
+        child_id = str(uuid4())
+        selected = NativeInvocationState(
+            **{column.key: getattr(root, column.key) for column in NativeInvocationState.__table__.columns}
+        )
+        selected.invocation_id, selected.parent_invocation_id = child_id, root.invocation_id
+        payload = c.rows[NativePayloadObject][0]
+        child_payload = NativePayloadObject(
+            **{column.key: getattr(payload, column.key) for column in NativePayloadObject.__table__.columns}
+        )
+        child_payload.id, child_payload.invocation_id = str(uuid4()), child_id
+        selected.context_object_id = child_payload.id
+        c.sql.add(child_payload)
+        c.sql.add(selected)
+        c.sql.add(
+            NativeTestInvocation(
+                tenant_id=context.tenant_id,
+                request_id=ref.request_id,
+                invocation_id=child_id,
+                active=True,
+                bindings={},
+            )
+        )
+        source = NativeDispatch(
+            **{column.key: getattr(source, column.key) for column in NativeDispatch.__table__.columns}
+        )
+        source.id, source.invocation_id, source.idempotency_digest = str(uuid4()), child_id, "b" * 64
+        c.sql.add(source)
+    source.state, selected.cleanup_complete = source_state, cleaned
+    direct = c.api.lifecycle.cancel(actor=c.actor, request_id=ref.request_id, idempotency_key="source-policy")
+    assert direct.status == expected
+    assert direct.operation_states == {}
+    for public in (
+        c.api.get(actor=c.actor, session_id="session", request_id=ref.request_id),
+        c.api.cancel(actor=c.actor, session_id="session", request_id=ref.request_id, idempotency_key="source-repeat"),
+    ):
+        assert public.cancellation.status == expected
+        assert public.cancellation.operation_states == {}
+        assert public.outcome == (None if expected == "cancelling" else expected)
+        assert public.status == ("running" if expected == "cancelling" else "terminal")
+        assert public.native_run_id == run.id == context.native_run_id
+        assert public.native_status == "paused"
+        assert public.pending == ()
+    assert selected.cleanup_complete is cleaned
+    assert source.state == source_state
+    assert source.generation == selected.generation == root.generation == 0
+    assert len(c.published) == 1
+    assert c.rows.get(NativeEffectOperation, []) == []
+
+
+@pytest.mark.parametrize("changed_fact", ["effect", "claimed-effect", "source"])
+def test_cancel_projection_reloads_after_outside_writer_cleanup(cancel_composition, monkeypatch, changed_fact):
+    """A pre-cleanup effect/source snapshot must never hide a later durable unknown."""
+    from uuid import uuid4
+
+    from models.dify_builder_native_tests import NativeEffectOperation
+
+    c = cancel_composition
+    ref, _, state, source, _ = _cancel_projection_post_wait(c, "claimed")
+    state.cleanup_complete = False
+    operation = NativeEffectOperation(
+        id=str(uuid4()),
+        tenant_id=c.actor.tenant_id,
+        request_id=ref.request_id,
+        invocation_id=ref.invocation_id,
+        operation_digest="c" * 64,
+        intent_digest="d" * 64,
+        scope_digest="e" * 64,
+        state="completed",
+    )
+    c.sql.add(operation)
+
+    def cleanup(*, refs):
+        assert refs == (ref,)
+        operation.state = (
+            "unknown" if changed_fact == "effect" else "claimed" if changed_fact == "claimed-effect" else "completed"
+        )
+        source.state = "unknown" if changed_fact == "source" else "claimed"
+        return ()
+
+    monkeypatch.setattr(c.api.lifecycle.runtime, "cancel", cleanup)
+    direct = c.api.lifecycle.cancel(actor=c.actor, request_id=ref.request_id, idempotency_key="fresh-facts")
+    assert direct.status == "unknown"
+    assert direct.operation_states == {
+        operation.id: "unknown" if changed_fact in {"effect", "claimed-effect"} else "completed"
+    }
+    public = c.api.get(actor=c.actor, session_id="session", request_id=ref.request_id)
+    assert public.cancellation == direct
+    assert public.outcome == "unknown"
+    assert not state.cleanup_complete
+
+
+def test_cancel_projection_retains_older_unresolved_source(cancel_composition):
+    """A newer completed acquisition cannot erase an older unresolved source."""
+    from uuid import uuid4
+
+    from models.dify_builder_native_tests import NativeDispatch, NativeTestScope
+
+    c = cancel_composition
+    ref, _, state, old, _ = _cancel_projection_post_wait(c, "unknown")
+    current = NativeDispatch(**{column.key: getattr(old, column.key) for column in NativeDispatch.__table__.columns})
+    current.id, current.generation, current.state, current.idempotency_digest = str(uuid4()), 1, "completed", "f" * 64
+    c.sql.add(current)
+    state.generation = c.rows[NativeTestScope][0].generation = 1
+    assert (
+        c.api.lifecycle.cancel(actor=c.actor, request_id=ref.request_id, idempotency_key="older-unknown").status
+        == "unknown"
+    )
+    assert c.api.get(actor=c.actor, session_id="session", request_id=ref.request_id).outcome == "unknown"
+    assert (old.state, current.state, state.generation) == ("unknown", "completed", 1)
+
+
+@pytest.mark.parametrize(
+    "fault", ["missing-source", "foreign-tenant", "foreign-invocation", "future-generation", "missing-context"]
+)
+def test_cancel_projection_never_infers_clean_from_incomplete_source_history(cancel_composition, fault):
+    from models.dify_builder_native_tests import NativeDispatch, NativePayloadObject
+
+    c = cancel_composition
+    ref, _, state, source, _ = _cancel_projection_post_wait(c, "completed")
+    if fault == "missing-source":
+        c.rows[NativeDispatch].clear()
+    elif fault == "foreign-tenant":
+        source.tenant_id = "foreign"
+    elif fault == "foreign-invocation":
+        source.invocation_id = "foreign"
+    elif fault == "future-generation":
+        source.generation = 1
+    else:
+        c.rows[NativePayloadObject].clear()
+    direct = c.api.lifecycle.cancel(actor=c.actor, request_id=ref.request_id, idempotency_key="incomplete-source")
+    assert direct.status == "cancelling"
+    public = c.api.get(actor=c.actor, session_id="session", request_id=ref.request_id)
+    assert public.cancellation.status == "cancelling"
+    assert public.outcome is None
+    assert state.cleanup_complete
+
+
+def test_cancel_projection_repeated_cancel_observes_source_state_change(cancel_composition):
+    c = cancel_composition
+    ref, _, state, source, run = _cancel_projection_post_wait(c, "claimed")
+    first = c.api.cancel(actor=c.actor, session_id="session", request_id=ref.request_id, idempotency_key="same-cancel")
+    assert first.cancellation.status == "cancelling"
+    # Existing finalizer guards still reject this cancellation and the existing
+    # exception-tail owner records the unresolved source without clearing ACK.
+    c.api.lifecycle._mark_unknown(ref=ref, dispatch_id=source.id)
+    second = c.api.cancel(actor=c.actor, session_id="session", request_id=ref.request_id, idempotency_key="same-cancel")
+    assert second.cancellation.status == "unknown"
+    assert second.outcome == "unknown"
+    assert run.status == "paused"
+    assert state.cleanup_complete
+    assert source.state == "unknown"
+    assert source.generation == state.generation == 0
+    assert len(c.published) == 1
+
+
+@pytest.mark.parametrize(
+    ("initial_state", "source_state", "initial_cleanup", "expected", "public_status", "outcome"),
+    [
+        ("completed", "completed", True, "cancelled", "terminal", "cancelled"),
+        ("waiting", "completed", False, "cancelled", "terminal", "cancelled"),
+        ("waiting", "claimed", True, "cancelling", "running", None),
+        ("waiting", "unknown", True, "unknown", "terminal", "unknown"),
+    ],
+)
+def test_get_cancel_interleaving_refreshes_orm_state_and_projects_one_cancellation(
+    cancel_composition,
+    sqlite_session_factory,
+    monkeypatch,
+    initial_state,
+    source_state,
+    initial_cleanup,
+    expected,
+    public_status,
+    outcome,
+):
+    """Actual SQLite identity map; native SQL/cleanup facts remain explicit unit boundaries.
+
+    GET retains its pre-cancel ORM root. Normal API cancellation runs between
+    that state read and the scope read, then an independent SQLite writer mirrors
+    its state facts. A regular same-Session SELECT retains the stale identity.
+    """
+    from uuid import uuid4
+
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import (
+        NativeInvocationState,
+        NativePendingAction,
+        NativeTestInvocation,
+        NativeTestScope,
+    )
+    from sqlalchemy import update
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import Rows
+
+    c = cancel_composition
+    ref, context, durable, source, run = _cancel_projection_post_wait(c, source_state)
+    durable.state, durable.cleanup_complete = initial_state, initial_cleanup
+    if initial_state == "completed":
+        durable.outcome, durable.pending_ids, durable.wait_reason = {"native_status": "succeeded"}, [], None
+        run.status = "succeeded"
+        c.rows[DifyBuilderExecutionRequest][0].state = "sealed"
+        c.rows[NativeTestInvocation][0].active = False
+    else:
+        pending = NativePendingAction(
+            id=str(uuid4()),
+            tenant_id=c.actor.tenant_id,
+            request_id=ref.request_id,
+            invocation_id=ref.invocation_id,
+            generation=0,
+            category="configuration",
+            reference_digest="1" * 64,
+            reference="configuration",
+            owner_ref="configuration-owner",
+            owner_version="configuration-v1",
+            operation_id=None,
+        )
+        c.sql.add(pending)
+        durable.pending_ids, durable.wait_reason = [pending.id], "configuration"
+    historical_status = run.status
+    with sqlite_session_factory.begin() as writer:
+        writer.add(
+            NativeInvocationState(
+                **{column.key: getattr(durable, column.key) for column in NativeInvocationState.__table__.columns}
+            )
+        )
+
+    if not initial_cleanup:
+
+        def cleanup(*, refs):
+            assert refs == (ref,)
+            # A committed cleanup-fact boundary, not a physical-verifier witness.
+            durable.cleanup_complete = True
+            return ()
+
+        monkeypatch.setattr(c.api.lifecycle.runtime, "cancel", cleanup)
+
+    interleaved, cancelling = False, False
+    cached = []
+
+    class ProjectionSQL:
+        def __init__(self, orm):
+            self.orm = orm
+
+        def scalars(self, query):
+            if query.column_descriptions[0]["entity"] is NativeInvocationState:
+                rows = self.orm.scalars(query).all()
+                if not cached:
+                    cached.extend(rows)
+                return Rows(rows)
+            return c.sql.scalars(query)
+
+        def scalar(self, query):
+            if query.column_descriptions[0]["entity"] is NativeInvocationState:
+                return self.orm.scalar(query)
+            return c.sql.scalar(query)
+
+        def get(self, model, identity):
+            nonlocal interleaved, cancelling
+            if model is NativeTestScope and not interleaved:
+                interleaved = cancelling = True
+                try:
+                    receipt = c.api.cancel(
+                        actor=c.actor,
+                        session_id="session",
+                        request_id=ref.request_id,
+                        idempotency_key="between-get-state-and-scope",
+                    )
+                    assert receipt.cancellation.status == expected
+                    assert durable.state == "cancelled"
+                    with sqlite_session_factory.begin() as writer:
+                        writer.execute(
+                            update(NativeInvocationState)
+                            .where(NativeInvocationState.id == durable.id)
+                            .values(
+                                state=durable.state,
+                                cancellation_key=durable.cancellation_key,
+                                cleanup_complete=durable.cleanup_complete,
+                            )
+                        )
+                finally:
+                    cancelling = False
+                assert len(cached) == 1
+                assert cached[0].state == initial_state
+                assert cached[0].cleanup_complete is initial_cleanup
+            return c.sql.get(model, identity)
+
+    @contextmanager
+    def sessions(_factory):
+        if cancelling:
+            yield c.sql
+        else:
+            with sqlite_session_factory() as orm:
+                yield ProjectionSQL(orm)
+
+    monkeypatch.setattr(type(c.sessions), "__call__", sessions)
+    public = c.api.get(actor=c.actor, session_id="session", request_id=ref.request_id)
+    assert interleaved
+    assert public.cancellation.status == expected
+    assert public.status == public_status
+    assert public.outcome == outcome
+    assert public.wait_reason is None
+    assert public.pending == ()
+    assert public.native_run_id == run.id == context.native_run_id
+    assert public.native_status == run.status == historical_status
+    assert public.generation == durable.generation == source.generation == 0
+    assert source.state == source_state
+    assert len(c.published) == 1
+    fresh = c.api.get(actor=c.actor, session_id="session", request_id=ref.request_id)
+    assert fresh == public

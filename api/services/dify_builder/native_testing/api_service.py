@@ -13,7 +13,6 @@ from uuid import uuid4
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession
 from models.dify_builder_native_tests import (
-    NativeEffectOperation,
     NativeInvocationState,
     NativePendingAction,
     NativeTestInvocation,
@@ -21,17 +20,12 @@ from models.dify_builder_native_tests import (
 )
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
-
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.execution_policy_service import check_execution_permission, load_execution_owners
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
 from services.dify_builder.native_testing.contracts import (
-    CancellationReceipt,
     NativeTestContextRef,
-    Outcome,
     WaitReason,
 )
 from services.dify_builder.native_testing.lifecycle import (
@@ -48,6 +42,8 @@ from services.dify_builder.native_testing.private_reads import validate_private_
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt, PendingActionDisclosure
 from services.dify_builder.native_testing.repository import NativeBindingResolver, OwnedNativeTestLoader, utc_now
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 
 class NativeLaunchPort(Protocol):
@@ -344,14 +340,16 @@ class NativeTestApiService:
                 else None
             )
             scope = session.get(NativeTestScope, request_id)
-            operations = list(
-                session.scalars(
-                    select(NativeEffectOperation).where(
-                        NativeEffectOperation.tenant_id == actor.tenant_id,
-                        NativeEffectOperation.request_id == request_id,
-                    )
+            cancellation = None
+            if scope is not None and scope.cancelled:
+                root_state = next((state for state in states if state.parent_invocation_id is None), None)
+                if root_state is None:
+                    raise BuilderExecutionPolicyError("native_state_unavailable")
+                ref = NativeTestContextRef(
+                    request_id=request_id, invocation_id=root_state.invocation_id, context_digest=request.context_digest
                 )
-            )
+                owned, scope = self.loader._load(session, ref=ref, lock=False, settlement=True)
+                cancellation = self.lifecycle.cancellation_receipt(session=session, owned=owned, scope=scope)
         root = next((state for state in states if state.parent_invocation_id is None), None)
 
         if root is None:
@@ -364,7 +362,10 @@ class NativeTestApiService:
                 ),
             )
         active_pending = {
-            pending_id for state in states if state.state == "waiting" for pending_id in state.pending_ids
+            pending_id
+            for state in states
+            if cancellation is None and state.state == "waiting"
+            for pending_id in state.pending_ids
         }
         pending = []
         for row in pending_rows:
@@ -404,39 +405,20 @@ class NativeTestApiService:
                         approval_limits=None,
                     )
                 )
-        cancellation = None
-        if scope is not None and scope.cancelled:
-            outcomes = {
-                row.id: "unknown"
-                if row.state in {"claimed", "unknown"}
-                else "not_dispatched"
-                if row.state in {"pending", "denied", "cancelled"}
-                else row.state
-                for row in operations
-            }
-            cancel_status = (
-                "unknown"
-                if "unknown" in outcomes.values()
-                else "cancelled"
-                if all(state.cleanup_complete for state in states)
-                else "cancelling"
-            )
-            cancellation = CancellationReceipt(
-                request_id=request_id,
-                generation=scope.generation,
-                status=cancel_status,
-                operation_states=cast(dict[str, Outcome], outcomes),
-            )
-        terminal = root.state in {"completed", "stopped", "unknown"} or (
-            root.state == "cancelled" and all(state.cleanup_complete for state in states)
-        )
+        terminal = root.state in {"completed", "stopped", "unknown"}
         outcome = None
-        if terminal:
-            outcome = "cancelled" if root.state == "cancelled" else "unknown" if root.state == "unknown" else "failed"
+        if cancellation is not None:
+            # Accepted cancellation facts close the prior execution/wait view,
+            # including any root/pending snapshot read before cancellation.
+            if cancellation.status == "cancelling":
+                terminal = False
+            else:
+                terminal = True
+                outcome = cancellation.status
+        elif terminal:
+            outcome = "unknown" if root.state == "unknown" else "failed"
             if root.state == "completed" and (root.outcome or {}).get("native_status") == "succeeded":
                 outcome = "succeeded"
-        if cancellation is not None and cancellation.status == "unknown":
-            outcome = "unknown"
         return NativeTestPublicReceipt(
             cancellation=cancellation,
             request_id=request_id,
@@ -444,12 +426,16 @@ class NativeTestApiService:
             version=root.generation + 1,
             status="terminal"
             if terminal
+            else "running"
+            if cancellation is not None
             else "waiting"
             if root.state == "waiting"
             else "running"
             if native_run or root.state in {"cancelled", "queued"}
             else "prepared",
-            wait_reason=cast(WaitReason | None, root.wait_reason) if root.state == "waiting" else None,
+            wait_reason=cast(WaitReason | None, root.wait_reason)
+            if cancellation is None and root.state == "waiting"
+            else None,
             native_run_id=native_run.id if native_run else None,
             native_status=native_run.status if native_run else None,
             pending=tuple(pending),

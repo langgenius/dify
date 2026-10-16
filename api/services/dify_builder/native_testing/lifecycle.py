@@ -19,14 +19,12 @@ from models.dify_builder_native_tests import (
     NativeEffectGrant,
     NativeEffectOperation,
     NativeInvocationState,
+    NativePayloadObject,
     NativePendingAction,
     NativeTestInvocation,
     NativeTestScope,
 )
 from pydantic import StrictBool, model_validator
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import (
     ID,
@@ -63,6 +61,8 @@ from services.dify_builder.native_testing.transitions import (
     validate_pending_fence,
     validate_pending_history,
 )
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
@@ -1381,6 +1381,122 @@ class NativeTestLifecycleService:
         if state.state in {"completed", "stopped", "cancelled"}:
             raise BuilderExecutionPolicyError("native_recovery_unavailable")
 
+    def cancellation_receipt(
+        self, *, session: Session, owned: OwnedNativeTest, scope: NativeTestScope
+    ) -> CancellationReceipt:
+        """Read current cancellation facts; physical ACK never settles a source.
+
+        The existing request owner validates actor/session/app/workflow/context.
+        Inspect all request history so foreign or missing rows cannot prove clean
+        cancellation, and retain older unresolved local acquisitions.
+        """
+        ref = owned.ref
+        # GET may already retain a pre-cancel version of these ORM identities.
+        # Reselecting alone does not replace their cached attributes.
+        states = session.scalars(
+            select(NativeInvocationState)
+            .where(NativeInvocationState.request_id == ref.request_id)
+            .execution_options(populate_existing=True)
+        ).all()
+        invocations = session.scalars(
+            select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
+        ).all()
+        sources = session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id)).all()
+        by_id = {row.invocation_id: row for row in states}
+        complete = (
+            bool(states)
+            and len(by_id) == len(states) == len(invocations)
+            and set(by_id) == {row.invocation_id for row in invocations}
+            and all(
+                (row.request_id, row.tenant_id) == (ref.request_id, owned.tenant_id) for row in (*states, *invocations)
+            )
+            and {row.invocation_id for row in states if row.parent_invocation_id is None} == {ref.invocation_id}
+            and len(self._subtree(session, ref, owned.tenant_id)) == len(states)
+        )
+        for state in states:
+            local_ref = ref.model_copy(update={"invocation_id": state.invocation_id})
+            if (state.request_id, state.tenant_id) != (ref.request_id, owned.tenant_id):
+                complete = False
+                continue
+            self.loader._load(session, ref=local_ref, lock=False, settlement=True)
+            if not state.app_id or not state.workflow_id:
+                complete = False
+                continue
+            validate_invocation_workflow(
+                session, tenant_id=owned.tenant_id, app_id=state.app_id, workflow_id=state.workflow_id
+            )
+            context = session.scalar(
+                owner_query(NativePayloadObject, local_ref, owned.tenant_id).where(
+                    NativePayloadObject.id == state.context_object_id, NativePayloadObject.kind == "context"
+                )
+            )
+            if (
+                context is None
+                or type(state.generation) is not int
+                or not 0 <= state.generation <= scope.generation
+                or (
+                    state.parent_invocation_id is None
+                    and (state.app_id, state.workflow_id) != (owned.app_id, owned.workflow_id)
+                )
+            ):
+                complete = False
+        source_states = []
+        current_root = False
+        for source in sources:
+            state = by_id.get(source.invocation_id)
+            if (
+                (source.request_id, source.tenant_id) != (ref.request_id, owned.tenant_id)
+                or state is None
+                or (state.request_id, state.tenant_id) != (ref.request_id, owned.tenant_id)
+                or type(source.generation) is not int
+                or type(state.generation) is not int
+                or not 0 <= source.generation <= state.generation
+            ):
+                complete = False
+                continue
+            source_states.append(source.state)
+            if source.invocation_id == ref.invocation_id and source.generation == state.generation:
+                current_root = True
+            if source.state == "cancelled" and (
+                source.generation != 0
+                or source.checkpoint_id is not None
+                or source.claim_expires_at is not None
+                or source.idempotency_digest
+                != canonical_digest(
+                    {"initial": ref.model_copy(update={"invocation_id": source.invocation_id}).model_dump(mode="json")}
+                )
+            ):
+                complete = False
+        complete = complete and current_root
+        operation_states: dict[str, Outcome] = {}
+        for operation in session.scalars(
+            select(NativeEffectOperation).where(
+                NativeEffectOperation.request_id == ref.request_id, NativeEffectOperation.tenant_id == owned.tenant_id
+            )
+        ):
+            if operation.invocation_id not in by_id:
+                raise BuilderExecutionPolicyError("native_owner_mismatch")
+            operation_states[operation.id] = cast(
+                Outcome,
+                "unknown"
+                if operation.state in {"claimed", "unknown"}
+                else "not_dispatched"
+                if operation.state in {"pending", "denied", "cancelled"}
+                else operation.state,
+            )
+        status = (
+            "unknown"
+            if "unknown" in operation_states.values() or "unknown" in source_states
+            else "cancelled"
+            if complete
+            and all(row.cleanup_complete for row in states)
+            and all(value in {"completed", "cancelled"} for value in source_states)
+            else "cancelling"
+        )
+        return CancellationReceipt(
+            request_id=ref.request_id, generation=scope.generation, status=status, operation_states=operation_states
+        )
+
     def cancel(self, *, actor: Actor, request_id: str, idempotency_key: str) -> CancellationReceipt:
         ref = self._root_ref(actor, request_id)
         digest = self._idempotency("cancel", idempotency_key)
@@ -1412,7 +1528,6 @@ class NativeTestLifecycleService:
                 )
             ):
                 dispatch.state = "cancelled"
-            operation_states: dict[str, Outcome] = {}
             for operation in session.scalars(
                 select(NativeEffectOperation).where(
                     NativeEffectOperation.request_id == request_id, NativeEffectOperation.tenant_id == owned.tenant_id
@@ -1420,10 +1535,6 @@ class NativeTestLifecycleService:
             ):
                 if operation.state in {"pending", "denied", "cancelled"}:
                     operation.state = "not_dispatched"
-                operation_states[operation.id] = cast(
-                    Outcome, "unknown" if operation.state == "claimed" else operation.state
-                )
-            generation = scope.generation
         stopped = set()
         if self.runtime is not None:
             try:
@@ -1441,7 +1552,7 @@ class NativeTestLifecycleService:
             except Exception:
                 stopped = set()  # Missing/ambiguous history grants no physical cleanup ACK.
         cleanup_lock = self._capacity.locked if self._capacity is not None else self.loader.locked
-        with cleanup_lock(ref=ref, settlement=True) as (session, owned, _):
+        with cleanup_lock(ref=ref, settlement=True) as (session, owned, scope):
             states = session.scalars(
                 select(NativeInvocationState).where(
                     NativeInvocationState.request_id == request_id, NativeInvocationState.tenant_id == owned.tenant_id
@@ -1450,10 +1561,7 @@ class NativeTestLifecycleService:
             for state in states:
                 if self._capacity is None and self.cancellation_settlement is None and state.invocation_id in stopped:
                     state.cleanup_complete = True
-            cleaned = all(state.cleanup_complete for state in states)
-            if cleaned and "unknown" not in operation_states.values():
+            receipt = self.cancellation_receipt(session=session, owned=owned, scope=scope)
+            if receipt.status == "cancelled":
                 self._request_row(session, request_id).state = "sealed"
-        status = "unknown" if "unknown" in operation_states.values() else "cancelled" if cleaned else "cancelling"
-        return CancellationReceipt(
-            request_id=request_id, generation=generation, status=status, operation_states=operation_states
-        )
+        return receipt
