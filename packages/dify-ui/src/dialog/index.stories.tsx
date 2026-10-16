@@ -415,17 +415,35 @@ function InsideScrollingContentDemo() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>Review release notes</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Release notes</DialogTitle>
-          <DialogDescription>Highlights from the latest workspace update.</DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
-        </DialogHeader>
-        <ReleaseNoteSections />
-        <DialogFooter>
-          <DialogClose render={<Button />}>Close</DialogClose>
-        </DialogFooter>
-      </DialogContent>
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
+          <DialogPopup className="relative flex h-[min(44rem,calc(100dvh-2rem))] min-h-0 w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Release notes</DialogTitle>
+              <DialogDescription>Highlights from the latest workspace update.</DialogDescription>
+              <DialogCloseButton aria-label="Close dialog" />
+            </DialogHeader>
+            <ScrollArea className="flex min-h-0 flex-auto overflow-hidden">
+              <ScrollAreaViewport
+                aria-label="Release note improvements"
+                role="region"
+                className="overscroll-contain"
+              >
+                <ScrollAreaContent>
+                  <ReleaseNoteSections />
+                </ScrollAreaContent>
+              </ScrollAreaViewport>
+              <ScrollAreaScrollbar>
+                <ScrollAreaThumb />
+              </ScrollAreaScrollbar>
+            </ScrollArea>
+            <DialogFooter>
+              <DialogClose render={<Button />}>Close</DialogClose>
+            </DialogFooter>
+          </DialogPopup>
+        </DialogViewport>
+      </DialogPortal>
     </Dialog>
   )
 }
