@@ -11,6 +11,7 @@ from machinery.context import RequestContext
 from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppChange,
     AppCreationSettings,
@@ -21,7 +22,6 @@ from services.entities.app_entities import (
     AppPage,
     AppRecord,
     AppReference,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     ImportedAppPackage,

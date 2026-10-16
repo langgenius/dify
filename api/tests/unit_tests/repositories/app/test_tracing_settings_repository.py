@@ -9,8 +9,7 @@ from machinery.context import RequestContext
 from models.model import App
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-from services.app_tracing_config_service import AppTracingConfigAppNotFoundError
-from services.entities.app_entities import AppTraceSettings
+from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigAppNotFoundError
 
 
 def test_capture_policy_round_trip_and_legacy_defaults(sqlite_session_factory: sessionmaker[Session]) -> None:
