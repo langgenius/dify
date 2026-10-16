@@ -55,6 +55,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.db.session_factory import session_factory
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
@@ -514,6 +515,19 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
+# What every Space-scoped KnowledgeFS call can answer with, whichever upstream operation it reaches: the
+# Space lookup and permission check, malformed path ids (400), operation-manifest or capability configuration
+# drift, and transport failures. Operations add the outcomes their upstream operation declares in
+# knowledge-fs-contract/knowledge-fs.openapi.json (404, 409, 413, 422, 429) and any local checks.
+_SPACE_CALL_ERRORS = (
+    KnowledgeFSSpaceNotFoundHTTPError,
+    KnowledgeFSAccessDeniedHTTPError,
+    KnowledgeFSInvalidRequestHTTPError,
+    KnowledgeFSOperationUnavailableHTTPError,
+    KnowledgeFSUpstreamUnavailableHTTPError,
+)
+
+
 _SMALL_FILE_UPLOAD_PARAMS = {
     "file": {
         "description": "Strictly bounded small-file fallback payload",
@@ -871,6 +885,7 @@ def _overview_stats_response(
 
 @console_ns.route("/knowledge-fs/source-provider-preview")
 class KnowledgeFSInitialSourcePreviewApi(Resource):
+    @error_responses(KnowledgeFSAccessDeniedHTTPError, KnowledgeFSInvalidRequestHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSInitialSourcePreviewPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -893,6 +908,12 @@ class KnowledgeFSInitialSourcePreviewApi(Resource):
 
 @console_ns.route("/knowledge-fs/source-provider-preview/jobs")
 class KnowledgeFSInitialSourcePreviewJobsApi(Resource):
+    @error_responses(
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+        KnowledgeFSUpstreamUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSInitialWebsiteSourcePreviewPayload.__name__])
     @console_ns.response(
         HTTPStatus.ACCEPTED,
@@ -933,6 +954,12 @@ class KnowledgeFSInitialSourcePreviewJobsApi(Resource):
 
 @console_ns.route("/knowledge-fs/source-provider-preview/jobs/<string:job_id>")
 class KnowledgeFSInitialSourcePreviewJobApi(Resource):
+    @error_responses(
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+        KnowledgeFSUpstreamUnavailableHTTPError,
+    )
     @console_ns.response(
         HTTPStatus.OK,
         "Website datasource preview status",
@@ -980,6 +1007,12 @@ class KnowledgeFSInitialSourcePreviewJobApi(Resource):
             raise NotFound() from exc
         return dump_response(KnowledgeFSInitialSourcePreviewJobResponse, result)
 
+    @error_responses(
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+        KnowledgeFSUpstreamUnavailableHTTPError,
+    )
     @console_ns.response(
         HTTPStatus.OK,
         "Website datasource preview canceled",
@@ -1010,6 +1043,11 @@ class KnowledgeFSInitialSourcePreviewJobApi(Resource):
 
 @console_ns.route("/knowledge-fs/uploads")
 class KnowledgeFSStagedUploadsApi(Resource):
+    @error_responses(
+        KnowledgeFSRequestTooLargeHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.doc(consumes=["multipart/form-data"], params=_STAGED_UPLOAD_PARAMS)
     @console_ns.response(
         HTTPStatus.CREATED,
@@ -1042,6 +1080,7 @@ class KnowledgeFSStagedUploadsApi(Resource):
 
 @console_ns.route("/knowledge-fs/uploads/<string:upload_id>")
 class KnowledgeFSStagedUploadApi(Resource):
+    @error_responses(KnowledgeFSOperationUnavailableHTTPError)
     @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base staged upload discarded")
     @setup_required
     @login_required
@@ -1055,6 +1094,11 @@ class KnowledgeFSStagedUploadApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces")
 class KnowledgeFSSpacesApi(Resource):
+    @error_responses(
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+        KnowledgeFSUpstreamUnavailableHTTPError,
+    )
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSpaceListQuery))
     @console_ns.response(
         HTTPStatus.OK, "Agent Knowledge Bases", console_ns.models[KnowledgeFSSpaceListResponse.__name__]
@@ -1077,6 +1121,12 @@ class KnowledgeFSSpacesApi(Resource):
         )
         return dump_response(KnowledgeFSSpaceListResponse, result)
 
+    @error_responses(
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSSpaceCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.ACCEPTED,
@@ -1100,6 +1150,7 @@ class KnowledgeFSSpacesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/tags")
 class KnowledgeFSSpaceTagsApi(Resource):
+    @error_responses(KnowledgeFSSpaceNotFoundHTTPError, KnowledgeFSOperationUnavailableHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base tags",
@@ -1118,6 +1169,12 @@ class KnowledgeFSSpaceTagsApi(Resource):
         )
         return dump_response(KnowledgeFSSpaceTagListResponse, {"data": tags})
 
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSSpaceTagsReplacePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1146,6 +1203,7 @@ class KnowledgeFSSpaceTagsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>")
 class KnowledgeFSSpaceApi(Resource):
+    @error_responses(KnowledgeFSSpaceNotFoundHTTPError, KnowledgeFSOperationUnavailableHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base",
@@ -1164,6 +1222,7 @@ class KnowledgeFSSpaceApi(Resource):
         )
         return dump_response(KnowledgeFSSpaceDetailResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSpaceUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1185,6 +1244,12 @@ class KnowledgeFSSpaceApi(Resource):
         )
         return dump_response(KnowledgeFSSpaceDetailResponse, result)
 
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base deletion accepted")
     @setup_required
     @login_required
@@ -1203,6 +1268,11 @@ class KnowledgeFSSpaceApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/permissions")
 class KnowledgeFSSpacePermissionsApi(Resource):
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base permissions",
@@ -1224,6 +1294,12 @@ class KnowledgeFSSpacePermissionsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/members")
 class KnowledgeFSSpaceMembersApi(Resource):
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSMembersReplacePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1249,6 +1325,11 @@ class KnowledgeFSSpaceMembersApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/external-access")
 class KnowledgeFSSpaceExternalAccessApi(Resource):
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base external access",
@@ -1267,6 +1348,12 @@ class KnowledgeFSSpaceExternalAccessApi(Resource):
         )
         return dump_response(KnowledgeFSExternalAccessResponse, result)
 
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSExternalAccessPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1291,6 +1378,11 @@ class KnowledgeFSSpaceExternalAccessApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/app-bindings")
 class KnowledgeFSSpaceAppBindingsApi(Resource):
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base app bindings",
@@ -1309,6 +1401,12 @@ class KnowledgeFSSpaceAppBindingsApi(Resource):
         )
         return dump_response(KnowledgeFSAppBindingListResponse, result)
 
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSAppBindingPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1333,6 +1431,12 @@ class KnowledgeFSSpaceAppBindingsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/app-bindings/<string:caller_kind>/<string:app_id>")
 class KnowledgeFSSpaceAppBindingApi(Resource):
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base app binding revoked")
     @setup_required
     @login_required
@@ -1357,6 +1461,7 @@ class KnowledgeFSSpaceAppBindingApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/settings")
 class KnowledgeFSSpaceSettingsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base settings",
@@ -1375,6 +1480,12 @@ class KnowledgeFSSpaceSettingsApi(Resource):
         )
         return dump_response(KnowledgeFSSettingsResponse, result)
 
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSSettingsPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1399,6 +1510,7 @@ class KnowledgeFSSpaceSettingsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/settings/migrations/<string:migration_id>")
 class KnowledgeFSSpaceSettingsMigrationApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base settings migration",
@@ -1421,6 +1533,7 @@ class KnowledgeFSSpaceSettingsMigrationApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/stats")
 class KnowledgeFSSpaceOverviewStatsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewWindowQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1460,6 +1573,7 @@ class KnowledgeFSSpaceOverviewStatsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/query-outcomes")
 class KnowledgeFSSpaceOverviewQueryOutcomesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewWindowQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1484,6 +1598,7 @@ class KnowledgeFSSpaceOverviewQueryOutcomesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/inventory")
 class KnowledgeFSSpaceOverviewInventoryApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base inventory",
@@ -1505,6 +1620,7 @@ class KnowledgeFSSpaceOverviewInventoryApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/attention")
 class KnowledgeFSSpaceOverviewAttentionApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewAttentionListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1530,6 +1646,7 @@ class KnowledgeFSSpaceOverviewAttentionApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/activity")
 class KnowledgeFSSpaceOverviewActivityApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewActivityListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1562,6 +1679,7 @@ class KnowledgeFSSpaceOverviewActivityApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/health")
 class KnowledgeFSSpaceOverviewHealthApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base health",
@@ -1583,6 +1701,7 @@ class KnowledgeFSSpaceOverviewHealthApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents")
 class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1604,6 +1723,7 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
         )
         return dump_response(KnowledgeFSLogicalDocumentListResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSBulkDocumentAvailabilityPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1628,6 +1748,7 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/document-references/resolve")
 class KnowledgeFSSpaceDocumentReferenceApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentReferenceQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1653,6 +1774,7 @@ class KnowledgeFSSpaceDocumentReferenceApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/bulk")
 class KnowledgeFSSpaceBulkLogicalDocumentsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSBulkLogicalDocumentDeletePayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -1679,6 +1801,7 @@ class KnowledgeFSSpaceBulkLogicalDocumentsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/download-zip")
 class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentBatchDownloadPayload.__name__])
     @console_ns.produces(["application/zip"])
     @console_ns.response(
@@ -1727,6 +1850,7 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download")
 class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.produces(["application/octet-stream"])
     @console_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base logical document", console_ns.models[BinaryFileResponse.__name__]
@@ -1760,6 +1884,7 @@ class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>")
 class KnowledgeFSSpaceLogicalDocumentApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base logical document",
@@ -1779,6 +1904,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
         )
         return dump_response(KnowledgeFSLogicalDocumentResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentAvailabilityPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1801,6 +1927,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
         )
         return dump_response(KnowledgeFSLogicalDocumentResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSLogicalDocumentDeletePayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -1828,6 +1955,7 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents")
 class KnowledgeFSSpaceDocumentsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1849,6 +1977,14 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
         )
         return dump_response(KnowledgeFSDocumentListResponse, result)
 
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestTooLargeHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+        KnowledgeFSRateLimitHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentStagedUploadPayload.__name__])
     @console_ns.doc(
         description=(
@@ -1889,6 +2025,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/metadata")
 class KnowledgeFSSpaceMetadataApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSMetadataFieldListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1911,6 +2048,7 @@ class KnowledgeFSSpaceMetadataApi(Resource):
         )
         return dump_response(KnowledgeFSMetadataFieldListResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSMetadataFieldCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
@@ -1935,6 +2073,7 @@ class KnowledgeFSSpaceMetadataApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/metadata/<string:field_id>")
 class KnowledgeFSSpaceMetadataFieldApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSMetadataFieldUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -1957,6 +2096,7 @@ class KnowledgeFSSpaceMetadataFieldApi(Resource):
         )
         return dump_response(KnowledgeFSMetadataFieldResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSMetadataFieldDeleteQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -1983,6 +2123,7 @@ class KnowledgeFSSpaceMetadataFieldApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/bulk")
 class KnowledgeFSSpaceBulkDocumentsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSBulkDocumentDeletePayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -2009,6 +2150,12 @@ class KnowledgeFSSpaceBulkDocumentsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/reindex")
 class KnowledgeFSSpaceDocumentReindexApi(Resource):
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestTooLargeHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentReindexPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -2033,6 +2180,7 @@ class KnowledgeFSSpaceDocumentReindexApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>")
 class KnowledgeFSSpaceDocumentApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base document",
@@ -2052,6 +2200,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
         )
         return dump_response(KnowledgeFSDocumentResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentMetadataPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -2074,6 +2223,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
         )
         return dump_response(KnowledgeFSLogicalDocumentResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentDeletePayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -2101,6 +2251,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/outline")
 class KnowledgeFSSpaceDocumentOutlineApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base document outline",
@@ -2123,6 +2274,7 @@ class KnowledgeFSSpaceDocumentOutlineApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/multimodal")
 class KnowledgeFSSpaceDocumentMultimodalManifestApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base document multimodal manifest",
@@ -2154,6 +2306,7 @@ class KnowledgeFSSpaceDocumentMultimodalManifestApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/multimodal/<path:item_id>/asset"
 )
 class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentMultimodalAssetQuery))
     @console_ns.produces(["application/octet-stream", "image/gif", "image/jpeg", "image/png", "image/webp"])
     @console_ns.response(
@@ -2230,6 +2383,7 @@ class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/revisions")
 class KnowledgeFSSpaceDocumentRevisionsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -2257,6 +2411,7 @@ class KnowledgeFSSpaceDocumentRevisionsApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/revisions/<int:revision>/chunks"
 )
 class KnowledgeFSSpaceDocumentChunksApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentChunkListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -2286,6 +2441,7 @@ class KnowledgeFSSpaceDocumentChunksApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/revisions/<int:revision>/chunks/<string:chunk_id>"
 )
 class KnowledgeFSSpaceDocumentChunkApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base document chunk",
@@ -2310,6 +2466,7 @@ class KnowledgeFSSpaceDocumentChunkApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>")
 class KnowledgeFSSpaceCompilationJobApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base compilation job",
@@ -2326,6 +2483,7 @@ class KnowledgeFSSpaceCompilationJobApi(Resource):
         )
         return dump_response(KnowledgeFSDocumentCompilationJobResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base compilation job canceled",
@@ -2346,6 +2504,7 @@ class KnowledgeFSSpaceCompilationJobApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>/retry")
 class KnowledgeFSSpaceCompilationJobRetryApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base compilation job retried",
@@ -2366,6 +2525,7 @@ class KnowledgeFSSpaceCompilationJobRetryApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/bulk-jobs/<string:job_id>")
 class KnowledgeFSSpaceBulkJobApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base bulk job",
@@ -2385,6 +2545,7 @@ class KnowledgeFSSpaceBulkJobApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/background-tasks")
 class KnowledgeFSSpaceBackgroundTasksApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSBackgroundTaskListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -2413,6 +2574,7 @@ class KnowledgeFSSpaceBackgroundTasksApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/background-tasks/<string:task_kind>/<string:task_id>/cancel"
 )
 class KnowledgeFSSpaceBackgroundTaskCancelApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base background task canceled",
@@ -2439,6 +2601,7 @@ class KnowledgeFSSpaceBackgroundTaskCancelApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/background-tasks/<string:task_kind>/<string:task_id>/retry"
 )
 class KnowledgeFSSpaceBackgroundTaskRetryApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base background task retried",
@@ -2463,6 +2626,7 @@ class KnowledgeFSSpaceBackgroundTaskRetryApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-providers")
 class KnowledgeFSSourceProvidersApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base source providers",
@@ -2484,6 +2648,7 @@ class KnowledgeFSSourceProvidersApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-connections")
 class KnowledgeFSSourceConnectionsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceConnectionListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -2506,6 +2671,7 @@ class KnowledgeFSSourceConnectionsApi(Resource):
         )
         return dump_response(KnowledgeFSSourceConnectionListResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceConnectionCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
@@ -2530,6 +2696,7 @@ class KnowledgeFSSourceConnectionsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh")
 class KnowledgeFSSourceConnectionRefreshApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceConnectionRefreshPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -2555,6 +2722,7 @@ class KnowledgeFSSourceConnectionRefreshApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources")
 class KnowledgeFSSpaceSourcesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -2577,6 +2745,12 @@ class KnowledgeFSSpaceSourcesApi(Resource):
         )
         return dump_response(KnowledgeFSSourceListResponse, result)
 
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRateLimitHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSSourceCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
@@ -2601,6 +2775,7 @@ class KnowledgeFSSpaceSourcesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>")
 class KnowledgeFSSpaceSourceApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base source", console_ns.models[KnowledgeFSSourceResponse.__name__]
     )
@@ -2615,6 +2790,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
         )
         return dump_response(KnowledgeFSSourceResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base source updated", console_ns.models[KnowledgeFSSourceResponse.__name__]
@@ -2738,6 +2914,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
             result.sync_workflow = workflow
         return dump_response(KnowledgeFSSourceResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceDeletePayload.__name__])
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceDeleteQuery) | _IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -2767,6 +2944,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/test")
 class KnowledgeFSSpaceSourceTestApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base source credential test",
@@ -2787,6 +2965,7 @@ class KnowledgeFSSpaceSourceTestApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync")
 class KnowledgeFSSpaceSourceSyncApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
@@ -2812,6 +2991,7 @@ class KnowledgeFSSpaceSourceSyncApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-preview")
 class KnowledgeFSSpaceSourceCrawlPreviewApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
@@ -2837,6 +3017,7 @@ class KnowledgeFSSpaceSourceCrawlPreviewApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-import")
 class KnowledgeFSSpaceSourceCrawlImportApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSCrawlImportPayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -2864,6 +3045,7 @@ class KnowledgeFSSpaceSourceCrawlImportApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/workflow-imports")
 class KnowledgeFSSpaceSourceWorkflowImportApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceWorkflowImportPayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -2891,6 +3073,7 @@ class KnowledgeFSSpaceSourceWorkflowImportApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync-policy")
 class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base source sync policy",
@@ -2910,6 +3093,7 @@ class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
         )
         return dump_response(KnowledgeFSSourceSyncPolicyResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceSyncPolicyPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -2935,6 +3119,7 @@ class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>")
 class KnowledgeFSSourceWorkflowApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base source workflow",
@@ -2957,6 +3142,7 @@ class KnowledgeFSSourceWorkflowApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/cancel")
 class KnowledgeFSSourceWorkflowCancelApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceWorkflowCancelPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -2982,6 +3168,7 @@ class KnowledgeFSSourceWorkflowCancelApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/retry")
 class KnowledgeFSSourceWorkflowRetryApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base source workflow retried",
@@ -3006,6 +3193,7 @@ class KnowledgeFSSourceWorkflowRetryApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/pages")
 class KnowledgeFSSourceWorkflowPagesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCrawlPreviewPageListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3032,6 +3220,7 @@ class KnowledgeFSSourceWorkflowPagesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/selection")
 class KnowledgeFSSourceWorkflowSelectionApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSCrawlPreviewSelectionPayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -3059,6 +3248,7 @@ class KnowledgeFSSourceWorkflowSelectionApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/async-import")
 class KnowledgeFSSourceAsyncImportApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSAsyncSourceImportPayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -3088,6 +3278,7 @@ class KnowledgeFSSourceAsyncImportApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/pages")
 class KnowledgeFSSpaceSourcePagesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourcePagesQuery))
     @console_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base source pages", console_ns.models[KnowledgeFSSourcePagesResponse.__name__]
@@ -3112,6 +3303,7 @@ class KnowledgeFSSpaceSourcePagesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/import")
 class KnowledgeFSSpaceSourcePageImportApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceImportPagesPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3137,6 +3329,7 @@ class KnowledgeFSSpaceSourcePageImportApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/files")
 class KnowledgeFSSpaceSourceFilesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceFilesQuery))
     @console_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base source files", console_ns.models[KnowledgeFSSourceFilesResponse.__name__]
@@ -3160,6 +3353,7 @@ class KnowledgeFSSpaceSourceFilesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/import-files")
 class KnowledgeFSSpaceSourceFileImportApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSSourceImportFilesPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3185,6 +3379,7 @@ class KnowledgeFSSpaceSourceFileImportApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/queries")
 class KnowledgeFSSpaceQueriesApi(Resource):
+    @error_responses(KnowledgeFSOperationUnavailableHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSQueryCreatePayload.__name__])
     @console_ns.doc(deprecated=True)
     @console_ns.response(
@@ -3205,6 +3400,12 @@ class KnowledgeFSSpaceQueriesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/queries/admission")
 class KnowledgeFSSpaceQueryAdmissionApi(Resource):
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSQueryCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3252,6 +3453,13 @@ class KnowledgeFSSpaceQueryAdmissionApi(Resource):
 
 @console_ns.route(_QUERY_STREAM_PROXY_PATH)
 class KnowledgeFSQueryStreamProxyApi(Resource):
+    @error_responses(
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+        KnowledgeFSUpstreamUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSAdmittedQueryRequest.__name__])
     @console_ns.doc(produces=["text/event-stream"])
     @console_ns.response(HTTPStatus.OK, "Agent Knowledge Base query event stream")
@@ -3272,6 +3480,7 @@ class KnowledgeFSQueryStreamProxyApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks")
 class KnowledgeFSSpaceResearchTasksApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3293,6 +3502,12 @@ class KnowledgeFSSpaceResearchTasksApi(Resource):
         )
         return dump_response(KnowledgeFSResearchTaskListResponse, result)
 
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSResearchTaskCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.ACCEPTED,
@@ -3324,6 +3539,7 @@ class KnowledgeFSSpaceResearchTasksApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks/plan")
 class KnowledgeFSSpaceResearchTaskPlanApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSResearchTaskPlanPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3355,6 +3571,7 @@ class KnowledgeFSSpaceResearchTaskPlanApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>")
 class KnowledgeFSSpaceResearchTaskApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base research task",
@@ -3371,6 +3588,7 @@ class KnowledgeFSSpaceResearchTaskApi(Resource):
         )
         return dump_response(KnowledgeFSResearchTaskResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base research task canceled",
@@ -3391,6 +3609,7 @@ class KnowledgeFSSpaceResearchTaskApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>/partials")
 class KnowledgeFSSpaceResearchTaskPartialsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSResearchTaskPartialsQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3417,6 +3636,7 @@ class KnowledgeFSSpaceResearchTaskPartialsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces")
 class KnowledgeFSSpaceTracesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3442,6 +3662,7 @@ class KnowledgeFSSpaceTracesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions")
 class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3464,6 +3685,7 @@ class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
         )
         return dump_response(KnowledgeFSGoldenQuestionListResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSRateLimitHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionPayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
@@ -3488,6 +3710,7 @@ class KnowledgeFSSpaceGoldenQuestionsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions/evidence-matches")
 class KnowledgeFSSpaceGoldenQuestionEvidenceMatchesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionEvidenceMatchPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3512,6 +3735,7 @@ class KnowledgeFSSpaceGoldenQuestionEvidenceMatchesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions/bulk-import")
 class KnowledgeFSSpaceGoldenQuestionBulkImportApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSRateLimitHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionBulkImportPayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
@@ -3536,6 +3760,7 @@ class KnowledgeFSSpaceGoldenQuestionBulkImportApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/golden-questions/<string:question_id>")
 class KnowledgeFSSpaceGoldenQuestionApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSGoldenQuestionPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3558,6 +3783,7 @@ class KnowledgeFSSpaceGoldenQuestionApi(Resource):
         )
         return dump_response(KnowledgeFSGoldenQuestionResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(HTTPStatus.NO_CONTENT, "Agent Knowledge Base golden question deleted")
     @setup_required
     @login_required
@@ -3577,6 +3803,7 @@ class KnowledgeFSSpaceGoldenQuestionApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/bad-cases")
 class KnowledgeFSSpaceBadCasesApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3599,6 +3826,7 @@ class KnowledgeFSSpaceBadCasesApi(Resource):
         )
         return dump_response(KnowledgeFSBadCaseListResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSBadCaseCreatePayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED,
@@ -3623,6 +3851,7 @@ class KnowledgeFSSpaceBadCasesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/replay-runs")
 class KnowledgeFSSpaceQualityReplayApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityReplayListQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3647,6 +3876,7 @@ class KnowledgeFSSpaceQualityReplayApi(Resource):
         )
         return dump_response(KnowledgeFSQualityReplayListResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSQualityReplayPayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -3673,6 +3903,7 @@ class KnowledgeFSSpaceQualityReplayApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/replay-runs/<string:run_id>")
 class KnowledgeFSSpaceQualityReplayDetailApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityReplayDetailQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3700,6 +3931,7 @@ class KnowledgeFSSpaceQualityReplayDetailApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/quality/bad-cases/<string:bad_case_id>/trace-reference"
 )
 class KnowledgeFSSpaceBadCaseTraceReferenceApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base bad case trace reference",
@@ -3722,6 +3954,7 @@ class KnowledgeFSSpaceBadCaseTraceReferenceApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/bad-cases/<string:bad_case_id>")
 class KnowledgeFSSpaceBadCaseApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base bad case",
@@ -3741,6 +3974,7 @@ class KnowledgeFSSpaceBadCaseApi(Resource):
         )
         return dump_response(KnowledgeFSBadCaseResponse, result)
 
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError, KnowledgeFSConflictHTTPError)
     @console_ns.expect(console_ns.models[KnowledgeFSBadCaseUpdatePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3766,6 +4000,7 @@ class KnowledgeFSSpaceBadCaseApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>")
 class KnowledgeFSSpaceTraceApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base answer trace", console_ns.models[KnowledgeFSAnswerTraceResponse.__name__]
     )
@@ -3798,6 +4033,7 @@ def _trace_entries(*, control_space_id: str, trace_id: str, kind: Literal["confl
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/evidence")
 class KnowledgeFSSpaceTraceEvidenceApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3814,6 +4050,7 @@ class KnowledgeFSSpaceTraceEvidenceApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/conflicts")
 class KnowledgeFSSpaceTraceConflictsApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3830,6 +4067,7 @@ class KnowledgeFSSpaceTraceConflictsApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/missing")
 class KnowledgeFSSpaceTraceMissingApi(Resource):
+    @error_responses(*_SPACE_CALL_ERRORS, KnowledgeFSResourceNotFoundHTTPError)
     @console_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @console_ns.response(
         HTTPStatus.OK,
@@ -3848,6 +4086,13 @@ class KnowledgeFSSpaceTraceMissingApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions",
 )
 class KnowledgeFSSpaceUploadSessionsApi(Resource):
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestTooLargeHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionCreatePayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -3877,6 +4122,13 @@ class KnowledgeFSSpaceUploadSessionsApi(Resource):
     "<string:upload_session_id>/parts/<int:part_number>/presign",
 )
 class KnowledgeFSSpaceUploadSessionPartPresignApi(Resource):
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestTooLargeHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSUploadPartPresignPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3905,6 +4157,13 @@ class KnowledgeFSSpaceUploadSessionPartPresignApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/complete",
 )
 class KnowledgeFSSpaceUploadSessionCompleteApi(Resource):
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestTooLargeHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionCompletePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3932,6 +4191,13 @@ class KnowledgeFSSpaceUploadSessionCompleteApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/abort",
 )
 class KnowledgeFSSpaceUploadSessionAbortApi(Resource):
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestTooLargeHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSUploadSessionAbortPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -3959,6 +4225,13 @@ class KnowledgeFSSpaceUploadSessionAbortApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/upload-sessions/<string:upload_session_id>/small-file"
 )
 class KnowledgeFSSpaceSmallFileUploadApi(Resource):
+    @error_responses(
+        *_SPACE_CALL_ERRORS,
+        KnowledgeFSResourceNotFoundHTTPError,
+        KnowledgeFSConflictHTTPError,
+        KnowledgeFSRequestTooLargeHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+    )
     @console_ns.doc(consumes=["multipart/form-data"], params=_SMALL_FILE_UPLOAD_PARAMS)
     @console_ns.response(
         HTTPStatus.OK,
@@ -3986,6 +4259,12 @@ class KnowledgeFSSpaceSmallFileUploadApi(Resource):
 class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
     # Legacy alternative to /queries/admission. Both represent one independently admitted
     # createQuery operation; clients must use one endpoint and never chain them.
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.doc(deprecated=True)
     @console_ns.response(
         HTTPStatus.OK,
@@ -4018,6 +4297,12 @@ class KnowledgeFSSpaceQueryStreamCapabilityApi(Resource):
 
 @console_ns.route("/knowledge-fs/tasks/<string:task_id>/stream-capability")
 class KnowledgeFSTaskStreamCapabilityApi(Resource):
+    @error_responses(
+        KnowledgeFSSpaceNotFoundHTTPError,
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+    )
     @console_ns.expect(console_ns.models[KnowledgeFSStreamCapabilityPayload.__name__])
     @console_ns.response(
         HTTPStatus.OK,
@@ -4056,6 +4341,13 @@ class KnowledgeFSTaskStreamCapabilityApi(Resource):
 
 @console_ns.route("/knowledge-fs/research-tasks/<string:task_id>/events")
 class KnowledgeFSResearchTaskStreamProxyApi(Resource):
+    @error_responses(
+        KnowledgeFSAccessDeniedHTTPError,
+        KnowledgeFSInvalidRequestHTTPError,
+        KnowledgeFSRequestRejectedHTTPError,
+        KnowledgeFSOperationUnavailableHTTPError,
+        KnowledgeFSUpstreamUnavailableHTTPError,
+    )
     @console_ns.doc(
         params=query_params_from_model(KnowledgeFSResearchTaskStreamQuery),
         produces=["text/event-stream"],

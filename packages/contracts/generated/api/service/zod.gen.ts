@@ -3709,6 +3709,18 @@ export const zKnowledgeFsTraceListResponse = z.object({
 })
 
 /**
+ * KnowledgeFsAccessDeniedError
+ *
+ * Agent Knowledge Base operation is not allowed.
+ */
+export const zKnowledgeFsAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * KnowledgeFsCitation
  *
  * Immutable evidence identity; no signed URLs, tokens or storage keys.
@@ -3836,6 +3848,114 @@ export const zCompletionBlockingResponse = z.object({
   mode: z.string(),
   task_id: z.uuid(),
 })
+
+/**
+ * KnowledgeFsConflictError
+ *
+ * Agent Knowledge Base operation conflicts with the current resource state.
+ */
+export const zKnowledgeFsConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * KnowledgeFsInvalidCredentialError
+ *
+ * Invalid Agent Knowledge Base service credential.
+ */
+export const zKnowledgeFsInvalidCredentialError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_invalid_credential'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * KnowledgeFsInvalidRequestError
+ *
+ * Agent Knowledge Base request is invalid.
+ */
+export const zKnowledgeFsInvalidRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_invalid_request'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * KnowledgeFsOperationUnavailableError
+ *
+ * Agent Knowledge Base operation is not available.
+ */
+export const zKnowledgeFsOperationUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_operation_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * KnowledgeFsRateLimitExceededError
+ *
+ * Agent Knowledge Base request rate limit exceeded.
+ */
+export const zKnowledgeFsRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * KnowledgeFsRequestRejectedError
+ *
+ * Agent Knowledge Base request was rejected.
+ */
+export const zKnowledgeFsRequestRejectedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_rejected'),
+    status: z.literal(422),
+  }),
+)
+
+/**
+ * KnowledgeFsRequestTooLargeError
+ *
+ * Agent Knowledge Base request is too large.
+ */
+export const zKnowledgeFsRequestTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * KnowledgeFsResourceNotFoundError
+ *
+ * Agent Knowledge Base resource was not found.
+ */
+export const zKnowledgeFsResourceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_resource_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * KnowledgeFsUpstreamUnavailableError
+ *
+ * Agent Knowledge Base is unavailable.
+ */
+export const zKnowledgeFsUpstreamUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_upstream_unavailable'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * KnowledgeTagResponse

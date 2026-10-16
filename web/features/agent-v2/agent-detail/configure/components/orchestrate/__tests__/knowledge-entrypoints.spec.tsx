@@ -8,7 +8,7 @@ import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
-  seedSystemFeatures,
+  seedKnowledgeFsFeatures,
 } from '@/test/console/query-data'
 import { AgentOrchestratePanel } from '../index'
 
@@ -106,7 +106,7 @@ function setup({ enabled = true, workflow = false, readOnly = false, configured 
     {
       queryClient,
       features: { enable_skill: false },
-      systemFeatures: { agent_knowledge_fs_enabled: enabled },
+      knowledgeFsFeatures: { agent_enabled: enabled },
     },
   )
 }
@@ -168,7 +168,7 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     ).not.toBeInTheDocument()
 
     act(() => {
-      seedSystemFeatures(queryClient, { agent_knowledge_fs_enabled: true })
+      seedKnowledgeFsFeatures(queryClient, { agent_enabled: true })
     })
 
     await waitFor(() =>

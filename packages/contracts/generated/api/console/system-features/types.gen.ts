@@ -5,7 +5,6 @@ export type ClientOptions = {
 }
 
 export type SystemFeatureModel = {
-  agent_knowledge_fs_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
@@ -21,8 +20,6 @@ export type SystemFeatureModel = {
   enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  knowledge_fs_enabled: boolean
-  knowledge_fs_upload_enabled: boolean
   license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
   rbac_enabled: boolean

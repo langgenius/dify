@@ -300,7 +300,7 @@ const renderAgentPromptEditor = (
     <JotaiProvider store={store}>
       <AgentPromptEditor />
     </JotaiProvider>,
-    { queryClient, systemFeatures: { agent_knowledge_fs_enabled: false } },
+    { queryClient, knowledgeFsFeatures: { agent_enabled: false } },
   )
 
   return {

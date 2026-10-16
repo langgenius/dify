@@ -15,7 +15,7 @@ import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
+import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import Link from '@/next/link'

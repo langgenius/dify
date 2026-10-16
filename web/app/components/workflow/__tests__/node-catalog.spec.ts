@@ -6,7 +6,7 @@ const mockUseIsChatMode = vi.fn()
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 const mockKnowledgeFsEnabled = vi.hoisted(() => vi.fn(() => true))
 
-vi.mock('@/features/system-features/state', async () => {
+vi.mock('@/features/knowledge-fs-availability/state', async () => {
   const { atom } = await import('jotai')
   return { knowledgeFsEnabledAtom: atom(() => mockKnowledgeFsEnabled()) }
 })

@@ -14,18 +14,6 @@ export const deploymentEditionAtom = atom((get) => {
   return get(systemFeaturesAtom).deployment_edition
 })
 
-export const knowledgeFsUploadEnabledAtom = atom((get) => {
-  return get(systemFeaturesAtom).knowledge_fs_upload_enabled
-})
-
-export const knowledgeFsEnabledAtom = atom((get) => {
-  return get(systemFeaturesAtom).knowledge_fs_enabled
-})
-
-export const agentKnowledgeFsEnabledAtom = atom((get) => {
-  return get(systemFeaturesAtom).agent_knowledge_fs_enabled
-})
-
 export const rbacEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).rbac_enabled
 })

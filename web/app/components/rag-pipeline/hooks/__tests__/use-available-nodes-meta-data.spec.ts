@@ -10,7 +10,7 @@ vi.mock('jotai', () => ({
   useAtomValue: () => mockKnowledgeFsEnabled(),
 }))
 
-vi.mock('@/features/system-features/state', () => ({
+vi.mock('@/features/knowledge-fs-availability/state', () => ({
   knowledgeFsEnabledAtom: {},
 }))
 

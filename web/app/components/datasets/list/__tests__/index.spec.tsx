@@ -55,6 +55,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       },
       knowledgeFs: {
         ...original.consoleQuery.knowledgeFs,
+        features: original.consoleQuery.knowledgeFs.features,
         spaces: {
           ...original.consoleQuery.knowledgeFs.spaces,
           get: {
@@ -132,8 +133,8 @@ const renderList = (
   options: Parameters<typeof createNuqsTestWrapper>[0] = {},
 ) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
-    systemFeatures: {
-      knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+    knowledgeFsFeatures: {
+      enabled: mockConsoleState.knowledgeFsEnabled,
     },
   })
   const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper(options)
@@ -441,8 +442,8 @@ describe('List', () => {
 
       const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
       const { queryClient, wrapper: QueryWrapper } = createConsoleQueryWrapper({
-        systemFeatures: {
-          knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+        knowledgeFsFeatures: {
+          enabled: mockConsoleState.knowledgeFsEnabled,
         },
       })
       const store = createStore()

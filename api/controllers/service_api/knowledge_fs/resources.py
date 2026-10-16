@@ -34,6 +34,7 @@ from controllers.service_api.knowledge_fs.error import (
 )
 from controllers.service_api.wraps import check_knowledge_rate_limit, validate_and_get_api_token
 from core.db.session_factory import session_factory
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
@@ -278,6 +279,19 @@ def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
+# What every Service API KnowledgeFS call can answer with, whichever upstream operation it reaches: the Dataset
+# API key and its Space scope, malformed ids or bodies, operation-manifest drift, and transport failures.
+# Operations add the outcomes their upstream operation declares in knowledge-fs-contract/knowledge-fs.openapi.json
+# (404, 409, 413, 422, 429) and any local checks.
+_SERVICE_CALL_ERRORS = (
+    KnowledgeFSInvalidCredentialHTTPError,
+    KnowledgeFSServiceAccessDeniedHTTPError,
+    KnowledgeFSServiceInvalidRequestHTTPError,
+    KnowledgeFSServiceOperationUnavailableHTTPError,
+    KnowledgeFSServiceUpstreamUnavailableHTTPError,
+)
+
+
 def _dump_response[ResponseT: BaseModel](model: type[ResponseT], value: object):
     try:
         return dump_response(model, value)
@@ -409,6 +423,7 @@ def _execute_service_operation(
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents")
 class KnowledgeFSServiceDocumentsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -430,6 +445,11 @@ class KnowledgeFSServiceDocumentsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/bulk")
 class KnowledgeFSServiceBulkDocumentsApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSBulkDocumentDeletePayload.__name__])
     @service_api_ns.doc(
         params={
@@ -454,6 +474,12 @@ class KnowledgeFSServiceBulkDocumentsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/reindex")
 class KnowledgeFSServiceDocumentReindexApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+        KnowledgeFSServiceRequestTooLargeHTTPError,
+    )
     @service_api_ns.doc(
         params={
             "Idempotency-Key": {"in": "header", "required": False, "type": "string", "minLength": 8, "maxLength": 255}
@@ -478,6 +504,7 @@ class KnowledgeFSServiceDocumentReindexApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>")
 class KnowledgeFSServiceDocumentApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base document", service_api_ns.models[KnowledgeFSDocumentResponse.__name__]
     )
@@ -491,6 +518,11 @@ class KnowledgeFSServiceDocumentApi(Resource):
         )
         return _dump_response(KnowledgeFSDocumentResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSDocumentMetadataPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -508,6 +540,11 @@ class KnowledgeFSServiceDocumentApi(Resource):
         )
         return _dump_response(KnowledgeFSLogicalDocumentResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSDocumentDeletePayload.__name__])
     @service_api_ns.doc(
         params={
@@ -534,6 +571,7 @@ class KnowledgeFSServiceDocumentApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/outline")
 class KnowledgeFSServiceDocumentOutlineApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base document outline",
@@ -552,6 +590,7 @@ class KnowledgeFSServiceDocumentOutlineApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/revisions")
 class KnowledgeFSServiceDocumentRevisionsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -575,6 +614,7 @@ class KnowledgeFSServiceDocumentRevisionsApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/revisions/<int:revision>/chunks"
 )
 class KnowledgeFSServiceDocumentChunksApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSDocumentChunkListQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -598,6 +638,7 @@ class KnowledgeFSServiceDocumentChunksApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/revisions/<int:revision>/chunks/<string:chunk_id>"
 )
 class KnowledgeFSServiceDocumentChunkApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base document chunk",
@@ -620,6 +661,7 @@ class KnowledgeFSServiceDocumentChunkApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>")
 class KnowledgeFSServiceCompilationJobApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base compilation job",
@@ -632,6 +674,11 @@ class KnowledgeFSServiceCompilationJobApi(Resource):
         )
         return _dump_response(KnowledgeFSDocumentCompilationJobResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base compilation job canceled",
@@ -647,6 +694,11 @@ class KnowledgeFSServiceCompilationJobApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/jobs/<string:job_id>/retry")
 class KnowledgeFSServiceCompilationJobRetryApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base compilation job retried",
@@ -662,6 +714,7 @@ class KnowledgeFSServiceCompilationJobRetryApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/bulk-jobs/<string:job_id>")
 class KnowledgeFSServiceBulkJobApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base bulk job", service_api_ns.models[KnowledgeFSBulkJobResponse.__name__]
     )
@@ -675,6 +728,11 @@ class KnowledgeFSServiceBulkJobApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/queries/admission")
 class KnowledgeFSServiceQueryAdmissionApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceRequestTooLargeHTTPError,
+        KnowledgeFSServiceRequestRejectedHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSQueryCreatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -710,6 +768,12 @@ class KnowledgeFSServiceQueryAdmissionApi(Resource):
 
 @service_api_ns.route(_QUERY_STREAM_PROXY_PATH)
 class KnowledgeFSServiceQueryStreamProxyApi(Resource):
+    @error_responses(
+        KnowledgeFSInvalidCredentialHTTPError,
+        KnowledgeFSServiceInvalidRequestHTTPError,
+        KnowledgeFSServiceOperationUnavailableHTTPError,
+        KnowledgeFSServiceUpstreamUnavailableHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSAdmittedQueryRequest.__name__])
     @service_api_ns.doc(produces=["text/event-stream"])
     @service_api_ns.response(HTTPStatus.OK, "Agent Knowledge Base query event stream")
@@ -727,6 +791,7 @@ class KnowledgeFSServiceQueryStreamProxyApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/settings")
 class KnowledgeFSServiceSettingsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base settings",
@@ -739,6 +804,12 @@ class KnowledgeFSServiceSettingsApi(Resource):
         raw = runtime.facade.execute_service(profile=profile, operation_id="getSettings")
         return _dump_response(KnowledgeFSSettingsResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+        KnowledgeFSServiceRequestRejectedHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSettingsPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -762,6 +833,7 @@ class KnowledgeFSServiceSettingsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources")
 class KnowledgeFSServiceSourcesApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -780,6 +852,12 @@ class KnowledgeFSServiceSourcesApi(Resource):
         )
         return _dump_response(KnowledgeFSSourceListResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+        KnowledgeFSServiceRateLimitHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSServiceSourceCreatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.CREATED,
@@ -800,6 +878,7 @@ class KnowledgeFSServiceSourcesApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>")
 class KnowledgeFSServiceSourceApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base source", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
     )
@@ -813,6 +892,11 @@ class KnowledgeFSServiceSourceApi(Resource):
         )
         return _dump_response(KnowledgeFSSourceResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSServiceSourceUpdatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK, "Agent Knowledge Base source updated", service_api_ns.models[KnowledgeFSSourceResponse.__name__]
@@ -828,6 +912,11 @@ class KnowledgeFSServiceSourceApi(Resource):
         )
         return _dump_response(KnowledgeFSSourceResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceDeletePayload.__name__])
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourceDeleteQuery))
     @service_api_ns.doc(
@@ -857,6 +946,7 @@ class KnowledgeFSServiceSourceApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/test")
 class KnowledgeFSServiceSourceTestApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base source credential test",
@@ -875,6 +965,11 @@ class KnowledgeFSServiceSourceTestApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl")
 class KnowledgeFSServiceSourceCrawlApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.doc(
         deprecated=True,
         params={
@@ -900,6 +995,7 @@ class KnowledgeFSServiceSourceCrawlApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/pages")
 class KnowledgeFSServiceSourcePagesApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourcePagesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -921,6 +1017,11 @@ class KnowledgeFSServiceSourcePagesApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/import")
 class KnowledgeFSServiceSourcePageImportApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceImportPagesPayload.__name__])
     @service_api_ns.doc(
         deprecated=True,
@@ -948,6 +1049,7 @@ class KnowledgeFSServiceSourcePageImportApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/files")
 class KnowledgeFSServiceSourceFilesApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourceFilesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -969,6 +1071,11 @@ class KnowledgeFSServiceSourceFilesApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/import-files")
 class KnowledgeFSServiceSourceFileImportApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceImportFilesPayload.__name__])
     @service_api_ns.doc(
         deprecated=True,
@@ -996,6 +1103,7 @@ class KnowledgeFSServiceSourceFileImportApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks")
 class KnowledgeFSServiceResearchTasksApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1014,6 +1122,13 @@ class KnowledgeFSServiceResearchTasksApi(Resource):
         )
         return _dump_response(KnowledgeFSResearchTaskListResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+        KnowledgeFSServiceRequestTooLargeHTTPError,
+        KnowledgeFSServiceRequestRejectedHTTPError,
+    )
     @service_api_ns.doc(
         params={
             "Idempotency-Key": {"in": "header", "required": False, "type": "string", "minLength": 8, "maxLength": 255}
@@ -1039,6 +1154,12 @@ class KnowledgeFSServiceResearchTasksApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks/plan")
 class KnowledgeFSServiceResearchTaskPlanApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceRequestTooLargeHTTPError,
+        KnowledgeFSServiceRequestRejectedHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSResearchTaskPlanPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1058,6 +1179,7 @@ class KnowledgeFSServiceResearchTaskPlanApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>")
 class KnowledgeFSServiceResearchTaskApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base research task",
@@ -1072,6 +1194,11 @@ class KnowledgeFSServiceResearchTaskApi(Resource):
         )
         return _dump_response(KnowledgeFSResearchTaskResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base research task canceled",
@@ -1089,6 +1216,7 @@ class KnowledgeFSServiceResearchTaskApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>/partials")
 class KnowledgeFSServiceResearchTaskPartialsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSResearchTaskPartialsQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1109,6 +1237,11 @@ class KnowledgeFSServiceResearchTaskPartialsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces")
 class KnowledgeFSServiceTracesApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceListQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1130,6 +1263,7 @@ class KnowledgeFSServiceTracesApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>")
 class KnowledgeFSServiceTraceApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Agent Knowledge Base answer trace",
@@ -1165,6 +1299,7 @@ def _service_trace_entries(*, control_space_id: str, trace_id: str, kind: Litera
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/evidence")
 class KnowledgeFSServiceTraceEvidenceApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1178,6 +1313,7 @@ class KnowledgeFSServiceTraceEvidenceApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/conflicts")
 class KnowledgeFSServiceTraceConflictsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1191,6 +1327,7 @@ class KnowledgeFSServiceTraceConflictsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/missing")
 class KnowledgeFSServiceTraceMissingApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSTraceEntriesQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1245,6 +1382,7 @@ def _rewrite_deletion_batch_urls(control_space_id: str, result: KnowledgeFSBulkD
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents")
 class KnowledgeFSServiceLogicalDocumentsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK, "listLogicalDocuments", service_api_ns.models[KnowledgeFSLogicalDocumentListResponse.__name__]
@@ -1262,6 +1400,7 @@ class KnowledgeFSServiceLogicalDocumentsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>")
 class KnowledgeFSServiceLogicalDocumentApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "getLogicalDocument", service_api_ns.models[KnowledgeFSLogicalDocumentResponse.__name__]
     )
@@ -1278,6 +1417,7 @@ class KnowledgeFSServiceLogicalDocumentApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/document-references/resolve")
 class KnowledgeFSServiceDocumentReferenceApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSDocumentReferenceQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1300,6 +1440,7 @@ class KnowledgeFSServiceDocumentReferenceApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/deletion-jobs/<string:job_id>")
 class KnowledgeFSServiceDeletionJobApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "getDeletionJob", service_api_ns.models[KnowledgeFSDurableDeletionJobResponse.__name__]
     )
@@ -1316,6 +1457,11 @@ class KnowledgeFSServiceDeletionJobApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/deletion-jobs/<string:job_id>/retry")
 class KnowledgeFSServiceDeletionJobRetryApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.doc(
         params={
             "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
@@ -1338,6 +1484,11 @@ class KnowledgeFSServiceDeletionJobRetryApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/research-tasks/<string:task_id>/resume")
 class KnowledgeFSServiceResearchTaskResumeApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.response(
         HTTPStatus.OK, "resumeResearchTask", service_api_ns.models[KnowledgeFSResearchTaskResponse.__name__]
     )
@@ -1353,6 +1504,11 @@ class KnowledgeFSServiceResearchTaskResumeApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/background-tasks")
 class KnowledgeFSServiceBackgroundTasksApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSBackgroundTaskListQuery))
     @service_api_ns.response(
         HTTPStatus.OK, "listBackgroundTasks", service_api_ns.models[KnowledgeFSBackgroundTaskListResponse.__name__]
@@ -1370,6 +1526,7 @@ class KnowledgeFSServiceBackgroundTasksApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/settings/migrations/<string:migration_id>")
 class KnowledgeFSServiceSettingsMigrationApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "getProfileMigration", service_api_ns.models[KnowledgeFSProfileMigrationResponse.__name__]
     )
@@ -1385,6 +1542,11 @@ class KnowledgeFSServiceSettingsMigrationApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync")
 class KnowledgeFSServiceSourceSyncApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.doc(
         params={
             "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
@@ -1407,6 +1569,11 @@ class KnowledgeFSServiceSourceSyncApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-preview")
 class KnowledgeFSServiceSourceCrawlPreviewApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.doc(
         params={
             "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
@@ -1429,6 +1596,11 @@ class KnowledgeFSServiceSourceCrawlPreviewApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-import")
 class KnowledgeFSServiceSourceCrawlImportApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSCrawlImportPayload.__name__])
     @service_api_ns.doc(
         params={
@@ -1455,6 +1627,11 @@ class KnowledgeFSServiceSourceCrawlImportApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/workflow-imports")
 class KnowledgeFSServiceSourceWorkflowImportApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceWorkflowImportPayload.__name__])
     @service_api_ns.doc(
         params={
@@ -1479,6 +1656,7 @@ class KnowledgeFSServiceSourceWorkflowImportApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync-policy")
 class KnowledgeFSServiceSourceSyncPolicyApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "getSourceSyncPolicy", service_api_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__]
     )
@@ -1492,6 +1670,11 @@ class KnowledgeFSServiceSourceSyncPolicyApi(Resource):
         )
         return _dump_response(KnowledgeFSSourceSyncPolicyResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceSyncPolicyPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK, "updateSourceSyncPolicy", service_api_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__]
@@ -1510,6 +1693,7 @@ class KnowledgeFSServiceSourceSyncPolicyApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-connections")
 class KnowledgeFSServiceSourceConnectionsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourceConnectionListQuery))
     @service_api_ns.response(
         HTTPStatus.OK, "listSourceConnections", service_api_ns.models[KnowledgeFSSourceConnectionListResponse.__name__]
@@ -1524,6 +1708,11 @@ class KnowledgeFSServiceSourceConnectionsApi(Resource):
         )
         return _dump_response(KnowledgeFSSourceConnectionListResponse, raw)
 
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSServiceSourceConnectionCreatePayload.__name__])
     @service_api_ns.response(
         HTTPStatus.CREATED,
@@ -1544,6 +1733,11 @@ class KnowledgeFSServiceSourceConnectionsApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh"
 )
 class KnowledgeFSServiceSourceConnectionRefreshApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceConnectionRefreshPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK, "refreshSourceConnection", service_api_ns.models[KnowledgeFSSourceConnectionResponse.__name__]
@@ -1561,6 +1755,7 @@ class KnowledgeFSServiceSourceConnectionRefreshApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows")
 class KnowledgeFSServiceSourceWorkflowsApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourceWorkflowListQuery))
     @service_api_ns.response(
         HTTPStatus.OK, "listSourceWorkflows", service_api_ns.models[KnowledgeFSSourceWorkflowListResponse.__name__]
@@ -1578,6 +1773,7 @@ class KnowledgeFSServiceSourceWorkflowsApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>")
 class KnowledgeFSServiceSourceWorkflowApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "getSourceWorkflow", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
@@ -1594,6 +1790,11 @@ class KnowledgeFSServiceSourceWorkflowApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/cancel")
 class KnowledgeFSServiceSourceWorkflowCancelApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceWorkflowCancelPayload.__name__])
     @service_api_ns.response(
         HTTPStatus.OK, "cancelSourceWorkflow", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
@@ -1612,6 +1813,11 @@ class KnowledgeFSServiceSourceWorkflowCancelApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/retry")
 class KnowledgeFSServiceSourceWorkflowRetryApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.response(
         HTTPStatus.OK, "retrySourceWorkflow", service_api_ns.models[KnowledgeFSSourceWorkflowResponse.__name__]
     )
@@ -1628,6 +1834,7 @@ class KnowledgeFSServiceSourceWorkflowRetryApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/pages")
 class KnowledgeFSServiceCrawlPreviewPagesApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCrawlPreviewPageListQuery))
     @service_api_ns.response(
         HTTPStatus.OK, "listCrawlPreviewPages", service_api_ns.models[KnowledgeFSCrawlPreviewPageListResponse.__name__]
@@ -1647,6 +1854,11 @@ class KnowledgeFSServiceCrawlPreviewPagesApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/selection")
 class KnowledgeFSServiceCrawlPreviewSelectionApi(Resource):
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
     @service_api_ns.doc(
         params={
             "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
@@ -1673,6 +1885,7 @@ class KnowledgeFSServiceCrawlPreviewSelectionApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/deletion-batches/<string:batch_id>")
 class KnowledgeFSServiceDeletionBatchApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK, "Deletion batch status", service_api_ns.models[KnowledgeFSBulkDeletionAcceptedResponse.__name__]
     )
@@ -1693,6 +1906,7 @@ class KnowledgeFSServiceDeletionBatchApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/processing-tasks"
 )
 class KnowledgeFSServiceDocumentProcessingTasksApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
     @service_api_ns.response(
         HTTPStatus.OK,
@@ -1716,6 +1930,7 @@ class KnowledgeFSServiceDocumentProcessingTasksApi(Resource):
     "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/processing-tasks/<string:task_id>"
 )
 class KnowledgeFSServiceDocumentProcessingTaskApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS, KnowledgeFSServiceResourceNotFoundHTTPError)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Document processing task",
@@ -1734,6 +1949,7 @@ class KnowledgeFSServiceDocumentProcessingTaskApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-providers")
 class KnowledgeFSServiceSourceProvidersApi(Resource):
+    @error_responses(*_SERVICE_CALL_ERRORS)
     @service_api_ns.response(
         HTTPStatus.OK,
         "Source providers",
@@ -1747,6 +1963,14 @@ class KnowledgeFSServiceSourceProvidersApi(Resource):
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/query-images")
 class KnowledgeFSServiceQueryImagesApi(Resource):
+    @error_responses(
+        KnowledgeFSInvalidCredentialHTTPError,
+        KnowledgeFSServiceAccessDeniedHTTPError,
+        KnowledgeFSServiceInvalidRequestHTTPError,
+        KnowledgeFSServiceRequestTooLargeHTTPError,
+        KnowledgeFSServiceRequestRejectedHTTPError,
+        KnowledgeFSServiceOperationUnavailableHTTPError,
+    )
     @service_api_ns.doc(
         consumes=["multipart/form-data"],
         params={"file": {"in": "formData", "type": "file", "required": True}},

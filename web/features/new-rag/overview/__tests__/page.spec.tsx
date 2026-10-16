@@ -194,11 +194,12 @@ vi.mock('@/context/permission-state', () => ({
 
 vi.mock('@/features/system-features/state', async () => {
   const { atom } = await import('jotai')
-  return {
-    deploymentEditionAtom: atom(() => editionMock.value),
-    knowledgeFsUploadEnabledAtom: systemFeaturesState.uploadAvailableAtom,
-  }
+  return { deploymentEditionAtom: atom(() => editionMock.value) }
 })
+
+vi.mock('@/features/knowledge-fs-availability/state', () => ({
+  knowledgeFsUploadEnabledAtom: systemFeaturesState.uploadAvailableAtom,
+}))
 
 vi.mock('../../space/context', () => ({
   useKnowledgeSpacePermission: (permission: string) =>

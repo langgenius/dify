@@ -155,8 +155,11 @@ vi.mock('@/context/permission-state', () => ({
 
 vi.mock('@/features/system-features/state', () => ({
   deploymentEditionAtom: systemFeaturesStateMock.editionAtom,
-  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.uploadAtom,
   rbacEnabledAtom: systemFeaturesStateMock.rbacAtom,
+}))
+
+vi.mock('@/features/knowledge-fs-availability/state', () => ({
+  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.uploadAtom,
 }))
 
 vi.mock('jotai', async (importOriginal) => {

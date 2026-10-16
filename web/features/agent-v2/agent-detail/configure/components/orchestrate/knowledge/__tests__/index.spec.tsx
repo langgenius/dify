@@ -102,7 +102,7 @@ function setup(
       </AgentOrchestrateViewingVersionContext>
       <Snapshot label={label} />
     </AgentComposerProvider>,
-    { queryClient, systemFeatures: { agent_knowledge_fs_enabled: enabled } },
+    { queryClient, knowledgeFsFeatures: { agent_enabled: enabled } },
   )
 }
 const snapshot = () => JSON.parse(screen.getByLabelText('snapshot').textContent ?? '{}')

@@ -9,7 +9,7 @@ import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation(['workflow'])

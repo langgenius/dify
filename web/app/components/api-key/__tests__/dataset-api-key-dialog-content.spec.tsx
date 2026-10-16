@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useHydrateAtoms } from 'jotai/utils'
-import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { DatasetApiKeyDialogContent } from '../dataset-api-key-dialog-content'
@@ -49,9 +49,9 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 // KnowledgeFS spaces only show up in the scope picker when the workspace has KnowledgeFS.
-vi.mock('@/features/system-features/state', async () => {
-  const actual = await vi.importActual<typeof import('@/features/system-features/state')>(
-    '@/features/system-features/state',
+vi.mock('@/features/knowledge-fs-availability/state', async () => {
+  const actual = await vi.importActual<typeof import('@/features/knowledge-fs-availability/state')>(
+    '@/features/knowledge-fs-availability/state',
   )
   const { atom } = await import('jotai')
   return {
