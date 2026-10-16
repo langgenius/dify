@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Todos los flujos de trabajo como herramienta",
   "auth.authorized": "Autorizado",
   "auth.setup": "Configurar la autorización para usar",
-  "auth.setupModalTitle": "Configurar Autorización",
-  "auth.setupModalTitleDescription": "Después de configurar las credenciales, todos los miembros dentro del espacio de trabajo pueden usar esta herramienta al orquestar aplicaciones.",
   "auth.unauthorized": "No autorizado",
   "author": "Por",
   "builtInPromptTitle": "Aviso",

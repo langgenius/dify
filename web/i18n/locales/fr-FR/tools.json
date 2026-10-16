@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Tous les workflows comme outil",
   "auth.authorized": "Autorisé",
   "auth.setup": "Mettez en place l'autorisation à utiliser",
-  "auth.setupModalTitle": "Configurer l'Autorisation",
-  "auth.setupModalTitleDescription": "Après avoir configuré les identifiants, tous les membres de l'espace de travail peuvent utiliser cet outil lors de l'orchestration des applications.",
   "auth.unauthorized": "Non autorisé",
   "author": "Par",
   "builtInPromptTitle": "Invite",

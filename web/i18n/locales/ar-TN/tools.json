@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "كل سير العمل كأداة",
   "auth.authorized": "مفوض",
   "auth.setup": "إعداد التفويض للاستخدام",
-  "auth.setupModalTitle": "إعداد التفويض",
-  "auth.setupModalTitleDescription": "بعد تكوين بيانات الاعتماد، يمكن لجميع الأعضاء داخل مساحة العمل استخدام هذه الأداة عند تنظيم التطبيقات.",
   "auth.unauthorized": "غير مصرح",
   "author": "بواسطة",
   "builtInPromptTitle": "موجه",

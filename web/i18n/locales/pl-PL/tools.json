@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Wszystkie przepływy pracy jako narzędzie",
   "auth.authorized": "Zautoryzowane",
   "auth.setup": "Skonfiguruj autoryzację aby użyć",
-  "auth.setupModalTitle": "Konfiguruj autoryzację",
-  "auth.setupModalTitleDescription": "Po skonfigurowaniu poświadczeń wszyscy członkowie w przestrzeni roboczej mogą używać tego narzędzia podczas projektowania aplikacji.",
   "auth.unauthorized": "Nieautoryzowany",
   "author": "Przez",
   "builtInPromptTitle": "Komunikat",

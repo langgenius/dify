@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Araç olarak tüm iş akışları",
   "auth.authorized": "Yetkilendirildi",
   "auth.setup": "Kullanmak için yetkilendirmeyi ayarla",
-  "auth.setupModalTitle": "Yetkilendirmeyi Ayarla",
-  "auth.setupModalTitleDescription": "Kimlik bilgilerini yapılandırdıktan sonra, çalışma alanındaki tüm üyeler uygulamaları düzenlerken bu aracı kullanabilir.",
   "auth.unauthorized": "Yetkisiz",
   "author": "Tarafından",
   "builtInPromptTitle": "İstem",

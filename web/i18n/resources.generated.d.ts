@@ -4299,8 +4299,6 @@ export default interface Resources {
     allWorkflowAsTool: 'All workflow as tool'
     'auth.authorized': 'Authorized'
     'auth.setup': 'Set up authorization to use'
-    'auth.setupModalTitle': 'Set Up Authorization'
-    'auth.setupModalTitleDescription': 'After configuring credentials, all members within the workspace can use this tool when orchestrating applications.'
     'auth.unauthorized': 'Unauthorized'
     author: 'by'
     builtInPromptTitle: 'Prompt'
