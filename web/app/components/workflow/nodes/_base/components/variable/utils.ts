@@ -1283,7 +1283,7 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       break
     }
     case BlockEnum.TemplateTransform: {
-      res = (data as TemplateTransformNodeType).variables?.map((v: any) => {
+      res = (data as TemplateTransformNodeType).variables?.map((v) => {
         return v.value_selector
       })
       break
@@ -1649,7 +1649,7 @@ export const updateNodeVars = (
       case BlockEnum.TemplateTransform: {
         const payload = data as TemplateTransformNodeType
         if (payload.variables) {
-          payload.variables = payload.variables.map((v: any) => {
+          payload.variables = payload.variables.map((v) => {
             if (v.value_selector.join('.') === oldVarSelector.join('.'))
               v.value_selector = newVarSelector
             return v

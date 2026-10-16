@@ -55,7 +55,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation(['appDebug', 'workflow'])
   const [tempPayload, setTempPayload] = useState<InputVar>(() =>
-    normalizeSelectDefaultValue(payload || (getNewVarInWorkflow('') as any)),
+    normalizeSelectDefaultValue(payload || getNewVarInWorkflow('')),
   )
   const [validationError, setValidationError] = useState<ConfigModalValidationError>()
   const queryClient = useQueryClient()
@@ -99,7 +99,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     [t],
   )
   const handlePayloadChange = useCallback((key: string) => {
-    return (value: any) => {
+    return (value: unknown) => {
       setTempPayload((prev) => updatePayloadField(prev, key, value))
       setValidationError((prev) => (prev?.field === key ? undefined : prev))
     }
@@ -138,7 +138,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }, [])
 
   const handleVarKeyBlur = useCallback(
-    (e: any) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       const varName = e.target.value
       if (!checkVariableName(varName, true) || tempPayload.label) return
 
@@ -154,7 +154,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleVarNameChange = useCallback(
-    (e: ChangeEvent<any>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const value = e.target.value
       const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)

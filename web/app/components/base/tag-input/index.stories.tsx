@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { ComponentProps } from 'react'
 import { useState } from 'react'
 import TagInput from '.'
 
@@ -57,7 +58,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 // Interactive demo wrapper
-const TagInputDemo = (args: any) => {
+const TagInputDemo = (args: ComponentProps<typeof TagInput>) => {
   const [items, setItems] = useState(args.items || [])
 
   return (

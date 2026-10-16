@@ -741,7 +741,7 @@ export const useChat = (
         onData: (
           message: string,
           _isFirstMessage: boolean,
-          { conversationId: newConversationId, messageId: msgId, taskId }: any,
+          { conversationId: newConversationId, messageId: msgId, taskId },
         ) => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.content = responseItem.content + message

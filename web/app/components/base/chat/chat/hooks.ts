@@ -537,7 +537,7 @@ export const useChat = (
   }, [stopChat, handleResponding, resetWorkflowEventsSubscription])
 
   const handleRestart = useCallback(
-    (cb?: any) => {
+    (cb?: () => void) => {
       conversationIdRef.current = initialConversationIdRef.current
       taskIdRef.current = ''
       handleStop()

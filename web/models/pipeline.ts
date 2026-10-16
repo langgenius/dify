@@ -82,7 +82,7 @@ export type RAGPipelineVariables = RAGPipelineVariable[]
 export type PipelineExecutionLogResponse = {
   datasource_info: Record<string, any>
   datasource_type: DatasourceType
-  input_data: Record<string, any>
+  input_data: Record<string, unknown>
   datasource_node_id: string
 }
 
