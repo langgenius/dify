@@ -1942,6 +1942,38 @@ describe('RetrievalTestPage', () => {
     await waitFor(() => expect(apiMock.refetchPartials).toHaveBeenCalledOnce())
   })
 
+  it('refreshes a deep-linked research detail when its stream reaches a terminal stage', async () => {
+    apiMock.researchDetail = {
+      cost: {},
+      created_at: 1_800_000_000,
+      id: 'research-older',
+      knowledge_space_id: 'space-1',
+      metadata: {},
+      mode: 'research',
+      query: 'An older research question',
+      stage: 'generating',
+      updated_at: 1_800_000_005,
+    }
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
+        onEvent({
+          createdAt: '2027-01-15T08:00:25.000Z',
+          id: 'event-completed',
+          payload: {},
+          researchTaskJobId: 'research-older',
+          sequence: 5,
+          stage: 'completed',
+          type: 'research_task.stage_changed',
+        })
+        return { cursor: '5', reconnect: false, terminal: true }
+      },
+    )
+
+    renderPage({ searchParams: '?research=research-older' })
+
+    await waitFor(() => expect(apiMock.refetchResearchDetail).toHaveBeenCalledOnce())
+  })
+
   it('shows retrieved Research chunks during generation without reloading the page', async () => {
     apiMock.partials = [
       {
@@ -2719,6 +2751,101 @@ describe('RetrievalTestPage', () => {
       }),
     ).not.toBeInTheDocument()
     expect(apiMock.createBadCase).not.toHaveBeenCalled()
+  })
+
+  it('drops an image upload that resolves after another record was selected', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
+    let resolveUpload: (value: { id: string }) => void = () => undefined
+    apiMock.uploadFile.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-30T00:00:00.000Z',
+        id: 'trace-a',
+        mode: 'fast',
+        profile: {},
+        query: 'What does this diagram show?',
+        scores: {},
+        stages: [],
+      },
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-b',
+        mode: 'fast',
+        profile: {},
+        query: 'What is the refund policy?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.upload(
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
+      new File(['diagram'], 'diagram.png', { type: 'image/png' }),
+    )
+    await user.click(screen.getByRole('button', { name: /What is the refund policy\?/ }))
+    await act(async () => resolveUpload({ id: 'upload-image-a' }))
+
+    expect(screen.queryByRole('img', { name: 'diagram.png' })).not.toBeInTheDocument()
+    expect(createObjectUrl).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
+    await waitFor(() =>
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: { mode: 'fast', query: 'What is the refund policy?' },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    createObjectUrl.mockRestore()
+  })
+
+  it('does not let the composer shortcut run while query images are uploading', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:query-image')
+    let resolveUpload: (value: { id: string }) => void = () => undefined
+    apiMock.uploadFile.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const queryInput = screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')
+
+    await user.type(queryInput, 'What does this diagram show?')
+    await user.upload(
+      screen.getByLabelText('knowledgeRetrieval.retrievalTest.addImages'),
+      new File(['diagram'], 'diagram.png', { type: 'image/png' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }),
+    ).toBeDisabled()
+    await user.click(queryInput)
+    await user.keyboard('{Control>}{Enter}{/Control}')
+    expect(apiMock.queryAdmission).not.toHaveBeenCalled()
+
+    await act(async () => resolveUpload({ id: 'upload-image-1' }))
+    await screen.findByRole('img', { name: 'diagram.png' })
+    await user.click(queryInput)
+    await user.keyboard('{Control>}{Enter}{/Control}')
+    await waitFor(() =>
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: {
+          mode: 'fast',
+          query: 'What does this diagram show?',
+          queryImages: [{ uploadFileId: 'upload-image-1' }],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    createObjectUrl.mockRestore()
   })
 
   it('keeps query images attached to their run and restores them when the record is reselected', async () => {
